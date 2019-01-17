@@ -1,0 +1,2 @@
+krac-controller-manager:
+  template: 'default'

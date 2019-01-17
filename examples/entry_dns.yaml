@@ -1,0 +1,10 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  name: dns
+  namespace: default
+spec:
+  dnsName: "dns.ringtest.dev.k8s.ondemand.com"
+  ttl: 600
+  targets:
+  - 8.8.8.8

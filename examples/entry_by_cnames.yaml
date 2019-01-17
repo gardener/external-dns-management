@@ -1,0 +1,12 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  name: test
+  namespace: default
+spec:
+  dnsName: garden.ringtest.dev.k8s.ondemand.com
+  ttl: 600
+  cnameLookupInterval: 30
+  targets:
+  - api.garden-a.ringdev.shoot.dev.k8s-hana.ondemand.com
+  - api.gardeb-b.ringdev.shoot.dev.k8s-hana.ondemand.com

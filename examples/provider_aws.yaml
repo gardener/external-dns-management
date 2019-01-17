@@ -1,0 +1,12 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: aws
+  namespace: default
+spec:
+  type: AWS
+  secretRef:
+    name: route53
+  domains:
+    include:
+    - ringtest.dev.k8s.ondemand.com
