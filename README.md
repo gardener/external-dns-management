@@ -144,10 +144,13 @@ Provisioning controllers can read the `DNSEntry` objects from one cluster
 and read `DNSProvider` objects from another cluster using the logical clusters
 `target` and `provider`.
 
-Those clusters can the be separated by registering this names together with
-command line names (??). If a controller manager includes different types
-of controllers then corresponding cluster mappings must be provided.
-For an example see the included [controller manager](cmd/dns/main.go).
+Those clusters can the be separated by registering their names together with
+command line option names. These can be used to specify different kubeconfig 
+files for those clusters. If a controller manager includes different types
+of controllers then corresponding cluster mappings must be provided in
+the coding to assign the controller specific logical names to the
+registered external ones. For an example see the included
+[controller manager](cmd/dns/main.go).
   
 By default all logical clusters are mapped to the default physical cluster
 specified via `--kubeconfig` or default cluster access.

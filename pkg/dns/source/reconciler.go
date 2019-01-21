@@ -104,7 +104,7 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 		if err != nil {
 			return reconcile.Failed(logger, err)
 		}
-		return reconcile.Succeeded(logger)
+		return reconcile.Succeeded(logger).Stop()
 	}
 	missing := utils.StringSet{}
 	obsolete := []resources.Object{}
@@ -148,13 +148,17 @@ outer:
 	var notified_errors []error
 	modified := map[string]bool{}
 	if len(missing) > 0 {
-		logger.Infof("found missing dns entries: %s", missing)
-		for dns := range missing {
-			err := this.createEntryFor(logger, obj, dns, info)
-			if err != nil {
-				notified_errors = append(notified_errors, fmt.Errorf("cannot create dns entry object for %s: %s ", dns, err))
-				failed = true
+		if  len(info.Targets)> 0 {
+			logger.Infof("found missing dns entries: %s", missing)
+			for dns := range missing {
+				err := this.createEntryFor(logger, obj, dns, info)
+				if err != nil {
+					notified_errors = append(notified_errors, fmt.Errorf("cannot create dns entry object for %s: %s ", dns, err))
+					failed = true
+				}
 			}
+		} else {
+			logger.Infof("no targets found -> omit creation of missing dns entries: %s", missing)
 		}
 	}
 	if len(obsolete_dns) > 0 {
@@ -246,8 +250,8 @@ outer:
 
 	status := this.NestedReconciler.Reconcile(logger, obj)
 	if status.IsSucceeded() {
-		if len(info.Names) > 0 {
-			return status.RescheduleAfter(120 * time.Second)
+		if len(info.Names) == 0 {
+			return status.Stop()
 		}
 	}
 	return status

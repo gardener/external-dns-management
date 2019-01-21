@@ -581,7 +581,7 @@ func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) 
 			panic(fmt.Sprintf("cannot enqueue provider %q: %s", p.Description(), err))
 		}
 	}
-	return reconcile.Succeeded(logger)
+	return reconcile.Succeeded(logger).Stop()
 }
 
 ////////////////////////////////////////////////////////////////////////////////

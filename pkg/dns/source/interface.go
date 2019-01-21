@@ -59,7 +59,7 @@ type DNSSourceType interface {
 	Create(controller.Interface) (DNSSource, error)
 }
 
-type DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) utils.StringSet
+type DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (utils.StringSet, error)
 type DNSSourceCreator func(controller.Interface) (DNSSource, error)
 
 type DNSState struct {

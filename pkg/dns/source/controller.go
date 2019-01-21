@@ -23,6 +23,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/crds"
+	"time"
 )
 
 const CONTROLLER_GROUP_DNS_SOURCES = "dnssources"
@@ -50,7 +51,7 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		FinalizerDomain("mandelsoft.org").
 		Reconciler(SourceReconciler(source, reconcilerType)).
 		Cluster(cluster.DEFAULT). // first one used as MAIN cluster
-		DefaultWorkerPool(2, 0).
+		DefaultWorkerPool(2, 120 * time.Second).
 		MainResource(gk.Group, gk.Kind).
 		Reconciler(reconcilers.SlaveReconcilerType(source.Name(), SlaveResources, nil, source.GroupKind()), "entries").
 		Cluster(TARGET_CLUSTER).

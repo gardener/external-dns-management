@@ -17,6 +17,7 @@
 package service
 
 import (
+	"fmt"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -25,8 +26,11 @@ import (
 	api "k8s.io/api/core/v1"
 )
 
-func GetTargets(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) utils.StringSet {
+func GetTargets(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (utils.StringSet, error) {
 	svc := obj.Data().(*api.Service)
+	if svc.Spec.Type!=api.ServiceTypeLoadBalancer {
+		return nil, fmt.Errorf("service is not of type LoadBalancer")
+	}
 	set := utils.StringSet{}
 	for _, i := range svc.Status.LoadBalancer.Ingress {
 		if i.Hostname != "" && i.IP == "" {
@@ -37,5 +41,5 @@ func GetTargets(logger logger.LogContext, obj resources.Object, current *source.
 			}
 		}
 	}
-	return set
+	return set, nil
 }
