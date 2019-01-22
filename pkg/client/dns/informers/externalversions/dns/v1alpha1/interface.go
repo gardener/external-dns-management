@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	internalinterfaces "github.com/gardener/dns-controller-manager/pkg/client/dns/informers/externalversions/internalinterfaces"
+	internalinterfaces "github.com/gardener/external-dns-management/pkg/client/dns/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to all the informers in this group version.

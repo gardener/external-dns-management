@@ -58,7 +58,7 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 		}
 	}
 	info, err := s.GetDNSInfo(logger, obj, current)
-	if info !=nil && info.Names!=nil {
+	if info != nil && info.Names != nil {
 		for d := range info.Names {
 			if this.exclude(d) {
 				info.Names.Remove(d)

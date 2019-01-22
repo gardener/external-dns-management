@@ -18,7 +18,9 @@ package cluster
 
 import (
 	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sync"
 )
 
@@ -45,6 +47,7 @@ type Registry interface {
 type _Definitions struct {
 	lock        sync.RWMutex
 	definitions Registrations
+	scheme *runtime.Scheme
 }
 
 type _Registry struct {
@@ -54,8 +57,11 @@ type _Registry struct {
 var _ Definition = &_Definition{}
 var _ Definitions = &_Definitions{}
 
-func NewRegistry() Registry {
-	registry := &_Registry{_Definitions: &_Definitions{definitions: Registrations{}}}
+func NewRegistry(scheme *runtime.Scheme) Registry {
+	if scheme==nil {
+		scheme=resources.DefaultScheme()
+	}
+	registry := &_Registry{_Definitions: &_Definitions{definitions: Registrations{}, scheme: scheme}}
 	Configure(DEFAULT, "kubeconfig", "default cluster access").MustRegisterAt(registry)
 	return registry
 }
@@ -121,13 +127,19 @@ func (this *_Definitions) Get(name string) Definition {
 	return this.definitions[name]
 }
 
+func (this *_Definitions) GetScheme() *runtime.Scheme {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	return this.scheme
+}
+
 func (this *_Definition) Definition() Definition {
 	return this
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-var registry = NewRegistry()
+var registry = NewRegistry(nil)
 
 type Configuration struct {
 	definition _Definition

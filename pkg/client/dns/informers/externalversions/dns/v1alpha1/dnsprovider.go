@@ -21,10 +21,10 @@ package v1alpha1
 import (
 	time "time"
 
-	dnsv1alpha1 "github.com/gardener/dns-controller-manager/pkg/apis/dns/v1alpha1"
-	versioned "github.com/gardener/dns-controller-manager/pkg/client/dns/clientset/versioned"
-	internalinterfaces "github.com/gardener/dns-controller-manager/pkg/client/dns/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/gardener/dns-controller-manager/pkg/client/dns/listers/dns/v1alpha1"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	versioned "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned"
+	internalinterfaces "github.com/gardener/external-dns-management/pkg/client/dns/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/listers/dns/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"

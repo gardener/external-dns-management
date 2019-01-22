@@ -28,7 +28,7 @@ import (
 
 func GetTargets(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (utils.StringSet, error) {
 	svc := obj.Data().(*api.Service)
-	if svc.Spec.Type!=api.ServiceTypeLoadBalancer {
+	if svc.Spec.Type != api.ServiceTypeLoadBalancer {
 		return nil, fmt.Errorf("service is not of type LoadBalancer")
 	}
 	set := utils.StringSet{}

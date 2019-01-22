@@ -114,8 +114,6 @@ func (this *dnssourcetype) GroupKind() schema.GroupKind {
 	return this.kind
 }
 
-
-
 func (this *handlerdnssourcetype) Create(c controller.Interface) (DNSSource, error) {
 	return this, nil
 }
@@ -123,8 +121,6 @@ func (this *handlerdnssourcetype) Create(c controller.Interface) (DNSSource, err
 func (this *creatordnssourcetype) Create(c controller.Interface) (DNSSource, error) {
 	return this.handler(c)
 }
-
-
 
 func (this *DefaultDNSSource) Setup() {
 }
@@ -148,7 +144,7 @@ func (this *DefaultDNSSource) GetDNSInfo(logger logger.LogContext, obj resources
 	info := &DNSInfo{Feedback: NewEventFeedback(logger, obj, events)}
 	info.Names = current.AnnotatedNames
 	tgts, err := this.handler(logger, obj, current)
-	info.Targets=tgts
+	info.Targets = tgts
 	return info, err
 }
 

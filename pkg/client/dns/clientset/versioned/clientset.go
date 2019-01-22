@@ -19,7 +19,7 @@ limitations under the License.
 package versioned
 
 import (
-	kracv1alpha1 "github.com/gardener/dns-controller-manager/pkg/client/dns/clientset/versioned/typed/dns/v1alpha1"
+	kracv1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/typed/dns/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"

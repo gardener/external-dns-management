@@ -19,8 +19,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/gardener/dns-controller-manager/pkg/apis/dns/v1alpha1"
-	scheme "github.com/gardener/dns-controller-manager/pkg/client/dns/clientset/versioned/scheme"
+	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	scheme "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"

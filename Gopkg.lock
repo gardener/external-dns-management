@@ -26,7 +26,7 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
-  digest = "1:e8c1d64cd223bbf330c55c5f3148cd7847445aca52994d4fe0d3ebe886bc1b23"
+  digest = "1:9ddfbe3df1fae959fd019c822e78ce3e63a11286b74592d905444a2732dc0004"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -62,8 +62,8 @@
     "service/sts",
   ]
   pruneopts = "NUT"
-  revision = "3afa899153ab972b5e6bf2552721b677e3fdaeb5"
-  version = "v1.16.20"
+  revision = "c1afd6c3340feedd0a2c1cd929dcb291d4bd09ba"
+  version = "v1.16.23"
 
 [[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
@@ -74,19 +74,19 @@
   version = "v1.1.1"
 
 [[projects]]
-  digest = "1:3537d33c077a9666720dc987fddfecb07270606ac0a58f67abd08e3b252c0a45"
+  digest = "1:2aa58f7bf714a480d6c982c8a4c972ee6c235e2c7bc1f42a3df52f7170746ac6"
   name = "github.com/emicklei/go-restful"
   packages = [
     ".",
     "log",
   ]
   pruneopts = "NUT"
-  revision = "3eb9738c1697594ea6e71a7156a9bb32ed216cf0"
-  version = "v2.8.0"
+  revision = "e37671aced663c8d3a395bd301857e26dcf4340c"
+  version = "v2.8.1"
 
 [[projects]]
   branch = "master"
-  digest = "1:460d669f68f2a7726519d9afc399317b809fee507ea8068b82ce1281eb7e077a"
+  digest = "1:0ad62ca94985b7723bb641bca06b3e0a7abea0a73fe012f73930b3829efdc69c"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/apis/gardenextensions",
@@ -125,7 +125,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "80a374af93c7964ce26f0cef47ea5a8832d0bf94"
+  revision = "e82ccf3aa9384e8ce82c392c6345d9bc8de3be28"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
@@ -370,11 +370,11 @@
   name = "golang.org/x/crypto"
   packages = ["ssh/terminal"]
   pruneopts = "NUT"
-  revision = "ff983b9c42bc9fbf91556e191cc8efb585c16908"
+  revision = "64072686203f69e3fd20143576b27200f18ab0fa"
 
 [[projects]]
   branch = "master"
-  digest = "1:122db8a20246abd128a496d22b6c35d3c648de20e3445e583b370c86c2d96d53"
+  digest = "1:f3834eef4cff8c456e64d853dd6ccc9e2f9b2e3b4f197467c887b1783d3b2f7a"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -385,7 +385,7 @@
     "idna",
   ]
   pruneopts = "NUT"
-  revision = "915654e7eabcea33ae277abbecf52f0d8b7a9fdc"
+  revision = "ed066c81e75eba56dd9bd2139ade88125b855585"
 
 [[projects]]
   branch = "master"
@@ -403,14 +403,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:abc6c776da4fb3b71392ec4f4edafbbf981ef39bf6e6af06cc424f28c4a4ccc7"
+  digest = "1:4155c58f500d1fcca10a6cbf061efb220dbfb14e924c381e809a13879ddf4b87"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "NUT"
-  revision = "11f53e03133963fb11ae0588e08b5e0b85be8be5"
+  revision = "054c452bb702e465e95ce8e7a3d9a6cf0cd1188d"
 
 [[projects]]
   digest = "1:e33513a825fcd765e97b5de639a2f7547542d1a8245df0cef18e1fd390b778a9"
@@ -446,7 +446,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:b5cd6adda1381d3b37182aa4a403bca5e69bc7ff6eb412b8618fe38fce3400bd"
+  digest = "1:3ab7ad4d64d2f8bd7dc7f4847f546a6f97eccba24be5c3b9c4618d6e2b080ac9"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -462,7 +462,7 @@
     "internal/semver",
   ]
   pruneopts = "NUT"
-  revision = "b258f6da23835bf37e95cc50af792447c7c67fe4"
+  revision = "24cd39ecf74570612483b772d45cf9d53d908340"
 
 [[projects]]
   digest = "1:1f2f84090b77a22229c23dc049abea4c3f566aab3e5dc9da96c5d97f038e14ed"
@@ -564,7 +564,7 @@
     "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "cf30b7cf64c2979f27127ba17706f30a3489337c"
+  revision = "80a4532647cb134adf686615c22c0def63713d9e"
 
 [[projects]]
   digest = "1:3e353d8babd8117333e032d7f61229ef379f59302575eb87fea15052178e97c2"

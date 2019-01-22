@@ -23,9 +23,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/gardener/dns-controller-manager/pkg/client/dns/clientset/versioned"
-	dns "github.com/gardener/dns-controller-manager/pkg/client/dns/informers/externalversions/dns"
-	internalinterfaces "github.com/gardener/dns-controller-manager/pkg/client/dns/informers/externalversions/internalinterfaces"
+	versioned "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned"
+	dns "github.com/gardener/external-dns-management/pkg/client/dns/informers/externalversions/dns"
+	internalinterfaces "github.com/gardener/external-dns-management/pkg/client/dns/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

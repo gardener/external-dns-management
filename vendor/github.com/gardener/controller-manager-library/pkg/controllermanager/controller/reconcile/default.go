@@ -32,7 +32,7 @@ func (r *DefaultReconciler) Start() {
 }
 
 func (r *DefaultReconciler) Reconcile(logger logger.LogContext, obj resources.Object) Status {
-	return Failed(logger, fmt.Errorf("unknown resource %q", obj.Description()))
+	return Succeeded(logger)
 }
 func (r *DefaultReconciler) Delete(logger logger.LogContext, obj resources.Object) Status {
 	return Succeeded(logger)

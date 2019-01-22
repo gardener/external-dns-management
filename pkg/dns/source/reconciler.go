@@ -43,7 +43,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 			return nil, err
 		}
 		reconciler := &sourceReconciler{
-			SlaveAccess: reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources),
+			SlaveAccess: reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind())),
 			source:      s,
 		}
 		nested, err := reconcilers.NewNestedReconciler(rtype, reconciler)
@@ -148,7 +148,7 @@ outer:
 	var notified_errors []error
 	modified := map[string]bool{}
 	if len(missing) > 0 {
-		if  len(info.Targets)> 0 {
+		if len(info.Targets) > 0 {
 			logger.Infof("found missing dns entries: %s", missing)
 			for dns := range missing {
 				err := this.createEntryFor(logger, obj, dns, info)
@@ -257,7 +257,25 @@ outer:
 	return status
 }
 
+// Deleted is used as fallback, if the source object in another cluster is
+//  deleted unexpectedly (by removing the finalizer).
+//  It checks whether a slave is still available and deletes it.
 func (this *sourceReconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
+	logger.Infof("%s finally deleted", key)
+	failed := false
+	for _, s := range this.Slaves().GetByKey(key) {
+		err := s.Delete()
+		if err != nil && !errors.IsNotFound(err) {
+			logger.Warnf("cannot delete entry object %s for %s: %s", s.ObjectName(), dnsutils.DNSEntry(s).GetDNSName(), err)
+			failed = true
+		} else {
+			logger.Infof("delete dns entry for vanished %s(%s)", s.ObjectName(), dnsutils.DNSEntry(s).GetDNSName())
+		}
+	}
+	if failed {
+		return reconcile.Delay(logger, nil)
+	}
+
 	this.source.Deleted(logger, key)
 	return this.NestedReconciler.Deleted(logger, key)
 }

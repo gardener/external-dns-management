@@ -15,7 +15,7 @@
 # limitations under the License.
 
 GITPROVIDER=github.com
-PROJECT=gardener/dns-controller-manager
+PROJECT=gardener/external-dns-management
 EXE=dns-controller-manager
 CMD=dns
 APINAME=dns

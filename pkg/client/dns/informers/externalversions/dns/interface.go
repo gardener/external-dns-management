@@ -19,8 +19,8 @@ limitations under the License.
 package krac
 
 import (
-	v1alpha1 "github.com/gardener/dns-controller-manager/pkg/client/dns/informers/externalversions/dns/v1alpha1"
-	internalinterfaces "github.com/gardener/dns-controller-manager/pkg/client/dns/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/informers/externalversions/dns/v1alpha1"
+	internalinterfaces "github.com/gardener/external-dns-management/pkg/client/dns/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.

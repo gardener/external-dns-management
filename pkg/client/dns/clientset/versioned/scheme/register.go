@@ -19,7 +19,7 @@ limitations under the License.
 package scheme
 
 import (
-	kracv1alpha1 "github.com/gardener/dns-controller-manager/pkg/apis/dns/v1alpha1"
+	kracv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

@@ -21,6 +21,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/groups"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type Configuration struct {
@@ -35,11 +36,11 @@ var _ mappings.RegistrationInterface = &Configuration{}
 var _ groups.RegistrationInterface = &Configuration{}
 var _ controller.RegistrationInterface = &Configuration{}
 
-func Configure(name, desc string) Configuration {
+func Configure(name, desc string, scheme *runtime.Scheme) Configuration {
 	return Configuration{
 		name:           name,
 		description:    desc,
-		cluster_reg:    cluster.NewRegistry(),
+		cluster_reg:    cluster.NewRegistry(scheme),
 		controller_reg: controller.NewRegistry(),
 	}
 }

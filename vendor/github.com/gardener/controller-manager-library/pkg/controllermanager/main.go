@@ -34,7 +34,7 @@ import (
 
 func Start(use, short, long string) {
 	args := strings.Split(use, " ")
-	Configure(args[0], long).ByDefault().Start(use, short)
+	Configure(args[0], long, nil).ByDefault().Start(use, short)
 }
 
 func (this Configuration) Start(use, short string) {

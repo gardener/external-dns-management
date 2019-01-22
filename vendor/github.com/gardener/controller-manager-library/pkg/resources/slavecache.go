@@ -62,7 +62,11 @@ func (this *SlaveCache) GetSlave(key ClusterObjectKey) Object {
 	return this.cache.GetSubObject(key)
 }
 
-func (this *SlaveCache) GetOwners(key ClusterObjectKey, kinds ...schema.GroupKind) ClusterObjectKeySet {
+func (this *SlaveCache) GetOwners(kinds ...schema.GroupKind) ClusterObjectKeySet {
+	return this.cache.GetAllOwners(kinds...)
+}
+
+func (this *SlaveCache) GetOwnersFor(key ClusterObjectKey, kinds ...schema.GroupKind) ClusterObjectKeySet {
 	o := this.GetSlave(key)
 	if o == nil {
 		return ClusterObjectKeySet{}

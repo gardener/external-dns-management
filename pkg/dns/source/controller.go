@@ -23,6 +23,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/crds"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"time"
 )
 
@@ -51,9 +52,9 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		FinalizerDomain("mandelsoft.org").
 		Reconciler(SourceReconciler(source, reconcilerType)).
 		Cluster(cluster.DEFAULT). // first one used as MAIN cluster
-		DefaultWorkerPool(2, 120 * time.Second).
+		DefaultWorkerPool(2, 120*time.Second).
 		MainResource(gk.Group, gk.Kind).
-		Reconciler(reconcilers.SlaveReconcilerType(source.Name(), SlaveResources, nil, source.GroupKind()), "entries").
+		Reconciler(reconcilers.SlaveReconcilerType(source.Name(), SlaveResources, SlaveReconcilerType, MasterResourcesType(source.GroupKind())), "entries").
 		Cluster(TARGET_CLUSTER).
 		CustomResourceDefinitions(crds.DNSEntryCRD).
 		WorkerPool("targets", 2, 0).
@@ -67,4 +68,15 @@ func SlaveResources(c controller.Interface) []resources.Interface {
 		panic(err)
 	}
 	return []resources.Interface{res}
+}
+
+func MasterResourcesType(kind schema.GroupKind) reconcilers.Resources {
+	return func(c controller.Interface) []resources.Interface {
+		target := c.GetMainCluster()
+		res, err := target.Resources().GetByGK(kind)
+		if err != nil {
+			panic(err)
+		}
+		return []resources.Interface{res}
+	}
 }

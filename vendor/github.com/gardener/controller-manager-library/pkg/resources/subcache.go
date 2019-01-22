@@ -105,6 +105,22 @@ func (this *SubObjectCache) GetOwners(key ClusterObjectKey, kinds ...schema.Grou
 	return owners
 }
 
+func (this *SubObjectCache) GetAllOwners(kind ... schema.GroupKind) ClusterObjectKeySet {
+	kinds:=NewGroupKindSet(kind...)
+	set:=ClusterObjectKeySet{}
+
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	for k, _ := range this.byOwner {
+		if len(kinds) >0 && ! kinds.Contains(k.GroupKind()) {
+			continue
+		}
+		set.Add(k)
+	}
+	return set
+}
+
+
 func (this *SubObjectCache) DeleteSubObject(key ClusterObjectKey) {
 	this.lock.Lock()
 	defer this.lock.Unlock()

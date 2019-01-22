@@ -19,9 +19,12 @@ package cluster
 import (
 	"context"
 	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 const CLUSTERID_GROUP = "gardener.cloud"
@@ -30,6 +33,7 @@ type Definitions interface {
 	Get(name string) Definition
 	CreateClusters(ctx context.Context, logger logger.LogContext, cfg *config.Config, names utils.StringSet) (Clusters, error)
 	ExtendConfig(cfg *config.Config)
+	GetScheme() * runtime.Scheme
 }
 
 var _ Definitions = &_Definitions{}

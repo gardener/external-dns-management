@@ -129,6 +129,7 @@ func (w *worker) processNextWorkItem() bool {
 			return true
 		}
 	}
+	deleted:=false
 	if rkey != nil {
 		if r != nil {
 			r = r.DeepCopy()
@@ -138,8 +139,10 @@ func (w *worker) processNextWorkItem() bool {
 		var f func(reconcile.Interface) reconcile.Status
 		switch {
 		case r == nil:
+			deleted=true
 			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Deleted(w, *rkey) }
 		case r.IsDeleting():
+			deleted=true
 			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Delete(w, r) }
 		default:
 			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Reconcile(w, r) }
@@ -182,7 +185,9 @@ func (w *worker) processNextWorkItem() bool {
 			// valid resources, everything ok, just continue normally
 			w.workqueue.Forget(obj)
 			if reschedule < 0 || (w.pool.Period() > 0 && w.pool.Period() < reschedule) {
-				reschedule = w.pool.Period()
+				if !deleted {
+					reschedule = w.pool.Period()
+				}
 			}
 
 			if reschedule > 0 {
