@@ -1,0 +1,62 @@
+helper:
+  dev_branches: (( |b|->.helper.branchset("standard", [ "head" ], b ) ))
+  main_branch: (( |b|->.helper.branchset("standard", [ "head", "rel", "pull" ], [ b ] ) ))
+
+  branchset: (( |n,j,b|-> *.helper.templates.branchset ))
+
+  templates:
+    branchset:
+      <<: (( &template ))
+      branches: (( b ))
+      inherit:  (( { .settings.pipeline = eval("*.helper.templates." n) } ))
+        
+    jobs:
+      head:
+        <<: (( &template ))
+        head-update:
+          traits:
+            component_descriptor: ~
+      pull:
+        <<: (( &template ))
+        pull-request:
+          traits:
+            pull-request: ~
+            component_descriptor: ~
+      rel:
+        <<: (( &template ))
+        release:
+          traits:
+            version:
+              preprocess: 'finalize'
+            release:
+              nextversion: 'bump_minor'
+            component_descriptor: ~
+
+    standard: 
+      <<: (( &template ))
+      base_definition:
+        repo: ~
+        traits:
+          version:
+            preprocess: inject-branch-name
+            inject_effective_version: true
+          publish:
+            dockerimages:
+              controller-manager:
+                inputs:
+                  repos:
+                    source: ~ # default
+                  steps:
+                    build: ~
+                registry: 'gcr-readwrite'
+                image: (( "eu.gcr.io/gardener-project/dns-controller-manager" ( valid(.settings.repokey) -and .settings.repokey != ""  ? "-" .settings.repokey :"" ) ))
+                dockerfile: 'build/Dockerfile'
+        steps:
+          check:
+            image: 'golang:1.10.4'
+          test:
+            image: 'golang:1.10.4'
+          build:
+            image: 'golang:1.10.4'
+            output_dir: 'binary'
+      variants: (( sum[j|{}|s,e|-> s eval("*.helper.templates.jobs." e)] ))
