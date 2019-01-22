@@ -61,7 +61,7 @@ type state struct {
 var _ DNSState = &state{}
 
 func NewDNSState(controller controller.Interface, config Config) DNSState {
-	controller.Infof("using default ttl: %d", config.Ttl)
+	controller.Infof("using default ttl: %d", config.TTL)
 	controller.Infof("using identifier : %s", config.Ident)
 	controller.Infof("dry run mode     : %t", config.Dryrun)
 	return &state{

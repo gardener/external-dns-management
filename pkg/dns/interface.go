@@ -29,7 +29,7 @@ import (
 )
 
 type Config struct {
-	Ttl     int64
+	TTL     int64
 	Ident   string
 	Dryrun  bool
 	Factory DNSHandlerFactory
@@ -45,7 +45,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 		ttl = 300
 	}
 	dryrun, _ := c.GetBoolOption(OPT_DRYRUN)
-	return Config{Ident: ident, Dryrun: dryrun, Ttl: int64(ttl), Factory: factory}
+	return Config{Ident: ident, Dryrun: dryrun, TTL: int64(ttl), Factory: factory}
 }
 
 type DNSHostedZoneInfo struct {

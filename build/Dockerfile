@@ -17,8 +17,8 @@ FROM alpine:3.7
 RUN apk add --update bash curl
 RUN mkdir /plugins
 
-ADD bin/rel/krac-controller-manager /krac-controller-manager
+ADD bin/rel/dns-controller-manager /dns-controller-manager
 
 WORKDIR /
 
-ENTRYPOINT ["/krac-controller-manager"]
+ENTRYPOINT ["/dns-controller-manager"]
