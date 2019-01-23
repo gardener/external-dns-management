@@ -628,6 +628,10 @@ func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEnt
 					}
 				}
 			}
+		} else {
+			if newzone!="" {
+				err = fmt.Errorf("no matching %s provider found", this.GetHandlerFactory().TypeCode())
+			}
 		}
 	}
 	status := new.Update(logger, object, this.GetHandlerFactory().TypeCode(), newzone, err)

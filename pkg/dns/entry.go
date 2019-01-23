@@ -98,6 +98,54 @@ func (this *Entry) IsModified() bool {
 	return this.modified
 }
 
+func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
+
+	spec := &this.object.DNSEntry().Spec
+
+	targets =Targets{}
+	warnings = []string{}
+
+	if this.dnsname != spec.DNSName {
+		panic(fmt.Sprintf("change the dnsname should be handled by replacing the entry object (%q)", this.ObjectName()))
+	}
+
+	check := this.dnsname
+	if strings.HasPrefix(this.dnsname, "*.") {
+		check = this.dnsname[2:]
+	}
+	if errs := validation.IsDNS1123Subdomain(check); errs != nil {
+		err =fmt.Errorf("%q is no valid dns name (%v)", check, errs)
+		return
+	}
+	if len(spec.Targets) > 0 && len(spec.Text) > 0 {
+		err = fmt.Errorf("only Text or Targets possible", err)
+		return
+	}
+
+	this.ttl = spec.TTL
+	for _, t := range spec.Targets {
+		new := NewTargetFromEntry(t, this)
+		if targets.Has(new) {
+			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate target %q", this.ObjectName(), new))
+		} else {
+			targets = append(targets, new)
+		}
+	}
+	for _, t := range spec.Text {
+		new := NewText(t, this)
+		if targets.Has(new) {
+			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate text %q", this.ObjectName(), new))
+		} else {
+			targets = append(targets, new)
+		}
+	}
+
+	if len(targets) == 0 {
+		err = fmt.Errorf("no target or text specified")
+	}
+	return
+}
+
 func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObject, resp, zoneid string, err error) reconcile.Status {
 	this.lock.Lock()
 	this.lock.Unlock()
@@ -107,6 +155,8 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 	curvalid := this.valid
 	this.valid = false
 	spec := &this.object.DNSEntry().Spec
+
+	///////////// handle type responsibility
 
 	if spec.Type == "" || (spec.Type != resp && zoneid != "") {
 		if zoneid == "" {
@@ -125,7 +175,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 			return reconcile.DelayOnError(logger, err)
 		} else {
 			// assign entry to actual type
-			msg := fmt.Sprintf("Assigned to provider %q responsible for zone %s", resp, zoneid)
+			msg := fmt.Sprintf("Assigned to provider type %q responsible for zone %s", resp, zoneid)
 			f := func(data resources.ObjectData) (bool, error) {
 				e := data.(*api.DNSEntry)
 				if e.Spec.Type != "" && zoneid == "" {
@@ -151,50 +201,17 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 		return reconcile.Succeeded(logger)
 	}
 
-	targets := Targets{}
-	warnings := []string{}
-	if this.dnsname != spec.DNSName {
-		panic(fmt.Sprintf("change the dnsname should be handled by replacing the entry object (%q)", this.ObjectName()))
+	///////////// validate
+
+	targets, warnings, verr := this.Validate()
+
+	if verr!=nil {
+		this.UpdateStatus(logger, api.STATE_INVALID, verr.Error())
+		return reconcile.Failed(logger, verr)
 	}
 
-	check := this.dnsname
-	if strings.HasPrefix(this.dnsname, "*.") {
-		check = this.dnsname[2:]
-	}
-	if errs := validation.IsDNS1123Subdomain(check); errs != nil {
-		err := fmt.Errorf("%q is no valid dns name (%v)", check, errs)
-		this.UpdateStatus(logger, api.STATE_INVALID, err.Error())
-		return reconcile.Failed(logger, err)
-	}
-	if len(spec.Targets) > 0 && len(spec.Text) > 0 {
-		err := fmt.Errorf("only Text or Targets possible", err)
-		this.UpdateStatus(logger, api.STATE_INVALID, err.Error())
-		return reconcile.Failed(logger, err)
-	}
+	///////////// handle
 
-	this.ttl = spec.TTL
-	for _, t := range spec.Targets {
-		new := NewTargetFromEntry(t, this)
-		if targets.Has(new) {
-			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate target %q", this.ObjectName(), new))
-		} else {
-			targets = append(targets, new)
-		}
-	}
-	for _, t := range spec.Text {
-		new := NewText(t, this)
-		if targets.Has(new) {
-			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate text %q", this.ObjectName(), new))
-		} else {
-			targets = append(targets, new)
-		}
-	}
-
-	if len(targets) == 0 {
-		err := fmt.Errorf("no target or text specified")
-		this.UpdateStatus(logger, api.STATE_INVALID, err.Error())
-		return reconcile.Failed(logger, err)
-	}
 	targets, mappings := this.NormalizeTargets(logger, targets...)
 	if len(mappings) > 0 {
 		if spec.CNameLookupInterval != nil && *spec.CNameLookupInterval > 0 {
