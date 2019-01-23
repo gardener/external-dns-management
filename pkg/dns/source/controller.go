@@ -37,6 +37,8 @@ const PERIOD_ANNOTATION = "dns.gardener.cloud/cname-lookup-interval"
 
 const OPT_EXCLUDE = "exclude-domains"
 const OPT_KEY = "key"
+const OPT_NAMESPACE = "target-namespace"
+const OPT_NAMEPREFIX = "target-name-prefix"
 
 var ENTRY = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
@@ -49,6 +51,8 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 	return controller.Configure(source.Name()).
 		StringArrayOption(OPT_EXCLUDE, "excluded domains").
 		StringOption(OPT_KEY, "selecting key for annotation").
+		DefaultedStringOption(OPT_NAMESPACE, "", "target namespace for cross cluster generation").
+		DefaultedStringOption(OPT_NAMEPREFIX, "", "name prefix in target namespace for cross cluster generation").
 		FinalizerDomain("mandelsoft.org").
 		Reconciler(SourceReconciler(source, reconcilerType)).
 		Cluster(cluster.DEFAULT). // first one used as MAIN cluster

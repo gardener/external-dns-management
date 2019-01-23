@@ -1,2 +1,2 @@
-krac-controller-manager:
+external-dns-management:
   template: 'default'

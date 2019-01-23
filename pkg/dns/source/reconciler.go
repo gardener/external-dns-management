@@ -58,9 +58,11 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 type sourceReconciler struct {
 	*reconcilers.NestedReconciler
 	*reconcilers.SlaveAccess
-	excluded utils.StringSet
-	source   DNSSource
-	key      string
+	excluded   utils.StringSet
+	source     DNSSource
+	key        string
+	namespace  string
+	nameprefix string
 }
 
 func (this *sourceReconciler) Start() {
@@ -71,10 +73,16 @@ func (this *sourceReconciler) Start() {
 
 func (this *sourceReconciler) Setup() {
 	this.key, _ = this.GetStringOption(OPT_KEY)
+	this.namespace, _ = this.GetStringOption(OPT_NAMESPACE)
+	this.nameprefix, _ = this.GetStringOption(OPT_NAMEPREFIX)
 	excluded, _ := this.GetStringArrayOption(OPT_EXCLUDE)
 	this.excluded = utils.NewStringSetByArray(excluded)
 	this.Infof("found excluded domains: %v", this.excluded)
 
+	if this.GetMainCluster() == this.GetCluster(TARGET_CLUSTER) {
+		this.namespace = ""
+		this.nameprefix = ""
+	}
 	this.SlaveAccess.Setup()
 	this.source.Setup()
 	this.NestedReconciler.Setup()
@@ -313,10 +321,14 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 
 func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, dns string, info *DNSInfo) error {
 	entry := &api.DNSEntry{}
-	entry.GenerateName = strings.ToLower(obj.GetName() + "-" + obj.GroupKind().Kind + "-")
-	entry.Namespace = obj.GetNamespace()
+	entry.GenerateName = strings.ToLower(this.nameprefix + obj.GetName() + "-" + obj.GroupKind().Kind + "-")
 	entry.Spec.DNSName = dns
 	entry.Spec.Targets = info.Targets.AsArray()
+	if this.namespace == "" {
+		entry.Namespace = obj.GetNamespace()
+	} else {
+		entry.Namespace = this.namespace
+	}
 
 	e, _ := this.SlaveResoures()[0].Wrap(entry)
 

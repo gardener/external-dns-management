@@ -70,7 +70,11 @@ join_by()
 
 line()
 {
-  sed "${1}q;d" "$2"
+  if [ $1 -eq 0 ]; then
+    sed "1q;d" "$2"
+  else
+    sed "${1}q;d" "$2"
+  fi
 }
 
 COMM='^comment on exported function SyncPointWait should be of the form.*$'

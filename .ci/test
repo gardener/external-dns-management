@@ -39,5 +39,6 @@ if [[ ! -z "$COVERAGE" ]]; then
   COVER_FLAG="-cover"
 fi
 
-echo "running tests..."
-ginkgo ${COVER_FLAG} -r cmd pkg plugin
+echo "tests disabled"
+#echo "running tests..."
+#ginkgo ${COVER_FLAG} -r cmd pkg plugin

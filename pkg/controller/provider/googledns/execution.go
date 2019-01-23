@@ -116,7 +116,7 @@ func mapRecordSet(dnsname string, rs *dns.RecordSet) *googledns.ResourceRecordSe
 		}
 	}
 
-	// no annotation results in a Ttl of 0, default to 300 for backwards-compatability
+	// no annotation results in a TTL of 0, default to 300 for backwards-compatability
 	var ttl int64 = googleRecordTTL
 	if rs.TTL > 0 {
 		ttl = rs.TTL

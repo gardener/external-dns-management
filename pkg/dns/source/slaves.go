@@ -46,9 +46,8 @@ func (this *slaveReconciler) Start() {
 			if _, err := cluster.GetCachedObject(k); errors.IsNotFound(err) {
 				this.controller.Infof("trigger vanished origin %s", k.ObjectKey())
 				this.controller.EnqueueKey(k)
-
 			} else {
-				this.controller.Infof("found origin %s", k.ObjectKey())
+				this.controller.Debugf("found origin %s", k.ObjectKey())
 			}
 		}
 	}

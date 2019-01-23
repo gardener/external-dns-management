@@ -206,7 +206,7 @@ func (this *ChangeModel) Exec(apply bool, name string, done DoneHandler, targets
 
 	view := this.getProviderView(p)
 	oldset := view.dnssets[name]
-	newset := this.NewDNSSetForTargets(name, oldset, this.config.Ttl, targets...)
+	newset := this.NewDNSSetForTargets(name, oldset, this.config.TTL, targets...)
 	mod := false
 	if oldset != nil {
 		if this.IsForeign(oldset) {
