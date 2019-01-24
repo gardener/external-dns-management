@@ -18,12 +18,13 @@ package provider
 
 import (
 	"fmt"
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"net"
 	"sort"
 	"strings"
 
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,7 +67,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 	for _, s := range this.dnssets {
 		_, ok := model.applied[s.Name]
 		if !ok {
-			if s.IsOwnedBy(model.config.Ident) {
+			if s.IsOwnedBy(model.owners) {
 				model.Infof("found unapplied managed set '%s'", s.Name)
 				for ty := range s.Sets {
 					mod = true
@@ -114,6 +115,7 @@ func (this *ChangeGroup) addChangeRequest(action string, old, new *dns.DNSSet, r
 type ChangeModel struct {
 	logger.LogContext
 	config         Config
+	owners         utils.StringSet
 	zoneid         string
 	providers      DNSProviders
 	applied        map[string]*dns.DNSSet
@@ -121,10 +123,11 @@ type ChangeModel struct {
 	providergroups map[DNSProvider]*ChangeGroup
 }
 
-func NewChangeModel(logger logger.LogContext, config Config, zoneid string, providers DNSProviders) *ChangeModel {
+func NewChangeModel(logger logger.LogContext, owners utils.StringSet, config Config, zoneid string, providers DNSProviders) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
 		config:         config,
+		owners:         owners,
 		zoneid:         zoneid,
 		providers:      providers,
 		applied:        map[string]*dns.DNSSet{},
@@ -308,11 +311,11 @@ func (this *ChangeModel) Update(logger logger.LogContext) error {
 // DNSSets
 
 func (this *ChangeModel) Owns(set *dns.DNSSet) bool {
-	return set.IsOwnedBy(this.config.Ident)
+	return set.IsOwnedBy(this.owners)
 }
 
 func (this *ChangeModel) IsForeign(set *dns.DNSSet) bool {
-	return set.IsForeign(this.config.Ident)
+	return set.IsForeign(this.owners)
 }
 
 func (this *ChangeModel) NewDNSSetForTargets(name string, base *dns.DNSSet, ttl int64, targets ...Target) *dns.DNSSet {

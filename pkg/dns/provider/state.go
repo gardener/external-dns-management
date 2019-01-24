@@ -43,6 +43,7 @@ type state struct {
 
 	pending utils.StringSet
 
+	owners          utils.StringSet
 	foreign         map[resources.ObjectName]*foreignProvider
 	providers       map[resources.ObjectName]*dnsProviderVersion
 	deleting        map[resources.ObjectName]*dnsProviderVersion
@@ -67,6 +68,7 @@ func NewDNSState(controller controller.Interface, config Config) DNSState {
 	return &state{
 		controller:      controller,
 		config:          config,
+		owners:          utils.NewStringSet(config.Ident),
 		pending:         utils.StringSet{},
 		foreign:         map[resources.ObjectName]*foreignProvider{},
 		providers:       map[resources.ObjectName]*dnsProviderVersion{},
@@ -426,7 +428,7 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 
 	new, status := updateDNSProvider(logger, this, obj, last)
 
-	if new==nil {
+	if new == nil {
 		return status
 	}
 	entries := Entries{}
@@ -633,7 +635,7 @@ func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEnt
 				}
 			}
 		} else {
-			if newzone!="" {
+			if newzone != "" {
 				err = fmt.Errorf("no matching %s provider found", this.GetHandlerFactory().TypeCode())
 			}
 		}
@@ -766,7 +768,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 }
 
 func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entries Entries, providers DNSProviders) error {
-	changes := NewChangeModel(logger, this.config, zoneid, providers)
+	changes := NewChangeModel(logger, this.owners, this.config, zoneid, providers)
 	err := changes.Setup()
 	if err != nil {
 		return err
