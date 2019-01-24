@@ -85,8 +85,8 @@ Complete examples can be found in the sub packages of `pkg/controller/source`.
 
 Provisioning controllers can be implemented based on the provisioning controller library
 in this repository and must implement the
-[`dns.DNSHandlerFactory` interface](pkg/dns/interface.go).
-This factory returns implementations of the [`dns.DNSHandler` interface](pkg/dns/interface.go)
+[`provider.DNSHandlerFactory` interface](pkg/dns/provider/interface.go).
+This factory returns implementations of the [`provider.DNSHandler` interface](pkg/dns/provider/interface.go)
 that does the effective work for a dedicated set of hosted zones.
 
 A provisioning controller can be implemented following this example:
@@ -95,15 +95,15 @@ A provisioning controller can be implemented following this example:
 package route53
 
 import (
-	"github.com/gardener/external-dns-management/pkg/dns/controller"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 const CONTROLLER_NAME = "route53-dns-controller"
 
 func init() {
-	controller.DNSController(CONTROLLER_NAME, &Factory{}).
+	provider.DNSController(CONTROLLER_NAME, &Factory{}).
 		FinalizerDomain("dns.gardener.cloud").
-		MustRegister(controller.CONTROLLER_GROUP_DNS_CONTROLLERS)
+		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }
 ```
 

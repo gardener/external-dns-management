@@ -17,13 +17,13 @@
 package route53
 
 import (
-	"github.com/gardener/external-dns-management/pkg/dns/controller"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 const CONTROLLER_NAME = "route53-dns-controller"
 
 func init() {
-	controller.DNSController(CONTROLLER_NAME, &Factory{}).
+	provider.DNSController(CONTROLLER_NAME, &Factory{}).
 		FinalizerDomain("dns.gardener.cloud").
-		MustRegister(controller.CONTROLLER_GROUP_DNS_CONTROLLERS)
+		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

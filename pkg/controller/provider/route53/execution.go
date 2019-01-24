@@ -19,13 +19,16 @@ package route53
 import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/route53"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 type Change struct {
 	*route53.Change
-	Done dns.DoneHandler
+	Done provider.DoneHandler
 }
 
 type Execution struct {
@@ -41,7 +44,7 @@ func NewExecution(logger logger.LogContext, h *Handler, zoneid string) *Executio
 	return &Execution{LogContext: logger, handler: h, zoneid: zoneid, changes: map[string][]*Change{}, maxChangeCount: 20}
 }
 
-func (this *Execution) addChange(action string, req *dns.ChangeRequest, dnsset *dns.DNSSet) {
+func (this *Execution) addChange(action string, req *provider.ChangeRequest, dnsset *dns.DNSSet) {
 	name, rset := dns.MapToProvider(req.Type, dnsset)
 	name = dns.AlignHostname(name)
 	if len(rset.Records) == 0 {

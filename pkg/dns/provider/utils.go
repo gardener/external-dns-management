@@ -14,16 +14,35 @@
  *
  */
 
-package googledns
+package provider
 
 import (
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"fmt"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
-const CONTROLLER_NAME = "google-dns-controller"
+func filterByZones(domains utils.StringSet, zones []*DNSHostedZoneInfo) (result utils.StringSet, err error) {
+	result = utils.StringSet{}
+	for d := range domains {
+		for _, z := range zones {
+			if dnsutils.Match(d, z.Domain) {
+				result.Add(d)
+				break
+			}
+		}
+		if !result.Contains(d) {
+			err = fmt.Errorf("domain %q not in hosted domains", d)
+		}
+	}
+	return result, err
+}
 
-func init() {
-	provider.DNSController(CONTROLLER_NAME, &Factory{}).
-		FinalizerDomain("dns.gardener.cloud").
-		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
+func copyZones(src map[string]*dnsHostedZone) dnsHostedZones {
+	dst := dnsHostedZones{}
+	for k, v := range src {
+		dst[k] = v
+	}
+	return dst
 }

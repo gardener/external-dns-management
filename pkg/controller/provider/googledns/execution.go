@@ -20,6 +20,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	googledns "google.golang.org/api/dns/v1"
 )
 
@@ -33,7 +34,7 @@ type Execution struct {
 	zoneid  string
 
 	change *googledns.Change
-	done   []dns.DoneHandler
+	done   []provider.DoneHandler
 }
 
 func NewExecution(logger logger.LogContext, h *Handler, zoneid string) *Execution {
@@ -41,10 +42,10 @@ func NewExecution(logger logger.LogContext, h *Handler, zoneid string) *Executio
 		Additions: []*googledns.ResourceRecordSet{},
 		Deletions: []*googledns.ResourceRecordSet{},
 	}
-	return &Execution{LogContext: logger, handler: h, zoneid: zoneid, change: change, done: []dns.DoneHandler{}}
+	return &Execution{LogContext: logger, handler: h, zoneid: zoneid, change: change, done: []provider.DoneHandler{}}
 }
 
-func (this *Execution) addChange(req *dns.ChangeRequest) {
+func (this *Execution) addChange(req *provider.ChangeRequest) {
 	var name string
 	var newset, oldset *dns.RecordSet
 
@@ -59,13 +60,13 @@ func (this *Execution) addChange(req *dns.ChangeRequest) {
 	}
 	name = dns.AlignHostname(name)
 	switch req.Action {
-	case dns.R_CREATE:
+	case provider.R_CREATE:
 		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zoneid, newset.RecordString())
 		this.change.Additions = append(this.change.Additions, mapRecordSet(name, newset))
-	case dns.R_DELETE:
+	case provider.R_DELETE:
 		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zoneid, oldset.RecordString())
 		this.change.Deletions = append(this.change.Deletions, mapRecordSet(name, oldset))
-	case dns.R_UPDATE:
+	case provider.R_UPDATE:
 		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zoneid, newset.RecordString())
 		this.change.Deletions = append(this.change.Deletions, mapRecordSet(name, oldset))
 		this.change.Additions = append(this.change.Additions, mapRecordSet(name, newset))

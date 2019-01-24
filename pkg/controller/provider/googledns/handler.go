@@ -19,6 +19,7 @@ package googledns
 import (
 	"context"
 	"fmt"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"net/http"
 
 	"golang.org/x/oauth2"
@@ -31,16 +32,16 @@ import (
 )
 
 type Handler struct {
-	config      dns.DNSHandlerConfig
+	config      provider.DNSHandlerConfig
 	credentials *google.Credentials
 	client      *http.Client
 	ctx         context.Context
 	service     *googledns.Service
 }
 
-var _ dns.DNSHandler = &Handler{}
+var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *dns.DNSHandlerConfig) (dns.DNSHandler, error) {
+func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	var err error
 
 	this := &Handler{
@@ -78,12 +79,12 @@ func NewHandler(logger logger.LogContext, config *dns.DNSHandlerConfig) (dns.DNS
 	return this, nil
 }
 
-func (this *Handler) GetZones() (dns.DNSHostedZoneInfos, error) {
-	zones := dns.DNSHostedZoneInfos{}
+func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
+	zones := provider.DNSHostedZoneInfos{}
 
 	f := func(resp *googledns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
-			hostedZone := &dns.DNSHostedZoneInfo{
+			hostedZone := &provider.DNSHostedZoneInfo{
 				Id:     zone.Name,
 				Domain: dns.NormalizeHostname(zone.DnsName),
 			}
@@ -124,7 +125,7 @@ func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	return dnssets, nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*dns.ChangeRequest) error {
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*provider.ChangeRequest) error {
 
 	exec := NewExecution(logger, this, zoneid)
 	for _, r := range reqs {

@@ -14,10 +14,11 @@
  *
  */
 
-package dns
+package provider
 
 import (
 	"fmt"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"net"
 	"strings"
@@ -320,11 +321,11 @@ func (this *Entry) NormalizeTargets(logger logger.LogContext, targets ...Target)
 	mappings := map[string][]string{}
 	for _, t := range targets {
 		ty := t.GetRecordType()
-		if ty == RS_CNAME && len(targets) > 1 {
+		if ty == dns.RS_CNAME && len(targets) > 1 {
 			addrs, err := net.LookupHost(t.GetHostName())
 			if err == nil {
 				for _, addr := range addrs {
-					result = append(result, NewTarget(RS_A, addr, t.GetEntry()))
+					result = append(result, NewTarget(dns.RS_A, addr, t.GetEntry()))
 				}
 			} else {
 				w := fmt.Sprintf("cannot lookup '%s': %s", t.GetHostName(), err)
