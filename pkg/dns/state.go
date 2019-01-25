@@ -425,6 +425,9 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 	}
 
 	new, status := updateDNSProvider(logger, this, obj, last)
+	if new == nil {
+		return status
+	}
 	entries := Entries{}
 
 	this.lock.Lock()
