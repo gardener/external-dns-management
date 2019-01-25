@@ -18,7 +18,7 @@ package azure
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
@@ -27,7 +27,7 @@ const TYPE_AZURE = "Azure"
 type Factory struct {
 }
 
-var _ dns.DNSHandlerFactory = &Factory{}
+var _ provider.DNSHandlerFactory = &Factory{}
 
 func (this *Factory) IsResponsibleFor(object *dnsutils.DNSProviderObject) bool {
 	return object.DNSProvider().Spec.Type == TYPE_AZURE
@@ -37,6 +37,6 @@ func (this *Factory) TypeCode() string {
 	return TYPE_AZURE
 }
 
-func (this *Factory) Create(logger logger.LogContext, config *dns.DNSHandlerConfig) (dns.DNSHandler, error) {
+func (this *Factory) Create(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	return NewHandler(logger, config)
 }

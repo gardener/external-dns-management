@@ -28,19 +28,20 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 type Handler struct {
-	config dns.DNSHandlerConfig
+	config provider.DNSHandlerConfig
 	ctx    context.Context
 
 	zonesClient   *azure.ZonesClient
 	recordsClient *azure.RecordSetsClient
 }
 
-var _ dns.DNSHandler = &Handler{}
+var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *dns.DNSHandlerConfig) (dns.DNSHandler, error) {
+func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	h := &Handler{
 		config: *config,
@@ -90,8 +91,8 @@ func NewHandler(logger logger.LogContext, config *dns.DNSHandlerConfig) (dns.DNS
 
 var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
 
-func (h *Handler) GetZones() (dns.DNSHostedZoneInfos, error) {
-	zones := []*dns.DNSHostedZoneInfo{}
+func (h *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
+	zones := []*provider.DNSHostedZoneInfo{}
 
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
 	if err != nil {
@@ -108,7 +109,7 @@ func (h *Handler) GetZones() (dns.DNSHostedZoneInfos, error) {
 		}
 		resourceGroup := submatches[1]
 
-		zoneinfo := &dns.DNSHostedZoneInfo{
+		zoneinfo := &provider.DNSHostedZoneInfo{
 			// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
 			Id:     resourceGroup + "/" + *item.Name,
 			Domain: dns.NormalizeHostname(*item.Name),
@@ -166,7 +167,7 @@ func (h *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	return dnssets, nil
 }
 
-func (h *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*dns.ChangeRequest) error {
+func (h *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*provider.ChangeRequest) error {
 	resourceGroup, zoneName := splitZoneid(zoneid)
 	exec := NewExecution(logger, h, resourceGroup, zoneName)
 

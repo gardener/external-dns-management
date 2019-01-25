@@ -22,11 +22,12 @@ import (
 	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-03-01-preview/dns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 type Change struct {
 	rs   *azure.RecordSet
-	Done dns.DoneHandler
+	Done provider.DoneHandler
 }
 
 type Execution struct {
@@ -61,12 +62,12 @@ func dropZoneName(dnsName, zoneName string) (string, bool) {
 	return dnsName[:end], true
 }
 
-func (exec *Execution) buildRecordSet(req *dns.ChangeRequest) (buildStatus, azure.RecordType, *azure.RecordSet) {
+func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus, azure.RecordType, *azure.RecordSet) {
 	var dnsset *dns.DNSSet
 	switch req.Action {
-	case dns.R_CREATE, dns.R_UPDATE:
+	case provider.R_CREATE, provider.R_UPDATE:
 		dnsset = req.Addition
-	case dns.R_DELETE:
+	case provider.R_DELETE:
 		dnsset = req.Deletion
 	}
 
@@ -75,7 +76,7 @@ func (exec *Execution) buildRecordSet(req *dns.ChangeRequest) (buildStatus, azur
 	if !ok {
 		return bs_invalidName, "", &azure.RecordSet{Name: &name}
 	}
-	
+
 	if len(rset.Records) == 0 {
 		return bs_empty, "", nil
 	}
@@ -118,9 +119,9 @@ func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) (b
 func (exec *Execution) apply(action string, recordType azure.RecordType, rset *azure.RecordSet) error {
 	var err error
 	switch action {
-	case dns.R_CREATE, dns.R_UPDATE:
+	case provider.R_CREATE, provider.R_UPDATE:
 		err = exec.update(recordType, rset)
-	case dns.R_DELETE:
+	case provider.R_DELETE:
 		err = exec.delete(recordType, rset)
 	}
 	return err
