@@ -1,8 +1,8 @@
 /*
- * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+ * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. h file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * you may not use h file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
@@ -17,168 +17,204 @@
 package azure
 
 import (
+	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
-	azureDns "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-03-01-preview/dns"
+	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-03-01-preview/dns"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 type Handler struct {
 	config dns.DNSHandlerConfig
+	ctx    context.Context
 
-	sess               *session.Session
-	r53                *route53.Route53
-	azureZonesClient   *azureDns.ZonesClient
-	azureRecordsClient *azureDns.RecordSetsClient
+	zonesClient   *azure.ZonesClient
+	recordsClient *azure.RecordSetsClient
 }
 
 var _ dns.DNSHandler = &Handler{}
 
 func NewHandler(logger logger.LogContext, config *dns.DNSHandlerConfig) (dns.DNSHandler, error) {
 
-	// Subscription id: https://portal.azure.com/#blade/Microsoft_Azure_Billing/SubscriptionsBlade
-	zonesClient := azureDns.NewZonesClient("00d2caa5-cd29-46f7-845a-2f8ee0360ef5")
-	recordsClient := azureDns.NewRecordSetsClient("00d2caa5-cd29-46f7-845a-2f8ee0360ef5")
-
-	// get Azure credentials from secret
-
-	this := &Handler{
+	h := &Handler{
 		config: *config,
 	}
 
+	h.ctx = config.Context
+
+	subscriptionID := h.config.Properties["AZURE_SUBSCRIPTION_ID"]
+	if subscriptionID == "" {
+		return nil, fmt.Errorf("'AZURE_SUBSCRIPTION_ID' required in secret")
+	}
 	// see https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization
-	username := this.config.Properties["AZURE_USERNAME"]
-	if username == "" {
-		return nil, fmt.Errorf("'AZURE_ACCESS_KEY_ID' required in secret")
+	clientID := h.config.Properties["AZURE_CLIENT_ID"]
+	if clientID == "" {
+		return nil, fmt.Errorf("'AZURE_CLIENT_ID' required in secret")
 	}
-	password := this.config.Properties["AZURE_PASSWORD"]
-	if password == "" {
-		return nil, fmt.Errorf("'AZURE_SECRET_ACCESS_KEY' required in secret")
+	clientSecret := h.config.Properties["AZURE_CLIENT_SECRET"]
+	if clientSecret == "" {
+		return nil, fmt.Errorf("'AZURE_CLIENT_SECRET' required in secret")
 	}
-
-	// AZURE_CLIENT_ID	The application client ID.
-	clientId := this.config.Properties["AZURE_CLIENT_ID"]
-	if username == "" {
-		return nil, fmt.Errorf("'AZURE_ACCESS_KEY_ID' required in secret")
+	tenantID := h.config.Properties["AZURE_TENANT_ID"]
+	if tenantID == "" {
+		return nil, fmt.Errorf("'AZURE_TENANT_ID' required in secret")
 	}
 
-	// AZURE_TENANT_ID	The ID for the Active Directory tenant that the user belongs to.
-	tenantId := this.config.Properties["AZURE_TENANT_ID"]
-	if password == "" {
-		return nil, fmt.Errorf("'AZURE_SECRET_ACCESS_KEY' required in secret")
-	}
-
-	// create an authorizer from env vars or Azure Managed Service Idenity  -- get PW fr
-	azureAuthorizer, err := auth.NewUsernamePasswordConfig(username, password, clientId, tenantId).Authorizer()
-
+	authorizer, err := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID).Authorizer()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Creating Azure authorizer with client credentials failed: %s", err.Error())
 	}
 
-	zonesClient.Authorizer = azureAuthorizer
-	recordsClient.Authorizer = azureAuthorizer
-	
+	zonesClient := azure.NewZonesClient(subscriptionID)
+	recordsClient := azure.NewRecordSetsClient(subscriptionID)
 
-	this.azureZonesClient = &zonesClient
-
-	akid := this.config.Properties["AWS_ACCESS_KEY_ID"]
-	if akid == "" {
-		return nil, fmt.Errorf("'AWS_ACCESS_KEY_ID' required in secret")
-	}
-	sak := this.config.Properties["AWS_SECRET_ACCESS_KEY"]
-	if sak == "" {
-		return nil, fmt.Errorf("'AWS_SECRET_ACCESS_KEY' required in secret")
-	}
-	st := this.config.Properties["AWS_SESSION_TOKEN"]
-	creds := credentials.NewStaticCredentials(akid, sak, st)
-
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("us-west-2"),
-		Credentials: creds,
-	})
+	zonesClient.Authorizer = authorizer
+	recordsClient.Authorizer = authorizer
+	// dummy call to check authentication
+	var one int32 = 1
+	_, err = zonesClient.List(h.ctx, &one)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Authentication test to Azure with client credentials failed. Please check secret for DNSProvider. Details: %s", err.Error())
 	}
-	this.sess = sess
-	this.r53 = route53.New(sess)
-	return this, nil
+
+	h.zonesClient = &zonesClient
+	h.recordsClient = &recordsClient
+	return h, nil
 }
 
-func (this *Handler) GetZones() (dns.DNSHostedZoneInfos, error) {
+var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
+
+func (h *Handler) GetZones() (dns.DNSHostedZoneInfos, error) {
 	zones := []*dns.DNSHostedZoneInfo{}
 
-	aggr := func(resp *route53.ListHostedZonesOutput, lastPage bool) bool {
-		for _, zone := range resp.HostedZones {
-			id := strings.Split(aws.StringValue(zone.Id), "/")
-
-			zoneinfo := &dns.DNSHostedZoneInfo{
-				Id:     id[len(id)-1],
-				Domain: dns.NormalizeHostname(aws.StringValue(zone.Name)),
-			}
-			zones = append(zones, zoneinfo)
-		}
-		return true
-	}
-
-	err := this.r53.ListHostedZonesPages(&route53.ListHostedZonesInput{}, aggr)
+	results, err := h.zonesClient.ListComplete(h.ctx, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
 	}
+
+	for ; results.NotDone(); results.Next() {
+		item := results.Value()
+
+		submatches := re.FindStringSubmatch(*item.ID)
+		if len(submatches) != 2 {
+			logger.Warnf("Unexpected DNS Zone ID: '%s'. Skipping zone", *item.ID)
+			continue
+		}
+		resourceGroup := submatches[1]
+
+		zoneinfo := &dns.DNSHostedZoneInfo{
+			// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
+			Id:     resourceGroup + "/" + *item.Name,
+			Domain: dns.NormalizeHostname(*item.Name),
+		}
+		zones = append(zones, zoneinfo)
+	}
+
 	return zones, nil
 }
 
-func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
+func splitZoneid(zoneid string) (string, string) {
+	parts := strings.Split(zoneid, "/")
+	if len(parts) != 2 {
+		return "", zoneid
+	}
+	return parts[0], parts[1]
+}
+
+func (h *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	dnssets := dns.DNSSets{}
 
-	inp := (&route53.ListResourceRecordSetsInput{}).SetHostedZoneId(zoneid)
-	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
-		for _, r := range resp.ResourceRecordSets {
-			rtype := aws.StringValue(r.Type)
-			if !dns.SupportedRecordType(rtype) {
-				continue
-			}
-
-			rs := dns.NewRecordSet(rtype, aws.Int64Value(r.TTL), nil)
-			for _, rr := range r.ResourceRecords {
-				rs.Add(&dns.Record{Value: aws.StringValue(rr.Value)})
-			}
-
-			dnssets.AddRecordSetFromProvider(aws.StringValue(r.Name), rs)
-		}
-		return true
+	resourceGroup, zoneName := splitZoneid(zoneid)
+	results, err := h.recordsClient.ListAllByDNSZoneComplete(h.ctx, resourceGroup, zoneName, nil, "")
+	if err != nil {
+		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
 	}
 
-	if err := this.r53.ListResourceRecordSetsPages(inp, aggr); err != nil {
-		return nil, err
+	for ; results.NotDone(); results.Next() {
+		item := results.Value()
+		// We expect recordName.DNSZone. However Azure only return recordName . Reverse is dropZoneName() needed for calls to Azure
+		fullName := fmt.Sprintf("%s.%s", *item.Name, zoneName)
+
+		if item.ARecords != nil {
+			rs := dns.NewRecordSet(dns.RS_A, *item.TTL, nil)
+			for _, record := range *item.ARecords {
+				rs.Add(&dns.Record{Value: *record.Ipv4Address})
+			}
+			dnssets.AddRecordSetFromProvider(fullName, rs)
+		}
+
+		if item.CnameRecord != nil {
+			rs := dns.NewRecordSet(dns.RS_CNAME, *item.TTL, nil)
+			rs.Add(&dns.Record{Value: *item.CnameRecord.Cname})
+			dnssets.AddRecordSetFromProvider(fullName, rs)
+		}
+
+		if item.TxtRecords != nil {
+			rs := dns.NewRecordSet(dns.RS_TXT, *item.TTL, nil)
+			for _, record := range *item.TxtRecords {
+				rs.Add(&dns.Record{Value: strings.Join(*record.Value, "\n")})
+			}
+			dnssets.AddRecordSetFromProvider(fullName, rs)
+		}
 	}
 	return dnssets, nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*dns.ChangeRequest) error {
-	exec := NewExecution(logger, this, zoneid)
+func (h *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*dns.ChangeRequest) error {
+	resourceGroup, zoneName := splitZoneid(zoneid)
+	exec := NewExecution(logger, h, resourceGroup, zoneName)
 
+	var succeeded, failed int
 	for _, r := range reqs {
-		switch r.Action {
-		case dns.R_CREATE:
-			exec.addChange(route53.ChangeActionCreate, r, r.Addition)
-		case dns.R_UPDATE:
-			exec.addChange(route53.ChangeActionUpsert, r, r.Addition)
-		case dns.R_DELETE:
-			exec.addChange(route53.ChangeActionDelete, r, r.Deletion)
+		status, recordType, rset := exec.buildRecordSet(r)
+		if status == bs_empty || status == bs_dryrun {
+			continue
+		} else if status == bs_invalidType {
+			err := fmt.Errorf("Unexpected record type: %s", r.Type)
+			if r.Done != nil {
+				r.Done.SetInvalid(err)
+			}
+			continue
+		} else if status == bs_invalidName {
+			err := fmt.Errorf("Unexpected dns name: %s", *rset.Name)
+			if r.Done != nil {
+				r.Done.SetInvalid(err)
+			}
+			continue
+		}
+
+		err := exec.apply(r.Action, recordType, rset)
+		if err != nil {
+			failed++
+			logger.Infof("Apply failed with %s", err.Error())
+			if r.Done != nil {
+				r.Done.Failed(err)
+			}
+		} else {
+			succeeded++
+			if r.Done != nil {
+				r.Done.Succeeded()
+			}
 		}
 	}
-	if this.config.DryRun {
-		logger.Infof("no changes in dryrun mode for AWS")
+
+	if h.config.DryRun {
+		logger.Infof("no changes in dryrun mode for Azure")
 		return nil
 	}
-	return exec.submitChanges()
+
+	if succeeded > 0 {
+		logger.Infof("Succeeded updates for records in zone %s: %d", zoneName, succeeded)
+	}
+	if failed > 0 {
+		logger.Infof("Failed updates for records in zone %s: %d", zoneName, failed)
+	}
+
+	return nil
 }
