@@ -17,44 +17,10 @@
 package dns
 
 import (
-	"fmt"
-
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
-func DNSNameMatcher(dnsname string) resources.ObjectMatcher {
-	return func(o resources.Object) bool {
-		return o.Data().(*api.DNSEntry).Spec.DNSName == dnsname
-	}
-}
-
-func filterByZones(domains utils.StringSet, zones []*DNSHostedZoneInfo) (result utils.StringSet, err error) {
-	result = utils.StringSet{}
-	for d := range domains {
-		for _, z := range zones {
-			if dnsutils.Match(d, z.Domain) {
-				result.Add(d)
-				break
-			}
-		}
-		if !result.Contains(d) {
-			err = fmt.Errorf("domain %q not in hosted domains", d)
-		}
-	}
-	return result, err
-}
-
-func copyZones(src map[string]*dnsHostedZone) dnsHostedZones {
-	dst := dnsHostedZones{}
-	for k, v := range src {
-		dst[k] = v
-	}
-	return dst
-}
 
 func SupportedRecordType(t string) bool {
 	switch t {
@@ -62,4 +28,10 @@ func SupportedRecordType(t string) bool {
 		return true
 	}
 	return false
+}
+
+func DNSNameMatcher(dnsname string) resources.ObjectMatcher {
+	return func(o resources.Object) bool {
+		return o.Data().(*api.DNSEntry).Spec.DNSName == dnsname
+	}
 }

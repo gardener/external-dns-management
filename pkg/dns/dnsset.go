@@ -16,6 +16,8 @@
 
 package dns
 
+import "github.com/gardener/controller-manager-library/pkg/utils"
+
 ////////////////////////////////////////////////////////////////////////////////
 // A DNSSet contains Record sets for an DNS name. The name is given without
 // trailing dot. If the provider required this dot, it must be removed or addeed
@@ -76,11 +78,6 @@ type DNSSet struct {
 	Sets RecordSets
 }
 
-func (this *DNSSet) IsOwnedBy(ownerid string) bool {
-	o := this.GetAttr(ATTR_OWNER)
-	return o != "" && o == ownerid
-}
-
 func (this *DNSSet) GetAttr(name string) string {
 	meta := this.Sets[RS_META]
 	if meta != nil {
@@ -99,10 +96,16 @@ func (this *DNSSet) SetAttr(name string, value string) {
 	}
 }
 
-func (this *DNSSet) IsForeign(ownerid string) bool {
+func (this *DNSSet) IsOwnedBy(owners utils.StringSet) bool {
 	o := this.GetAttr(ATTR_OWNER)
-	return o != "" && o != ownerid
+	return o != "" && owners.Contains(o)
 }
+
+func (this *DNSSet) IsForeign(owners utils.StringSet) bool {
+	o := this.GetAttr(ATTR_OWNER)
+	return o != "" && !owners.Contains(o)
+}
+
 func (this *DNSSet) GetOwner() string {
 	return this.GetAttr(ATTR_OWNER)
 }

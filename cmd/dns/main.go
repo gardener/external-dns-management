@@ -25,7 +25,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
 
-	dnscontroller "github.com/gardener/external-dns-management/pkg/dns/controller"
+	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/azure"
@@ -39,12 +39,12 @@ var Version string
 
 func init() {
 	cluster.Configure(
-		dnscontroller.PROVIDER_CLUSTER,
+		dnsprovider.PROVIDER_CLUSTER,
 		"providers",
 		"cluster to look for provider objects",
 	).Fallback(dnssource.TARGET_CLUSTER)
 
-	mappings.ForControllerGroup(dnscontroller.CONTROLLER_GROUP_DNS_CONTROLLERS).
+	mappings.ForControllerGroup(dnsprovider.CONTROLLER_GROUP_DNS_CONTROLLERS).
 		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
 
 }

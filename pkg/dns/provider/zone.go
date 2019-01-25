@@ -14,7 +14,7 @@
  *
  */
 
-package dns
+package provider
 
 import (
 	"fmt"

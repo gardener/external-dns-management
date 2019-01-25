@@ -41,8 +41,8 @@ VERSION="$(cat "${VERSION_FILE}")"
 # If no LOCAL_BUILD environment variable is set, we configure the `go build` command
 # to build for linux OS, amd64 architectures and without CGO enablement.
 echo "running code generator..."
-"$SOURCE_PATH/hack/update-codegen.sh"
-#"$SOURCE_PATH/hack/update-wrappers.sh"
+"hack/update-codegen.sh"
+#"hack/update-wrappers.sh"
 echo "running build..."
 
 if [[ -z "$LOCAL_BUILD" ]]; then

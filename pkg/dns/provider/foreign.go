@@ -14,7 +14,7 @@
  *
  */
 
-package dns
+package provider
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"

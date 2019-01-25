@@ -14,7 +14,7 @@
  *
  */
 
-package dns
+package provider
 
 /*
   Standard options a DNS Reconciler should offer

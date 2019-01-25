@@ -14,7 +14,7 @@
  *
  */
 
-package dns
+package provider
 
 import (
 	"fmt"
@@ -22,7 +22,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,24 +42,24 @@ type ChangeRequests []*ChangeRequest
 type ChangeRequest struct {
 	Action   string
 	Type     string
-	Addition *DNSSet
-	Deletion *DNSSet
+	Addition *dns.DNSSet
+	Deletion *dns.DNSSet
 	Done     DoneHandler
 }
 
-func NewChangeRequest(action string, rtype string, del, add *DNSSet, done DoneHandler) *ChangeRequest {
+func NewChangeRequest(action string, rtype string, del, add *dns.DNSSet, done DoneHandler) *ChangeRequest {
 	return &ChangeRequest{Action: action, Type: rtype, Addition: add, Deletion: del, Done: done}
 }
 
 type ChangeGroup struct {
 	name     string
 	provider DNSProvider
-	dnssets  DNSSets
+	dnssets  dns.DNSSets
 	requests ChangeRequests
 }
 
 func newChangeGroup(name string, provider DNSProvider) *ChangeGroup {
-	return &ChangeGroup{name: name, provider: provider, dnssets: DNSSets{}, requests: ChangeRequests{}}
+	return &ChangeGroup{name: name, provider: provider, dnssets: dns.DNSSets{}, requests: ChangeRequests{}}
 }
 
 func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) bool {
@@ -65,7 +67,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 	for _, s := range this.dnssets {
 		_, ok := model.applied[s.Name]
 		if !ok {
-			if s.IsOwnedBy(model.config.Ident) {
+			if s.IsOwnedBy(model.owners) {
 				model.Infof("found unapplied managed set '%s'", s.Name)
 				for ty := range s.Sets {
 					mod = true
@@ -92,16 +94,16 @@ func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bo
 	return ok
 }
 
-func (this *ChangeGroup) addCreateRequest(dnsset *DNSSet, rtype string, done DoneHandler) {
+func (this *ChangeGroup) addCreateRequest(dnsset *dns.DNSSet, rtype string, done DoneHandler) {
 	this.addChangeRequest(R_CREATE, nil, dnsset, rtype, done)
 }
-func (this *ChangeGroup) addUpdateRequest(old, new *DNSSet, rtype string, done DoneHandler) {
+func (this *ChangeGroup) addUpdateRequest(old, new *dns.DNSSet, rtype string, done DoneHandler) {
 	this.addChangeRequest(R_UPDATE, old, new, rtype, done)
 }
-func (this *ChangeGroup) addDeleteRequest(dnsset *DNSSet, rtype string, done DoneHandler) {
+func (this *ChangeGroup) addDeleteRequest(dnsset *dns.DNSSet, rtype string, done DoneHandler) {
 	this.addChangeRequest(R_DELETE, dnsset, nil, rtype, done)
 }
-func (this *ChangeGroup) addChangeRequest(action string, old, new *DNSSet, rtype string, done DoneHandler) {
+func (this *ChangeGroup) addChangeRequest(action string, old, new *dns.DNSSet, rtype string, done DoneHandler) {
 	r := NewChangeRequest(action, rtype, old, new, done)
 	this.requests = append(this.requests, r)
 }
@@ -113,20 +115,22 @@ func (this *ChangeGroup) addChangeRequest(action string, old, new *DNSSet, rtype
 type ChangeModel struct {
 	logger.LogContext
 	config         Config
+	owners         utils.StringSet
 	zoneid         string
 	providers      DNSProviders
-	applied        map[string]*DNSSet
+	applied        map[string]*dns.DNSSet
 	dangling       *ChangeGroup
 	providergroups map[DNSProvider]*ChangeGroup
 }
 
-func NewChangeModel(logger logger.LogContext, config Config, zoneid string, providers DNSProviders) *ChangeModel {
+func NewChangeModel(logger logger.LogContext, owners utils.StringSet, config Config, zoneid string, providers DNSProviders) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
 		config:         config,
+		owners:         owners,
 		zoneid:         zoneid,
 		providers:      providers,
-		applied:        map[string]*DNSSet{},
+		applied:        map[string]*dns.DNSSet{},
 		providergroups: map[DNSProvider]*ChangeGroup{},
 	}
 }
@@ -227,8 +231,8 @@ func (this *ChangeModel) Exec(apply bool, name string, done DoneHandler, targets
 					}
 					mod = true
 				} else {
-					olddns, _ := MapToProvider(ty, oldset)
-					newdns, _ := MapToProvider(ty, newset)
+					olddns, _ := dns.MapToProvider(ty, oldset)
+					newdns, _ := dns.MapToProvider(ty, newset)
 					if olddns == newdns {
 						if !curset.Match(rset) {
 							if apply {
@@ -306,16 +310,16 @@ func (this *ChangeModel) Update(logger logger.LogContext) error {
 /////////////////////////////////////////////////////////////////////////////////
 // DNSSets
 
-func (this *ChangeModel) Owns(set *DNSSet) bool {
-	return set.IsOwnedBy(this.config.Ident)
+func (this *ChangeModel) Owns(set *dns.DNSSet) bool {
+	return set.IsOwnedBy(this.owners)
 }
 
-func (this *ChangeModel) IsForeign(set *DNSSet) bool {
-	return set.IsForeign(this.config.Ident)
+func (this *ChangeModel) IsForeign(set *dns.DNSSet) bool {
+	return set.IsForeign(this.owners)
 }
 
-func (this *ChangeModel) NewDNSSetForTargets(name string, base *DNSSet, ttl int64, targets ...Target) *DNSSet {
-	set := NewDNSSet(name)
+func (this *ChangeModel) NewDNSSetForTargets(name string, base *dns.DNSSet, ttl int64, targets ...Target) *dns.DNSSet {
+	set := dns.NewDNSSet(name)
 	//if base != nil {
 	//	meta := base.Sets[RS_META]
 	//	if meta != nil {
@@ -325,19 +329,19 @@ func (this *ChangeModel) NewDNSSetForTargets(name string, base *DNSSet, ttl int6
 
 	if base == nil || !this.IsForeign(base) {
 		set.SetOwner(this.config.Ident)
-		set.SetAttr(ATTR_PREFIX, TxtPrefix)
+		set.SetAttr(dns.ATTR_PREFIX, dns.TxtPrefix)
 	}
 
 	targetsets := set.Sets
 	cnames := []string{}
 	for _, t := range targets {
 		ty := t.GetRecordType()
-		if ty == RS_CNAME && len(targets) > 1 {
+		if ty == dns.RS_CNAME && len(targets) > 1 {
 			cnames = append(cnames, t.GetHostName())
 			addrs, err := net.LookupHost(t.GetHostName())
 			if err == nil {
 				for _, addr := range addrs {
-					AddRecord(targetsets, RS_A, addr, ttl)
+					AddRecord(targetsets, dns.RS_A, addr, ttl)
 				}
 			} else {
 				this.Errorf("cannot lookup '%s': %s", t.GetHostName(), err)
@@ -350,16 +354,16 @@ func (this *ChangeModel) NewDNSSetForTargets(name string, base *DNSSet, ttl int6
 	set.Sets = targetsets
 	if len(cnames) > 0 && this.Owns(set) {
 		sort.Strings(cnames)
-		set.SetAttr(ATTR_CNAMES, strings.Join(cnames, ","))
+		set.SetAttr(dns.ATTR_CNAMES, strings.Join(cnames, ","))
 	}
 	return set
 }
 
-func AddRecord(targetsets RecordSets, ty string, host string, ttl int64) {
+func AddRecord(targetsets dns.RecordSets, ty string, host string, ttl int64) {
 	rs := targetsets[ty]
 	if rs == nil {
-		rs = NewRecordSet(ty, ttl, nil)
+		rs = dns.NewRecordSet(ty, ttl, nil)
 		targetsets[ty] = rs
 	}
-	rs.Records = append(rs.Records, &Record{host})
+	rs.Records = append(rs.Records, &dns.Record{host})
 }

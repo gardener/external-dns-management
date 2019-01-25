@@ -14,7 +14,7 @@
  *
  */
 
-package controller
+package provider
 
 import (
 	"github.com/gardener/external-dns-management/pkg/crds"
@@ -28,7 +28,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	corev1 "k8s.io/api/core/v1"
@@ -42,12 +41,12 @@ const PROVIDER_CLUSTER = "provider"
 var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
-func DNSController(name string, factory dns.DNSHandlerFactory) controller.Configuration {
+func DNSController(name string, factory DNSHandlerFactory) controller.Configuration {
 	return controller.Configure(name).
 		RequireLease().
-		DefaultedStringOption(dns.OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries").
-		DefaultedBoolOption(dns.OPT_DRYRUN, false, "just check, don't modify").
-		DefaultedIntOption(dns.OPT_TTL, 300, "Default time-to-live for DNS entries").
+		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries").
+		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
+		DefaultedIntOption(OPT_TTL, 300, "Default time-to-live for DNS entries").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
 		CustomResourceDefinitions(crds.DNSEntryCRD).
@@ -66,7 +65,7 @@ func DNSController(name string, factory dns.DNSHandlerFactory) controller.Config
 type reconciler struct {
 	reconcile.DefaultReconciler
 	controller controller.Interface
-	state      dns.DNSState
+	state      DNSState
 }
 
 var _ reconcile.Interface = &reconciler{}
@@ -75,7 +74,7 @@ var _ reconcile.Interface = &reconciler{}
 
 const KEY_STATE = "dns-state"
 
-func DNSReconcilerType(factory dns.DNSHandlerFactory) controller.ReconcilerType {
+func DNSReconcilerType(factory DNSHandlerFactory) controller.ReconcilerType {
 
 	return func(c controller.Interface) (reconcile.Interface, error) {
 		return Create(c, factory)
@@ -84,14 +83,14 @@ func DNSReconcilerType(factory dns.DNSHandlerFactory) controller.ReconcilerType 
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func Create(c controller.Interface, factory dns.DNSHandlerFactory) (reconcile.Interface, error) {
-	c.GetStringOption(dns.OPT_IDENTIFIER)
+func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interface, error) {
+	c.GetStringOption(OPT_IDENTIFIER)
 	return &reconciler{
 		controller: c,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return dns.NewDNSState(c, dns.NewConfigForController(c, factory))
-			}).(dns.DNSState),
+				return NewDNSState(c, NewConfigForController(c, factory))
+			}).(DNSState),
 	}, nil
 }
 

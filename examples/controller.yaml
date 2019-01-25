@@ -155,7 +155,7 @@ spec:
     spec:
       containers:
       - name: controller-manager
-        image: mandelsoft/dns-controller-manager:latest
+        image: eu.gcr.io/gardener-project/dns-controller-manager:0.1.0-master
         imagePullPolicy: "Always"
         args:
         - --controllers=all

@@ -14,10 +14,11 @@
  *
  */
 
-package dns
+package provider
 
 import (
 	"fmt"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"net"
 )
 
@@ -63,7 +64,7 @@ type target struct {
 }
 
 func NewText(t string, entry *Entry) Target {
-	return NewTarget(RS_TXT, fmt.Sprintf("%q", t), entry)
+	return NewTarget(dns.RS_TXT, fmt.Sprintf("%q", t), entry)
 }
 
 func NewTarget(ty string, ta string, entry *Entry) Target {
@@ -73,9 +74,9 @@ func NewTarget(ty string, ta string, entry *Entry) Target {
 func NewTargetFromEntry(name string, entry *Entry) Target {
 	ip := net.ParseIP(name)
 	if ip == nil {
-		return NewTarget(RS_CNAME, name, entry)
+		return NewTarget(dns.RS_CNAME, name, entry)
 	} else {
-		return NewTarget(RS_A, name, entry)
+		return NewTarget(dns.RS_A, name, entry)
 	}
 }
 

@@ -19,6 +19,7 @@ package route53
 import (
 	"fmt"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -29,15 +30,15 @@ import (
 )
 
 type Handler struct {
-	config dns.DNSHandlerConfig
+	config provider.DNSHandlerConfig
 
 	sess *session.Session
 	r53  *route53.Route53
 }
 
-var _ dns.DNSHandler = &Handler{}
+var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *dns.DNSHandlerConfig) (dns.DNSHandler, error) {
+func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	this := &Handler{
 		config: *config,
 	}
@@ -64,14 +65,14 @@ func NewHandler(logger logger.LogContext, config *dns.DNSHandlerConfig) (dns.DNS
 	return this, nil
 }
 
-func (this *Handler) GetZones() (dns.DNSHostedZoneInfos, error) {
-	zones := []*dns.DNSHostedZoneInfo{}
+func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
+	zones := provider.DNSHostedZoneInfos{}
 
 	aggr := func(resp *route53.ListHostedZonesOutput, lastPage bool) bool {
 		for _, zone := range resp.HostedZones {
 			id := strings.Split(aws.StringValue(zone.Id), "/")
 
-			zoneinfo := &dns.DNSHostedZoneInfo{
+			zoneinfo := &provider.DNSHostedZoneInfo{
 				Id:     id[len(id)-1],
 				Domain: dns.NormalizeHostname(aws.StringValue(zone.Name)),
 			}
@@ -114,16 +115,16 @@ func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	return dnssets, nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*dns.ChangeRequest) error {
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*provider.ChangeRequest) error {
 	exec := NewExecution(logger, this, zoneid)
 
 	for _, r := range reqs {
 		switch r.Action {
-		case dns.R_CREATE:
+		case provider.R_CREATE:
 			exec.addChange(route53.ChangeActionCreate, r, r.Addition)
-		case dns.R_UPDATE:
+		case provider.R_UPDATE:
 			exec.addChange(route53.ChangeActionUpsert, r, r.Addition)
-		case dns.R_DELETE:
+		case provider.R_DELETE:
 			exec.addChange(route53.ChangeActionDelete, r, r.Deletion)
 		}
 	}

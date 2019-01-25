@@ -14,10 +14,11 @@
  *
  */
 
-package dns
+package provider
 
 import (
 	"context"
+	"github.com/gardener/external-dns-management/pkg/dns"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
@@ -80,7 +81,7 @@ type DNSHandlerConfig struct {
 
 type DNSHandler interface {
 	GetZones() (DNSHostedZoneInfos, error)
-	GetDNSSets(zoneid string) (DNSSets, error)
+	GetDNSSets(zoneid string) (dns.DNSSets, error)
 	ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*ChangeRequest) error
 }
 
@@ -100,7 +101,7 @@ type DNSProvider interface {
 
 	GetZoneInfos() DNSHostedZoneInfos
 
-	GetDNSSets(string) (DNSSets, error)
+	GetDNSSets(string) (dns.DNSSets, error)
 
 	ExecuteRequests(logger logger.LogContext, zoneid string, requests []*ChangeRequest) error
 	Match(dns string) int
