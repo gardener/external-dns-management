@@ -26,6 +26,8 @@ import (
 type Interface interface {
 	// DNSEntries returns a DNSEntryInformer.
 	DNSEntries() DNSEntryInformer
+	// DNSOwners returns a DNSOwnerInformer.
+	DNSOwners() DNSOwnerInformer
 	// DNSProviders returns a DNSProviderInformer.
 	DNSProviders() DNSProviderInformer
 }
@@ -44,6 +46,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // DNSEntries returns a DNSEntryInformer.
 func (v *version) DNSEntries() DNSEntryInformer {
 	return &dNSEntryInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// DNSOwners returns a DNSOwnerInformer.
+func (v *version) DNSOwners() DNSOwnerInformer {
+	return &dNSOwnerInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // DNSProviders returns a DNSProviderInformer.

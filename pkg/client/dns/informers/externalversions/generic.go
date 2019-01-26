@@ -55,6 +55,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=krac, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("dnsentries"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Krac().V1alpha1().DNSEntries().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("dnsowners"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Krac().V1alpha1().DNSOwners().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("dnsproviders"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Krac().V1alpha1().DNSProviders().Informer()}, nil
 

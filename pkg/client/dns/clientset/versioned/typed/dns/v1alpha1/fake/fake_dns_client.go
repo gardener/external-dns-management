@@ -32,6 +32,10 @@ func (c *FakeKracV1alpha1) DNSEntries(namespace string) v1alpha1.DNSEntryInterfa
 	return &FakeDNSEntries{c, namespace}
 }
 
+func (c *FakeKracV1alpha1) DNSOwners(namespace string) v1alpha1.DNSOwnerInterface {
+	return &FakeDNSOwners{c, namespace}
+}
+
 func (c *FakeKracV1alpha1) DNSProviders(namespace string) v1alpha1.DNSProviderInterface {
 	return &FakeDNSProviders{c, namespace}
 }

@@ -72,7 +72,7 @@ func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 		for _, zone := range resp.HostedZones {
 			id := strings.Split(aws.StringValue(zone.Id), "/")
 
-			zoneinfo := &provider.DNSHostedZoneInfo{
+			zoneinfo := provider.DNSHostedZoneInfo{
 				Id:     id[len(id)-1],
 				Domain: dns.NormalizeHostname(aws.StringValue(zone.Name)),
 			}
@@ -115,8 +115,8 @@ func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	return dnssets, nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*provider.ChangeRequest) error {
-	exec := NewExecution(logger, this, zoneid)
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo,  reqs []*provider.ChangeRequest) error {
+	exec := NewExecution(logger, this, zone)
 
 	for _, r := range reqs {
 		switch r.Action {

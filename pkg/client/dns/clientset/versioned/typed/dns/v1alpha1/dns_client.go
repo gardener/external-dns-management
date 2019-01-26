@@ -28,6 +28,7 @@ import (
 type KracV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	DNSEntriesGetter
+	DNSOwnersGetter
 	DNSProvidersGetter
 }
 
@@ -38,6 +39,10 @@ type KracV1alpha1Client struct {
 
 func (c *KracV1alpha1Client) DNSEntries(namespace string) DNSEntryInterface {
 	return newDNSEntries(c, namespace)
+}
+
+func (c *KracV1alpha1Client) DNSOwners(namespace string) DNSOwnerInterface {
+	return newDNSOwners(c, namespace)
 }
 
 func (c *KracV1alpha1Client) DNSProviders(namespace string) DNSProviderInterface {

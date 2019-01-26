@@ -22,9 +22,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,7 +85,7 @@ func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bo
 
 	reqs := this.requests
 	if reqs != nil && len(reqs) > 0 {
-		err := this.provider.ExecuteRequests(logger, model.zoneid, reqs)
+		err := this.provider.ExecuteRequests(logger, model.zone.zone, reqs)
 		if err != nil {
 			model.Errorf("entry reconcilation failed for %s: %s", this.name, err)
 			ok = false
@@ -116,19 +116,19 @@ type ChangeModel struct {
 	logger.LogContext
 	config         Config
 	owners         utils.StringSet
-	zoneid         string
+	zone           *dnsHostedZone
 	providers      DNSProviders
 	applied        map[string]*dns.DNSSet
 	dangling       *ChangeGroup
 	providergroups map[DNSProvider]*ChangeGroup
 }
 
-func NewChangeModel(logger logger.LogContext, owners utils.StringSet, config Config, zoneid string, providers DNSProviders) *ChangeModel {
+func NewChangeModel(logger logger.LogContext, owners utils.StringSet, config Config, zone *dnsHostedZone, providers DNSProviders) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
 		config:         config,
 		owners:         owners,
-		zoneid:         zoneid,
+		zone:           zone,
 		providers:      providers,
 		applied:        map[string]*dns.DNSSet{},
 		providergroups: map[DNSProvider]*ChangeGroup{},
@@ -142,6 +142,14 @@ func (this *ChangeModel) getProviderView(p DNSProvider) *ChangeGroup {
 		this.providergroups[p] = v
 	}
 	return v
+}
+
+func (this *ChangeModel) ZoneId() string {
+	return this.zone.Id()
+}
+
+func (this *ChangeModel) Domain() string {
+	return this.zone.Domain()
 }
 
 func (this *ChangeModel) getDefaultProvider() DNSProvider {
@@ -159,9 +167,9 @@ func (this *ChangeModel) dumpf(fmt string, args ...interface{}) {
 func (this *ChangeModel) Setup() error {
 	provider := this.getDefaultProvider()
 	if provider == nil {
-		return fmt.Errorf("no provider found for zone %q", this.zoneid)
+		return fmt.Errorf("no provider found for zone %q", this.ZoneId())
 	}
-	sets, err := provider.GetDNSSets(this.zoneid)
+	sets, err := provider.GetDNSSets(this.ZoneId())
 	if err != nil {
 		return err
 	}
@@ -181,7 +189,7 @@ func (this *ChangeModel) Setup() error {
 			this.dumpf("    %s: %d records: %s", t, len(r.Records), r.RecordString())
 		}
 	}
-	this.Infof("found %d entries in zone %s (using %d groups)", len(sets), this.zoneid, len(this.providergroups))
+	this.Infof("found %d entries in zone %s (using %d groups)", len(sets), this.ZoneId(), len(this.providergroups))
 	return err
 }
 
@@ -231,8 +239,8 @@ func (this *ChangeModel) Exec(apply bool, name string, done DoneHandler, targets
 					}
 					mod = true
 				} else {
-					olddns, _ := dns.MapToProvider(ty, oldset)
-					newdns, _ := dns.MapToProvider(ty, newset)
+					olddns, _ := dns.MapToProvider(ty, oldset, this.Domain())
+					newdns, _ := dns.MapToProvider(ty, newset, this.Domain())
 					if olddns == newdns {
 						if !curset.Match(rset) {
 							if apply {
@@ -265,9 +273,7 @@ func (this *ChangeModel) Exec(apply bool, name string, done DoneHandler, targets
 	} else {
 		this.Infof("no existing entry found for %s", name)
 		if apply {
-			if this.config.Ident != "" {
-				newset.SetOwner(this.config.Ident)
-			}
+			this.setOwner(newset, targets)
 			for ty := range newset.Sets {
 				view.addCreateRequest(newset, ty, done)
 			}
@@ -318,6 +324,18 @@ func (this *ChangeModel) IsForeign(set *dns.DNSSet) bool {
 	return set.IsForeign(this.owners)
 }
 
+func (this *ChangeModel) setOwner(set *dns.DNSSet, targets []Target) bool {
+	id := targets[0].GetEntry().OwnerId()
+	if id == "" {
+		id = this.config.Ident
+	}
+	if id != "" {
+		set.SetOwner(id)
+		return true
+	}
+	return false
+}
+
 func (this *ChangeModel) NewDNSSetForTargets(name string, base *dns.DNSSet, ttl int64, targets ...Target) *dns.DNSSet {
 	set := dns.NewDNSSet(name)
 	//if base != nil {
@@ -328,8 +346,9 @@ func (this *ChangeModel) NewDNSSetForTargets(name string, base *dns.DNSSet, ttl 
 	//}
 
 	if base == nil || !this.IsForeign(base) {
-		set.SetOwner(this.config.Ident)
-		set.SetAttr(dns.ATTR_PREFIX, dns.TxtPrefix)
+		if this.setOwner(set, targets) {
+			set.SetAttr(dns.ATTR_PREFIX, dns.TxtPrefix)
+		}
 	}
 
 	targetsets := set.Sets

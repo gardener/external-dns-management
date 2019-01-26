@@ -21,43 +21,36 @@ import (
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
-var DNSEntryType = (*api.DNSEntry)(nil)
+var DNSOwnerType = (*api.DNSOwner)(nil)
 
-type DNSEntryObject struct {
+type DNSOwnerObject struct {
 	resources.Object
 }
 
-func (this *DNSEntryObject) DNSEntry() *api.DNSEntry {
-	return this.Data().(*api.DNSEntry)
+func (this *DNSOwnerObject) DNSOwner() *api.DNSOwner {
+	return this.Data().(*api.DNSOwner)
 }
 
-func DNSEntry(o resources.Object) *DNSEntryObject {
+func DNSOwner(o resources.Object) *DNSOwnerObject {
 
-	if o.IsA(DNSEntryType) {
-		return &DNSEntryObject{o}
+	if o.IsA(DNSOwnerType) {
+		return &DNSOwnerObject{o}
 	}
 	return nil
 }
 
-func (this *DNSEntryObject) Spec() *api.DNSEntrySpec {
-	return &this.DNSEntry().Spec
-}
-func (this *DNSEntryObject) Status() *api.DNSEntryStatus {
-	return &this.DNSEntry().Status
+
+func (this *DNSOwnerObject) Spec() *api.DNSOwnerSpec {
+	return &this.DNSOwner().Spec
 }
 
-func (this *DNSEntryObject) GetDNSName() string {
-	return this.DNSEntry().Spec.DNSName
+
+func (this *DNSOwnerObject) GetOwnerId() string {
+	return this.DNSOwner().Spec.OwnerId
 }
-func (this *DNSEntryObject) GetTargets() []string {
-	return this.DNSEntry().Spec.Targets
+
+func (this *DNSOwnerObject) IsActive() bool {
+	a:= this.DNSOwner().Spec.Active
+	return a==nil || *a
 }
-func (this *DNSEntryObject) GetOwnerId() *string {
-	return this.DNSEntry().Spec.OwnerId
-}
-func (this *DNSEntryObject) GetTTL() *int64 {
-	return this.DNSEntry().Spec.TTL
-}
-func (this *DNSEntryObject) GetCNameLookupInterval() *int64 {
-	return this.DNSEntry().Spec.CNameLookupInterval
-}
+

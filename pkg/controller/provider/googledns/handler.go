@@ -84,7 +84,7 @@ func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 
 	f := func(resp *googledns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
-			hostedZone := &provider.DNSHostedZoneInfo{
+			hostedZone := provider.DNSHostedZoneInfo{
 				Id:     zone.Name,
 				Domain: dns.NormalizeHostname(zone.DnsName),
 			}
@@ -125,9 +125,9 @@ func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	return dnssets, nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*provider.ChangeRequest) error {
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, reqs []*provider.ChangeRequest) error {
 
-	exec := NewExecution(logger, this, zoneid)
+	exec := NewExecution(logger, this, zone)
 	for _, r := range reqs {
 		exec.addChange(r)
 	}

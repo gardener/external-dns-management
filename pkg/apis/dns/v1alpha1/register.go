@@ -28,6 +28,10 @@ const (
 	Version   = "v1alpha1"
 	GroupName = dns.GroupName
 
+	DNSOwnerKind   = "DNSOwner"
+	DNSOwnerPlural = "dnsowners"
+
+
 	DNSProviderKind   = "DNSProvider"
 	DNSProviderPlural = "dnsproviders"
 
@@ -56,6 +60,8 @@ var (
 // Adds the list of known types to Scheme.
 func addKnownTypes(scheme *runtime.Scheme) error {
 	scheme.AddKnownTypes(SchemeGroupVersion,
+		&DNSOwner{},
+		&DNSOwnerList{},
 		&DNSProvider{},
 		&DNSProviderList{},
 		&DNSEntry{},

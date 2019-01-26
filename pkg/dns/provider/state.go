@@ -43,7 +43,10 @@ type state struct {
 
 	pending utils.StringSet
 
-	owners          utils.StringSet
+	ownerids utils.StringSet
+	owners   map[resources.ObjectName]*dnsutils.DNSOwnerObject
+	ownercnt map[string]int
+
 	foreign         map[resources.ObjectName]*foreignProvider
 	providers       map[resources.ObjectName]*dnsProviderVersion
 	deleting        map[resources.ObjectName]*dnsProviderVersion
@@ -68,7 +71,9 @@ func NewDNSState(controller controller.Interface, config Config) DNSState {
 	return &state{
 		controller:      controller,
 		config:          config,
-		owners:          utils.NewStringSet(config.Ident),
+		ownerids:        utils.NewStringSet(config.Ident),
+		owners:          map[resources.ObjectName]*dnsutils.DNSOwnerObject{},
+		ownercnt:        map[string]int{config.Ident: 1},
 		pending:         utils.StringSet{},
 		foreign:         map[resources.ObjectName]*foreignProvider{},
 		providers:       map[resources.ObjectName]*dnsProviderVersion{},
@@ -85,9 +90,9 @@ func NewDNSState(controller controller.Interface, config Config) DNSState {
 
 func (this *state) Setup() {
 	resources := this.controller.GetMainCluster().Resources()
-	res, _ := resources.GetByExample(&api.DNSProvider{})
 	{
 		this.controller.Infof("setup providergroups")
+		res, _ := resources.GetByExample(&api.DNSProvider{})
 		list, _ := res.ListCached(labels.Everything())
 		for _, e := range list {
 			p := dnsutils.DNSProvider(e)
@@ -103,6 +108,15 @@ func (this *state) Setup() {
 		for _, e := range list {
 			p := dnsutils.DNSEntry(e)
 			this.UpdateEntry(this.controller.NewContext("entry", p.ObjectName().String()), p)
+		}
+	}
+	{
+		this.controller.Infof("setup owners")
+		res, _ := resources.GetByExample(&api.DNSOwner{})
+		list, _ := res.ListCached(labels.Everything())
+		for _, e := range list {
+			p := dnsutils.DNSOwner(e)
+			this.UpdateOwner(this.controller.NewContext("owner", p.ObjectName().String()), p)
 		}
 	}
 	this.initialized = true
@@ -286,22 +300,34 @@ func (this *state) GetZonesForProvider(name resources.ObjectName) dnsHostedZones
 	return copyZones(this.providerzones[name])
 }
 
-func (this *state) GetEntriesForZone(zoneid string) Entries {
+func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid string) Entries {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	entries := Entries{}
 	zone := this.zones[zoneid]
 	if zone != nil {
-		this.addEntriesForDomain(entries, zone.Domain())
+		this.addEntriesForDomain(logger, entries, zone.Domain())
 	}
 	return entries
 }
 
-func (this *state) addEntriesForDomain(entries Entries, domain string) Entries {
+func (this state) isActive(e *Entry) bool {
+	id := e.OwnerId()
+	if id == "" {
+		id = this.config.Ident
+	}
+	return this.ownerids.Contains(id)
+}
+
+func (this *state) addEntriesForDomain(logger logger.LogContext, entries Entries, domain string) Entries {
 	for dns, e := range this.dnsnames {
 		if e.IsValid() {
 			if dnsutils.Match(dns, domain) {
-				entries[e.ObjectName()] = e
+				if this.isActive(e) {
+					entries[e.ObjectName()] = e
+				} else {
+					logger.Infof("entry %q(%s) is inactive", e.ObjectName(), e.DNSName())
+				}
 			}
 		}
 	}
@@ -362,7 +388,7 @@ func (this *state) updateZones(logger logger.LogContext, provider *dnsProviderVe
 		zone := this.zones[z.Id]
 		if zone == nil {
 			modified = true
-			zone = newDNSHostedZone(z.Id, z.Domain)
+			zone = newDNSHostedZone(z)
 			this.zones[z.Id] = zone
 			logger.Infof("adding hosted zone %q (%s)", z.Id, z.Domain)
 			this.triggerHostedZone(zone.Id())
@@ -404,6 +430,7 @@ func (this *state) updateZones(logger logger.LogContext, provider *dnsProviderVe
 
 ////////////////////////////////////////////////////////////////////////////////
 // provider handling
+////////////////////////////////////////////////////////////////////////////////
 
 func (this *state) UpdateProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status {
 	logger.Infof("reconcile PROVIDER")
@@ -539,7 +566,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 		zones := this.providerzones[obj.ObjectName()]
 		for n, z := range zones {
 			if this.isProviderForZone(n, pname) {
-				this.addEntriesForDomain(entries, z.Domain())
+				this.addEntriesForDomain(logger, entries, z.Domain())
 				providers := this.getProvidersForZone(n)
 				if len(providers) == 1 {
 					// if this is the last provider for this zone
@@ -574,6 +601,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 
 ////////////////////////////////////////////////////////////////////////////////
 // secret handling
+////////////////////////////////////////////////////////////////////////////////
 
 func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	providers := this.GetSecretUsage(obj.ObjectName())
@@ -592,6 +620,7 @@ func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) 
 
 ////////////////////////////////////////////////////////////////////////////////
 // entry handling
+////////////////////////////////////////////////////////////////////////////////
 
 func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status {
 	logger.Infof("reconcile ENTRY")
@@ -741,8 +770,9 @@ func (this *state) AddEntry(logger logger.LogContext, object *dnsutils.DNSEntryO
 
 ////////////////////////////////////////////////////////////////////////////////
 // zone reconcilation
+////////////////////////////////////////////////////////////////////////////////
 
-func (this *state) GetZoneInfo(zoneid string) (*dnsHostedZone, DNSProviders, Entries) {
+func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHostedZone, DNSProviders, Entries) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
@@ -750,11 +780,11 @@ func (this *state) GetZoneInfo(zoneid string) (*dnsHostedZone, DNSProviders, Ent
 	if zone == nil {
 		return nil, nil, nil
 	}
-	return zone, this.getProvidersForZone(zoneid), this.addEntriesForDomain(Entries{}, zone.Domain())
+	return zone, this.getProvidersForZone(zoneid), this.addEntriesForDomain(logger, Entries{}, zone.Domain())
 }
 
 func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconcile.Status {
-	zone, providers, entries := this.GetZoneInfo(zoneid)
+	zone, providers, entries := this.GetZoneInfo(logger, zoneid)
 	if zone == nil {
 		return reconcile.Failed(logger, fmt.Errorf("zone %s not used anymore -> stop reconciling", zoneid))
 	}
@@ -768,7 +798,11 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 }
 
 func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entries Entries, providers DNSProviders) error {
-	changes := NewChangeModel(logger, this.owners, this.config, zoneid, providers)
+	zone := this.zones[zoneid]
+	if zone == nil {
+		return nil
+	}
+	changes := NewChangeModel(logger, this.ownerids, this.config, zone, providers)
 	err := changes.Setup()
 	if err != nil {
 		return err
@@ -784,4 +818,56 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 		err = changes.Update(logger)
 	}
 	return err
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// OwnerIds
+////////////////////////////////////////////////////////////////////////////////
+
+func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject) reconcile.Status {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	old := this.owners[owner.ObjectName()]
+	if old != nil {
+		if old.GetOwnerId() == owner.GetOwnerId() && old.IsActive() == owner.IsActive() {
+			this.owners[owner.ObjectName()] = owner
+			return reconcile.Succeeded(logger)
+		}
+		this.deactivate(old)
+	}
+	this.activate(owner)
+	logger.Infof("active owner ids %s", this.ownerids)
+	return reconcile.Succeeded(logger)
+}
+
+func (this *state) OwnerDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.deactivate(this.owners[key.ObjectName()])
+	logger.Infof("active owner ids %s", this.ownerids)
+	return reconcile.Succeeded(logger)
+}
+
+func (this *state) deactivate(old *dnsutils.DNSOwnerObject) {
+	if old != nil && old.IsActive() {
+		cnt := this.ownercnt[old.GetOwnerId()]
+		cnt--
+		this.ownercnt[old.GetOwnerId()] = cnt
+		if cnt == 0 {
+			this.ownerids.Remove(old.GetOwnerId())
+		}
+	}
+	delete(this.owners, old.ObjectName())
+}
+
+func (this *state) activate(new *dnsutils.DNSOwnerObject) {
+	if new.IsActive() {
+		id := new.GetOwnerId()
+		cnt := this.ownercnt[id]
+		cnt++
+		this.ownercnt[id] = cnt
+		this.ownerids.Add(id)
+		this.owners[new.ObjectName()] = new
+	}
 }

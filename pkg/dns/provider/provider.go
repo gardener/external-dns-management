@@ -179,6 +179,15 @@ func updateDNSProvider(logger logger.LogContext, state DNSState, provider *dnsut
 		this.object.Eventf(corev1.EventTypeWarning, "reconcile", "%s", err)
 	}
 
+	for _, zone := range this.zoneinfos {
+		for _, sub := range zone.Forwarded {
+			for i := range included {
+				if dnsutils.Match(sub,i) {
+					excluded.Add(sub)
+				}
+			}
+		}
+	}
 	if len(this.def_include) == 0 {
 		if len(this.zoneinfos) == 0 {
 			return nil, this.failed(logger, false, fmt.Errorf("no hosted zones found"), false)
@@ -295,6 +304,6 @@ func (this *dnsProviderVersion) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	return this.handler.GetDNSSets(zoneid)
 }
 
-func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*ChangeRequest) error {
-	return this.handler.ExecuteRequests(logger, zoneid, reqs)
+func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, reqs []*ChangeRequest) error {
+	return this.handler.ExecuteRequests(logger, zone, reqs)
 }

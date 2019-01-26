@@ -81,6 +81,13 @@ func (this *Entry) Interval() int64 {
 	return this.interval
 }
 
+func (this *Entry) OwnerId() string {
+	if this.object.GetOwnerId()!= nil {
+		return *this.object.GetOwnerId()
+	}
+	return ""
+}
+
 func (this *Entry) Targets() Targets {
 	this.lock.Lock()
 	defer this.lock.Unlock()
