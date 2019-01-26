@@ -179,15 +179,6 @@ func updateDNSProvider(logger logger.LogContext, state DNSState, provider *dnsut
 		this.object.Eventf(corev1.EventTypeWarning, "reconcile", "%s", err)
 	}
 
-	for _, zone := range this.zoneinfos {
-		for _, sub := range zone.Forwarded {
-			for i := range included {
-				if dnsutils.Match(sub,i) {
-					excluded.Add(sub)
-				}
-			}
-		}
-	}
 	if len(this.def_include) == 0 {
 		if len(this.zoneinfos) == 0 {
 			return nil, this.failed(logger, false, fmt.Errorf("no hosted zones found"), false)
@@ -199,6 +190,15 @@ func updateDNSProvider(logger logger.LogContext, state DNSState, provider *dnsut
 		if len(included) == 0 {
 			return nil, this.failed(logger, false, fmt.Errorf("no domain matching hosting zones"), false)
 
+		}
+	}
+	for _, zone := range this.zoneinfos {
+		for _, sub := range zone.Forwarded {
+			for i := range included {
+				if dnsutils.Match(sub,i) {
+					excluded.Add(sub)
+				}
+			}
 		}
 	}
 	if last == nil || !included.Equals(last.included) || !excluded.Equals(last.excluded) {

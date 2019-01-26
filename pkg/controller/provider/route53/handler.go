@@ -85,37 +85,54 @@ func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	for i, z := range zones {
+		aggr := func(r *route53.ResourceRecordSet) {
+			if aws.StringValue(r.Type) == dns.RS_NS {
+				name := dns.NormalizeHostname(aws.StringValue(r.Name))
+				if name != z.Domain {
+					z.Forwarded = append(z.Forwarded, name)
+				}
+			}
+		}
+		this.handleRecordSets(z.Id, aggr)
+		zones[i] = z
+	}
 	return zones, nil
 }
 
 func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	dnssets := dns.DNSSets{}
 
-	inp := (&route53.ListResourceRecordSetsInput{}).SetHostedZoneId(zoneid)
-	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
-		for _, r := range resp.ResourceRecordSets {
-			rtype := aws.StringValue(r.Type)
-			if !dns.SupportedRecordType(rtype) {
-				continue
-			}
-
+	aggr := func(r *route53.ResourceRecordSet) {
+		rtype := aws.StringValue(r.Type)
+		if dns.SupportedRecordType(rtype) {
 			rs := dns.NewRecordSet(rtype, aws.Int64Value(r.TTL), nil)
 			for _, rr := range r.ResourceRecords {
 				rs.Add(&dns.Record{Value: aws.StringValue(rr.Value)})
 			}
-
 			dnssets.AddRecordSetFromProvider(aws.StringValue(r.Name), rs)
 		}
-		return true
 	}
-
-	if err := this.r53.ListResourceRecordSetsPages(inp, aggr); err != nil {
+	if err := this.handleRecordSets(zoneid, aggr); err != nil {
 		return nil, err
 	}
 	return dnssets, nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo,  reqs []*provider.ChangeRequest) error {
+func (this *Handler) handleRecordSets(zoneid string, f func(rs *route53.ResourceRecordSet)) error {
+	inp := (&route53.ListResourceRecordSetsInput{}).SetHostedZoneId(zoneid)
+	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
+		for _, r := range resp.ResourceRecordSets {
+			f(r)
+		}
+		return true
+	}
+
+	return this.r53.ListResourceRecordSetsPages(inp, aggr)
+}
+
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, reqs []*provider.ChangeRequest) error {
 	exec := NewExecution(logger, this, zone)
 
 	for _, r := range reqs {

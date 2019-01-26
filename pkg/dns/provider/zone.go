@@ -64,6 +64,10 @@ func (this *dnsHostedZone) Domain() string {
 	return this.zone.Domain
 }
 
+func (this *dnsHostedZone) Forwarded() []string {
+	return this.zone.Forwarded
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *dnsHostedZone) update(i DNSHostedZoneInfo) {

@@ -306,7 +306,7 @@ func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid string) En
 	entries := Entries{}
 	zone := this.zones[zoneid]
 	if zone != nil {
-		this.addEntriesForDomain(logger, entries, zone.Domain())
+		this.addEntriesForZone(logger, entries, zone)
 	}
 	return entries
 }
@@ -319,10 +319,27 @@ func (this state) isActive(e *Entry) bool {
 	return this.ownerids.Contains(id)
 }
 
-func (this *state) addEntriesForDomain(logger logger.LogContext, entries Entries, domain string) Entries {
+func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, zone *dnsHostedZone) Entries {
+	domain:=zone.Domain()
+	nested:=utils.StringSet{}
+	for _, z:= range this.zones {
+		if z.Domain()!=domain && dnsutils.Match(z.Domain(), domain) {
+			nested.Add(z.Domain())
+		}
+	}
 	for dns, e := range this.dnsnames {
 		if e.IsValid() {
 			if dnsutils.Match(dns, domain) {
+				for _, excl := range zone.Forwarded() {
+					if dnsutils.Match(dns, excl) {
+						continue
+					}
+				}
+				for excl := range nested { // fallback if no forwarded domains are reported
+					if dnsutils.Match(dns, excl) {
+						continue
+					}
+				}
 				if this.isActive(e) {
 					entries[e.ObjectName()] = e
 				} else {
@@ -475,6 +492,9 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 		logger.Infof("found %d zones: ", len(new.zoneinfos))
 		for _, z := range new.zoneinfos {
 			logger.Infof("    %s: %s", z.Id, z.Domain)
+			if len(z.Forwarded) > 0 {
+				logger.Infof("        forwarded: %s", utils.Strings(z.Forwarded...))
+			}
 		}
 	}
 	this.triggerEntries(logger, entries)
@@ -566,7 +586,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 		zones := this.providerzones[obj.ObjectName()]
 		for n, z := range zones {
 			if this.isProviderForZone(n, pname) {
-				this.addEntriesForDomain(logger, entries, z.Domain())
+				this.addEntriesForZone(logger, entries, z)
 				providers := this.getProvidersForZone(n)
 				if len(providers) == 1 {
 					// if this is the last provider for this zone
@@ -780,7 +800,7 @@ func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHos
 	if zone == nil {
 		return nil, nil, nil
 	}
-	return zone, this.getProvidersForZone(zoneid), this.addEntriesForDomain(logger, Entries{}, zone.Domain())
+	return zone, this.getProvidersForZone(zoneid), this.addEntriesForZone(logger, Entries{}, zone)
 }
 
 func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconcile.Status {
