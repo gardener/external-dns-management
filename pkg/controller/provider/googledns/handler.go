@@ -107,7 +107,7 @@ func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 			}
 		}
 		this.handleRecordSets(z.Id, f)
-		zones[i]=z
+		zones[i] = z
 	}
 
 	return zones, nil

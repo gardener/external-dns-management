@@ -31,7 +31,6 @@ const (
 	DNSOwnerKind   = "DNSOwner"
 	DNSOwnerPlural = "dnsowners"
 
-
 	DNSProviderKind   = "DNSProvider"
 	DNSProviderPlural = "dnsproviders"
 

@@ -24,9 +24,9 @@ import (
 type dnsHostedZones map[string]*dnsHostedZone
 
 type dnsHostedZone struct {
-	lock   sync.Mutex
-	busy   bool
-	zone   DNSHostedZoneInfo
+	lock sync.Mutex
+	busy bool
+	zone DNSHostedZoneInfo
 }
 
 func newDNSHostedZone(zone DNSHostedZoneInfo) *dnsHostedZone {

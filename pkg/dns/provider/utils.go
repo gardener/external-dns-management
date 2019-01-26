@@ -26,7 +26,8 @@ import (
 func filterByZones(domains utils.StringSet, zones DNSHostedZoneInfos) (result utils.StringSet, err error) {
 	result = utils.StringSet{}
 	for d := range domains {
-		_zones: for _, z := range zones {
+	_zones:
+		for _, z := range zones {
 			if dnsutils.Match(d, z.Domain) {
 				for _, sub := range z.Forwarded {
 					if dnsutils.Match(d, sub) {

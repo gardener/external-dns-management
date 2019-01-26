@@ -39,18 +39,15 @@ func DNSOwner(o resources.Object) *DNSOwnerObject {
 	return nil
 }
 
-
 func (this *DNSOwnerObject) Spec() *api.DNSOwnerSpec {
 	return &this.DNSOwner().Spec
 }
-
 
 func (this *DNSOwnerObject) GetOwnerId() string {
 	return this.DNSOwner().Spec.OwnerId
 }
 
 func (this *DNSOwnerObject) IsActive() bool {
-	a:= this.DNSOwner().Spec.Active
-	return a==nil || *a
+	a := this.DNSOwner().Spec.Active
+	return a == nil || *a
 }
-

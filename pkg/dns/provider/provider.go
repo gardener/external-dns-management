@@ -195,7 +195,7 @@ func updateDNSProvider(logger logger.LogContext, state DNSState, provider *dnsut
 	for _, zone := range this.zoneinfos {
 		for _, sub := range zone.Forwarded {
 			for i := range included {
-				if dnsutils.Match(sub,i) {
+				if dnsutils.Match(sub, i) {
 					excluded.Add(sub)
 				}
 			}

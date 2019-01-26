@@ -320,10 +320,10 @@ func (this state) isActive(e *Entry) bool {
 }
 
 func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, zone *dnsHostedZone) Entries {
-	domain:=zone.Domain()
-	nested:=utils.StringSet{}
-	for _, z:= range this.zones {
-		if z.Domain()!=domain && dnsutils.Match(z.Domain(), domain) {
+	domain := zone.Domain()
+	nested := utils.StringSet{}
+	for _, z := range this.zones {
+		if z.Domain() != domain && dnsutils.Match(z.Domain(), domain) {
 			nested.Add(z.Domain())
 		}
 	}

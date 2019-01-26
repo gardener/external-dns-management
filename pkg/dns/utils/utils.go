@@ -34,4 +34,3 @@ func MatchSet(hostname string, domains utils.StringSet) int {
 	}
 	return length
 }
-

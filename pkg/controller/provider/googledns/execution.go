@@ -32,7 +32,7 @@ type Execution struct {
 	logger.LogContext
 	handler *Handler
 	zone    provider.DNSHostedZoneInfo
-    domain  string
+	domain  string
 
 	change *googledns.Change
 	done   []provider.DoneHandler

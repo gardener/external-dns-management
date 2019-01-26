@@ -34,7 +34,7 @@ type Change struct {
 type Execution struct {
 	logger.LogContext
 	handler *Handler
-	zone provider.DNSHostedZoneInfo
+	zone    provider.DNSHostedZoneInfo
 
 	changes        map[string][]*Change
 	maxChangeCount int

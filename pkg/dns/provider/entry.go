@@ -82,7 +82,7 @@ func (this *Entry) Interval() int64 {
 }
 
 func (this *Entry) OwnerId() string {
-	if this.object.GetOwnerId()!= nil {
+	if this.object.GetOwnerId() != nil {
 		return *this.object.GetOwnerId()
 	}
 	return ""
@@ -110,7 +110,7 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 
 	spec := &this.object.DNSEntry().Spec
 
-	targets =Targets{}
+	targets = Targets{}
 	warnings = []string{}
 
 	if this.dnsname != spec.DNSName {
@@ -122,7 +122,7 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 		check = this.dnsname[2:]
 	}
 	if errs := validation.IsDNS1123Subdomain(check); errs != nil {
-		err =fmt.Errorf("%q is no valid dns name (%v)", check, errs)
+		err = fmt.Errorf("%q is no valid dns name (%v)", check, errs)
 		return
 	}
 	if len(spec.Targets) > 0 && len(spec.Text) > 0 {
@@ -213,7 +213,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 
 	targets, warnings, verr := this.Validate()
 
-	if verr!=nil {
+	if verr != nil {
 		this.UpdateStatus(logger, api.STATE_INVALID, verr.Error())
 		return reconcile.Failed(logger, verr)
 	}

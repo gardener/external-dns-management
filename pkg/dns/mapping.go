@@ -58,8 +58,8 @@ func MapToProvider(rtype string, dnsset *DNSSet, base string) (string, *RecordSe
 		if strings.HasPrefix(name, "*.") {
 			add = "*."
 			name = name[2:]
-			if name==base {
-				prefix+="."
+			if name == base {
+				prefix += "."
 			}
 		}
 		return add + prefix + name, &new
@@ -75,8 +75,8 @@ func MapFromProvider(dns string, rs *RecordSet) (string, *RecordSet) {
 			if strings.HasPrefix(dns, "*.") {
 				add = "*."
 				dns = dns[2:]
-				if strings.HasPrefix(dns,".") {
-					dns=dns[1:]
+				if strings.HasPrefix(dns, ".") {
+					dns = dns[1:]
 				}
 			}
 			if strings.HasPrefix(dns, prefix) {

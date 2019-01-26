@@ -50,8 +50,8 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 }
 
 type DNSHostedZoneInfo struct {
-	Id     string
-	Domain string
+	Id        string
+	Domain    string
 	Forwarded []string
 }
 
@@ -132,5 +132,4 @@ type DNSState interface {
 
 	UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject) reconcile.Status
 	OwnerDeleted(logger logger.LogContext, owner resources.ObjectKey) reconcile.Status
-
 }
