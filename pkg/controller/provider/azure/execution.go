@@ -71,7 +71,7 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 		dnsset = req.Deletion
 	}
 
-	name, rset := dns.MapToProvider(req.Type, dnsset)
+	name, rset := dns.MapToProvider(req.Type, dnsset, exec.zoneName)
 	name, ok := dropZoneName(name, exec.zoneName)
 	if !ok {
 		return bs_invalidName, "", &azure.RecordSet{Name: &name}

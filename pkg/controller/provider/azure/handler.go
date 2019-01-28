@@ -92,7 +92,7 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (pr
 var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
 
 func (h *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
-	zones := []*provider.DNSHostedZoneInfo{}
+	zones := provider.DNSHostedZoneInfos{}
 
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
 	if err != nil {
@@ -109,12 +109,12 @@ func (h *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 		}
 		resourceGroup := submatches[1]
 
-		zoneinfo := &provider.DNSHostedZoneInfo{
+		hostedZone := provider.DNSHostedZoneInfo{
 			// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
 			Id:     resourceGroup + "/" + *item.Name,
 			Domain: dns.NormalizeHostname(*item.Name),
 		}
-		zones = append(zones, zoneinfo)
+		zones = append(zones, hostedZone)
 	}
 
 	return zones, nil
@@ -167,8 +167,8 @@ func (h *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	return dnssets, nil
 }
 
-func (h *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*provider.ChangeRequest) error {
-	resourceGroup, zoneName := splitZoneid(zoneid)
+func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, reqs []*provider.ChangeRequest) error {
+	resourceGroup, zoneName := splitZoneid(zone.Id)
 	exec := NewExecution(logger, h, resourceGroup, zoneName)
 
 	var succeeded, failed int
