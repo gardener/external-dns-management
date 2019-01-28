@@ -109,15 +109,38 @@ func (h *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 		}
 		resourceGroup := submatches[1]
 
+		forwarded := h.collectForwardedSubzones(resourceGroup, *item.Name)
+
 		hostedZone := provider.DNSHostedZoneInfo{
 			// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
-			Id:     resourceGroup + "/" + *item.Name,
-			Domain: dns.NormalizeHostname(*item.Name),
+			Id:        resourceGroup + "/" + *item.Name,
+			Domain:    dns.NormalizeHostname(*item.Name),
+			Forwarded: forwarded,
 		}
 		zones = append(zones, hostedZone)
 	}
 
 	return zones, nil
+}
+
+func (h *Handler) collectForwardedSubzones(resourceGroup, zoneName string) []string {
+	forwarded := []string{}
+	// There should only few NS entries. Therefore no paging is performed for simplicity.
+	var top int32 = 1000
+	result, err := h.recordsClient.ListByType(h.ctx, resourceGroup, zoneName, azure.NS, &top, "")
+	if err != nil {
+		logger.Infof("Failed fetching NS records for %s: %s", zoneName, err.Error())
+		// just ignoring it
+		return forwarded
+	}
+
+	for _, item := range result.Values() {
+		if *item.Name != "@" && item.NsRecords != nil && len(*item.NsRecords) > 0 {
+			fullDomainName := *item.Name + "." + zoneName
+			forwarded = append(forwarded, fullDomainName)
+		}
+	}
+	return forwarded
 }
 
 func splitZoneid(zoneid string) (string, string) {
