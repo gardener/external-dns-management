@@ -38,6 +38,7 @@ const CONTROLLER_GROUP_DNS_CONTROLLERS = "dnscontrollers"
 const TARGET_CLUSTER = source.TARGET_CLUSTER
 const PROVIDER_CLUSTER = "provider"
 
+var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
@@ -49,9 +50,13 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedIntOption(OPT_TTL, 300, "Default time-to-live for DNS entries").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
-		CustomResourceDefinitions(crds.DNSEntryCRD).
+		CustomResourceDefinitions(crds.DNSEntryCRD, crds.DNSOwnerCRD).
 		MainResource(api.GroupName, api.DNSEntryKind).
 		DefaultWorkerPool(2, 0).
+		WorkerPool("ownerids", 1, 0).
+		Watches(
+			controller.NewResourceKey(api.GroupName, api.DNSOwnerKind),
+		).
 		Cluster(PROVIDER_CLUSTER).
 		CustomResourceDefinitions(crds.DNSProviderCRD).
 		WorkerPool("providers", 2, 5*time.Minute).
@@ -116,6 +121,8 @@ func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.
 
 func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	switch {
+	case obj.IsA(&api.DNSOwner{}):
+		return this.state.UpdateOwner(logger, dnsutils.DNSOwner(obj))
 	case obj.IsA(&api.DNSProvider{}):
 		return this.state.UpdateProvider(logger, dnsutils.DNSProvider(obj))
 	case obj.IsA(&api.DNSEntry{}):
@@ -142,6 +149,8 @@ func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) r
 func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
 	logger.Infof("deleted %s", key)
 	switch key.GroupKind() {
+	case ownerGroupKind:
+		return this.state.OwnerDeleted(logger, key.ObjectKey())
 	case providerGroupKind:
 		return this.state.ProviderDeleted(logger, key.ObjectKey())
 	case entryGroupKind:

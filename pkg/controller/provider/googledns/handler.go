@@ -84,7 +84,7 @@ func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 
 	f := func(resp *googledns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
-			hostedZone := &provider.DNSHostedZoneInfo{
+			hostedZone := provider.DNSHostedZoneInfo{
 				Id:     zone.Name,
 				Domain: dns.NormalizeHostname(zone.DnsName),
 			}
@@ -96,38 +96,56 @@ func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 	if err := this.service.ManagedZones.List(this.credentials.ProjectID).Pages(this.ctx, f); err != nil {
 		return nil, err
 	}
+
+	for i, z := range zones {
+		f := func(r *googledns.ResourceRecordSet) {
+			if r.Type == dns.RS_NS {
+				name := dns.NormalizeHostname(r.Name)
+				if name != z.Domain {
+					z.Forwarded = append(z.Forwarded, name)
+				}
+			}
+		}
+		this.handleRecordSets(z.Id, f)
+		zones[i] = z
+	}
+
 	return zones, nil
+}
+
+func (this *Handler) handleRecordSets(zoneid string, f func(r *googledns.ResourceRecordSet)) error {
+	aggr := func(resp *googledns.ResourceRecordSetsListResponse) error {
+		for _, r := range resp.Rrsets {
+			f(r)
+		}
+		return nil
+	}
+	return this.service.ResourceRecordSets.List(this.credentials.ProjectID, zoneid).Pages(this.ctx, aggr)
 }
 
 func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	dnssets := dns.DNSSets{}
 
-	f := func(resp *googledns.ResourceRecordSetsListResponse) error {
-		for _, r := range resp.Rrsets {
-			if !dns.SupportedRecordType(r.Type) {
-				continue
-			}
-
+	f := func(r *googledns.ResourceRecordSet) {
+		if dns.SupportedRecordType(r.Type) {
 			rs := dns.NewRecordSet(r.Type, r.Ttl, nil)
 			for _, rr := range r.Rrdatas {
 				rs.Add(&dns.Record{Value: rr})
 			}
-
 			dnssets.AddRecordSetFromProvider(r.Name, rs)
 		}
-		return nil
 	}
 
-	if err := this.service.ResourceRecordSets.List(this.credentials.ProjectID, zoneid).Pages(this.ctx, f); err != nil {
+	if err := this.handleRecordSets(zoneid, f); err != nil {
 		return nil, err
 	}
 
 	return dnssets, nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*provider.ChangeRequest) error {
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, reqs []*provider.ChangeRequest) error {
 
-	exec := NewExecution(logger, this, zoneid)
+	exec := NewExecution(logger, this, zone)
 	for _, r := range reqs {
 		exec.addChange(r)
 	}

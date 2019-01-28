@@ -43,7 +43,7 @@ func NormalizeHostname(host string) string {
 	return host
 }
 
-func MapToProvider(rtype string, dnsset *DNSSet) (string, *RecordSet) {
+func MapToProvider(rtype string, dnsset *DNSSet, base string) (string, *RecordSet) {
 	name := dnsset.Name
 	rs := dnsset.Sets[rtype]
 	if rtype == RS_META {
@@ -58,6 +58,9 @@ func MapToProvider(rtype string, dnsset *DNSSet) (string, *RecordSet) {
 		if strings.HasPrefix(name, "*.") {
 			add = "*."
 			name = name[2:]
+			if name == base {
+				prefix += "."
+			}
 		}
 		return add + prefix + name, &new
 	}
@@ -72,6 +75,9 @@ func MapFromProvider(dns string, rs *RecordSet) (string, *RecordSet) {
 			if strings.HasPrefix(dns, "*.") {
 				add = "*."
 				dns = dns[2:]
+				if strings.HasPrefix(dns, ".") {
+					dns = dns[1:]
+				}
 			}
 			if strings.HasPrefix(dns, prefix) {
 				new := *rs

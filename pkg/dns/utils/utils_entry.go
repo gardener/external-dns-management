@@ -52,6 +52,9 @@ func (this *DNSEntryObject) GetDNSName() string {
 func (this *DNSEntryObject) GetTargets() []string {
 	return this.DNSEntry().Spec.Targets
 }
+func (this *DNSEntryObject) GetOwnerId() *string {
+	return this.DNSEntry().Spec.OwnerId
+}
 func (this *DNSEntryObject) GetTTL() *int64 {
 	return this.DNSEntry().Spec.TTL
 }

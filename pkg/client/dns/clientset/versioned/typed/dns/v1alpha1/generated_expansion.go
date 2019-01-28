@@ -20,4 +20,6 @@ package v1alpha1
 
 type DNSEntryExpansion interface{}
 
+type DNSOwnerExpansion interface{}
+
 type DNSProviderExpansion interface{}

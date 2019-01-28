@@ -22,37 +22,24 @@ import (
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type DNSEntryList struct {
+type DNSOwnerList struct {
 	metav1.TypeMeta `json:",inline"`
 	// Standard list metadata
 	// More info: http://releases.k8s.io/HEAD/docs/devel/api-conventions.md#metadata
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []DNSEntry `json:"items"`
+	Items           []DNSOwner `json:"items"`
 }
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-type DNSEntry struct {
+type DNSOwner struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              DNSEntrySpec   `json:"spec"`
-	Status            DNSEntryStatus `json:"status"`
+	Spec              DNSOwnerSpec `json:"spec"`
 }
 
-type DNSEntrySpec struct {
-	Type                string   `json:"type,omitempty"`
-	DNSName             string   `json:"dnsName"`
-	OwnerId             *string  `json:"ownerId,omitempty"`
-	TTL                 *int64   `json:"ttl,omitempty"`
-	CNameLookupInterval *int64   `json:"cnameLookupInterval,omitempty"`
-	Text                []string `json:"text,omitempty"`
-	Targets             []string `json:"targets,omitempt"`
-}
-
-type DNSEntryStatus struct {
-	State   string   `json:"state"`
-	Message *string  `json:"message,omitempty"`
-	Zone    *string  `json:"zone,omitempty"`
-	Targets []string `json:"targets,omitempty"`
+type DNSOwnerSpec struct {
+	OwnerId string `json:"ownerId,omitempty"`
+	Active  *bool  `json:"active,omitempty"`
 }

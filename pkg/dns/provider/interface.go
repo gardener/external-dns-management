@@ -50,11 +50,12 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 }
 
 type DNSHostedZoneInfo struct {
-	Id     string
-	Domain string
+	Id        string
+	Domain    string
+	Forwarded []string
 }
 
-type DNSHostedZoneInfos []*DNSHostedZoneInfo
+type DNSHostedZoneInfos []DNSHostedZoneInfo
 
 func (this DNSHostedZoneInfos) equivalentTo(infos DNSHostedZoneInfos) bool {
 	if len(this) != len(infos) {
@@ -82,7 +83,7 @@ type DNSHandlerConfig struct {
 type DNSHandler interface {
 	GetZones() (DNSHostedZoneInfos, error)
 	GetDNSSets(zoneid string) (dns.DNSSets, error)
-	ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*ChangeRequest) error
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, reqs []*ChangeRequest) error
 }
 
 type DNSHandlerFactory interface {
@@ -103,7 +104,7 @@ type DNSProvider interface {
 
 	GetDNSSets(string) (dns.DNSSets, error)
 
-	ExecuteRequests(logger logger.LogContext, zoneid string, requests []*ChangeRequest) error
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, requests []*ChangeRequest) error
 	Match(dns string) int
 }
 
@@ -128,4 +129,7 @@ type DNSState interface {
 	RemoveProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status
 	ProviderDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status
 	EntryDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status
+
+	UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject) reconcile.Status
+	OwnerDeleted(logger logger.LogContext, owner resources.ObjectKey) reconcile.Status
 }

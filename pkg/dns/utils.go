@@ -17,10 +17,9 @@
 package dns
 
 import (
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
-
 
 func SupportedRecordType(t string) bool {
 	switch t {

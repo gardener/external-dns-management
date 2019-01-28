@@ -23,11 +23,17 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
-func filterByZones(domains utils.StringSet, zones []*DNSHostedZoneInfo) (result utils.StringSet, err error) {
+func filterByZones(domains utils.StringSet, zones DNSHostedZoneInfos) (result utils.StringSet, err error) {
 	result = utils.StringSet{}
 	for d := range domains {
+	_zones:
 		for _, z := range zones {
 			if dnsutils.Match(d, z.Domain) {
+				for _, sub := range z.Forwarded {
+					if dnsutils.Match(d, sub) {
+						break _zones
+					}
+				}
 				result.Add(d)
 				break
 			}

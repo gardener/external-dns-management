@@ -192,6 +192,15 @@ func updateDNSProvider(logger logger.LogContext, state DNSState, provider *dnsut
 
 		}
 	}
+	for _, zone := range this.zoneinfos {
+		for _, sub := range zone.Forwarded {
+			for i := range included {
+				if dnsutils.Match(sub, i) {
+					excluded.Add(sub)
+				}
+			}
+		}
+	}
 	if last == nil || !included.Equals(last.included) || !excluded.Equals(last.excluded) {
 		if len(included) > 0 {
 			logger.Infof("  included domains: %s", included)
@@ -295,6 +304,6 @@ func (this *dnsProviderVersion) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	return this.handler.GetDNSSets(zoneid)
 }
 
-func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zoneid string, reqs []*ChangeRequest) error {
-	return this.handler.ExecuteRequests(logger, zoneid, reqs)
+func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, reqs []*ChangeRequest) error {
+	return this.handler.ExecuteRequests(logger, zone, reqs)
 }
