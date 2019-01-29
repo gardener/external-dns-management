@@ -92,6 +92,11 @@ func (this *RecordSet) Match(set *RecordSet) bool {
 	if len(this.Records) != len(set.Records) {
 		return false
 	}
+
+	if this.TTL != set.TTL {
+		return false
+	}
+
 	for _, r := range this.Records {
 		found := false
 		for _, t := range set.Records {
