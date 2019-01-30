@@ -51,7 +51,7 @@ This project contains:
 - A library that can be used to implement _DNS Source Controllers_
 - A library that can be used to implement _DNS Provisioning Controllers_
 - Source controllers for Services and Ingresses based on annotations.
-- Provisioning Controllers for _Amazon Route53_ and _Google CloudDNS_.
+- Provisioning Controllers for _Amazon Route53_, _Google CloudDNS_, and _Azure DNS_.
 - A controller manager hosting all these controllers.
 
 ## How to implement Source Controllers
