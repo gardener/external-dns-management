@@ -18,10 +18,12 @@ package provider
 
 import (
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
-	"github.com/gardener/controller-manager-library/pkg/utils"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -692,7 +694,7 @@ func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEnt
 
 	if status.IsSucceeded() && new.IsValid() {
 		if new.Interval() > 0 {
-			this.controller.Enqueue(object.Object)
+			this.enqueueNextCnameLookup(logger, object.Object, new.Interval())
 		}
 		if new.IsModified() && newzone != "" {
 			logger.Infof("trigger zone %q", newzone)
@@ -700,6 +702,30 @@ func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEnt
 		}
 	}
 	return status
+}
+
+func (this *state) safeIsEntry(objectName resources.ObjectName) bool {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	_, ok := this.entries[objectName]
+	return ok
+}
+
+func (this *state) enqueueNextCnameLookup(logger logger.LogContext, obj resources.Object, interval int64) {
+	name := obj.ObjectName()
+	entry := this.entries[name]
+	if time.Now().After(entry.nextCnameLookup) {
+		delta := time.Duration(interval) * time.Second
+		logger.Infof("Next cname lookups in %ds", interval)
+		entry.nextCnameLookup = time.Now().Add(delta)
+		timer := time.NewTimer(delta)
+		go func() {
+			<-timer.C
+			if this.safeIsEntry(name) {
+				this.controller.Enqueue(obj)
+			}
+		}()
+	}
 }
 
 func (this *state) EntryDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
