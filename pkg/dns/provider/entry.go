@@ -18,13 +18,11 @@ package provider
 
 import (
 	"fmt"
+	"github.com/gardener/external-dns-management/pkg/dns"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"net"
 	"strings"
 	"sync"
-	"time"
-
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -38,17 +36,16 @@ import (
 )
 
 type Entry struct {
-	lock            sync.Mutex
-	object          *dnsutils.DNSEntryObject
-	dnsname         string
-	targets         Targets
-	mappings        map[string][]string
-	ttl             *int64
-	interval        int64
-	valid           bool
-	modified        bool
-	duplicate       bool
-	nextCnameLookup time.Time
+	lock      sync.Mutex
+	object    *dnsutils.DNSEntryObject
+	dnsname   string
+	targets   Targets
+	mappings  map[string][]string
+	ttl       *int64
+	interval  int64
+	valid     bool
+	modified  bool
+	duplicate bool
 }
 
 func NewEntry(object *dnsutils.DNSEntryObject) *Entry {
