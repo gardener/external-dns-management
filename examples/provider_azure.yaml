@@ -4,9 +4,9 @@ metadata:
   name: aws
   namespace: default
 spec:
-  type: AWS
+  type: Azure
   secretRef:
-    name: aws-credentials
+    name: azure-credentials
   domains:
     include:
     - ringtest.dev.k8s.ondemand.com
