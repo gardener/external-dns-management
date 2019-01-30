@@ -81,7 +81,7 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 		return bs_empty, "", nil
 	}
 
-	exec.Infof("Desired %s: %s record set %s[%s] with TTL %d: %s", req.Action, rset.Type, name, exec.zoneName, rset.TTL, rset.RecordString())
+	exec.Infof("Desired %s: %s record set %s[%s]: %s", req.Action, rset.Type, name, exec.zoneName, rset.RecordString())
 	return exec.buildMappedRecordSet(name, rset)
 }
 

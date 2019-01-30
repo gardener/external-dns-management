@@ -129,11 +129,8 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 		err = fmt.Errorf("only Text or Targets possible", err)
 		return
 	}
-	if spec.TTL != nil && (*spec.TTL == 0 || *spec.TTL < 0) {
-		err = fmt.Errorf("TTL must be  greater than zero", err)
-		return
-	}
 
+	this.ttl = spec.TTL
 	for _, t := range spec.Targets {
 		new := NewTargetFromEntry(t, this)
 		if targets.Has(new) {
@@ -232,13 +229,6 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 		}
 	}
 	mod := resources.NewModificationState(this.object)
-
-	if ((spec.TTL == nil && this.TTL() != nil) || (spec.TTL != nil && this.TTL() == nil)) || (*this.TTL() != *spec.TTL) {
-		this.modified = true
-	}
-
-	this.ttl = spec.TTL
-
 	status := &this.object.DNSEntry().Status
 	if targets.DifferFrom(this.targets) {
 		logger.Infof("current targets differ from status")
