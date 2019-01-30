@@ -4,3 +4,4 @@ bin/
 tmp/
 /local/
 /dns-controller-manager
+.vscode/
