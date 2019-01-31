@@ -233,13 +233,15 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 	}
 	mod := resources.NewModificationState(this.object)
 
+	status := &this.object.DNSEntry().Status
 	if ((spec.TTL == nil && this.TTL() != nil) || (spec.TTL != nil && this.TTL() == nil)) || (*this.TTL() != *spec.TTL) {
 		this.modified = true
+		status.TTL = spec.TTL
+		mod.Modify(true)
 	}
 
 	this.ttl = spec.TTL
 
-	status := &this.object.DNSEntry().Status
 	if targets.DifferFrom(this.targets) {
 		logger.Infof("current targets differ from status")
 		this.modified = true

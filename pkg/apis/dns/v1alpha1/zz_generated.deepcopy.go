@@ -192,6 +192,11 @@ func (in *DNSEntryStatus) DeepCopyInto(out *DNSEntryStatus) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.TTL != nil {
+		in, out := &in.TTL, &out.TTL
+		*out = new(int64)
+		**out = **in
+	}
 	if in.Targets != nil {
 		in, out := &in.Targets, &out.Targets
 		*out = make([]string, len(*in))
