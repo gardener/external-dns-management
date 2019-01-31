@@ -1,12 +1,12 @@
 apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSProvider
 metadata:
-  name: azure
+  name: google
   namespace: default
 spec:
-  type: Azure
+  type: CloudDNS
   secretRef:
-    name: azure-credentials
+    name: google-credentials
   domains:
     include:
     - ringtest.dev.k8s.ondemand.com
