@@ -18,10 +18,12 @@ package provider
 
 import (
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
-	"github.com/gardener/controller-manager-library/pkg/utils"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -41,7 +43,8 @@ type state struct {
 	controller controller.Interface
 	config     Config
 
-	pending utils.StringSet
+	pending     utils.StringSet
+	pendingKeys resources.ClusterObjectKeySet
 
 	ownerids utils.StringSet
 	owners   map[resources.ObjectName]*dnsutils.DNSOwnerObject
@@ -75,6 +78,7 @@ func NewDNSState(controller controller.Interface, config Config) DNSState {
 		owners:          map[resources.ObjectName]*dnsutils.DNSOwnerObject{},
 		ownercnt:        map[string]int{config.Ident: 1},
 		pending:         utils.StringSet{},
+		pendingKeys:     resources.ClusterObjectKeySet{},
 		foreign:         map[resources.ObjectName]*foreignProvider{},
 		providers:       map[resources.ObjectName]*dnsProviderVersion{},
 		deleting:        map[resources.ObjectName]*dnsProviderVersion{},
@@ -127,6 +131,12 @@ func (this *state) Start() {
 	for c := range this.pending {
 		this.controller.Infof("trigger %s", c)
 		this.controller.EnqueueCommand(c)
+	}
+
+	for key := range this.pendingKeys {
+		this.controller.Infof("trigger key %s/%s", key.Namespace(), key.Name())
+		this.controller.EnqueueKey(key)
+		delete(this.pendingKeys, key)
 	}
 }
 
@@ -387,6 +397,14 @@ func (this *state) triggerHostedZone(name string) {
 		this.controller.EnqueueCommand(cmd)
 	} else {
 		this.pending.Add(cmd)
+	}
+}
+
+func (this *state) triggerKey(key resources.ClusterObjectKey) {
+	if this.controller.IsReady() {
+		this.controller.EnqueueKey(key)
+	} else {
+		this.pendingKeys.Add(key)
 	}
 }
 
@@ -692,7 +710,7 @@ func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEnt
 
 	if status.IsSucceeded() && new.IsValid() {
 		if new.Interval() > 0 {
-			this.controller.Enqueue(object.Object)
+			status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
 		}
 		if new.IsModified() && newzone != "" {
 			logger.Infof("trigger zone %q", newzone)
@@ -778,7 +796,7 @@ func (this *state) AddEntry(logger logger.LogContext, object *dnsutils.DNSEntryO
 					cur.duplicate = true
 					logger.Warnf("DNS name %q already busy for %q, but this one was earlier", dnsname, cur.ObjectName())
 					logger.Infof("reschedule %q for error update", cur.ObjectName())
-					this.controller.Enqueue(cur.object)
+					this.triggerKey(cur.ClusterKey())
 				}
 			}
 		}

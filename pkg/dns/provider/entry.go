@@ -18,11 +18,12 @@ package provider
 
 import (
 	"fmt"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"net"
 	"strings"
 	"sync"
+
+	"github.com/gardener/external-dns-management/pkg/dns"
+	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -350,6 +351,10 @@ func (this *Entry) NormalizeTargets(logger logger.LogContext, targets ...Target)
 func (this *Entry) Before(e *Entry) bool {
 	if e == nil {
 		return true
+	}
+	if this.object.GetCreationTimestamp().Time.Equal(e.object.GetCreationTimestamp().Time) {
+		// for entries created at same time compare objectname to define strict order
+		return strings.Compare(this.object.ObjectName().String(), e.object.ObjectName().String()) < 0
 	}
 	return this.object.GetCreationTimestamp().Time.Before(e.object.GetCreationTimestamp().Time)
 }
