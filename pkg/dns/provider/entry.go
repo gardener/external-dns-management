@@ -157,7 +157,7 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 	return
 }
 
-func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObject, resp, zoneid string, err error) reconcile.Status {
+func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTtl int64) reconcile.Status {
 	this.lock.Lock()
 	this.lock.Unlock()
 
@@ -234,12 +234,8 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 	mod := resources.NewModificationState(this.object)
 
 	status := &this.object.DNSEntry().Status
-	if ((spec.TTL == nil && this.TTL() != nil) || (spec.TTL != nil && this.TTL() == nil)) || (*this.TTL() != *spec.TTL) {
-		this.modified = true
-		status.TTL = spec.TTL
-		mod.Modify(true)
-	}
 
+	this.setTTLStatus(spec, status, mod, defaultTtl)
 	this.ttl = spec.TTL
 
 	if targets.DifferFrom(this.targets) {
@@ -292,6 +288,20 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 	}
 
 	return reconcile.UpdateStatus(logger, mod.Update())
+}
+
+func (this *Entry) setTTLStatus(spec *api.DNSEntrySpec, status *api.DNSEntryStatus, mod *resources.ModificationState, defaultTtl int64) {
+	if (spec.TTL != nil && this.TTL() != nil && *this.TTL() != *spec.TTL) || (this.TTL() == nil && spec.TTL != nil) {
+		this.modified = true
+		status.TTL = spec.TTL
+		mod.Modify(true)
+	} else if this.TTL() != nil && spec.TTL == nil {
+		this.modified = true
+		mod.Modify(true)
+	}
+	if status.TTL == nil || spec.TTL == nil {
+		status.TTL = &defaultTtl
+	}
 }
 
 func (this *Entry) targetList(targets Targets) ([]string, string) {
