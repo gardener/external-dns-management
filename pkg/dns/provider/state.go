@@ -829,10 +829,6 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 	modified := false
 	for _, e := range entries {
 		// TODO: err handling
-
-		if e.ttl != nil {
-			changes.config.TTL = *e.ttl
-		}
 		mod, _ := changes.Apply(e.DNSName(), NewStatusUpdate(logger, e), e.Targets()...)
 		modified = modified || mod
 	}

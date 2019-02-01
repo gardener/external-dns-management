@@ -235,8 +235,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 
 	status := &this.object.DNSEntry().Status
 
-	this.setTTLStatus(spec, status, mod, defaultTtl)
-	this.ttl = spec.TTL
+	this.setTTL(spec, status, mod, defaultTtl)
 
 	if targets.DifferFrom(this.targets) {
 		logger.Infof("current targets differ from status")
@@ -290,16 +289,19 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 	return reconcile.UpdateStatus(logger, mod.Update())
 }
 
-func (this *Entry) setTTLStatus(spec *api.DNSEntrySpec, status *api.DNSEntryStatus, mod *resources.ModificationState, defaultTtl int64) {
-	if (spec.TTL != nil && this.TTL() != nil && *this.TTL() != *spec.TTL) || (this.TTL() == nil && spec.TTL != nil) {
-		this.modified = true
-		status.TTL = spec.TTL
-		mod.Modify(true)
-	} else if this.TTL() != nil && spec.TTL == nil {
+func (this *Entry) setTTL(spec *api.DNSEntrySpec, status *api.DNSEntryStatus, mod *resources.ModificationState, defaultTtl int64) {
+
+	if spec.TTL != this.TTL() {
+		this.ttl = spec.TTL
 		this.modified = true
 		mod.Modify(true)
 	}
-	if status.TTL == nil || spec.TTL == nil {
+
+	if spec.TTL != status.TTL {
+		status.TTL = spec.TTL
+	}
+
+	if status.TTL == nil {
 		status.TTL = &defaultTtl
 	}
 }

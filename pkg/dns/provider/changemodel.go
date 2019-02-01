@@ -218,7 +218,7 @@ func (this *ChangeModel) Exec(apply bool, name string, done DoneHandler, targets
 
 	view := this.getProviderView(p)
 	oldset := view.dnssets[name]
-	newset := this.NewDNSSetForTargets(name, oldset, this.config.TTL, targets...)
+	newset := this.NewDNSSetForTargets(name, oldset, targets...)
 	mod := false
 	if oldset != nil {
 		if this.IsForeign(oldset) {
@@ -336,7 +336,7 @@ func (this *ChangeModel) setOwner(set *dns.DNSSet, targets []Target) bool {
 	return false
 }
 
-func (this *ChangeModel) NewDNSSetForTargets(name string, base *dns.DNSSet, ttl int64, targets ...Target) *dns.DNSSet {
+func (this *ChangeModel) NewDNSSetForTargets(name string, base *dns.DNSSet, targets ...Target) *dns.DNSSet {
 	set := dns.NewDNSSet(name)
 	//if base != nil {
 	//	meta := base.Sets[RS_META]
@@ -355,19 +355,21 @@ func (this *ChangeModel) NewDNSSetForTargets(name string, base *dns.DNSSet, ttl 
 	cnames := []string{}
 	for _, t := range targets {
 		ty := t.GetRecordType()
+		// use status calculated in entry
+		ttl := t.GetEntry().object.Status().TTL
 		if ty == dns.RS_CNAME && len(targets) > 1 {
 			cnames = append(cnames, t.GetHostName())
 			addrs, err := net.LookupHost(t.GetHostName())
 			if err == nil {
 				for _, addr := range addrs {
-					AddRecord(targetsets, dns.RS_A, addr, ttl)
+					AddRecord(targetsets, dns.RS_A, addr, *ttl)
 				}
 			} else {
 				this.Errorf("cannot lookup '%s': %s", t.GetHostName(), err)
 			}
 			this.Debugf("mapping target '%s' to A records: %s", t.GetHostName(), strings.Join(addrs, ","))
 		} else {
-			AddRecord(targetsets, ty, t.GetHostName(), ttl)
+			AddRecord(targetsets, ty, t.GetHostName(), *ttl)
 		}
 	}
 	set.Sets = targetsets
