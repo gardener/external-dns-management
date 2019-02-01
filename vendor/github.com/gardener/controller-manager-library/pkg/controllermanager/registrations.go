@@ -17,6 +17,7 @@
 package controllermanager
 
 import (
+	// golint: ignore
 	_ "github.com/gardener/controller-manager-library/pkg/informerfactories/gardenextensions"
 	_ "github.com/gardener/controller-manager-library/pkg/informerfactories/kubernetes"
 )

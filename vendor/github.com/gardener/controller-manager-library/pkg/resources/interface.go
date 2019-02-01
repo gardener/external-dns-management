@@ -41,7 +41,7 @@ type ClusterObjectKey struct {
 	objectKey
 }
 
-// Key used for worker queues.
+// ObjectKey used for worker queues.
 type ObjectKey struct {
 	groupKind schema.GroupKind
 	name      ObjectName

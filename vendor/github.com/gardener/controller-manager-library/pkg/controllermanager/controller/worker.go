@@ -129,7 +129,7 @@ func (w *worker) processNextWorkItem() bool {
 			return true
 		}
 	}
-	deleted:=false
+	deleted := false
 	if rkey != nil {
 		if r != nil {
 			r = r.DeepCopy()
@@ -139,10 +139,10 @@ func (w *worker) processNextWorkItem() bool {
 		var f func(reconcile.Interface) reconcile.Status
 		switch {
 		case r == nil:
-			deleted=true
+			deleted = true
 			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Deleted(w, *rkey) }
 		case r.IsDeleting():
-			deleted=true
+			deleted = true
 			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Delete(w, r) }
 		default:
 			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Reconcile(w, r) }

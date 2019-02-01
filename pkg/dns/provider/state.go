@@ -337,17 +337,17 @@ func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, 
 			nested.Add(z.Domain())
 		}
 	}
-	for dns, e := range this.dnsnames {
+	loop: for dns, e := range this.dnsnames {
 		if e.IsValid() {
 			if dnsutils.Match(dns, domain) {
 				for _, excl := range zone.Forwarded() {
 					if dnsutils.Match(dns, excl) {
-						continue
+						continue loop
 					}
 				}
 				for excl := range nested { // fallback if no forwarded domains are reported
 					if dnsutils.Match(dns, excl) {
-						continue
+						continue loop
 					}
 				}
 				if this.isActive(e) {
@@ -513,8 +513,8 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 				logger.Infof("        forwarded: %s", utils.Strings(z.Forwarded...))
 			}
 		}
+		this.triggerEntries(logger, entries)
 	}
-	this.triggerEntries(logger, entries)
 	return status
 }
 
@@ -622,9 +622,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 				this.removeProviderForZone(n, pname)
 			}
 		}
-		for _, e := range entries {
-			this.controller.Enqueue(e.object)
-		}
+		this.triggerEntries(logger,entries)
 		err := this.registerSecret(logger, nil, cur)
 		if err != nil {
 			return reconcile.Delay(logger, err)

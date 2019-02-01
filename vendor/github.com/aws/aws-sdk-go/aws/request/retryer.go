@@ -40,7 +40,6 @@ var throttleCodes = map[string]struct{}{
 	"RequestThrottled":                       {},
 	"TooManyRequestsException":               {}, // Lambda functions
 	"PriorRequestNotComplete":                {}, // Route53
-	"TransactionInProgressException":         {},
 }
 
 // credsExpiredCodes is a collection of error codes which signify the credentials
@@ -98,7 +97,7 @@ func isNestedErrorRetryable(parentErr awserr.Error) bool {
 	}
 
 	if t, ok := err.(temporaryError); ok {
-		return t.Temporary() || isErrConnectionReset(err)
+		return t.Temporary()
 	}
 
 	return isErrConnectionReset(err)

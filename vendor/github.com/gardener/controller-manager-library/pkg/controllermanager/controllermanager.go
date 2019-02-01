@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"strings"
 	"sync"
 	"time"
@@ -66,6 +67,9 @@ func NewControllerManager(ctx context.Context, def *Definition) (*ControllerMana
 	config := config.Get(ctx)
 	ctx = context.WithValue(ctx, resources.ATTR_EVENTSOURCE, def.GetName())
 
+	if config.NamespaceRestriction {
+		access.RegisterNamespaceOnlyAccess()
+	}
 	groups := def.Groups()
 
 	logger.Infof("configured groups: %s", groups.AllGroups())

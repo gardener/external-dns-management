@@ -16,7 +16,9 @@
 
 package resources
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 func SetAnnotation(o ObjectData, key, value string) bool {
 	annos := o.GetAnnotations()

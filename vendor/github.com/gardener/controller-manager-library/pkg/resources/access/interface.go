@@ -28,6 +28,11 @@ const (
 	ACCESS_DENIED
 )
 
+const (
+	MAX_PRIO = 0
+	MIN_PRIO = 32768
+)
+
 type AccessController interface {
 	Name() string
 	Allowed(src resources.ClusterObjectKey, verb string, tgt resources.ClusterObjectKey) (int, error)
@@ -35,21 +40,24 @@ type AccessController interface {
 
 func Allowed(src resources.ClusterObjectKey, verb string, tgt resources.ClusterObjectKey) (bool, string, error) {
 	logger.Debugf("checking access %s %s %s", src, verb, tgt)
-	list := forCluster(tgt.Cluster())
-	for _, e := range list {
-		a, err := e.controller.Allowed(src, verb, tgt)
-		logger.Debugf("%s: %s: checking access: %d, %s", tgt.Cluster(), e.controller.Name(), a, err)
-		if err != nil {
-			return false, "error in " + e.controller.Name(), err
-		}
-		switch a {
-		case ACCESS_PROCEED:
-		case ACCESS_GRANTED:
-			return true, "granted by " + e.controller.Name(), nil
-		case ACCESS_DENIED:
-			return false, "denied by " + e.controller.Name(), nil
-		default:
-			return false, "denied by " + e.controller.Name(), fmt.Errorf("invalid response from %s: %d", e.controller.Name(), a)
+	lock.RLock()
+	defer lock.RUnlock()
+	for _, e := range entries {
+		for _, c := range e.forCluster(tgt.Cluster()) {
+			a, err := c.Allowed(src, verb, tgt)
+			logger.Debugf("%s: %s: checking access: %d, %s", tgt.Cluster(), c.Name(), a, err)
+			if err != nil {
+				return false, "error in " + c.Name(), err
+			}
+			switch a {
+			case ACCESS_PROCEED:
+			case ACCESS_GRANTED:
+				return true, "granted by " + c.Name(), nil
+			case ACCESS_DENIED:
+				return false, "denied by " + c.Name(), nil
+			default:
+				return false, "denied by " + c.Name(), fmt.Errorf("invalid response from %s: %d", c.Name(), a)
+			}
 		}
 	}
 	return true, "", nil

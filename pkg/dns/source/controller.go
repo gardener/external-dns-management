@@ -65,14 +65,8 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		ReconcilerWatch("entries", api.GroupName, api.DNSEntryKind)
 }
 
-func SlaveResources(c controller.Interface) []resources.Interface {
-	target := c.GetCluster(TARGET_CLUSTER)
-	res, err := target.Resources().GetByGK(ENTRY)
-	if err != nil {
-		panic(err)
-	}
-	return []resources.Interface{res}
-}
+var SlaveResources = reconcilers.ClusterResources(TARGET_CLUSTER, ENTRY)
+
 
 func MasterResourcesType(kind schema.GroupKind) reconcilers.Resources {
 	return func(c controller.Interface) []resources.Interface {

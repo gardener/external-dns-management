@@ -16,40 +16,60 @@
 
 package access
 
-import "sync"
+import (
+	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/logger"
+	"sync"
+)
 
 var (
 	lock    sync.RWMutex
-	entries = map[string][]*entry{}
+	entries = []*entry{}
 )
 
 type entry struct {
-	priority   int
-	controller AccessController
+	priority int
+	clusters map[string][]AccessController
 }
 
-func forCluster(clusterId string) []*entry {
-	lock.RLock()
-	defer lock.RUnlock()
-	return entries[clusterId]
+func (this *entry) forCluster(clusterId string) []AccessController {
+	list := this.clusters[clusterId]
+	global := this.clusters[""]
+	if list != nil {
+		if global != nil {
+			return append(append([]AccessController{}, list...), global...)
+		}
+		return list
+	}
+	return global
 }
 
 func Register(ctr AccessController, clusterId string, priority int) {
+	if priority < MIN_PRIO || priority > MAX_PRIO {
+		panic(fmt.Errorf("invalid access controller priority %d for %q", priority, ctr.Name()))
+	}
 	lock.Lock()
 	defer lock.Unlock()
 
+	if clusterId == "" {
+		logger.Infof("registering global access controller %q with priority %s", ctr.Name(), priority)
+	} else {
+		logger.Infof("registering access controller %q for cluster %q with priority %s", ctr.Name(), clusterId, priority)
+	}
 	entered := false
-	list := entries[clusterId]
-	new := &entry{priority, ctr}
-	for i, e := range list {
-		if e.priority > priority {
-			list = append(list[:i], append([]*entry{new}, list[i:]...)...)
-			entered = true
-			break
+	found := entries[priority]
+	if found == nil {
+		found = &entry{priority, map[string][]AccessController{}}
+		for i, e := range entries {
+			if e.priority > priority {
+				entries = append(entries[:i], append([]*entry{found}, entries[i:]...)...)
+				entered = true
+				break
+			}
+		}
+		if !entered {
+			entries = append(entries, found)
 		}
 	}
-	if !entered {
-		list = append(list, new)
-	}
-	entries[clusterId] = list
+	found.clusters[clusterId] = append(found.clusters[clusterId], ctr)
 }

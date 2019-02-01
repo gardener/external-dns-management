@@ -25,12 +25,13 @@ import (
 )
 
 type Config struct {
-	lock             sync.Mutex
-	LogLevel         string
-	Controllers      string
-	PluginDir        string
-	ServerPortHTTP   int
-	ArbitraryOptions map[string]*ArbitraryOption
+	lock                 sync.Mutex
+	LogLevel             string
+	Controllers          string
+	PluginDir            string
+	ServerPortHTTP       int
+	NamespaceRestriction bool
+	ArbitraryOptions     map[string]*ArbitraryOption
 }
 
 func NewConfig() *Config {
@@ -85,10 +86,11 @@ func (this *Config) AddIntOption(name string) (*ArbitraryOption, bool) {
 }
 
 func (this *Config) AddToCommand(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVarP(&this.Controllers, "controllers", "", "all", "comma separated list of controllers to start (<name>,source,target,all)")
+	cmd.PersistentFlags().StringVarP(&this.Controllers, "controllers", "c", "all", "comma separated list of controllers to start (<name>,source,target,all)")
 	cmd.PersistentFlags().StringVarP(&this.PluginDir, "plugin-dir", "", "", "directory containing go plugins")
 	cmd.PersistentFlags().IntVarP(&this.ServerPortHTTP, "server-port-http", "", 0, "directory containing go plugins")
 	cmd.PersistentFlags().StringVarP(&this.LogLevel, "log-level", "D", "", "logrus log level")
+	cmd.PersistentFlags().BoolVarP(&this.NamespaceRestriction, "namespace-local-access-only", "n", false, "enable access restriction for namespace local access only")
 
 	for _, o := range this.ArbitraryOptions {
 		o.AddToCommand(cmd)
