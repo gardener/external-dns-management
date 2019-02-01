@@ -356,20 +356,20 @@ func (this *ChangeModel) NewDNSSetForTargets(name string, base *dns.DNSSet, targ
 	for _, t := range targets {
 		ty := t.GetRecordType()
 		// use status calculated in entry
-		ttl := t.GetEntry().object.Status().TTL
+		ttl := t.GetEntry().TTL()
 		if ty == dns.RS_CNAME && len(targets) > 1 {
 			cnames = append(cnames, t.GetHostName())
 			addrs, err := net.LookupHost(t.GetHostName())
 			if err == nil {
 				for _, addr := range addrs {
-					AddRecord(targetsets, dns.RS_A, addr, *ttl)
+					AddRecord(targetsets, dns.RS_A, addr, ttl)
 				}
 			} else {
 				this.Errorf("cannot lookup '%s': %s", t.GetHostName(), err)
 			}
 			this.Debugf("mapping target '%s' to A records: %s", t.GetHostName(), strings.Join(addrs, ","))
 		} else {
-			AddRecord(targetsets, ty, t.GetHostName(), *ttl)
+			AddRecord(targetsets, ty, t.GetHostName(), ttl)
 		}
 	}
 	set.Sets = targetsets

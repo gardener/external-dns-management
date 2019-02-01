@@ -41,7 +41,7 @@ type Entry struct {
 	dnsname   string
 	targets   Targets
 	mappings  map[string][]string
-	ttl       *int64
+	ttl       int64
 	interval  int64
 	valid     bool
 	modified  bool
@@ -73,7 +73,7 @@ func (this *Entry) Description() string {
 	return this.object.Description()
 }
 
-func (this *Entry) TTL() *int64 {
+func (this *Entry) TTL() int64 {
 	return this.ttl
 }
 
@@ -235,7 +235,16 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 
 	status := &this.object.DNSEntry().Status
 
-	this.setTTL(spec, status, mod, defaultTtl)
+	ttl := defaultTtl
+	if spec.TTL != nil {
+		ttl = *spec.TTL
+	}
+	if ttl != this.ttl {
+		this.ttl = ttl
+		this.modified = true
+		mod.Modify(true)
+		status.TTL = &ttl
+	}
 
 	if targets.DifferFrom(this.targets) {
 		logger.Infof("current targets differ from status")
@@ -287,23 +296,6 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 	}
 
 	return reconcile.UpdateStatus(logger, mod.Update())
-}
-
-func (this *Entry) setTTL(spec *api.DNSEntrySpec, status *api.DNSEntryStatus, mod *resources.ModificationState, defaultTtl int64) {
-
-	if spec.TTL != this.TTL() {
-		this.ttl = spec.TTL
-		this.modified = true
-		mod.Modify(true)
-	}
-
-	if spec.TTL != status.TTL {
-		status.TTL = spec.TTL
-	}
-
-	if status.TTL == nil {
-		status.TTL = &defaultTtl
-	}
 }
 
 func (this *Entry) targetList(targets Targets) ([]string, string) {
