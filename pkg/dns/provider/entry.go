@@ -21,6 +21,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"net"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -243,7 +244,6 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 		this.ttl = ttl
 		this.modified = true
 		mod.Modify(true)
-		status.TTL = &ttl
 	}
 
 	if targets.DifferFrom(this.targets) {
@@ -260,9 +260,8 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 		}
 		this.targets = targets
 
-		list, msg := this.targetList(targets)
+		_, msg := this.targetList(targets)
 		this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
-		status.Targets = list
 		mod.Modify(true)
 	} else {
 		var cur Targets
@@ -270,7 +269,6 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 			cur = append(cur, NewTargetFromEntry(t, this))
 		}
 		if this.Targets().DifferFrom(cur) {
-			status.Targets, _ = this.targetList(this.targets)
 			mod.Modify(true)
 		}
 	}
@@ -300,7 +298,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 
 func (this *Entry) targetList(targets Targets) ([]string, string) {
 	list := []string{}
-	msg := "update effective targets: "
+	msg := "updating effective targets: "
 	sep := "[ "
 	for _, t := range targets {
 		list = append(list, t.GetHostName())
@@ -311,8 +309,7 @@ func (this *Entry) targetList(targets Targets) ([]string, string) {
 	logger.Info(msg)
 	return list, msg
 }
-
-func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg string) error {
+func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg string, modify ...resources.Modifier) error {
 	f := func(data resources.ObjectData) (bool, error) {
 		o := data.(*api.DNSEntry)
 		if state == api.STATE_PENDING && o.Status.State != "" {
@@ -325,7 +322,16 @@ func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg stri
 		if mod.IsModified() {
 			logger.Infof("update state of '%s/%s' to %s (%s)", o.Namespace, o.Name, state, msg)
 		}
-		return mod.IsModified(), nil
+		isModified := mod.IsModified()
+		//check other functions if object should be modified
+		for _, f := range modify {
+			mod, _ := f(o)
+			if mod && !isModified {
+				isModified = true
+			}
+		}
+
+		return isModified, nil
 	}
 	_, err := this.object.Modify(f)
 	return err
@@ -402,11 +408,42 @@ func (this *StatusUpdate) Failed(err error) {
 		}
 	}
 }
+
+func safe(a *int64) int64 {
+	if a == nil {
+		return 0
+	}
+	return *a
+}
+
 func (this *StatusUpdate) Succeeded() {
 	if !this.done {
 		this.done = true
 		this.modified = false
-		err := this.UpdateStatus(this.logger, api.STATE_READY, "dns entry active")
+
+		// this.object.Update()
+
+		f := func(data resources.ObjectData) (bool, error) {
+			o := data.(*api.DNSEntry)
+			mod := &utils.ModificationState{}
+			status := o.Status
+			if safe(status.TTL) != this.ttl {
+				o.Status.TTL = &this.ttl
+				mod.Modify(true)
+				msg := fmt.Sprintf("Successfully updated TTL to %d", this.ttl)
+				this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
+			}
+			targetList, _ := this.targetList(this.targets)
+			if !reflect.DeepEqual(status.Targets, targetList) {
+				o.Status.Targets = targetList
+				mod.Modify(true)
+				msg := fmt.Sprintf("Successfully updated targets to %s", targetList)
+				this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
+			}
+			return mod.IsModified(), nil
+		}
+
+		err := this.UpdateStatus(this.logger, api.STATE_READY, "dns entry active", f)
 		if err != nil {
 			this.logger.Errorf("cannot update: %s", err)
 		}
