@@ -14,29 +14,17 @@
  *
  */
 
-package route53
+package alicloud
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
-const TYPE_AWS = "AWS"
+const TYPE_CODE = "AliCloud"
+const CONTROLLER_NAME = "alicloud-dns-controller"
 
-type Factory struct {
-}
-
-var _ provider.DNSHandlerFactory = &Factory{}
-
-func (this *Factory) IsResponsibleFor(object *dnsutils.DNSProviderObject) bool {
-	return object.DNSProvider().Spec.Type == TYPE_AWS
-}
-
-func (this *Factory) TypeCode() string {
-	return TYPE_AWS
-}
-
-func (this *Factory) Create(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
-	return NewHandler(logger, config)
+func init() {
+	provider.DNSController(CONTROLLER_NAME, provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)).
+		FinalizerDomain("dns.gardener.cloud").
+		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

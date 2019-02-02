@@ -50,9 +50,17 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 }
 
 type DNSHostedZoneInfo struct {
-	Id        string
-	Domain    string
-	Forwarded []string
+	Id        string   // identifying id for provider api
+	Domain    string   // base domain for zone
+	Forwarded []string // forwarded sub domains
+	Key       string   // internal key used by provider (not used by this lib)
+}
+
+func (this *DNSHostedZoneInfo) GetKey() string {
+	if this.Key != "" {
+		return this.Key
+	}
+	return this.Id
 }
 
 type DNSHostedZoneInfos []DNSHostedZoneInfo
@@ -80,10 +88,26 @@ type DNSHandlerConfig struct {
 	Context    context.Context
 }
 
+type DNSZoneState interface {
+	GetDNSSets() dns.DNSSets
+}
+
+type DefaultDNSZoneState struct {
+	sets dns.DNSSets
+}
+
+func (this *DefaultDNSZoneState) GetDNSSets() dns.DNSSets {
+	return this.sets
+}
+
+func NewDNSZoneState(sets dns.DNSSets) DNSZoneState {
+	return &DefaultDNSZoneState{sets}
+}
+
 type DNSHandler interface {
 	GetZones() (DNSHostedZoneInfos, error)
-	GetDNSSets(zoneid string) (dns.DNSSets, error)
-	ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, reqs []*ChangeRequest) error
+	GetZoneState(zoneid string) (DNSZoneState, error)
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, state DNSZoneState, reqs []*ChangeRequest) error
 }
 
 type DNSHandlerFactory interface {
@@ -102,9 +126,9 @@ type DNSProvider interface {
 
 	GetZoneInfos() DNSHostedZoneInfos
 
-	GetDNSSets(string) (dns.DNSSets, error)
+	GetZoneState(zoneid string) (DNSZoneState, error)
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, state DNSZoneState, requests []*ChangeRequest) error
 
-	ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, requests []*ChangeRequest) error
 	Match(dns string) int
 }
 

@@ -337,7 +337,8 @@ func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, 
 			nested.Add(z.Domain())
 		}
 	}
-	loop: for dns, e := range this.dnsnames {
+loop:
+	for dns, e := range this.dnsnames {
 		if e.IsValid() {
 			if dnsutils.Match(dns, domain) {
 				for _, excl := range zone.Forwarded() {
@@ -622,7 +623,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 				this.removeProviderForZone(n, pname)
 			}
 		}
-		this.triggerEntries(logger,entries)
+		this.triggerEntries(logger, entries)
 		err := this.registerSecret(logger, nil, cur)
 		if err != nil {
 			return reconcile.Delay(logger, err)

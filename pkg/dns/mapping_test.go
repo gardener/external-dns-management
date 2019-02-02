@@ -14,7 +14,7 @@
  *
  */
 
- package dns
+package dns
 
 import (
 	"encoding/json"

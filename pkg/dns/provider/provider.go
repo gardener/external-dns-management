@@ -18,7 +18,6 @@ package provider
 
 import (
 	"fmt"
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -300,10 +299,10 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	return reconcile.UpdateStatus(logger, mod.Update())
 }
 
-func (this *dnsProviderVersion) GetDNSSets(zoneid string) (dns.DNSSets, error) {
-	return this.handler.GetDNSSets(zoneid)
+func (this *dnsProviderVersion) GetZoneState(zoneid string) (DNSZoneState, error) {
+	return this.handler.GetZoneState(zoneid)
 }
 
-func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, reqs []*ChangeRequest) error {
-	return this.handler.ExecuteRequests(logger, zone, reqs)
+func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, state DNSZoneState, reqs []*ChangeRequest) error {
+	return this.handler.ExecuteRequests(logger, zone, state, reqs)
 }

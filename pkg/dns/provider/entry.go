@@ -242,6 +242,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 	}
 	if ttl != this.ttl {
 		this.ttl = ttl
+		logger.Infof("setting ttl %d", ttl)
 		this.modified = true
 		mod.Modify(true)
 		status.TTL = &ttl

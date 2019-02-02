@@ -101,7 +101,7 @@ func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 	return zones, nil
 }
 
-func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
+func (this *Handler) GetZoneState(zoneid string) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	aggr := func(r *route53.ResourceRecordSet) {
@@ -117,7 +117,7 @@ func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 	if err := this.handleRecordSets(zoneid, aggr); err != nil {
 		return nil, err
 	}
-	return dnssets, nil
+	return provider.NewDNSZoneState(dnssets), nil
 }
 
 func (this *Handler) handleRecordSets(zoneid string, f func(rs *route53.ResourceRecordSet)) error {
@@ -132,7 +132,7 @@ func (this *Handler) handleRecordSets(zoneid string, f func(rs *route53.Resource
 	return this.r53.ListResourceRecordSetsPages(inp, aggr)
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, reqs []*provider.ChangeRequest) error {
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	exec := NewExecution(logger, this, zone)
 
 	for _, r := range reqs {

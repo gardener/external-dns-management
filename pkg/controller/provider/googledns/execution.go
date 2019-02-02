@@ -32,7 +32,6 @@ type Execution struct {
 	logger.LogContext
 	handler *Handler
 	zone    provider.DNSHostedZoneInfo
-	domain  string
 
 	change *googledns.Change
 	done   []provider.DoneHandler
@@ -43,7 +42,13 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 		Additions: []*googledns.ResourceRecordSet{},
 		Deletions: []*googledns.ResourceRecordSet{},
 	}
-	return &Execution{LogContext: logger, handler: h, zone: zone, change: change, done: []provider.DoneHandler{}}
+	return &Execution{
+		LogContext: logger,
+		handler:    h,
+		zone:       zone,
+		change:     change,
+		done:       []provider.DoneHandler{},
+	}
 }
 
 func (this *Execution) addChange(req *provider.ChangeRequest) {
@@ -51,10 +56,10 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 	var newset, oldset *dns.RecordSet
 
 	if req.Addition != nil {
-		name, newset = dns.MapToProvider(req.Type, req.Addition, this.domain)
+		name, newset = dns.MapToProvider(req.Type, req.Addition, this.zone.Domain)
 	}
 	if req.Deletion != nil {
-		name, oldset = dns.MapToProvider(req.Type, req.Deletion, this.domain)
+		name, oldset = dns.MapToProvider(req.Type, req.Deletion, this.zone.Domain)
 	}
 	if name == "" || (newset.Length() == 0 && oldset.Length() == 0) {
 		return

@@ -123,7 +123,7 @@ func (this *Handler) handleRecordSets(zoneid string, f func(r *googledns.Resourc
 	return this.service.ResourceRecordSets.List(this.credentials.ProjectID, zoneid).Pages(this.ctx, aggr)
 }
 
-func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
+func (this *Handler) GetZoneState(zoneid string) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	f := func(r *googledns.ResourceRecordSet) {
@@ -140,10 +140,10 @@ func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 		return nil, err
 	}
 
-	return dnssets, nil
+	return provider.NewDNSZoneState(dnssets), nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, reqs []*provider.ChangeRequest) error {
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 
 	exec := NewExecution(logger, this, zone)
 	for _, r := range reqs {

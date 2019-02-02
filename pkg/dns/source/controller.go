@@ -67,7 +67,6 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 
 var SlaveResources = reconcilers.ClusterResources(TARGET_CLUSTER, ENTRY)
 
-
 func MasterResourcesType(kind schema.GroupKind) reconcilers.Resources {
 	return func(c controller.Interface) []resources.Interface {
 		target := c.GetMainCluster()

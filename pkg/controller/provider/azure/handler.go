@@ -151,7 +151,7 @@ func splitZoneid(zoneid string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func (h *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
+func (h *Handler) GetZoneState(zoneid string) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	resourceGroup, zoneName := splitZoneid(zoneid)
@@ -187,10 +187,10 @@ func (h *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 			dnssets.AddRecordSetFromProvider(fullName, rs)
 		}
 	}
-	return dnssets, nil
+	return provider.NewDNSZoneState(dnssets), nil
 }
 
-func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, reqs []*provider.ChangeRequest) error {
+func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	resourceGroup, zoneName := splitZoneid(zone.Id)
 	exec := NewExecution(logger, h, resourceGroup, zoneName)
 
