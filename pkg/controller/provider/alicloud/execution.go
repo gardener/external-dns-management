@@ -77,13 +77,13 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 
 	switch req.Action {
 	case provider.R_CREATE:
-		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), newset.RecordString())
+		this.Infof("%s %s record set %s[%s]: %s(%d)", req.Action, req.Type, name, this.zone.Id(), newset.RecordString(), newset.TTL)
 		this.add(name, rr, newset, &this.updates, &this.additions)
 	case provider.R_DELETE:
 		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), oldset.RecordString())
 		this.add(name, rr, oldset, &this.deletions, nil)
 	case provider.R_UPDATE:
-		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), newset.RecordString())
+		this.Infof("%s %s record set %s[%s]: %s(%d)", req.Action, req.Type, name, this.zone.Id(), newset.RecordString(), newset.TTL)
 		this.add(name, rr, newset, &this.updates, &this.additions)
 	}
 

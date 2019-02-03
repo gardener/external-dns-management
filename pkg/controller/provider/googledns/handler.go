@@ -80,7 +80,7 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (pr
 }
 
 func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
-	raw:= []*googledns.ManagedZone{}
+	raw := []*googledns.ManagedZone{}
 	f := func(resp *googledns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
 			raw = append(raw, zone)
@@ -94,7 +94,7 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 
 	zones := provider.DNSHostedZones{}
 	for _, z := range raw {
-		forwarded:=[]string{}
+		forwarded := []string{}
 		f := func(r *googledns.ResourceRecordSet) {
 			if r.Type == dns.RS_NS {
 				if r.Name != z.DnsName {

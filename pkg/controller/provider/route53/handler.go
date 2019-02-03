@@ -81,7 +81,7 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 
 	zones := provider.DNSHostedZones{}
 	for _, z := range raw {
-		domain:=aws.StringValue(z.Name)
+		domain := aws.StringValue(z.Name)
 		comp := strings.Split(aws.StringValue(z.Id), "/")
 		id := comp[len(comp)-1]
 		forwarded := []string{}

@@ -67,13 +67,13 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 	name = dns.AlignHostname(name)
 	switch req.Action {
 	case provider.R_CREATE:
-		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), newset.RecordString())
+		this.Infof("%s %s record set %s[%s]: %s(%d)", req.Action, req.Type, name, this.zone.Id(), newset.RecordString(), newset.TTL)
 		this.change.Additions = append(this.change.Additions, mapRecordSet(name, newset))
 	case provider.R_DELETE:
 		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), oldset.RecordString())
 		this.change.Deletions = append(this.change.Deletions, mapRecordSet(name, oldset))
 	case provider.R_UPDATE:
-		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), newset.RecordString())
+		this.Infof("%s %s record set %s[%s]: %s(%d)", req.Action, req.Type, name, this.zone.Id(), newset.RecordString(), newset.TTL)
 		this.change.Deletions = append(this.change.Deletions, mapRecordSet(name, oldset))
 		this.change.Additions = append(this.change.Additions, mapRecordSet(name, newset))
 	}

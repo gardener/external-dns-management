@@ -50,7 +50,7 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 	if len(rset.Records) == 0 {
 		return
 	}
-	this.Infof("%s %s record set %s[%s]: %s", action, rset.Type, name, this.zone.Id(), rset.RecordString())
+	this.Infof("%s %s record set %s[%s]: %s(%d)", action, rset.Type, name, this.zone.Id(), rset.RecordString(), rset.TTL)
 	change := &route53.Change{
 		Action: aws.String(action),
 		ResourceRecordSet: &route53.ResourceRecordSet{

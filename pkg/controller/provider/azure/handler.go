@@ -113,7 +113,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 
 		// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
 		hostedZone := provider.NewDNSHostedZone(
-			resourceGroup + "/" + *item.Name,
+			resourceGroup+"/"+*item.Name,
 			dns.NormalizeHostname(*item.Name),
 			"",
 			forwarded,

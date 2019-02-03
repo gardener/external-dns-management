@@ -57,7 +57,7 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (pr
 }
 
 func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
-	raw:=[]alidns.Domain{}
+	raw := []alidns.Domain{}
 	{
 		f := func(zone alidns.Domain) (bool, error) {
 			raw = append(raw, zone)
@@ -72,7 +72,7 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 	zones := provider.DNSHostedZones{}
 	{
 		for _, z := range raw {
-			forwarded:=[]string{}
+			forwarded := []string{}
 			f := func(r alidns.Record) (bool, error) {
 				if r.Type == dns.RS_NS {
 					name := GetDNSName(r)
@@ -86,8 +86,8 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 			if err != nil {
 				return nil, err
 			}
-			hostedZone:=provider.NewDNSHostedZone(z.DomainId, z.DomainName, z.DomainName, forwarded)
-			zones=append(zones,hostedZone)
+			hostedZone := provider.NewDNSHostedZone(z.DomainId, z.DomainName, z.DomainName, forwarded)
+			zones = append(zones, hostedZone)
 		}
 	}
 

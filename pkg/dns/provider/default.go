@@ -18,7 +18,6 @@ package provider
 
 import "github.com/gardener/external-dns-management/pkg/dns"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 //  Default Implementation for DNSZoneState
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,5 +65,5 @@ func (this *DefaultDNSHostedZone) ForwardedDomains() []string {
 }
 
 func NewDNSHostedZone(id, domain, key string, forwarded []string) DNSHostedZone {
-	return &DefaultDNSHostedZone{id:id, key:key, domain:domain, forwarded: forwarded}
+	return &DefaultDNSHostedZone{id: id, key: key, domain: domain, forwarded: forwarded}
 }
