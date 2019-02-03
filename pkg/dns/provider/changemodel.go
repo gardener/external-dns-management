@@ -173,7 +173,7 @@ func (this *ChangeModel) Setup() error {
 	if provider == nil {
 		return fmt.Errorf("no provider found for zone %q", this.ZoneId())
 	}
-	this.state, err = provider.GetZoneState(this.ZoneId())
+	this.state, err = provider.GetZoneState(this.zone.zone)
 	if err != nil {
 		return err
 	}

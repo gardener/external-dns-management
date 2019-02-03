@@ -65,14 +65,14 @@ type dnsProviderVersion struct {
 	def_include utils.StringSet
 	def_exclude utils.StringSet
 
-	zoneinfos DNSHostedZoneInfos
+	zones DNSHostedZones
 
 	included utils.StringSet
 	excluded utils.StringSet
 }
 
 func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
-	if !this.zoneinfos.equivalentTo(v.zoneinfos) {
+	if !this.zones.equivalentTo(v.zones) {
 		return false
 	}
 	if !this.def_include.Equals(v.def_include) {
@@ -164,26 +164,26 @@ func updateDNSProvider(logger logger.LogContext, state DNSState, provider *dnsut
 		this.def_exclude = utils.StringSet{}
 	}
 
-	this.zoneinfos, err = this.handler.GetZones()
+	this.zones, err = this.handler.GetZones()
 	if err != nil {
 		return nil, this.failed(logger, false, fmt.Errorf("cannot get zones: %s", err), true)
 	}
 
-	included, err := filterByZones(this.def_include, this.zoneinfos)
+	included, err := filterByZones(this.def_include, this.zones)
 	if err != nil {
 		this.object.Eventf(corev1.EventTypeWarning, "reconcile", "%s", err)
 	}
-	excluded, err := filterByZones(this.def_exclude, this.zoneinfos)
+	excluded, err := filterByZones(this.def_exclude, this.zones)
 	if err != nil {
 		this.object.Eventf(corev1.EventTypeWarning, "reconcile", "%s", err)
 	}
 
 	if len(this.def_include) == 0 {
-		if len(this.zoneinfos) == 0 {
+		if len(this.zones) == 0 {
 			return nil, this.failed(logger, false, fmt.Errorf("no hosted zones found"), false)
 		}
-		for _, z := range this.zoneinfos {
-			included.Add(z.Domain)
+		for _, z := range this.zones {
+			included.Add(z.Domain())
 		}
 	} else {
 		if len(included) == 0 {
@@ -191,8 +191,8 @@ func updateDNSProvider(logger logger.LogContext, state DNSState, provider *dnsut
 
 		}
 	}
-	for _, zone := range this.zoneinfos {
-		for _, sub := range zone.Forwarded {
+	for _, zone := range this.zones {
+		for _, sub := range zone.ForwardedDomains() {
 			for i := range included {
 				if dnsutils.Match(sub, i) {
 					excluded.Add(sub)
@@ -226,8 +226,8 @@ func (this *dnsProviderVersion) GetConfig() utils.Properties {
 	return this.config
 }
 
-func (this *dnsProviderVersion) GetZoneInfos() DNSHostedZoneInfos {
-	return this.zoneinfos
+func (this *dnsProviderVersion) GetZones() DNSHostedZones {
+	return this.zones
 }
 
 func (this *dnsProviderVersion) GetIncludedDomains() utils.StringSet {
@@ -299,10 +299,10 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	return reconcile.UpdateStatus(logger, mod.Update())
 }
 
-func (this *dnsProviderVersion) GetZoneState(zoneid string) (DNSZoneState, error) {
-	return this.handler.GetZoneState(zoneid)
+func (this *dnsProviderVersion) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
+	return this.handler.GetZoneState(zone)
 }
 
-func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, state DNSZoneState, reqs []*ChangeRequest) error {
+func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error {
 	return this.handler.ExecuteRequests(logger, zone, state, reqs)
 }

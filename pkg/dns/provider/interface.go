@@ -49,30 +49,23 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 	return Config{Ident: ident, Dryrun: dryrun, TTL: int64(ttl), Factory: factory}
 }
 
-type DNSHostedZoneInfo struct {
-	Id        string   // identifying id for provider api
-	Domain    string   // base domain for zone
-	Forwarded []string // forwarded sub domains
-	Key       string   // internal key used by provider (not used by this lib)
+type DNSHostedZone interface {
+	Key() string
+	Id() string
+	Domain() string
+	ForwardedDomains() []string
 }
 
-func (this *DNSHostedZoneInfo) GetKey() string {
-	if this.Key != "" {
-		return this.Key
-	}
-	return this.Id
-}
+type DNSHostedZones []DNSHostedZone
 
-type DNSHostedZoneInfos []DNSHostedZoneInfo
-
-func (this DNSHostedZoneInfos) equivalentTo(infos DNSHostedZoneInfos) bool {
+func (this DNSHostedZones) equivalentTo(infos DNSHostedZones) bool {
 	if len(this) != len(infos) {
 		return false
 	}
 outer:
 	for _, i := range infos {
 		for _, t := range this {
-			if i.Id == t.Id && i.Domain == t.Domain {
+			if i.Key() == t.Key() && i.Domain() == t.Domain() {
 				continue outer
 			}
 			return false
@@ -92,22 +85,10 @@ type DNSZoneState interface {
 	GetDNSSets() dns.DNSSets
 }
 
-type DefaultDNSZoneState struct {
-	sets dns.DNSSets
-}
-
-func (this *DefaultDNSZoneState) GetDNSSets() dns.DNSSets {
-	return this.sets
-}
-
-func NewDNSZoneState(sets dns.DNSSets) DNSZoneState {
-	return &DefaultDNSZoneState{sets}
-}
-
 type DNSHandler interface {
-	GetZones() (DNSHostedZoneInfos, error)
-	GetZoneState(zoneid string) (DNSZoneState, error)
-	ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, state DNSZoneState, reqs []*ChangeRequest) error
+	GetZones() (DNSHostedZones, error)
+	GetZoneState(DNSHostedZone) (DNSZoneState, error)
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
 }
 
 type DNSHandlerFactory interface {
@@ -124,10 +105,10 @@ type DNSProvider interface {
 	ObjectName() resources.ObjectName
 	Object() resources.Object
 
-	GetZoneInfos() DNSHostedZoneInfos
+	GetZones() DNSHostedZones
 
-	GetZoneState(zoneid string) (DNSZoneState, error)
-	ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, state DNSZoneState, requests []*ChangeRequest) error
+	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
 
 	Match(dns string) int
 }

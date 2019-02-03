@@ -79,16 +79,11 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (pr
 	return this, nil
 }
 
-func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
-	zones := provider.DNSHostedZoneInfos{}
-
+func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
+	raw:= []*googledns.ManagedZone{}
 	f := func(resp *googledns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
-			hostedZone := provider.DNSHostedZoneInfo{
-				Id:     zone.Name,
-				Domain: dns.NormalizeHostname(zone.DnsName),
-			}
-			zones = append(zones, hostedZone)
+			raw = append(raw, zone)
 		}
 		return nil
 	}
@@ -97,17 +92,20 @@ func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 		return nil, err
 	}
 
-	for i, z := range zones {
+	zones := provider.DNSHostedZones{}
+	for _, z := range raw {
+		forwarded:=[]string{}
 		f := func(r *googledns.ResourceRecordSet) {
 			if r.Type == dns.RS_NS {
-				name := dns.NormalizeHostname(r.Name)
-				if name != z.Domain {
-					z.Forwarded = append(z.Forwarded, name)
+				if r.Name != z.DnsName {
+					forwarded = append(forwarded, dns.NormalizeHostname(r.Name))
 				}
 			}
 		}
-		this.handleRecordSets(z.Id, f)
-		zones[i] = z
+		this.handleRecordSets(z.Name, f)
+		hostedZone := provider.NewDNSHostedZone(
+			z.Name, dns.NormalizeHostname(z.DnsName), "", forwarded)
+		zones = append(zones, hostedZone)
 	}
 
 	return zones, nil
@@ -123,7 +121,7 @@ func (this *Handler) handleRecordSets(zoneid string, f func(r *googledns.Resourc
 	return this.service.ResourceRecordSets.List(this.credentials.ProjectID, zoneid).Pages(this.ctx, aggr)
 }
 
-func (this *Handler) GetZoneState(zoneid string) (provider.DNSZoneState, error) {
+func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	f := func(r *googledns.ResourceRecordSet) {
@@ -136,14 +134,14 @@ func (this *Handler) GetZoneState(zoneid string) (provider.DNSZoneState, error) 
 		}
 	}
 
-	if err := this.handleRecordSets(zoneid, f); err != nil {
+	if err := this.handleRecordSets(zone.Id(), f); err != nil {
 		return nil, err
 	}
 
 	return provider.NewDNSZoneState(dnssets), nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 
 	exec := NewExecution(logger, this, zone)
 	for _, r := range reqs {

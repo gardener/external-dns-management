@@ -91,8 +91,8 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (pr
 
 var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
 
-func (h *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
-	zones := provider.DNSHostedZoneInfos{}
+func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
+	zones := provider.DNSHostedZones{}
 
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
 	if err != nil {
@@ -111,12 +111,14 @@ func (h *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 
 		forwarded := h.collectForwardedSubzones(resourceGroup, *item.Name)
 
-		hostedZone := provider.DNSHostedZoneInfo{
-			// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
-			Id:        resourceGroup + "/" + *item.Name,
-			Domain:    dns.NormalizeHostname(*item.Name),
-			Forwarded: forwarded,
-		}
+		// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
+		hostedZone := provider.NewDNSHostedZone(
+			resourceGroup + "/" + *item.Name,
+			dns.NormalizeHostname(*item.Name),
+			"",
+			forwarded,
+		)
+
 		zones = append(zones, hostedZone)
 	}
 
@@ -151,10 +153,10 @@ func splitZoneid(zoneid string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func (h *Handler) GetZoneState(zoneid string) (provider.DNSZoneState, error) {
+func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
-	resourceGroup, zoneName := splitZoneid(zoneid)
+	resourceGroup, zoneName := splitZoneid(zone.Id())
 	results, err := h.recordsClient.ListAllByDNSZoneComplete(h.ctx, resourceGroup, zoneName, nil, "")
 	if err != nil {
 		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
@@ -190,8 +192,8 @@ func (h *Handler) GetZoneState(zoneid string) (provider.DNSZoneState, error) {
 	return provider.NewDNSZoneState(dnssets), nil
 }
 
-func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	resourceGroup, zoneName := splitZoneid(zone.Id)
+func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	resourceGroup, zoneName := splitZoneid(zone.Id())
 	exec := NewExecution(logger, h, resourceGroup, zoneName)
 
 	var succeeded, failed int

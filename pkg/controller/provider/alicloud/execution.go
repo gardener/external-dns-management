@@ -36,7 +36,7 @@ type result struct {
 type Execution struct {
 	logger.LogContext
 	handler *Handler
-	zone    provider.DNSHostedZoneInfo
+	zone    provider.DNSHostedZone
 	state   *zonestate
 	domain  string
 
@@ -47,7 +47,7 @@ type Execution struct {
 	results map[string]*result
 }
 
-func NewExecution(logger logger.LogContext, h *Handler, state *zonestate, zone provider.DNSHostedZoneInfo) *Execution {
+func NewExecution(logger logger.LogContext, h *Handler, state *zonestate, zone provider.DNSHostedZone) *Execution {
 	return &Execution{
 		LogContext: logger,
 		handler:    h,
@@ -73,17 +73,17 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 	if name == "" || (newset.Length() == 0 && oldset.Length() == 0) {
 		return
 	}
-	rr := GetRR(name, this.zone.Domain)
+	rr := GetRR(name, this.zone.Domain())
 
 	switch req.Action {
 	case provider.R_CREATE:
-		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id, newset.RecordString())
+		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), newset.RecordString())
 		this.add(name, rr, newset, &this.updates, &this.additions)
 	case provider.R_DELETE:
-		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id, oldset.RecordString())
+		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), oldset.RecordString())
 		this.add(name, rr, oldset, &this.deletions, nil)
 	case provider.R_UPDATE:
-		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id, newset.RecordString())
+		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), newset.RecordString())
 		this.add(name, rr, newset, &this.updates, &this.additions)
 	}
 
@@ -107,7 +107,7 @@ func (this *Execution) add(dnsname, rr string, rset *dns.RecordSet, found *Recor
 			*found = append(*found, or)
 		} else {
 			if notfound != nil {
-				nr := alidns.Record{RR: rr, Type: rtype, Value: r.Value, DomainName: this.zone.Domain, TTL: int(rset.TTL)}
+				nr := alidns.Record{RR: rr, Type: rtype, Value: r.Value, DomainName: this.zone.Domain(), TTL: int(rset.TTL)}
 				*notfound = append(*notfound, nr)
 			}
 		}
@@ -120,7 +120,7 @@ func (this *Execution) submitChanges() error {
 		return nil
 	}
 
-	this.Infof("processing changes for  zone %s", this.zone.Id)
+	this.Infof("processing changes for  zone %s", this.zone.Id())
 	for _, r := range this.additions {
 		this.Infof("desired change: Addition %s %s: %s (%d)", GetDNSName(r), r.Type, r.Value, r.TTL)
 		this.submit(this.handler.access.CreateRecord, r)
@@ -151,10 +151,10 @@ func (this *Execution) submitChanges() error {
 	}
 
 	if suc_cnt > 0 {
-		this.Infof("%d records in zone %s were successfully updated", suc_cnt, this.zone.Id)
+		this.Infof("%d records in zone %s were successfully updated", suc_cnt, this.zone.Id())
 	}
 	if err_cnt > 0 {
-		this.Infof("%d records in zone %s were successfully updated", err_cnt, this.zone.Id)
+		this.Infof("%d records in zone %s were successfully updated", err_cnt, this.zone.Id())
 		return fmt.Errorf("could not update all dns entries")
 	}
 	return nil

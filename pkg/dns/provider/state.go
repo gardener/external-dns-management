@@ -341,7 +341,7 @@ loop:
 	for dns, e := range this.dnsnames {
 		if e.IsValid() {
 			if dnsutils.Match(dns, domain) {
-				for _, excl := range zone.Forwarded() {
+				for _, excl := range zone.ForwardedDomains() {
 					if dnsutils.Match(dns, excl) {
 						continue loop
 					}
@@ -420,25 +420,25 @@ func (this *state) updateZones(logger logger.LogContext, provider *dnsProviderVe
 	keeping := []string{}
 	modified := false
 	result := map[string]*dnsHostedZone{}
-	for _, z := range provider.zoneinfos {
-		zone := this.zones[z.Id]
+	for _, z := range provider.zones {
+		zone := this.zones[z.Id()]
 		if zone == nil {
 			modified = true
 			zone = newDNSHostedZone(z)
-			this.zones[z.Id] = zone
-			logger.Infof("adding hosted zone %q (%s)", z.Id, z.Domain)
+			this.zones[z.Id()] = zone
+			logger.Infof("adding hosted zone %q (%s)", z.Id(), z.Domain())
 			this.triggerHostedZone(zone.Id())
 		}
 		zone.update(z)
 
-		if this.isProviderForZone(z.Id, provider.ObjectName()) {
-			keeping = append(keeping, fmt.Sprintf("keeping provider %q for hosted zone %q (%s)", provider.ObjectName(), z.Id, z.Domain))
+		if this.isProviderForZone(z.Id(), provider.ObjectName()) {
+			keeping = append(keeping, fmt.Sprintf("keeping provider %q for hosted zone %q (%s)", provider.ObjectName(), z.Id(), z.Domain()))
 		} else {
 			modified = true
-			logger.Infof("adding provider %q for hosted zone %q (%s)", provider.ObjectName(), z.Id, z.Domain)
-			this.addProviderForZone(z.Id, provider.ObjectName())
+			logger.Infof("adding provider %q for hosted zone %q (%s)", provider.ObjectName(), z.Id(), z.Domain())
+			this.addProviderForZone(z.Id(), provider.ObjectName())
 		}
-		result[z.Id] = zone
+		result[z.Id()] = zone
 	}
 
 	old := this.providerzones[provider.ObjectName()]
@@ -507,11 +507,11 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 
 	mod := this.updateZones(logger, new)
 	if mod {
-		logger.Infof("found %d zones: ", len(new.zoneinfos))
-		for _, z := range new.zoneinfos {
-			logger.Infof("    %s: %s", z.Id, z.Domain)
-			if len(z.Forwarded) > 0 {
-				logger.Infof("        forwarded: %s", utils.Strings(z.Forwarded...))
+		logger.Infof("found %d zones: ", len(new.zones))
+		for _, z := range new.zones {
+			logger.Infof("    %s: %s", z.Id(), z.Domain())
+			if len(z.ForwardedDomains()) > 0 {
+				logger.Infof("        forwarded: %s", utils.Strings(z.ForwardedDomains()...))
 			}
 		}
 		this.triggerEntries(logger, entries)

@@ -31,13 +31,13 @@ const (
 type Execution struct {
 	logger.LogContext
 	handler *Handler
-	zone    provider.DNSHostedZoneInfo
+	zone    provider.DNSHostedZone
 
 	change *googledns.Change
 	done   []provider.DoneHandler
 }
 
-func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZoneInfo) *Execution {
+func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZone) *Execution {
 	change := &googledns.Change{
 		Additions: []*googledns.ResourceRecordSet{},
 		Deletions: []*googledns.ResourceRecordSet{},
@@ -56,10 +56,10 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 	var newset, oldset *dns.RecordSet
 
 	if req.Addition != nil {
-		name, newset = dns.MapToProvider(req.Type, req.Addition, this.zone.Domain)
+		name, newset = dns.MapToProvider(req.Type, req.Addition, this.zone.Domain())
 	}
 	if req.Deletion != nil {
-		name, oldset = dns.MapToProvider(req.Type, req.Deletion, this.zone.Domain)
+		name, oldset = dns.MapToProvider(req.Type, req.Deletion, this.zone.Domain())
 	}
 	if name == "" || (newset.Length() == 0 && oldset.Length() == 0) {
 		return
@@ -67,13 +67,13 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 	name = dns.AlignHostname(name)
 	switch req.Action {
 	case provider.R_CREATE:
-		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id, newset.RecordString())
+		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), newset.RecordString())
 		this.change.Additions = append(this.change.Additions, mapRecordSet(name, newset))
 	case provider.R_DELETE:
-		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id, oldset.RecordString())
+		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), oldset.RecordString())
 		this.change.Deletions = append(this.change.Deletions, mapRecordSet(name, oldset))
 	case provider.R_UPDATE:
-		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id, newset.RecordString())
+		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), newset.RecordString())
 		this.change.Deletions = append(this.change.Deletions, mapRecordSet(name, oldset))
 		this.change.Additions = append(this.change.Additions, mapRecordSet(name, newset))
 	}
@@ -86,7 +86,7 @@ func (this *Execution) submitChanges() error {
 		return nil
 	}
 
-	this.Infof("processing changes for  zone %s", this.zone.Id)
+	this.Infof("processing changes for  zone %s", this.zone.Id())
 	for _, c := range this.change.Deletions {
 		this.Infof("desired change: Deletion %s %s: %s", c.Name, c.Type, utils.Strings(c.Rrdatas...))
 	}
@@ -94,7 +94,7 @@ func (this *Execution) submitChanges() error {
 		this.Infof("desired change: Addition %s %s: %s", c.Name, c.Type, utils.Strings(c.Rrdatas...))
 	}
 
-	if _, err := this.handler.service.Changes.Create(this.handler.credentials.ProjectID, this.zone.Id, this.change).Do(); err != nil {
+	if _, err := this.handler.service.Changes.Create(this.handler.credentials.ProjectID, this.zone.Id(), this.change).Do(); err != nil {
 		this.Error(err)
 		for _, d := range this.done {
 			if d != nil {
@@ -108,7 +108,7 @@ func (this *Execution) submitChanges() error {
 				d.Succeeded()
 			}
 		}
-		this.Infof("%d records in zone %s were successfully updated", len(this.change.Additions)+len(this.change.Deletions), this.zone.Id)
+		this.Infof("%d records in zone %s were successfully updated", len(this.change.Additions)+len(this.change.Deletions), this.zone.Id())
 		return nil
 	}
 }

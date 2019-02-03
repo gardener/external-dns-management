@@ -56,17 +56,11 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (pr
 	return this, nil
 }
 
-func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
-	zones := provider.DNSHostedZoneInfos{}
+func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
+	raw:=[]alidns.Domain{}
 	{
 		f := func(zone alidns.Domain) (bool, error) {
-			domain := zone.DomainName
-			hostedZone := provider.DNSHostedZoneInfo{
-				Id:     domain,
-				Domain: domain,
-				Key:    zone.DomainId,
-			}
-			zones = append(zones, hostedZone)
+			raw = append(raw, zone)
 			return true, nil
 		}
 		err := this.access.ListDomains(f)
@@ -74,29 +68,33 @@ func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 			return nil, err
 		}
 	}
+
+	zones := provider.DNSHostedZones{}
 	{
-		for i, z := range zones {
+		for _, z := range raw {
+			forwarded:=[]string{}
 			f := func(r alidns.Record) (bool, error) {
 				if r.Type == dns.RS_NS {
 					name := GetDNSName(r)
-					if name != z.Domain {
-						z.Forwarded = append(z.Forwarded, name)
+					if name != z.DomainName {
+						forwarded = append(forwarded, name)
 					}
 				}
 				return true, nil
 			}
-			err := this.access.ListRecords(z.Id, f)
+			err := this.access.ListRecords(z.DomainName, f)
 			if err != nil {
 				return nil, err
 			}
-			zones[i] = z
+			hostedZone:=provider.NewDNSHostedZone(z.DomainId, z.DomainName, z.DomainName, forwarded)
+			zones=append(zones,hostedZone)
 		}
 	}
 
 	return zones, nil
 }
 
-func (this *Handler) GetZoneState(zoneid string) (provider.DNSZoneState, error) {
+func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 
 	state := newState()
 
@@ -104,7 +102,7 @@ func (this *Handler) GetZoneState(zoneid string) (provider.DNSZoneState, error) 
 		state.addRecord(r)
 		return true, nil
 	}
-	err := this.access.ListRecords(zoneid, f)
+	err := this.access.ListRecords(zone.Key(), f)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +110,7 @@ func (this *Handler) GetZoneState(zoneid string) (provider.DNSZoneState, error) 
 	return state, nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 
 	exec := NewExecution(logger, this, state.(*zonestate), zone)
 	for _, r := range reqs {
