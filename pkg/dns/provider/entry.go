@@ -19,6 +19,7 @@ package provider
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -249,7 +250,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 	}
 
 	if targets.DifferFrom(this.targets) {
-		logger.Infof("current targets differ from status")
+		logger.Infof("targets differ from internal state")
 		this.modified = true
 		for _, w := range warnings {
 			logger.Warn(w)
@@ -263,9 +264,12 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 		this.targets = targets
 
 		list, msg := this.targetList(targets)
-		this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
-		status.Targets = list
-		mod.Modify(true)
+		if !reflect.DeepEqual(list, status.Targets) {
+			this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
+			status.Targets = list
+			logger.Info(msg)
+			mod.Modify(true)
+		}
 	} else {
 		var cur Targets
 		for _, t := range status.Targets {
@@ -310,7 +314,6 @@ func (this *Entry) targetList(targets Targets) ([]string, string) {
 		sep = ", "
 	}
 	msg = msg + "]"
-	logger.Info(msg)
 	return list, msg
 }
 

@@ -823,7 +823,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 		return reconcile.Failed(logger, fmt.Errorf("zone %s not used anymore -> stop reconciling", zoneid))
 	}
 	if zone.TestAndSetBusy() {
-		logger.Infof("reconciling zone %q (%s) with %d entries entries", zoneid, zone.Domain(), len(entries))
+		logger.Infof("reconciling zone %q (%s) with %d entries", zoneid, zone.Domain(), len(entries))
 		defer zone.Release()
 		return reconcile.DelayOnError(logger, this.reconcileZone(logger, zoneid, entries, providers))
 	}
