@@ -704,7 +704,7 @@ func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEnt
 			}
 		}
 	}
-	status := new.Update(logger, object, this.GetHandlerFactory().TypeCode(), newzone, err)
+	status := new.Update(logger, object, this.GetHandlerFactory().TypeCode(), newzone, err, this.config.TTL)
 
 	if status.IsSucceeded() && new.IsValid() {
 		if new.Interval() > 0 {

@@ -42,7 +42,7 @@ type Entry struct {
 	dnsname   string
 	targets   Targets
 	mappings  map[string][]string
-	ttl       *int64
+	ttl       int64
 	interval  int64
 	valid     bool
 	modified  bool
@@ -74,7 +74,7 @@ func (this *Entry) Description() string {
 	return this.object.Description()
 }
 
-func (this *Entry) TTL() *int64 {
+func (this *Entry) TTL() int64 {
 	return this.ttl
 }
 
@@ -130,8 +130,11 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 		err = fmt.Errorf("only Text or Targets possible", err)
 		return
 	}
+	if spec.TTL != nil && (*spec.TTL == 0 || *spec.TTL < 0) {
+		err = fmt.Errorf("TTL must be  greater than zero", err)
+		return
+	}
 
-	this.ttl = spec.TTL
 	for _, t := range spec.Targets {
 		new := NewTargetFromEntry(t, this)
 		if targets.Has(new) {
@@ -155,7 +158,7 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 	return
 }
 
-func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObject, resp, zoneid string, err error) reconcile.Status {
+func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTtl int64) reconcile.Status {
 	this.lock.Lock()
 	this.lock.Unlock()
 
@@ -230,7 +233,20 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 		}
 	}
 	mod := resources.NewModificationState(this.object)
+
 	status := &this.object.DNSEntry().Status
+
+	ttl := defaultTtl
+	if spec.TTL != nil {
+		ttl = *spec.TTL
+	}
+	if ttl != this.ttl {
+		this.ttl = ttl
+		this.modified = true
+		mod.Modify(true)
+		status.TTL = &ttl
+	}
+
 	if targets.DifferFrom(this.targets) {
 		logger.Infof("current targets differ from status")
 		this.modified = true
