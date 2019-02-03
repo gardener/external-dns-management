@@ -21,7 +21,6 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -119,22 +118,3 @@ type DoneHandler interface {
 	Succeeded()
 }
 
-type DNSState interface {
-	Setup()
-	Start()
-	GetConfig() Config
-	DecodeZoneCommand(name string) string
-	GetHandlerFactory() DNSHandlerFactory
-	GetController() controller.Interface
-
-	UpdateProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status
-	UpdateSecret(logger logger.LogContext, obj resources.Object) reconcile.Status
-	UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status
-	ReconcileZone(logger logger.LogContext, zoneid string) reconcile.Status
-	RemoveProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status
-	ProviderDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status
-	EntryDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status
-
-	UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject) reconcile.Status
-	OwnerDeleted(logger logger.LogContext, owner resources.ObjectKey) reconcile.Status
-}

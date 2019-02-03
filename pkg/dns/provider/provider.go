@@ -55,7 +55,7 @@ func newProvider() *dnsProvider {
 }
 
 type dnsProviderVersion struct {
-	state DNSState
+	state *state
 
 	object  *dnsutils.DNSProviderObject
 	handler DNSHandler
@@ -97,7 +97,7 @@ func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
 	return true
 }
 
-func updateDNSProvider(logger logger.LogContext, state DNSState, provider *dnsutils.DNSProviderObject, last *dnsProviderVersion) (*dnsProviderVersion, reconcile.Status) {
+func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutils.DNSProviderObject, last *dnsProviderVersion) (*dnsProviderVersion, reconcile.Status) {
 	this := &dnsProviderVersion{
 		state:  state,
 		object: provider,

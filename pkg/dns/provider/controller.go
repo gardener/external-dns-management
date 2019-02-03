@@ -70,7 +70,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 type reconciler struct {
 	reconcile.DefaultReconciler
 	controller controller.Interface
-	state      DNSState
+	state      *state
 }
 
 var _ reconcile.Interface = &reconciler{}
@@ -95,7 +95,7 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
 				return NewDNSState(c, NewConfigForController(c, factory))
-			}).(DNSState),
+			}).(*state),
 	}, nil
 }
 
