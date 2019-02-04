@@ -325,6 +325,24 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:a8840506633233578cc1511f8b1ad5726a3e4802713ba95df95c1abf8dd04941" 
+  name = "github.com/gophercloud/gophercloud"
+  packages = [
+    ".",
+    "openstack",
+    "openstack/dns/v2/recordsets",
+    "openstack/dns/v2/zones",
+    "openstack/identity/v2/tenants",
+    "openstack/identity/v2/tokens",
+    "openstack/identity/v3/tokens",
+    "openstack/utils",
+    "pagination",
+  ]
+  pruneopts = "NUT"
+  revision = "cc9c99918988100699c8ec6f0d7a73dfa5b71fda"
+
+[[projects]]
+  branch = "master"
   digest = "1:a86d65bc23eea505cd9139178e4d889733928fe165c7a008f41eaab039edf9df"
   name = "github.com/gregjones/httpcache"
   packages = [
@@ -1051,6 +1069,11 @@
     "github.com/gardener/controller-manager-library/pkg/resources",
     "github.com/gardener/controller-manager-library/pkg/resources/access",
     "github.com/gardener/controller-manager-library/pkg/utils",
+    "github.com/gophercloud/gophercloud",
+    "github.com/gophercloud/gophercloud/openstack",
+    "github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets",
+    "github.com/gophercloud/gophercloud/openstack/dns/v2/zones",
+    "github.com/gophercloud/gophercloud/pagination",
     "golang.org/x/oauth2",
     "golang.org/x/oauth2/google",
     "google.golang.org/api/dns/v1",
