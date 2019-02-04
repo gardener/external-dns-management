@@ -33,12 +33,12 @@ type Change struct {
 type Execution struct {
 	logger.LogContext
 	handler *Handler
-	zone    *provider.DNSHostedZoneInfo
+	zone    provider.DNSHostedZone
 
 	changes map[string][]*Change
 }
 
-func NewExecution(logger logger.LogContext, h *Handler, zone *provider.DNSHostedZoneInfo) *Execution {
+func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZone) *Execution {
 	return &Execution{LogContext: logger, handler: h, zone: zone, changes: map[string][]*Change{}}
 }
 
@@ -59,13 +59,13 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 		dnsset = req.Deletion
 	}
 
-	name, rset := dns.MapToProvider(req.Type, dnsset, exec.zone.Domain)
+	name, rset := dns.MapToProvider(req.Type, dnsset, exec.zone.Domain())
 
 	if len(rset.Records) == 0 {
 		return bs_empty, nil
 	}
 
-	exec.Infof("Desired %s: %s record set %s[%s]: %s", req.Action, rset.Type, name, exec.zone.Domain, rset.RecordString())
+	exec.Infof("Desired %s: %s record set %s[%s]: %s", req.Action, rset.Type, name, exec.zone.Domain(), rset.RecordString())
 	return exec.buildMappedRecordSet(name, rset)
 }
 
@@ -107,7 +107,7 @@ func (exec *Execution) create(rset *recordsets.RecordSet) error {
 		TTL:     rset.TTL,
 		Records: rset.Records,
 	}
-	_, err := exec.handler.client.CreateRecordSet(exec.zone.Id, opts)
+	_, err := exec.handler.client.CreateRecordSet(exec.zone.Id(), opts)
 	return err
 }
 
@@ -117,7 +117,7 @@ func (exec *Execution) lookupRecordSetID(rset *recordsets.RecordSet) (string, er
 		recordSetID = recordSet.ID
 		return nil
 	}
-	err := exec.handler.client.ForEachRecordSetFilterByTypeAndName(exec.zone.Id, rset.Type, dns.AlignHostname(rset.Name), handler)
+	err := exec.handler.client.ForEachRecordSetFilterByTypeAndName(exec.zone.Id(), rset.Type, dns.AlignHostname(rset.Name), handler)
 	if err != nil {
 		return "", fmt.Errorf("RecordSet lookup for %s %s failed with: %v", rset.Type, rset.Name, err)
 	}
@@ -137,7 +137,7 @@ func (exec *Execution) update(rset *recordsets.RecordSet) error {
 		TTL:     rset.TTL,
 		Records: rset.Records,
 	}
-	err = exec.handler.client.UpdateRecordSet(exec.zone.Id, recordSetID, opts)
+	err = exec.handler.client.UpdateRecordSet(exec.zone.Id(), recordSetID, opts)
 	return err
 }
 
@@ -146,6 +146,6 @@ func (exec *Execution) delete(rset *recordsets.RecordSet) error {
 	if err != nil {
 		return err
 	}
-	err = exec.handler.client.DeleteRecordSet(exec.zone.Id, recordSetID)
+	err = exec.handler.client.DeleteRecordSet(exec.zone.Id(), recordSetID)
 	return err
 }

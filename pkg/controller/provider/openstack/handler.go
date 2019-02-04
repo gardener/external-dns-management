@@ -93,18 +93,19 @@ func readAuthConfig(config *provider.DNSHandlerConfig) (*authConfig, error) {
 	return &authConfig, nil
 }
 
-func (h *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
-	zoneInfos := provider.DNSHostedZoneInfos{}
+func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
+	hostedZones := provider.DNSHostedZones{}
 
 	zoneHandler := func(zone *zones.Zone) error {
 		forwarded := h.collectForwardedSubzones(zone)
 
-		hostedZone := provider.DNSHostedZoneInfo{
-			Id:        zone.ID,
-			Domain:    dns.NormalizeHostname(zone.Name),
-			Forwarded: forwarded,
-		}
-		zoneInfos = append(zoneInfos, hostedZone)
+		hostedZone := provider.NewDNSHostedZone(
+			zone.ID,
+			dns.NormalizeHostname(zone.Name),
+			"",
+			forwarded,
+		)
+		hostedZones = append(hostedZones, hostedZone)
 		return nil
 	}
 
@@ -112,7 +113,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
 	}
 
-	return zoneInfos, nil
+	return hostedZones, nil
 }
 
 func (h *Handler) collectForwardedSubzones(zone *zones.Zone) []string {
@@ -135,7 +136,7 @@ func (h *Handler) collectForwardedSubzones(zone *zones.Zone) []string {
 	return forwarded
 }
 
-func (h *Handler) GetDNSSets(zoneID string) (dns.DNSSets, error) {
+func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	recordSetHandler := func(recordSet *recordsets.RecordSet) error {
@@ -154,15 +155,15 @@ func (h *Handler) GetDNSSets(zoneID string) (dns.DNSSets, error) {
 		return nil
 	}
 
-	if err := h.client.ForEachRecordSet(zoneID, recordSetHandler); err != nil {
-		return nil, fmt.Errorf("Listing DNS zones failed for %s. Details: %s", zoneID, err.Error())
+	if err := h.client.ForEachRecordSet(zone.Id(), recordSetHandler); err != nil {
+		return nil, fmt.Errorf("Listing DNS zones failed for %s. Details: %s", zone.Id(), err.Error())
 	}
 
-	return dnssets, nil
+	return provider.NewDNSZoneState(dnssets), nil
 }
 
-func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, reqs []*provider.ChangeRequest) error {
-	exec := NewExecution(logger, h, &zone)
+func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	exec := NewExecution(logger, h, zone)
 
 	var succeeded, failed int
 	for _, r := range reqs {
@@ -192,10 +193,10 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	}
 
 	if succeeded > 0 {
-		logger.Infof("Succeeded updates for records in zone %s: %d", zone.Domain, succeeded)
+		logger.Infof("Succeeded updates for records in zone %s: %d", zone.Domain(), succeeded)
 	}
 	if failed > 0 {
-		logger.Infof("Failed updates for records in zone %s: %d", zone.Domain, failed)
+		logger.Infof("Failed updates for records in zone %s: %d", zone.Domain(), failed)
 	}
 
 	return nil
