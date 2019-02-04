@@ -1,0 +1,12 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: openstack
+  namespace: default
+spec:
+  type: OpenStack
+  secretRef:
+    name: openstack-credentials
+  domains:
+    include:
+      - ringtest.dev.k8s.ondemand.com
