@@ -19,7 +19,6 @@ package openstack
 import (
 	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -102,7 +101,7 @@ func createDesignateServiceClient(logger logger.LogContext, authConfig *authConf
 	}
 
 	eo := gophercloud.EndpointOpts{
-		Region: os.Getenv("OS_REGION_NAME"),
+		Region: authConfig.RegionName,
 	}
 
 	client, err := openstack.NewDNSV2(authProvider, eo)
@@ -178,6 +177,7 @@ func (c designateClient) DeleteRecordSet(zoneID, recordSetID string) error {
 	return recordsets.Delete(c.serviceClient, zoneID, recordSetID).ExtractErr()
 }
 
+// GetRecordSet gets single recordset by its ID
 func (c designateClient) GetRecordSet(zoneID, recordSetID string, handler func(recordSet *recordsets.RecordSet) error) error {
 	rs, err := recordsets.Get(c.serviceClient, zoneID, recordSetID).Extract()
 	if err != nil {

@@ -39,8 +39,6 @@ type Handler struct {
 	recordsClient *azure.RecordSetsClient
 }
 
-var _ provider.DNSHandler = &Handler{}
-
 func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	h := &Handler{

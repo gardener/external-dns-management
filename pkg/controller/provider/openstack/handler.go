@@ -34,8 +34,6 @@ type Handler struct {
 	client designateClient
 }
 
-var _ provider.DNSHandler = &Handler{}
-
 func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	authConfig, err := readAuthConfig(config)
 	if err != nil {
@@ -168,7 +166,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	var succeeded, failed int
 	for _, r := range reqs {
 		status, rset := exec.buildRecordSet(r)
-		if status == bs_empty || status == bs_dryrun {
+		if status == bsEmpty || status == bsDryRun {
 			continue
 		}
 
