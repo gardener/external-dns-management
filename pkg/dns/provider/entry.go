@@ -159,7 +159,7 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 	return
 }
 
-func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTtl int64) reconcile.Status {
+func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTTL int64) reconcile.Status {
 	this.lock.Lock()
 	this.lock.Unlock()
 
@@ -237,7 +237,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 
 	status := &this.object.DNSEntry().Status
 
-	ttl := defaultTtl
+	ttl := defaultTTL
 	if spec.TTL != nil {
 		ttl = *spec.TTL
 	}
