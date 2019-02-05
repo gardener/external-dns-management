@@ -17,6 +17,7 @@
 package provider
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -312,9 +313,9 @@ func (this *Entry) targetList(targets Targets) ([]string, string) {
 func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg string, modify ...resources.Modifier) error {
 	f := func(data resources.ObjectData) (bool, error) {
 		o := data.(*api.DNSEntry)
-		if state == api.STATE_PENDING && o.Status.State != "" {
+		/*if state == api.STATE_PENDING && o.Status.State != "" {
 			return false, nil
-		}
+		}*/
 
 		mod := &utils.ModificationState{}
 		mod.AssureStringValue(&o.Status.State, state)
@@ -376,6 +377,97 @@ func (this *Entry) Before(e *Entry) bool {
 	return this.object.GetCreationTimestamp().Time.Before(e.object.GetCreationTimestamp().Time)
 }
 
+func (this *Entry) dnsSelfCheck(logger logger.LogContext, sets *dns.DNSSet) {
+
+	if sets == nil && sets.Sets == nil {
+		return
+	}
+	for _, set := range sets.Sets {
+		if set.Type == dns.RS_A {
+			ips, err := net.LookupIP(sets.Name)
+			if err != nil {
+				logger.Warnf("cannot lookup Ips for A-Record '%s': %s", sets.Name, err)
+				this.setUpdateSelfCheckFailed(logger)
+				return
+			}
+			if len(ips) == 0 {
+				logger.Warnf("cannot lookup Ips for A-Record '%s': %s", sets.Name, err)
+				this.setUpdateSelfCheckFailed(logger)
+				return
+			}
+			if !recordSetContainsAllIps(*set, ips) {
+
+				logger.Warnf("looked up Ips for A-Record '%s'. Desired ips: %s do not match actual ips retrieved: %s", sets.Name, mapRecordsToString(set.Records), mapIpsToString(ips))
+				this.setUpdateSelfCheckFailed(logger)
+				return
+			}
+		} else if set.Type == dns.RS_CNAME {
+			recordValue := set.Records[0].Value
+			providerCname, err := net.LookupCNAME(recordValue)
+			lookupCname, err := net.LookupCNAME(sets.Name)
+			if err != nil {
+				logger.Warnf("cannot lookup CNAME-Record '%s': %s", sets.Name, err)
+				this.setUpdateSelfCheckFailed(logger)
+				return
+			}
+			if lookupCname != providerCname {
+				logger.Warnf("looked up CNAME for FQD '%s'. Desired CNAME %s(%s) does not match the actual CNAME retrieved: %s", sets.Name, providerCname, recordValue, lookupCname)
+				this.setUpdateSelfCheckFailed(logger)
+				return
+			}
+		}
+	}
+
+	err := this.UpdateStatus(logger, api.STATE_READY, "dns entry active")
+	if err != nil {
+		logger.Errorf("cannot update: %s", err)
+	}
+}
+
+func (this *Entry) setUpdateSelfCheckFailed(logger logger.LogContext) {
+	this.object.Eventf(corev1.EventTypeNormal, "self check", "dns self check failed for '%s': entry currently not active on cloud provider. Depending on the DNS provider, changes can take some time before becoming effective", this.object.ObjectName())
+	err := this.UpdateStatus(logger, api.STATE_PENDING, "dns self check failed: entry currently not active on cloud provider.")
+	if err != nil {
+		logger.Errorf("cannot update: %s", err)
+	}
+}
+
+func recordSetContainsAllIps(records dns.RecordSet, ips []net.IP) bool {
+	if len(records.Records) != len(ips) {
+		return false
+	}
+
+	for _, record := range records.Records {
+		contains := false
+		for i := 0; i < len(ips); i++ {
+			if ips[i].String() == record.Value {
+				contains = true
+				break
+			}
+		}
+		if !contains {
+			return false
+		}
+	}
+	return true
+}
+
+func mapRecordsToString(m []*dns.Record) string {
+	b := new(bytes.Buffer)
+	for _, value := range m {
+		fmt.Fprintf(b, "%s ", *value)
+	}
+	return "[ " + b.String() + "]"
+}
+
+func mapIpsToString(ips []net.IP) string {
+	b := new(bytes.Buffer)
+	for _, ip := range ips {
+		fmt.Fprintf(b, "{%s} ", ip.String())
+	}
+	return "[ " + b.String() + "]"
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 type StatusUpdate struct {
@@ -420,8 +512,6 @@ func (this *StatusUpdate) Succeeded() {
 	if !this.done {
 		this.done = true
 		this.modified = false
-
-		// this.object.Update()
 
 		f := func(data resources.ObjectData) (bool, error) {
 			o := data.(*api.DNSEntry)

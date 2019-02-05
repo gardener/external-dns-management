@@ -831,6 +831,9 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 		// TODO: err handling
 		mod, _ := changes.Apply(e.DNSName(), NewStatusUpdate(logger, e), e.Targets()...)
 		modified = modified || mod
+
+		// then conduct a self check to verify DNS records are not only created, but also effective on the Cloud Provider
+		e.dnsSelfCheck(changes.LogContext, changes.applied[e.DNSName()])
 	}
 	modified = modified || changes.Cleanup(logger)
 	if modified {
