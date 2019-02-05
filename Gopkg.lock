@@ -440,6 +440,27 @@
   version = "1.0.1"
 
 [[projects]]
+  digest = "1:feed851b93f9debbe8180092067c4e29a51c06dbb5fe2f643ec9feea039670a3"
+  name = "github.com/onsi/gomega"
+  packages = [
+    ".",
+    "format",
+    "internal/assertion",
+    "internal/asyncassertion",
+    "internal/oraclematcher",
+    "internal/testingtsupport",
+    "matchers",
+    "matchers/support/goraph/bipartitegraph",
+    "matchers/support/goraph/edge",
+    "matchers/support/goraph/node",
+    "matchers/support/goraph/util",
+    "types",
+  ]
+  pruneopts = "NUT"
+  revision = "003f63b7f4cff3fc95357005358af2de0f5fe152"
+  version = "v1.3.0"
+
+[[projects]]
   branch = "master"
   digest = "1:3bf17a6e6eaa6ad24152148a631d18662f7212e21637c2699bff3369b7f00fa2"
   name = "github.com/petar/GoLLRB"
@@ -525,11 +546,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4ee936e8f12ad4b6368ddb7d1ece65b5c86c66226cd6296838e626fe31019af7"
+  digest = "1:3fe1beefae9440161c6f47673e7deb10714b062cca80c9cd77a0f98be316cc22"
   name = "golang.org/x/net"
   packages = [
     "context",
     "context/ctxhttp",
+    "html",
+    "html/atom",
+    "html/charset",
     "http/httpguts",
     "http2",
     "http2/hpack",
@@ -574,17 +598,29 @@
   revision = "3b5209105503162ded1863c307ac66fec31120dd"
 
 [[projects]]
-  digest = "1:e33513a825fcd765e97b5de639a2f7547542d1a8245df0cef18e1fd390b778a9"
+  digest = "1:2c4e3b27329379d7b5f889038b48086140ea60708fb92e4b19d6a775926ea30b"
   name = "golang.org/x/text"
   packages = [
     "collate",
     "collate/build",
+    "encoding",
+    "encoding/charmap",
+    "encoding/htmlindex",
+    "encoding/internal",
+    "encoding/internal/identifier",
+    "encoding/japanese",
+    "encoding/korean",
+    "encoding/simplifiedchinese",
+    "encoding/traditionalchinese",
+    "encoding/unicode",
     "internal/colltab",
     "internal/gen",
     "internal/tag",
     "internal/triegen",
     "internal/ucd",
+    "internal/utf8internal",
     "language",
+    "runes",
     "secure/bidirule",
     "transform",
     "unicode/bidi",
@@ -1057,7 +1093,6 @@
     "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/route53",
-    "github.com/gardener/controller-manager-library/pkg/clientsets",
     "github.com/gardener/controller-manager-library/pkg/clientsets/apiextensions",
     "github.com/gardener/controller-manager-library/pkg/controllermanager",
     "github.com/gardener/controller-manager-library/pkg/controllermanager/cluster",
@@ -1074,6 +1109,7 @@
     "github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets",
     "github.com/gophercloud/gophercloud/openstack/dns/v2/zones",
     "github.com/gophercloud/gophercloud/pagination",
+    "github.com/onsi/gomega",
     "golang.org/x/oauth2",
     "golang.org/x/oauth2/google",
     "google.golang.org/api/dns/v1",

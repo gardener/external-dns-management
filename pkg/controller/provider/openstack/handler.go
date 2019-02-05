@@ -31,7 +31,7 @@ type Handler struct {
 	config provider.DNSHandlerConfig
 	ctx    context.Context
 
-	client designateClient
+	client designateClientInterface
 }
 
 func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
