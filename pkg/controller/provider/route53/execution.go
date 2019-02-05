@@ -34,23 +34,23 @@ type Change struct {
 type Execution struct {
 	logger.LogContext
 	handler *Handler
-	zone    provider.DNSHostedZoneInfo
+	zone    provider.DNSHostedZone
 
 	changes        map[string][]*Change
 	maxChangeCount int
 }
 
-func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZoneInfo) *Execution {
+func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZone) *Execution {
 	return &Execution{LogContext: logger, handler: h, zone: zone, changes: map[string][]*Change{}, maxChangeCount: 20}
 }
 
 func (this *Execution) addChange(action string, req *provider.ChangeRequest, dnsset *dns.DNSSet) {
-	name, rset := dns.MapToProvider(req.Type, dnsset, this.zone.Domain)
+	name, rset := dns.MapToProvider(req.Type, dnsset, this.zone.Domain())
 	name = dns.AlignHostname(name)
 	if len(rset.Records) == 0 {
 		return
 	}
-	this.Infof("%s %s record set %s[%s]: %s", action, rset.Type, name, this.zone.Id, rset.RecordString())
+	this.Infof("%s %s record set %s[%s]: %s(%d)", action, rset.Type, name, this.zone.Id(), rset.RecordString(), rset.TTL)
 	change := &route53.Change{
 		Action: aws.String(action),
 		ResourceRecordSet: &route53.ResourceRecordSet{
@@ -77,13 +77,13 @@ func (this *Execution) submitChanges() error {
 
 	limitedChanges := limitChangeSet(this.changes, this.maxChangeCount)
 	for i, changes := range limitedChanges {
-		this.Infof("processing batch %d for zone %s", i+1, this.zone.Id)
+		this.Infof("processing batch %d for zone %s", i+1, this.zone.Id())
 		for _, c := range changes {
 			this.Infof("desired change: %s %s %s", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type)
 		}
 
 		params := &route53.ChangeResourceRecordSetsInput{
-			HostedZoneId: aws.String(this.zone.Id),
+			HostedZoneId: aws.String(this.zone.Id()),
 			ChangeBatch: &route53.ChangeBatch{
 				Changes: mapChanges(changes),
 			},
@@ -103,7 +103,7 @@ func (this *Execution) submitChanges() error {
 					c.Done.Succeeded()
 				}
 			}
-			this.Infof("%d records in zone %s were successfully updated", len(changes), this.zone.Id)
+			this.Infof("%d records in zone %s were successfully updated", len(changes), this.zone.Id())
 		}
 	}
 	return nil

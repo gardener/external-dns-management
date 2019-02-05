@@ -56,10 +56,11 @@ type ChangeGroup struct {
 	provider DNSProvider
 	dnssets  dns.DNSSets
 	requests ChangeRequests
+	model    *ChangeModel
 }
 
-func newChangeGroup(name string, provider DNSProvider) *ChangeGroup {
-	return &ChangeGroup{name: name, provider: provider, dnssets: dns.DNSSets{}, requests: ChangeRequests{}}
+func newChangeGroup(name string, provider DNSProvider, model *ChangeModel) *ChangeGroup {
+	return &ChangeGroup{name: name, provider: provider, dnssets: dns.DNSSets{}, requests: ChangeRequests{}, model: model}
 }
 
 func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) bool {
@@ -85,7 +86,7 @@ func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bo
 
 	reqs := this.requests
 	if reqs != nil && len(reqs) > 0 {
-		err := this.provider.ExecuteRequests(logger, model.zone.zone, reqs)
+		err := this.provider.ExecuteRequests(logger, model.zone.zone, this.model.state, reqs)
 		if err != nil {
 			model.Errorf("entry reconcilation failed for %s: %s", this.name, err)
 			ok = false
@@ -121,6 +122,7 @@ type ChangeModel struct {
 	applied        map[string]*dns.DNSSet
 	dangling       *ChangeGroup
 	providergroups map[DNSProvider]*ChangeGroup
+	state          DNSZoneState
 }
 
 func NewChangeModel(logger logger.LogContext, owners utils.StringSet, config Config, zone *dnsHostedZone, providers DNSProviders) *ChangeModel {
@@ -138,7 +140,7 @@ func NewChangeModel(logger logger.LogContext, owners utils.StringSet, config Con
 func (this *ChangeModel) getProviderView(p DNSProvider) *ChangeGroup {
 	v := this.providergroups[p]
 	if v == nil {
-		v = newChangeGroup(p.ObjectName().String(), p)
+		v = newChangeGroup(p.ObjectName().String(), p, this)
 		this.providergroups[p] = v
 	}
 	return v
@@ -165,15 +167,18 @@ func (this *ChangeModel) dumpf(fmt string, args ...interface{}) {
 }
 
 func (this *ChangeModel) Setup() error {
+	var err error
+
 	provider := this.getDefaultProvider()
 	if provider == nil {
 		return fmt.Errorf("no provider found for zone %q", this.ZoneId())
 	}
-	sets, err := provider.GetDNSSets(this.ZoneId())
+	this.state, err = provider.GetZoneState(this.zone.zone)
 	if err != nil {
 		return err
 	}
-	this.dangling = newChangeGroup("dangling entries", provider)
+	sets := this.state.GetDNSSets()
+	this.dangling = newChangeGroup("dangling entries", provider, this)
 	for dnsName, set := range sets {
 		var view *ChangeGroup
 		provider = this.providers.LookupFor(dnsName)

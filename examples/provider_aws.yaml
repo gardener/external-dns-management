@@ -6,7 +6,7 @@ metadata:
 spec:
   type: AWS
   secretRef:
-    name: route53
+    name: aws-credentials
   domains:
     include:
     - ringtest.dev.k8s.ondemand.com

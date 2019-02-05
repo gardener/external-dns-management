@@ -47,7 +47,7 @@ type Registry interface {
 type _Definitions struct {
 	lock        sync.RWMutex
 	definitions Registrations
-	scheme *runtime.Scheme
+	scheme      *runtime.Scheme
 }
 
 type _Registry struct {
@@ -58,8 +58,8 @@ var _ Definition = &_Definition{}
 var _ Definitions = &_Definitions{}
 
 func NewRegistry(scheme *runtime.Scheme) Registry {
-	if scheme==nil {
-		scheme=resources.DefaultScheme()
+	if scheme == nil {
+		scheme = resources.DefaultScheme()
 	}
 	registry := &_Registry{_Definitions: &_Definitions{definitions: Registrations{}, scheme: scheme}}
 	Configure(DEFAULT, "kubeconfig", "default cluster access").MustRegisterAt(registry)

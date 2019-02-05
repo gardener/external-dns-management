@@ -19,12 +19,13 @@ package provider
 import (
 	"bytes"
 	"fmt"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"k8s.io/apimachinery/pkg/util/validation"
 	"net"
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/gardener/external-dns-management/pkg/dns"
+	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -248,7 +249,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 	}
 
 	if targets.DifferFrom(this.targets) {
-		logger.Infof("current targets differ from status")
+		logger.Infof("targets differ from internal state")
 		this.modified = true
 		for _, w := range warnings {
 			logger.Warn(w)
@@ -307,7 +308,6 @@ func (this *Entry) targetList(targets Targets) ([]string, string) {
 		sep = ", "
 	}
 	msg = msg + "]"
-	logger.Info(msg)
 	return list, msg
 }
 func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg string, modify ...resources.Modifier) error {
@@ -373,6 +373,10 @@ func (this *Entry) NormalizeTargets(logger logger.LogContext, targets ...Target)
 func (this *Entry) Before(e *Entry) bool {
 	if e == nil {
 		return true
+	}
+	if this.object.GetCreationTimestamp().Time.Equal(e.object.GetCreationTimestamp().Time) {
+		// for entries created at same time compare objectname to define strict order
+		return strings.Compare(this.object.ObjectName().String(), e.object.ObjectName().String()) < 0
 	}
 	return this.object.GetCreationTimestamp().Time.Before(e.object.GetCreationTimestamp().Time)
 }

@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:5ad08b0e14866764a6d7475eb11c9cf05cad9a52c442593bdfa544703ff77f61"
+  digest = "1:4d6f036ea3fe636bcb2e89850bcdc62a771354e157cd51b8b22a2de8562bf663"
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
   pruneopts = "NUT"
-  revision = "0ebda48a7f143b1cce9eb37a8c1106ac762a3430"
-  version = "v0.34.0"
+  revision = "28a4bc8c44b3acbcc482cff0cdf7de29a4688b61"
+  version = "v0.35.1"
 
 [[projects]]
   digest = "1:f323f98930459f65f4699b5bfba563743680e2633d96e72d61a9732648e2d07c"
@@ -29,7 +29,7 @@
   version = "v24.1.0"
 
 [[projects]]
-  digest = "1:66ac3b2baf78ab4a7220d9bdb8469f72b86472bdbd5dcd383680018d937df1bd"
+  digest = "1:9e5690493f0a1abcee40910772bbe0477a6ade097eff26dda3fa3bd3f2855cba"
   name = "github.com/Azure/go-autorest"
   packages = [
     "autorest",
@@ -43,8 +43,8 @@
     "tracing",
   ]
   pruneopts = "NUT"
-  revision = "7324aa01f00acb1ae6e502ac06e0213cfdf09bdb"
-  version = "v11.3.2"
+  revision = "71d02b67e17a3d80abf8db171f1ca80c39eb2e90"
+  version = "v11.4.0"
 
 [[projects]]
   digest = "1:d8ebbd207f3d3266d4423ce4860c9f3794956306ded6c7ba312ecc69cdfbf04c"
@@ -63,7 +63,26 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
-  digest = "1:9ddfbe3df1fae959fd019c822e78ce3e63a11286b74592d905444a2732dc0004"
+  digest = "1:99b28f9fefc9c73e56a47c24a0dca7f318d08c7b9ad8f93e802636bda2a43d38"
+  name = "github.com/aliyun/alibaba-cloud-sdk-go"
+  packages = [
+    "sdk",
+    "sdk/auth",
+    "sdk/auth/credentials",
+    "sdk/auth/signers",
+    "sdk/endpoints",
+    "sdk/errors",
+    "sdk/requests",
+    "sdk/responses",
+    "sdk/utils",
+    "services/alidns",
+  ]
+  pruneopts = "NUT"
+  revision = "97fb8dcd4a63b099605dc2f4dbe688e56de3bd00"
+  version = "1.51.22"
+
+[[projects]]
+  digest = "1:de2b57d4697a882ee174be9a417cd26cd49c56630eb5d103fdc4d38569eea39b"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -75,19 +94,13 @@
     "aws/credentials",
     "aws/credentials/ec2rolecreds",
     "aws/credentials/endpointcreds",
-    "aws/credentials/processcreds",
     "aws/credentials/stscreds",
-    "aws/csm",
     "aws/defaults",
     "aws/ec2metadata",
     "aws/endpoints",
     "aws/request",
     "aws/session",
     "aws/signer/v4",
-    "internal/ini",
-    "internal/sdkio",
-    "internal/sdkrand",
-    "internal/sdkuri",
     "internal/shareddefaults",
     "private/protocol",
     "private/protocol/query",
@@ -99,8 +112,8 @@
     "service/sts",
   ]
   pruneopts = "NUT"
-  revision = "c1afd6c3340feedd0a2c1cd929dcb291d4bd09ba"
-  version = "v1.16.23"
+  revision = "b69f447375c7fa0047ebcdd8ae5d585d5aac2f71"
+  version = "v1.10.51"
 
 [[projects]]
   digest = "1:65b0d980b428a6ad4425f2df4cd5410edd81f044cf527bd1c345368444649e58"
@@ -152,7 +165,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:0ad62ca94985b7723bb641bca06b3e0a7abea0a73fe012f73930b3829efdc69c"
+  digest = "1:0a8d6c21ebc19dc9444538b50eae3eacff9935d7b75cb038ca389629036818bc"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/apis/gardenextensions",
@@ -191,7 +204,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "e82ccf3aa9384e8ce82c392c6345d9bc8de3be28"
+  revision = "0fca1b88680c536e87565644ff0a18a448f55bcf"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
@@ -200,6 +213,14 @@
   pruneopts = "NUT"
   revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
   version = "v1.0.0"
+
+[[projects]]
+  digest = "1:5e92676b56ce4c69edf9ee1f6343c56f637e30af11b9d8b5edd1b6530f3fbc3d"
+  name = "github.com/go-ini/ini"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "6ed8d5f64cd79a498d1f3fab5880cc376ce41bbe"
+  version = "v1.41.0"
 
 [[projects]]
   digest = "1:260f7ebefc63024c8dfe2c9f1a2935a89fa4213637a1f522f592f80c001cc441"
@@ -253,11 +274,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3fb07f8e222402962fa190eb060608b34eddfb64562a18e2167df2de0ece85d8"
+  digest = "1:b7cb6054d3dff43b38ad2e92492f220f57ae6087ee797dca298139776749ace8"
   name = "github.com/golang/groupcache"
   packages = ["lru"]
   pruneopts = "NUT"
-  revision = "c65c006176ff7ff98bb916961c7abbc6b0afc0aa"
+  revision = "5b532d6fd5efaf7fa130d4e859a2fde0fc3a9e1b"
 
 [[projects]]
   digest = "1:479e958ad7ae540d7a3c565d1839cc7c8ab9b627640144443f1e88d11d4023d0"
@@ -325,12 +346,12 @@
   version = "v0.5.0"
 
 [[projects]]
-  digest = "1:9a52adf44086cead3b384e5d0dbf7a1c1cce65e67552ee3383a8561c42a18cd3"
+  digest = "1:aaa38889f11896ee3644d77e17dc7764cc47f5f3d3b488268df2af2b52541c5f"
   name = "github.com/imdario/mergo"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "9f23e2d6bd2a77f959b2bf6acdbefd708a83a4a4"
-  version = "v0.3.6"
+  revision = "7c29201646fa3de8506f701213473dd407f19646"
+  version = "v0.3.7"
 
 [[projects]]
   digest = "1:406338ad39ab2e37b7f4452906442a3dbf0eb3379dd1f06aafb5c07e769a5fbb"
@@ -341,11 +362,12 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:1f2aebae7e7c856562355ec0198d8ca2fa222fb05e5b1b66632a1fce39631885"
+  digest = "1:7c818eb119c69fc685573449e8f799596ba81827074b006ff0cb71052424f254"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "c2b33e84"
+  revision = "3433f3ea46d9f8019119e7dd41274e112a2359a9"
+  version = "0.2.2"
 
 [[projects]]
   digest = "1:8e36686e8b139f8fe240c1d5cf3a145bc675c22ff8e707857cdd3ae17b00d728"
@@ -376,12 +398,12 @@
   revision = "60711f1a8329503b04e1c88535f419d0bb440bff"
 
 [[projects]]
-  digest = "1:a4df73029d2c42fabcb6b41e327d2f87e685284ec03edf76921c267d9cfc9c23"
+  digest = "1:f9f72e583aaacf1d1ac5d6121abd4afd3c690baa9e14e1d009df26bf831ba347"
   name = "github.com/mitchellh/go-homedir"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "ae18d6b8b3205b561c79e8e5f69bff09736185f4"
-  version = "v1.0.0"
+  revision = "af06845cf3004701891bf4fdb884bfe4920b3727"
+  version = "v1.1.0"
 
 [[projects]]
   digest = "1:2f42fa12d6911c7b7659738758631bec870b7e9b4c6be5444f963cdcfccc191f"
@@ -414,6 +436,14 @@
   pruneopts = "NUT"
   revision = "5f041e8faa004a95c88a202771f4cc3e991971e6"
   version = "v2.0.1"
+
+[[projects]]
+  digest = "1:6bc0652ea6e39e22ccd522458b8bdd8665bf23bdc5a20eec90056e4dc7e273ca"
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
+  version = "v1.2.0"
 
 [[projects]]
   digest = "1:e256b859ab89f005f2f639f5ed9807d0873d9135e27c6382f419b840ff9abe71"
@@ -465,7 +495,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:f6ac7a11c658598418295184fff23b976de3ebfb1fcb41babcc4b6051405dda6"
+  digest = "1:648a501f4f1615ecc732e76aa5fb1c2075a8e37ab3f816516e5b5a9672f39de8"
   name = "golang.org/x/crypto"
   packages = [
     "pkcs12",
@@ -473,7 +503,7 @@
     "ssh/terminal",
   ]
   pruneopts = "NUT"
-  revision = "64072686203f69e3fd20143576b27200f18ab0fa"
+  revision = "b8fe1690c61389d7d2a8074a507d1d40c5d30448"
 
 [[projects]]
   branch = "master"
@@ -490,7 +520,7 @@
     "trace",
   ]
   pruneopts = "NUT"
-  revision = "ed066c81e75eba56dd9bd2139ade88125b855585"
+  revision = "d26f9f9a57f3fab6a695bec0d84433c2c50f8bbf"
 
 [[projects]]
   branch = "master"
@@ -504,7 +534,7 @@
     "jwt",
   ]
   pruneopts = "NUT"
-  revision = "5dab4167f31cbd76b407f1486c86b40748bc5073"
+  revision = "99b60b757ec124ebb7d6b7e97f153b19c10ce163"
 
 [[projects]]
   branch = "master"
@@ -516,14 +546,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4155c58f500d1fcca10a6cbf061efb220dbfb14e924c381e809a13879ddf4b87"
+  digest = "1:7c4f19625583c897f0f16a73913eb9f5509fcd491c34d86f86b3ce3eb07b737e"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "NUT"
-  revision = "054c452bb702e465e95ce8e7a3d9a6cf0cd1188d"
+  revision = "2970a3744de33489e46eba373c73655bc2377116"
 
 [[projects]]
   digest = "1:e33513a825fcd765e97b5de639a2f7547542d1a8245df0cef18e1fd390b778a9"
@@ -559,7 +589,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3ab7ad4d64d2f8bd7dc7f4847f546a6f97eccba24be5c3b9c4618d6e2b080ac9"
+  digest = "1:86d002f2c67e364e097c5047f517ab38cdef342c3c20be53974c1bfd5b191d30"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -572,10 +602,11 @@
     "imports",
     "internal/fastwalk",
     "internal/gopathwalk",
+    "internal/module",
     "internal/semver",
   ]
   pruneopts = "NUT"
-  revision = "24cd39ecf74570612483b772d45cf9d53d908340"
+  revision = "067a2f313b693f3c2d3c0eb328434c91c7fc9b6b"
 
 [[projects]]
   digest = "1:7158f09f7aee24d61dd0e7bd1ce5960186dad439cc5fb643808ed9f0c1583136"
@@ -616,7 +647,7 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "NUT"
-  revision = "8819c946db4494a2259bf100a377f51aa585d893"
+  revision = "8ac453e89fca495c0d17f98932642f392e2a11f3"
 
 [[projects]]
   digest = "1:4837585442801f3c7ebd044a96fce852242529a73bdd96fcba2119ff74987b0b"
@@ -726,7 +757,7 @@
     "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "80a4532647cb134adf686615c22c0def63713d9e"
+  revision = "9f17d72d862ef8e7e718fb15395f34e9512e2842"
 
 [[projects]]
   digest = "1:3e353d8babd8117333e032d7f61229ef379f59302575eb87fea15052178e97c2"
@@ -970,7 +1001,7 @@
     "types",
   ]
   pruneopts = "NUT"
-  revision = "f8a0810f38afb8478882b3835a615aebfda39afa"
+  revision = "0689ccc1d7d65d9dd1bedcc3b0b1ed7df91ba266"
 
 [[projects]]
   digest = "1:9cc257b3c9ff6a0158c9c661ab6eebda1fe8a4a4453cd5c4044dc9a2ebfb992b"
@@ -994,7 +1025,7 @@
     "pkg/util/sets",
   ]
   pruneopts = "NUT"
-  revision = "ced9eb3070a5f1c548ef46e8dfe2a97c208d9f03"
+  revision = "d8b685cd2daadc40121e864b5e87ca8ededd9eed"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -1002,10 +1033,12 @@
   input-imports = [
     "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-03-01-preview/dns",
     "github.com/Azure/go-autorest/autorest/azure/auth",
+    "github.com/aliyun/alibaba-cloud-sdk-go/services/alidns",
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/route53",
+    "github.com/gardener/controller-manager-library/pkg/clientsets",
     "github.com/gardener/controller-manager-library/pkg/clientsets/apiextensions",
     "github.com/gardener/controller-manager-library/pkg/controllermanager",
     "github.com/gardener/controller-manager-library/pkg/controllermanager/cluster",

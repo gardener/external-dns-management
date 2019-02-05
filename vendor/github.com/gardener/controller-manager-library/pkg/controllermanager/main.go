@@ -68,9 +68,9 @@ func (this Configuration) Start(use, short string) {
 		os.Exit(1)
 	}
 
-	var gracePeriodSeconds time.Duration = 120
-	logger.Infof("waiting for everything to shutdown (max. %d seconds)", gracePeriodSeconds)
-	ctxutil.SyncPointWait(ctx, gracePeriodSeconds*time.Second)
+	var gracePeriod = 120 * time.Second
+	logger.Infof("waiting for everything to shutdown (max. %d seconds)", gracePeriod/time.Second)
+	ctxutil.SyncPointWait(ctx, gracePeriod)
 	logger.Infof("%s exits.", use)
 }
 

@@ -33,7 +33,7 @@ type Definitions interface {
 	Get(name string) Definition
 	CreateClusters(ctx context.Context, logger logger.LogContext, cfg *config.Config, names utils.StringSet) (Clusters, error)
 	ExtendConfig(cfg *config.Config)
-	GetScheme() * runtime.Scheme
+	GetScheme() *runtime.Scheme
 }
 
 var _ Definitions = &_Definitions{}

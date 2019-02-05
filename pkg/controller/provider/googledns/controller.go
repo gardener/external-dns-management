@@ -20,10 +20,11 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
+const TYPE_CODE = "CloudDNS"
 const CONTROLLER_NAME = "google-dns-controller"
 
 func init() {
-	provider.DNSController(CONTROLLER_NAME, &Factory{}).
+	provider.DNSController(CONTROLLER_NAME, provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)).
 		FinalizerDomain("dns.gardener.cloud").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

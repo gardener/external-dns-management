@@ -65,5 +65,5 @@ func (this *Definition) ExtendConfig(cfg *config.Config) {
 }
 
 func DefaultDefinition(name, desc string) *Definition {
-	return Configure(name, desc,nil).ByDefault().Definition()
+	return Configure(name, desc, nil).ByDefault().Definition()
 }

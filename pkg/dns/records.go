@@ -33,6 +33,7 @@ const RS_NS = "NS"
 ////////////////////////////////////////////////////////////////////////////////
 
 type RecordSets map[string]*RecordSet
+type Records []*Record
 
 type Record struct {
 	Value string
@@ -45,12 +46,12 @@ func (this *Record) Clone() *Record {
 type RecordSet struct {
 	Type    string
 	TTL     int64
-	Records []*Record
+	Records Records
 }
 
 func NewRecordSet(rtype string, ttl int64, records []*Record) *RecordSet {
 	if records == nil {
-		records = []*Record{}
+		records = Records{}
 	}
 	return &RecordSet{Type: rtype, TTL: ttl, Records: records}
 }
@@ -79,13 +80,15 @@ func (this *RecordSet) Add(records ...*Record) *RecordSet {
 
 func (this *RecordSet) RecordString() string {
 	line := ""
+	sep := ""
 	for _, r := range this.Records {
-		line = fmt.Sprintf("%s %s", line, r.Value)
+		line = fmt.Sprintf("%s%s%s", line, sep, r.Value)
+		sep = ", "
 	}
 	if line == "" {
 		return "no records"
 	}
-	return line
+	return "[" + line + "]"
 }
 
 func (this *RecordSet) Match(set *RecordSet) bool {
@@ -134,6 +137,31 @@ func (this *RecordSet) SetAttr(name string, value string) {
 	}
 	r := newMetaRecord(name, value)
 	this.Records = append(this.Records, r)
+}
+
+func (this *RecordSet) DiffTo(set *RecordSet) (new Records, update Records, delete Records) {
+nextOwn:
+	for _, r := range this.Records {
+		for _, d := range set.Records {
+			if d.Value == r.Value {
+				if this.TTL != set.TTL {
+					update = append(update, r)
+				}
+				continue nextOwn
+			}
+		}
+		new = append(new, r)
+	}
+nextForeign:
+	for _, d := range set.Records {
+		for _, r := range this.Records {
+			if d.Value == r.Value {
+				continue nextForeign
+			}
+		}
+		delete = append(delete, d)
+	}
+	return
 }
 
 func newMetaKeyPrefix(name string) string {

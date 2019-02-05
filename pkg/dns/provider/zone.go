@@ -26,10 +26,10 @@ type dnsHostedZones map[string]*dnsHostedZone
 type dnsHostedZone struct {
 	lock sync.Mutex
 	busy bool
-	zone DNSHostedZoneInfo
+	zone DNSHostedZone
 }
 
-func newDNSHostedZone(zone DNSHostedZoneInfo) *dnsHostedZone {
+func newDNSHostedZone(zone DNSHostedZone) *dnsHostedZone {
 	return &dnsHostedZone{
 		zone: zone,
 	}
@@ -47,7 +47,7 @@ func (this *dnsHostedZone) TestAndSetBusy() bool {
 }
 
 func (this *dnsHostedZone) String() string {
-	return fmt.Sprintf("%s: %s", this.zone.Id, this.zone.Domain)
+	return fmt.Sprintf("%s: %s", this.zone.Id(), this.zone.Domain())
 }
 
 func (this *dnsHostedZone) Release() {
@@ -57,19 +57,19 @@ func (this *dnsHostedZone) Release() {
 }
 
 func (this *dnsHostedZone) Id() string {
-	return this.zone.Id
+	return this.zone.Id()
 }
 
 func (this *dnsHostedZone) Domain() string {
-	return this.zone.Domain
+	return this.zone.Domain()
 }
 
-func (this *dnsHostedZone) Forwarded() []string {
-	return this.zone.Forwarded
+func (this *dnsHostedZone) ForwardedDomains() []string {
+	return this.zone.ForwardedDomains()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *dnsHostedZone) update(i DNSHostedZoneInfo) {
-	this.zone.Domain = i.Domain
+func (this *dnsHostedZone) update(zone DNSHostedZone) {
+	this.zone = zone
 }

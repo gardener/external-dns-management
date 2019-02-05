@@ -1,6 +1,2 @@
 external-dns-management:
   template: 'default'
-    variants:
-      head-update:
-        traits:
-          version: ~

@@ -47,7 +47,7 @@ go get -u github.com/golang/lint/golint
 
 join_by() { local IFS="$1"; shift; echo "$*"; }
 
-PACKAGES="$(go list -e ./... | grep -vE '/tmp/|/vendor/')"
+PACKAGES="$(go list -e ./... | grep -vE '/tmp/|/vendor/|/local/')"
 LINT_FOLDERS="$(echo ${PACKAGES} | sed "s|$GITPROVIDER/$PROJECT|.|g")"
 
 # Execute static code checks.

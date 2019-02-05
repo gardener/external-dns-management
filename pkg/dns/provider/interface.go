@@ -21,7 +21,6 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -49,22 +48,23 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 	return Config{Ident: ident, Dryrun: dryrun, TTL: int64(ttl), Factory: factory}
 }
 
-type DNSHostedZoneInfo struct {
-	Id        string
-	Domain    string
-	Forwarded []string
+type DNSHostedZone interface {
+	Key() string
+	Id() string
+	Domain() string
+	ForwardedDomains() []string
 }
 
-type DNSHostedZoneInfos []DNSHostedZoneInfo
+type DNSHostedZones []DNSHostedZone
 
-func (this DNSHostedZoneInfos) equivalentTo(infos DNSHostedZoneInfos) bool {
+func (this DNSHostedZones) equivalentTo(infos DNSHostedZones) bool {
 	if len(this) != len(infos) {
 		return false
 	}
 outer:
 	for _, i := range infos {
 		for _, t := range this {
-			if i.Id == t.Id && i.Domain == t.Domain {
+			if i.Key() == t.Key() && i.Domain() == t.Domain() {
 				continue outer
 			}
 			return false
@@ -80,10 +80,14 @@ type DNSHandlerConfig struct {
 	Context    context.Context
 }
 
+type DNSZoneState interface {
+	GetDNSSets() dns.DNSSets
+}
+
 type DNSHandler interface {
-	GetZones() (DNSHostedZoneInfos, error)
-	GetDNSSets(zoneid string) (dns.DNSSets, error)
-	ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, reqs []*ChangeRequest) error
+	GetZones() (DNSHostedZones, error)
+	GetZoneState(DNSHostedZone) (DNSZoneState, error)
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
 }
 
 type DNSHandlerFactory interface {
@@ -100,11 +104,11 @@ type DNSProvider interface {
 	ObjectName() resources.ObjectName
 	Object() resources.Object
 
-	GetZoneInfos() DNSHostedZoneInfos
+	GetZones() DNSHostedZones
 
-	GetDNSSets(string) (dns.DNSSets, error)
+	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
 
-	ExecuteRequests(logger logger.LogContext, zone DNSHostedZoneInfo, requests []*ChangeRequest) error
 	Match(dns string) int
 }
 
@@ -112,24 +116,4 @@ type DoneHandler interface {
 	SetInvalid(err error)
 	Failed(err error)
 	Succeeded()
-}
-
-type DNSState interface {
-	Setup()
-	Start()
-	GetConfig() Config
-	DecodeZoneCommand(name string) string
-	GetHandlerFactory() DNSHandlerFactory
-	GetController() controller.Interface
-
-	UpdateProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status
-	UpdateSecret(logger logger.LogContext, obj resources.Object) reconcile.Status
-	UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status
-	ReconcileZone(logger logger.LogContext, zoneid string) reconcile.Status
-	RemoveProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status
-	ProviderDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status
-	EntryDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status
-
-	UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject) reconcile.Status
-	OwnerDeleted(logger logger.LogContext, owner resources.ObjectKey) reconcile.Status
 }

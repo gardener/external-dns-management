@@ -65,18 +65,11 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (pr
 	return this, nil
 }
 
-func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
-	zones := provider.DNSHostedZoneInfos{}
-
+func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
+	raw := []*route53.HostedZone{}
 	aggr := func(resp *route53.ListHostedZonesOutput, lastPage bool) bool {
 		for _, zone := range resp.HostedZones {
-			id := strings.Split(aws.StringValue(zone.Id), "/")
-
-			zoneinfo := provider.DNSHostedZoneInfo{
-				Id:     id[len(id)-1],
-				Domain: dns.NormalizeHostname(aws.StringValue(zone.Name)),
-			}
-			zones = append(zones, zoneinfo)
+			raw = append(raw, zone)
 		}
 		return true
 	}
@@ -86,22 +79,30 @@ func (this *Handler) GetZones() (provider.DNSHostedZoneInfos, error) {
 		return nil, err
 	}
 
-	for i, z := range zones {
+	zones := provider.DNSHostedZones{}
+	for _, z := range raw {
+		domain := aws.StringValue(z.Name)
+		comp := strings.Split(aws.StringValue(z.Id), "/")
+		id := comp[len(comp)-1]
+		forwarded := []string{}
 		aggr := func(r *route53.ResourceRecordSet) {
 			if aws.StringValue(r.Type) == dns.RS_NS {
-				name := dns.NormalizeHostname(aws.StringValue(r.Name))
-				if name != z.Domain {
-					z.Forwarded = append(z.Forwarded, name)
+				name := aws.StringValue(r.Name)
+				if name != domain {
+					forwarded = append(forwarded, dns.NormalizeHostname(name))
 				}
 			}
 		}
-		this.handleRecordSets(z.Id, aggr)
-		zones[i] = z
+		this.handleRecordSets(id, aggr)
+
+		hostedZone := provider.NewDNSHostedZone(
+			id, dns.NormalizeHostname(domain), aws.StringValue(z.Id), forwarded)
+		zones = append(zones, hostedZone)
 	}
 	return zones, nil
 }
 
-func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
+func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	aggr := func(r *route53.ResourceRecordSet) {
@@ -114,10 +115,10 @@ func (this *Handler) GetDNSSets(zoneid string) (dns.DNSSets, error) {
 			dnssets.AddRecordSetFromProvider(aws.StringValue(r.Name), rs)
 		}
 	}
-	if err := this.handleRecordSets(zoneid, aggr); err != nil {
+	if err := this.handleRecordSets(zone.Id(), aggr); err != nil {
 		return nil, err
 	}
-	return dnssets, nil
+	return provider.NewDNSZoneState(dnssets), nil
 }
 
 func (this *Handler) handleRecordSets(zoneid string, f func(rs *route53.ResourceRecordSet)) error {
@@ -132,7 +133,7 @@ func (this *Handler) handleRecordSets(zoneid string, f func(rs *route53.Resource
 	return this.r53.ListResourceRecordSetsPages(inp, aggr)
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZoneInfo, reqs []*provider.ChangeRequest) error {
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	exec := NewExecution(logger, this, zone)
 
 	for _, r := range reqs {

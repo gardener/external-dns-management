@@ -236,7 +236,7 @@ func (this *SlaveReconciler) Setup() {
 func (this *SlaveReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	this.slaves.RenewSlaveObject(obj)
 	logger.Infof("reconcile slave %s", obj.ClusterKey())
-	this.requeueMasters(logger, this.GetMastersFor(obj.ClusterKey(),false))
+	this.requeueMasters(logger, this.GetMastersFor(obj.ClusterKey(), false))
 	return this.NestedReconciler.Reconcile(logger, obj)
 }
 
