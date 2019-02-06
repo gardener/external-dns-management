@@ -78,13 +78,19 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 	switch req.Action {
 	case provider.R_CREATE:
 		this.Infof("%s %s record set %s[%s]: %s(%d)", req.Action, req.Type, name, this.zone.Id(), newset.RecordString(), newset.TTL)
-		this.add(name, rr, newset, &this.updates, &this.additions)
+		this.add(name, rr, newset, true, &this.updates, &this.additions)
 	case provider.R_DELETE:
 		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), oldset.RecordString())
-		this.add(name, rr, oldset, &this.deletions, nil)
+		this.add(name, rr, oldset, false, &this.deletions, nil)
 	case provider.R_UPDATE:
 		this.Infof("%s %s record set %s[%s]: %s(%d)", req.Action, req.Type, name, this.zone.Id(), newset.RecordString(), newset.TTL)
-		this.add(name, rr, newset, &this.updates, &this.additions)
+		if oldset!=nil {
+			_,_,del:=newset.DiffTo(oldset)
+			if len(del) > 0 {
+				this.add(name, rr, dns.NewRecordSet(oldset.Type, oldset.TTL, del), false, &this.deletions, nil)
+			}
+		}
+		this.add(name, rr, newset,true,  &this.updates, &this.additions)
 	}
 
 	r := this.results[name]
@@ -97,14 +103,16 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 	}
 }
 
-func (this *Execution) add(dnsname, rr string, rset *dns.RecordSet, found *RecordSet, notfound *RecordSet) {
+func (this *Execution) add(dnsname, rr string, rset *dns.RecordSet, modonly bool, found *RecordSet, notfound *RecordSet) {
 	rtype := rset.Type
 	for _, r := range rset.Records {
 		old := this.state.getRecord(dnsname, rtype, r.Value)
 		if old != nil {
-			or := *old
-			or.TTL = int(rset.TTL)
-			*found = append(*found, or)
+			if (!modonly) || (old.TTL!=int(rset.TTL)) {
+				or := *old
+				or.TTL = int(rset.TTL)
+				*found = append(*found, or)
+			}
 		} else {
 			if notfound != nil {
 				nr := alidns.Record{RR: rr, Type: rtype, Value: r.Value, DomainName: this.zone.Domain(), TTL: int(rset.TTL)}
@@ -120,7 +128,7 @@ func (this *Execution) submitChanges() error {
 		return nil
 	}
 
-	this.Infof("processing changes for  zone %s", this.zone.Id())
+	this.Infof("processing changes for zone %s", this.zone.Id())
 	for _, r := range this.additions {
 		this.Infof("desired change: Addition %s %s: %s (%d)", GetDNSName(r), r.Type, r.Value, r.TTL)
 		this.submit(this.handler.access.CreateRecord, r)
