@@ -50,7 +50,7 @@ rules:
   - watch
 
 - apiGroups:
-  - dns.gardener.org
+  - dns.gardener.cloud
   resources:
   - dnsproviders
   - dnsentries
