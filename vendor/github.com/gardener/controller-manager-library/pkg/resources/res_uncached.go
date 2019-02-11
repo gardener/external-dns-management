@@ -32,6 +32,14 @@ func (this *_resource) _update(data ObjectData) (ObjectData, error) {
 		Into(result)
 }
 
+func (this *_resource) _updateStatus(data ObjectData) (ObjectData, error) {
+	result := this.createData()
+	return result, this.objectRequest(this.client.Put(), data, "status").
+		Body(data).
+		Do().
+		Into(result)
+}
+
 func (this *_resource) _create(data ObjectData) (ObjectData, error) {
 	result := this.createData()
 	return result, this.resourceRequest(this.client.Post(), data).

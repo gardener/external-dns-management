@@ -50,6 +50,13 @@ func (this *ModificationState) Update() error {
 	return nil
 }
 
+func (this *ModificationState) UpdateStatus() error {
+	if this.Modified {
+		return this.object.UpdateStatus()
+	}
+	return nil
+}
+
 func (this *ModificationState) Apply(f func(obj Object) bool) *ModificationState {
 	this.Modified = this.Modified || f(this.object)
 	return this

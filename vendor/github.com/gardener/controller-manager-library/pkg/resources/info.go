@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
@@ -31,6 +32,7 @@ type Info struct {
 	kind         string
 	resourcename string
 	namespaced   bool
+	subresources utils.StringSet
 }
 
 func (this *Info) GroupVersionKind() schema.GroupVersionKind {
@@ -60,6 +62,15 @@ func (this *Info) Name() string {
 }
 func (this *Info) Namespaced() bool {
 	return this.namespaced
+}
+func (this *Info) SubResources() utils.StringSet {
+	return utils.NewStringSetBySets(this.subresources)
+}
+func (this *Info) HasSubResource(name string) bool {
+	return this.subresources.Contains(name)
+}
+func (this *Info) HasStatusSubResource() bool {
+	return this.HasSubResource("status")
 }
 
 func (this *Info) String() string {
@@ -134,7 +145,15 @@ func (this *ResourceInfos) update() error {
 		}
 		for _, r := range rl.APIResources {
 			if strings.Index(r.Name, "/") < 0 {
-				m[r.Kind] = &Info{groupVersion: &gv, resourcename: r.Name, kind: r.Kind, namespaced: r.Namespaced}
+				m[r.Kind] = &Info{groupVersion: &gv, resourcename: r.Name, kind: r.Kind, namespaced: r.Namespaced, subresources: utils.StringSet{}}
+			}
+		}
+		for _, r := range rl.APIResources {
+			if i := strings.Index(r.Name, "/"); i > 0 {
+				info := m[r.Kind]
+				if info != nil {
+					info.subresources.Add(r.Name[i+1:])
+				}
 			}
 		}
 	}

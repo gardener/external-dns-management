@@ -18,6 +18,17 @@ package utils
 
 import "fmt"
 
+func IsEmptyString(s *string) bool {
+	return s == nil || *s == ""
+}
+
+func StringValue(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
 func StringEqual(a, b *string) bool {
 	return a == b || (a != nil && *a == *b)
 }

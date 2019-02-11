@@ -29,8 +29,10 @@ type Config struct {
 	LogLevel             string
 	Controllers          string
 	PluginDir            string
-	ServerPortHTTP       int
+	Namespace            string
+	OmitLease            bool
 	NamespaceRestriction bool
+	ServerPortHTTP       int
 	ArbitraryOptions     map[string]*ArbitraryOption
 }
 
@@ -86,6 +88,8 @@ func (this *Config) AddIntOption(name string) (*ArbitraryOption, bool) {
 }
 
 func (this *Config) AddToCommand(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVarP(&this.Namespace, "namespace", "", "", "namepace for lease")
+	cmd.PersistentFlags().BoolVarP(&this.OmitLease, "omit-lease", "", false, "omit lease for development")
 	cmd.PersistentFlags().StringVarP(&this.Controllers, "controllers", "c", "all", "comma separated list of controllers to start (<name>,source,target,all)")
 	cmd.PersistentFlags().StringVarP(&this.PluginDir, "plugin-dir", "", "", "directory containing go plugins")
 	cmd.PersistentFlags().IntVarP(&this.ServerPortHTTP, "server-port-http", "", 0, "directory containing go plugins")

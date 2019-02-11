@@ -34,14 +34,15 @@ type Internal interface {
 	Interface
 	getClient() restclient.Interface
 	namespacedRequest(*restclient.Request, string) *restclient.Request
-	resourceRequest(*restclient.Request, ObjectData) *restclient.Request
-	objectRequest(*restclient.Request, ObjectData) *restclient.Request
+	resourceRequest(*restclient.Request, ObjectData, ...string) *restclient.Request
+	objectRequest(*restclient.Request, ObjectData, ...string) *restclient.Request
 	objectType() reflect.Type
 	createData() ObjectData
 
 	_create(data ObjectData) (ObjectData, error)
 	_get(data ObjectData) error
 	_update(data ObjectData) (ObjectData, error)
+	_updateStatus(data ObjectData) (ObjectData, error)
 	_delete(data ObjectData) error
 }
 
@@ -174,15 +175,15 @@ func (this *_resource) namespacedRequest(req *restclient.Request, namespace stri
 	return req.Resource(this.Name())
 }
 
-func (this *_resource) resourceRequest(req *restclient.Request, obj ObjectData) *restclient.Request {
+func (this *_resource) resourceRequest(req *restclient.Request, obj ObjectData, sub ...string) *restclient.Request {
 	if this.Namespaced() && obj != nil {
 		req = req.Namespace(obj.GetNamespace())
 	}
-	return req.Resource(this.Name())
+	return req.Resource(this.Name()).SubResource(sub...)
 }
 
-func (this *_resource) objectRequest(req *restclient.Request, obj ObjectData) *restclient.Request {
-	return this.resourceRequest(req, obj).Name(obj.GetName())
+func (this *_resource) objectRequest(req *restclient.Request, obj ObjectData, sub ...string) *restclient.Request {
+	return this.resourceRequest(req, obj, sub...).Name(obj.GetName())
 }
 
 func (this *_resource) Wrap(obj ObjectData) (Object, error) {

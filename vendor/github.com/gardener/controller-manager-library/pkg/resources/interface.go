@@ -109,7 +109,9 @@ type Object interface {
 	CreateOrUpdate() error
 	Delete() error
 	Update() error
+	UpdateStatus() error
 	Modify(modifier Modifier) (bool, error)
+	ModifyStatus(modifier Modifier) (bool, error)
 	CreateOrModify(modifier Modifier) (bool, error)
 
 	Description() string

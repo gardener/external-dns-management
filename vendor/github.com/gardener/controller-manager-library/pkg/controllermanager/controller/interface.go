@@ -49,6 +49,7 @@ type Interface interface {
 	IsReady() bool
 	Owning() ResourceKey
 	GetContext() context.Context
+	GetEnvironment() Environment
 	GetPool(name string) Pool
 	GetMainCluster() cluster.Interface
 	GetClusterById(id string) cluster.Interface

@@ -6,8 +6,8 @@
   name = "cloud.google.com/go"
   packages = ["compute/metadata"]
   pruneopts = "NUT"
-  revision = "28a4bc8c44b3acbcc482cff0cdf7de29a4688b61"
-  version = "v0.35.1"
+  revision = "c9474f2f8deb81759839474b6bd1726bbfe1c1c4"
+  version = "v0.36.0"
 
 [[projects]]
   digest = "1:f323f98930459f65f4699b5bfba563743680e2633d96e72d61a9732648e2d07c"
@@ -153,19 +153,19 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:2aa58f7bf714a480d6c982c8a4c972ee6c235e2c7bc1f42a3df52f7170746ac6"
+  digest = "1:aab9e95808c688b75757e520e59c48eb954991693dfc5441f0e87d1f9cb8b7bb"
   name = "github.com/emicklei/go-restful"
   packages = [
     ".",
     "log",
   ]
   pruneopts = "NUT"
-  revision = "e37671aced663c8d3a395bd301857e26dcf4340c"
-  version = "v2.8.1"
+  revision = "85d198d05a92d31823b852b4a5928114912e8949"
+  version = "v2.9.0"
 
 [[projects]]
   branch = "master"
-  digest = "1:0a8d6c21ebc19dc9444538b50eae3eacff9935d7b75cb038ca389629036818bc"
+  digest = "1:9b965479bdaa51cc4371c8c41b4c4f963d69bbfaf5a3ff15ec835fb1f544848e"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/apis/gardenextensions",
@@ -204,7 +204,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "0fca1b88680c536e87565644ff0a18a448f55bcf"
+  revision = "5de1c0ca7a30d0a56890ae9056335c414c929843"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
@@ -325,14 +325,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7fdf3223c7372d1ced0b98bf53457c5e89d89aecbad9a77ba9fcc6e01f9e5621"
+  digest = "1:a86d65bc23eea505cd9139178e4d889733928fe165c7a008f41eaab039edf9df"
   name = "github.com/gregjones/httpcache"
   packages = [
     ".",
     "diskcache",
   ]
   pruneopts = "NUT"
-  revision = "c63ab54fda8f77302f8d414e19933f2b6026a089"
+  revision = "7a902570cb17174de4ac788094f8ebedec136f57"
 
 [[projects]]
   digest = "1:b42cde0e1f3c816dd57f57f7bbcf05ca40263ad96f168714c130c611fc0856a6"
@@ -503,7 +503,7 @@
     "ssh/terminal",
   ]
   pruneopts = "NUT"
-  revision = "b8fe1690c61389d7d2a8074a507d1d40c5d30448"
+  revision = "193df9c0f06f8bb35fba505183eaf0acc0136505"
 
 [[projects]]
   branch = "master"
@@ -520,7 +520,7 @@
     "trace",
   ]
   pruneopts = "NUT"
-  revision = "d26f9f9a57f3fab6a695bec0d84433c2c50f8bbf"
+  revision = "65e2d4e15006aab9813ff8769e768bbf4bb667a0"
 
 [[projects]]
   branch = "master"
@@ -546,14 +546,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7c4f19625583c897f0f16a73913eb9f5509fcd491c34d86f86b3ce3eb07b737e"
+  digest = "1:24929061ae45b02fd9af859ac5c1f60336e042f6b4959db640737019e57d821c"
   name = "golang.org/x/sys"
   packages = [
     "unix",
     "windows",
   ]
   pruneopts = "NUT"
-  revision = "2970a3744de33489e46eba373c73655bc2377116"
+  revision = "3b5209105503162ded1863c307ac66fec31120dd"
 
 [[projects]]
   digest = "1:e33513a825fcd765e97b5de639a2f7547542d1a8245df0cef18e1fd390b778a9"
@@ -589,7 +589,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:86d002f2c67e364e097c5047f517ab38cdef342c3c20be53974c1bfd5b191d30"
+  digest = "1:f57e88c4326d5433c2f4eb28fcd1662be003cb0d11dd13710c8828e687303c76"
   name = "golang.org/x/tools"
   packages = [
     "go/ast/astutil",
@@ -606,7 +606,7 @@
     "internal/semver",
   ]
   pruneopts = "NUT"
-  revision = "067a2f313b693f3c2d3c0eb328434c91c7fc9b6b"
+  revision = "3744606dbb67b99c60d3f11cb10bd3f9e6dad472"
 
 [[projects]]
   digest = "1:7158f09f7aee24d61dd0e7bd1ce5960186dad439cc5fb643808ed9f0c1583136"
@@ -647,7 +647,7 @@
   name = "google.golang.org/genproto"
   packages = ["googleapis/rpc/status"]
   pruneopts = "NUT"
-  revision = "8ac453e89fca495c0d17f98932642f392e2a11f3"
+  revision = "4b09977fb92221987e99d190c8f88f2c92727a29"
 
 [[projects]]
   digest = "1:4837585442801f3c7ebd044a96fce852242529a73bdd96fcba2119ff74987b0b"
@@ -757,7 +757,7 @@
     "pkg/client/clientset/clientset/typed/apiextensions/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "9f17d72d862ef8e7e718fb15395f34e9512e2842"
+  revision = "01b4f3c039db586ed6ec299cf30cc0e5a2a625d1"
 
 [[projects]]
   digest = "1:3e353d8babd8117333e032d7f61229ef379f59302575eb87fea15052178e97c2"
@@ -1013,7 +1013,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:2364bfb49e11dd5fe2db1049e319f9070625a661dc017275c77dbef2f42ff6cf"
+  digest = "1:2a302c099f8f1d9a2501431bf3aa2455216e4a86db035509a391d5c981fbd187"
   name = "k8s.io/kube-openapi"
   packages = [
     "cmd/openapi-gen",
@@ -1025,7 +1025,7 @@
     "pkg/util/sets",
   ]
   pruneopts = "NUT"
-  revision = "d8b685cd2daadc40121e864b5e87ca8ededd9eed"
+  revision = "d7c86cdc46e3a4fcf892b32dd7bc3aa775e0870e"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -1033,6 +1033,7 @@
   input-imports = [
     "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-03-01-preview/dns",
     "github.com/Azure/go-autorest/autorest/azure/auth",
+    "github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests",
     "github.com/aliyun/alibaba-cloud-sdk-go/services/alidns",
     "github.com/aws/aws-sdk-go/aws",
     "github.com/aws/aws-sdk-go/aws/credentials",

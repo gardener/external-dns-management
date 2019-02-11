@@ -18,6 +18,22 @@ required = [
   branch = "master"
 
 [[constraint]]
+  name = "github.com/aliyun/alibaba-cloud-sdk-go"
+  version = "1.51.22"
+
+[[constraint]]
+  name = "github.com/Azure/azure-sdk-for-go"
+  version = "v24.1.0"
+
+[[constraint]]
+  name = "github.com/aws/aws-sdk-go"
+  version = "v1.10.51"
+
+[[constraint]]
+  name = "google.golang.org/api"
+  version = "v0.1.0"
+
+[[constraint]]
   name = "k8s.io/api"
   version = "kubernetes-1.12.0"
 

@@ -17,6 +17,7 @@
 package resources
 
 import (
+	"fmt"
 	"k8s.io/apimachinery/pkg/api/errors"
 	restclient "k8s.io/client-go/rest"
 )
@@ -49,15 +50,38 @@ func (this *_object) Update() error {
 	return err
 }
 
+func (this *_object) UpdateStatus() error {
+	if !this.resource.Info().HasStatusSubResource() {
+		return fmt.Errorf("resource %q has no status sub resource", this.resource.GroupVersionKind())
+	}
+	result, err := this.resource._updateStatus(this.ObjectData)
+	if err != nil {
+		this.ObjectData = result
+	}
+	return err
+}
+
 func (this *_object) Modify(modifier Modifier) (bool, error) {
 	return this.modify(false, modifier)
+}
+
+func (this *_object) ModifyStatus(modifier Modifier) (bool, error) {
+	return this.modifyStatus(modifier)
 }
 
 func (this *_object) CreateOrModify(modifier Modifier) (bool, error) {
 	return this.modify(true, modifier)
 }
 
+func (this *_object) modifyStatus(modifier Modifier) (bool, error) {
+	return this._modify(true, false, modifier)
+}
+
 func (this *_object) modify(create bool, modifier Modifier) (bool, error) {
+	return this._modify(false, create, modifier)
+}
+
+func (this *_object) _modify(status_only, create bool, modifier Modifier) (bool, error) {
 	var lasterr error
 
 	data := this.GetObject().DeepCopyObject().(ObjectData)
@@ -96,7 +120,11 @@ func (this *_object) modify(create bool, modifier Modifier) (bool, error) {
 			return mod, err
 		}
 		if err == nil {
-			modified, lasterr = this.resource._update(data)
+			if status_only {
+				modified, lasterr = this.resource._updateStatus(data)
+			} else {
+				modified, lasterr = this.resource._update(data)
+			}
 			if lasterr == nil {
 				this.ObjectData = modified
 				return mod, nil
