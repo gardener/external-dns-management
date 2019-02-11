@@ -233,6 +233,8 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 		} else {
 			this.interval = 600
 		}
+	} else {
+		this.interval = 0
 	}
 	mod := resources.NewModificationState(this.object)
 
