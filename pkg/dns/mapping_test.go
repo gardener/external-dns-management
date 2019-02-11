@@ -84,7 +84,7 @@ func TestMapToFromProvider(t *testing.T) {
 			t.Errorf("Name mismatch: %s != %s", entry.wantedName, actualName)
 		}
 		if actualRecordSet.Type != RS_TXT {
-			t.Errorf("RecordSet.Type mismatch: %v != TXT", actualRecordSet.Type)
+			t.Errorf("RecordSet.ProviderType mismatch: %v != TXT", actualRecordSet.Type)
 		}
 		if actualRecordSet.TTL != 600 {
 			t.Errorf("TTL mismatch: %v != 600", actualRecordSet.TTL)
@@ -101,7 +101,7 @@ func TestMapToFromProvider(t *testing.T) {
 			t.Errorf("Reversed name mismatch: %s != %s", reversedName, entry.domainName)
 		}
 		if reversedRecordSet.Type != RS_META {
-			t.Errorf("Reversed RecordSet.Type mismatch: %v != RS_META", reversedRecordSet.Type)
+			t.Errorf("Reversed RecordSet.ProviderType mismatch: %v != RS_META", reversedRecordSet.Type)
 		}
 		if reversedRecordSet.TTL != 600 {
 			t.Errorf("Reversed TTL mismatch: %v != 600", reversedRecordSet.TTL)

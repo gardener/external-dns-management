@@ -41,19 +41,20 @@ type DNSEntry struct {
 }
 
 type DNSEntrySpec struct {
-	Type                string   `json:"type,omitempty"`
 	DNSName             string   `json:"dnsName"`
 	OwnerId             *string  `json:"ownerId,omitempty"`
 	TTL                 *int64   `json:"ttl,omitempty"`
 	CNameLookupInterval *int64   `json:"cnameLookupInterval,omitempty"`
 	Text                []string `json:"text,omitempty"`
-	Targets             []string `json:"targets,omitempt"`
+	Targets             []string `json:"targets,omitempty"`
 }
 
 type DNSEntryStatus struct {
-	State   string   `json:"state"`
-	Message *string  `json:"message,omitempty"`
-	Zone    *string  `json:"zone,omitempty"`
-	TTL     *int64   `json:"ttl,omitempty"`
-	Targets []string `json:"targets,omitempty"`
+	ObservedGeneration int64    `json:"observedGeneration,omitempty"`
+	State              string   `json:"state"`
+	Message            *string  `json:"message,omitempty"`
+	ProviderType       *string  `json:"providerType,omitempty"`
+	Zone               *string  `json:"zone,omitempty"`
+	TTL                *int64   `json:"ttl,omitempty"`
+	Targets            []string `json:"targets,omitempty"`
 }

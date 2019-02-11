@@ -36,7 +36,7 @@ var DNSProviderCRD = apiextensions.CreateCRDObject(api.GroupName, api.Version, a
 		Name:        "TYPE",
 		Description: "Provider type",
 		Type:        "string",
-		JSONPath:    ".spec.type",
+		JSONPath:    ".status.providerType",
 	},
 	v1beta1.CustomResourceColumnDefinition{
 		Name:        "STATUS",

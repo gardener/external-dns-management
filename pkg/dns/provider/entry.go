@@ -167,16 +167,16 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 
 	curvalid := this.valid
 	this.valid = false
-	spec := &this.object.DNSEntry().Spec
+	status := &this.object.DNSEntry().Status
 
 	///////////// handle type responsibility
 
-	if spec.Type == "" || (spec.Type != resp && zoneid != "") {
+	if utils.IsEmptyString(status.ProviderType) || (*status.ProviderType != resp && zoneid != "") {
 		if zoneid == "" {
 			// mark unassigned foreign entries as errorneous
 			f := func(data resources.ObjectData) (bool, error) {
 				e := data.(*api.DNSEntry)
-				if e.Spec.Type != "" {
+				if !utils.IsEmptyString(e.Status.ProviderType) {
 					return false, nil
 				}
 				mod := utils.ModificationState{}
@@ -184,33 +184,33 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 				mod.AssureStringPtrValue(&e.Status.Message, "No responsible provider found")
 				return mod.IsModified(), nil
 			}
-			_, err := object.Modify(f)
+			_, err := object.ModifyStatus(f)
 			return reconcile.DelayOnError(logger, err)
 		} else {
 			// assign entry to actual type
 			msg := fmt.Sprintf("Assigned to provider type %q responsible for zone %s", resp, zoneid)
 			f := func(data resources.ObjectData) (bool, error) {
 				e := data.(*api.DNSEntry)
-				if e.Spec.Type != "" && zoneid == "" {
+				if  !utils.IsEmptyString(e.Status.ProviderType) && zoneid == "" {
 					return false, nil
 				}
 				mod := (&utils.ModificationState{}).
-					AssureStringValue(&e.Spec.Type, resp).
+					AssureStringPtrValue(&e.Status.ProviderType, resp).
 					AssureStringValue(&e.Status.State, api.STATE_PENDING).
 					AssureStringPtrValue(&e.Status.Message, msg).
 					AssureStringPtrValue(&e.Status.Zone, zoneid)
 				return mod.IsModified(), nil
 			}
-			_, err := object.Modify(f)
+			_, err := object.ModifyStatus(f)
 			if err != nil {
 				return reconcile.Delay(logger, err)
 			}
 			this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
 		}
-		spec.Type = resp
+		status.ProviderType = &resp
 	}
 
-	if spec.Type != resp {
+	if utils.StringValue(status.ProviderType) != resp {
 		return reconcile.Succeeded(logger)
 	}
 
@@ -225,6 +225,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 
 	///////////// handle
 
+	spec := &this.object.DNSEntry().Spec
 	targets, mappings := this.NormalizeTargets(logger, targets...)
 	if len(mappings) > 0 {
 		if spec.CNameLookupInterval != nil && *spec.CNameLookupInterval > 0 {
@@ -234,8 +235,6 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 		}
 	}
 	mod := resources.NewModificationState(this.object)
-
-	status := &this.object.DNSEntry().Status
 
 	ttl := defaultTTL
 	if spec.TTL != nil {
@@ -301,7 +300,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 		}
 	}
 
-	return reconcile.UpdateStatus(logger, mod.Update())
+	return reconcile.UpdateStatus(logger, mod.UpdateStatus())
 }
 
 func (this *Entry) targetList(targets Targets) ([]string, string) {
@@ -325,6 +324,7 @@ func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg stri
 		}
 
 		mod := &utils.ModificationState{}
+		mod.AssureInt64Value(&o.Status.ObservedGeneration, o.Generation)
 		mod.AssureStringValue(&o.Status.State, state)
 		mod.AssureStringPtrValue(&o.Status.Message, msg)
 		if mod.IsModified() {
@@ -332,7 +332,7 @@ func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg stri
 		}
 		return mod.IsModified(), nil
 	}
-	_, err := this.object.Modify(f)
+	_, err := this.object.ModifyStatus(f)
 	return err
 }
 
