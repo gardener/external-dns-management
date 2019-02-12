@@ -1,5 +1,5 @@
 EXECUTABLE=dns-controller-manager
-PROJECT=github.com/mandelsoft/dns-controller-manager
+PROJECT=github.com/gardener/external-dns-management
 VERSION=$(shell cat VERSION)
 
 

@@ -329,6 +329,7 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	} else {
 		entry.Namespace = this.namespace
 	}
+	entry.Spec.TTL = info.TTL
 
 	e, _ := this.SlaveResoures()[0].Wrap(entry)
 

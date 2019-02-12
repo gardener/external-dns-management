@@ -17,6 +17,8 @@
 package source
 
 import (
+	"time"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile/reconcilers"
@@ -24,7 +26,6 @@ import (
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/crds"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"time"
 )
 
 const CONTROLLER_GROUP_DNS_SOURCES = "dnssources"
@@ -53,7 +54,7 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		StringOption(OPT_KEY, "selecting key for annotation").
 		DefaultedStringOption(OPT_NAMESPACE, "", "target namespace for cross cluster generation").
 		DefaultedStringOption(OPT_NAMEPREFIX, "", "name prefix in target namespace for cross cluster generation").
-		FinalizerDomain("mandelsoft.org").
+		FinalizerDomain(api.GroupName).
 		Reconciler(SourceReconciler(source, reconcilerType)).
 		Cluster(cluster.DEFAULT). // first one used as MAIN cluster
 		DefaultWorkerPool(2, 120*time.Second).
