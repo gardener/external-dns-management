@@ -45,7 +45,7 @@ var DNSProviderCRD = apiextensions.CreateCRDObject(api.GroupName, api.Version, a
 		JSONPath:    ".status.state",
 	})
 
-var DNSEntryCRD = apiextensions.CreateCRDObject(api.GroupName, api.Version, api.DNSEntryKind, api.DNSEntryPlural, "dnse", true,
+var DNSEntryCRD = apiextensions.CreateCRDObjectWithStatus(api.GroupName, api.Version, api.DNSEntryKind, api.DNSEntryPlural, "dnse", true,
 	v1beta1.CustomResourceColumnDefinition{
 		Name:        "DNS",
 		Description: "DNS ObjectName",

@@ -4,9 +4,9 @@ metadata:
   name: azure
   namespace: default
 spec:
-  type: Azure
+  type: azure-dns
   secretRef:
     name: azure-credentials
   domains:
     include:
-    - ringtest.dev.k8s.ondemand.com
+    - my.own.domain.com

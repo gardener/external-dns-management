@@ -14,7 +14,7 @@
  *
  */
 
-package googledns
+package google
 
 import (
 	"context"

@@ -14,7 +14,7 @@
  *
  */
 
-package route53
+package aws
 
 import (
 	"fmt"

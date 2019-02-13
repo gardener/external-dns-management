@@ -1,12 +1,12 @@
 apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSProvider
 metadata:
-  name: openstack
+  name: alicloud
   namespace: default
 spec:
-  type: openstack-designate
+  type: alicloud-dns
   secretRef:
-    name: openstack-credentials
+    name: alicloud-credentials
   domains:
     include:
     - my.own.domain.com
