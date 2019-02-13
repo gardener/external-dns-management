@@ -119,7 +119,7 @@ func (exec *Execution) lookupRecordSetID(rset *recordsets.RecordSet) (string, er
 	}
 	err := exec.handler.client.ForEachRecordSetFilterByTypeAndName(exec.zone.Id(), rset.Type, dns.AlignHostname(rset.Name), handler)
 	if err != nil {
-		return "", fmt.Errorf("RecordSet lookup for %s %s failed with: %v", rset.Type, rset.Name, err)
+		return "", fmt.Errorf("RecordSet lookup for %s %s failed with: %s", rset.Type, rset.Name, err)
 	}
 	if recordSetID == "" {
 		return "", fmt.Errorf("RecordSet %s %s not found for update", rset.Type, rset.Name)

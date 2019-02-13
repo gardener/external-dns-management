@@ -123,12 +123,12 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 	if len(info.Names) > 0 && requireFinalizer(obj, this.SlaveResoures()[0].GetCluster()) {
 		err := this.SetFinalizer(obj)
 		if err != nil {
-			return reconcile.Delay(logger, fmt.Errorf("cannot set finalizer: %v", err))
+			return reconcile.Delay(logger, fmt.Errorf("cannot set finalizer: %s", err))
 		}
 	} else {
 		err := this.RemoveFinalizer(obj)
 		if err != nil {
-			return reconcile.Delay(logger, fmt.Errorf("cannot remove finalizer: %v", err))
+			return reconcile.Delay(logger, fmt.Errorf("cannot remove finalizer: %s", err))
 		}
 	}
 outer:
