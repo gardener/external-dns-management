@@ -20,11 +20,10 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "AliCloud"
-const CONTROLLER_NAME = "alicloud-dns-controller"
+const TYPE_CODE = "alicloud-dns"
 
 func init() {
-	provider.DNSController(CONTROLLER_NAME, provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)).
+	provider.DNSController(TYPE_CODE, provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)).
 		FinalizerDomain("dns.gardener.cloud").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

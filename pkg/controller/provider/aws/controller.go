@@ -14,17 +14,16 @@
  *
  */
 
-package googledns
+package aws
 
 import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "CloudDNS"
-const CONTROLLER_NAME = "google-dns-controller"
+const TYPE_CODE = "aws-route53"
 
 func init() {
-	provider.DNSController(CONTROLLER_NAME, provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)).
+	provider.DNSController(TYPE_CODE, provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)).
 		FinalizerDomain("dns.gardener.cloud").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

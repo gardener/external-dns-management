@@ -14,7 +14,7 @@
  *
  */
 
-package googledns
+package google
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/logger"

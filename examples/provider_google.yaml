@@ -4,9 +4,9 @@ metadata:
   name: google
   namespace: default
 spec:
-  type: CloudDNS
+  type: google-clouddns
   secretRef:
     name: google-credentials
   domains:
     include:
-    - ringtest.dev.k8s.ondemand.com
+    - my.own.domain.com

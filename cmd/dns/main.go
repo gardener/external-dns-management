@@ -29,10 +29,10 @@ import (
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/alicloud"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/aws"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/azure"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/googledns"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/google"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/route53"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"

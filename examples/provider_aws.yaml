@@ -4,9 +4,9 @@ metadata:
   name: aws
   namespace: default
 spec:
-  type: AWS
+  type: aws-route53
   secretRef:
     name: aws-credentials
   domains:
     include:
-    - ringtest.dev.k8s.ondemand.com
+    - my.own.domain.com
