@@ -34,6 +34,8 @@ type Handler struct {
 	client designateClientInterface
 }
 
+var _ provider.DNSHandler = &Handler{}
+
 func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	authConfig, err := readAuthConfig(config)
 	if err != nil {

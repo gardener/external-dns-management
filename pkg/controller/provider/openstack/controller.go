@@ -20,7 +20,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "OpenStack"
+const TYPE_CODE = "Designate"
 const CONTROLLER_NAME = "openstack-dns-controller"
 
 func init() {

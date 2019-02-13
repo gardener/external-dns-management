@@ -39,6 +39,8 @@ type Handler struct {
 	recordsClient *azure.RecordSetsClient
 }
 
+var _ provider.DNSHandler = &Handler{}
+
 func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	h := &Handler{
@@ -111,7 +113,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 
 		// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
 		hostedZone := provider.NewDNSHostedZone(
-			buildZoneid(resourceGroup, *item.Name),
+			resourceGroup+"/"+*item.Name,
 			dns.NormalizeHostname(*item.Name),
 			"",
 			forwarded,
@@ -141,10 +143,6 @@ func (h *Handler) collectForwardedSubzones(resourceGroup, zoneName string) []str
 		}
 	}
 	return forwarded
-}
-
-func buildZoneid(resourceGroup, name string) string {
-	return resourceGroup + "/" + name
 }
 
 func splitZoneid(zoneid string) (string, string) {

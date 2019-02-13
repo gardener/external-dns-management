@@ -69,5 +69,5 @@ required = [
     non-go = false
 
 [[constraint]]
-  branch = "master"
+  revision = "cc9c99918988100699c8ec6f0d7a73dfa5b71fda"
   name = "github.com/gophercloud/gophercloud"

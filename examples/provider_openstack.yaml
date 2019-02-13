@@ -4,7 +4,7 @@ metadata:
   name: openstack
   namespace: default
 spec:
-  type: OpenStack
+  type: Designate
   secretRef:
     name: openstack-credentials
   domains:
