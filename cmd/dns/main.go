@@ -31,6 +31,7 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/alicloud"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/azure"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/googledns"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/route53"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"

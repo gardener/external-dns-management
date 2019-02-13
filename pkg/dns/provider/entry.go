@@ -128,11 +128,11 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 		return
 	}
 	if len(spec.Targets) > 0 && len(spec.Text) > 0 {
-		err = fmt.Errorf("only Text or Targets possible", err)
+		err = fmt.Errorf("only Text or Targets possible: %s", err)
 		return
 	}
 	if spec.TTL != nil && (*spec.TTL == 0 || *spec.TTL < 0) {
-		err = fmt.Errorf("TTL must be  greater than zero", err)
+		err = fmt.Errorf("TTL must be  greater than zero: %s", err)
 		return
 	}
 
@@ -233,6 +233,8 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 		} else {
 			this.interval = 600
 		}
+	} else {
+		this.interval = 0
 	}
 	mod := resources.NewModificationState(this.object)
 

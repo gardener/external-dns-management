@@ -67,3 +67,7 @@ required = [
     name = "k8s.io/code-generator"
     unused-packages = false
     non-go = false
+
+[[constraint]]
+  revision = "cc9c99918988100699c8ec6f0d7a73dfa5b71fda"
+  name = "github.com/gophercloud/gophercloud"
