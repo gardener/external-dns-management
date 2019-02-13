@@ -28,7 +28,15 @@ import (
 	"time"
 )
 
+func CreateCRDObjectWithStatus(groupName, version, rkind, rplural, shortName string, namespaces bool, columns ...v1beta1.CustomResourceColumnDefinition) *v1beta1.CustomResourceDefinition {
+	return _CreateCRDObject(true, groupName, version, rkind, rplural, shortName, namespaces, columns...)
+}
+
 func CreateCRDObject(groupName, version, rkind, rplural, shortName string, namespaces bool, columns ...v1beta1.CustomResourceColumnDefinition) *v1beta1.CustomResourceDefinition {
+	return _CreateCRDObject(false, groupName, version, rkind, rplural, shortName, namespaces, columns...)
+}
+
+func _CreateCRDObject(status bool, groupName, version, rkind, rplural, shortName string, namespaces bool, columns ...v1beta1.CustomResourceColumnDefinition) *v1beta1.CustomResourceDefinition {
 	crdName := rplural + "." + groupName
 	scope := v1beta1.ClusterScoped
 	if namespaces {
@@ -49,6 +57,9 @@ func CreateCRDObject(groupName, version, rkind, rplural, shortName string, names
 		},
 	}
 
+	if status {
+		crd.Spec.Subresources = &v1beta1.CustomResourceSubresources{Status: &v1beta1.CustomResourceSubresourceStatus{}}
+	}
 	for _, c := range columns {
 		crd.Spec.AdditionalPrinterColumns = append(crd.Spec.AdditionalPrinterColumns, c)
 	}

@@ -17,9 +17,9 @@
 package dns
 
 import (
-	"encoding/json"
-	"reflect"
 	"testing"
+
+	. "github.com/onsi/gomega"
 )
 
 func TestAlignHostname(t *testing.T) {
@@ -50,6 +50,8 @@ func TestNormalizeHostname(t *testing.T) {
 }
 
 func TestMapToFromProvider(t *testing.T) {
+	RegisterTestingT(t)
+
 	table := []struct {
 		domainName          string
 		hasOwnCommentRecord bool
@@ -65,8 +67,8 @@ func TestMapToFromProvider(t *testing.T) {
 	base := "myzone.de"
 
 	for _, entry := range table {
-		inputRecords := []*Record{&Record{"\"owner=test\""}}
-		var wantedRecords []*Record
+		inputRecords := Records{&Record{"\"owner=test\""}}
+		var wantedRecords Records
 		if entry.hasOwnCommentRecord {
 			inputRecords = append(inputRecords, &Record{"\"prefix=mycomment-\""})
 			wantedRecords = inputRecords
@@ -80,36 +82,16 @@ func TestMapToFromProvider(t *testing.T) {
 
 		actualName, actualRecordSet := MapToProvider(rtype, &dnsset, base)
 
-		if actualName != entry.wantedName {
-			t.Errorf("Name mismatch: %s != %s", entry.wantedName, actualName)
-		}
-		if actualRecordSet.Type != RS_TXT {
-			t.Errorf("RecordSet.Type mismatch: %v != TXT", actualRecordSet.Type)
-		}
-		if actualRecordSet.TTL != 600 {
-			t.Errorf("TTL mismatch: %v != 600", actualRecordSet.TTL)
-		}
-		if !reflect.DeepEqual(wantedRecords, actualRecordSet.Records) {
-			w, _ := json.MarshalIndent(wantedRecords, "", "  ")
-			a, _ := json.MarshalIndent(actualRecordSet.Records, "", "  ")
-			t.Errorf("Record set mismatch: %v != %v", string(w), string(a))
-		}
+		Ω(actualName).Should(Equal(entry.wantedName), "Name should match")
+		Ω(actualRecordSet.Type).Should(Equal(RS_TXT), "Type mismatch")
+		Ω(actualRecordSet.TTL).Should(Equal(int64(600)), "TTL mismatch")
+		Ω(actualRecordSet.Records).Should(Equal(wantedRecords))
 
 		reversedName, reversedRecordSet := MapFromProvider(actualName, actualRecordSet)
 
-		if reversedName != entry.domainName {
-			t.Errorf("Reversed name mismatch: %s != %s", reversedName, entry.domainName)
-		}
-		if reversedRecordSet.Type != RS_META {
-			t.Errorf("Reversed RecordSet.Type mismatch: %v != RS_META", reversedRecordSet.Type)
-		}
-		if reversedRecordSet.TTL != 600 {
-			t.Errorf("Reversed TTL mismatch: %v != 600", reversedRecordSet.TTL)
-		}
-		if !reflect.DeepEqual(reversedRecordSet.Records, wantedRecords) {
-			w, _ := json.MarshalIndent(reversedRecordSet.Records, "", "  ")
-			a, _ := json.MarshalIndent(wantedRecords, "", "  ")
-			t.Errorf("Reversed Record set mismatch: %v != %v", string(w), string(a))
-		}
+		Ω(reversedName).Should(Equal(entry.domainName), "Reversed name should match")
+		Ω(reversedRecordSet.Type).Should(Equal(RS_META), "Reversed RecordSet.Type should match")
+		Ω(reversedRecordSet.TTL).Should(Equal(int64(600)), "TTL mismatch")
+		Ω(reversedRecordSet.Records).Should(Equal(wantedRecords))
 	}
 }

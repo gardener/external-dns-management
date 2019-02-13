@@ -8,7 +8,7 @@ import (
 func TestMatch(t *testing.T) {
 	/* Testing for :
 	- Equality of two record sets is determined based on TTL, length of record entries amd equality of the record values
-	- Type of the record set (A Record, TXT) should not make a difference
+	- ProviderType of the record set (A Record, TXT) should not make a difference
 	*/
 
 	table := []struct {

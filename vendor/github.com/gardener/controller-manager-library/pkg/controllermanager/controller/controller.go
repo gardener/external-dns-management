@@ -301,6 +301,10 @@ func (this *controller) GetName() string {
 	return this.definition.GetName()
 }
 
+func (this *controller) GetEnvironment() Environment {
+	return this.env
+}
+
 func (this *controller) GetDefinition() Definition {
 	return this.definition
 }

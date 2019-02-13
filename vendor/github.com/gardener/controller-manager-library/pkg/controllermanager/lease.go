@@ -54,34 +54,43 @@ func (g *leasestartupgroup) Startup() error {
 	}
 	msg += ")"
 
-	g.manager.Infof("requesting lease for cluster %s", msg)
-	leaderElectionConfig, err := makeLeaderElectionConfig(g.cluster, g.manager.GetName())
-	if err != nil {
-		return err
+	runit := func() {
+		g.manager.Infof("Acquired leadership, starting controllers for %s.", msg)
+		for _, c := range g.controllers {
+			g.manager.startController(c)
+		}
 	}
 
-	leaderElectionConfig.Callbacks = leaderelection.LeaderCallbacks{
-		OnStartedLeading: func(ctx context.Context) {
-			g.manager.Infof("Acquired leadership, starting controllers for %s.", msg)
-			for _, c := range g.controllers {
-				g.manager.startController(c)
-			}
-		},
-		OnStoppedLeading: func() {
-			g.manager.Infof("Lost leadership, cleaning up %s.", msg)
-		},
-	}
-	leaderElector, err := leaderelection.NewLeaderElector(*leaderElectionConfig)
-	if err != nil {
-		return fmt.Errorf("couldn't create leader elector: %v", err)
-	}
+	if g.manager.GetConfig().OmitLease {
+		g.manager.Infof("omitting lease %q for cluster %s in namespace %q",
+			g.manager.GetName(), msg, g.manager.GetConfig().Namespace)
+		ctxutil.SyncPointRun(g.manager.ctx, runit)
+	} else {
+		g.manager.Infof("requesting lease %q for cluster %s in namespace %q",
+			g.manager.GetName(), msg, g.manager.GetConfig().Namespace)
+		leaderElectionConfig, err := makeLeaderElectionConfig(g.cluster,
+			g.manager.GetConfig().Namespace, g.manager.GetName())
+		if err != nil {
+			return err
+		}
 
-	ctxutil.SyncPointRun(g.manager.ctx, func() { leaderElector.Run(g.manager.ctx) })
+		leaderElectionConfig.Callbacks = leaderelection.LeaderCallbacks{
+			OnStartedLeading: func(ctx context.Context) { runit() },
+			OnStoppedLeading: func() {
+				g.manager.Infof("Lost leadership, cleaning up %s.", msg)
+			},
+		}
+		leaderElector, err := leaderelection.NewLeaderElector(*leaderElectionConfig)
+		if err != nil {
+			return fmt.Errorf("couldn't create leader elector: %v", err)
+		}
+		ctxutil.SyncPointRun(g.manager.ctx, func() { leaderElector.Run(g.manager.ctx) })
+	}
 
 	return nil
 }
 
-func makeLeaderElectionConfig(cluster cluster.Interface, name string) (*leaderelection.LeaderElectionConfig, error) {
+func makeLeaderElectionConfig(cluster cluster.Interface, namespace, name string) (*leaderelection.LeaderElectionConfig, error) {
 	hostname, err := os.Hostname()
 	hostname = fmt.Sprintf("%s/%d", hostname, os.Getpid())
 	if err != nil {
@@ -95,7 +104,7 @@ func makeLeaderElectionConfig(cluster cluster.Interface, name string) (*leaderel
 	}
 	lock, err := resourcelock.New(
 		"configmaps",
-		"kube-system",
+		namespace,
 		name,
 		client,
 		resourcelock.ResourceLockConfig{

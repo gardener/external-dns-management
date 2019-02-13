@@ -23,7 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func ClusterResources(cluster string, gks ... schema.GroupKind) Resources {
+func ClusterResources(cluster string, gks ...schema.GroupKind) Resources {
 	return func(c controller.Interface) []resources.Interface {
 		result := []resources.Interface{}
 		resources := c.GetCluster(cluster).Resources()
