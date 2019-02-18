@@ -20,6 +20,10 @@ package provider
   Standard options a DNS Reconciler should offer
 */
 
-const OPT_IDENTIFIER = "identifier"
-const OPT_DRYRUN = "dry-run"
-const OPT_TTL = "ttl"
+const (
+	OPT_IDENTIFIER = "identifier"
+	OPT_DRYRUN     = "dry-run"
+	OPT_TTL        = "ttl"
+
+	HOSTEDZONE_PREFIX = "hostedzone:"
+)

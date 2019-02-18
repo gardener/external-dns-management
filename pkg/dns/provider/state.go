@@ -391,7 +391,7 @@ func (this *state) getZoneForName(hostname string) (string, int) {
 }
 
 func (this *state) triggerHostedZone(name string) {
-	cmd := "hostedzone:" + name
+	cmd := HOSTEDZONE_PREFIX + name
 	if this.controller.IsReady() {
 		this.controller.EnqueueCommand(cmd)
 	} else {
@@ -408,8 +408,8 @@ func (this *state) triggerKey(key resources.ClusterObjectKey) {
 }
 
 func (this *state) DecodeZoneCommand(name string) string {
-	if strings.HasPrefix(name, "hostedzone:") {
-		return name[len("hostedzone:"):]
+	if strings.HasPrefix(name, HOSTEDZONE_PREFIX) {
+		return name[len(HOSTEDZONE_PREFIX):]
 	}
 	return ""
 }
