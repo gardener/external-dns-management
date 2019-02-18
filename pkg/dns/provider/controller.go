@@ -17,9 +17,10 @@
 package provider
 
 import (
+	"time"
+
 	"github.com/gardener/external-dns-management/pkg/crds"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
-	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
@@ -64,7 +65,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 			controller.NewResourceKey(api.GroupName, api.DNSProviderKind),
 			controller.NewResourceKey("core", "Secret"),
 		).
-		WorkerPool("dns", 1, 30*time.Second).CommandMatchers(utils.NewStringGlobMatcher("hostedzone:*"))
+		WorkerPool("dns", 1, 30*time.Second).CommandMatchers(utils.NewStringGlobMatcher(HOSTEDZONE_PREFIX + "*"))
 }
 
 type reconciler struct {
