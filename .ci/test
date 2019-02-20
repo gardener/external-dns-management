@@ -28,7 +28,7 @@ fi
 source "$SOURCE_PATH/build/setupenv.src"
 
 # Install Ginkgo (test framework) to be able to execute the tests.
-echo "installing ginko..."
+echo "Installing Ginkgo..."
 go get -u github.com/onsi/gomega
 go get -u github.com/onsi/ginkgo/ginkgo
 
@@ -39,6 +39,5 @@ if [[ ! -z "$COVERAGE" ]]; then
   COVER_FLAG="-cover"
 fi
 
-echo "tests disabled"
-#echo "running tests..."
-#ginkgo ${COVER_FLAG} -r cmd pkg plugin
+echo "Running tests..."
+ginkgo ${COVER_FLAG} -r cmd pkg plugin
