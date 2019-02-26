@@ -16,7 +16,7 @@
 
 package utils
 
-import "fmt"
+import "strings"
 
 func IsEmptyString(s *string) bool {
 	return s == nil || *s == ""
@@ -30,21 +30,15 @@ func StringValue(s *string) string {
 }
 
 func StringEqual(a, b *string) bool {
-	return a == b || (a != nil && *a == *b)
+	return a == b || (a != nil && b != nil && *a == *b)
 }
 func IntEqual(a, b *int) bool {
-	return a == b || (a != nil && *a == *b)
+	return a == b || (a != nil && b != nil && *a == *b)
 }
 func Int64Equal(a, b *int64) bool {
-	return a == b || (a != nil && *a == *b)
+	return a == b || (a != nil && b != nil && *a == *b)
 }
 
 func Strings(s ...string) string {
-	r := "["
-	sep := ""
-	for _, e := range s {
-		r = fmt.Sprintf("%s%s%s", r, sep, e)
-		sep = ", "
-	}
-	return r + "]"
+	return "[" + strings.Join(s, ", ") + "]"
 }

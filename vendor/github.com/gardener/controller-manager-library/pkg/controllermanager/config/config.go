@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -87,12 +88,16 @@ func (this *Config) AddIntOption(name string) (*ArbitraryOption, bool) {
 	return this.AddOption(name, reflect.TypeOf((*int)(nil)).Elem())
 }
 
+func (this *Config) AddDurationOption(name string) (*ArbitraryOption, bool) {
+	return this.AddOption(name, reflect.TypeOf((*time.Duration)(nil)).Elem())
+}
+
 func (this *Config) AddToCommand(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&this.Namespace, "namespace", "", "", "namepace for lease")
 	cmd.PersistentFlags().BoolVarP(&this.OmitLease, "omit-lease", "", false, "omit lease for development")
 	cmd.PersistentFlags().StringVarP(&this.Controllers, "controllers", "c", "all", "comma separated list of controllers to start (<name>,source,target,all)")
 	cmd.PersistentFlags().StringVarP(&this.PluginDir, "plugin-dir", "", "", "directory containing go plugins")
-	cmd.PersistentFlags().IntVarP(&this.ServerPortHTTP, "server-port-http", "", 0, "directory containing go plugins")
+	cmd.PersistentFlags().IntVarP(&this.ServerPortHTTP, "server-port-http", "", 0, "HTTP server port (serving /healthz, /metrics, ...)")
 	cmd.PersistentFlags().StringVarP(&this.LogLevel, "log-level", "D", "", "logrus log level")
 	cmd.PersistentFlags().BoolVarP(&this.NamespaceRestriction, "namespace-local-access-only", "n", false, "enable access restriction for namespace local access only")
 

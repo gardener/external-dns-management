@@ -19,12 +19,13 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/clientsets/apiextensions"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gardener/controller-manager-library/pkg/clientsets/apiextensions"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
@@ -277,17 +278,34 @@ func (this *controller) getPool(name string) *pool {
 			def = &pooldef{name: name, size: 5, period: 30 * time.Second}
 		}
 		size := def.Size()
-		opt := this.env.GetConfig().GetOption(PoolSizeOptionName(this.GetName(), name))
+		{
+			opt := this.env.GetConfig().GetOption(PoolSizeOptionName(this.GetName(), name))
 
-		if shared := this.env.GetConfig().GetOption(POOL_SIZE_OPTION); shared != nil && shared.Changed() && (opt == nil || !opt.Changed()) {
-			if shared != nil && shared.Changed() {
-				opt = shared
+			if shared := this.env.GetConfig().GetOption(POOL_SIZE_OPTION); shared != nil && shared.Changed() && (opt == nil || !opt.Changed()) {
+				if shared != nil && shared.Changed() {
+					opt = shared
+				}
+			}
+			if opt != nil {
+				size = opt.IntValue()
 			}
 		}
-		if opt != nil {
-			size = opt.IntValue()
+
+		period := def.Period()
+		{
+			opt := this.env.GetConfig().GetOption(PoolResyncPeriodOptionName(this.GetName(), name))
+
+			if shared := this.env.GetConfig().GetOption(POOL_RESYNC_PERIOD_OPTION); shared != nil && shared.Changed() && (opt == nil || !opt.Changed()) {
+				if shared != nil && shared.Changed() {
+					opt = shared
+				}
+			}
+			if opt != nil {
+				period = opt.DurationValue()
+			}
 		}
-		pool = NewPool(this, name, size, def.Period())
+
+		pool = NewPool(this, name, size, period)
 		this.pools[name] = pool
 	}
 	return pool

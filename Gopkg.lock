@@ -165,7 +165,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9b965479bdaa51cc4371c8c41b4c4f963d69bbfaf5a3ff15ec835fb1f544848e"
+  digest = "1:cd8c1daf71475b93a92576a1109cc47a9458e9403a5898b6271a27d2ce9d9bd6"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/apis/gardenextensions",
@@ -204,7 +204,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "5de1c0ca7a30d0a56890ae9056335c414c929843"
+  revision = "37a2a32e2b64806f51926e009085ce429a5e8ebe"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
@@ -324,8 +324,7 @@
   version = "v0.2.0"
 
 [[projects]]
-  branch = "master"
-  digest = "1:a8840506633233578cc1511f8b1ad5726a3e4802713ba95df95c1abf8dd04941" 
+  digest = "1:a8840506633233578cc1511f8b1ad5726a3e4802713ba95df95c1abf8dd04941"
   name = "github.com/gophercloud/gophercloud"
   packages = [
     ".",
@@ -1093,6 +1092,7 @@
     "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/route53",
+    "github.com/gardener/controller-manager-library/pkg/clientsets",
     "github.com/gardener/controller-manager-library/pkg/clientsets/apiextensions",
     "github.com/gardener/controller-manager-library/pkg/controllermanager",
     "github.com/gardener/controller-manager-library/pkg/controllermanager/cluster",

@@ -30,21 +30,38 @@ func PoolSizeOptionName(controller, pool string) string {
 	return fmt.Sprintf("%s.%s.%s", controller, pool, POOL_SIZE_OPTION)
 }
 
+func PoolResyncPeriodOptionName(controller, pool string) string {
+	return fmt.Sprintf("%s.%s.%s", controller, pool, POOL_RESYNC_PERIOD_OPTION)
+}
+
 const POOL_SIZE_OPTION = "pool.size"
+const POOL_RESYNC_PERIOD_OPTION = "pool.resync-period"
 
 func (this *_Definitions) ExtendConfig(cfg *config.Config) {
 	shared := map[string]reflect.Type{}
+
+	updateSharedOption := func(name string, opt *config.ArbitraryOption) {
+		old, ok := shared[name]
+		if !ok || old == opt.Type {
+			shared[name] = opt.Type
+		} else {
+			shared[name] = nil
+		}
+	}
+
 	for name, def := range this.definitions {
 		for pname, p := range def.Pools() {
 			opt, _ := cfg.AddIntOption(PoolSizeOptionName(name, pname))
-			opt.Description = fmt.Sprintf("worker pool size for pool %s of controller %s", pname, name)
+			opt.Description = fmt.Sprintf("Worker pool size for pool %s of controller %s (default: %d)", pname, name, p.Size())
 			opt.Default = p.Size()
+			updateSharedOption(POOL_SIZE_OPTION, opt)
 
-			old, ok := shared[POOL_SIZE_OPTION]
-			if !ok || old == opt.Type {
-				shared[POOL_SIZE_OPTION] = opt.Type
-			} else {
-				shared[POOL_SIZE_OPTION] = nil
+			if p.Period() != 0 {
+				opt, _ := cfg.AddDurationOption(PoolResyncPeriodOptionName(name, pname))
+				opt.Description = fmt.Sprintf("Period for resynchronization of pool %s of controller %s (default: %s)",
+					pname, name, p.Period().String())
+				opt.Default = p.Period()
+				updateSharedOption(POOL_RESYNC_PERIOD_OPTION, opt)
 			}
 		}
 
@@ -52,15 +69,8 @@ func (this *_Definitions) ExtendConfig(cfg *config.Config) {
 			opt, _ := cfg.AddOption(ControllerOption(name, oname), o.Type())
 			opt.Description = o.Description()
 			opt.Default = o.Default()
-
-			old, ok := shared[oname]
-			if !ok || old == opt.Type {
-				shared[oname] = opt.Type
-			} else {
-				shared[oname] = nil
-			}
+			updateSharedOption(oname, opt)
 		}
-
 	}
 
 	this.shared = map[string]*config.ArbitraryOption{}

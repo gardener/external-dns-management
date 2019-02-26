@@ -17,9 +17,12 @@
 package config
 
 import (
+	"fmt"
+	"reflect"
+	"time"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"reflect"
 )
 
 type ArbitraryOption struct {
@@ -41,6 +44,10 @@ func (this *ArbitraryOption) AddToCommand(cmd *cobra.Command) {
 		this.FlagSet.Int(this.Name, 0, this.Description)
 	case reflect.TypeOf((*bool)(nil)).Elem():
 		this.FlagSet.Bool(this.Name, false, this.Description)
+	case reflect.TypeOf((*time.Duration)(nil)).Elem():
+		this.FlagSet.Duration(this.Name, 0, this.Description)
+	default:
+		panic(fmt.Errorf("Unexpected type %v for option %s", this.Type, this.Name))
 	}
 }
 
@@ -98,4 +105,14 @@ func (this *ArbitraryOption) BoolValue() bool {
 		return this.defaultAsValue().(bool)
 	}
 	return false
+}
+func (this *ArbitraryOption) DurationValue() time.Duration {
+	if this.FlagSet.Changed(this.Name) || this.Default == nil {
+		v, _ := this.FlagSet.GetDuration(this.Name)
+		return v
+	}
+	if this.Default != nil {
+		return this.defaultAsValue().(time.Duration)
+	}
+	return 0
 }

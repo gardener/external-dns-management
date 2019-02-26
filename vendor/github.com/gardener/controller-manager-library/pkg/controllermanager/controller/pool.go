@@ -19,10 +19,11 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
-	"github.com/gardener/controller-manager-library/pkg/server/healthz"
 	"reflect"
 	"time"
+
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
+	"github.com/gardener/controller-manager-library/pkg/server/healthz"
 
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -114,7 +115,11 @@ func NewPool(controller *controller, name string, size int, period time.Duration
 	pool.ctx, pool.LogContext = logger.WithLogger(
 		ctxutil.SyncContext(context.WithValue(controller.ctx, poolkey, pool)),
 		"pool", name)
-	pool.Infof("pool size %d, resync period %d", pool.size, pool.period/time.Second)
+	if pool.period != 0 {
+		pool.Infof("pool size %d, resync period %s", pool.size, pool.period.String())
+	} else {
+		pool.Infof("pool size %d", pool.size)
+	}
 	return pool
 }
 

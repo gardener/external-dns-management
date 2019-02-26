@@ -399,6 +399,13 @@ func (this Configuration) DefaultedBoolOption(name string, def bool, desc string
 	return this.addOption(name, reflect.TypeOf((*bool)(nil)).Elem(), &def, desc)
 }
 
+func (this Configuration) DurationOption(name string, desc string) Configuration {
+	return this.addOption(name, reflect.TypeOf((*time.Duration)(nil)).Elem(), nil, desc)
+}
+func (this Configuration) DefaultedDurationOption(name string, def time.Duration, desc string) Configuration {
+	return this.addOption(name, reflect.TypeOf((*time.Duration)(nil)).Elem(), &def, desc)
+}
+
 func (this Configuration) addOption(name string, t reflect.Type, def interface{}, desc string) Configuration {
 	if this.settings.configs[name] != nil {
 		panic(fmt.Sprintf("option %q already defined", name))
