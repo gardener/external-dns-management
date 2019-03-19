@@ -84,7 +84,11 @@ func NewClusterKey(cluster string, groupKind schema.GroupKind, namespace, name s
 }
 
 func (this ClusterObjectKey) String() string {
-	return fmt.Sprintf("%s/%s", this.cluster, this.objectKey.ObjectKey)
+	return this.asString()
+}
+
+func (this ClusterObjectKey) asString() string {
+	return fmt.Sprintf("%s:%s", this.cluster, this.objectKey.ObjectKey)
 }
 
 func (this ClusterObjectKey) Cluster() string {
@@ -98,9 +102,8 @@ func (this ClusterObjectKey) ObjectKey() ObjectKey {
 func (this ClusterObjectKey) AsRefFor(clusterid string) string {
 	if this.cluster == clusterid {
 		return this.objectKey.String()
-	} else {
-		return fmt.Sprintf("%s:%s", this.cluster, this.objectKey.ObjectKey.String())
 	}
+	return this.asString()
 }
 
 func ParseClusterObjectKey(clusterid string, key string) (ClusterObjectKey, error) {

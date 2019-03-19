@@ -185,7 +185,7 @@ func CreateCluster(ctx context.Context, logger logger.LogContext, req Definition
 	logger.Infof("using %q for cluster %q[%s]", kubeconfig, name, id)
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create cluster %p: %s", name, err)
+		return nil, fmt.Errorf("failed to create cluster %q: %s", name, err)
 	}
 
 	cluster.ctx = ctx

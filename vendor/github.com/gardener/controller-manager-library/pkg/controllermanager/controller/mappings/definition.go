@@ -38,6 +38,7 @@ type Definition interface {
 	MapCluster(name string) string
 	MapInfo(name string) string
 	MappedClusters() utils.StringSet
+	String() string
 }
 
 type _Definition struct {
@@ -90,6 +91,10 @@ func (this *_Definition) MappedClusters() utils.StringSet {
 	return clusters
 }
 
+func (this *_Definition) String() string {
+	return fmt.Sprintf("%v", this.mappings)[3:]
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 type aggregation struct {
@@ -103,7 +108,7 @@ func (this *aggregation) Definition() Definition {
 }
 
 func (this *aggregation) Type() string {
-	return this.list[0].Type()
+	return TYPE_CONTROLLER
 }
 
 func (this *aggregation) Name() string {
@@ -135,6 +140,16 @@ func (this *aggregation) MappedClusters() utils.StringSet {
 		set.AddSet(a.MappedClusters())
 	}
 	return set
+}
+
+func (this *aggregation) String() string {
+	s:="["
+	sep:=""
+	for _, m:= range this.list {
+		s=s+sep+m.String()
+		sep=", "
+	}
+	return s+"]"
 }
 
 ///////////////////////////////////////////////////////////////////////////////

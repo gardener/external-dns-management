@@ -44,7 +44,7 @@ func (this *_object) IsDeleting() bool {
 
 func (this *_object) Update() error {
 	result, err := this.resource._update(this.ObjectData)
-	if err != nil {
+	if err == nil {
 		this.ObjectData = result
 	}
 	return err
@@ -55,7 +55,7 @@ func (this *_object) UpdateStatus() error {
 		return fmt.Errorf("resource %q has no status sub resource", this.resource.GroupVersionKind())
 	}
 	result, err := this.resource._updateStatus(this.ObjectData)
-	if err != nil {
+	if err == nil {
 		this.ObjectData = result
 	}
 	return err

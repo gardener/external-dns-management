@@ -141,6 +141,7 @@ func (this *SubObjectCache) DeleteOwner(key ClusterObjectKey) {
 		for s := range slaves {
 			this.removeByKey(key, s)
 		}
+		delete(this.byOwner, key)
 	}
 }
 

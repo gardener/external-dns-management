@@ -27,6 +27,10 @@ import (
 
 type definitions map[string]Definition
 
+func (this definitions) String() string {
+  return fmt.Sprintf("%v", map[string]Definition(this))[3:]
+}
+
 func (this definitions) Copy() definitions {
 	new := definitions{}
 	for k, v := range this {
@@ -119,6 +123,10 @@ func (this *_Registry) GetDefinitions() Definitions {
 
 func newDefinitions(def *_Definition) *_Definitions {
 	return &_Definitions{definitions: map[string]definitions{def.Type(): {def.Name(): def}}}
+}
+
+func (this *_Definitions) String() string {
+	return fmt.Sprintf("%v", this.definitions)[3:]
 }
 
 func (this *_Definitions) Get(mtype, name string) Definition {

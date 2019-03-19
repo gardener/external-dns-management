@@ -160,7 +160,7 @@ func (w *worker) processNextWorkItem() bool {
 				}
 			}
 			if status.Interval >= 0 {
-				w.Infof("requested reschedule %d seconds", status.Interval/time.Second)
+				w.Debugf("requested reschedule %d seconds", status.Interval/time.Second)
 			}
 			updateSchedule(&reschedule, status.Interval)
 		}

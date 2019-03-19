@@ -165,7 +165,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:cd8c1daf71475b93a92576a1109cc47a9458e9403a5898b6271a27d2ce9d9bd6"
+  digest = "1:997edfb342320c1f87a6d0eb0d91cc2c03d357f124b75c6a7a9e10484985b16f"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/apis/gardenextensions",
@@ -204,7 +204,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "37a2a32e2b64806f51926e009085ce429a5e8ebe"
+  revision = "66ec219d622a622671a1de09c0ae391e5acd0a1c"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
@@ -1092,7 +1092,6 @@
     "github.com/aws/aws-sdk-go/aws/credentials",
     "github.com/aws/aws-sdk-go/aws/session",
     "github.com/aws/aws-sdk-go/service/route53",
-    "github.com/gardener/controller-manager-library/pkg/clientsets",
     "github.com/gardener/controller-manager-library/pkg/clientsets/apiextensions",
     "github.com/gardener/controller-manager-library/pkg/controllermanager",
     "github.com/gardener/controller-manager-library/pkg/controllermanager/cluster",

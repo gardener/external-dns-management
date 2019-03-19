@@ -72,6 +72,7 @@ func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, 
 
 	clusters := utils.StringSet{}
 	logger.Infof("determining required clusters:")
+	logger.Infof("  found mappings: %s", this.mappings)
 	for n := range controller_names {
 		def := this.definitions[n]
 		if def == nil {
@@ -83,7 +84,8 @@ func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, 
 			return nil, err
 		}
 		logger.Infof("  for controller %s:", n)
-		logger.Infof("     logical clusters %s", n, utils.Strings(names...))
+		logger.Infof("     found mappings %s", cmp)
+		logger.Infof("     logical clusters %s", utils.Strings(names...))
 
 		set, found, err := mappings.DetermineClusters(cdefs, cmp, names...)
 		if err != nil {
