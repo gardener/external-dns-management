@@ -143,13 +143,13 @@ func (this *aggregation) MappedClusters() utils.StringSet {
 }
 
 func (this *aggregation) String() string {
-	s:="["
-	sep:=""
-	for _, m:= range this.list {
-		s=s+sep+m.String()
-		sep=", "
+	s := "["
+	sep := ""
+	for _, m := range this.list {
+		s = s + sep + m.String()
+		sep = ", "
 	}
-	return s+"]"
+	return s + "]"
 }
 
 ///////////////////////////////////////////////////////////////////////////////

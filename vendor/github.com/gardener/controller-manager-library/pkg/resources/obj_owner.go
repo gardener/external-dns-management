@@ -114,16 +114,5 @@ func (this *_object) GetOwners(kinds ...schema.GroupKind) ClusterObjectKeySet {
 			result.Add(ref)
 		}
 	}
-	if len(kinds) > 0 {
-	outer:
-		for r := range result {
-			for _, k := range kinds {
-				if k == r.groupKind {
-					continue outer
-				}
-			}
-			result.Remove(r)
-		}
-	}
-	return result
+	return FilterKeysByGroupKinds(result, kinds...)
 }

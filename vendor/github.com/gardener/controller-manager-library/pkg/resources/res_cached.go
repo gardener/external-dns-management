@@ -19,6 +19,7 @@ package resources
 import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/labels"
+	"runtime/debug"
 )
 
 func (this *_resource) getCached(namespace, name string) (Object, error) {
@@ -58,10 +59,26 @@ func (this *_resource) GetCached(obj interface{}) (Object, error) {
 			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
 		}
 		return this.getCached(o.Namespace(), o.Name())
+	case *ObjectKey:
+		if o.GroupKind() != this.GroupKind() {
+			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
+		}
+		return this.getCached(o.Namespace(), o.Name())
+	case ClusterObjectKey:
+		if o.GroupKind() != this.GroupKind() {
+			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
+		}
+		return this.getCached(o.Namespace(), o.Name())
+	case *ClusterObjectKey:
+		if o.GroupKind() != this.GroupKind() {
+			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
+		}
+		return this.getCached(o.Namespace(), o.Name())
 	case ObjectName:
 		return this.getCached(o.Namespace(), o.Name())
 	default:
-		return nil, fmt.Errorf("unsupported type '%T' for source _object", obj)
+		debug.PrintStack()
+		return nil, fmt.Errorf("unsupported type '%T' for source object", obj)
 	}
 }
 

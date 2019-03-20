@@ -120,13 +120,23 @@ func (this *_Definitions) CreateClusters(ctx context.Context, logger logger.LogC
 	return clusters, nil
 }
 
-func (this *_Definitions) handleCluster(ctx context.Context, logger logger.LogContext, cfg *config.Config, found*_Clusters, missing utils.StringSet, name string) error {
+func (this *_Definitions) handleCluster(ctx context.Context, logger logger.LogContext, cfg *config.Config, found *_Clusters, missing utils.StringSet, name string) error {
 	var err error
 	var c Interface
 	fallback := ""
 	defaultRequest := this.definitions[DEFAULT]
 	req := this.definitions[name]
+	if req == nil {
+		return fmt.Errorf("no definition for cluster %s", name)
+	}
+
 	opt := cfg.GetOption(req.ConfigOptionName())
+	//if opt != nil && opt.StringValue() != "" {
+	//	logger.Infof("  handle cluster %s (%s=%s", name, opt.Name, opt.StringValue() )
+	//
+	//} else {
+	//	logger.Infof("  handle cluster %s (no config) fallback=%s", name, req.Fallback())
+	//}
 
 	if name != DEFAULT && opt != nil && opt.StringValue() != "" {
 		c, err = this.create(ctx, logger, cfg, req, opt.StringValue())
@@ -147,15 +157,18 @@ func (this *_Definitions) handleCluster(ctx context.Context, logger logger.LogCo
 					return err
 				}
 			}
-			fallback = fmt.Sprintf(" using default fallback")
+			fallback = ""
+			if name != DEFAULT {
+				fallback = fmt.Sprintf(" using default fallback")
+			}
 		} else {
-			c = found.effective[req.Fallback()]
-			fallback = fmt.Sprintf(" using explicit fallback %q", req.Fallback())
+			c = found.clusters[req.Fallback()]
+			fallback = fmt.Sprintf(" using explicit fallback %s", found.infos[req.Fallback()])
 		}
 	}
 	if c != nil {
 		logger.Infof("adding cluster %q[%s] as %q%s", c.GetName(), c.GetId(), name, fallback)
-		found.Add(name, c)
+		found.Add(name, c, fmt.Sprintf("%s%s", name, fallback))
 	} else {
 		missing.Add(name)
 	}

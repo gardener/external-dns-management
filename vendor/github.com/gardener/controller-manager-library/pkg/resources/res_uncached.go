@@ -192,6 +192,21 @@ func (this *_resource) Get_(obj interface{}) (Object, error) {
 			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
 		}
 		return this.get(o.Namespace(), o.Name(), nil)
+	case *ObjectKey:
+		if o.GroupKind() != this.GroupKind() {
+			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
+		}
+		return this.get(o.Namespace(), o.Name(), nil)
+	case ClusterObjectKey:
+		if o.GroupKind() != this.GroupKind() {
+			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
+		}
+		return this.get(o.Namespace(), o.Name(), nil)
+	case *ClusterObjectKey:
+		if o.GroupKind() != this.GroupKind() {
+			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
+		}
+		return this.get(o.Namespace(), o.Name(), nil)
 	case ObjectName:
 		return this.get(o.Namespace(), o.Name(), nil)
 	default:

@@ -17,6 +17,8 @@
 package reconcilers
 
 import (
+	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -38,6 +40,26 @@ type _resources struct {
 	kinds     []schema.GroupKind
 	resources []resources.Interface
 	clusters  utils.StringSet
+}
+
+func (this *_resources) Contains(g schema.GroupKind) bool {
+	for _, e := range this.kinds {
+		if e == g {
+			return true
+		}
+	}
+	return false
+}
+
+func (this *_resources) String() string {
+	str := ""
+	if this != nil {
+		for _, e := range this.kinds {
+			str += "|" + (&e).String()
+		}
+		str += "|"
+	}
+	return str
 }
 
 func newResources(c controller.Interface, f Resources) *_resources {
@@ -62,27 +84,45 @@ type SlaveAccess struct {
 	slaves           *resources.SlaveCache
 	slave_resources  *_resources
 	master_resources *_resources
+	spec             SlaveAccessSpec
+}
+
+type SlaveAccessSpec struct {
+	Name    string
+	Slaves  Resources
+	Masters Resources
 }
 
 func NewSlaveAccess(c controller.Interface, name string, slave_func Resources, master_func Resources) *SlaveAccess {
+	return NewSlaveAccessBySpec(c, SlaveAccessSpec{Name: name, Slaves: slave_func, Masters: master_func})
+}
+
+func NewSlaveAccessBySpec(c controller.Interface, spec SlaveAccessSpec) *SlaveAccess {
 	return &SlaveAccess{
 		Interface:        c,
-		name:             name,
-		slave_resources:  newResources(c, slave_func),
-		master_resources: newResources(c, master_func),
+		name:             spec.Name,
+		slave_resources:  newResources(c, spec.Slaves),
+		master_resources: newResources(c, spec.Masters),
+		spec:             spec,
 	}
 }
 
-type key struct {
-	names string
+type accesskey struct {
+	name    string
+	masters string
+	slaves  string
+}
+
+func (this accesskey) String() string {
+	return fmt.Sprintf("%s:[%s%s]", this.name, this.masters, this.slaves)
+}
+
+func (this *SlaveAccess) Key() interface{} {
+	return accesskey{name: this.name, masters: this.master_resources.String(), slaves: this.slave_resources.String()}
 }
 
 func (this *SlaveAccess) Setup() {
-	key := key{}
-	for _, gk := range this.slave_resources.kinds {
-		key.names = key.names + "|" + (&gk).String()
-	}
-	this.slaves = this.GetOrCreateSharedValue(key, this.setupSlaveCache).(*resources.SlaveCache)
+	this.slaves = this.GetOrCreateSharedValue(this.Key(), this.setupSlaveCache).(*resources.SlaveCache)
 }
 
 func (this *SlaveAccess) setupSlaveCache() interface{} {
@@ -185,7 +225,7 @@ func (this *SlaveAccess) GetMasters(all_clusters bool, kinds ...schema.GroupKind
 	return filterKeysByClusters(set, this.master_resources.clusters)
 }
 
-func filterKeysByClusters(set resources.ClusterObjectKeySet, clusters utils.StringSet) resources.ClusterObjectKeySet {
+func filterKeysByClusters(set resources.ClusterObjectKeySet, clusters utils.StringSet, kinds ...schema.GroupKind) resources.ClusterObjectKeySet {
 	if clusters == nil {
 		return set
 	}
@@ -193,6 +233,17 @@ func filterKeysByClusters(set resources.ClusterObjectKeySet, clusters utils.Stri
 	for k := range set {
 		if clusters.Contains(k.Cluster()) {
 			new.Add(k)
+		}
+	}
+	if len(kinds) != 0 {
+	outer:
+		for k := range new {
+			for _, g := range kinds {
+				if k.GroupKind() == g {
+					continue outer
+				}
+			}
+			new.Remove(k)
 		}
 	}
 	return new
@@ -209,9 +260,19 @@ func SlaveReconcilerType(name string, slaveResources Resources, reconciler contr
 	}
 }
 
+func SlaveReconcilerTypeBySpec(reconciler controller.ReconcilerType, spec SlaveAccessSpec) controller.ReconcilerType {
+	return func(c controller.Interface) (reconcile.Interface, error) {
+		return NewSlaveReconcilerBySpec(c, reconciler, spec)
+	}
+}
+
 func NewSlaveReconciler(c controller.Interface, name string, slaveResources Resources, reconciler controller.ReconcilerType, masterResources Resources) (*SlaveReconciler, error) {
+	return NewSlaveReconcilerBySpec(c, reconciler, SlaveAccessSpec{Name: name, Slaves: slaveResources, Masters: masterResources})
+}
+
+func NewSlaveReconcilerBySpec(c controller.Interface, reconciler controller.ReconcilerType, spec SlaveAccessSpec) (*SlaveReconciler, error) {
 	r := &SlaveReconciler{
-		SlaveAccess: NewSlaveAccess(c, name, slaveResources, masterResources),
+		SlaveAccess: NewSlaveAccessBySpec(c, spec),
 	}
 	nested, err := NewNestedReconciler(reconciler, r)
 	if err != nil {

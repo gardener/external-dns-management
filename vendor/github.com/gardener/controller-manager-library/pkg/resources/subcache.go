@@ -90,19 +90,7 @@ func (this *SubObjectCache) GetOwners(key ClusterObjectKey, kinds ...schema.Grou
 	if o == nil {
 		return ClusterObjectKeySet{}
 	}
-	owners := this.owners(o)
-	if len(kinds) > 0 {
-	outer:
-		for o := range owners {
-			for _, k := range kinds {
-				if o.GroupKind() == k {
-					continue outer
-				}
-				owners.Remove(o)
-			}
-		}
-	}
-	return owners
+	return FilterKeysByGroupKinds(this.owners(o), kinds...)
 }
 
 func (this *SubObjectCache) GetAllOwners(kind ...schema.GroupKind) ClusterObjectKeySet {
@@ -179,7 +167,7 @@ func (this *SubObjectCache) renewSubObject(obj Object) bool {
 		entry.object = obj
 		return len(add)+len(del) > 0
 	}
-	for e := range this.owners(obj) {
+	for e := range newowners {
 		this.add(e, obj)
 	}
 	return true

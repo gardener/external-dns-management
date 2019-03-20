@@ -28,7 +28,7 @@ import (
 type definitions map[string]Definition
 
 func (this definitions) String() string {
-  return fmt.Sprintf("%v", map[string]Definition(this))[3:]
+	return fmt.Sprintf("%v", map[string]Definition(this))[3:]
 }
 
 func (this definitions) Copy() definitions {

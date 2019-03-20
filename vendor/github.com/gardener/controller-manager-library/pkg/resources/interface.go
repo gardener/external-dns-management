@@ -140,6 +140,8 @@ type ObjectName interface {
 	Name() string
 	Namespace() string
 	String() string
+
+	ForGroupKind(gk schema.GroupKind) ObjectKey
 }
 
 type ObjectData interface {

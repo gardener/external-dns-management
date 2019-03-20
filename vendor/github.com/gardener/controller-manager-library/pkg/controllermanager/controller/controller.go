@@ -90,7 +90,7 @@ func (c *SharedAttributes) GetOrCreateSharedValue(key interface{}, create func()
 	}
 	v, ok := c.shared[key]
 	if !ok {
-		c.Infof("creating shared value for key %#v", key)
+		c.Infof("creating shared value for key %v", key)
 		v = create()
 		c.shared[key] = v
 	}

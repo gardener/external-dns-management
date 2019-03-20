@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"strings"
 )
 
@@ -54,6 +55,10 @@ func (this objectName) Namespace() string {
 
 func (this objectName) Name() string {
 	return this.name
+}
+
+func (this objectName) ForGroupKind(gk schema.GroupKind) ObjectKey {
+	return NewKey(gk, this.namespace, this.name)
 }
 
 func (this objectName) String() string {

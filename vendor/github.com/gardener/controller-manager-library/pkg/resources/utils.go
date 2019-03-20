@@ -18,6 +18,7 @@ package resources
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func SetAnnotation(o ObjectData, key, value string) bool {
@@ -68,4 +69,22 @@ func RemoveOwnerReference(o ObjectData, ref *metav1.OwnerReference) bool {
 		}
 	}
 	return false
+}
+
+func FilterKeysByGroupKinds(keys ClusterObjectKeySet, kinds ...schema.GroupKind) ClusterObjectKeySet {
+
+	if len(kinds) == 0 {
+		return keys.Copy()
+	}
+	new := ClusterObjectKeySet{}
+outer:
+	for k := range keys {
+		for _, g := range kinds {
+			if k.GroupKind() == g {
+				new.Add(k)
+				continue outer
+			}
+		}
+	}
+	return new
 }
