@@ -53,7 +53,9 @@ rules:
   - dns.gardener.cloud
   resources:
   - dnsproviders
+  - dnsproviders/status
   - dnsentries
+  - dnsentries/status
   - dnsowners
   verbs:
   - get
