@@ -33,7 +33,7 @@ const TARGET_CLUSTER = "target"
 
 const DNS_ANNOTATION = "dns.gardener.cloud/dnsnames"
 const KEY_ANNOTATION = "dns.gardener.cloud/key"
-const TTL_ANNOTATION = "dns.gardener.cloud/TTL"
+const TTL_ANNOTATION = "dns.gardener.cloud/ttl"
 const PERIOD_ANNOTATION = "dns.gardener.cloud/cname-lookup-interval"
 
 const OPT_EXCLUDE = "exclude-domains"
