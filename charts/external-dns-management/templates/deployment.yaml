@@ -1,0 +1,295 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "external-dns-management.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: {{ include "external-dns-management.chart" . }}
+    app.kubernetes.io/name: {{ include "external-dns-management.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "external-dns-management.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "external-dns-management.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        args:
+        {{- if .Values.configuration.alicloudDNSDefaultPoolSize }}
+        - --alicloud-dns.default.pool.size={{ .Values.configuration.alicloudDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSDnsPoolResyncPeriod }}
+        - --alicloud-dns.dns.pool.resync-period={{ .Values.configuration.alicloudDNSDnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSDnsPoolSize }}
+        - --alicloud-dns.dns.pool.size={{ .Values.configuration.alicloudDNSDnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSDryRun }}
+        - --alicloud-dns.dry-run={{ .Values.configuration.alicloudDNSDryRun }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSIdentifier }}
+        - --alicloud-dns.identifier={{ .Values.configuration.alicloudDNSIdentifier }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSOwneridsPoolSize }}
+        - --alicloud-dns.ownerids.pool.size={{ .Values.configuration.alicloudDNSOwneridsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSProvidersPoolResyncPeriod }}
+        - --alicloud-dns.providers.pool.resync-period={{ .Values.configuration.alicloudDNSProvidersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSProvidersPoolSize }}
+        - --alicloud-dns.providers.pool.size={{ .Values.configuration.alicloudDNSProvidersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSTtl }}
+        - --alicloud-dns.ttl={{ .Values.configuration.alicloudDNSTtl }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53DefaultPoolSize }}
+        - --aws-route53.default.pool.size={{ .Values.configuration.awsRoute53DefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53DnsPoolResyncPeriod }}
+        - --aws-route53.dns.pool.resync-period={{ .Values.configuration.awsRoute53DnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53DnsPoolSize }}
+        - --aws-route53.dns.pool.size={{ .Values.configuration.awsRoute53DnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53DryRun }}
+        - --aws-route53.dry-run={{ .Values.configuration.awsRoute53DryRun }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53Identifier }}
+        - --aws-route53.identifier={{ .Values.configuration.awsRoute53Identifier }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53OwneridsPoolSize }}
+        - --aws-route53.ownerids.pool.size={{ .Values.configuration.awsRoute53OwneridsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53ProvidersPoolResyncPeriod }}
+        - --aws-route53.providers.pool.resync-period={{ .Values.configuration.awsRoute53ProvidersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53ProvidersPoolSize }}
+        - --aws-route53.providers.pool.size={{ .Values.configuration.awsRoute53ProvidersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53Ttl }}
+        - --aws-route53.ttl={{ .Values.configuration.awsRoute53Ttl }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSDefaultPoolSize }}
+        - --azure-dns.default.pool.size={{ .Values.configuration.azureDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSDnsPoolResyncPeriod }}
+        - --azure-dns.dns.pool.resync-period={{ .Values.configuration.azureDNSDnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSDnsPoolSize }}
+        - --azure-dns.dns.pool.size={{ .Values.configuration.azureDNSDnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSDryRun }}
+        - --azure-dns.dry-run={{ .Values.configuration.azureDNSDryRun }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSIdentifier }}
+        - --azure-dns.identifier={{ .Values.configuration.azureDNSIdentifier }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSOwneridsPoolSize }}
+        - --azure-dns.ownerids.pool.size={{ .Values.configuration.azureDNSOwneridsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSProvidersPoolResyncPeriod }}
+        - --azure-dns.providers.pool.resync-period={{ .Values.configuration.azureDNSProvidersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSProvidersPoolSize }}
+        - --azure-dns.providers.pool.size={{ .Values.configuration.azureDNSProvidersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSTtl }}
+        - --azure-dns.ttl={{ .Values.configuration.azureDNSTtl }}
+        {{- end }}
+        {{- if .Values.configuration.controllers }}
+        - --controllers={{ .Values.configuration.controllers }}
+        {{- end }}
+        {{- if .Values.configuration.dryRun }}
+        - --dry-run={{ .Values.configuration.dryRun }}
+        {{- end }}
+        {{- if .Values.configuration.excludeDomains }}
+        - --exclude-domains={{ .Values.configuration.excludeDomains }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSDefaultPoolSize }}
+        - --google-clouddns.default.pool.size={{ .Values.configuration.googleCloudDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSDnsPoolResyncPeriod }}
+        - --google-clouddns.dns.pool.resync-period={{ .Values.configuration.googleCloudDNSDnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSDnsPoolSize }}
+        - --google-clouddns.dns.pool.size={{ .Values.configuration.googleCloudDNSDnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSDryRun }}
+        - --google-clouddns.dry-run={{ .Values.configuration.googleCloudDNSDryRun }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSIdentifier }}
+        - --google-clouddns.identifier={{ .Values.configuration.googleCloudDNSIdentifier }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSOwneridsPoolSize }}
+        - --google-clouddns.ownerids.pool.size={{ .Values.configuration.googleCloudDNSOwneridsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSProvidersPoolResyncPeriod }}
+        - --google-clouddns.providers.pool.resync-period={{ .Values.configuration.googleCloudDNSProvidersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSProvidersPoolSize }}
+        - --google-clouddns.providers.pool.size={{ .Values.configuration.googleCloudDNSProvidersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSTtl }}
+        - --google-clouddns.ttl={{ .Values.configuration.googleCloudDNSTtl }}
+        {{- end }}
+        {{- if .Values.configuration.identifier }}
+        - --identifier={{ .Values.configuration.identifier }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
+        - --ingress-dns.default.pool.resync-period={{ .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSDefaultPoolSize }}
+        - --ingress-dns.default.pool.size={{ .Values.configuration.ingressDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSingressDNSExcludeDomains }}
+        - --ingress-dns.exclude-domains={{ .Values.configuration.ingressDNSingressDNSExcludeDomains }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSKey }}
+        - --ingress-dns.key={{ .Values.configuration.ingressDNSKey }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSTargetNamePrefix }}
+        - --ingress-dns.target-name-prefix={{ .Values.configuration.ingressDNSTargetNamePrefix }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSTargetNamespace }}
+        - --ingress-dns.target-namespace={{ .Values.configuration.ingressDNSTargetNamespace }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSTargetsPoolSize }}
+        - --ingress-dns.targets.pool.size={{ .Values.configuration.ingressDNSTargetsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.key }}
+        - --key={{ .Values.configuration.key }}
+        {{- end }}
+        {{- if .Values.configuration.kubeconfig }}
+        - --kubeconfig={{ .Values.configuration.kubeconfig }}
+        {{- end }}
+        {{- if .Values.configuration.kubeconfigId }}
+        - --kubeconfig.id={{ .Values.configuration.kubeconfigId }}
+        {{- end }}
+        {{- if .Values.configuration.logLevel }}
+        - --log-level={{ .Values.configuration.logLevel }}
+        {{- end }}
+        {{- if .Values.configuration.namespace }}
+        - --namespace={{ .Values.configuration.namespace }}
+        {{- end }}
+        {{- if .Values.configuration.namespaceLocalAccessOnly }}
+        - --namespace-local-access-only={{ .Values.configuration.namespaceLocalAccessOnly }}
+        {{- end }}
+        {{- if .Values.configuration.omitLease }}
+        - --omit-lease={{ .Values.configuration.omitLease }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateDefaultPoolSize }}
+        - --openstack-designate.default.pool.size={{ .Values.configuration.openstackDesignateDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateDnsPoolResyncPeriod }}
+        - --openstack-designate.dns.pool.resync-period={{ .Values.configuration.openstackDesignateDnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateDnsPoolSize }}
+        - --openstack-designate.dns.pool.size={{ .Values.configuration.openstackDesignateDnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateDryRun }}
+        - --openstack-designate.dry-run={{ .Values.configuration.openstackDesignateDryRun }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateIdentifier }}
+        - --openstack-designate.identifier={{ .Values.configuration.openstackDesignateIdentifier }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateOwneridsPoolSize }}
+        - --openstack-designate.ownerids.pool.size={{ .Values.configuration.openstackDesignateOwneridsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateProvidersPoolResyncPeriod }}
+        - --openstack-designate.providers.pool.resync-period={{ .Values.configuration.openstackDesignateProvidersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateProvidersPoolSize }}
+        - --openstack-designate.providers.pool.size={{ .Values.configuration.openstackDesignateProvidersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateTtl }}
+        - --openstack-designate.ttl={{ .Values.configuration.openstackDesignateTtl }}
+        {{- end }}
+        {{- if .Values.configuration.plugin }}
+        - --plugin-dir={{ .Values.configuration.plugin }}
+        {{- end }}
+        {{- if .Values.configuration.poolResyncPeriod }}
+        - --pool.resync-period={{ .Values.configuration.poolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.poolSize }}
+        - --pool.size={{ .Values.configuration.poolSize }}
+        {{- end }}
+        {{- if .Values.configuration.serverPortHttp }}
+        - --server-port-http={{ .Values.configuration.serverPortHttp }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSDefaultPoolResyncPeriod }}
+        - --service-dns.default.pool.resync-period={{ .Values.configuration.serviceDNSDefaultPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSDefaultPoolSize }}
+        - --service-dns.default.pool.size={{ .Values.configuration.serviceDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSingressDNSExcludeDomains }}
+        - --service-dns.exclude-domains={{ .Values.configuration.serviceDNSingressDNSExcludeDomains }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSKey }}
+        - --service-dns.key={{ .Values.configuration.serviceDNSKey }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSTargetNamePrefix }}
+        - --service-dns.target-name-prefix={{ .Values.configuration.serviceDNSTargetNamePrefix }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSTargetNamespace }}
+        - --service-dns.target-namespace={{ .Values.configuration.serviceDNSTargetNamespace }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSTargetsPoolSize }}
+        - --service-dns.targets.pool.size={{ .Values.configuration.serviceDNSTargetsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.target }}
+        - --target={{ .Values.configuration.target }}
+        {{- end }}
+        {{- if .Values.configuration.targetNamePrefix }}
+        - --target-name-prefix={{ .Values.configuration.targetNamePrefix }}
+        {{- end }}
+        {{- if .Values.configuration.targetNamespace }}
+        - --target-namespace={{ .Values.configuration.targetNamespace }}
+        {{- end }}
+        {{- if .Values.configuration.targetId }}
+        - --target.id={{ .Values.configuration.targetId }}
+        {{- end }}
+        {{- if .Values.configuration.ttl }}
+        - --ttl={{ .Values.configuration.ttl }}
+        {{- end }}
+        {{- range $idx, $flag := .Values.additionalConfiguration }}
+        - {{ $flag }}
+        {{- end }}
+        {{- if .Values.configuration.serverPortHttp }}
+        ports:
+        - containerPort: {{ .Values.configuration.serverPortHttp }}
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ .Values.configuration.serverPortHttp }}
+            scheme: HTTP
+          initialDelaySeconds: 30
+          timeoutSeconds: 5
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+      serviceAccountName: {{ include "external-dns-management.fullname" . }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

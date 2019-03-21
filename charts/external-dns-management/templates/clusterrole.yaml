@@ -1,0 +1,54 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: {{ include "external-dns-management.fullname" . }}
+  labels:
+    helm.sh/chart: {{ include "external-dns-management.chart" . }}
+    app.kubernetes.io/name: {{ include "external-dns-management.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+rules:
+- apiGroups:
+  - ""
+  - extensions
+  resources:
+  - services
+  - secrets
+  - ingresses
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - dns.gardener.cloud
+  resources:
+  - dnsproviders
+  - dnsproviders/status
+  - dnsentries
+  - dnsentries/status
+  - dnsowners
+  - dnsowners/status
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+  - update
+  - create
