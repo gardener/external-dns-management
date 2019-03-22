@@ -108,7 +108,7 @@ func (this *Entry) IsModified() bool {
 	return this.modified
 }
 
-func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
+func (this *Entry) Validate(ownerids utils.StringSet) (targets Targets, warnings []string, err error) {
 
 	spec := &this.object.DNSEntry().Spec
 
@@ -153,13 +153,18 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 		}
 	}
 
+	if utils.StringValue(spec.OwnerId) != "" {
+		if !ownerids.Contains(*spec.OwnerId) {
+			err = fmt.Errorf("unknown owner id '%s'", *spec.OwnerId)
+		}
+	}
 	if len(targets) == 0 {
 		err = fmt.Errorf("no target or text specified")
 	}
 	return
 }
 
-func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTTL int64) reconcile.Status {
+func (this *Entry) Update(logger logger.LogContext, ownerids utils.StringSet, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTTL int64) reconcile.Status {
 	this.lock.Lock()
 	this.lock.Unlock()
 
@@ -191,7 +196,7 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 			msg := fmt.Sprintf("Assigned to provider type %q responsible for zone %s", resp, zoneid)
 			f := func(data resources.ObjectData) (bool, error) {
 				e := data.(*api.DNSEntry)
-				if  !utils.IsEmptyString(e.Status.ProviderType) && zoneid == "" {
+				if !utils.IsEmptyString(e.Status.ProviderType) && zoneid == "" {
 					return false, nil
 				}
 				mod := (&utils.ModificationState{}).
@@ -216,10 +221,14 @@ func (this *Entry) Update(logger logger.LogContext, object *dnsutils.DNSEntryObj
 
 	///////////// validate
 
-	targets, warnings, verr := this.Validate()
+	targets, warnings, verr := this.Validate(ownerids)
 
 	if verr != nil {
-		this.UpdateStatus(logger, api.STATE_INVALID, verr.Error())
+		state := api.STATE_INVALID
+		if status.State == api.STATE_READY {
+			state = api.STATE_STALE
+		}
+		this.UpdateStatus(logger, state, verr.Error())
 		return reconcile.Failed(logger, verr)
 	}
 
@@ -327,8 +336,12 @@ func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg stri
 
 		mod := &utils.ModificationState{}
 		mod.AssureInt64Value(&o.Status.ObservedGeneration, o.Generation)
-		mod.AssureStringValue(&o.Status.State, state)
-		mod.AssureStringPtrValue(&o.Status.Message, msg)
+		if !(o.Status.State == api.STATE_STALE && o.Status.State == state) {
+			mod.AssureStringPtrValue(&o.Status.Message, msg)
+		}
+		if !(o.Status.State == api.STATE_STALE && state == api.STATE_INVALID) {
+			mod.AssureStringValue(&o.Status.State, state)
+		}
 		if mod.IsModified() {
 			logger.Infof("update state of '%s/%s' to %s (%s)", o.Namespace, o.Name, state, msg)
 		}

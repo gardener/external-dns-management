@@ -84,13 +84,13 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 		this.add(name, rr, oldset, false, &this.deletions, nil)
 	case provider.R_UPDATE:
 		this.Infof("%s %s record set %s[%s]: %s(%d)", req.Action, req.Type, name, this.zone.Id(), newset.RecordString(), newset.TTL)
-		if oldset!=nil {
-			_,_,del:=newset.DiffTo(oldset)
+		if oldset != nil {
+			_, _, del := newset.DiffTo(oldset)
 			if len(del) > 0 {
 				this.add(name, rr, dns.NewRecordSet(oldset.Type, oldset.TTL, del), false, &this.deletions, nil)
 			}
 		}
-		this.add(name, rr, newset,true,  &this.updates, &this.additions)
+		this.add(name, rr, newset, true, &this.updates, &this.additions)
 	}
 
 	r := this.results[name]
@@ -108,7 +108,7 @@ func (this *Execution) add(dnsname, rr string, rset *dns.RecordSet, modonly bool
 	for _, r := range rset.Records {
 		old := this.state.getRecord(dnsname, rtype, r.Value)
 		if old != nil {
-			if (!modonly) || (old.TTL!=int(rset.TTL)) {
+			if (!modonly) || (old.TTL != int(rset.TTL)) {
 				or := *old
 				or.TTL = int(rset.TTL)
 				*found = append(*found, or)

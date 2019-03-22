@@ -18,6 +18,7 @@ package provider
 
 import (
 	"fmt"
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"net"
 	"sort"
 	"strings"
@@ -69,10 +70,15 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 		_, ok := model.applied[s.Name]
 		if !ok {
 			if s.IsOwnedBy(model.owners) {
-				model.Infof("found unapplied managed set '%s'", s.Name)
-				for ty := range s.Sets {
-					mod = true
-					this.addDeleteRequest(s, ty, nil)
+				if e := model.IsStale(s.Name); e != nil {
+					model.Infof("found stale set '%s' -> preserve unchanged", s.Name)
+					e.UpdateStatus(logger, v1alpha1.STATE_STALE, "errornous entry presevered in provider")
+				} else {
+					model.Infof("found unapplied managed set '%s'", s.Name)
+					for ty := range s.Sets {
+						mod = true
+						this.addDeleteRequest(s, ty, nil)
+					}
 				}
 			}
 		}
@@ -117,6 +123,7 @@ type ChangeModel struct {
 	logger.LogContext
 	config         Config
 	owners         utils.StringSet
+	stale          DNSNames
 	zone           *dnsHostedZone
 	providers      DNSProviders
 	applied        map[string]*dns.DNSSet
@@ -125,16 +132,21 @@ type ChangeModel struct {
 	state          DNSZoneState
 }
 
-func NewChangeModel(logger logger.LogContext, owners utils.StringSet, config Config, zone *dnsHostedZone, providers DNSProviders) *ChangeModel {
+func NewChangeModel(logger logger.LogContext, owners utils.StringSet, stale DNSNames, config Config, zone *dnsHostedZone, providers DNSProviders) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
 		config:         config,
 		owners:         owners,
+		stale:          stale,
 		zone:           zone,
 		providers:      providers,
 		applied:        map[string]*dns.DNSSet{},
 		providergroups: map[DNSProvider]*ChangeGroup{},
 	}
+}
+
+func (this *ChangeModel) IsStale(dns string) *Entry {
+	return this.stale[dns]
 }
 
 func (this *ChangeModel) getProviderView(p DNSProvider) *ChangeGroup {

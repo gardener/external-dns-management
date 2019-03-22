@@ -58,11 +58,12 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 type sourceReconciler struct {
 	*reconcilers.NestedReconciler
 	*reconcilers.SlaveAccess
-	excluded   utils.StringSet
-	source     DNSSource
-	key        string
-	namespace  string
-	nameprefix string
+	excluded    utils.StringSet
+	source      DNSSource
+	class       string
+	targetclass string
+	namespace   string
+	nameprefix  string
 }
 
 func (this *sourceReconciler) Start() {
@@ -72,7 +73,13 @@ func (this *sourceReconciler) Start() {
 }
 
 func (this *sourceReconciler) Setup() {
-	this.key, _ = this.GetStringOption(OPT_KEY)
+	this.class, _ = this.GetStringOption(OPT_CLASS)
+	this.targetclass, _ = this.GetStringOption(OPT_TARGETCLASS)
+	if this.targetclass == "" {
+		if this.class != dnsutils.DEFAULT_CLASS {
+			this.targetclass = this.class
+		}
+	}
 	this.namespace, _ = this.GetStringOption(OPT_NAMESPACE)
 	this.nameprefix, _ = this.GetStringOption(OPT_NAMEPREFIX)
 	excluded, _ := this.GetStringArrayOption(OPT_EXCLUDE)
@@ -322,6 +329,9 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, dns string, info *DNSInfo) error {
 	entry := &api.DNSEntry{}
 	entry.GenerateName = strings.ToLower(this.nameprefix + obj.GetName() + "-" + obj.GroupKind().Kind + "-")
+	if this.targetclass != "" {
+		entry.SetAnnotations(map[string]string{CLASS_ANNOTATION: this.targetclass})
+	}
 	entry.Spec.DNSName = dns
 	entry.Spec.Targets = info.Targets.AsArray()
 	if this.namespace == "" {

@@ -38,6 +38,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+type DNSNames map[string]*Entry
+
 type state struct {
 	lock       sync.Mutex
 	controller controller.Interface
@@ -60,7 +62,7 @@ type state struct {
 	providersecrets map[resources.ObjectName]resources.ObjectName
 
 	entries  Entries
-	dnsnames map[string]*Entry
+	dnsnames DNSNames
 
 	initialized bool
 }
@@ -308,15 +310,15 @@ func (this *state) GetZonesForProvider(name resources.ObjectName) dnsHostedZones
 	return copyZones(this.providerzones[name])
 }
 
-func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid string) Entries {
+func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid string) (Entries, DNSNames) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	entries := Entries{}
 	zone := this.zones[zoneid]
 	if zone != nil {
-		this.addEntriesForZone(logger, entries, zone)
+		return this.addEntriesForZone(logger, entries, DNSNames{}, zone)
 	}
-	return entries
+	return entries, nil
 }
 
 func (this state) isActive(e *Entry) bool {
@@ -327,7 +329,13 @@ func (this state) isActive(e *Entry) bool {
 	return this.ownerids.Contains(id)
 }
 
-func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, zone *dnsHostedZone) Entries {
+func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale DNSNames, zone *dnsHostedZone) (Entries, DNSNames) {
+	if entries == nil {
+		entries = Entries{}
+	}
+	if stale == nil {
+		stale = DNSNames{}
+	}
 	domain := zone.Domain()
 	nested := utils.StringSet{}
 	for _, z := range this.zones {
@@ -355,9 +363,11 @@ loop:
 					logger.Infof("entry %q(%s) is inactive", e.ObjectName(), e.DNSName())
 				}
 			}
+		} else {
+			stale[e.DNSName()] = e
 		}
 	}
-	return entries
+	return entries, stale
 }
 
 func (this *state) GetZoneForEntry(e *Entry) string {
@@ -602,13 +612,13 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 		zones := this.providerzones[obj.ObjectName()]
 		for n, z := range zones {
 			if this.isProviderForZone(n, pname) {
-				this.addEntriesForZone(logger, entries, z)
+				this.addEntriesForZone(logger, entries, nil, z)
 				providers := this.getProvidersForZone(n)
 				if len(providers) == 1 {
 					// if this is the last provider for this zone
 					// it must be cleanuped before the provider is gone
 					logger.Infof("provider is exclusively handling zone %q -> cleanup", n)
-					err := this.reconcileZone(logger, n, Entries{}, providers)
+					err := this.reconcileZone(logger, n, Entries{}, nil, providers)
 					if err != nil {
 						logger.Errorf("cannot cleanup zone %q: %s", n, err)
 					}
@@ -703,7 +713,7 @@ func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEnt
 			}
 		}
 	}
-	status := new.Update(logger, object, this.GetHandlerFactory().TypeCode(), newzone, err, this.config.TTL)
+	status := new.Update(logger, this.ownerids, object, this.GetHandlerFactory().TypeCode(), newzone, err, this.config.TTL)
 
 	if status.IsSucceeded() && new.IsValid() {
 		if new.Interval() > 0 {
@@ -806,37 +816,38 @@ func (this *state) AddEntry(logger logger.LogContext, object *dnsutils.DNSEntryO
 // zone reconcilation
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHostedZone, DNSProviders, Entries) {
+func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHostedZone, DNSProviders, Entries, DNSNames) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
 	zone := this.zones[zoneid]
 	if zone == nil {
-		return nil, nil, nil
+		return nil, nil, nil, nil
 	}
-	return zone, this.getProvidersForZone(zoneid), this.addEntriesForZone(logger, Entries{}, zone)
+	entries, stale := this.addEntriesForZone(logger, nil, nil, zone)
+	return zone, this.getProvidersForZone(zoneid), entries, stale
 }
 
 func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconcile.Status {
-	zone, providers, entries := this.GetZoneInfo(logger, zoneid)
+	zone, providers, entries, stale := this.GetZoneInfo(logger, zoneid)
 	if zone == nil {
 		return reconcile.Failed(logger, fmt.Errorf("zone %s not used anymore -> stop reconciling", zoneid))
 	}
 	if zone.TestAndSetBusy() {
 		logger.Infof("reconciling zone %q (%s) with %d entries", zoneid, zone.Domain(), len(entries))
 		defer zone.Release()
-		return reconcile.DelayOnError(logger, this.reconcileZone(logger, zoneid, entries, providers))
+		return reconcile.DelayOnError(logger, this.reconcileZone(logger, zoneid, entries, stale, providers))
 	}
 	logger.Infof("reconciling zone %q (%s) already busy and skipped", zoneid, zone.Domain())
 	return reconcile.Succeeded(logger)
 }
 
-func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entries Entries, providers DNSProviders) error {
+func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entries Entries, stale DNSNames, providers DNSProviders) error {
 	zone := this.zones[zoneid]
 	if zone == nil {
 		return nil
 	}
-	changes := NewChangeModel(logger, this.ownerids, this.config, zone, providers)
+	changes := NewChangeModel(logger, this.ownerids, stale, this.config, zone, providers)
 	err := changes.Setup()
 	if err != nil {
 		return err
@@ -902,6 +913,6 @@ func (this *state) activate(new *dnsutils.DNSOwnerObject) {
 		cnt++
 		this.ownercnt[id] = cnt
 		this.ownerids.Add(id)
-		this.owners[new.ObjectName()] = new
 	}
+	this.owners[new.ObjectName()] = new
 }

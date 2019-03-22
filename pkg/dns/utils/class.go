@@ -14,21 +14,25 @@
  *
  */
 
-package provider
+package utils
 
 import (
-	"github.com/gardener/external-dns-management/pkg/dns/source"
+	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/resources"
 )
 
-/*
-  Standard options a DNS Reconciler should offer
-*/
+const DEFAULT_CLASS = "gardendns"
 
-const (
-	OPT_IDENTIFIER = "identifier"
-	OPT_CLASS      = source.OPT_CLASS
-	OPT_DRYRUN     = "dry-run"
-	OPT_TTL        = "ttl"
+const CLASS_ANNOTATION = "dns.gardener.cloud/class"
 
-	HOSTEDZONE_PREFIX = "hostedzone:"
-)
+func IsResponsibleFor(logger logger.LogContext, class string, obj resources.Object) bool {
+	oclass := obj.GetAnnotations()[CLASS_ANNOTATION]
+	if class == DEFAULT_CLASS && oclass == "" {
+		return true
+	}
+	if class != oclass {
+		logger.Infof("annotated dns class %q does not match specified class %q -> skip ", oclass, class)
+		return false
+	}
+	return true
+}

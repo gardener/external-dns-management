@@ -46,6 +46,7 @@ var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 func DNSController(name string, factory DNSHandlerFactory) controller.Configuration {
 	return controller.Configure(name).
 		RequireLease().
+		DefaultedStringOption(OPT_CLASS, dnsutils.DEFAULT_CLASS, "Identifier used to differentiate responsible controllers for entries").
 		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
 		DefaultedIntOption(OPT_TTL, 300, "Default time-to-live for DNS entries").
@@ -71,6 +72,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 type reconciler struct {
 	reconcile.DefaultReconciler
 	controller controller.Interface
+	class      string
 	state      *state
 }
 
@@ -90,9 +92,10 @@ func DNSReconcilerType(factory DNSHandlerFactory) controller.ReconcilerType {
 ///////////////////////////////////////////////////////////////////////////////
 
 func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interface, error) {
-	c.GetStringOption(OPT_IDENTIFIER)
+	class, _ := c.GetStringOption(OPT_CLASS)
 	return &reconciler{
 		controller: c,
+		class:      class,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
 				return NewDNSState(c, NewConfigForController(c, factory))
@@ -123,11 +126,23 @@ func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.
 func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	switch {
 	case obj.IsA(&api.DNSOwner{}):
-		return this.state.UpdateOwner(logger, dnsutils.DNSOwner(obj))
+		if this.IsResponsibleFor(logger, obj) {
+			return this.state.UpdateOwner(logger, dnsutils.DNSOwner(obj))
+		} else {
+			return this.state.OwnerDeleted(logger, obj.Key())
+		}
 	case obj.IsA(&api.DNSProvider{}):
-		return this.state.UpdateProvider(logger, dnsutils.DNSProvider(obj))
+		if this.IsResponsibleFor(logger, obj) {
+			return this.state.UpdateProvider(logger, dnsutils.DNSProvider(obj))
+		} else {
+			return this.state.RemoveProvider(logger, dnsutils.DNSProvider(obj))
+		}
 	case obj.IsA(&api.DNSEntry{}):
-		return this.state.UpdateEntry(logger, dnsutils.DNSEntry(obj))
+		if this.IsResponsibleFor(logger, obj) {
+			return this.state.UpdateEntry(logger, dnsutils.DNSEntry(obj))
+		} else {
+			return this.state.EntryDeleted(logger, obj.Key())
+		}
 	case obj.IsA(&corev1.Secret{}):
 		return this.state.UpdateSecret(logger, obj)
 	}
@@ -158,4 +173,8 @@ func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterO
 		return this.state.EntryDeleted(logger, key.ObjectKey())
 	}
 	return reconcile.Succeeded(logger)
+}
+
+func (this *reconciler) IsResponsibleFor(logger logger.LogContext, obj resources.Object) bool {
+	return dnsutils.IsResponsibleFor(logger, this.class, obj)
 }
