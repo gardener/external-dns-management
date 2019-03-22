@@ -166,9 +166,9 @@ func (this *_Definition) RequireLease() bool {
 func (this *_Definition) FinalizerName() string {
 	if this.finalizerName == "" {
 		if this.finalizerDomain == "" {
-			return this.GetName() + "/" + "acme.com"
+			return "acme.com" + "/"+ this.GetName()
 		}
-		return this.GetName() + "/" + this.finalizerDomain
+		return this.finalizerDomain + "/" + this.GetName()
 	}
 	return this.finalizerName
 }

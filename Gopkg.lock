@@ -165,7 +165,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:cd6aa19b0cfd48c8f0b50a55f3c44fc899a841467cda8fcca483c702276b19e1"
+  digest = "1:a7068bf3919339b88fa9bd88f2aed9efed3986c09af1641e16adc7fe60043395"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/apis/gardenextensions",
@@ -204,7 +204,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "16ea0c20f4228fa53e6af84f05b83f52449c8e6a"
+  revision = "700a77eb0c9c3966a879e946ded75586ec046432"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
