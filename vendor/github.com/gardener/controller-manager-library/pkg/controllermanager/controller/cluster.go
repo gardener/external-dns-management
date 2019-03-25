@@ -165,7 +165,7 @@ func (c *ClusterHandler) objectAdd(obj resources.Object) {
 }
 
 func (c *ClusterHandler) objectUpdate(old, new resources.Object) {
-	c.Debugf("** GOT update event for %s", new.Description())
+	c.Debugf("** GOT update event for %s: %s", new.Description(), new.GetResourceVersion())
 	if !c.controller.mustHandle(old) && !c.controller.mustHandle(new) {
 		return
 	}
@@ -174,7 +174,7 @@ func (c *ClusterHandler) objectUpdate(old, new resources.Object) {
 }
 
 func (c *ClusterHandler) objectDelete(obj resources.Object) {
-	c.Debugf("** GOT delete event for %s", obj.Description())
+	c.Debugf("** GOT delete event for %s: %s", obj.Description(), obj.GetResourceVersion())
 
 	if c.controller.mustHandle(obj) {
 		c.EnqueueObject(obj)

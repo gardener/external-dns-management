@@ -36,7 +36,7 @@ var DNSProviderCRD = apiextensions.CreateCRDObjectWithStatus(api.GroupName, api.
 		Name:        "TYPE",
 		Description: "Provider type",
 		Type:        "string",
-		JSONPath:    ".status.providerType",
+		JSONPath:    ".spec.type",
 	},
 	v1beta1.CustomResourceColumnDefinition{
 		Name:        "STATUS",
@@ -51,6 +51,18 @@ var DNSEntryCRD = apiextensions.CreateCRDObjectWithStatus(api.GroupName, api.Ver
 		Description: "DNS ObjectName",
 		Type:        "string",
 		JSONPath:    ".spec.dnsName",
+	},
+	v1beta1.CustomResourceColumnDefinition{
+		Name:        "TYPE",
+		Description: "Provider type",
+		Type:        "string",
+		JSONPath:    ".status.providerType",
+	},
+	v1beta1.CustomResourceColumnDefinition{
+		Name:        "PROVIDER",
+		Description: "Provider",
+		Type:        "string",
+		JSONPath:    ".status.provider",
 	},
 	v1beta1.CustomResourceColumnDefinition{
 		Name:        "STATUS",

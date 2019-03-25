@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"k8s.io/apimachinery/pkg/util/validation"
@@ -102,6 +103,12 @@ func (this *Entry) IsValid() bool {
 	return this.valid
 }
 
+func (this *Entry) IsDeleting() bool {
+	this.lock.Lock()
+	this.lock.Unlock()
+	return this.object.IsDeleting()
+}
+
 func (this *Entry) IsModified() bool {
 	this.lock.Lock()
 	this.lock.Unlock()
@@ -179,6 +186,9 @@ func (this *Entry) Update(logger logger.LogContext, ownerids utils.StringSet, ob
 	if utils.IsEmptyString(status.ProviderType) || (*status.ProviderType != resp && zoneid != "") {
 		if zoneid == "" {
 			// mark unassigned foreign entries as errorneous
+			if object.GetCreationTimestamp().Add(120 * time.Second).After(time.Now()) {
+				return reconcile.Succeeded(logger).RescheduleAfter(120 * time.Second)
+			}
 			f := func(data resources.ObjectData) (bool, error) {
 				e := data.(*api.DNSEntry)
 				if !utils.IsEmptyString(e.Status.ProviderType) {
@@ -187,6 +197,7 @@ func (this *Entry) Update(logger logger.LogContext, ownerids utils.StringSet, ob
 				mod := utils.ModificationState{}
 				mod.AssureStringValue(&e.Status.State, api.STATE_ERROR)
 				mod.AssureStringPtrValue(&e.Status.Message, "No responsible provider found")
+				logger.Errorf("no responsible provider found")
 				return mod.IsModified(), nil
 			}
 			_, err := object.ModifyStatus(f)
@@ -196,9 +207,6 @@ func (this *Entry) Update(logger logger.LogContext, ownerids utils.StringSet, ob
 			msg := fmt.Sprintf("Assigned to provider type %q responsible for zone %s", resp, zoneid)
 			f := func(data resources.ObjectData) (bool, error) {
 				e := data.(*api.DNSEntry)
-				if !utils.IsEmptyString(e.Status.ProviderType) && zoneid == "" {
-					return false, nil
-				}
 				mod := (&utils.ModificationState{}).
 					AssureStringPtrValue(&e.Status.ProviderType, resp).
 					AssureStringValue(&e.Status.State, api.STATE_PENDING).
@@ -212,7 +220,6 @@ func (this *Entry) Update(logger logger.LogContext, ownerids utils.StringSet, ob
 			}
 			this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
 		}
-		status.ProviderType = &resp
 	}
 
 	if utils.StringValue(status.ProviderType) != resp {
@@ -228,89 +235,97 @@ func (this *Entry) Update(logger logger.LogContext, ownerids utils.StringSet, ob
 		if status.State == api.STATE_READY {
 			state = api.STATE_STALE
 		}
-		this.UpdateStatus(logger, state, verr.Error())
+		this.UpdateStatus(logger, state, verr.Error(), nil)
 		return reconcile.Failed(logger, verr)
 	}
 
 	///////////// handle
 
-	spec := &this.object.DNSEntry().Spec
-	targets, mappings := this.NormalizeTargets(logger, targets...)
-	if len(mappings) > 0 {
-		if spec.CNameLookupInterval != nil && *spec.CNameLookupInterval > 0 {
-			this.interval = *spec.CNameLookupInterval
-		} else {
-			this.interval = 600
-		}
-	} else {
-		this.interval = 0
-	}
 	mod := resources.NewModificationState(this.object)
 
-	ttl := defaultTTL
-	if spec.TTL != nil {
-		ttl = *spec.TTL
-	}
-	if ttl != this.ttl {
-		this.ttl = ttl
-		logger.Infof("setting ttl %d", ttl)
+	if object.IsDeleting() {
+		logger.Infof("update state to %s", api.STATE_DELETING)
+		mod.AssureStringValue(&status.State, api.STATE_DELETING)
+		mod.AssureStringPtrValue(&status.Message, "entry is scheduled to be deleted")
 		this.modified = true
-		mod.Modify(true)
-		status.TTL = &ttl
-	}
-
-	if targets.DifferFrom(this.targets) {
-		logger.Infof("targets differ from internal state")
-		this.modified = true
-		for _, w := range warnings {
-			logger.Warn(w)
-			this.object.Event(corev1.EventTypeNormal, "reconcile", w)
-		}
-		for dns, m := range mappings {
-			msg := fmt.Sprintf("mapping cname %q to %v", dns, m)
-			logger.Info(msg)
-			this.object.Event(corev1.EventTypeNormal, "dnslookup", msg)
-		}
-		this.targets = targets
-
-		list, msg := this.targetList(targets)
-		if !reflect.DeepEqual(list, status.Targets) {
-			this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
-			status.Targets = list
-			logger.Info(msg)
-			mod.Modify(true)
-		}
+		this.valid = true
 	} else {
-		var cur Targets
-		for _, t := range status.Targets {
-			cur = append(cur, NewTargetFromEntry(t, this))
-		}
-		if this.Targets().DifferFrom(cur) {
-			status.Targets, _ = this.targetList(this.targets)
-			mod.Modify(true)
-		}
-	}
-	mod.AssureStringPtrValue(&status.Zone, zoneid)
-	if err != nil {
-		mod.AssureStringValue(&status.State, api.STATE_ERROR)
-		mod.AssureStringPtrValue(&status.Message, err.Error())
-	} else {
-		if zoneid == "" {
-			mod.AssureStringValue(&status.State, api.STATE_ERROR)
-			mod.AssureStringPtrValue(&status.Message, fmt.Sprintf("no provider found for %q", this.dnsname))
+		spec := &this.object.DNSEntry().Spec
+		targets, mappings := this.NormalizeTargets(logger, targets...)
+		if len(mappings) > 0 {
+			if spec.CNameLookupInterval != nil && *spec.CNameLookupInterval > 0 {
+				this.interval = *spec.CNameLookupInterval
+			} else {
+				this.interval = 600
+			}
 		} else {
-			if status.State != api.STATE_READY {
-				mod.AssureStringValue(&status.State, api.STATE_PENDING)
+			this.interval = 0
+		}
+
+		ttl := defaultTTL
+		if spec.TTL != nil {
+			ttl = *spec.TTL
+		}
+		if ttl != this.ttl {
+			this.ttl = ttl
+			logger.Infof("setting ttl %d", ttl)
+			this.modified = true
+			mod.Modify(true)
+			status.TTL = &ttl
+		}
+
+		if targets.DifferFrom(this.targets) {
+			logger.Infof("targets differ from internal state")
+			this.modified = true
+			for _, w := range warnings {
+				logger.Warn(w)
+				this.object.Event(corev1.EventTypeNormal, "reconcile", w)
 			}
-			if !curvalid {
-				mod.AssureStringPtrValue(&status.Message, fmt.Sprintf("activating %q", this.dnsname))
-				logger.Infof("activating entry for %q", this.DNSName())
-				this.modified = true
+			for dns, m := range mappings {
+				msg := fmt.Sprintf("mapping cname %q to %v", dns, m)
+				logger.Info(msg)
+				this.object.Event(corev1.EventTypeNormal, "dnslookup", msg)
 			}
-			this.valid = true
+			this.targets = targets
+
+			list, msg := this.targetList(targets)
+			if !reflect.DeepEqual(list, status.Targets) {
+				this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
+				status.Targets = list
+				logger.Info(msg)
+				mod.Modify(true)
+			}
+		} else {
+			var cur Targets
+			for _, t := range status.Targets {
+				cur = append(cur, NewTargetFromEntry(t, this))
+			}
+			if this.Targets().DifferFrom(cur) {
+				status.Targets, _ = this.targetList(this.targets)
+				mod.Modify(true)
+			}
+		}
+		mod.AssureStringPtrValue(&status.Zone, zoneid)
+		if err != nil {
+			mod.AssureStringValue(&status.State, api.STATE_ERROR)
+			mod.AssureStringPtrValue(&status.Message, err.Error())
+		} else {
+			if zoneid == "" {
+				mod.AssureStringValue(&status.State, api.STATE_ERROR)
+				mod.AssureStringPtrValue(&status.Message, fmt.Sprintf("no provider found for %q", this.dnsname))
+			} else {
+				if status.State != api.STATE_READY {
+					mod.AssureStringValue(&status.State, api.STATE_PENDING)
+				}
+				if !curvalid {
+					mod.AssureStringPtrValue(&status.Message, fmt.Sprintf("activating %q", this.dnsname))
+					logger.Infof("activating entry for %q", this.DNSName())
+					this.modified = true
+				}
+				this.valid = true
+			}
 		}
 	}
-
 	return reconcile.UpdateStatus(logger, mod.UpdateStatus())
 }
 
@@ -327,7 +342,7 @@ func (this *Entry) targetList(targets Targets) ([]string, string) {
 	return list, msg
 }
 
-func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg string) error {
+func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg string, provider resources.ObjectName) error {
 	f := func(data resources.ObjectData) (bool, error) {
 		o := data.(*api.DNSEntry)
 		if state == api.STATE_PENDING && o.Status.State != "" {
@@ -335,6 +350,10 @@ func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg stri
 		}
 
 		mod := &utils.ModificationState{}
+		if provider != nil {
+			p := provider.String()
+			mod.AssureStringPtrPtr(&o.Status.Provider, &p)
+		}
 		mod.AssureInt64Value(&o.Status.ObservedGeneration, o.Generation)
 		if !(o.Status.State == api.STATE_STALE && o.Status.State == state) {
 			mod.AssureStringPtrValue(&o.Status.Message, msg)
@@ -395,49 +414,6 @@ func (this *Entry) Before(e *Entry) bool {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-type StatusUpdate struct {
-	*Entry
-	logger logger.LogContext
-	done   bool
-}
-
-func NewStatusUpdate(logger logger.LogContext, e *Entry) DoneHandler {
-	return &StatusUpdate{Entry: e, logger: logger}
-}
-
-func (this *StatusUpdate) SetInvalid(err error) {
-	if !this.done {
-		this.done = true
-		this.modified = false
-		err := this.UpdateStatus(this.logger, api.STATE_INVALID, err.Error())
-		if err != nil {
-			this.logger.Errorf("cannot update: %s", err)
-		}
-	}
-}
-func (this *StatusUpdate) Failed(err error) {
-	if !this.done {
-		this.done = true
-		this.modified = false
-		err := this.UpdateStatus(this.logger, api.STATE_ERROR, err.Error())
-		if err != nil {
-			this.logger.Errorf("cannot update: %s", err)
-		}
-	}
-}
-func (this *StatusUpdate) Succeeded() {
-	if !this.done {
-		this.done = true
-		this.modified = false
-		err := this.UpdateStatus(this.logger, api.STATE_READY, "dns entry active")
-		if err != nil {
-			this.logger.Errorf("cannot update: %s", err)
-		}
-	}
-}
-
-////////////////////////////////////////////////////////////////////////////////
 // Entries
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -464,4 +440,11 @@ func (this Entries) Delete(e *Entry) {
 	if this[e.ObjectName()] == e {
 		delete(this, e.ObjectName())
 	}
+}
+
+func testUpdate(msg string, object resources.Object) {
+	err := object.UpdateStatus()
+	logger.Infof("**** %s %s %s: status update: %s", msg, object.ObjectName(), object.GetResourceVersion(), err)
+	err = object.Update()
+	logger.Infof("update: %s", err)
 }

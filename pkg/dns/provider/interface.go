@@ -113,6 +113,7 @@ type DNSProvider interface {
 }
 
 type DoneHandler interface {
+	SetProvider(name resources.ObjectName)
 	SetInvalid(err error)
 	Failed(err error)
 	Succeeded()

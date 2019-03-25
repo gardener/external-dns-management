@@ -155,7 +155,8 @@ func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) r
 	case obj.IsA(&api.DNSProvider{}):
 		return this.state.RemoveProvider(logger, dnsutils.DNSProvider(obj))
 	case obj.IsA(&api.DNSEntry{}):
-		//return this.state.UpdateEntry(logger, dnsutils.DNSEntry(obj))
+		obj.UpdateFromCache()
+		return this.state.DeleteEntry(logger, dnsutils.DNSEntry(obj))
 	case obj.IsA(&corev1.Secret{}):
 		return this.state.UpdateSecret(logger, obj)
 	}

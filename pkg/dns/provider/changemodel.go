@@ -72,7 +72,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 			if s.IsOwnedBy(model.owners) {
 				if e := model.IsStale(s.Name); e != nil {
 					model.Infof("found stale set '%s' -> preserve unchanged", s.Name)
-					e.UpdateStatus(logger, v1alpha1.STATE_STALE, "errornous entry presevered in provider")
+					e.UpdateStatus(logger, v1alpha1.STATE_STALE, "errornous entry presevered in provider", nil)
 				} else {
 					model.Infof("found unapplied managed set '%s'", s.Name)
 					for ty := range s.Sets {
@@ -211,13 +211,16 @@ func (this *ChangeModel) Setup() error {
 }
 
 func (this *ChangeModel) Check(name string, done DoneHandler, targets ...Target) (bool, error) {
-	return this.Exec(false, name, done, targets...)
+	return this.Exec(false, false, name, done, targets...)
 }
 func (this *ChangeModel) Apply(name string, done DoneHandler, targets ...Target) (bool, error) {
-	return this.Exec(true, name, done, targets...)
+	return this.Exec(true, false, name, done, targets...)
 }
-func (this *ChangeModel) Exec(apply bool, name string, done DoneHandler, targets ...Target) (bool, error) {
-	if len(targets) == 0 {
+func (this *ChangeModel) Delete(name string, done DoneHandler) (bool, error) {
+	return this.Exec(true, true, name, done)
+}
+func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHandler, targets ...Target) (bool, error) {
+	if len(targets) == 0 && !delete {
 		return false, nil
 	}
 
@@ -235,7 +238,13 @@ func (this *ChangeModel) Exec(apply bool, name string, done DoneHandler, targets
 
 	view := this.getProviderView(p)
 	oldset := view.dnssets[name]
-	newset := this.NewDNSSetForTargets(name, oldset, targets...)
+	newset := dns.NewDNSSet(name)
+	if !delete {
+		this.AddTargets(newset, oldset, targets...)
+	}
+	if done != nil {
+		done.SetProvider(view.provider.ObjectName())
+	}
 	mod := false
 	if oldset != nil {
 		if this.IsForeign(oldset) {
@@ -281,21 +290,23 @@ func (this *ChangeModel) Exec(apply bool, name string, done DoneHandler, targets
 			for ty := range oldset.Sets {
 				if _, ok := newset.Sets[ty]; !ok {
 					if apply {
-						view.addDeleteRequest(oldset, ty, nil)
+						view.addDeleteRequest(oldset, ty, done)
 					}
 					mod = true
 				}
 			}
 		}
 	} else {
-		this.Infof("no existing entry found for %s", name)
-		if apply {
-			this.setOwner(newset, targets)
-			for ty := range newset.Sets {
-				view.addCreateRequest(newset, ty, done)
+		if !delete {
+			this.Infof("no existing entry found for %s", name)
+			if apply {
+				this.setOwner(newset, targets)
+				for ty := range newset.Sets {
+					view.addCreateRequest(newset, ty, done)
+				}
 			}
+			mod = true
 		}
-		mod = true
 	}
 	if apply {
 		this.applied[name] = newset
@@ -353,8 +364,7 @@ func (this *ChangeModel) setOwner(set *dns.DNSSet, targets []Target) bool {
 	return false
 }
 
-func (this *ChangeModel) NewDNSSetForTargets(name string, base *dns.DNSSet, targets ...Target) *dns.DNSSet {
-	set := dns.NewDNSSet(name)
+func (this *ChangeModel) AddTargets(set *dns.DNSSet, base *dns.DNSSet, targets ...Target) *dns.DNSSet {
 	//if base != nil {
 	//	meta := base.Sets[RS_META]
 	//	if meta != nil {

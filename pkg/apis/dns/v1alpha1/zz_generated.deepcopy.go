@@ -192,6 +192,11 @@ func (in *DNSEntryStatus) DeepCopyInto(out *DNSEntryStatus) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.Provider != nil {
+		in, out := &in.Provider, &out.Provider
+		*out = new(string)
+		**out = **in
+	}
 	if in.Zone != nil {
 		in, out := &in.Zone, &out.Zone
 		*out = new(string)

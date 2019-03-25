@@ -106,21 +106,21 @@ func (this *state) Setup() {
 		}
 	}
 	{
-		this.controller.Infof("setup entries")
-		res, _ := resources.GetByExample(&api.DNSEntry{})
-		list, _ := res.ListCached(labels.Everything())
-		for _, e := range list {
-			p := dnsutils.DNSEntry(e)
-			this.UpdateEntry(this.controller.NewContext("entry", p.ObjectName().String()), p)
-		}
-	}
-	{
 		this.controller.Infof("setup owners")
 		res, _ := resources.GetByExample(&api.DNSOwner{})
 		list, _ := res.ListCached(labels.Everything())
 		for _, e := range list {
 			p := dnsutils.DNSOwner(e)
 			this.UpdateOwner(this.controller.NewContext("owner", p.ObjectName().String()), p)
+		}
+	}
+	{
+		this.controller.Infof("setup entries")
+		res, _ := resources.GetByExample(&api.DNSEntry{})
+		list, _ := res.ListCached(labels.Everything())
+		for _, e := range list {
+			p := dnsutils.DNSEntry(e)
+			this.UpdateEntry(this.controller.NewContext("entry", p.ObjectName().String()), p)
 		}
 	}
 	this.initialized = true
@@ -667,7 +667,15 @@ func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) 
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status {
-	logger.Infof("reconcile ENTRY")
+	return this.updateEntry(logger, "reconcile", object)
+}
+
+func (this *state) DeleteEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status {
+	return this.updateEntry(logger, "delete", object)
+}
+
+func (this *state) updateEntry(logger logger.LogContext, op string, object *dnsutils.DNSEntryObject) reconcile.Status {
+	logger.Infof("%s ENTRY", op)
 	old, new, err := this.AddEntry(logger, object)
 
 	newzone, _ := this.GetZoneForName(new.DNSName())
@@ -715,11 +723,22 @@ func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEnt
 	}
 	status := new.Update(logger, this.ownerids, object, this.GetHandlerFactory().TypeCode(), newzone, err, this.config.TTL)
 
+	state := new.object.Status().State
+	if state != api.STATE_DELETING {
+		if state == api.STATE_PENDING || state == api.STATE_READY {
+			err = this.GetController().SetFinalizer(object)
+		} else {
+			err = this.GetController().RemoveFinalizer(object)
+		}
+		if err != nil {
+			return reconcile.Repeat(logger, err)
+		}
+	}
 	if status.IsSucceeded() && new.IsValid() {
 		if new.Interval() > 0 {
 			status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
 		}
-		if new.IsModified() && newzone != "" {
+		if object.IsDeleting() || (new.IsModified() && newzone != "") {
 			logger.Infof("trigger zone %q", newzone)
 			this.triggerHostedZone(newzone)
 		}
@@ -787,7 +806,7 @@ func (this *state) AddEntry(logger logger.LogContext, object *dnsutils.DNSEntryO
 
 	old, new := this.entries.Add(object)
 	if old != nil {
-		// DNS name changed -> cleam up old dns name
+		// DNS name changed -> clean up old dns name
 		this.cleanupEntry(logger, old)
 	}
 
@@ -855,7 +874,12 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 	modified := false
 	for _, e := range entries {
 		// TODO: err handling
-		mod, _ := changes.Apply(e.DNSName(), NewStatusUpdate(logger, e), e.Targets()...)
+		mod := false
+		if e.IsDeleting() {
+			mod, _ = changes.Delete(e.DNSName(), NewStatusUpdate(logger, e, this.GetController()))
+		} else {
+			mod, _ = changes.Apply(e.DNSName(), NewStatusUpdate(logger, e, this.GetController()), e.Targets()...)
+		}
 		modified = modified || mod
 	}
 	modified = modified || changes.Cleanup(logger)
