@@ -267,7 +267,7 @@ func (this *dnsProviderVersion) setError(modified bool, err error) error {
 	modified = modified || this.object.SetDomains(utils.StringSet{}, utils.StringSet{})
 	modified = modified || this.object.SetState(api.STATE_ERROR, err.Error())
 	if modified {
-		return this.object.Update()
+		return this.object.UpdateStatus()
 	}
 	return nil
 }
@@ -296,7 +296,7 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	mod := resources.NewModificationState(this.object, modified)
 	mod.AssureStringValue(&status.State, api.STATE_READY)
 	mod.AssureStringPtrValue(&status.Message, "provider operational")
-	return reconcile.UpdateStatus(logger, mod.Update())
+	return reconcile.UpdateStatus(logger, mod.UpdateStatus())
 }
 
 func (this *dnsProviderVersion) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {

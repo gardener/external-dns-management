@@ -1,3 +1,5 @@
+ignored = ["local/*"]
+
 required = [
   "k8s.io/code-generator/cmd/defaulter-gen",
   "k8s.io/code-generator/cmd/deepcopy-gen",

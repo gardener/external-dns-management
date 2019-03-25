@@ -31,7 +31,7 @@ var DNSOwnerCRD = apiextensions.CreateCRDObject(api.GroupName, api.Version, api.
 		JSONPath:    ".spec.ownerId",
 	})
 
-var DNSProviderCRD = apiextensions.CreateCRDObject(api.GroupName, api.Version, api.DNSProviderKind, api.DNSProviderPlural, "dnspr", true,
+var DNSProviderCRD = apiextensions.CreateCRDObjectWithStatus(api.GroupName, api.Version, api.DNSProviderKind, api.DNSProviderPlural, "dnspr", true,
 	v1beta1.CustomResourceColumnDefinition{
 		Name:        "TYPE",
 		Description: "Provider type",
