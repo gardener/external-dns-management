@@ -60,6 +60,10 @@ func NewEntry(object *dnsutils.DNSEntryObject) *Entry {
 	}
 }
 
+func (this *Entry) Object() resources.Object {
+	return this.object.Object
+}
+
 func (this *Entry) ClusterKey() resources.ClusterObjectKey {
 	return this.object.ClusterKey()
 }

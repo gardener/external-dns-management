@@ -60,7 +60,7 @@ func (this *StatusUpdate) Failed(err error) {
 	if !this.done {
 		this.done = true
 		this.modified = false
-		this.fhandler.RemoveFinalizer(this.Entry.object)
+		this.fhandler.RemoveFinalizer(this.Entry.Object())
 		err := this.UpdateStatus(this.logger, api.STATE_ERROR, err.Error(), this.provider)
 		if err != nil {
 			this.logger.Errorf("cannot update: %s", err)
@@ -71,11 +71,9 @@ func (this *StatusUpdate) Succeeded() {
 	if !this.done {
 		this.done = true
 		this.modified = false
-		obj := this.Entry.object.Object
-		obj.UpdateFromCache()
 		if this.delete {
 			this.logger.Infof("removing finalizer for deleted entry %s", this.DNSName())
-			this.fhandler.RemoveFinalizer(this.Entry.object)
+			this.fhandler.RemoveFinalizer(this.Entry.Object())
 		} else {
 			err := this.UpdateStatus(this.logger, api.STATE_READY, "dns entry active", this.provider)
 			if err != nil {
