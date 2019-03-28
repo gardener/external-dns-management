@@ -1,0 +1,106 @@
+nameOverride: ""
+fullnameOverride: dns-controller-manager
+
+replicaCount: 1
+
+image:
+  repository: eu.gcr.io/gardener-project/dns-controller-manager
+  tag: 0.1.0
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+   cpu: 100m
+   memory: 64Mi
+  limits:
+   cpu: 200m
+   memory: 128Mi
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+createCRDs: true
+
+configuration:
+# alicloudDNSDefaultPoolSize: 2
+# alicloudDNSDnsPoolResyncPeriod: 30s
+# alicloudDNSDnsPoolSize: 1
+# alicloudDNSDryRun: false
+# alicloudDNSIdentifier: ""
+# alicloudDNSOwneridsPoolSize: 1
+# alicloudDNSProvidersPoolResyncPeriod: 30s
+# alicloudDNSProvidersPoolSize: 2
+# alicloudDNSTtl: 120
+# awsRoute53DefaultPoolSize: 2
+# awsRoute53DnsPoolResyncPeriod: 30s
+# awsRoute53DnsPoolSize: 1
+# awsRoute53DryRun: false
+# awsRoute53Identifier: ""
+# awsRoute53OwneridsPoolSize: 1
+# awsRoute53ProvidersPoolResyncPeriod: 30s
+# awsRoute53ProvidersPoolSize: 2
+# awsRoute53Ttl: 120
+# azureDNSDefaultPoolSize: 2
+# azureDNSDnsPoolResyncPeriod: 30s
+# azureDNSDnsPoolSize: 1
+# azureDNSDryRun: false
+# azureDNSIdentifier: ""
+# azureDNSOwneridsPoolSize: 1
+# azureDNSProvidersPoolResyncPeriod: 30s
+# azureDNSProvidersPoolSize: 2
+# azureDNSTtl: 120
+  controllers: all
+# dryRun: false
+# excludeDomains: google.com
+# googleCloudDNSDefaultPoolSize: 2
+# googleCloudDNSDnsPoolResyncPeriod: 30s
+# googleCloudDNSDnsPoolSize: 1
+# googleCloudDNSDryRun: false
+# googleCloudDNSIdentifier: ""
+# googleCloudDNSOwneridsPoolSize: 1
+# googleCloudDNSProvidersPoolResyncPeriod: 30s
+# googleCloudDNSProvidersPoolSize: 2
+# googleCloudDNSTtl: 120
+  identifier: dns-test
+# ingressDNSDefaultPoolResyncPeriod: 30s
+# ingressDNSDefaultPoolSize: 2
+# ingressDNSExcludeDomains: google.com
+# ingressDNSKey: ""
+# ingressDNSTargetNamePrefix: ""
+# ingressDNSTargetNamespace: ""
+# ingressDNSTargetsPoolSize: 2
+# key: ""
+# kubeconfig: ""
+# kubeconfigId: ""
+# logLevel: info
+# namespace: default
+# namespaceLocalAccessOnly: false
+# omitLease: false
+# openstackDesignateDefaultPoolSize: 2
+# openstackDesignateDnsPoolResyncPeriod: 30s
+# openstackDesignateDnsPoolSize: 1
+# openstackDesignateDryRun: false
+# openstackDesignateIdentifier: ""
+# openstackDesignateOwneridsPoolSize: 1
+# openstackDesignateProvidersPoolResyncPeriod: 30s
+# openstackDesignateProvidersPoolSize: 2
+# openstackDesignateTtl: 120
+# plugin-dir: ""
+# poolResyncPeriod: 30s
+# poolSize: 2
+  serverPortHttp: 8080
+# serviceDNSDefaultPoolResyncPeriod: 30s
+# serviceDNSDefaultPoolSize: 2
+# serviceDNSExcludeDomains: google.com
+# serviceDNSKey: ""
+# serviceDNSTargetNamePrefix: ""
+# serviceDNSTargetNamespace: ""
+# serviceDNSTargetsPoolSize: 2
+# target: ""
+# targetNamePrefix: ""
+# targetNamespace: ""
+# targetId: ""
+  ttl: 120
+
+additionalConfiguration: []
