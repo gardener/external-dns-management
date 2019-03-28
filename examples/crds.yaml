@@ -8,6 +8,14 @@ spec:
     description: DNS ObjectName
     name: DNS
     type: string
+  - JSONPath: .status.providerType
+    description: Provider type
+    name: TYPE
+    type: string
+  - JSONPath: .status.provider
+    description: Provider
+    name: PROVIDER
+    type: string
   - JSONPath: .status.state
     description: Status of DNS entry in cloud provider
     name: STATUS
@@ -70,7 +78,7 @@ metadata:
   name: dnsproviders.dns.gardener.cloud
 spec:
   additionalPrinterColumns:
-  - JSONPath: .status.providerType
+  - JSONPath: .spec.type
     description: Provider type
     name: TYPE
     type: string
@@ -92,6 +100,8 @@ spec:
     - dnspr
     singular: dnsprovider
   scope: Namespaced
+  subresources:
+    status: {}
   version: v1alpha1
   versions:
   - name: v1alpha1
