@@ -37,7 +37,7 @@ type StatusUpdate struct {
 }
 
 func NewStatusUpdate(logger logger.LogContext, e *Entry, f FinalizerHandler) DoneHandler {
-	logger.Infof("request update for %s (delete=%t)", e.DNSName(), e.IsDeleting())
+	//logger.Infof("request update for %s (delete=%t)", e.DNSName(), e.IsDeleting())
 	return &StatusUpdate{Entry: e, logger: logger, delete: e.IsDeleting(), fhandler: f}
 }
 

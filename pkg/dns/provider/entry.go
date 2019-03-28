@@ -135,8 +135,10 @@ func (this *Entry) Validate(ownerids utils.StringSet) (targets Targets, warnings
 		check = this.dnsname[2:]
 	}
 	if errs := validation.IsDNS1123Subdomain(check); errs != nil {
-		err = fmt.Errorf("%q is no valid dns name (%v)", check, errs)
-		return
+		if werrs := validation.IsWildcardDNS1123Subdomain(check); werrs != nil {
+			err = fmt.Errorf("%q is no valid dns name (%v)", check, append(errs, werrs...))
+			return
+		}
 	}
 	if len(spec.Targets) > 0 && len(spec.Text) > 0 {
 		err = fmt.Errorf("only Text or Targets possible: %s", err)
