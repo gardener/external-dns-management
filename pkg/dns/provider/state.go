@@ -723,15 +723,17 @@ func (this *state) updateEntry(logger logger.LogContext, op string, object *dnsu
 	}
 	status := new.Update(logger, this.ownerids, object, this.GetHandlerFactory().TypeCode(), newzone, err, this.config.TTL)
 
-	state := new.object.Status().State
-	if state != api.STATE_DELETING {
-		if state == api.STATE_PENDING || state == api.STATE_READY {
-			err = this.GetController().SetFinalizer(object)
-		} else {
-			err = this.GetController().RemoveFinalizer(object)
-		}
-		if err != nil {
-			return reconcile.Repeat(logger, err)
+	if utils.StringValue(new.object.Status().ProviderType) == this.GetHandlerFactory().TypeCode() {
+		state := new.object.Status().State
+		if state != api.STATE_DELETING {
+			if state == api.STATE_PENDING || state == api.STATE_READY {
+				err = this.GetController().SetFinalizer(object)
+			} else {
+				err = this.GetController().RemoveFinalizer(object)
+			}
+			if err != nil {
+				return reconcile.Repeat(logger, err)
+			}
 		}
 	}
 	if status.IsSucceeded() && new.IsValid() {
