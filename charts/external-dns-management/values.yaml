@@ -104,3 +104,9 @@ configuration:
   ttl: 120
 
 additionalConfiguration: []
+
+gardener:
+  garden:
+    identity: garden
+  seed:
+    identity: seed1

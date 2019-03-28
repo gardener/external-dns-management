@@ -145,6 +145,8 @@ spec:
         {{- end }}
         {{- if .Values.configuration.identifier }}
         - --identifier={{ .Values.configuration.identifier }}
+        {{- else }}
+        - --identifier=seed.gardener.cloud/{{ .Values.gardener.garden.identity }}/{{ .Values.gardener.seed.identity }}
         {{- end }}
         {{- if .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
         - --ingress-dns.default.pool.resync-period={{ .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
