@@ -49,6 +49,8 @@ type Entry struct {
 	valid     bool
 	modified  bool
 	duplicate bool
+
+	activezone string
 }
 
 func NewEntry(object *dnsutils.DNSEntryObject) *Entry {
@@ -177,7 +179,7 @@ func (this *Entry) Validate(ownerids utils.StringSet) (targets Targets, warnings
 	return
 }
 
-func (this *Entry) Update(logger logger.LogContext, ownerids utils.StringSet, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTTL int64) reconcile.Status {
+func (this *Entry) Update(logger logger.LogContext, state *state, op string, ownerids utils.StringSet, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTTL int64) reconcile.Status {
 	this.lock.Lock()
 	this.lock.Unlock()
 
@@ -190,17 +192,21 @@ func (this *Entry) Update(logger logger.LogContext, ownerids utils.StringSet, ob
 	///////////// handle type responsibility
 
 	if utils.IsEmptyString(status.ProviderType) || (*status.ProviderType != resp && zoneid != "") {
+		logger.Infof("check responsible: entry type: %q, zoneid: %q", reconcile.StringValue(status.ProviderType), zoneid)
 		if zoneid == "" {
 			// mark unassigned foreign entries as errorneous
 			if object.GetCreationTimestamp().Add(120 * time.Second).After(time.Now()) {
 				return reconcile.Succeeded(logger).RescheduleAfter(120 * time.Second)
 			}
+			logger.Infof("release responsibility because of non-matching zone")
 			f := func(data resources.ObjectData) (bool, error) {
 				e := data.(*api.DNSEntry)
 				if !utils.IsEmptyString(e.Status.ProviderType) {
 					return false, nil
 				}
 				mod := utils.ModificationState{}
+				mod.AssureStringPtrValue(&e.Status.ProviderType, "")
+				mod.AssureStringPtrValue(&e.Status.Provider, "")
 				mod.AssureStringValue(&e.Status.State, api.STATE_ERROR)
 				mod.AssureStringPtrValue(&e.Status.Message, "No responsible provider found")
 				logger.Errorf("no responsible provider found")
@@ -229,8 +235,11 @@ func (this *Entry) Update(logger logger.LogContext, ownerids utils.StringSet, ob
 	}
 
 	if utils.StringValue(status.ProviderType) != resp {
-		return reconcile.Succeeded(logger)
+		err = state.RemoveFinalizer(object)
+		return reconcile.RepeatOnError(logger, err)
 	}
+
+	logger.Infof("handle %s event", op)
 
 	///////////// validate
 
@@ -318,6 +327,8 @@ func (this *Entry) Update(logger logger.LogContext, ownerids utils.StringSet, ob
 		} else {
 			if zoneid == "" {
 				mod.AssureStringValue(&status.State, api.STATE_ERROR)
+				mod.AssureStringPtrValue(&status.Provider, "")
+				mod.AssureStringPtrValue(&status.ProviderType, "")
 				mod.AssureStringPtrValue(&status.Message, fmt.Sprintf("no provider found for %q", this.dnsname))
 			} else {
 				if status.State != api.STATE_READY {

@@ -66,7 +66,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 			controller.NewResourceKey(api.GroupName, api.DNSProviderKind),
 			controller.NewResourceKey("core", "Secret"),
 		).
-		WorkerPool("dns", 1, 30*time.Second).CommandMatchers(utils.NewStringGlobMatcher(HOSTEDZONE_PREFIX + "*"))
+		WorkerPool("dns", 1, 300*time.Second).CommandMatchers(utils.NewStringGlobMatcher(HOSTEDZONE_PREFIX + "*"))
 }
 
 type reconciler struct {
@@ -150,7 +150,7 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 }
 
 func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
-	logger.Infof("should delete %s", obj.Description())
+	logger.Debugf("should delete %s", obj.Description())
 	switch {
 	case obj.IsA(&api.DNSProvider{}):
 		return this.state.RemoveProvider(logger, dnsutils.DNSProvider(obj))
@@ -164,7 +164,7 @@ func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) r
 }
 
 func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
-	logger.Infof("deleted %s", key)
+	logger.Debugf("deleted %s", key)
 	switch key.GroupKind() {
 	case ownerGroupKind:
 		return this.state.OwnerDeleted(logger, key.ObjectKey())

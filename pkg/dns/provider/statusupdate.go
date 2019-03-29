@@ -32,13 +32,14 @@ type StatusUpdate struct {
 	logger   logger.LogContext
 	delete   bool
 	done     bool
+	zoneid   string
 	provider resources.ObjectName
 	fhandler FinalizerHandler
 }
 
-func NewStatusUpdate(logger logger.LogContext, e *Entry, f FinalizerHandler) DoneHandler {
+func NewStatusUpdate(logger logger.LogContext, e *Entry, f FinalizerHandler, zoneid string) DoneHandler {
 	//logger.Infof("request update for %s (delete=%t)", e.DNSName(), e.IsDeleting())
-	return &StatusUpdate{Entry: e, logger: logger, delete: e.IsDeleting(), fhandler: f}
+	return &StatusUpdate{Entry: e, logger: logger, delete: e.IsDeleting(), fhandler: f, zoneid: zoneid}
 }
 
 func (this *StatusUpdate) SetProvider(name resources.ObjectName) {
@@ -75,6 +76,8 @@ func (this *StatusUpdate) Succeeded() {
 			this.logger.Infof("removing finalizer for deleted entry %s", this.DNSName())
 			this.fhandler.RemoveFinalizer(this.Entry.Object())
 		} else {
+			this.Entry.activezone = this.zoneid
+			this.fhandler.SetFinalizer(this.Entry.Object())
 			err := this.UpdateStatus(this.logger, api.STATE_READY, "dns entry active", this.provider)
 			if err != nil {
 				this.logger.Errorf("cannot update: %s", err)

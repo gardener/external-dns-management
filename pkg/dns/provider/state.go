@@ -62,6 +62,8 @@ type state struct {
 	providersecrets map[resources.ObjectName]resources.ObjectName
 
 	entries  Entries
+	outdated Entries
+
 	dnsnames DNSNames
 
 	initialized bool
@@ -88,6 +90,7 @@ func NewDNSState(controller controller.Interface, config Config) *state {
 		providerzones:   map[resources.ObjectName]map[string]*dnsHostedZone{},
 		providersecrets: map[resources.ObjectName]resources.ObjectName{},
 		entries:         Entries{},
+		outdated:        Entries{},
 		dnsnames:        map[string]*Entry{},
 	}
 }
@@ -138,6 +141,18 @@ func (this *state) Start() {
 		this.controller.EnqueueKey(key)
 		delete(this.pendingKeys, key)
 	}
+}
+
+func (this *state) HasFinalizer(obj resources.Object) bool {
+	return this.GetController().HasFinalizer(obj)
+}
+
+func (this *state) SetFinalizer(obj resources.Object) error {
+	return this.GetController().SetFinalizer(obj)
+}
+
+func (this *state) RemoveFinalizer(obj resources.Object) error {
+	return this.GetController().RemoveFinalizer(obj)
 }
 
 func (this *state) GetController() controller.Interface {
@@ -257,7 +272,7 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 					}
 				} else {
 					logger.Infof("remove finalizer for unused secret %q", old)
-					err := this.controller.RemoveFinalizer(s)
+					err := this.RemoveFinalizer(s)
 					if err != nil && !errors.IsNotFound(err) {
 						logger.Warnf("cannot release secret %q for provider %q: 5s", old, pname, err)
 						return err
@@ -284,7 +299,7 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 
 		s, err := provider.Object().Resources().GetObjectInto(secret, &corev1.Secret{})
 		if err == nil {
-			err = this.controller.SetFinalizer(s)
+			err = this.SetFinalizer(s)
 		}
 		if err != nil {
 			if errors.IsNotFound(err) {
@@ -485,7 +500,7 @@ func (this *state) UpdateProvider(logger logger.LogContext, obj *dnsutils.DNSPro
 }
 
 func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status {
-	err := this.controller.SetFinalizer(obj)
+	err := this.SetFinalizer(obj)
 	if err != nil {
 		return reconcile.Delay(logger, fmt.Errorf("cannot set finalizer: %s", err))
 	}
@@ -638,7 +653,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 		}
 		delete(this.deleting, obj.ObjectName())
 		delete(this.providerzones, obj.ObjectName())
-		return reconcile.DelayOnError(logger, this.controller.RemoveFinalizer(cur.Object()))
+		return reconcile.DelayOnError(logger, this.RemoveFinalizer(cur.Object()))
 	}
 	return reconcile.Succeeded(logger)
 }
@@ -650,7 +665,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	providers := this.GetSecretUsage(obj.ObjectName())
 	if providers == nil || len(providers) == 0 {
-		return reconcile.DelayOnError(logger, this.controller.RemoveFinalizer(obj))
+		return reconcile.DelayOnError(logger, this.RemoveFinalizer(obj))
 	}
 	logger.Infof("reconcile SECRET")
 	for _, p := range providers {
@@ -675,14 +690,21 @@ func (this *state) DeleteEntry(logger logger.LogContext, object *dnsutils.DNSEnt
 }
 
 func (this *state) updateEntry(logger logger.LogContext, op string, object *dnsutils.DNSEntryObject) reconcile.Status {
-	logger.Infof("%s ENTRY", op)
+	logger.Debugf("%s ENTRY", op)
 	old, new, err := this.AddEntry(logger, object)
 
 	newzone, _ := this.GetZoneForName(new.DNSName())
+	oldzone := ""
 	if old != nil {
-		oldzone, _ := this.GetZoneForName(old.DNSName())
+		oldzone, _ = this.GetZoneForName(old.DNSName())
+	}
+
+	if old != nil {
 		if oldzone != "" && (err != nil || oldzone != newzone) {
 			logger.Infof("dns name changed -> trigger old zone %q", oldzone)
+			if this.HasFinalizer(old.object) {
+				this.outdated[old.ObjectName()] = old
+			}
 			this.triggerHostedZone(oldzone)
 		} else {
 			logger.Infof("dns name changed to %q", new.DNSName())
@@ -721,21 +743,9 @@ func (this *state) updateEntry(logger logger.LogContext, op string, object *dnsu
 			}
 		}
 	}
-	status := new.Update(logger, this.ownerids, object, this.GetHandlerFactory().TypeCode(), newzone, err, this.config.TTL)
 
-	if utils.StringValue(new.object.Status().ProviderType) == this.GetHandlerFactory().TypeCode() {
-		state := new.object.Status().State
-		if state != api.STATE_DELETING {
-			if state == api.STATE_PENDING || state == api.STATE_READY {
-				err = this.GetController().SetFinalizer(object)
-			} else {
-				err = this.GetController().RemoveFinalizer(object)
-			}
-			if err != nil {
-				return reconcile.Repeat(logger, err)
-			}
-		}
-	}
+	status := new.Update(logger, this, op, this.ownerids, object, this.GetHandlerFactory().TypeCode(), newzone, err, this.config.TTL)
+
 	if status.IsSucceeded() && new.IsValid() {
 		if new.Interval() > 0 {
 			status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
@@ -878,15 +888,24 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 		// TODO: err handling
 		mod := false
 		if e.IsDeleting() {
-			mod, _ = changes.Delete(e.DNSName(), NewStatusUpdate(logger, e, this.GetController()))
+			mod, _ = changes.Delete(e.DNSName(), NewStatusUpdate(logger, e, this.GetController(), zoneid))
 		} else {
-			mod, _ = changes.Apply(e.DNSName(), NewStatusUpdate(logger, e, this.GetController()), e.Targets()...)
+			mod, _ = changes.Apply(e.DNSName(), NewStatusUpdate(logger, e, this.GetController(), zoneid), e.Targets()...)
 		}
 		modified = modified || mod
 	}
 	modified = modified || changes.Cleanup(logger)
 	if modified {
 		err = changes.Update(logger)
+	}
+
+	for k, e := range this.outdated {
+		if e.activezone == zoneid {
+			logger.Infof("cleanup outdated entry %q", k)
+			if this.RemoveFinalizer(e.object) == nil {
+				delete(this.outdated, k)
+			}
+		}
 	}
 	return err
 }
