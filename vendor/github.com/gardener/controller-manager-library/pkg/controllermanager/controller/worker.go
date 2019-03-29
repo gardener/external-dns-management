@@ -155,7 +155,7 @@ func (w *worker) processNextWorkItem() bool {
 			}
 			if status.Error != nil {
 				err = status.Error
-				if ok {
+				if ok && r != nil {
 					r.Eventf(corev1.EventTypeWarning, "sync", "%s", err.Error())
 				}
 			}
