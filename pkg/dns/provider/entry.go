@@ -199,6 +199,7 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, own
 				return reconcile.Succeeded(logger).RescheduleAfter(120 * time.Second)
 			}
 			logger.Infof("release responsibility because of non-matching zone")
+			state.RemoveFinalizer(object)
 			f := func(data resources.ObjectData) (bool, error) {
 				e := data.(*api.DNSEntry)
 				if !utils.IsEmptyString(e.Status.ProviderType) {
@@ -239,7 +240,7 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, own
 		return reconcile.RepeatOnError(logger, err)
 	}
 
-	logger.Infof("handle %s event", op)
+	logger.Infof("%s ENTRY", op)
 
 	///////////// validate
 
