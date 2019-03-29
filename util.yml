@@ -1,6 +1,7 @@
 helper:
   dev_branches: (( |b|->.helper.branchset("standard", [ "head" ], b ) ))
-  main_branch: (( |b|->.helper.branchset("standard", [ "head", "rel", "pull" ], [ b ] ) ))
+  main_branch: (( |b|->.helper.branchset("standard", [ "head", "minor", "pull" ], [ b ] ) ))
+  patch_branch: (( |b|->.helper.branchset("standard", [ "head", "patch" ], [ b ] ) ))
 
   branchset: (( |n,j,b|-> *.helper.templates.branchset ))
 
@@ -22,7 +23,7 @@ helper:
           traits:
             pull-request: ~
             component_descriptor: ~
-      rel:
+      minor:
         <<: (( &template ))
         release:
           traits:
@@ -31,6 +32,15 @@ helper:
             release:
               nextversion: 'bump_minor'
             component_descriptor: ~
+
+      patch:
+        <<: (( &template))
+        release:
+          traits:
+            version:
+              preprocess: 'finalize'
+            release:
+              nextversion: 'bump_patch'
 
     standard: 
       <<: (( &template ))
@@ -53,10 +63,10 @@ helper:
                 dockerfile: 'build/Dockerfile'
         steps:
           check:
-            image: 'golang:1.10.4'
+            image: (( "golang:" .settings.goVersion ))
           test:
-            image: 'golang:1.10.4'
+            image: (( "golang:" .settings.goVersion ))
           build:
-            image: 'golang:1.10.4'
+            image: (( "golang:" .settings.goVersion ))
             output_dir: 'binary'
       variants: (( sum[j|{}|s,e|-> s eval("*.helper.templates.jobs." e)] ))
