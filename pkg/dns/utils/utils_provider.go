@@ -52,6 +52,7 @@ func (this *DNSProviderObject) SetState(state, message string) bool {
 	status := &this.DNSProvider().Status
 	mod.AssureStringPtrValue(&status.Message, message)
 	mod.AssureStringValue(&status.State, state)
+	mod.AssureInt64Value(&status.ObservedGeneration, this.DNSProvider().Generation)
 	return mod.IsModified()
 }
 

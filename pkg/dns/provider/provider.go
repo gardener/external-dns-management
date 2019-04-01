@@ -264,8 +264,9 @@ func (this *dnsProviderVersion) modified(new *runtime.RawExtension) bool {
 }
 
 func (this *dnsProviderVersion) setError(modified bool, err error) error {
-	modified = modified || this.object.SetDomains(utils.StringSet{}, utils.StringSet{})
-	modified = modified || this.object.SetState(api.STATE_ERROR, err.Error())
+	m1 := this.object.SetDomains(utils.StringSet{}, utils.StringSet{})
+	m2 := this.object.SetState(api.STATE_ERROR, err.Error())
+	modified = modified || m1 || m2
 	if modified {
 		return this.object.UpdateStatus()
 	}
@@ -296,6 +297,7 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	mod := resources.NewModificationState(this.object, modified)
 	mod.AssureStringValue(&status.State, api.STATE_READY)
 	mod.AssureStringPtrValue(&status.Message, "provider operational")
+	mod.AssureInt64Value(&status.ObservedGeneration, this.object.DNSProvider().Generation)
 	return reconcile.UpdateStatus(logger, mod.UpdateStatus())
 }
 

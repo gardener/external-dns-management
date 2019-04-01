@@ -894,7 +894,7 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 		}
 		modified = modified || mod
 	}
-	modified = modified || changes.Cleanup(logger)
+	modified = changes.Cleanup(logger) || modified
 	if modified {
 		err = changes.Update(logger)
 	}

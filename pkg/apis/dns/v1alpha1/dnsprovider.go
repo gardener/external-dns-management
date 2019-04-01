@@ -55,6 +55,7 @@ type DNSDomainSpec struct {
 }
 
 type DNSProviderStatus struct {
+	ObservedGeneration int64    `json:"observedGeneration,omitempty"`
 	State   string          `json:"state"`
 	Message *string         `json:"message,omitempty"`
 	Domains DNSDomainStatus `json:"domains"`
