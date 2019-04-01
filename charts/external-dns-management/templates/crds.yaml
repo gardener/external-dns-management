@@ -29,8 +29,6 @@ spec:
   - JSONPath: .metadata.creationTimestamp
     name: AGE
     type: date
-  conversion:
-    strategy: None
   group: dns.gardener.cloud
   names:
     kind: DNSEntry
@@ -66,8 +64,6 @@ spec:
   - JSONPath: .metadata.creationTimestamp
     name: AGE
     type: date
-  conversion:
-    strategy: None
   group: dns.gardener.cloud
   names:
     kind: DNSOwner
@@ -105,8 +101,6 @@ spec:
   - JSONPath: .metadata.creationTimestamp
     name: AGE
     type: date
-  conversion:
-    strategy: None
   group: dns.gardener.cloud
   names:
     kind: DNSProvider
