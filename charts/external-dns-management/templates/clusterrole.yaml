@@ -29,13 +29,13 @@ rules:
   - dnsentries
   - dnsentries/status
   - dnsowners
-  - dnsowners/status
   verbs:
   - get
   - list
   - update
   - watch
   - create
+  - delete
 - apiGroups:
   - ""
   resources:
