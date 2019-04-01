@@ -192,7 +192,11 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, own
 	///////////// handle type responsibility
 
 	if utils.IsEmptyString(status.ProviderType) || (*status.ProviderType != resp && zoneid != "") {
-		logger.Infof("check responsible: entry type: %q, zoneid: %q", reconcile.StringValue(status.ProviderType), zoneid)
+		if utils.IsEmptyString(status.ProviderType) && zoneid == "" {
+			logger.Debugf("check responsible: entry type: %q, zoneid: %q", reconcile.StringValue(status.ProviderType), zoneid)
+		} else {
+			logger.Infof("check responsible: entry type: %q, zoneid: %q", reconcile.StringValue(status.ProviderType), zoneid)
+		}
 		if zoneid == "" {
 			// mark unassigned foreign entries as errorneous
 			if object.GetCreationTimestamp().Add(120 * time.Second).After(time.Now()) {
