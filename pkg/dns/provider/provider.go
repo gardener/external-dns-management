@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sort"
 	"sync"
@@ -62,20 +63,30 @@ func newProvider() *dnsProvider {
 ///////////////////////////////////////////////////////////////////////////////
 
 type DNSAccount struct {
-	lock  sync.Mutex
-	handler DNSHandler
-	config  utils.Properties
+	lock          sync.Mutex
+	handler       DNSHandler
+	config        utils.Properties
+	provider_type string
 
-	hash string
+	hash    string
 	clients resources.ObjectNameSet
+	metrics Metrics
 
-	ttl time.Duration
-	next time.Time
-	err error
+	ttl   time.Duration
+	next  time.Time
+	err   error
 	zones DNSHostedZones
 }
 
-var _ DNSHandler = &DNSAccount{}
+var _ Metrics = &DNSAccount{}
+
+func (this *DNSAccount) AddRequests(qual string, n int)  {
+	metrics.AddRequests(this.provider_type, this.hash, n)
+}
+
+func (this *DNSAccount) Type() string {
+	return this.provider_type
+}
 
 func (this *DNSAccount) Hash() string {
 	return this.hash
@@ -84,11 +95,11 @@ func (this *DNSAccount) Hash() string {
 func (this *DNSAccount) GetZones() (DNSHostedZones, error) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	now:=time.Now()
+	now := time.Now()
 	if now.After(this.next) {
-		this.zones, this.err = this.handler.GetZones()
-		if this.err!=nil {
-			this.next=now.Add(this.ttl/2)
+		this.zones, this.err = this.handler.GetZones(this)
+		if this.err != nil {
+			this.next = now.Add(this.ttl / 2)
 		} else {
 			this.next = now.Add(this.ttl)
 		}
@@ -97,16 +108,16 @@ func (this *DNSAccount) GetZones() (DNSHostedZones, error) {
 }
 
 func (this *DNSAccount) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
-	return this.handler.GetZoneState(zone)
+	return this.handler.GetZoneState(zone, this)
 }
 
 func (this *DNSAccount) ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error {
-	return this.handler.ExecuteRequests(logger, zone, state, reqs)
+	return this.handler.ExecuteRequests(logger, zone, state, reqs, this)
 }
 
 type AccountCache struct {
 	lock  sync.Mutex
-	ttl time.Duration
+	ttl   time.Duration
 	cache map[string]*DNSAccount
 }
 
@@ -114,10 +125,11 @@ func NewAccountCache(ttl time.Duration) *AccountCache {
 	return &AccountCache{ttl: ttl, cache: map[string]*DNSAccount{}}
 }
 
-func (this *AccountCache) Get(logger logger.LogContext, name resources.ObjectName, props utils.Properties, extension *runtime.RawExtension, state *state) (*DNSAccount, error) {
+func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSProviderObject, props utils.Properties, state *state) (*DNSAccount, error) {
 	var err error
 
-	h := this.Hash(props, extension)
+	name := provider.ObjectName()
+	h := this.Hash(props, provider.Spec().ProviderConfig)
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	a := this.cache[h]
@@ -125,10 +137,10 @@ func (this *AccountCache) Get(logger logger.LogContext, name resources.ObjectNam
 		cfg := DNSHandlerConfig{
 			Context:    state.GetController().GetContext(),
 			Properties: props,
-			Config:     extension,
+			Config:     provider.Spec().ProviderConfig,
 			DryRun:     state.GetConfig().Dryrun,
 		}
-		a = &DNSAccount{ttl: this.ttl, config: props, hash: h, clients: resources.ObjectNameSet{}}
+		a = &DNSAccount{provider_type: provider.Spec().Type, ttl: this.ttl, config: props, hash: h, clients: resources.ObjectNameSet{}}
 		a.handler, err = state.GetHandlerFactory().Create(logger, &cfg)
 		if err != nil {
 			return nil, err
@@ -139,6 +151,7 @@ func (this *AccountCache) Get(logger logger.LogContext, name resources.ObjectNam
 		logger.Debugf("reusing account for %s (%s)", name, a.Hash())
 	}
 	a.clients.Add(name)
+	metrics.ReportAccountProviders(provider.Spec().Type, h, len(a.clients))
 	return a, nil
 }
 
@@ -149,9 +162,10 @@ func (this *AccountCache) Release(logger logger.LogContext, a *DNSAccount, name 
 	defer this.lock.Unlock()
 
 	a.clients.Remove(name)
-	if len(a.clients)== 0 {
-		logger.Infof("releasing account for %s (%s)", name,  a.Hash())
+	if len(a.clients) == 0 {
+		logger.Infof("releasing account for %s (%s)", name, a.Hash())
 		delete(this.cache, a.hash)
+		metrics.DeleteAccount(a.Type(), a.Hash())
 	}
 }
 
@@ -172,7 +186,7 @@ func (this *AccountCache) Hash(props utils.Properties, extension *runtime.RawExt
 		h.Write(null)
 	}
 
-	if extension!=nil {
+	if extension != nil {
 		h.Write(extension.Raw)
 	}
 	return hex.EncodeToString(h.Sum(nil))
@@ -197,7 +211,7 @@ type dnsProviderVersion struct {
 }
 
 func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
-	if this.account!=v.account {
+	if this.account != v.account {
 		return false
 	}
 	if !this.zones.equivalentTo(v.zones) {
@@ -260,7 +274,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		return this, this.failed(logger, false, fmt.Errorf("no secret specified"), false)
 	}
 
-	this.account, err = state.GetDNSAccount(logger, provider.ObjectName(), props, provider.Spec().ProviderConfig)
+	this.account, err = state.GetDNSAccount(logger, provider, props)
 	if err != nil {
 		return nil, reconcile.Delay(logger, err)
 	}

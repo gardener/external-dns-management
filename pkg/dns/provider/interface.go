@@ -90,19 +90,23 @@ type DNSZoneState interface {
 	GetDNSSets() dns.DNSSets
 }
 
-type DNSHandler interface {
-	GetZones() (DNSHostedZones, error)
-	GetZoneState(DNSHostedZone) (DNSZoneState, error)
-	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
+type Metrics interface {
+	AddRequests(request_type string, n int)
 }
+
+type DNSHandler interface {
+	GetZones(Metrics) (DNSHostedZones, error)
+	GetZoneState(DNSHostedZone,Metrics) (DNSZoneState, error)
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest,m Metrics) error
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 type DNSHandlerFactory interface {
 	TypeCode() string
 	Create(logger logger.LogContext, config *DNSHandlerConfig) (DNSHandler, error)
 	IsResponsibleFor(object *dnsutils.DNSProviderObject) bool
 }
-
-////////////////////////////////////////////////////////////////////////////////
 
 type DNSProviders map[resources.ObjectName]DNSProvider
 

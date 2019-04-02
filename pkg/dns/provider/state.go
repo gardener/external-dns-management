@@ -18,7 +18,6 @@ package provider
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/runtime"
 	"strings"
 	"sync"
 	"time"
@@ -167,8 +166,8 @@ func (this *state) GetConfig() Config {
 	return this.config
 }
 
-func (this *state) GetDNSAccount(logger logger.LogContext, name resources.ObjectName, props utils.Properties, extension *runtime.RawExtension) (*DNSAccount,error) {
-  return this.accountCache.Get(logger,name, props,extension,this)
+func (this *state) GetDNSAccount(logger logger.LogContext, provider *dnsutils.DNSProviderObject, props utils.Properties) (*DNSAccount, error) {
+	return this.accountCache.Get(logger, provider, props, this)
 }
 
 func (this *state) GetHandlerFactory() DNSHandlerFactory {
@@ -525,7 +524,7 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 		return status
 	}
 
-	if last!=nil && last.account!=new.account {
+	if last != nil && last.account != new.account {
 		this.accountCache.Release(logger, last.account, obj.ObjectName())
 	}
 
