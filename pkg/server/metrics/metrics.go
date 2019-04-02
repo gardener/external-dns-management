@@ -17,7 +17,11 @@
 package metrics
 
 import (
+	"sync"
+
 	"github.com/gardener/controller-manager-library/pkg/server"
+	"github.com/gardener/controller-manager-library/pkg/utils"
+
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -44,7 +48,7 @@ var (
 			Name: "account_providers",
 			Help: "Total number of providers per account",
 		},
-		[]string{"providertype", "accounthash"},
+		[]string{"providertype", "accounthash", "requesttype"},
 	)
 
 	Entries = prometheus.NewGaugeVec(
@@ -56,9 +60,47 @@ var (
 	)
 )
 
+var theRequestLabels = &requestLabels{lock: sync.Mutex{}, known: map[ptypeAccount]utils.StringSet{}}
+
+type ptypeAccount struct {
+	ptype   string
+	account string
+}
+
+type requestLabels struct {
+	lock  sync.Mutex
+	known map[ptypeAccount]utils.StringSet
+}
+
+func (this *requestLabels) AddRequestLabel(ptype, account, requestType string) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	key := ptypeAccount{ptype, account}
+	set, ok := this.known[key]
+	if !ok {
+		set = utils.StringSet{}
+		this.known[key] = set
+	}
+	set.Add(requestType)
+}
+
+func (this *requestLabels) Delete(ptype, account string) utils.StringSet {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	key := ptypeAccount{ptype, account}
+	set := this.known[key]
+	delete(this.known, key)
+	return set
+}
+
 func DeleteAccount(ptype, account string) {
 	Requests.DeleteLabelValues(ptype, account)
-	Accounts.DeleteLabelValues(ptype, account)
+	requestTypes := theRequestLabels.Delete(ptype, account)
+	for rtype := range requestTypes {
+		Accounts.DeleteLabelValues(ptype, account, rtype)
+	}
 	Entries.DeleteLabelValues(ptype, account)
 }
 
@@ -66,8 +108,9 @@ func ReportAccountProviders(ptype, account string, amount int) {
 	Accounts.WithLabelValues(ptype, account).Set(float64(amount))
 }
 
-func AddRequests(ptype, account string, no int) {
-	Requests.WithLabelValues(ptype, account).Add(float64(no))
+func AddRequests(ptype, account, requestType string, no int) {
+	theRequestLabels.AddRequestLabel(ptype, account, requestType)
+	Requests.WithLabelValues(ptype, account, requestType).Add(float64(no))
 }
 
 func ReportAccountEntries(ptype, account string, amount int) {

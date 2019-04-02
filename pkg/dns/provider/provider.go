@@ -20,11 +20,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sort"
 	"sync"
 	"time"
+
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
+	"k8s.io/apimachinery/pkg/runtime"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -63,10 +64,10 @@ func newProvider() *dnsProvider {
 ///////////////////////////////////////////////////////////////////////////////
 
 type DNSAccount struct {
-	lock          sync.Mutex
-	handler       DNSHandler
-	config        utils.Properties
-	provider_type string
+	lock         sync.Mutex
+	handler      DNSHandler
+	config       utils.Properties
+	providerType string
 
 	hash    string
 	clients resources.ObjectNameSet
@@ -81,12 +82,12 @@ type DNSAccount struct {
 var _ DNSHandler = &DNSAccount{}
 var _ Metrics = &DNSAccount{}
 
-func (this *DNSAccount) AddRequests(qual string, n int) {
-	metrics.AddRequests(this.provider_type, this.hash, n)
+func (this *DNSAccount) AddRequests(requestType string, n int) {
+	metrics.AddRequests(this.providerType, this.hash, requestType, n)
 }
 
 func (this *DNSAccount) Type() string {
-	return this.provider_type
+	return this.providerType
 }
 
 func (this *DNSAccount) Hash() string {
@@ -141,7 +142,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			Config:     provider.Spec().ProviderConfig,
 			DryRun:     state.GetConfig().Dryrun,
 		}
-		a = &DNSAccount{provider_type: provider.Spec().Type, ttl: this.ttl, config: props, hash: h, clients: resources.ObjectNameSet{}}
+		a = &DNSAccount{providerType: provider.Spec().Type, ttl: this.ttl, config: props, hash: h, clients: resources.ObjectNameSet{}}
 		a.handler, err = state.GetHandlerFactory().Create(logger, &cfg, a)
 		if err != nil {
 			return nil, err
@@ -149,9 +150,9 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 		logger.Infof("creating account for %s (%s)", name, a.Hash())
 		this.cache[h] = a
 	}
-	old:=len(a.clients)
+	old := len(a.clients)
 	a.clients.Add(name)
-	if old!=len(a.clients) && old!=0 {
+	if old != len(a.clients) && old != 0 {
 		logger.Infof("reusing account for %s (%s): %d client(s)", name, a.Hash(), len(a.clients))
 	}
 	metrics.ReportAccountProviders(provider.Spec().Type, a.Hash(), len(a.clients))
