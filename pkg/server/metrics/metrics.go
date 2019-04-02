@@ -40,7 +40,7 @@ var (
 			Name: "total_provider_requests",
 			Help: "Total requests per provider type and credential set",
 		},
-		[]string{"providertype", "accounthash"},
+		[]string{"providertype", "accounthash", "requesttype"},
 	)
 
 	Accounts = prometheus.NewGaugeVec(
@@ -48,7 +48,7 @@ var (
 			Name: "account_providers",
 			Help: "Total number of providers per account",
 		},
-		[]string{"providertype", "accounthash", "requesttype"},
+		[]string{"providertype", "accounthash"},
 	)
 
 	Entries = prometheus.NewGaugeVec(
@@ -96,10 +96,10 @@ func (this *requestLabels) Delete(ptype, account string) utils.StringSet {
 }
 
 func DeleteAccount(ptype, account string) {
-	Requests.DeleteLabelValues(ptype, account)
+	Accounts.DeleteLabelValues(ptype, account)
 	requestTypes := theRequestLabels.Delete(ptype, account)
 	for rtype := range requestTypes {
-		Accounts.DeleteLabelValues(ptype, account, rtype)
+		Requests.DeleteLabelValues(ptype, account, rtype)
 	}
 	Entries.DeleteLabelValues(ptype, account)
 }

@@ -82,16 +82,17 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 }
 
 func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
+	rt := provider.M_LISTZONES
 	raw := []*googledns.ManagedZone{}
 	f := func(resp *googledns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
 			raw = append(raw, zone)
 		}
-		this.metrics.AddRequests(provider.M_PLISTZONES, 1)
+		this.metrics.AddRequests(rt, 1)
+		rt = provider.M_PLISTZONES
 		return nil
 	}
 
-	this.metrics.AddRequests(provider.M_LISTZONES, 1)
 	if err := this.service.ManagedZones.List(this.credentials.ProjectID).Pages(this.ctx, f); err != nil {
 		return nil, err
 	}
@@ -116,14 +117,15 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (this *Handler) handleRecordSets(zoneid string, f func(r *googledns.ResourceRecordSet)) error {
+	rt := provider.M_LISTRECORDS
 	aggr := func(resp *googledns.ResourceRecordSetsListResponse) error {
 		for _, r := range resp.Rrsets {
 			f(r)
 		}
-		this.metrics.AddRequests(provider.M_PLISTRECORDS, 1)
+		this.metrics.AddRequests(rt, 1)
+		rt = provider.M_PLISTRECORDS
 		return nil
 	}
-	this.metrics.AddRequests(provider.M_LISTRECORDS, 1)
 	return this.service.ResourceRecordSets.List(this.credentials.ProjectID, zoneid).Pages(this.ctx, aggr)
 }
 

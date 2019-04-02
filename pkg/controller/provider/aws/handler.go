@@ -69,16 +69,17 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 }
 
 func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
+	rt := provider.M_LISTZONES
 	raw := []*route53.HostedZone{}
 	aggr := func(resp *route53.ListHostedZonesOutput, lastPage bool) bool {
 		for _, zone := range resp.HostedZones {
 			raw = append(raw, zone)
 		}
-		this.metrics.AddRequests(provider.M_PLISTZONES, 1)
+		this.metrics.AddRequests(rt, 1)
+		rt = provider.M_PLISTZONES
 		return true
 	}
 
-	this.metrics.AddRequests(provider.M_LISTZONES, 1)
 	err := this.r53.ListHostedZonesPages(&route53.ListHostedZonesInput{}, aggr)
 	if err != nil {
 		return nil, err
@@ -127,15 +128,17 @@ func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZone
 }
 
 func (this *Handler) handleRecordSets(zoneid string, f func(rs *route53.ResourceRecordSet)) error {
+	rt := provider.M_LISTRECORDS
 	inp := (&route53.ListResourceRecordSetsInput{}).SetHostedZoneId(zoneid)
 	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
+		this.metrics.AddRequests(rt, 1)
 		for _, r := range resp.ResourceRecordSets {
 			f(r)
 		}
-		this.metrics.AddRequests(provider.M_PLISTRECORDS, 1)
+		rt = provider.M_PLISTRECORDS
+
 		return true
 	}
-	this.metrics.AddRequests(provider.M_LISTRECORDS, 1)
 	return this.r53.ListResourceRecordSetsPages(inp, aggr)
 }
 

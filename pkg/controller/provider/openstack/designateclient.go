@@ -119,9 +119,11 @@ func createDesignateServiceClient(logger logger.LogContext, authConfig *authConf
 // ForEachZone calls handler for each zone managed by the Designate
 func (c designateClient) ForEachZone(handler func(zone *zones.Zone) error) error {
 	pager := zones.List(c.serviceClient, zones.ListOpts{})
+	rt := provider.M_LISTZONES
 	return pager.EachPage(
 		func(page pagination.Page) (bool, error) {
-			c.metrics.AddRequests("Zones_List_Page", 1)
+			c.metrics.AddRequests(rt, 1)
+			rt = provider.M_PLISTZONES
 			list, err := zones.ExtractZones(page)
 			if err != nil {
 				return false, err
@@ -145,9 +147,11 @@ func (c designateClient) ForEachRecordSet(zoneID string, handler func(recordSet 
 // ForEachRecordSet calls handler for each recordset in the given DNS zone restricted to rrtype
 func (c designateClient) ForEachRecordSetFilterByTypeAndName(zoneID string, rrtype string, name string, handler func(recordSet *recordsets.RecordSet) error) error {
 	pager := recordsets.ListByZone(c.serviceClient, zoneID, recordsets.ListOpts{Type: rrtype, Name: name})
+	rt := provider.M_LISTRECORDS
 	return pager.EachPage(
 		func(page pagination.Page) (bool, error) {
-			c.metrics.AddRequests("RecordSets_ListByZone_Page", 1)
+			c.metrics.AddRequests(rt, 1)
+			rt = provider.M_PLISTRECORDS
 			list, err := recordsets.ExtractRecordSets(page)
 			if err != nil {
 				return false, err

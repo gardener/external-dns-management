@@ -78,9 +78,10 @@ func (this *access) ListDomains(consume func(domain alidns.Domain) (bool, error)
 	request := alidns.CreateDescribeDomainsRequest()
 	request.PageSize = requests.NewInteger(defaultPageSize)
 	nextPage := 1
-	this.metrics.AddRequests(provider.M_LISTZONES, 1)
+	rt := provider.M_LISTZONES
 	for {
-		this.metrics.AddRequests(provider.M_PLISTZONES, 1)
+		this.metrics.AddRequests(rt, 1)
+		rt = provider.M_PLISTZONES
 		request.PageNumber = requests.NewInteger(nextPage)
 		resp, err := this.DescribeDomains(request)
 		if err != nil {
@@ -103,9 +104,10 @@ func (this *access) ListRecords(domain string, consume func(record alidns.Record
 	request.DomainName = domain
 	request.PageSize = requests.NewInteger(defaultPageSize)
 	nextPage := 1
-	this.metrics.AddRequests(provider.M_LISTRECORDS, 1)
+	rt := provider.M_LISTRECORDS
 	for {
-		this.metrics.AddRequests(provider.M_PLISTRECORDS, 1)
+		this.metrics.AddRequests(rt, 1)
+		rt = provider.M_PLISTRECORDS
 		request.PageNumber = requests.NewInteger(nextPage)
 		resp, err := this.DescribeDomainRecords(request)
 		if err != nil {
