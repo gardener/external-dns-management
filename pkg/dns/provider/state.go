@@ -18,6 +18,7 @@ package provider
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime"
 	"strings"
 	"sync"
 	"time"
@@ -48,6 +49,8 @@ type state struct {
 	pending     utils.StringSet
 	pendingKeys resources.ClusterObjectKeySet
 
+	accountCache *AccountCache
+
 	ownerids utils.StringSet
 	owners   map[resources.ObjectName]*dnsutils.DNSOwnerObject
 	ownercnt map[string]int
@@ -76,6 +79,7 @@ func NewDNSState(controller controller.Interface, config Config) *state {
 	return &state{
 		controller:      controller,
 		config:          config,
+		accountCache:    NewAccountCache(config.CacheTTL),
 		ownerids:        utils.NewStringSet(config.Ident),
 		owners:          map[resources.ObjectName]*dnsutils.DNSOwnerObject{},
 		ownercnt:        map[string]int{config.Ident: 1},
@@ -161,6 +165,10 @@ func (this *state) GetController() controller.Interface {
 
 func (this *state) GetConfig() Config {
 	return this.config
+}
+
+func (this *state) GetDNSAccount(logger logger.LogContext, name resources.ObjectName, props utils.Properties, extension *runtime.RawExtension) (*DNSAccount,error) {
+  return this.accountCache.Get(logger,name, props,extension,this)
 }
 
 func (this *state) GetHandlerFactory() DNSHandlerFactory {
@@ -516,8 +524,12 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 	if new == nil {
 		return status
 	}
-	entries := Entries{}
 
+	if last!=nil && last.account!=new.account {
+		this.accountCache.Release(logger, last.account, obj.ObjectName())
+	}
+
+	entries := Entries{}
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
@@ -620,7 +632,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 		cur = this.deleting[pname]
 	}
 	if cur != nil {
-		if cur.handler == nil {
+		if cur.account == nil {
 			panic(fmt.Sprintf("OOPS, no handler for %s", pname))
 		}
 		entries := Entries{}
@@ -651,6 +663,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 		if err != nil {
 			return reconcile.Delay(logger, err)
 		}
+		this.accountCache.Release(logger, cur.account, cur.ObjectName())
 		delete(this.deleting, obj.ObjectName())
 		delete(this.providerzones, obj.ObjectName())
 		return reconcile.DelayOnError(logger, this.RemoveFinalizer(cur.Object()))

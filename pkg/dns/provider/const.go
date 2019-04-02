@@ -29,6 +29,7 @@ const (
 	OPT_CLASS      = source.OPT_CLASS
 	OPT_DRYRUN     = "dry-run"
 	OPT_TTL        = "ttl"
+	OPT_CACHE_TTL  = "cache-ttl"
 
 	HOSTEDZONE_PREFIX = "hostedzone:"
 )

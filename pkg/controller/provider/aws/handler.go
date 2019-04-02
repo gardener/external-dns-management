@@ -44,8 +44,10 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (pr
 	}
 	akid := this.config.Properties["AWS_ACCESS_KEY_ID"]
 	if akid == "" {
+		logger.Infof("creating aws-route53 handler failed because of missing access key id")
 		return nil, fmt.Errorf("'AWS_ACCESS_KEY_ID' required in secret")
 	}
+	logger.Infof("creating aws-route53 handler for %s", akid)
 	sak := this.config.Properties["AWS_SECRET_ACCESS_KEY"]
 	if sak == "" {
 		return nil, fmt.Errorf("'AWS_SECRET_ACCESS_KEY' required in secret")

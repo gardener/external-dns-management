@@ -128,7 +128,7 @@ type ChangeModel struct {
 	providers      DNSProviders
 	applied        map[string]*dns.DNSSet
 	dangling       *ChangeGroup
-	providergroups map[DNSProvider]*ChangeGroup
+	providergroups map[string]*ChangeGroup
 	state          DNSZoneState
 }
 
@@ -141,7 +141,7 @@ func NewChangeModel(logger logger.LogContext, owners utils.StringSet, stale DNSN
 		zone:           zone,
 		providers:      providers,
 		applied:        map[string]*dns.DNSSet{},
-		providergroups: map[DNSProvider]*ChangeGroup{},
+		providergroups: map[string]*ChangeGroup{},
 	}
 }
 
@@ -150,10 +150,10 @@ func (this *ChangeModel) IsStale(dns string) *Entry {
 }
 
 func (this *ChangeModel) getProviderView(p DNSProvider) *ChangeGroup {
-	v := this.providergroups[p]
+	v := this.providergroups[p.AccountHash()]
 	if v == nil {
 		v = newChangeGroup(p.ObjectName().String(), p, this)
-		this.providergroups[p] = v
+		this.providergroups[p.AccountHash()] = v
 	}
 	return v
 }

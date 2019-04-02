@@ -19,6 +19,7 @@ package provider
 import (
 	"context"
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -29,10 +30,11 @@ import (
 )
 
 type Config struct {
-	TTL     int64
-	Ident   string
-	Dryrun  bool
-	Factory DNSHandlerFactory
+	TTL      int64
+	CacheTTL time.Duration
+	Ident    string
+	Dryrun   bool
+	Factory  DNSHandlerFactory
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) Config {
@@ -44,8 +46,12 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 	if err != nil {
 		ttl = 300
 	}
+	cttl, err := c.GetIntOption(OPT_CACHE_TTL)
+	if err != nil {
+		cttl = 60
+	}
 	dryrun, _ := c.GetBoolOption(OPT_DRYRUN)
-	return Config{Ident: ident, Dryrun: dryrun, TTL: int64(ttl), Factory: factory}
+	return Config{Ident: ident, Dryrun: dryrun, TTL: int64(ttl), CacheTTL: time.Duration(cttl)*time.Second, Factory: factory}
 }
 
 type DNSHostedZone interface {
@@ -110,6 +116,8 @@ type DNSProvider interface {
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
 
 	Match(dns string) int
+
+	AccountHash() string
 }
 
 type DoneHandler interface {
