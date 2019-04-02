@@ -116,24 +116,26 @@ func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) (b
 	return bs_ok, recordType, &azure.RecordSet{Name: &name, RecordSetProperties: &properties}
 }
 
-func (exec *Execution) apply(action string, recordType azure.RecordType, rset *azure.RecordSet) error {
+func (exec *Execution) apply(action string, recordType azure.RecordType, rset *azure.RecordSet, metrics provider.Metrics) error {
 	var err error
 	switch action {
 	case provider.R_CREATE, provider.R_UPDATE:
-		err = exec.update(recordType, rset)
+		err = exec.update(recordType, rset, metrics)
 	case provider.R_DELETE:
-		err = exec.delete(recordType, rset)
+		err = exec.delete(recordType, rset, metrics)
 	}
 	return err
 }
 
-func (exec *Execution) update(recordType azure.RecordType, rset *azure.RecordSet) error {
+func (exec *Execution) update(recordType azure.RecordType, rset *azure.RecordSet, metrics provider.Metrics) error {
 	_, err := exec.handler.recordsClient.CreateOrUpdate(exec.handler.ctx, exec.resourceGroup, exec.zoneName, *rset.Name,
 		recordType, *rset, "", "")
+	metrics.AddRequests("RecordSetsClient_CreateOrUpdate", 1)
 	return err
 }
 
-func (exec *Execution) delete(recordType azure.RecordType, rset *azure.RecordSet) error {
+func (exec *Execution) delete(recordType azure.RecordType, rset *azure.RecordSet, metrics provider.Metrics) error {
 	_, err := exec.handler.recordsClient.Delete(exec.handler.ctx, exec.resourceGroup, exec.zoneName, *rset.Name, recordType, "")
+	metrics.AddRequests("RecordSetsClient_Delete", 1)
 	return err
 }

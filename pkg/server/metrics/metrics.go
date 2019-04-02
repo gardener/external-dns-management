@@ -54,7 +54,6 @@ var (
 		},
 		[]string{"providertype", "accounthash"},
 	)
-
 )
 
 func DeleteAccount(ptype, account string) {

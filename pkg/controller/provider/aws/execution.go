@@ -70,7 +70,7 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 	this.changes[name] = append(this.changes[name], &Change{Change: change, Done: req.Done})
 }
 
-func (this *Execution) submitChanges() error {
+func (this *Execution) submitChanges(metrics provider.Metrics) error {
 	if len(this.changes) == 0 {
 		return nil
 	}
@@ -89,6 +89,7 @@ func (this *Execution) submitChanges() error {
 			},
 		}
 
+		metrics.AddRequests(provider.M_UPDATERECORDS, 1)
 		if _, err := this.handler.r53.ChangeResourceRecordSets(params); err != nil {
 			this.Error(err)
 			for _, c := range changes {

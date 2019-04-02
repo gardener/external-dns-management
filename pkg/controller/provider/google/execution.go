@@ -80,7 +80,7 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 	this.done = append(this.done, req.Done)
 }
 
-func (this *Execution) submitChanges() error {
+func (this *Execution) submitChanges(metrics provider.Metrics) error {
 
 	if len(this.change.Additions) == 0 && len(this.change.Deletions) == 0 {
 		return nil
@@ -94,6 +94,7 @@ func (this *Execution) submitChanges() error {
 		this.Infof("desired change: Addition %s %s: %s", c.Name, c.Type, utils.Strings(c.Rrdatas...))
 	}
 
+	metrics.AddRequests(provider.M_UPDATERECORDS, 1)
 	if _, err := this.handler.service.Changes.Create(this.handler.credentials.ProjectID, this.zone.Id(), this.change).Do(); err != nil {
 		this.Error(err)
 		for _, d := range this.done {

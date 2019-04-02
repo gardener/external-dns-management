@@ -78,9 +78,10 @@ type DNSAccount struct {
 	zones DNSHostedZones
 }
 
+var _ DNSHandler = &DNSAccount{}
 var _ Metrics = &DNSAccount{}
 
-func (this *DNSAccount) AddRequests(qual string, n int)  {
+func (this *DNSAccount) AddRequests(qual string, n int) {
 	metrics.AddRequests(this.provider_type, this.hash, n)
 }
 
@@ -97,7 +98,7 @@ func (this *DNSAccount) GetZones() (DNSHostedZones, error) {
 	defer this.lock.Unlock()
 	now := time.Now()
 	if now.After(this.next) {
-		this.zones, this.err = this.handler.GetZones(this)
+		this.zones, this.err = this.handler.GetZones()
 		if this.err != nil {
 			this.next = now.Add(this.ttl / 2)
 		} else {
@@ -108,11 +109,11 @@ func (this *DNSAccount) GetZones() (DNSHostedZones, error) {
 }
 
 func (this *DNSAccount) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
-	return this.handler.GetZoneState(zone, this)
+	return this.handler.GetZoneState(zone)
 }
 
 func (this *DNSAccount) ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error {
-	return this.handler.ExecuteRequests(logger, zone, state, reqs, this)
+	return this.handler.ExecuteRequests(logger, zone, state, reqs)
 }
 
 type AccountCache struct {
@@ -141,17 +142,19 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			DryRun:     state.GetConfig().Dryrun,
 		}
 		a = &DNSAccount{provider_type: provider.Spec().Type, ttl: this.ttl, config: props, hash: h, clients: resources.ObjectNameSet{}}
-		a.handler, err = state.GetHandlerFactory().Create(logger, &cfg)
+		a.handler, err = state.GetHandlerFactory().Create(logger, &cfg, a)
 		if err != nil {
 			return nil, err
 		}
 		logger.Infof("creating account for %s (%s)", name, a.Hash())
 		this.cache[h] = a
-	} else {
-		logger.Debugf("reusing account for %s (%s)", name, a.Hash())
 	}
+	old:=len(a.clients)
 	a.clients.Add(name)
-	metrics.ReportAccountProviders(provider.Spec().Type, h, len(a.clients))
+	if old!=len(a.clients) && old!=0 {
+		logger.Infof("reusing account for %s (%s): %d client(s)", name, a.Hash(), len(a.clients))
+	}
+	metrics.ReportAccountProviders(provider.Spec().Type, a.Hash(), len(a.clients))
 	return a, nil
 }
 
@@ -166,6 +169,8 @@ func (this *AccountCache) Release(logger logger.LogContext, a *DNSAccount, name 
 		logger.Infof("releasing account for %s (%s)", name, a.Hash())
 		delete(this.cache, a.hash)
 		metrics.DeleteAccount(a.Type(), a.Hash())
+	} else {
+		logger.Infof("keeping account for %s (%s): %d client(s)", name, a.Hash(), len(a.clients))
 	}
 }
 

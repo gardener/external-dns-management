@@ -31,7 +31,7 @@ type Handler struct {
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
+func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
 	var err error
 
 	this := &Handler{
@@ -47,7 +47,7 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (pr
 		return nil, fmt.Errorf("'ACCESS_KEY_SECRET' required in secret")
 	}
 
-	access, err := NewAccess(accessKeyId, accessKeySecret)
+	access, err := NewAccess(accessKeyId, accessKeySecret, metrics)
 	if err != nil {
 		return nil, err
 	}

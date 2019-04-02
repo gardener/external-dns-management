@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"strings"
 )
 
@@ -55,14 +56,15 @@ type Access interface {
 
 type access struct {
 	*alidns.Client
+	metrics provider.Metrics
 }
 
-func NewAccess(accessKeyId, accessKeySecret string) (Access, error) {
+func NewAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics) (Access, error) {
 	client, err := alidns.NewClientWithAccessKey("cn-shanghai", accessKeyId, accessKeySecret)
 	if err != nil {
 		return nil, err
 	}
-	return &access{client}, nil
+	return &access{client, metrics}, nil
 }
 
 func (this *access) nextPageNumber(pageNumber, pageSize, totalCount int) int {
@@ -76,7 +78,9 @@ func (this *access) ListDomains(consume func(domain alidns.Domain) (bool, error)
 	request := alidns.CreateDescribeDomainsRequest()
 	request.PageSize = requests.NewInteger(defaultPageSize)
 	nextPage := 1
+	this.metrics.AddRequests(provider.M_LISTZONES, 1)
 	for {
+		this.metrics.AddRequests(provider.M_PLISTZONES, 1)
 		request.PageNumber = requests.NewInteger(nextPage)
 		resp, err := this.DescribeDomains(request)
 		if err != nil {
@@ -99,7 +103,9 @@ func (this *access) ListRecords(domain string, consume func(record alidns.Record
 	request.DomainName = domain
 	request.PageSize = requests.NewInteger(defaultPageSize)
 	nextPage := 1
+	this.metrics.AddRequests(provider.M_LISTRECORDS, 1)
 	for {
+		this.metrics.AddRequests(provider.M_PLISTRECORDS, 1)
 		request.PageNumber = requests.NewInteger(nextPage)
 		resp, err := this.DescribeDomainRecords(request)
 		if err != nil {
@@ -124,6 +130,7 @@ func (this *access) CreateRecord(r alidns.Record) error {
 	req.Type = r.Type
 	req.TTL = requests.NewInteger(r.TTL)
 	req.Value = r.Value
+	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
 	_, err := this.AddDomainRecord(req)
 	return err
 }
@@ -135,6 +142,7 @@ func (this *access) UpdateRecord(r alidns.Record) error {
 	req.Type = r.Type
 	req.TTL = requests.NewInteger(r.TTL)
 	req.Value = r.Value
+	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
 	_, err := this.UpdateDomainRecord(req)
 	return err
 }
@@ -142,6 +150,7 @@ func (this *access) UpdateRecord(r alidns.Record) error {
 func (this *access) DeleteRecord(r alidns.Record) error {
 	req := alidns.CreateDeleteDomainRecordRequest()
 	req.RecordId = r.RecordId
+	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
 	_, err := this.DeleteDomainRecord(req)
 	return err
 }

@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gophercloud/gophercloud"
 	"github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets"
@@ -56,7 +57,10 @@ type designateClientInterface interface {
 // implementation of the designateClientInterface
 type designateClient struct {
 	serviceClient *gophercloud.ServiceClient
+	metrics       provider.Metrics
 }
+
+var _ designateClientInterface = &designateClient{}
 
 type authConfig struct {
 	AuthURL     string
@@ -117,6 +121,7 @@ func (c designateClient) ForEachZone(handler func(zone *zones.Zone) error) error
 	pager := zones.List(c.serviceClient, zones.ListOpts{})
 	return pager.EachPage(
 		func(page pagination.Page) (bool, error) {
+			c.metrics.AddRequests("Zones_List_Page", 1)
 			list, err := zones.ExtractZones(page)
 			if err != nil {
 				return false, err
@@ -142,6 +147,7 @@ func (c designateClient) ForEachRecordSetFilterByTypeAndName(zoneID string, rrty
 	pager := recordsets.ListByZone(c.serviceClient, zoneID, recordsets.ListOpts{Type: rrtype, Name: name})
 	return pager.EachPage(
 		func(page pagination.Page) (bool, error) {
+			c.metrics.AddRequests("RecordSets_ListByZone_Page", 1)
 			list, err := recordsets.ExtractRecordSets(page)
 			if err != nil {
 				return false, err
@@ -160,6 +166,7 @@ func (c designateClient) ForEachRecordSetFilterByTypeAndName(zoneID string, rrty
 // CreateRecordSet creates recordset in the given DNS zone
 func (c designateClient) CreateRecordSet(zoneID string, opts recordsets.CreateOpts) (string, error) {
 	r, err := recordsets.Create(c.serviceClient, zoneID, opts).Extract()
+	c.metrics.AddRequests("RecordSets_Create", 1)
 	if err != nil {
 		return "", err
 	}
@@ -169,17 +176,21 @@ func (c designateClient) CreateRecordSet(zoneID string, opts recordsets.CreateOp
 // UpdateRecordSet updates recordset in the given DNS zone
 func (c designateClient) UpdateRecordSet(zoneID, recordSetID string, opts recordsets.UpdateOpts) error {
 	_, err := recordsets.Update(c.serviceClient, zoneID, recordSetID, opts).Extract()
+	c.metrics.AddRequests("RecordSets_Update", 1)
 	return err
 }
 
 // DeleteRecordSet deletes recordset in the given DNS zone
 func (c designateClient) DeleteRecordSet(zoneID, recordSetID string) error {
-	return recordsets.Delete(c.serviceClient, zoneID, recordSetID).ExtractErr()
+	err := recordsets.Delete(c.serviceClient, zoneID, recordSetID).ExtractErr()
+	c.metrics.AddRequests("RecordSets_Delete", 1)
+	return err
 }
 
 // GetRecordSet gets single recordset by its ID
 func (c designateClient) GetRecordSet(zoneID, recordSetID string, handler func(recordSet *recordsets.RecordSet) error) error {
 	rs, err := recordsets.Get(c.serviceClient, zoneID, recordSetID).Extract()
+	c.metrics.AddRequests("RecordSets_Get", 1)
 	if err != nil {
 		return err
 	}

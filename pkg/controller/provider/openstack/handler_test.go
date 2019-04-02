@@ -65,6 +65,10 @@ type designateMockClient struct {
 	tzmap map[string]*testzone
 }
 
+var _ designateClientInterface = &designateMockClient{}
+
+var mockMetrics provider.Metrics = &nullMetrics{}
+
 func (c *designateMockClient) ForEachZone(handler func(zone *zones.Zone) error) error {
 	for _, tz := range c.tzmap {
 		if err := handler(tz.zone); err != nil {

@@ -22,7 +22,7 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
-type DNSHandlerCreatorFunction func(logger logger.LogContext, config *DNSHandlerConfig) (DNSHandler, error)
+type DNSHandlerCreatorFunction func(logger logger.LogContext, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error)
 
 type Factory struct {
 	typecode string
@@ -43,6 +43,6 @@ func (this *Factory) TypeCode() string {
 	return this.typecode
 }
 
-func (this *Factory) Create(logger logger.LogContext, config *DNSHandlerConfig) (DNSHandler, error) {
-	return this.create(logger, config)
+func (this *Factory) Create(logger logger.LogContext, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error) {
+	return this.create(logger, config, metrics)
 }

@@ -32,19 +32,20 @@ import (
 )
 
 type Handler struct {
-	config provider.DNSHandlerConfig
-	ctx    context.Context
-
+	config        provider.DNSHandlerConfig
+	ctx           context.Context
+	metrics       provider.Metrics
 	zonesClient   *azure.ZonesClient
 	recordsClient *azure.RecordSetsClient
 }
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
+func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
 
 	h := &Handler{
-		config: *config,
+		config:  *config,
+		metrics: metrics,
 	}
 
 	h.ctx = config.Context
@@ -95,6 +96,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	zones := provider.DNSHostedZones{}
 
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
+	h.metrics.AddRequests("ZonesClient_ListComplete", 1)
 	if err != nil {
 		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
 	}
@@ -130,6 +132,7 @@ func (h *Handler) collectForwardedSubzones(resourceGroup, zoneName string) []str
 	// There should only few NS entries. Therefore no paging is performed for simplicity.
 	var top int32 = 1000
 	result, err := h.recordsClient.ListByType(h.ctx, resourceGroup, zoneName, azure.NS, &top, "")
+	h.metrics.AddRequests("RecordSetsClient_ListByType_NS", 1)
 	if err != nil {
 		logger.Infof("Failed fetching NS records for %s: %s", zoneName, err.Error())
 		// just ignoring it
@@ -158,6 +161,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 
 	resourceGroup, zoneName := splitZoneid(zone.Id())
 	results, err := h.recordsClient.ListAllByDNSZoneComplete(h.ctx, resourceGroup, zoneName, nil, "")
+	h.metrics.AddRequests("RecordSetsClient_ListAllByDNSZoneComplete", 1)
 	if err != nil {
 		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
 	}
@@ -215,7 +219,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 			continue
 		}
 
-		err := exec.apply(r.Action, recordType, rset)
+		err := exec.apply(r.Action, recordType, rset, h.metrics)
 		if err != nil {
 			failed++
 			logger.Infof("Apply failed with %s", err.Error())

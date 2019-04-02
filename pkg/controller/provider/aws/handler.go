@@ -30,17 +30,18 @@ import (
 )
 
 type Handler struct {
-	config provider.DNSHandlerConfig
-
-	sess *session.Session
-	r53  *route53.Route53
+	config  provider.DNSHandlerConfig
+	metrics provider.Metrics
+	sess    *session.Session
+	r53     *route53.Route53
 }
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
+func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
 	this := &Handler{
-		config: *config,
+		config:  *config,
+		metrics: metrics,
 	}
 	akid := this.config.Properties["AWS_ACCESS_KEY_ID"]
 	if akid == "" {
@@ -73,9 +74,11 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 		for _, zone := range resp.HostedZones {
 			raw = append(raw, zone)
 		}
+		this.metrics.AddRequests(provider.M_PLISTZONES, 1)
 		return true
 	}
 
+	this.metrics.AddRequests(provider.M_LISTZONES, 1)
 	err := this.r53.ListHostedZonesPages(&route53.ListHostedZonesInput{}, aggr)
 	if err != nil {
 		return nil, err
@@ -129,9 +132,10 @@ func (this *Handler) handleRecordSets(zoneid string, f func(rs *route53.Resource
 		for _, r := range resp.ResourceRecordSets {
 			f(r)
 		}
+		this.metrics.AddRequests(provider.M_PLISTRECORDS, 1)
 		return true
 	}
-
+	this.metrics.AddRequests(provider.M_LISTRECORDS, 1)
 	return this.r53.ListResourceRecordSetsPages(inp, aggr)
 }
 
@@ -152,5 +156,5 @@ func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNS
 		logger.Infof("no changes in dryrun mode for AWS")
 		return nil
 	}
-	return exec.submitChanges()
+	return exec.submitChanges(this.metrics)
 }

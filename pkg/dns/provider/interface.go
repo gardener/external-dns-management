@@ -51,7 +51,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 		cttl = 60
 	}
 	dryrun, _ := c.GetBoolOption(OPT_DRYRUN)
-	return Config{Ident: ident, Dryrun: dryrun, TTL: int64(ttl), CacheTTL: time.Duration(cttl)*time.Second, Factory: factory}
+	return Config{Ident: ident, Dryrun: dryrun, TTL: int64(ttl), CacheTTL: time.Duration(cttl) * time.Second, Factory: factory}
 }
 
 type DNSHostedZone interface {
@@ -90,21 +90,32 @@ type DNSZoneState interface {
 	GetDNSSets() dns.DNSSets
 }
 
+const (
+	M_LISTZONES  = "list_zones"
+	M_PLISTZONES = "list_zones_pages"
+
+	M_LISTRECORDS  = "list_records"
+	M_PLISTRECORDS = "list_records_pages"
+
+	M_UPDATERECORDS = "update_records"
+	M_PUPDATEREORDS = "update_records_pages"
+)
+
 type Metrics interface {
 	AddRequests(request_type string, n int)
 }
 
 type DNSHandler interface {
-	GetZones(Metrics) (DNSHostedZones, error)
-	GetZoneState(DNSHostedZone,Metrics) (DNSZoneState, error)
-	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest,m Metrics) error
+	GetZones() (DNSHostedZones, error)
+	GetZoneState(DNSHostedZone) (DNSZoneState, error)
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 type DNSHandlerFactory interface {
 	TypeCode() string
-	Create(logger logger.LogContext, config *DNSHandlerConfig) (DNSHandler, error)
+	Create(logger logger.LogContext, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error)
 	IsResponsibleFor(object *dnsutils.DNSProviderObject) bool
 }
 

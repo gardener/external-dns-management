@@ -36,16 +36,18 @@ type Handler struct {
 	credentials *google.Credentials
 	client      *http.Client
 	ctx         context.Context
+	metrics     provider.Metrics
 	service     *googledns.Service
 }
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
+func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
 	var err error
 
 	this := &Handler{
-		config: *config,
+		config:  *config,
+		metrics: metrics,
 	}
 	scopes := []string{
 		//	"https://www.googleapis.com/auth/compute",
@@ -85,9 +87,11 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 		for _, zone := range resp.ManagedZones {
 			raw = append(raw, zone)
 		}
+		this.metrics.AddRequests(provider.M_PLISTZONES, 1)
 		return nil
 	}
 
+	this.metrics.AddRequests(provider.M_LISTZONES, 1)
 	if err := this.service.ManagedZones.List(this.credentials.ProjectID).Pages(this.ctx, f); err != nil {
 		return nil, err
 	}
@@ -116,8 +120,10 @@ func (this *Handler) handleRecordSets(zoneid string, f func(r *googledns.Resourc
 		for _, r := range resp.Rrsets {
 			f(r)
 		}
+		this.metrics.AddRequests(provider.M_PLISTRECORDS, 1)
 		return nil
 	}
+	this.metrics.AddRequests(provider.M_LISTRECORDS, 1)
 	return this.service.ResourceRecordSets.List(this.credentials.ProjectID, zoneid).Pages(this.ctx, aggr)
 }
 
@@ -151,5 +157,5 @@ func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNS
 		logger.Infof("no changes in dryrun mode for AWS")
 		return nil
 	}
-	return exec.submitChanges()
+	return exec.submitChanges(this.metrics)
 }

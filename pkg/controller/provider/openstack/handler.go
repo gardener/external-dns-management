@@ -36,7 +36,14 @@ type Handler struct {
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
+type nullMetrics struct{}
+
+var _ provider.Metrics = &nullMetrics{}
+
+func (m *nullMetrics) AddRequests(request_type string, n int) {
+}
+
+func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
 	authConfig, err := readAuthConfig(config)
 	if err != nil {
 		return nil, err
@@ -50,7 +57,7 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig) (pr
 	h := Handler{
 		config: *config,
 		ctx:    config.Context,
-		client: designateClient{serviceClient},
+		client: designateClient{serviceClient: serviceClient, metrics: metrics},
 	}
 	return &h, nil
 }
