@@ -39,6 +39,12 @@ type testzone struct {
 	nextID int
 }
 
+var _ provider.DNSHostedZone = &testzone{}
+
+func (tz *testzone) ProviderType() string {
+	return "test"
+}
+
 func (tz *testzone) buildNextId() string {
 	d := fmt.Sprintf("rs-%04d", tz.nextID)
 	tz.nextID++
