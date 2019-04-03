@@ -38,6 +38,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
+const MSG_PRESERVED = "errornous entry preserved in provider"
+
 type Entry struct {
 	lock      sync.Mutex
 	object    *dnsutils.DNSEntryObject
@@ -240,8 +242,7 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, own
 	}
 
 	if utils.StringValue(status.ProviderType) != resp {
-		err = state.RemoveFinalizer(object)
-		return reconcile.RepeatOnError(logger, err)
+		return reconcile.RepeatOnError(logger, state.RemoveFinalizer(object))
 	}
 
 	logger.Infof("%s ENTRY", op)
@@ -327,8 +328,16 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, own
 		}
 		mod.AssureStringPtrValue(&status.Zone, zoneid)
 		if err != nil {
-			mod.AssureStringValue(&status.State, api.STATE_ERROR)
-			mod.AssureStringPtrValue(&status.Message, err.Error())
+			if status.State != api.STATE_STALE {
+				mod.AssureStringValue(&status.State, api.STATE_ERROR)
+				mod.AssureStringPtrValue(&status.Message, err.Error())
+			} else {
+				if strings.HasPrefix(*status.Message, MSG_PRESERVED) {
+					mod.AssureStringPtrValue(&status.Message, MSG_PRESERVED+": "+err.Error())
+				} else {
+					mod.AssureStringPtrValue(&status.Message, err.Error())
+				}
+			}
 		} else {
 			if zoneid == "" {
 				mod.AssureStringValue(&status.State, api.STATE_ERROR)

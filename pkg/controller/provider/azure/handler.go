@@ -92,6 +92,10 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 
 var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
 
+func (h *Handler) ProviderType() string {
+	return TYPE_CODE
+}
+
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	zones := provider.DNSHostedZones{}
 
@@ -115,6 +119,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 
 		// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
 		hostedZone := provider.NewDNSHostedZone(
+			h.ProviderType(),
 			resourceGroup+"/"+*item.Name,
 			dns.NormalizeHostname(*item.Name),
 			"",

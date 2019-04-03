@@ -18,6 +18,7 @@ package provider
 
 import (
 	"fmt"
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	"strings"
 	"sync"
 	"time"
@@ -232,14 +233,19 @@ func (this *state) removeProviderForZone(zoneid string, p resources.ObjectName) 
 func (this *state) LookupProvider(dnsname string) DNSProvider {
 	this.lock.Lock()
 	defer this.lock.Unlock()
+	return this.lookupProvider(dnsname)
+}
 
+func (this *state) lookupProvider(dnsname string) DNSProvider {
 	var found DNSProvider
 	match := -1
 	for _, p := range this.providers {
-		n := p.Match(dnsname)
-		if n > 0 {
-			if match < n {
-				found = p
+		if p.IsValid() {
+			n := p.Match(dnsname)
+			if n > 0 {
+				if match < n {
+					found = p
+				}
 			}
 		}
 	}
@@ -368,6 +374,12 @@ func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, 
 loop:
 	for dns, e := range this.dnsnames {
 		if e.IsValid() {
+			provider := this.lookupProvider(dns)
+			if provider == nil {
+				logger.Infof("no valid provider found for %q", dns)
+				stale[e.DNSName()] = e
+				continue
+			}
 			if dnsutils.Match(dns, domain) {
 				for _, excl := range zone.ForwardedDomains() {
 					if dnsutils.Match(dns, excl) {
@@ -410,9 +422,15 @@ func (this *state) GetZoneForName(name string) (string, int) {
 func (this *state) getZoneForName(hostname string) (string, int) {
 	length := 0
 	found := ""
+loop:
 	for zoneid, zone := range this.zones {
 		name := zone.Domain()
 		if dnsutils.Match(hostname, name) {
+			for _, f := range zone.ForwardedDomains() {
+				if dnsutils.Match(hostname, f) {
+					continue loop
+				}
+			}
 			if length < len(name) {
 				length = len(name)
 				found = zoneid
@@ -446,51 +464,59 @@ func (this *state) DecodeZoneCommand(name string) string {
 	return ""
 }
 
-func (this *state) updateZones(logger logger.LogContext, provider *dnsProviderVersion) bool {
+func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderVersion) bool {
+	var name resources.ObjectName
 	keeping := []string{}
 	modified := false
 	result := map[string]*dnsHostedZone{}
-	for _, z := range provider.zones {
-		zone := this.zones[z.Id()]
-		if zone == nil {
-			modified = true
-			zone = newDNSHostedZone(z)
-			this.zones[z.Id()] = zone
-			logger.Infof("adding hosted zone %q (%s)", z.Id(), z.Domain())
-			this.triggerHostedZone(zone.Id())
-		}
-		zone.update(z)
+	if new != nil {
+		name = new.ObjectName()
+		for _, z := range new.zones {
+			zone := this.zones[z.Id()]
+			if zone == nil {
+				modified = true
+				zone = newDNSHostedZone(z)
+				this.zones[z.Id()] = zone
+				logger.Infof("adding hosted zone %q (%s)", z.Id(), z.Domain())
+				this.triggerHostedZone(zone.Id())
+			}
+			zone.update(z)
 
-		if this.isProviderForZone(z.Id(), provider.ObjectName()) {
-			keeping = append(keeping, fmt.Sprintf("keeping provider %q for hosted zone %q (%s)", provider.ObjectName(), z.Id(), z.Domain()))
-		} else {
-			modified = true
-			logger.Infof("adding provider %q for hosted zone %q (%s)", provider.ObjectName(), z.Id(), z.Domain())
-			this.addProviderForZone(z.Id(), provider.ObjectName())
+			if this.isProviderForZone(z.Id(), name) {
+				keeping = append(keeping, fmt.Sprintf("keeping provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain()))
+			} else {
+				modified = true
+				logger.Infof("adding provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain())
+				this.addProviderForZone(z.Id(), name)
+			}
+			result[z.Id()] = zone
 		}
-		result[z.Id()] = zone
 	}
 
-	old := this.providerzones[provider.ObjectName()]
-	if old != nil {
-		for n, z := range old {
-			if result[n] == nil {
-				modified = true
-				this.removeProviderForZone(n, provider.ObjectName())
-				logger.Infof("removing provider %q for hosted zone %q (%s)", provider.ObjectName(), z.Id, z.Domain)
-				if !this.hasProvidersForZone(n) {
-					logger.Infof("removing hosted zone %q (%s)", z.Id, z.Domain)
-					delete(this.zones, n)
+	if last != nil {
+		name = last.ObjectName()
+		old := this.providerzones[name]
+		if old != nil {
+			for n, z := range old {
+				if result[n] == nil {
+					modified = true
+					this.removeProviderForZone(n, name)
+					logger.Infof("removing provider %q for hosted zone %q (%s)", name, z.Id, z.Domain)
+					if !this.hasProvidersForZone(n) {
+						logger.Infof("removing hosted zone %q (%s)", z.Id, z.Domain)
+						metrics.DeleteZone(z.ProviderType(), z.Id())
+						delete(this.zones, n)
+					}
 				}
 			}
 		}
-	}
-	if modified {
-		for _, m := range keeping {
-			logger.Info(m)
+		if modified {
+			for _, m := range keeping {
+				logger.Info(m)
+			}
 		}
 	}
-	this.providerzones[provider.ObjectName()] = result
+	this.providerzones[name] = result
 	return modified
 }
 
@@ -520,27 +546,36 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 	}
 
 	new, status := updateDNSProvider(logger, this, obj, last)
-	if new == nil {
-		return status
-	}
-
-	if last != nil && last.account != new.account {
+	if last != nil && last.account != nil && last.account != new.account {
 		this.accountCache.Release(logger, last.account, obj.ObjectName())
 	}
 
-	entries := Entries{}
 	this.lock.Lock()
 	defer this.lock.Unlock()
+
+	this.providers[new.ObjectName()] = new
+
+	mod := this.updateZones(logger, last, new)
+	if !status.IsSucceeded() {
+		logger.Infof("errornous provider: %s", status.Error)
+		if last != nil {
+			logger.Infof("trigger old zones")
+			for _, z := range last.zones {
+				this.triggerHostedZone(z.Id())
+			}
+		}
+		return status
+	}
+
+	entries := Entries{}
 
 	if last == nil || !new.equivalentTo(last) {
 		this.addEntriesForProvider(last, entries)
 		this.addEntriesForProvider(new, entries)
-		this.providers[new.ObjectName()] = new
 	}
 	this.registerSecret(logger, new.secret, new)
 
-	mod := this.updateZones(logger, new)
-	if mod {
+	if mod || (last != nil && !last.IsValid() && new.IsValid()) {
 		logger.Infof("found %d zones: ", len(new.zones))
 		for _, z := range new.zones {
 			logger.Infof("    %s: %s", z.Id(), z.Domain())
@@ -549,6 +584,12 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 			}
 		}
 		this.triggerEntries(logger, entries)
+	}
+	if last != nil && !last.IsValid() && new.IsValid() {
+		logger.Infof("trigger new zones for repaired provider")
+		for _, z := range new.zones {
+			this.triggerHostedZone(z.Id())
+		}
 	}
 	return status
 }
@@ -648,6 +689,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 					if err != nil {
 						logger.Errorf("cannot cleanup zone %q: %s", n, err)
 					}
+					metrics.DeleteZone(obj.Spec().Type, n)
 					delete(this.zones, n)
 				} else {
 					// delete entries in hosted zone exclusively covered by this provider using
@@ -862,7 +904,6 @@ func (this *state) AddEntry(logger logger.LogContext, object *dnsutils.DNSEntryO
 func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHostedZone, DNSProviders, Entries, DNSNames) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-
 	zone := this.zones[zoneid]
 	if zone == nil {
 		return nil, nil, nil, nil
@@ -888,8 +929,10 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entries Entries, stale DNSNames, providers DNSProviders) error {
 	zone := this.zones[zoneid]
 	if zone == nil {
+		metrics.DeleteZone(zone.ProviderType(), zoneid)
 		return nil
 	}
+	metrics.ReportZoneEntries(zone.ProviderType(), zoneid, len(entries))
 	changes := NewChangeModel(logger, this.ownerids, stale, this.config, zone, providers)
 	err := changes.Setup()
 	if err != nil {

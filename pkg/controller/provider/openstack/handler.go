@@ -100,6 +100,10 @@ func readAuthConfig(config *provider.DNSHandlerConfig) (*authConfig, error) {
 	return &authConfig, nil
 }
 
+func (h *Handler) ProviderType() string {
+	return TYPE_CODE
+}
+
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	hostedZones := provider.DNSHostedZones{}
 
@@ -107,6 +111,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 		forwarded := h.collectForwardedSubzones(zone)
 
 		hostedZone := provider.NewDNSHostedZone(
+			h.ProviderType(),
 			zone.ID,
 			dns.NormalizeHostname(zone.Name),
 			"",

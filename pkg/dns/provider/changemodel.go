@@ -71,8 +71,15 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 		if !ok {
 			if s.IsOwnedBy(model.owners) {
 				if e := model.IsStale(s.Name); e != nil {
-					model.Infof("found stale set '%s' -> preserve unchanged", s.Name)
-					e.UpdateStatus(logger, v1alpha1.STATE_STALE, "errornous entry presevered in provider", nil)
+					status := e.object.Status()
+					msg := MSG_PRESERVED
+					if status.State == v1alpha1.STATE_ERROR || status.State == v1alpha1.STATE_INVALID {
+						msg = msg + ": " + utils.StringValue(status.Message)
+						model.Infof("found stale set '%s': %s -> preserve unchanged", utils.StringValue(status.Message), s.Name)
+					} else {
+						model.Infof("found stale set '%s' -> preserve unchanged", s.Name)
+					}
+					e.UpdateStatus(logger, v1alpha1.STATE_STALE, msg, nil)
 				} else {
 					model.Infof("found unapplied managed set '%s'", s.Name)
 					for ty := range s.Sets {

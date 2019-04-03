@@ -68,6 +68,10 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	return this, nil
 }
 
+func (h *Handler) ProviderType() string {
+	return TYPE_CODE
+}
+
 func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 	rt := provider.M_LISTZONES
 	raw := []*route53.HostedZone{}
@@ -101,7 +105,7 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 		}
 		this.handleRecordSets(id, aggr)
 
-		hostedZone := provider.NewDNSHostedZone(
+		hostedZone := provider.NewDNSHostedZone(this.ProviderType(),
 			id, dns.NormalizeHostname(domain), aws.StringValue(z.Id), forwarded)
 		zones = append(zones, hostedZone)
 	}

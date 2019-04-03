@@ -55,6 +55,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 }
 
 type DNSHostedZone interface {
+	ProviderType() string
 	Key() string
 	Id() string
 	Domain() string
@@ -106,6 +107,7 @@ type Metrics interface {
 }
 
 type DNSHandler interface {
+	ProviderType() string
 	GetZones() (DNSHostedZones, error)
 	GetZoneState(DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error

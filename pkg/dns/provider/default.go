@@ -39,10 +39,11 @@ func NewDNSZoneState(sets dns.DNSSets) DNSZoneState {
 ////////////////////////////////////////////////////////////////////////////////
 
 type DefaultDNSHostedZone struct {
-	id        string   // identifying id for provider api
-	domain    string   // base domain for zone
-	forwarded []string // forwarded sub domains
-	key       string   // internal key used by provider (not used by this lib)
+	providerType string   // provider type
+	id           string   // identifying id for provider api
+	domain       string   // base domain for zone
+	forwarded    []string // forwarded sub domains
+	key          string   // internal key used by provider (not used by this lib)
 }
 
 func (this *DefaultDNSHostedZone) Key() string {
@@ -50,6 +51,10 @@ func (this *DefaultDNSHostedZone) Key() string {
 		return this.key
 	}
 	return this.id
+}
+
+func (this *DefaultDNSHostedZone) ProviderType() string {
+	return this.providerType
 }
 
 func (this *DefaultDNSHostedZone) Id() string {
@@ -64,6 +69,6 @@ func (this *DefaultDNSHostedZone) ForwardedDomains() []string {
 	return this.forwarded
 }
 
-func NewDNSHostedZone(id, domain, key string, forwarded []string) DNSHostedZone {
-	return &DefaultDNSHostedZone{id: id, key: key, domain: domain, forwarded: forwarded}
+func NewDNSHostedZone(ptype string, id, domain, key string, forwarded []string) DNSHostedZone {
+	return &DefaultDNSHostedZone{providerType: ptype, id: id, key: key, domain: domain, forwarded: forwarded}
 }

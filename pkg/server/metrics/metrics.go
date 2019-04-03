@@ -54,9 +54,9 @@ var (
 	Entries = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "dns_entries",
-			Help: "Total number of dns entries per account",
+			Help: "Total number of dns entries per hosted zone",
 		},
-		[]string{"providertype", "accounthash"},
+		[]string{"providertype", "zone"},
 	)
 )
 
@@ -113,6 +113,10 @@ func AddRequests(ptype, account, requestType string, no int) {
 	Requests.WithLabelValues(ptype, account, requestType).Add(float64(no))
 }
 
-func ReportAccountEntries(ptype, account string, amount int) {
-	Entries.WithLabelValues(ptype, account).Set(float64(amount))
+func ReportZoneEntries(ptype, zone string, amount int) {
+	Entries.WithLabelValues(ptype, zone).Set(float64(amount))
+}
+
+func DeleteZone(ptype, zone string) {
+	Entries.DeleteLabelValues(ptype, zone)
 }

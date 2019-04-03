@@ -64,10 +64,9 @@ func newProvider() *dnsProvider {
 ///////////////////////////////////////////////////////////////////////////////
 
 type DNSAccount struct {
-	lock         sync.Mutex
-	handler      DNSHandler
-	config       utils.Properties
-	providerType string
+	lock    sync.Mutex
+	handler DNSHandler
+	config  utils.Properties
 
 	hash    string
 	clients resources.ObjectNameSet
@@ -83,11 +82,11 @@ var _ DNSHandler = &DNSAccount{}
 var _ Metrics = &DNSAccount{}
 
 func (this *DNSAccount) AddRequests(requestType string, n int) {
-	metrics.AddRequests(this.providerType, this.hash, requestType, n)
+	metrics.AddRequests(this.handler.ProviderType(), this.hash, requestType, n)
 }
 
-func (this *DNSAccount) Type() string {
-	return this.providerType
+func (this *DNSAccount) ProviderType() string {
+	return this.handler.ProviderType()
 }
 
 func (this *DNSAccount) Hash() string {
@@ -142,7 +141,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			Config:     provider.Spec().ProviderConfig,
 			DryRun:     state.GetConfig().Dryrun,
 		}
-		a = &DNSAccount{providerType: provider.Spec().Type, ttl: this.ttl, config: props, hash: h, clients: resources.ObjectNameSet{}}
+		a = &DNSAccount{ttl: this.ttl, config: props, hash: h, clients: resources.ObjectNameSet{}}
 		a.handler, err = state.GetHandlerFactory().Create(logger, &cfg, a)
 		if err != nil {
 			return nil, err
@@ -169,7 +168,7 @@ func (this *AccountCache) Release(logger logger.LogContext, a *DNSAccount, name 
 	if len(a.clients) == 0 {
 		logger.Infof("releasing account for %s (%s)", name, a.Hash())
 		delete(this.cache, a.hash)
-		metrics.DeleteAccount(a.Type(), a.Hash())
+		metrics.DeleteAccount(a.ProviderType(), a.Hash())
 	} else {
 		logger.Infof("keeping account for %s (%s): %d client(s)", name, a.Hash(), len(a.clients))
 	}
@@ -205,6 +204,7 @@ type dnsProviderVersion struct {
 
 	object  *dnsutils.DNSProviderObject
 	account *DNSAccount
+	valid   bool
 
 	secret      resources.ObjectName
 	def_include utils.StringSet
@@ -214,6 +214,10 @@ type dnsProviderVersion struct {
 
 	included utils.StringSet
 	excluded utils.StringSet
+}
+
+func (this *dnsProviderVersion) IsValid() bool {
+	return this.valid
 }
 
 func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
@@ -282,7 +286,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 
 	this.account, err = state.GetDNSAccount(logger, provider, props)
 	if err != nil {
-		return nil, reconcile.Delay(logger, err)
+		return this, reconcile.Delay(logger, err)
 	}
 
 	dspec := provider.DNSProvider().Spec.Domains
@@ -296,7 +300,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 
 	this.zones, err = this.account.GetZones()
 	if err != nil {
-		return nil, this.failed(logger, false, fmt.Errorf("cannot get zones: %s", err), true)
+		return this, this.failed(logger, false, fmt.Errorf("cannot get zones: %s", err), true)
 	}
 
 	included, err := filterByZones(this.def_include, this.zones)
@@ -310,14 +314,14 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 
 	if len(this.def_include) == 0 {
 		if len(this.zones) == 0 {
-			return nil, this.failed(logger, false, fmt.Errorf("no hosted zones found"), false)
+			return this, this.failed(logger, false, fmt.Errorf("no hosted zones found"), false)
 		}
 		for _, z := range this.zones {
 			included.Add(z.Domain())
 		}
 	} else {
 		if len(included) == 0 {
-			return nil, this.failed(logger, false, fmt.Errorf("no domain matching hosting zones"), false)
+			return this, this.failed(logger, false, fmt.Errorf("no domain matching hosting zones"), false)
 
 		}
 	}
@@ -341,6 +345,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	this.included = included
 	this.excluded = excluded
 
+	this.valid = true
 	return this, this.succeeded(logger, this.object.SetDomains(included, excluded))
 }
 

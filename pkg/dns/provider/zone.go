@@ -56,6 +56,10 @@ func (this *dnsHostedZone) Release() {
 	this.busy = false
 }
 
+func (this *dnsHostedZone) ProviderType() string {
+	return this.zone.ProviderType()
+}
+
 func (this *dnsHostedZone) Id() string {
 	return this.zone.Id()
 }

@@ -56,6 +56,10 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	return this, nil
 }
 
+func (h *Handler) ProviderType() string {
+	return TYPE_CODE
+}
+
 func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 	raw := []alidns.Domain{}
 	{
@@ -86,7 +90,9 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 			if err != nil {
 				return nil, err
 			}
-			hostedZone := provider.NewDNSHostedZone(z.DomainId, z.DomainName, z.DomainName, forwarded)
+			hostedZone := provider.NewDNSHostedZone(
+				this.ProviderType(), z.DomainId,
+				z.DomainName, z.DomainName, forwarded)
 			zones = append(zones, hostedZone)
 		}
 	}

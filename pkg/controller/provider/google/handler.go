@@ -81,6 +81,10 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	return this, nil
 }
 
+func (h *Handler) ProviderType() string {
+	return TYPE_CODE
+}
+
 func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 	rt := provider.M_LISTZONES
 	raw := []*googledns.ManagedZone{}
@@ -108,7 +112,7 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 			}
 		}
 		this.handleRecordSets(z.Name, f)
-		hostedZone := provider.NewDNSHostedZone(
+		hostedZone := provider.NewDNSHostedZone(this.ProviderType(),
 			z.Name, dns.NormalizeHostname(z.DnsName), "", forwarded)
 		zones = append(zones, hostedZone)
 	}
