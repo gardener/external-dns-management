@@ -31,7 +31,8 @@ func IsResponsibleFor(logger logger.LogContext, class string, obj resources.Obje
 		return true
 	}
 	if class != oclass {
-		logger.Infof("annotated dns class %q does not match specified class %q -> skip ", oclass, class)
+		logger.Debugf("%s: annotated dns class %q does not match specified class %q -> skip ",
+			obj.ObjectName(), oclass, class)
 		return false
 	}
 	return true

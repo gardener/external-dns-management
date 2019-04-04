@@ -19,6 +19,7 @@ package provider
 import (
 	"fmt"
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
+	"k8s.io/apimachinery/pkg/runtime"
 	"strings"
 	"sync"
 	"time"
@@ -43,6 +44,7 @@ type DNSNames map[string]*Entry
 
 type state struct {
 	lock       sync.RWMutex
+	class      string
 	controller controller.Interface
 	config     Config
 
@@ -69,11 +71,12 @@ type state struct {
 	initialized bool
 }
 
-func NewDNSState(controller controller.Interface, config Config) *state {
+func NewDNSState(controller controller.Interface, class string, config Config) *state {
 	controller.Infof("using default ttl: %d", config.TTL)
 	controller.Infof("using identifier : %s", config.Ident)
 	controller.Infof("dry run mode     : %t", config.Dryrun)
 	return &state{
+		class:           class,
 		controller:      controller,
 		config:          config,
 		accountCache:    NewAccountCache(config.CacheTTL),
@@ -94,44 +97,44 @@ func NewDNSState(controller controller.Interface, config Config) *state {
 	}
 }
 
+func (this *state) IsResponsibleFor(logger logger.LogContext, obj resources.Object) bool {
+	return dnsutils.IsResponsibleFor(logger, this.class, obj)
+}
+
 func (this *state) Setup() {
-	cres := this.controller.GetMainCluster().Resources()
 	processors, err := this.controller.GetIntOption(OPT_SETUP)
 	if err != nil || processors <= 0 {
 		processors = 5
 	}
 	this.controller.Infof("using %d parallel workers for initialization", processors)
-	{
-		this.controller.Infof("### setup providergroups")
-		res, _ := cres.GetByExample(&api.DNSProvider{})
-		list, _ := res.ListCached(labels.Everything())
-		dnsutils.ProcessElements(list, func(e resources.Object) {
-			p := dnsutils.DNSProvider(e)
-			if this.GetHandlerFactory().IsResponsibleFor(p) {
-				this.UpdateProvider(this.controller.NewContext("provider", p.ObjectName().String()), p)
-			}
-		}, processors)
-	}
-	{
-		this.controller.Infof("### setup owners")
-		res, _ := cres.GetByExample(&api.DNSOwner{})
-		list, _ := res.ListCached(labels.Everything())
-		dnsutils.ProcessElements(list, func(e resources.Object) {
-			p := dnsutils.DNSOwner(e)
-			this.UpdateOwner(this.controller.NewContext("owner", p.ObjectName().String()), p)
-		}, processors)
-	}
-	{
-		this.controller.Infof("### setup entries")
-		res, _ := cres.GetByExample(&api.DNSEntry{})
-		list, _ := res.ListCached(labels.Everything())
-		dnsutils.ProcessElements(list, func(e resources.Object) {
-			p := dnsutils.DNSEntry(e)
-			this.UpdateEntry(this.controller.NewContext("entry", p.ObjectName().String()), p)
-		}, processors)
-	}
+	this.setupFor(&api.DNSProvider{}, "providers", func(e resources.Object) {
+		p := dnsutils.DNSProvider(e)
+		if this.GetHandlerFactory().IsResponsibleFor(p) {
+			this.UpdateProvider(this.controller.NewContext("provider", p.ObjectName().String()), p)
+		}
+	}, processors)
+	this.setupFor(&api.DNSOwner{}, "owners", func(e resources.Object) {
+		p := dnsutils.DNSOwner(e)
+		this.UpdateOwner(this.controller.NewContext("owner", p.ObjectName().String()), p)
+	}, processors)
+	this.setupFor(&api.DNSEntry{}, "entries", func(e resources.Object) {
+		p := dnsutils.DNSEntry(e)
+		this.UpdateEntry(this.controller.NewContext("entry", p.ObjectName().String()), p)
+	}, processors)
+
 	this.initialized = true
 	this.controller.Infof("setup done - starting reconcilation")
+}
+
+func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.Object), processors int) {
+	this.controller.Infof("### setup %s", msg)
+	res, _ := this.controller.GetMainCluster().Resources().GetByExample(obj)
+	list, _ := res.ListCached(labels.Everything())
+	dnsutils.ProcessElements(list, func(e resources.Object) {
+		if this.IsResponsibleFor(this.controller, e) {
+			exec(e)
+		}
+	}, processors)
 }
 
 func (this *state) Start() {

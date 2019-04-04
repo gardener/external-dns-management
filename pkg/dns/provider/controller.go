@@ -103,7 +103,7 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 		class:      class,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewDNSState(c, NewConfigForController(c, factory))
+				return NewDNSState(c, class, NewConfigForController(c, factory))
 			}).(*state),
 	}, nil
 }
@@ -131,19 +131,19 @@ func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.
 func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	switch {
 	case obj.IsA(&api.DNSOwner{}):
-		if this.IsResponsibleFor(logger, obj) {
+		if this.state.IsResponsibleFor(logger, obj) {
 			return this.state.UpdateOwner(logger, dnsutils.DNSOwner(obj))
 		} else {
 			return this.state.OwnerDeleted(logger, obj.Key())
 		}
 	case obj.IsA(&api.DNSProvider{}):
-		if this.IsResponsibleFor(logger, obj) {
+		if this.state.IsResponsibleFor(logger, obj) {
 			return this.state.UpdateProvider(logger, dnsutils.DNSProvider(obj))
 		} else {
 			return this.state.RemoveProvider(logger, dnsutils.DNSProvider(obj))
 		}
 	case obj.IsA(&api.DNSEntry{}):
-		if this.IsResponsibleFor(logger, obj) {
+		if this.state.IsResponsibleFor(logger, obj) {
 			return this.state.UpdateEntry(logger, dnsutils.DNSEntry(obj))
 		} else {
 			return this.state.EntryDeleted(logger, obj.Key())
@@ -179,8 +179,4 @@ func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterO
 		return this.state.EntryDeleted(logger, key.ObjectKey())
 	}
 	return reconcile.Succeeded(logger)
-}
-
-func (this *reconciler) IsResponsibleFor(logger logger.LogContext, obj resources.Object) bool {
-	return dnsutils.IsResponsibleFor(logger, this.class, obj)
 }
