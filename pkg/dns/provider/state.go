@@ -33,7 +33,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/controller-manager-library/pkg/resources/access"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -233,26 +232,30 @@ func (this *state) removeProviderForZone(zoneid string, p resources.ObjectName) 
 	}
 }
 
-func (this *state) LookupProvider(dnsname string) DNSProvider {
+func (this *state) LookupProvider(e *Entry) (DNSProvider, error) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
-	return this.lookupProvider(dnsname)
+	return this.lookupProvider(e)
 }
 
-func (this *state) lookupProvider(dnsname string) DNSProvider {
+func (this *state) lookupProvider(e *Entry) (DNSProvider, error) {
+	var err error
 	var found DNSProvider
 	match := -1
 	for _, p := range this.providers {
 		if p.IsValid() {
-			n := p.Match(dnsname)
+			n := p.Match(e.DNSName())
 			if n > 0 {
 				if match < n {
-					found = p
+					err = CheckAccess(e.Object(), p.Object())
+					if err == nil {
+						found = p
+					}
 				}
 			}
 		}
 	}
-	return found
+	return found, err
 }
 
 func (this *state) GetSecretUsage(name resources.ObjectName) []resources.Object {
@@ -371,9 +374,13 @@ func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, 
 loop:
 	for dns, e := range this.dnsnames {
 		if e.IsValid() {
-			provider := this.lookupProvider(dns)
-			if provider == nil {
-				logger.Infof("no valid provider found for %q(%s)", e.ObjectName(), dns)
+			provider, err := this.lookupProvider(e)
+			if provider == nil && !e.IsDeleting() {
+				if err != nil {
+					logger.Infof("no valid provider found for %q(%s): %s", e.ObjectName(), dns, err)
+				} else {
+					logger.Infof("no valid provider found for %q(%s)", e.ObjectName(), dns)
+				}
 				stale[e.DNSName()] = e
 				continue
 			}
@@ -395,8 +402,10 @@ loop:
 				}
 			}
 		} else {
-			logger.Infof("invalid entry %q (%s)", e.ObjectName(), e.DNSName())
-			stale[e.DNSName()] = e
+			if !e.IsDeleting() {
+				logger.Infof("invalid entry %q (%s)", e.ObjectName(), e.DNSName())
+				stale[e.DNSName()] = e
+			}
 		}
 	}
 	return entries, stale
@@ -767,32 +776,9 @@ func (this *state) updateEntry(logger logger.LogContext, op string, object *dnsu
 	}
 
 	if err == nil {
-		provider := this.LookupProvider(object.GetDNSName())
-		if provider != nil {
-			owners := object.GetOwners()
-			if len(owners) > 0 {
-				for o := range owners {
-					ok, msg, aerr := access.Allowed(o, "use", provider.Object().ClusterKey())
-					if !ok {
-						if aerr != nil {
-							err = fmt.Errorf("%s: %s: %s", o, msg, err)
-						} else {
-							err = fmt.Errorf("%s: %s", o, msg)
-						}
-					}
-				}
-			} else {
-				o := object.ClusterKey()
-				ok, msg, aerr := access.Allowed(o, "use", provider.Object().ClusterKey())
-				if !ok {
-					if aerr != nil {
-						err = fmt.Errorf("%s: %s: %s", o, msg, err)
-					} else {
-						err = fmt.Errorf("%s: %s", o, msg)
-					}
-				}
-			}
-		} else {
+		var provider DNSProvider
+		provider, err = this.LookupProvider(new)
+		if provider == nil && err == nil {
 			if newzone != "" {
 				err = fmt.Errorf("no matching %s provider found", this.GetHandlerFactory().TypeCode())
 			}
