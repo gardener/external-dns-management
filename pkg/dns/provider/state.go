@@ -95,35 +95,36 @@ func NewDNSState(controller controller.Interface, config Config) *state {
 }
 
 func (this *state) Setup() {
-	resources := this.controller.GetMainCluster().Resources()
+	cres := this.controller.GetMainCluster().Resources()
+	processors := 10
 	{
-		this.controller.Infof("setup providergroups")
-		res, _ := resources.GetByExample(&api.DNSProvider{})
+		this.controller.Infof("### setup providergroups")
+		res, _ := cres.GetByExample(&api.DNSProvider{})
 		list, _ := res.ListCached(labels.Everything())
-		for _, e := range list {
+		dnsutils.ProcessElements(list, func(e resources.Object) {
 			p := dnsutils.DNSProvider(e)
 			if this.GetHandlerFactory().IsResponsibleFor(p) {
 				this.UpdateProvider(this.controller.NewContext("provider", p.ObjectName().String()), p)
 			}
-		}
+		}, processors)
 	}
 	{
-		this.controller.Infof("setup owners")
-		res, _ := resources.GetByExample(&api.DNSOwner{})
+		this.controller.Infof("### setup owners")
+		res, _ := cres.GetByExample(&api.DNSOwner{})
 		list, _ := res.ListCached(labels.Everything())
-		for _, e := range list {
+		dnsutils.ProcessElements(list, func(e resources.Object) {
 			p := dnsutils.DNSOwner(e)
 			this.UpdateOwner(this.controller.NewContext("owner", p.ObjectName().String()), p)
-		}
+		}, processors)
 	}
 	{
-		this.controller.Infof("setup entries")
-		res, _ := resources.GetByExample(&api.DNSEntry{})
+		this.controller.Infof("### setup entries")
+		res, _ := cres.GetByExample(&api.DNSEntry{})
 		list, _ := res.ListCached(labels.Everything())
-		for _, e := range list {
+		dnsutils.ProcessElements(list, func(e resources.Object) {
 			p := dnsutils.DNSEntry(e)
 			this.UpdateEntry(this.controller.NewContext("entry", p.ObjectName().String()), p)
-		}
+		}, processors)
 	}
 	this.initialized = true
 	this.controller.Infof("setup done - starting reconcilation")
