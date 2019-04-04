@@ -272,7 +272,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 			ref.Namespace = provider.GetNamespace()
 		}
 		this.secret = resources.NewObjectName(ref.Namespace, ref.Name)
-		props, _, err = resources.GetSecretPropertiesByRef(provider, ref)
+		props, _, err = resources.GetCachedSecretPropertiesByRef(provider, ref)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return this, this.failed(logger, false, fmt.Errorf("cannot get secret %s/%s for provider %s: %s",

@@ -65,6 +65,9 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		WorkerPool("providers", 2, 5*time.Minute).
 		Watches(
 			controller.NewResourceKey(api.GroupName, api.DNSProviderKind),
+		).
+		WorkerPool("secrets", 2, 0).
+		Watches(
 			controller.NewResourceKey("core", "Secret"),
 		).
 		WorkerPool("dns", 1, 300*time.Second).CommandMatchers(utils.NewStringGlobMatcher(HOSTEDZONE_PREFIX + "*"))

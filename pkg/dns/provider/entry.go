@@ -53,14 +53,16 @@ type Entry struct {
 	duplicate bool
 
 	activezone string
+	state      *state
 }
 
-func NewEntry(object *dnsutils.DNSEntryObject) *Entry {
+func NewEntry(object *dnsutils.DNSEntryObject, state *state) *Entry {
 	return &Entry{
 		object:   object,
 		dnsname:  object.DNSEntry().Spec.DNSName,
 		targets:  Targets{},
 		mappings: map[string][]string{},
+		state:    state,
 	}
 }
 
@@ -99,6 +101,18 @@ func (this *Entry) OwnerId() string {
 	return ""
 }
 
+func (this *Entry) Trigger(logger logger.LogContext) {
+	this.state.TriggerEntry(logger, this)
+}
+
+func (this *Entry) IsActive() bool {
+	id := this.OwnerId()
+	if id == "" {
+		id = this.state.config.Ident
+	}
+	return this.state.ownerCache.IsResponsibleFor(id)
+}
+
 func (this *Entry) Targets() Targets {
 	this.lock.Lock()
 	defer this.lock.Unlock()
@@ -123,7 +137,7 @@ func (this *Entry) IsModified() bool {
 	return this.modified
 }
 
-func (this *Entry) Validate(ownerids utils.StringSet) (targets Targets, warnings []string, err error) {
+func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 
 	spec := &this.object.DNSEntry().Spec
 
@@ -171,7 +185,7 @@ func (this *Entry) Validate(ownerids utils.StringSet) (targets Targets, warnings
 	}
 
 	if utils.StringValue(spec.OwnerId) != "" {
-		if !ownerids.Contains(*spec.OwnerId) {
+		if !this.state.ownerCache.IsResponsibleFor(*spec.OwnerId) {
 			err = fmt.Errorf("unknown owner id '%s'", *spec.OwnerId)
 		}
 	}
@@ -181,7 +195,7 @@ func (this *Entry) Validate(ownerids utils.StringSet) (targets Targets, warnings
 	return
 }
 
-func (this *Entry) Update(logger logger.LogContext, state *state, op string, ownerids utils.StringSet, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTTL int64) reconcile.Status {
+func (this *Entry) Update(logger logger.LogContext, state *state, op string, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTTL int64) reconcile.Status {
 	this.lock.Lock()
 	this.lock.Unlock()
 
@@ -249,7 +263,7 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, own
 
 	///////////// validate
 
-	targets, warnings, verr := this.Validate(ownerids)
+	targets, warnings, verr := this.Validate()
 
 	if verr != nil {
 		state := api.STATE_INVALID
@@ -373,7 +387,7 @@ func (this *Entry) targetList(targets Targets) ([]string, string) {
 	return list, msg
 }
 
-func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg string, provider resources.ObjectName) error {
+func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg string, provider resources.ObjectName) (bool, error) {
 	f := func(data resources.ObjectData) (bool, error) {
 		o := data.(*api.DNSEntry)
 		if state == api.STATE_PENDING && o.Status.State != "" {
@@ -397,8 +411,7 @@ func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg stri
 		}
 		return mod.IsModified(), nil
 	}
-	_, err := this.object.ModifyStatus(f)
-	return err
+	return this.object.ModifyStatus(f)
 }
 
 func (this *Entry) HasSameDNSName(entry *api.DNSEntry) bool {
@@ -456,13 +469,13 @@ type Entries map[resources.ObjectName]*Entry
 // as old entry. In all other cases no old entry is returned.
 // return 1: old entry with different dns name
 // return 2: actual entry for this object name with the actual dns name
-func (this Entries) Add(entry *dnsutils.DNSEntryObject) (*Entry, *Entry) {
+func (this Entries) Add(entry *dnsutils.DNSEntryObject, state *state) (*Entry, *Entry) {
 	data := entry.DNSEntry()
 	old := this[entry.ObjectName()]
 	if old != nil && old.HasSameDNSName(data) {
 		return nil, old
 	}
-	e := NewEntry(entry)
+	e := NewEntry(entry, state)
 	this[entry.ObjectName()] = e
 	return old, e
 }

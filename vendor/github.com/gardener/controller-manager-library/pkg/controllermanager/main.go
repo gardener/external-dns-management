@@ -19,9 +19,11 @@ package controllermanager
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"runtime"
+	"runtime/pprof"
 	"strings"
 	"syscall"
 	"time"
@@ -104,6 +106,17 @@ func run(ctx context.Context, def *Definition) error {
 	logger.Infof("starting controller manager")
 
 	cfg := config.Get(ctx)
+	if cfg.CPUProfile != "" {
+		f, err := os.Create(cfg.CPUProfile)
+		if err != nil {
+			log.Fatal("could not create CPU profile: ", err)
+		}
+		defer f.Close()
+		if err := pprof.StartCPUProfile(f); err != nil {
+			log.Fatal("could not start CPU profile: ", err)
+		}
+		defer pprof.StopCPUProfile()
+	}
 	if cfg.LogLevel != "" {
 		err = logger.SetLevel(cfg.LogLevel)
 	}
