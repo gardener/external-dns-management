@@ -96,7 +96,11 @@ func NewDNSState(controller controller.Interface, config Config) *state {
 
 func (this *state) Setup() {
 	cres := this.controller.GetMainCluster().Resources()
-	processors := 10
+	processors, err := this.controller.GetIntOption(OPT_SETUP)
+	if err != nil || processors <= 0 {
+		processors = 5
+	}
+	this.controller.Infof("using %d parallel workers for initialization", processors)
 	{
 		this.controller.Infof("### setup providergroups")
 		res, _ := cres.GetByExample(&api.DNSProvider{})

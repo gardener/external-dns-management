@@ -30,6 +30,7 @@ const (
 	OPT_DRYRUN     = "dry-run"
 	OPT_TTL        = "ttl"
 	OPT_CACHE_TTL  = "cache-ttl"
+	OPT_SETUP      = "setup"
 
 	HOSTEDZONE_PREFIX = "hostedzone:"
 )
