@@ -286,7 +286,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 
 	this.account, err = state.GetDNSAccount(logger, provider, props)
 	if err != nil {
-		return this, reconcile.Delay(logger, err)
+		return this, this.failed(logger, false, fmt.Errorf("%s", err), true)
 	}
 
 	dspec := provider.DNSProvider().Spec.Domains
