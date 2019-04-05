@@ -71,7 +71,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		Watches(
 			controller.NewResourceKey("core", "Secret"),
 		).
-		WorkerPool("dns", 1, 300*time.Second).CommandMatchers(utils.NewStringGlobMatcher(HOSTEDZONE_PREFIX + "*"))
+		WorkerPool("dns", 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(HOSTEDZONE_PREFIX + "*"))
 }
 
 type reconciler struct {
