@@ -26,17 +26,18 @@ import (
 )
 
 type Config struct {
-	lock                 sync.Mutex
-	LogLevel             string
-	Controllers          string
-	PluginDir            string
-	Name                 string
-	Namespace            string
-	OmitLease            bool
-	NamespaceRestriction bool
-	ServerPortHTTP       int
-	CPUProfile           string
-	ArbitraryOptions     map[string]*ArbitraryOption
+	lock                        sync.Mutex
+	LogLevel                    string
+	Controllers                 string
+	PluginDir                   string
+	Name                        string
+	Namespace                   string
+	OmitLease                   bool
+	DisableNamespaceRestriction bool
+	NamespaceRestriction        bool
+	ServerPortHTTP              int
+	CPUProfile                  string
+	ArbitraryOptions            map[string]*ArbitraryOption
 }
 
 func NewConfig() *Config {
@@ -103,7 +104,8 @@ func (this *Config) AddToCommand(cmd *cobra.Command) {
 	cmd.PersistentFlags().IntVarP(&this.ServerPortHTTP, "server-port-http", "", 0, "HTTP server port (serving /healthz, /metrics, ...)")
 	cmd.PersistentFlags().StringVarP(&this.LogLevel, "log-level", "D", "", "logrus log level")
 	cmd.PersistentFlags().StringVarP(&this.CPUProfile, "cpuprofile", "", "", "set file for cpu profiling")
-	cmd.PersistentFlags().BoolVarP(&this.NamespaceRestriction, "namespace-local-access-only", "n", false, "enable access restriction for namespace local access only")
+	cmd.PersistentFlags().BoolVarP(&this.NamespaceRestriction, "namespace-local-access-only", "n", false, "enable access restriction for namespace local access only (deprecated)")
+	cmd.PersistentFlags().BoolVarP(&this.DisableNamespaceRestriction, "disable-namespace-restriction", "", false, "disable access restriction for namespace local access only")
 
 	for _, o := range this.ArbitraryOptions {
 		o.AddToCommand(cmd)

@@ -22,6 +22,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 	"sync"
@@ -69,8 +70,19 @@ func NewControllerManager(ctx context.Context, def *Definition) (*ControllerMana
 	config := config.Get(ctx)
 	ctx = context.WithValue(ctx, resources.ATTR_EVENTSOURCE, def.GetName())
 
+	if config.NamespaceRestriction && config.DisableNamespaceRestriction {
+		log.Fatalf("contradiction options given for namespace restriction")
+	}
+	if !config.DisableNamespaceRestriction {
+		config.NamespaceRestriction = true
+	}
+	config.DisableNamespaceRestriction = false
+
 	if config.NamespaceRestriction {
+		logger.Infof("enable namespace restriction for access control")
 		access.RegisterNamespaceOnlyAccess()
+	} else {
+		logger.Infof("disable namespace restriction for access control")
 	}
 	if config.Namespace == "" {
 		n := os.Getenv("NAMESPACE")
