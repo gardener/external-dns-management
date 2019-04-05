@@ -30,6 +30,7 @@ type Config struct {
 	LogLevel             string
 	Controllers          string
 	PluginDir            string
+	Name                 string
 	Namespace            string
 	OmitLease            bool
 	NamespaceRestriction bool
@@ -94,6 +95,7 @@ func (this *Config) AddDurationOption(name string) (*ArbitraryOption, bool) {
 }
 
 func (this *Config) AddToCommand(cmd *cobra.Command) {
+	cmd.PersistentFlags().StringVarP(&this.Name, "name", "", "", "name used for conroller manager")
 	cmd.PersistentFlags().StringVarP(&this.Namespace, "namespace", "", "", "namepace for lease")
 	cmd.PersistentFlags().BoolVarP(&this.OmitLease, "omit-lease", "", false, "omit lease for development")
 	cmd.PersistentFlags().StringVarP(&this.Controllers, "controllers", "c", "all", "comma separated list of controllers to start (<name>,source,target,all)")

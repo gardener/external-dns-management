@@ -53,48 +53,54 @@ func (this *OwnerCache) GetIds() utils.StringSet {
 	return this.ownerids.Copy()
 }
 
-func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) utils.StringSet {
+func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changed utils.StringSet, active utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
+	changed=utils.StringSet{}
 	old := this.owners[owner.ObjectName()]
 	if old != nil {
 		if old.GetOwnerId() == owner.GetOwnerId() && old.IsActive() == owner.IsActive() {
 			this.owners[owner.ObjectName()] = owner
-			return this.ownerids.Copy()
+			return changed, this.ownerids.Copy()
 		}
-		this.deactivate(old)
+		this.deactivate(old, changed)
 	}
-	this.activate(owner)
-	return this.ownerids.Copy()
+	this.activate(owner, changed)
+	return changed, this.ownerids.Copy()
 }
 
-func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) utils.StringSet {
+func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changed utils.StringSet, active utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	this.deactivate(this.owners[key.ObjectName()])
-	return this.ownerids.Copy()
+	changed=utils.StringSet{}
+	this.deactivate(this.owners[key.ObjectName()],changed)
+	return changed, this.ownerids.Copy()
 }
 
-func (this *OwnerCache) deactivate(old *dnsutils.DNSOwnerObject) {
+func (this *OwnerCache) deactivate(old *dnsutils.DNSOwnerObject, changed utils.StringSet) {
 	if old != nil && old.IsActive() {
 		cnt := this.ownercnt[old.GetOwnerId()]
 		cnt--
 		this.ownercnt[old.GetOwnerId()] = cnt
 		if cnt == 0 {
 			this.ownerids.Remove(old.GetOwnerId())
+			changed.Add(old.GetOwnerId())
 		}
 	}
 	delete(this.owners, old.ObjectName())
 }
 
-func (this *OwnerCache) activate(new *dnsutils.DNSOwnerObject) {
+func (this *OwnerCache) activate(new *dnsutils.DNSOwnerObject, changed utils.StringSet) {
 	if new.IsActive() {
 		id := new.GetOwnerId()
 		cnt := this.ownercnt[id]
 		cnt++
 		this.ownercnt[id] = cnt
 		this.ownerids.Add(id)
+		if cnt==1 {
+			changed.Add(id)
+		}
 	}
 	this.owners[new.ObjectName()] = new
 }

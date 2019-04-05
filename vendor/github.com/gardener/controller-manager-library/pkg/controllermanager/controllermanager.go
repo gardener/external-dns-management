@@ -89,6 +89,12 @@ func NewControllerManager(ctx context.Context, def *Definition) (*ControllerMana
 			}
 		}
 	}
+
+	name := def.GetName()
+	if config.Name != "" {
+		name = config.Name
+	}
+
 	if config.Namespace == "" {
 		config.Namespace = "kube-system"
 	}
@@ -130,7 +136,7 @@ func NewControllerManager(ctx context.Context, def *Definition) (*ControllerMana
 		LogContext: lgr,
 		clusters:   clusters,
 
-		name:          def.GetName(),
+		name:          name,
 		definition:    def,
 		config:        config,
 		registrations: registrations,

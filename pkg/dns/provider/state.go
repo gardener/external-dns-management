@@ -631,6 +631,28 @@ func (this *state) addEntriesForProvider(p *dnsProviderVersion, entries Entries)
 	}
 }
 
+func (this *state) TriggerEntriesByOwner(logger logger.LogContext, owners utils.StringSet) {
+	for _, e := range this.GetEntriesByOwner(owners) {
+		this.TriggerEntry(logger, e)
+	}
+}
+
+func (this *state) GetEntriesByOwner(owners utils.StringSet) Entries {
+	if len(owners)==0 {
+		return nil
+	}
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+
+	entries:=Entries{}
+	for _, e := range this.entries {
+		if owners.Contains(e.OwnerId()) {
+			entries[e.ObjectName()]=e
+		}
+	}
+	return entries
+}
+
 func (this *state) TriggerEntries(logger logger.LogContext, entries Entries) {
 	for _, e := range this.entries {
 		this.TriggerEntry(logger, e)
@@ -957,11 +979,15 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject) reconcile.Status {
-	logger.Infof("active owner ids %s", this.ownerCache.UpdateOwner(owner))
+	changed, active := this.ownerCache.UpdateOwner(owner)
+	logger.Infof("update: changed owner ids %s, active owner ids %s", changed, active)
+	this.TriggerEntriesByOwner(logger,changed)
 	return reconcile.Succeeded(logger)
 }
 
 func (this *state) OwnerDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
-	logger.Infof("active owner ids %s", this.ownerCache.DeleteOwner(key))
+	changed, active := this.ownerCache.DeleteOwner(key)
+	logger.Infof("delete: changed owner ids %s, active owner ids %s", changed, active)
+	this.TriggerEntriesByOwner(logger,changed)
 	return reconcile.Succeeded(logger)
 }
