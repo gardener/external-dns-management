@@ -35,12 +35,13 @@ helper:
 
       patch:
         <<: (( &template))
-        release:
+        patch-release:
           traits:
             version:
               preprocess: 'finalize'
             release:
               nextversion: 'bump_patch'
+            component_descriptor: ~
 
     standard: 
       <<: (( &template ))
