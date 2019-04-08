@@ -20,20 +20,55 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"strings"
 )
 
 const DEFAULT_CLASS = "gardendns"
 
 const CLASS_ANNOTATION = "dns.gardener.cloud/class"
 
-func IsResponsibleFor(logger logger.LogContext, classes utils.StringSet, obj resources.Object) bool {
+type Classes struct {
+	classes utils.StringSet
+	main    string
+}
+
+func NewClasses(classes string) *Classes {
+	c := &Classes{classes: utils.StringSet{}}
+	if classes == "" {
+		c.main = DEFAULT_CLASS
+		c.classes.Add(c.main)
+	} else {
+		c.classes.AddAllSplitted(classes)
+		index := strings.Index(classes, ",")
+		if index < 0 {
+			c.main = strings.ToLower(strings.TrimSpace(classes))
+		} else {
+			c.main = strings.ToLower(strings.TrimSpace(classes[:index]))
+		}
+	}
+	return c
+}
+
+func (this *Classes) String() string {
+	return this.classes.String()
+}
+
+func (this *Classes) Main() string {
+	return this.main
+}
+
+func (this *Classes) Contains(class string) bool {
+	return this.classes.Contains(class)
+}
+
+func (this *Classes) IsResponsibleFor(logger logger.LogContext, obj resources.Object) bool {
 	oclass := obj.GetAnnotations()[CLASS_ANNOTATION]
 	if oclass == "" {
 		oclass = DEFAULT_CLASS
 	}
-	if !classes.Contains(oclass) {
+	if !this.classes.Contains(oclass) {
 		logger.Debugf("%s: annotated dns class %q does not match specified class set %s -> skip ",
-			obj.ObjectName(), oclass, classes)
+			obj.ObjectName(), oclass, this.classes)
 		return false
 	}
 	return true

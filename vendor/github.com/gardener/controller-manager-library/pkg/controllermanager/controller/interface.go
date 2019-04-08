@@ -69,7 +69,8 @@ type Interface interface {
 	HasFinalizer(obj resources.Object) bool
 	SetFinalizer(obj resources.Object) error
 	RemoveFinalizer(obj resources.Object) error
-	FinalizerName() string
+	FinalizerHandler() Finalizer
+	SetFinalizerHandler(Finalizer)
 
 	EnqueueKey(key resources.ClusterObjectKey) error
 	Enqueue(object resources.Object) error

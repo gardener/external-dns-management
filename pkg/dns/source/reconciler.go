@@ -45,7 +45,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		reconciler := &sourceReconciler{
 			SlaveAccess: reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind())),
 			source:      s,
-			classes:     utils.NewStringSet(dnsutils.DEFAULT_CLASS),
+			classes:     dnsutils.NewClasses(dnsutils.DEFAULT_CLASS),
 		}
 		nested, err := reconcilers.NewNestedReconciler(rtype, reconciler)
 		if err != nil {
@@ -61,7 +61,7 @@ type sourceReconciler struct {
 	*reconcilers.SlaveAccess
 	excluded    utils.StringSet
 	source      DNSSource
-	classes     utils.StringSet
+	classes     *dnsutils.Classes
 	targetclass string
 	namespace   string
 	nameprefix  string
@@ -74,21 +74,12 @@ func (this *sourceReconciler) Start() {
 }
 
 func (this *sourceReconciler) Setup() {
-	class, _ := this.GetStringOption(OPT_CLASS)
-	this.classes = utils.StringSet{}
-	if class != "" {
-		this.classes.AddAllSplitted(class)
-	} else {
-		this.classes.Add(dnsutils.DEFAULT_CLASS)
-	}
+	classes, _ := this.GetStringOption(OPT_CLASS)
+	this.classes = dnsutils.NewClasses(classes)
 	this.targetclass, _ = this.GetStringOption(OPT_TARGETCLASS)
 	if this.targetclass == "" {
 		if !this.classes.Contains(dnsutils.DEFAULT_CLASS) {
-			for c := range this.classes {
-				if this.targetclass == "" || strings.Compare(c, this.targetclass) < 0 {
-					this.targetclass = c
-				}
-			}
+			this.targetclass = this.classes.Main()
 		}
 	}
 	this.namespace, _ = this.GetStringOption(OPT_NAMESPACE)

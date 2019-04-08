@@ -24,7 +24,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
 func (this *sourceReconciler) exclude(dns string) bool {
@@ -46,7 +45,7 @@ func (this *sourceReconciler) exclude(dns string) bool {
 }
 
 func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources.Object, s DNSSource, current *DNSCurrentState) (*DNSInfo, error) {
-	if !dnsutils.IsResponsibleFor(logger, this.classes, obj) {
+	if !this.classes.IsResponsibleFor(logger, obj) {
 		return nil, nil
 	}
 	a := obj.GetAnnotations()[DNS_ANNOTATION]

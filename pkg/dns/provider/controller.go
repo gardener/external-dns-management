@@ -77,7 +77,6 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 type reconciler struct {
 	reconcile.DefaultReconciler
 	controller controller.Interface
-	classes    utils.StringSet
 	state      *state
 }
 
@@ -97,19 +96,12 @@ func DNSReconcilerType(factory DNSHandlerFactory) controller.ReconcilerType {
 ///////////////////////////////////////////////////////////////////////////////
 
 func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interface, error) {
-	class, _ := c.GetStringOption(OPT_CLASS)
-	classes := utils.StringSet{}
-	if class != "" {
-		classes.AddAllSplitted(class)
-	} else {
-		classes.Add(dnsutils.DEFAULT_CLASS)
-	}
+	classes, _ := c.GetStringOption(OPT_CLASS)
 	return &reconciler{
 		controller: c,
-		classes:    classes,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewDNSState(c, classes, NewConfigForController(c, factory))
+				return NewDNSState(c, dnsutils.NewClasses(classes), NewConfigForController(c, factory))
 			}).(*state),
 	}, nil
 }
@@ -161,15 +153,17 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 }
 
 func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
-	logger.Debugf("should delete %s", obj.Description())
-	switch {
-	case obj.IsA(&api.DNSProvider{}):
-		return this.state.RemoveProvider(logger, dnsutils.DNSProvider(obj))
-	case obj.IsA(&api.DNSEntry{}):
-		obj.UpdateFromCache()
-		return this.state.DeleteEntry(logger, dnsutils.DNSEntry(obj))
-	case obj.IsA(&corev1.Secret{}):
-		return this.state.UpdateSecret(logger, obj)
+	if this.state.IsResponsibleFor(logger, obj) {
+		logger.Debugf("should delete %s", obj.Description())
+		switch {
+		case obj.IsA(&api.DNSProvider{}):
+			return this.state.RemoveProvider(logger, dnsutils.DNSProvider(obj))
+		case obj.IsA(&api.DNSEntry{}):
+			obj.UpdateFromCache()
+			return this.state.DeleteEntry(logger, dnsutils.DNSEntry(obj))
+		case obj.IsA(&corev1.Secret{}):
+			return this.state.UpdateSecret(logger, obj)
+		}
 	}
 	return reconcile.Succeeded(logger)
 }

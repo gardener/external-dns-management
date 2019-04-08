@@ -21,24 +21,22 @@ import (
 )
 
 func (this *controller) HasFinalizer(obj resources.Object) bool {
-	return obj.HasFinalizer(this.computeFinalizer(this.owning))
+	return this.finalizer.HasFinalizer(obj)
 }
 
 func (this *controller) SetFinalizer(obj resources.Object) error {
-	return obj.SetFinalizer(this.computeFinalizer(this.owning))
+	return this.finalizer.SetFinalizer(obj)
 }
 
 func (this *controller) RemoveFinalizer(obj resources.Object) error {
-	return obj.RemoveFinalizer(this.computeFinalizer(this.owning))
+	return this.finalizer.RemoveFinalizer(obj)
 }
 
-func (this *controller) computeFinalizer(key ResourceKey) string {
-	return this.definition.FinalizerName()
-	//return fmt.Sprintf("%s/%s", this._Definition.FinalizerPrefix(), strings.Replace(key.String(), "/", ".", -1))
+func (this *controller) FinalizerHandler() Finalizer {
+	return this.finalizer
 }
-
-func (this *controller) FinalizerName() string {
-	return this.computeFinalizer(this.owning)
+func (this *controller) SetFinalizerHandler(f Finalizer) {
+	this.finalizer = f
 }
 
 ///////////////////////////////////////////////////////////////////////////////

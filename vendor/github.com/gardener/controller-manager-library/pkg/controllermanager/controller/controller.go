@@ -134,6 +134,7 @@ type controller struct {
 	owning      ResourceKey
 	reconcilers map[string]reconcile.Interface
 	mappings    map[_ReconcilerMapping]string
+	finalizer   Finalizer
 
 	handlers map[string]*ClusterHandler
 
@@ -168,6 +169,7 @@ func NewController(env Environment, def Definition, cmp mappings.Definition) (*c
 		pools:       map[string]*pool{},
 		reconcilers: map[string]reconcile.Interface{},
 		mappings:    map[_ReconcilerMapping]string{},
+		finalizer:   NewDefaultFinalizer(def.FinalizerName()),
 	}
 
 	this.ready.start()

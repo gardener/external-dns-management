@@ -43,7 +43,7 @@ type DNSNames map[string]*Entry
 
 type state struct {
 	lock       sync.RWMutex
-	classes    utils.StringSet
+	classes    *dnsutils.Classes
 	controller controller.Interface
 	config     Config
 
@@ -70,8 +70,8 @@ type state struct {
 	initialized bool
 }
 
-func NewDNSState(controller controller.Interface, classes utils.StringSet, config Config) *state {
-	controller.Infof("responsible for classes: %s", classes)
+func NewDNSState(controller controller.Interface, classes *dnsutils.Classes, config Config) *state {
+	controller.Infof("responsible for classes: %s (%s)", classes, classes.Main())
 	controller.Infof("using default ttl:       %d", config.TTL)
 	controller.Infof("using identifier:        %s", config.Ident)
 	controller.Infof("dry run mode:            %t", config.Dryrun)
@@ -98,7 +98,7 @@ func NewDNSState(controller controller.Interface, classes utils.StringSet, confi
 }
 
 func (this *state) IsResponsibleFor(logger logger.LogContext, obj resources.Object) bool {
-	return dnsutils.IsResponsibleFor(logger, this.classes, obj)
+	return this.classes.IsResponsibleFor(logger, obj)
 }
 
 func (this *state) Setup() {
