@@ -43,7 +43,7 @@ type DNSNames map[string]*Entry
 
 type state struct {
 	lock       sync.RWMutex
-	class      string
+	classes    utils.StringSet
 	controller controller.Interface
 	config     Config
 
@@ -70,12 +70,12 @@ type state struct {
 	initialized bool
 }
 
-func NewDNSState(controller controller.Interface, class string, config Config) *state {
+func NewDNSState(controller controller.Interface, classes utils.StringSet, config Config) *state {
 	controller.Infof("using default ttl: %d", config.TTL)
 	controller.Infof("using identifier : %s", config.Ident)
 	controller.Infof("dry run mode     : %t", config.Dryrun)
 	return &state{
-		class:           class,
+		classes:         classes,
 		controller:      controller,
 		config:          config,
 		accountCache:    NewAccountCache(config.CacheTTL),
@@ -97,7 +97,7 @@ func NewDNSState(controller controller.Interface, class string, config Config) *
 }
 
 func (this *state) IsResponsibleFor(logger logger.LogContext, obj resources.Object) bool {
-	return dnsutils.IsResponsibleFor(logger, this.class, obj)
+	return dnsutils.IsResponsibleFor(logger, this.classes, obj)
 }
 
 func (this *state) Setup() {
@@ -508,10 +508,10 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 				if result[n] == nil {
 					modified = true
 					this.removeProviderForZone(n, name)
-					logger.Infof("removing provider %q for hosted zone %q (%s)", name, z.Id, z.Domain)
+					logger.Infof("removing provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain())
 					if !this.hasProvidersForZone(n) {
-						logger.Infof("removing hosted zone %q (%s)", z.Id, z.Domain)
-						metrics.DeleteZone(z.ProviderType(), z.Id())
+						logger.Infof("removing hosted zone %q (%s)", z.Id(), z.Domain())
+						metrics.DeleteZone(z.Id())
 						delete(this.zones, n)
 					}
 				}
@@ -638,16 +638,16 @@ func (this *state) TriggerEntriesByOwner(logger logger.LogContext, owners utils.
 }
 
 func (this *state) GetEntriesByOwner(owners utils.StringSet) Entries {
-	if len(owners)==0 {
+	if len(owners) == 0 {
 		return nil
 	}
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
-	entries:=Entries{}
+	entries := Entries{}
 	for _, e := range this.entries {
 		if owners.Contains(e.OwnerId()) {
-			entries[e.ObjectName()]=e
+			entries[e.ObjectName()] = e
 		}
 	}
 	return entries
@@ -721,7 +721,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 					if err != nil {
 						logger.Errorf("cannot cleanup zone %q: %s", n, err)
 					}
-					metrics.DeleteZone(obj.Spec().Type, n)
+					metrics.DeleteZone(n)
 					delete(this.zones, n)
 				} else {
 					// delete entries in hosted zone exclusively covered by this provider using
@@ -938,7 +938,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entries Entries, stale DNSNames, providers DNSProviders) error {
 	zone := this.zones[zoneid]
 	if zone == nil {
-		metrics.DeleteZone(zone.ProviderType(), zoneid)
+		metrics.DeleteZone(zoneid)
 		return nil
 	}
 	metrics.ReportZoneEntries(zone.ProviderType(), zoneid, len(entries))
@@ -981,13 +981,13 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject) reconcile.Status {
 	changed, active := this.ownerCache.UpdateOwner(owner)
 	logger.Infof("update: changed owner ids %s, active owner ids %s", changed, active)
-	this.TriggerEntriesByOwner(logger,changed)
+	this.TriggerEntriesByOwner(logger, changed)
 	return reconcile.Succeeded(logger)
 }
 
 func (this *state) OwnerDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
 	changed, active := this.ownerCache.DeleteOwner(key)
 	logger.Infof("delete: changed owner ids %s, active owner ids %s", changed, active)
-	this.TriggerEntriesByOwner(logger,changed)
+	this.TriggerEntriesByOwner(logger, changed)
 	return reconcile.Succeeded(logger)
 }

@@ -19,20 +19,21 @@ package utils
 import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 const DEFAULT_CLASS = "gardendns"
 
 const CLASS_ANNOTATION = "dns.gardener.cloud/class"
 
-func IsResponsibleFor(logger logger.LogContext, class string, obj resources.Object) bool {
+func IsResponsibleFor(logger logger.LogContext, classes utils.StringSet, obj resources.Object) bool {
 	oclass := obj.GetAnnotations()[CLASS_ANNOTATION]
-	if class == DEFAULT_CLASS && oclass == "" {
-		return true
+	if oclass == "" {
+		oclass = DEFAULT_CLASS
 	}
-	if class != oclass {
-		logger.Debugf("%s: annotated dns class %q does not match specified class %q -> skip ",
-			obj.ObjectName(), oclass, class)
+	if !classes.Contains(oclass) {
+		logger.Debugf("%s: annotated dns class %q does not match specified class set %s -> skip ",
+			obj.ObjectName(), oclass, classes)
 		return false
 	}
 	return true

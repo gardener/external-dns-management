@@ -113,10 +113,35 @@ func AddRequests(ptype, account, requestType string, no int) {
 	Requests.WithLabelValues(ptype, account, requestType).Add(float64(no))
 }
 
-func ReportZoneEntries(ptype, zone string, amount int) {
-	Entries.WithLabelValues(ptype, zone).Set(float64(amount))
+type ZoneProviderTypes struct {
+	lock      sync.Mutex
+	providers map[string]string
 }
 
-func DeleteZone(ptype, zone string) {
-	Entries.DeleteLabelValues(ptype, zone)
+func (this *ZoneProviderTypes) Add(ptype, zone string) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.providers[zone] = ptype
+}
+
+func (this *ZoneProviderTypes) Remove(zone string) string {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	ptype := this.providers[zone]
+	delete(this.providers, zone)
+	return ptype
+}
+
+var zoneProviders = &ZoneProviderTypes{providers: map[string]string{}}
+
+func ReportZoneEntries(ptype, zone string, amount int) {
+	Entries.WithLabelValues(ptype, zone).Set(float64(amount))
+	zoneProviders.Add(ptype, zone)
+}
+
+func DeleteZone(zone string) {
+	ptype := zoneProviders.Remove(zone)
+	if ptype != "" {
+		Entries.DeleteLabelValues(ptype, zone)
+	}
 }

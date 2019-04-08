@@ -46,7 +46,7 @@ func (this *sourceReconciler) exclude(dns string) bool {
 }
 
 func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources.Object, s DNSSource, current *DNSCurrentState) (*DNSInfo, error) {
-	if !dnsutils.IsResponsibleFor(logger, this.class, obj) {
+	if !dnsutils.IsResponsibleFor(logger, this.classes, obj) {
 		return nil, nil
 	}
 	a := obj.GetAnnotations()[DNS_ANNOTATION]

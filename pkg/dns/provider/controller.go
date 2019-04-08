@@ -77,7 +77,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 type reconciler struct {
 	reconcile.DefaultReconciler
 	controller controller.Interface
-	class      string
+	classes    utils.StringSet
 	state      *state
 }
 
@@ -98,12 +98,18 @@ func DNSReconcilerType(factory DNSHandlerFactory) controller.ReconcilerType {
 
 func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interface, error) {
 	class, _ := c.GetStringOption(OPT_CLASS)
+	classes := utils.StringSet{}
+	if class != "" {
+		classes.AddAllSplitted(class)
+	} else {
+		classes.Add(dnsutils.DEFAULT_CLASS)
+	}
 	return &reconciler{
 		controller: c,
-		class:      class,
+		classes:    classes,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewDNSState(c, class, NewConfigForController(c, factory))
+				return NewDNSState(c, classes, NewConfigForController(c, factory))
 			}).(*state),
 	}, nil
 }

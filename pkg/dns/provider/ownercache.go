@@ -57,7 +57,7 @@ func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changed uti
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
-	changed=utils.StringSet{}
+	changed = utils.StringSet{}
 	old := this.owners[owner.ObjectName()]
 	if old != nil {
 		if old.GetOwnerId() == owner.GetOwnerId() && old.IsActive() == owner.IsActive() {
@@ -73,8 +73,8 @@ func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changed uti
 func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changed utils.StringSet, active utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	changed=utils.StringSet{}
-	this.deactivate(this.owners[key.ObjectName()],changed)
+	changed = utils.StringSet{}
+	this.deactivate(this.owners[key.ObjectName()], changed)
 	return changed, this.ownerids.Copy()
 }
 
@@ -98,7 +98,7 @@ func (this *OwnerCache) activate(new *dnsutils.DNSOwnerObject, changed utils.Str
 		cnt++
 		this.ownercnt[id] = cnt
 		this.ownerids.Add(id)
-		if cnt==1 {
+		if cnt == 1 {
 			changed.Add(id)
 		}
 	}
