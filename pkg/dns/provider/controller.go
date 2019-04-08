@@ -50,7 +50,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
 		DefaultedIntOption(OPT_TTL, 300, "Default time-to-live for DNS entries").
-		DefaultedIntOption(OPT_CACHE_TTL, 60, "Time-to-live for provider hosted zone cache").
+		DefaultedIntOption(OPT_CACHE_TTL, 120, "Time-to-live for provider hosted zone cache").
 		DefaultedIntOption(OPT_SETUP, 10, "number of processors for controller setup").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
@@ -63,7 +63,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		).
 		Cluster(PROVIDER_CLUSTER).
 		CustomResourceDefinitions(crds.DNSProviderCRD).
-		WorkerPool("providers", 2, 5*time.Minute).
+		WorkerPool("providers", 2, 10*time.Minute).
 		Watches(
 			controller.NewResourceKey(api.GroupName, api.DNSProviderKind),
 		).
