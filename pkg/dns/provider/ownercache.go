@@ -79,16 +79,18 @@ func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changed utils.Stri
 }
 
 func (this *OwnerCache) deactivate(old *dnsutils.DNSOwnerObject, changed utils.StringSet) {
-	if old != nil && old.IsActive() {
-		cnt := this.ownercnt[old.GetOwnerId()]
-		cnt--
-		this.ownercnt[old.GetOwnerId()] = cnt
-		if cnt == 0 {
-			this.ownerids.Remove(old.GetOwnerId())
-			changed.Add(old.GetOwnerId())
+	if old != nil {
+		if old.IsActive() {
+			cnt := this.ownercnt[old.GetOwnerId()]
+			cnt--
+			this.ownercnt[old.GetOwnerId()] = cnt
+			if cnt == 0 {
+				this.ownerids.Remove(old.GetOwnerId())
+				changed.Add(old.GetOwnerId())
+			}
 		}
+		delete(this.owners, old.ObjectName())
 	}
-	delete(this.owners, old.ObjectName())
 }
 
 func (this *OwnerCache) activate(new *dnsutils.DNSOwnerObject, changed utils.StringSet) {

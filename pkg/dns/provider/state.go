@@ -71,9 +71,10 @@ type state struct {
 }
 
 func NewDNSState(controller controller.Interface, classes utils.StringSet, config Config) *state {
-	controller.Infof("using default ttl: %d", config.TTL)
-	controller.Infof("using identifier : %s", config.Ident)
-	controller.Infof("dry run mode     : %t", config.Dryrun)
+	controller.Infof("responsible for classes: %s", classes)
+	controller.Infof("using default ttl:       %d", config.TTL)
+	controller.Infof("using identifier:        %s", config.Ident)
+	controller.Infof("dry run mode:            %t", config.Dryrun)
 	return &state{
 		classes:         classes,
 		controller:      controller,
