@@ -33,7 +33,7 @@ func filterByZones(domains utils.StringSet, zones DNSHostedZones) (result utils.
 			if dnsutils.Match(d, z.Domain()) {
 				for _, sub := range z.ForwardedDomains() {
 					if dnsutils.Match(d, sub) {
-						break _zones
+						continue _zones
 					}
 				}
 				result.Add(d)
