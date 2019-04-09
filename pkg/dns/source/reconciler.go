@@ -19,6 +19,7 @@ package source
 import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"reflect"
 	"strings"
 	"time"
 
@@ -385,6 +386,18 @@ func (this *sourceReconciler) updateEntry(logger logger.LogContext, info *DNSInf
 	f := func(o resources.ObjectData) (bool, error) {
 		spec := &o.(*api.DNSEntry).Spec
 		mod := &utils.ModificationState{}
+		if this.targetclass != "" {
+			annos := map[string]string{CLASS_ANNOTATION: this.targetclass}
+			if !reflect.DeepEqual(annos, o.GetAnnotations()) {
+				o.SetAnnotations(annos)
+				mod.Modify(true)
+			}
+		} else {
+			if len(o.GetAnnotations()) != 0 {
+				o.SetAnnotations(map[string]string{})
+				mod.Modify(true)
+			}
+		}
 		mod.AssureInt64PtrPtr(&spec.TTL, info.TTL)
 		mod.AssureInt64PtrPtr(&spec.CNameLookupInterval, info.Interval)
 		mod.AssureStringSet(&spec.Targets, info.Targets)
