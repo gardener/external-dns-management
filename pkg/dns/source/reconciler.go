@@ -51,6 +51,8 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 				targetclass = classes.Main()
 			}
 		}
+		c.Infof("responsible for classes: %s (%s)", classes, classes.Main())
+		c.Infof("target class           : %s", targetclass)
 		reconciler := &sourceReconciler{
 			SlaveAccess: reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind())),
 			source:      s,
