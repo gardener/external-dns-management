@@ -283,7 +283,7 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 		oldp := this.secrets[old]
 		if oldp.Contains(pname) {
 			logger.Infof("releasing secret %q for provider %q", old, pname)
-			if len(oldp) == 0 {
+			if len(oldp) <= 1 {
 				r, err := provider.Object().Resources().Get(&corev1.Secret{})
 				s, err := r.GetCached(old)
 				if err != nil {
@@ -705,6 +705,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 		cur = this.deleting[pname]
 	}
 	if cur != nil {
+		logger.Infof("deleting provider")
 		if cur.account == nil {
 			panic(fmt.Sprintf("OOPS, no handler for %s", pname))
 		}
