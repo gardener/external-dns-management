@@ -47,7 +47,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		c.SetFinalizerHandler(dnsutils.NewFinalizer(c, c.GetDefinition().FinalizerName(), classes))
 		targetclass, _ := c.GetStringOption(OPT_TARGETCLASS)
 		if targetclass == "" {
-			if classes.Contains(dnsutils.DEFAULT_CLASS) {
+			if !classes.Contains(dnsutils.DEFAULT_CLASS) && classes.Main() != dnsutils.DEFAULT_CLASS {
 				targetclass = classes.Main()
 			}
 		}

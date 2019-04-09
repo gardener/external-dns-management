@@ -260,7 +260,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHan
 	mod := false
 	if oldset != nil {
 		if this.IsForeign(oldset) {
-			err := fmt.Errorf("dns name %q already busy for %q", name, oldset.GetOwner())
+			err := fmt.Errorf("dns name %q already busy for owner %q", name, oldset.GetOwner())
 			if done != nil {
 				done.SetInvalid(err)
 			}
