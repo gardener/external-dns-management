@@ -42,11 +42,33 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		if err != nil {
 			return nil, err
 		}
+		copt, _ := c.GetStringOption(OPT_CLASS)
+		classes := dnsutils.NewClasses(copt)
+		c.SetFinalizerHandler(dnsutils.NewFinalizer(c, c.GetDefinition().FinalizerName(), classes))
+		targetclass, _ := c.GetStringOption(OPT_TARGETCLASS)
+		if targetclass == "" {
+			if classes.Contains(dnsutils.DEFAULT_CLASS) {
+				targetclass = classes.Main()
+			}
+		}
 		reconciler := &sourceReconciler{
 			SlaveAccess: reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind())),
 			source:      s,
-			classes:     dnsutils.NewClasses(dnsutils.DEFAULT_CLASS),
+			classes:     classes,
+			targetclass: targetclass,
 		}
+
+		reconciler.namespace, _ = c.GetStringOption(OPT_NAMESPACE)
+		reconciler.nameprefix, _ = c.GetStringOption(OPT_NAMEPREFIX)
+		excluded, _ := c.GetStringArrayOption(OPT_EXCLUDE)
+		reconciler.excluded = utils.NewStringSetByArray(excluded)
+		reconciler.Infof("found excluded domains: %v", reconciler.excluded)
+
+		if c.GetMainCluster() == c.GetCluster(TARGET_CLUSTER) {
+			reconciler.namespace = ""
+			reconciler.nameprefix = ""
+		}
+
 		nested, err := reconcilers.NewNestedReconciler(rtype, reconciler)
 		if err != nil {
 			return nil, err
@@ -74,24 +96,6 @@ func (this *sourceReconciler) Start() {
 }
 
 func (this *sourceReconciler) Setup() {
-	classes, _ := this.GetStringOption(OPT_CLASS)
-	this.classes = dnsutils.NewClasses(classes)
-	this.targetclass, _ = this.GetStringOption(OPT_TARGETCLASS)
-	if this.targetclass == "" {
-		if !this.classes.Contains(dnsutils.DEFAULT_CLASS) {
-			this.targetclass = this.classes.Main()
-		}
-	}
-	this.namespace, _ = this.GetStringOption(OPT_NAMESPACE)
-	this.nameprefix, _ = this.GetStringOption(OPT_NAMEPREFIX)
-	excluded, _ := this.GetStringArrayOption(OPT_EXCLUDE)
-	this.excluded = utils.NewStringSetByArray(excluded)
-	this.Infof("found excluded domains: %v", this.excluded)
-
-	if this.GetMainCluster() == this.GetCluster(TARGET_CLUSTER) {
-		this.namespace = ""
-		this.nameprefix = ""
-	}
 	this.SlaveAccess.Setup()
 	this.source.Setup()
 	this.NestedReconciler.Setup()

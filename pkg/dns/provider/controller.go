@@ -96,12 +96,14 @@ func DNSReconcilerType(factory DNSHandlerFactory) controller.ReconcilerType {
 ///////////////////////////////////////////////////////////////////////////////
 
 func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interface, error) {
-	classes, _ := c.GetStringOption(OPT_CLASS)
+	copt, _ := c.GetStringOption(OPT_CLASS)
+	classes := dnsutils.NewClasses(copt)
+	c.SetFinalizerHandler(dnsutils.NewFinalizer(c, c.GetDefinition().FinalizerName(), classes))
 	return &reconciler{
 		controller: c,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewDNSState(c, dnsutils.NewClasses(classes), NewConfigForController(c, factory))
+				return NewDNSState(c, classes, NewConfigForController(c, factory))
 			}).(*state),
 	}, nil
 }
