@@ -706,9 +706,6 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 	}
 	if cur != nil {
 		logger.Infof("deleting provider")
-		if cur.account == nil {
-			panic(fmt.Sprintf("OOPS, no handler for %s", pname))
-		}
 		entries := Entries{}
 		zones := this.providerzones[obj.ObjectName()]
 		for n, z := range zones {
@@ -928,13 +925,20 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 	if zone == nil {
 		return reconcile.Failed(logger, fmt.Errorf("zone %s not used anymore -> stop reconciling", zoneid))
 	}
-	if zone.TestAndSetBusy() {
-		logger.Infof("reconciling zone %q (%s) with %d entries", zoneid, zone.Domain(), len(entries))
-		defer zone.Release()
-		return reconcile.DelayOnError(logger, this.reconcileZone(logger, zoneid, entries, stale, providers))
+	if done, err := this.startZoneReconcilation(logger, zone, entries, stale, providers); done {
+		return reconcile.DelayOnError(logger, err)
 	}
 	logger.Infof("reconciling zone %q (%s) already busy and skipped", zoneid, zone.Domain())
-	return reconcile.Succeeded(logger)
+	return reconcile.Succeeded(logger).RescheduleAfter(10 * time.Second)
+}
+
+func (this *state) startZoneReconcilation(logger logger.LogContext, zone *dnsHostedZone, entries Entries, stale DNSNames, providers DNSProviders) (bool, error) {
+	if zone.TestAndSetBusy() {
+		logger.Infof("reconciling zone %q (%s) with %d entries", zone.Id(), zone.Domain(), len(entries))
+		defer zone.Release()
+		return true, this.reconcileZone(logger, zone.Id(), entries, stale, providers)
+	}
+	return false, nil
 }
 
 func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entries Entries, stale DNSNames, providers DNSProviders) error {

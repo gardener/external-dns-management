@@ -161,16 +161,18 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 var null = []byte{0}
 
 func (this *AccountCache) Release(logger logger.LogContext, a *DNSAccount, name resources.ObjectName) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
+	if a != nil {
+		this.lock.Lock()
+		defer this.lock.Unlock()
 
-	a.clients.Remove(name)
-	if len(a.clients) == 0 {
-		logger.Infof("releasing account for %s (%s)", name, a.Hash())
-		delete(this.cache, a.hash)
-		metrics.DeleteAccount(a.ProviderType(), a.Hash())
-	} else {
-		logger.Infof("keeping account for %s (%s): %d client(s)", name, a.Hash(), len(a.clients))
+		a.clients.Remove(name)
+		if len(a.clients) == 0 {
+			logger.Infof("releasing account for %s (%s)", name, a.Hash())
+			delete(this.cache, a.hash)
+			metrics.DeleteAccount(a.ProviderType(), a.Hash())
+		} else {
+			logger.Infof("keeping account for %s (%s): %d client(s)", name, a.Hash(), len(a.clients))
+		}
 	}
 }
 

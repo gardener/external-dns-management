@@ -252,6 +252,7 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 				return reconcile.Delay(logger, err)
 			}
 			this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
+			this.modified = true
 		}
 	}
 
@@ -259,13 +260,12 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 		return reconcile.RepeatOnError(logger, state.RemoveFinalizer(object))
 	}
 
-	logger.Infof("%s ENTRY", op)
-
 	///////////// validate
 
 	targets, warnings, verr := this.Validate()
 
 	if verr != nil {
+		logger.Infof("%s ENTRY: %s", op, verr)
 		state := api.STATE_INVALID
 		if status.State == api.STATE_READY {
 			state = api.STATE_STALE
@@ -276,6 +276,7 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 
 	///////////// handle
 
+	logger.Infof("%s ENTRY: validation ok", op)
 	mod := resources.NewModificationState(this.object)
 
 	if object.IsDeleting() {
@@ -309,6 +310,7 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 			status.TTL = &ttl
 		}
 
+		list, msg := this.targetList(targets)
 		if targets.DifferFrom(this.targets) {
 			logger.Infof("targets differ from internal state")
 			this.modified = true
@@ -322,23 +324,12 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 				this.object.Event(corev1.EventTypeNormal, "dnslookup", msg)
 			}
 			this.targets = targets
-
-			list, msg := this.targetList(targets)
-			if !reflect.DeepEqual(list, status.Targets) {
-				this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
-				status.Targets = list
-				logger.Info(msg)
-				mod.Modify(true)
-			}
-		} else {
-			var cur Targets
-			for _, t := range status.Targets {
-				cur = append(cur, NewTargetFromEntry(t, this))
-			}
-			if this.Targets().DifferFrom(cur) {
-				status.Targets, _ = this.targetList(this.targets)
-				mod.Modify(true)
-			}
+			this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
+		}
+		if !reflect.DeepEqual(list, status.Targets) {
+			status.Targets = list
+			logger.Info(msg)
+			mod.Modify(true)
 		}
 		mod.AssureStringPtrValue(&status.Zone, zoneid)
 		if err != nil {
@@ -360,6 +351,7 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 				mod.AssureStringPtrValue(&status.Message, fmt.Sprintf("no provider found for %q", this.dnsname))
 			} else {
 				if status.State != api.STATE_READY {
+					this.modified = true
 					mod.AssureStringValue(&status.State, api.STATE_PENDING)
 				}
 				if !curvalid {
@@ -371,6 +363,7 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 			}
 		}
 	}
+	logger.Infof("modified: %t, valid: %t, needs update: %t", this.modified, this.valid, mod.Modified)
 	return reconcile.UpdateStatus(logger, mod.UpdateStatus())
 }
 
