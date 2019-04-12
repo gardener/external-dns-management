@@ -70,6 +70,13 @@ func (this *Entry) Object() resources.Object {
 	return this.object.Object
 }
 
+func (this *Entry) Message() string {
+	return utils.StringValue(this.object.Status().Message)
+}
+func (this *Entry) State() string {
+	return this.object.Status().State
+}
+
 func (this *Entry) ClusterKey() resources.ClusterObjectKey {
 	return this.object.ClusterKey()
 }
@@ -237,6 +244,8 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 			return reconcile.DelayOnError(logger, err)
 		} else {
 			// assign entry to actual type
+			logger.Infof("assigning to provider type %q responsible for zone %s", resp, zoneid)
+
 			msg := fmt.Sprintf("Assigned to provider type %q responsible for zone %s", resp, zoneid)
 			f := func(data resources.ObjectData) (bool, error) {
 				e := data.(*api.DNSEntry)
@@ -363,7 +372,7 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 			}
 		}
 	}
-	logger.Infof("modified: %t, valid: %t, needs update: %t", this.modified, this.valid, mod.Modified)
+	logger.Infof("%s:  modified: %t, valid: %t, needs update: %t, message: %s, err: %s", this.State(), this.modified, this.valid, mod.Modified, this.Message(), err)
 	return reconcile.UpdateStatus(logger, mod.UpdateStatus())
 }
 

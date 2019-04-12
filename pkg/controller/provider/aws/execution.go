@@ -41,7 +41,7 @@ type Execution struct {
 }
 
 func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZone) *Execution {
-	return &Execution{LogContext: logger, handler: h, zone: zone, changes: map[string][]*Change{}, maxChangeCount: 20}
+	return &Execution{LogContext: logger, handler: h, zone: zone, changes: map[string][]*Change{}, maxChangeCount: 50}
 }
 
 func (this *Execution) addChange(action string, req *provider.ChangeRequest, dnsset *dns.DNSSet) {
@@ -91,7 +91,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 
 		metrics.AddRequests(provider.M_UPDATERECORDS, 1)
 		if _, err := this.handler.r53.ChangeResourceRecordSets(params); err != nil {
-			this.Error(err)
+			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)
 			for _, c := range changes {
 				if c.Done != nil {
 					c.Done.Failed(err)

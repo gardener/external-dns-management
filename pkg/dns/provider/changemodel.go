@@ -103,7 +103,7 @@ func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bo
 	model.Infof("reconcile entries for %s (with %d requests)", this.name, len(this.requests))
 
 	reqs := this.requests
-	if reqs != nil && len(reqs) > 0 {
+	if len(reqs) > 0 {
 		err := this.provider.ExecuteRequests(logger, model.zone.zone, this.model.state, reqs)
 		if err != nil {
 			model.Errorf("entry reconcilation failed for %s: %s", this.name, err)
@@ -243,7 +243,11 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHan
 	if p == nil {
 		err := fmt.Errorf("no provider found for %q", name)
 		if done != nil {
-			done.SetInvalid(err)
+			if apply {
+				done.SetInvalid(err)
+			}
+		} else {
+			this.Warnf("no done handler and %s", err)
 		}
 		return false, err
 	}
@@ -262,7 +266,11 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHan
 		if this.IsForeign(oldset) {
 			err := fmt.Errorf("dns name %q already busy for owner %q", name, oldset.GetOwner())
 			if done != nil {
-				done.SetInvalid(err)
+				if apply {
+					done.SetInvalid(err)
+				}
+			} else {
+				this.Warnf("no done handler and %s", err)
 			}
 			return false, err
 		} else {
@@ -291,11 +299,11 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHan
 							}
 						}
 					} else {
-						mod = true
 						if apply {
 							view.addCreateRequest(newset, ty, done)
 							view.addDeleteRequest(oldset, ty, nil)
 						}
+						mod = true
 					}
 				}
 			}

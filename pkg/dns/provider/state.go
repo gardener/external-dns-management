@@ -404,7 +404,9 @@ loop:
 			}
 		} else {
 			if !e.IsDeleting() {
-				logger.Infof("invalid entry %q (%s)", e.ObjectName(), e.DNSName())
+				if utils.StringValue(e.object.Status().Provider) != "" {
+					logger.Infof("invalid entry %q (%s): %s (%s)", e.ObjectName(), e.DNSName(), e.State(), e.Message())
+				}
 				stale[e.DNSName()] = e
 			}
 		}
@@ -812,9 +814,14 @@ func (this *state) updateEntry(logger logger.LogContext, op string, object *dnsu
 		if new.Interval() > 0 {
 			status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
 		}
-		if object.IsDeleting() || (new.IsModified() && newzone != "") {
+		if new.IsModified() && newzone != "" {
 			logger.Infof("trigger zone %q", newzone)
 			this.triggerHostedZone(newzone)
+		}
+		if object.IsDeleting() {
+			if newzone == "" {
+				return reconcile.DelayOnError(logger, this.RemoveFinalizer(object))
+			}
 		}
 	}
 	return status
