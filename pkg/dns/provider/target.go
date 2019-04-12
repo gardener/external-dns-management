@@ -53,25 +53,25 @@ func (this Targets) DifferFrom(targets Targets) bool {
 type Target interface {
 	GetHostName() string
 	GetRecordType() string
-	GetEntry() *Entry
+	GetEntry() *EntryVersion
 	Description() string
 }
 
 type target struct {
 	rtype string
 	host  string
-	entry *Entry
+	entry *EntryVersion
 }
 
-func NewText(t string, entry *Entry) Target {
+func NewText(t string, entry *EntryVersion) Target {
 	return NewTarget(dns.RS_TXT, fmt.Sprintf("%q", t), entry)
 }
 
-func NewTarget(ty string, ta string, entry *Entry) Target {
+func NewTarget(ty string, ta string, entry *EntryVersion) Target {
 	return &target{rtype: ty, host: ta, entry: entry}
 }
 
-func NewTargetFromEntry(name string, entry *Entry) Target {
+func NewTargetFromEntryVersion(name string, entry *EntryVersion) Target {
 	ip := net.ParseIP(name)
 	if ip == nil {
 		return NewTarget(dns.RS_CNAME, name, entry)
@@ -80,9 +80,9 @@ func NewTargetFromEntry(name string, entry *Entry) Target {
 	}
 }
 
-func (t *target) GetEntry() *Entry      { return t.entry }
-func (t *target) GetHostName() string   { return t.host }
-func (t *target) GetRecordType() string { return t.rtype }
+func (t *target) GetEntry() *EntryVersion { return t.entry }
+func (t *target) GetHostName() string     { return t.host }
+func (t *target) GetRecordType() string   { return t.rtype }
 func (t *target) Description() string {
 	if t.entry != nil {
 		return t.entry.Description()

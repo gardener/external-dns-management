@@ -71,7 +71,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 		if !ok {
 			if s.IsOwnedBy(model.owners) {
 				if e := model.IsStale(s.Name); e != nil {
-					status := e.object.Status()
+					status := e.Object().Status()
 					msg := MSG_PRESERVED
 					trigger := false
 					if status.State == v1alpha1.STATE_ERROR || status.State == v1alpha1.STATE_INVALID {
@@ -81,7 +81,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 						model.Infof("found stale set '%s' -> preserve unchanged", s.Name)
 						trigger = true
 					}
-					upd, err := e.UpdateStatus(logger, v1alpha1.STATE_STALE, msg, nil)
+					upd, err := e.UpdateStatus(logger, v1alpha1.STATE_STALE, msg)
 					if trigger && (!upd || err != nil) {
 						e.Trigger(logger)
 					}
@@ -231,7 +231,9 @@ func (this *ChangeModel) Apply(name string, done DoneHandler, targets ...Target)
 func (this *ChangeModel) Delete(name string, done DoneHandler) (bool, error) {
 	return this.Exec(true, true, name, done)
 }
+
 func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHandler, targets ...Target) (bool, error) {
+	//this.Infof("%s: %v", name, targets)
 	if len(targets) == 0 && !delete {
 		return false, nil
 	}

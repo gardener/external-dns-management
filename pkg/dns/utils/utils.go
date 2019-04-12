@@ -17,6 +17,8 @@
 package utils
 
 import (
+	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"strings"
 )
@@ -33,4 +35,45 @@ func MatchSet(hostname string, domains utils.StringSet) int {
 		}
 	}
 	return length
+}
+
+type LogMessage struct {
+	msg    string
+	logged bool
+}
+
+func NewLogMessage(msg string, args ...interface{}) *LogMessage {
+	return &LogMessage{msg: fmt.Sprintf(msg, args...)}
+}
+
+func (this *LogMessage) Get() string {
+	return this.msg
+}
+
+func (this *LogMessage) Info(logger logger.LogContext) {
+	if !this.logged {
+		logger.Info(this.msg)
+		this.logged = true
+	}
+}
+
+func (this *LogMessage) Error(logger logger.LogContext) {
+	if !this.logged {
+		logger.Error(this.msg)
+		this.logged = true
+	}
+}
+
+func (this *LogMessage) Warn(logger logger.LogContext) {
+	if !this.logged {
+		logger.Warn(this.msg)
+		this.logged = true
+	}
+}
+
+func (this *LogMessage) Debug(logger logger.LogContext) {
+	if !this.logged {
+		logger.Debug(this.msg)
+		this.logged = true
+	}
 }

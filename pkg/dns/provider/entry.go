@@ -40,124 +40,135 @@ import (
 
 const MSG_PRESERVED = "errornous entry preserved in provider"
 
-type Entry struct {
-	lock      sync.Mutex
-	object    *dnsutils.DNSEntryObject
-	dnsname   string
-	targets   Targets
-	mappings  map[string][]string
+type EntryPremise struct {
+	ptypes   utils.StringSet
+	ptype    string
+	provider DNSProvider
+	zoneid   string
+}
+
+func (this *EntryPremise) Equals(p *EntryPremise) bool {
+	return this.ptype == p.ptype && this.provider == p.provider && this.zoneid == p.zoneid
+}
+
+type EntryVersion struct {
+	lock     sync.Mutex
+	object   *dnsutils.DNSEntryObject
+	dnsname  string
+	targets  Targets
+	mappings map[string][]string
+	warnings []string
+
 	ttl       int64
 	interval  int64
 	valid     bool
-	modified  bool
 	duplicate bool
-
-	activezone string
-	state      *state
+	zoneid    string
+	ptype     string
+	provider  resources.ObjectName
 }
 
-func NewEntry(object *dnsutils.DNSEntryObject, state *state) *Entry {
-	return &Entry{
+func NewEntryVersion(object *dnsutils.DNSEntryObject) *EntryVersion {
+	return &EntryVersion{
 		object:   object,
 		dnsname:  object.DNSEntry().Spec.DNSName,
 		targets:  Targets{},
 		mappings: map[string][]string{},
-		state:    state,
 	}
 }
 
-func (this *Entry) Object() resources.Object {
-	return this.object.Object
+func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string) {
+	if this.dnsname != e.dnsname {
+		reasons = append(reasons, "dnsname changed")
+	}
+	if this.ttl != e.ttl {
+		reasons = append(reasons, "ttl changed")
+	}
+	if this.valid != e.valid {
+		reasons = append(reasons, "validation state changed")
+	}
+	if this.ZoneId() != e.ZoneId() {
+		reasons = append(reasons, "zone changed")
+	}
+	if this.targets.DifferFrom(e.targets) {
+		reasons = append(reasons, "targets changed")
+	}
+	if this.State() != e.State() {
+		if e.State() != api.STATE_READY {
+			reasons = append(reasons, "state changed")
+		}
+	}
+	return
 }
 
-func (this *Entry) Message() string {
+func (this *EntryVersion) IsValid() bool {
+	return this.valid
+}
+
+func (this *EntryVersion) IsDeleting() bool {
+	return this.object.IsDeleting()
+}
+
+func (this *EntryVersion) Object() *dnsutils.DNSEntryObject {
+	return this.object
+}
+
+func (this *EntryVersion) Message() string {
 	return utils.StringValue(this.object.Status().Message)
 }
-func (this *Entry) State() string {
+
+func (this *EntryVersion) ZoneId() string {
+	return this.zoneid
+}
+
+func (this *EntryVersion) State() string {
 	return this.object.Status().State
 }
 
-func (this *Entry) ClusterKey() resources.ClusterObjectKey {
+func (this *EntryVersion) ClusterKey() resources.ClusterObjectKey {
 	return this.object.ClusterKey()
 }
 
-func (this *Entry) ObjectName() resources.ObjectName {
+func (this *EntryVersion) ObjectName() resources.ObjectName {
 	return this.object.ObjectName()
 }
 
-func (this *Entry) DNSName() string {
+func (this *EntryVersion) DNSName() string {
 	return this.dnsname
 }
 
-func (this *Entry) Description() string {
+func (this *EntryVersion) Targets() Targets {
+	return this.targets
+}
+
+func (this *EntryVersion) Description() string {
 	return this.object.Description()
 }
 
-func (this *Entry) TTL() int64 {
+func (this *EntryVersion) TTL() int64 {
 	return this.ttl
 }
 
-func (this *Entry) Interval() int64 {
+func (this *EntryVersion) Interval() int64 {
 	return this.interval
 }
 
-func (this *Entry) OwnerId() string {
+func (this *EntryVersion) OwnerId() string {
 	if this.object.GetOwnerId() != nil {
 		return *this.object.GetOwnerId()
 	}
 	return ""
 }
 
-func (this *Entry) Trigger(logger logger.LogContext) {
-	this.state.TriggerEntry(logger, this)
-}
-
-func (this *Entry) IsActive() bool {
-	id := this.OwnerId()
-	if id == "" {
-		id = this.state.config.Ident
-	}
-	return this.state.ownerCache.IsResponsibleFor(id)
-}
-
-func (this *Entry) Targets() Targets {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	return this.targets
-}
-
-func (this *Entry) IsValid() bool {
-	this.lock.Lock()
-	this.lock.Unlock()
-	return this.valid
-}
-
-func (this *Entry) IsDeleting() bool {
-	this.lock.Lock()
-	this.lock.Unlock()
-	return this.object.IsDeleting()
-}
-
-func (this *Entry) IsModified() bool {
-	this.lock.Lock()
-	this.lock.Unlock()
-	return this.modified
-}
-
-func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
-
-	spec := &this.object.DNSEntry().Spec
+func validate(state *state, entry *EntryVersion) (targets Targets, warnings []string, err error) {
+	spec := &entry.object.DNSEntry().Spec
 
 	targets = Targets{}
 	warnings = []string{}
 
-	if this.dnsname != spec.DNSName {
-		panic(fmt.Sprintf("change the dnsname should be handled by replacing the entry object (%q)", this.ObjectName()))
-	}
-
-	check := this.dnsname
-	if strings.HasPrefix(this.dnsname, "*.") {
-		check = this.dnsname[2:]
+	check := entry.object.GetDNSName()
+	if strings.HasPrefix(check, "*.") {
+		check = check[2:]
 	}
 	if errs := validation.IsDNS1123Subdomain(check); errs != nil {
 		if werrs := validation.IsWildcardDNS1123Subdomain(check); werrs != nil {
@@ -175,24 +186,24 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 	}
 
 	for _, t := range spec.Targets {
-		new := NewTargetFromEntry(t, this)
+		new := NewTargetFromEntryVersion(t, entry)
 		if targets.Has(new) {
-			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate target %q", this.ObjectName(), new))
+			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate target %q", entry.ObjectName(), new))
 		} else {
 			targets = append(targets, new)
 		}
 	}
 	for _, t := range spec.Text {
-		new := NewText(t, this)
+		new := NewText(t, entry)
 		if targets.Has(new) {
-			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate text %q", this.ObjectName(), new))
+			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate text %q", entry.ObjectName(), new))
 		} else {
 			targets = append(targets, new)
 		}
 	}
 
 	if utils.StringValue(spec.OwnerId) != "" {
-		if !this.state.ownerCache.IsResponsibleFor(*spec.OwnerId) {
+		if !state.ownerCache.IsResponsibleFor(*spec.OwnerId) {
 			err = fmt.Errorf("unknown owner id '%s'", *spec.OwnerId)
 		}
 	}
@@ -202,76 +213,73 @@ func (this *Entry) Validate() (targets Targets, warnings []string, err error) {
 	return
 }
 
-func (this *Entry) Update(logger logger.LogContext, state *state, op string, object *dnsutils.DNSEntryObject, resp, zoneid string, err error, defaultTTL int64) reconcile.Status {
-	this.lock.Lock()
-	this.lock.Unlock()
+func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, defaultTTL int64, curvalid bool) reconcile.Status {
 
-	this.object = object
-
-	curvalid := this.valid
 	this.valid = false
+	this.zoneid = p.zoneid
+	this.ptype = p.ptype
+	if p.provider != nil {
+		this.provider = p.provider.ObjectName()
+	} else {
+		this.provider = nil
+	}
+
 	status := &this.object.DNSEntry().Status
+	spec := &this.object.DNSEntry().Spec
+
+	this.ttl = defaultTTL
+	if spec.TTL != nil {
+		this.ttl = *spec.TTL
+	}
 
 	///////////// handle type responsibility
 
-	if utils.IsEmptyString(status.ProviderType) || (*status.ProviderType != resp && zoneid != "") {
-		if utils.IsEmptyString(status.ProviderType) && zoneid == "" {
-			logger.Debugf("check responsible: entry type: %q, zoneid: %q", reconcile.StringValue(status.ProviderType), zoneid)
+	if utils.IsEmptyString(status.ProviderType) || (p.zoneid != "" && *status.ProviderType != p.ptype) {
+		if utils.IsEmptyString(status.ProviderType) && p.zoneid == "" {
+			logger.Debugf("check responsible: entry type: %q, zoneid: %q", reconcile.StringValue(status.ProviderType), p.zoneid)
 		} else {
-			logger.Infof("check responsible: entry type: %q, zoneid: %q", reconcile.StringValue(status.ProviderType), zoneid)
+			logger.Infof("check responsible: entry type: %q, zoneid: %q", reconcile.StringValue(status.ProviderType), p.zoneid)
 		}
-		if zoneid == "" {
+		if p.zoneid == "" {
 			// mark unassigned foreign entries as errorneous
-			if object.GetCreationTimestamp().Add(120 * time.Second).After(time.Now()) {
+			if this.object.GetCreationTimestamp().Add(120 * time.Second).After(time.Now()) {
+				state.RemoveFinalizer(this.object)
 				return reconcile.Succeeded(logger).RescheduleAfter(120 * time.Second)
 			}
-			logger.Infof("release responsibility because of non-matching zone")
-			state.RemoveFinalizer(object)
-			f := func(data resources.ObjectData) (bool, error) {
-				e := data.(*api.DNSEntry)
-				if !utils.IsEmptyString(e.Status.ProviderType) {
-					return false, nil
-				}
-				mod := utils.ModificationState{}
-				mod.AssureStringPtrValue(&e.Status.ProviderType, "")
-				mod.AssureStringPtrValue(&e.Status.Provider, "")
-				mod.AssureStringValue(&e.Status.State, api.STATE_ERROR)
-				mod.AssureStringPtrValue(&e.Status.Message, "No responsible provider found")
-				logger.Errorf("no responsible provider found")
-				return mod.IsModified(), nil
-			}
-			_, err := object.ModifyStatus(f)
-			return reconcile.DelayOnError(logger, err)
-		} else {
-			// assign entry to actual type
-			logger.Infof("assigning to provider type %q responsible for zone %s", resp, zoneid)
-
-			msg := fmt.Sprintf("Assigned to provider type %q responsible for zone %s", resp, zoneid)
-			f := func(data resources.ObjectData) (bool, error) {
-				e := data.(*api.DNSEntry)
-				mod := (&utils.ModificationState{}).
-					AssureStringPtrValue(&e.Status.ProviderType, resp).
-					AssureStringValue(&e.Status.State, api.STATE_PENDING).
-					AssureStringPtrValue(&e.Status.Message, msg).
-					AssureStringPtrValue(&e.Status.Zone, zoneid)
-				return mod.IsModified(), nil
-			}
-			_, err := object.ModifyStatus(f)
+			logger.Infof("probably no responsible controller found -> mark as error")
+			err := this.updateStatus(logger, api.STATE_ERROR, "No responsible provider found")
 			if err != nil {
 				return reconcile.Delay(logger, err)
 			}
-			this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
-			this.modified = true
+		} else {
+			// assign entry to actual type
+			logger.Infof("assigning to provider type %q responsible for zone %s", p.ptype, p.zoneid)
+
+			err := this.updateStatus(logger, api.STATE_PENDING, "Assigned to provider type %q responsible for zone %s", p.ptype, p.zoneid)
+			if err != nil {
+				return reconcile.Delay(logger, err)
+			}
 		}
 	}
 
-	if utils.StringValue(status.ProviderType) != resp {
-		return reconcile.RepeatOnError(logger, state.RemoveFinalizer(object))
+	if p.zoneid == "" && !utils.IsEmptyString(status.ProviderType) && p.ptypes.Contains(*status.ProviderType) {
+		// revoke assignment to actual type
+		err := this.updateStatus(logger, "", "not valid for known provider anymore -> releasing provider type %s", *status.ProviderType)
+		if err != nil {
+			return reconcile.Delay(logger, err)
+		}
+	}
+
+	if p.zoneid == "" || utils.StringValue(status.ProviderType) != p.ptype {
+		return reconcile.RepeatOnError(logger, state.RemoveFinalizer(this.object))
 	}
 
 	///////////// validate
 
-	targets, warnings, verr := this.Validate()
+	targetState := status.State
+	targetMessage := utils.StringValue(status.Message)
+
+	targets, warnings, verr := validate(state, this)
 
 	if verr != nil {
 		logger.Infof("%s ENTRY: %s", op, verr)
@@ -279,24 +287,22 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 		if status.State == api.STATE_READY {
 			state = api.STATE_STALE
 		}
-		this.UpdateStatus(logger, state, verr.Error(), nil)
+		this.UpdateStatus(logger, state, verr.Error())
 		return reconcile.Failed(logger, verr)
 	}
 
 	///////////// handle
 
 	logger.Infof("%s ENTRY: validation ok", op)
-	mod := resources.NewModificationState(this.object)
 
-	if object.IsDeleting() {
+	if this.IsDeleting() {
 		logger.Infof("update state to %s", api.STATE_DELETING)
-		mod.AssureStringValue(&status.State, api.STATE_DELETING)
-		mod.AssureStringPtrValue(&status.Message, "entry is scheduled to be deleted")
-		this.modified = true
+		targetState = api.STATE_DELETING
+		targetMessage = "entry is scheduled to be deleted"
 		this.valid = true
 	} else {
-		spec := &this.object.DNSEntry().Spec
-		targets, mappings := this.NormalizeTargets(logger, targets...)
+		this.warnings = warnings
+		targets, mappings := normalizeTargets(logger, this.object, targets...)
 		if len(mappings) > 0 {
 			if spec.CNameLookupInterval != nil && *spec.CNameLookupInterval > 0 {
 				this.interval = *spec.CNameLookupInterval
@@ -307,79 +313,145 @@ func (this *Entry) Update(logger logger.LogContext, state *state, op string, obj
 			this.interval = 0
 		}
 
-		ttl := defaultTTL
-		if spec.TTL != nil {
-			ttl = *spec.TTL
-		}
-		if ttl != this.ttl {
-			this.ttl = ttl
-			logger.Infof("setting ttl %d", ttl)
-			this.modified = true
-			mod.Modify(true)
-			status.TTL = &ttl
-		}
-
-		list, msg := this.targetList(targets)
-		if targets.DifferFrom(this.targets) {
-			logger.Infof("targets differ from internal state")
-			this.modified = true
-			for _, w := range warnings {
-				logger.Warn(w)
-				this.object.Event(corev1.EventTypeNormal, "reconcile", w)
-			}
-			for dns, m := range mappings {
-				msg := fmt.Sprintf("mapping cname %q to %v", dns, m)
-				logger.Info(msg)
-				this.object.Event(corev1.EventTypeNormal, "dnslookup", msg)
-			}
-			this.targets = targets
-			this.object.Event(corev1.EventTypeNormal, "reconcile", msg)
-		}
-		if !reflect.DeepEqual(list, status.Targets) {
-			status.Targets = list
-			logger.Info(msg)
-			mod.Modify(true)
-		}
-		mod.AssureStringPtrValue(&status.Zone, zoneid)
+		this.targets = targets
 		if err != nil {
 			if status.State != api.STATE_STALE {
-				mod.AssureStringValue(&status.State, api.STATE_ERROR)
-				mod.AssureStringPtrValue(&status.Message, err.Error())
+				targetState = api.STATE_ERROR
+				targetMessage = err.Error()
 			} else {
 				if strings.HasPrefix(*status.Message, MSG_PRESERVED) {
-					mod.AssureStringPtrValue(&status.Message, MSG_PRESERVED+": "+err.Error())
+					targetMessage = MSG_PRESERVED + ": " + err.Error()
 				} else {
-					mod.AssureStringPtrValue(&status.Message, err.Error())
+					targetMessage = err.Error()
 				}
 			}
 		} else {
-			if zoneid == "" {
-				mod.AssureStringValue(&status.State, api.STATE_ERROR)
-				mod.AssureStringPtrValue(&status.Provider, "")
-				mod.AssureStringPtrValue(&status.ProviderType, "")
-				mod.AssureStringPtrValue(&status.Message, fmt.Sprintf("no provider found for %q", this.dnsname))
+			if p.zoneid == "" {
+				targetState = api.STATE_ERROR
+				this.provider = nil
+				targetMessage = fmt.Sprintf("no provider found for %q", this.dnsname)
 			} else {
 				if status.State != api.STATE_READY {
-					this.modified = true
-					mod.AssureStringValue(&status.State, api.STATE_PENDING)
+					targetState = api.STATE_PENDING
 				}
 				if !curvalid {
-					mod.AssureStringPtrValue(&status.Message, fmt.Sprintf("activating %q", this.dnsname))
+					targetMessage = fmt.Sprintf("activating %q", this.dnsname)
 					logger.Infof("activating entry for %q", this.DNSName())
-					this.modified = true
 				}
 				this.valid = true
 			}
 		}
 	}
-	logger.Infof("%s:  modified: %t, valid: %t, needs update: %t, message: %s, err: %s", this.State(), this.modified, this.valid, mod.Modified, this.Message(), err)
-	return reconcile.UpdateStatus(logger, mod.UpdateStatus())
+	logger.Infof("%s: valid: %t, message: %s, err: %s", targetState, this.valid, targetMessage, ErrorValue(err))
+	logmsg := dnsutils.NewLogMessage("update entry status")
+	f := func(data resources.ObjectData) (bool, error) {
+		e := data.(*api.DNSEntry)
+		mod := (&utils.ModificationState{})
+		if p.zoneid != "" {
+			mod.AssureStringPtrValue(&e.Status.ProviderType, p.ptype)
+		}
+		mod.AssureStringValue(&e.Status.State, targetState).
+			AssureStringPtrValue(&e.Status.Message, targetMessage).
+			AssureStringPtrValue(&e.Status.Zone, this.zoneid)
+		if this.provider != nil {
+			mod.AssureStringPtrValue(&e.Status.Provider, this.provider.String())
+		} else {
+			mod.AssureStringPtrPtr(&e.Status.Provider, nil)
+		}
+		if mod.IsModified() {
+			logmsg.Info(logger)
+		}
+		return mod.IsModified(), nil
+	}
+	_, err = this.object.ModifyStatus(f)
+	return reconcile.DelayOnError(logger, err)
 }
 
-func (this *Entry) targetList(targets Targets) ([]string, string) {
+func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg string, args ...interface{}) error {
+	logmsg := dnsutils.NewLogMessage(msg, args...)
+	f := func(data resources.ObjectData) (bool, error) {
+		e := data.(*api.DNSEntry)
+		mod := (&utils.ModificationState{}).
+			AssureStringPtrValue(&e.Status.ProviderType, this.ptype).
+			AssureStringValue(&e.Status.State, state).
+			AssureStringPtrValue(&e.Status.Message, logmsg.Get()).
+			AssureStringPtrValue(&e.Status.Zone, this.zoneid)
+		if e.Status.ObservedGeneration < this.object.GetGeneration() {
+			mod.AssureInt64Value(&e.Status.ObservedGeneration, this.object.GetGeneration())
+		}
+		if this.provider != nil {
+			mod.AssureStringPtrValue(&e.Status.Provider, this.provider.String())
+		} else {
+			mod.AssureStringPtrPtr(&e.Status.Provider, nil).
+				AssureInt64PtrPtr(&e.Status.TTL, nil)
+			if e.Status.Targets != nil {
+				e.Status.Targets = nil
+				mod.Modify(true)
+			}
+		}
+		if mod.IsModified() {
+			logmsg.Info(logger)
+		}
+		return mod.IsModified(), nil
+	}
+	_, err := this.object.ModifyStatus(f)
+	this.object.Event(corev1.EventTypeNormal, "reconcile", logmsg.Get())
+	return err
+}
+
+func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, msg string) (bool, error) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	targetState := state
+	targetMessage := msg
+	f := func(data resources.ObjectData) (bool, error) {
+		o := data.(*api.DNSEntry)
+		if state == api.STATE_PENDING && o.Status.State != "" {
+			return false, nil
+		}
+		mod := &utils.ModificationState{}
+
+		if state == api.STATE_READY {
+			mod.AssureInt64PtrValue(&o.Status.TTL, this.ttl)
+			list, msg := targetList(this.targets)
+			if !reflect.DeepEqual(list, o.Status.Targets) {
+				o.Status.Targets = list
+				logger.Info(msg)
+				mod.Modify(true)
+			}
+			if this.provider != nil {
+				p := this.provider.String()
+				mod.AssureStringPtrPtr(&o.Status.Provider, &p)
+			}
+		}
+		mod.AssureInt64Value(&o.Status.ObservedGeneration, o.Generation)
+		if !(o.Status.State == api.STATE_STALE && o.Status.State == state) {
+			mod.AssureStringPtrValue(&o.Status.Message, msg)
+		} else {
+			targetMessage = utils.StringValue(o.Status.Message)
+		}
+		if !(o.Status.State == api.STATE_STALE && state == api.STATE_INVALID) {
+			mod.AssureStringValue(&o.Status.State, state)
+		} else {
+			targetState = o.Status.State
+		}
+		if mod.IsModified() {
+			logger.Infof("update state of '%s/%s' to %s (%s)", o.Namespace, o.Name, state, msg)
+		}
+		return mod.IsModified(), nil
+	}
+	upd, err := this.object.ModifyStatus(f)
+	if err == nil {
+		this.Object().Status().State = targetState
+		this.Object().Status().Message = &targetMessage
+	}
+	return upd, err
+}
+
+func targetList(targets Targets) ([]string, string) {
 	list := []string{}
-	msg := "update effective targets: "
-	sep := "[ "
+	msg := "update effective targets: ["
+	sep := ""
 	for _, t := range targets {
 		list = append(list, t.GetHostName())
 		msg = fmt.Sprintf("%s%s%s", msg, sep, t)
@@ -389,42 +461,7 @@ func (this *Entry) targetList(targets Targets) ([]string, string) {
 	return list, msg
 }
 
-func (this *Entry) UpdateStatus(logger logger.LogContext, state string, msg string, provider resources.ObjectName) (bool, error) {
-	f := func(data resources.ObjectData) (bool, error) {
-		o := data.(*api.DNSEntry)
-		if state == api.STATE_PENDING && o.Status.State != "" {
-			return false, nil
-		}
-
-		mod := &utils.ModificationState{}
-		if provider != nil {
-			p := provider.String()
-			mod.AssureStringPtrPtr(&o.Status.Provider, &p)
-		}
-		mod.AssureInt64Value(&o.Status.ObservedGeneration, o.Generation)
-		if !(o.Status.State == api.STATE_STALE && o.Status.State == state) {
-			mod.AssureStringPtrValue(&o.Status.Message, msg)
-		}
-		if !(o.Status.State == api.STATE_STALE && state == api.STATE_INVALID) {
-			mod.AssureStringValue(&o.Status.State, state)
-		}
-		if mod.IsModified() {
-			logger.Infof("update state of '%s/%s' to %s (%s)", o.Namespace, o.Name, state, msg)
-		}
-		return mod.IsModified(), nil
-	}
-	return this.object.ModifyStatus(f)
-}
-
-func (this *Entry) HasSameDNSName(entry *api.DNSEntry) bool {
-	if this.dnsname != entry.Spec.DNSName {
-		return false
-	}
-	return true
-}
-
-func (this *Entry) NormalizeTargets(logger logger.LogContext, targets ...Target) (Targets, map[string][]string) {
-
+func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject, targets ...Target) (Targets, map[string][]string) {
 	result := make(Targets, 0, len(targets))
 	mappings := map[string][]string{}
 	for _, t := range targets {
@@ -438,7 +475,7 @@ func (this *Entry) NormalizeTargets(logger logger.LogContext, targets ...Target)
 			} else {
 				w := fmt.Sprintf("cannot lookup '%s': %s", t.GetHostName(), err)
 				logger.Warn(w)
-				this.object.Event(corev1.EventTypeNormal, "dnslookup", w)
+				object.Event(corev1.EventTypeNormal, "dnslookup", w)
 			}
 			mappings[t.GetHostName()] = addrs
 		} else {
@@ -448,15 +485,81 @@ func (this *Entry) NormalizeTargets(logger logger.LogContext, targets ...Target)
 	return result, mappings
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+type Entry struct {
+	lock       sync.Mutex
+	modified   bool
+	activezone string
+	state      *state
+
+	*EntryVersion
+}
+
+func NewEntry(v *EntryVersion, state *state) *Entry {
+	return &Entry{
+		EntryVersion: v,
+		state:        state,
+		modified:     true,
+		activezone:   v.zoneid,
+	}
+}
+
+func (this *Entry) Trigger(logger logger.LogContext) {
+	this.state.TriggerEntry(logger, this)
+}
+
+func (this *Entry) IsActive() bool {
+	id := this.OwnerId()
+	if id == "" {
+		id = this.state.config.Ident
+	}
+	return this.state.ownerCache.IsResponsibleFor(id)
+}
+
+func (this *Entry) IsModified() bool {
+	return this.modified
+}
+
+func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
+
+	if this.DNSName() != new.DNSName() {
+		return NewEntry(new, this.state)
+	}
+
+	reasons := this.RequiresUpdateFor(new)
+	if len(reasons) != 0 {
+		logger.Infof("update actual entry: valid: %t  %v", new.IsValid(), reasons)
+		if this.targets.DifferFrom(new.targets) && !new.IsDeleting() {
+			logger.Infof("targets differ from internal state")
+			for _, w := range new.warnings {
+				logger.Warn(w)
+				this.object.Event(corev1.EventTypeNormal, "reconcile", w)
+			}
+			for dns, m := range new.mappings {
+				msg := fmt.Sprintf("mapping cname %q to %v", dns, m)
+				logger.Info(msg)
+				this.object.Event(corev1.EventTypeNormal, "dnslookup", msg)
+			}
+			_, msg := targetList(new.targets)
+			logger.Infof("%s", msg)
+		}
+		this.modified = true
+	}
+	this.EntryVersion = new
+
+	return this
+}
+
 func (this *Entry) Before(e *Entry) bool {
 	if e == nil {
 		return true
 	}
-	if this.object.GetCreationTimestamp().Time.Equal(e.object.GetCreationTimestamp().Time) {
+	if this.Object().GetCreationTimestamp().Time.Equal(e.Object().GetCreationTimestamp().Time) {
 		// for entries created at same time compare objectname to define strict order
-		return strings.Compare(this.object.ObjectName().String(), e.object.ObjectName().String()) < 0
+		return strings.Compare(this.ObjectName().String(), e.ObjectName().String()) < 0
 	}
-	return this.object.GetCreationTimestamp().Time.Before(e.object.GetCreationTimestamp().Time)
+	return this.Object().GetCreationTimestamp().Time.Before(e.Object().GetCreationTimestamp().Time)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -465,21 +568,13 @@ func (this *Entry) Before(e *Entry) bool {
 
 type Entries map[resources.ObjectName]*Entry
 
-// Add an entry. It preserves the existing entry if the DNS name is
-// unchanged. Uf the name changes the enetry will be replaced by a new one.
-// In this case the old entry (with the previoud DNS name) is returned
-// as old entry. In all other cases no old entry is returned.
-// return 1: old entry with different dns name
-// return 2: actual entry for this object name with the actual dns name
-func (this Entries) Add(entry *dnsutils.DNSEntryObject, state *state) (*Entry, *Entry) {
-	data := entry.DNSEntry()
+func (this Entries) AddEntry(entry *Entry) *Entry {
 	old := this[entry.ObjectName()]
-	if old != nil && old.HasSameDNSName(data) {
-		return nil, old
+	this[entry.ObjectName()] = entry
+	if old != nil && old != entry {
+		return old
 	}
-	e := NewEntry(entry, state)
-	this[entry.ObjectName()] = e
-	return old, e
+	return nil
 }
 
 func (this Entries) Delete(e *Entry) {

@@ -32,18 +32,16 @@ type StatusUpdate struct {
 	logger   logger.LogContext
 	delete   bool
 	done     bool
-	zoneid   string
-	provider resources.ObjectName
 	fhandler FinalizerHandler
 }
 
-func NewStatusUpdate(logger logger.LogContext, e *Entry, f FinalizerHandler, zoneid string) DoneHandler {
+func NewStatusUpdate(logger logger.LogContext, e *Entry, f FinalizerHandler) DoneHandler {
 	//logger.Infof("request update for %s (delete=%t)", e.DNSName(), e.IsDeleting())
-	return &StatusUpdate{Entry: e, logger: logger, delete: e.IsDeleting(), fhandler: f, zoneid: zoneid}
+	return &StatusUpdate{Entry: e, logger: logger, delete: e.IsDeleting(), fhandler: f}
 }
 
-func (this *StatusUpdate) SetProvider(name resources.ObjectName) {
-	this.provider = name
+func (this *StatusUpdate) SetProvider(p resources.ObjectName) {
+	this.provider = p
 }
 
 func (this *StatusUpdate) SetInvalid(err error) {
@@ -51,7 +49,7 @@ func (this *StatusUpdate) SetInvalid(err error) {
 		this.done = true
 		this.modified = false
 		this.fhandler.RemoveFinalizer(this.Entry.object)
-		_, err := this.UpdateStatus(this.logger, api.STATE_INVALID, err.Error(), this.provider)
+		_, err := this.UpdateStatus(this.logger, api.STATE_INVALID, err.Error())
 		if err != nil {
 			this.logger.Errorf("cannot update: %s", err)
 		}
@@ -62,7 +60,7 @@ func (this *StatusUpdate) Failed(err error) {
 		this.done = true
 		this.modified = false
 		this.fhandler.RemoveFinalizer(this.Entry.Object())
-		_, err := this.UpdateStatus(this.logger, api.STATE_ERROR, err.Error(), this.provider)
+		_, err := this.UpdateStatus(this.logger, api.STATE_ERROR, err.Error())
 		if err != nil {
 			this.logger.Errorf("cannot update: %s", err)
 		}
@@ -78,7 +76,7 @@ func (this *StatusUpdate) Succeeded() {
 		} else {
 			this.Entry.activezone = this.zoneid
 			this.fhandler.SetFinalizer(this.Entry.Object())
-			_, err := this.UpdateStatus(this.logger, api.STATE_READY, "dns entry active", this.provider)
+			_, err := this.UpdateStatus(this.logger, api.STATE_READY, "dns entry active")
 			if err != nil {
 				this.logger.Errorf("cannot update: %s", err)
 			}

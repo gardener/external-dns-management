@@ -83,3 +83,10 @@ func CheckAccess(object resources.Object, used resources.Object) error {
 	}
 	return err
 }
+
+func ErrorValue(err error) string {
+	if err == nil {
+		return "<no error>"
+	}
+	return err.Error()
+}

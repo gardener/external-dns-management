@@ -18,14 +18,13 @@ package provider
 
 import (
 	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	"k8s.io/apimachinery/pkg/runtime"
 	"strings"
 	"sync"
 	"time"
-
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
-	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -233,22 +232,22 @@ func (this *state) removeProviderForZone(zoneid string, p resources.ObjectName) 
 	}
 }
 
-func (this *state) LookupProvider(e *Entry) (DNSProvider, error) {
+func (this *state) LookupProvider(e *EntryVersion) (DNSProvider, error) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
-	return this.lookupProvider(e)
+	return this.lookupProvider(e.Object())
 }
 
-func (this *state) lookupProvider(e *Entry) (DNSProvider, error) {
+func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, error) {
 	var err error
 	var found DNSProvider
 	match := -1
 	for _, p := range this.providers {
 		if p.IsValid() {
-			n := p.Match(e.DNSName())
+			n := p.Match(e.GetDNSName())
 			if n > 0 {
 				if match < n {
-					err = CheckAccess(e.Object(), p.Object())
+					err = CheckAccess(e, p.Object())
 					if err == nil {
 						found = p
 					}
@@ -375,7 +374,7 @@ func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, 
 loop:
 	for dns, e := range this.dnsnames {
 		if e.IsValid() {
-			provider, err := this.lookupProvider(e)
+			provider, err := this.lookupProvider(e.Object())
 			if provider == nil && !e.IsDeleting() {
 				if err != nil {
 					logger.Infof("no valid provider found for %q(%s): %s", e.ObjectName(), dns, err)
@@ -663,7 +662,9 @@ func (this *state) TriggerEntries(logger logger.LogContext, entries Entries) {
 }
 
 func (this *state) TriggerEntry(logger logger.LogContext, e *Entry) {
-	logger.Infof("trigger entry %s", e.ClusterKey())
+	if logger != nil {
+		logger.Infof("trigger entry %s", e.ClusterKey())
+	}
 	this.controller.EnqueueKey(e.ClusterKey())
 }
 
@@ -769,59 +770,155 @@ func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) 
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status {
-	return this.updateEntry(logger, "reconcile", object)
+	return this.HandleUpdateEntry(logger, "reconcile", object)
 }
 
 func (this *state) DeleteEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status {
-	return this.updateEntry(logger, "delete", object)
+	return this.HandleUpdateEntry(logger, "delete", object)
 }
 
-func (this *state) updateEntry(logger logger.LogContext, op string, object *dnsutils.DNSEntryObject) reconcile.Status {
+func (this *state) GetEntry(name resources.ObjectName) *Entry {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	return this.entries[name]
+}
+
+func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, status reconcile.Status) (*Entry, reconcile.Status) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	var new *Entry
+	old := this.entries[v.ObjectName()]
+	if old == nil {
+		new = NewEntry(v, this)
+	} else {
+		new = old.Update(logger, v)
+	}
+
+	if v.IsDeleting() {
+		var err error
+		if old != nil {
+			this.cleanupEntry(logger, old)
+			if old.activezone != "" {
+				if this.zones[old.activezone] != nil {
+					if this.HasFinalizer(old.Object()) {
+						logger.Infof("deleting delayed until entry deleted in provider")
+						this.outdated[old.ObjectName()] = old
+						return old, reconcile.Succeeded(logger)
+					}
+				} else {
+					logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
+					err = this.RemoveFinalizer(v.object)
+				}
+			} else {
+				logger.Infof("deleting yet unmanaged entry")
+				err = this.RemoveFinalizer(v.object)
+			}
+		}
+		if err != nil {
+			this.entries[v.ObjectName()] = new
+		}
+		return nil, reconcile.DelayOnError(logger, err)
+	}
+
+	this.entries[v.ObjectName()] = new
+	if old != nil && old != new {
+		// DNS name changed -> clean up old dns name
+		logger.Infof("dns name changed to %q", new.DNSName())
+		this.cleanupEntry(logger, old)
+		if old.activezone != "" && old.activezone != new.ZoneId() {
+			if this.zones[old.activezone] != nil {
+				logger.Infof("dns zone changed -> trigger old zone '%s'", old.ZoneId())
+				this.triggerHostedZone(old.activezone)
+			}
+		}
+	}
+
+	dnsname := v.DNSName()
+	cur := this.dnsnames[dnsname]
+	if dnsname != "" {
+		if cur != nil {
+			if cur.ObjectName() != new.ObjectName() {
+				if cur.Before(new) {
+					new.duplicate = true
+					err := fmt.Errorf("DNS name %q already busy for %q", dnsname, cur.ObjectName())
+					if status.IsSucceeded() {
+						_, err := v.UpdateStatus(logger, api.STATE_ERROR, err.Error())
+						if err != nil {
+							return new, reconcile.DelayOnError(logger, err)
+						}
+					}
+					return new, status
+				} else {
+					cur.duplicate = true
+					logger.Warnf("DNS name %q already busy for %q, but this one was earlier", dnsname, cur.ObjectName())
+					logger.Infof("reschedule %q for error update", cur.ObjectName())
+					this.triggerKey(cur.ClusterKey())
+				}
+			}
+		}
+		this.dnsnames[dnsname] = new
+	}
+
+	return new, status
+}
+
+func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, error) {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+
+	provider, err := this.lookupProvider(e)
+	zoneid, _ := this.getZoneForName(e.GetDNSName())
+	ptype := ""
+	if zoneid != "" {
+		ptype = this.GetHandlerFactory().TypeCode()
+	}
+	ptypes := utils.NewStringSet(this.GetHandlerFactory().TypeCode())
+
+	return &EntryPremise{
+		ptypes,
+		ptype,
+		provider,
+		zoneid,
+	}, err
+}
+
+func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object *dnsutils.DNSEntryObject) reconcile.Status {
 	logger.Debugf("%s ENTRY", op)
-	old, new, err := this.AddEntry(logger, object)
 
-	newzone, _ := this.GetZoneForName(new.DNSName())
-	oldzone := ""
+	old := this.GetEntry(object.ObjectName())
+	curvalid := false
 	if old != nil {
-		oldzone, _ = this.GetZoneForName(old.DNSName())
+		curvalid = old.IsValid()
 	}
 
-	if old != nil {
-		if oldzone != "" && (err != nil || oldzone != newzone) {
-			logger.Infof("dns name changed -> trigger old zone %q", oldzone)
-			if this.HasFinalizer(old.object) {
-				this.outdated[old.ObjectName()] = old
-			}
-			this.triggerHostedZone(oldzone)
-		} else {
-			logger.Infof("dns name changed to %q", new.DNSName())
+	p, err := this.EntryPremise(object)
+	if p.provider == nil && err == nil {
+		if p.zoneid != "" {
+			err = fmt.Errorf("no matching provider for zone '%s' found", p.zoneid)
 		}
 	}
 
-	if err == nil {
-		var provider DNSProvider
-		provider, err = this.LookupProvider(new)
-		if provider == nil && err == nil {
-			if newzone != "" {
-				err = fmt.Errorf("no matching %s provider found", this.GetHandlerFactory().TypeCode())
-			}
-		}
-	}
+	v := NewEntryVersion(object)
+	status := v.Setup(logger, this, p, op, err, this.config.TTL, curvalid)
+	new, status := this.AddEntryVersion(logger, v, status)
 
-	status := new.Update(logger, this, op, object, this.GetHandlerFactory().TypeCode(), newzone, err, this.config.TTL)
-
-	if status.IsSucceeded() && new.IsValid() {
+	if status.IsSucceeded() && new != nil && new.IsValid() {
 		if new.Interval() > 0 {
 			status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
+			status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
 		}
-		if new.IsModified() && newzone != "" {
-			logger.Infof("trigger zone %q", newzone)
-			this.triggerHostedZone(newzone)
-		}
-		if object.IsDeleting() {
-			if newzone == "" {
-				return reconcile.DelayOnError(logger, this.RemoveFinalizer(object))
-			}
+	}
+	if new.IsModified() && new.zoneid != "" {
+		logger.Infof("trigger zone %q", new.ZoneId())
+		this.triggerHostedZone(new.ZoneId())
+	}
+
+	if !object.IsDeleting() {
+		check, _ := this.EntryPremise(object)
+		if !check.Equals(p) {
+			logger.Infof("precondition changed -> repeat reconcilation")
+			return reconcile.Repeat(logger)
 		}
 	}
 	return status
@@ -842,7 +939,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ObjectKe
 		}
 		this.cleanupEntry(logger, old)
 	} else {
-		logger.Infof("removing unknown entry %q", key.ObjectName())
+		logger.Debugf("removing unknown entry %q", key.ObjectName())
 	}
 	return reconcile.Succeeded(logger)
 }
@@ -850,7 +947,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ObjectKe
 func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 	logger.Infof("cleanup old entry (duplicate=%t)", e.duplicate)
 	this.entries.Delete(e)
-	if !e.duplicate {
+	if !e.duplicate && this.dnsnames[e.DNSName()] == e {
 		var found *Entry
 		for _, a := range this.entries {
 			logger.Debugf("  checking %s(%s): dup:%t", a.ObjectName(), a.DNSName(), a.duplicate)
@@ -876,40 +973,9 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 			}
 			found.duplicate = false
 			this.dnsnames[e.DNSName()] = found
-			this.GetController().Enqueue(found.object)
+			found.Trigger(nil)
 		}
 	}
-}
-
-func (this *state) AddEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) (*Entry, *Entry, error) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-
-	old, new := this.entries.Add(object, this)
-	if old != nil {
-		// DNS name changed -> clean up old dns name
-		this.cleanupEntry(logger, old)
-	}
-
-	dnsname := object.GetDNSName()
-	cur := this.dnsnames[dnsname]
-	if dnsname != "" {
-		if cur != nil {
-			if cur.ObjectName() != new.ObjectName() {
-				if cur.Before(new) {
-					new.duplicate = true
-					return old, new, fmt.Errorf("DNS name %q already busy for %q", dnsname, cur.ObjectName())
-				} else {
-					cur.duplicate = true
-					logger.Warnf("DNS name %q already busy for %q, but this one was earlier", dnsname, cur.ObjectName())
-					logger.Infof("reschedule %q for error update", cur.ObjectName())
-					this.triggerKey(cur.ClusterKey())
-				}
-			}
-		}
-		this.dnsnames[dnsname] = new
-	}
-	return old, new, nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -941,7 +1007,6 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 
 func (this *state) startZoneReconcilation(logger logger.LogContext, zone *dnsHostedZone, entries Entries, stale DNSNames, providers DNSProviders) (bool, error) {
 	if zone.TestAndSetBusy() {
-		logger.Infof("reconciling zone %q (%s) with %d entries", zone.Id(), zone.Domain(), len(entries))
 		defer zone.Release()
 		return true, this.reconcileZone(logger, zone.Id(), entries, stale, providers)
 	}
@@ -955,6 +1020,7 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 		return nil
 	}
 	metrics.ReportZoneEntries(zone.ProviderType(), zoneid, len(entries))
+	logger.Infof("reconcile ZONE %s (%s) for %d dns entries", zone.Id(), zone.Domain(), len(entries))
 	changes := NewChangeModel(logger, this.ownerCache.GetIds(), stale, this.config, zone, providers)
 	err := changes.Setup()
 	if err != nil {
@@ -965,9 +1031,9 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 		// TODO: err handling
 		mod := false
 		if e.IsDeleting() {
-			mod, _ = changes.Delete(e.DNSName(), NewStatusUpdate(logger, e, this.GetController(), zoneid))
+			mod, _ = changes.Delete(e.DNSName(), NewStatusUpdate(logger, e, this.GetController()))
 		} else {
-			mod, _ = changes.Apply(e.DNSName(), NewStatusUpdate(logger, e, this.GetController(), zoneid), e.Targets()...)
+			mod, _ = changes.Apply(e.DNSName(), NewStatusUpdate(logger, e, this.GetController()), e.Targets()...)
 		}
 		modified = modified || mod
 	}
