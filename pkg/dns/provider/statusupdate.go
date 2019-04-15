@@ -41,7 +41,8 @@ func NewStatusUpdate(logger logger.LogContext, e *Entry, f FinalizerHandler) Don
 }
 
 func (this *StatusUpdate) SetProvider(p resources.ObjectName) {
-	this.provider = p
+	s := p.String()
+	this.status.Provider = &s
 }
 
 func (this *StatusUpdate) SetInvalid(err error) {
@@ -74,7 +75,7 @@ func (this *StatusUpdate) Succeeded() {
 			this.logger.Infof("removing finalizer for deleted entry %s", this.DNSName())
 			this.fhandler.RemoveFinalizer(this.Entry.Object())
 		} else {
-			this.Entry.activezone = this.zoneid
+			this.Entry.activezone = this.ZoneId()
 			this.fhandler.SetFinalizer(this.Entry.Object())
 			_, err := this.UpdateStatus(this.logger, api.STATE_READY, "dns entry active")
 			if err != nil {

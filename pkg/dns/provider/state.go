@@ -799,26 +799,26 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 		var err error
 		if old != nil {
 			this.cleanupEntry(logger, old)
-			if old.activezone != "" {
-				if this.zones[old.activezone] != nil {
-					if this.HasFinalizer(old.Object()) {
-						logger.Infof("deleting delayed until entry deleted in provider")
-						this.outdated[old.ObjectName()] = old
-						return old, reconcile.Succeeded(logger)
-					}
-				} else {
-					logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
-					err = this.RemoveFinalizer(v.object)
+		}
+		if new.valid {
+			if this.zones[new.activezone] != nil {
+				if this.HasFinalizer(new.Object()) {
+					logger.Infof("deleting delayed until entry deleted in provider")
+					this.outdated[new.ObjectName()] = new
+					return new, reconcile.Succeeded(logger)
 				}
 			} else {
-				logger.Infof("deleting yet unmanaged entry")
+				logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
 				err = this.RemoveFinalizer(v.object)
 			}
+		} else {
+			logger.Infof("deleting yet unmanaged or errorneous entry")
+			err = this.RemoveFinalizer(v.object)
 		}
 		if err != nil {
 			this.entries[v.ObjectName()] = new
 		}
-		return nil, reconcile.DelayOnError(logger, err)
+		return new, reconcile.DelayOnError(logger, err)
 	}
 
 	this.entries[v.ObjectName()] = new
@@ -841,7 +841,9 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 			if cur.ObjectName() != new.ObjectName() {
 				if cur.Before(new) {
 					new.duplicate = true
+					new.modified = false
 					err := fmt.Errorf("DNS name %q already busy for %q", dnsname, cur.ObjectName())
+					logger.Warnf("%s", err)
 					if status.IsSucceeded() {
 						_, err := v.UpdateStatus(logger, api.STATE_ERROR, err.Error())
 						if err != nil {
@@ -851,11 +853,17 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 					return new, status
 				} else {
 					cur.duplicate = true
+					cur.modified = false
 					logger.Warnf("DNS name %q already busy for %q, but this one was earlier", dnsname, cur.ObjectName())
 					logger.Infof("reschedule %q for error update", cur.ObjectName())
 					this.triggerKey(cur.ClusterKey())
 				}
 			}
+		}
+		if new.status.State != api.STATE_READY && new.status.State != api.STATE_PENDING {
+			msg := fmt.Sprintf("activating for %s", new.DNSName())
+			logger.Info(msg)
+			new.UpdateStatus(logger, api.STATE_PENDING, msg)
 		}
 		this.dnsnames[dnsname] = new
 	}
@@ -887,9 +895,9 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	logger.Debugf("%s ENTRY", op)
 
 	old := this.GetEntry(object.ObjectName())
-	curvalid := false
 	if old != nil {
-		curvalid = old.IsValid()
+		old.lock.Lock()
+		defer old.lock.Unlock()
 	}
 
 	p, err := this.EntryPremise(object)
@@ -899,8 +907,8 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		}
 	}
 
-	v := NewEntryVersion(object)
-	status := v.Setup(logger, this, p, op, err, this.config.TTL, curvalid)
+	v := NewEntryVersion(object, old)
+	status := v.Setup(logger, this, p, op, err, this.config.TTL, old)
 	new, status := this.AddEntryVersion(logger, v, status)
 
 	if status.IsSucceeded() && new != nil && new.IsValid() {
@@ -909,7 +917,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 			status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
 		}
 	}
-	if new.IsModified() && new.zoneid != "" {
+	if new.IsModified() && new.ZoneId() != "" {
 		logger.Infof("trigger zone %q", new.ZoneId())
 		this.triggerHostedZone(new.ZoneId())
 	}
@@ -917,7 +925,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	if !object.IsDeleting() {
 		check, _ := this.EntryPremise(object)
 		if !check.Equals(p) {
-			logger.Infof("precondition changed -> repeat reconcilation")
+			logger.Infof("%s -> repeat reconcilation", p.NotifyChange(check))
 			return reconcile.Repeat(logger)
 		}
 	}
@@ -947,7 +955,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ObjectKe
 func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 	logger.Infof("cleanup old entry (duplicate=%t)", e.duplicate)
 	this.entries.Delete(e)
-	if !e.duplicate && this.dnsnames[e.DNSName()] == e {
+	if this.dnsnames[e.DNSName()] == e {
 		var found *Entry
 		for _, a := range this.entries {
 			logger.Debugf("  checking %s(%s): dup:%t", a.ObjectName(), a.DNSName(), a.duplicate)
@@ -963,18 +971,18 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 		}
 		if found == nil {
 			logger.Infof("no duplicate found to reactivate")
-			delete(this.dnsnames, e.DNSName())
 		} else {
 			old := this.dnsnames[found.DNSName()]
+			msg := ""
 			if old != nil {
-				logger.Infof("reactivate duplicate for %s: %s replacing %s", found.DNSName(), found.ObjectName(), e.ObjectName())
+				msg = fmt.Sprintf("reactivate duplicate for %s: %s replacing %s", found.DNSName(), found.ObjectName(), e.ObjectName())
 			} else {
-				logger.Infof("reactivate duplicate for %s: %s", found.DNSName(), found.ObjectName())
+				msg = fmt.Sprintf("reactivate duplicate for %s: %s", found.DNSName(), found.ObjectName())
 			}
-			found.duplicate = false
-			this.dnsnames[e.DNSName()] = found
+			logger.Info(msg)
 			found.Trigger(nil)
 		}
+		delete(this.dnsnames, e.DNSName())
 	}
 }
 
@@ -998,16 +1006,30 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 	if zone == nil {
 		return reconcile.Failed(logger, fmt.Errorf("zone %s not used anymore -> stop reconciling", zoneid))
 	}
-	if done, err := this.startZoneReconcilation(logger, zone, entries, stale, providers); done {
+	if done, err := this.StartZoneReconcilation(logger, zone, entries, stale, providers); done {
 		return reconcile.DelayOnError(logger, err)
 	}
 	logger.Infof("reconciling zone %q (%s) already busy and skipped", zoneid, zone.Domain())
 	return reconcile.Succeeded(logger).RescheduleAfter(10 * time.Second)
 }
 
-func (this *state) startZoneReconcilation(logger logger.LogContext, zone *dnsHostedZone, entries Entries, stale DNSNames, providers DNSProviders) (bool, error) {
+func (this *state) StartZoneReconcilation(logger logger.LogContext, zone *dnsHostedZone, entries Entries, stale DNSNames, providers DNSProviders) (bool, error) {
 	if zone.TestAndSetBusy() {
 		defer zone.Release()
+
+		list := make(EntryList, 0, len(stale)+len(entries))
+		for _, e := range entries {
+			list = append(list, e)
+		}
+		for _, e := range stale {
+			if entries[e.ObjectName()] == nil {
+				list = append(list, e)
+			} else {
+				logger.Errorf("???, duplicate entry in stale and entries")
+			}
+		}
+		list.Lock()
+		defer list.Unlock()
 		return true, this.reconcileZone(logger, zone.Id(), entries, stale, providers)
 	}
 	return false, nil
@@ -1020,7 +1042,7 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 		return nil
 	}
 	metrics.ReportZoneEntries(zone.ProviderType(), zoneid, len(entries))
-	logger.Infof("reconcile ZONE %s (%s) for %d dns entries", zone.Id(), zone.Domain(), len(entries))
+	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", zone.Id(), zone.Domain(), len(entries), len(stale))
 	changes := NewChangeModel(logger, this.ownerCache.GetIds(), stale, this.config, zone, providers)
 	err := changes.Setup()
 	if err != nil {
