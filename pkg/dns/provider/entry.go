@@ -236,7 +236,7 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 
 func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, defaultTTL int64, old *Entry) reconcile.Status {
 
-	hello := fmt.Sprintf("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s", op, this.Object().Status().State, p.zoneid, p.ptype, p.provider.ObjectName())
+	hello := fmt.Sprintf("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider))
 
 	this.valid = false
 	spec := &this.object.DNSEntry().Spec
