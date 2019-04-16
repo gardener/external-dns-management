@@ -47,6 +47,7 @@ func (this DNSProviders) LookupFor(dns string) DNSProvider {
 		if n > 0 {
 			if match < n {
 				found = p
+				match = n
 			}
 		}
 	}
@@ -382,7 +383,10 @@ func (this *dnsProviderVersion) GetExcludedDomains() utils.StringSet {
 func (this *dnsProviderVersion) Match(dns string) int {
 	ilen := dnsutils.MatchSet(dns, this.included)
 	elen := dnsutils.MatchSet(dns, this.excluded)
-	return ilen - elen
+	if ilen > elen {
+		return ilen
+	}
+	return -1
 }
 
 func (this *dnsProviderVersion) setError(modified bool, err error) error {

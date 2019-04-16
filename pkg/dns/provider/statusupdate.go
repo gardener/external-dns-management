@@ -40,11 +40,6 @@ func NewStatusUpdate(logger logger.LogContext, e *Entry, f FinalizerHandler) Don
 	return &StatusUpdate{Entry: e, logger: logger, delete: e.IsDeleting(), fhandler: f}
 }
 
-func (this *StatusUpdate) SetProvider(p resources.ObjectName) {
-	s := p.String()
-	this.status.Provider = &s
-}
-
 func (this *StatusUpdate) SetInvalid(err error) {
 	if !this.done {
 		this.done = true

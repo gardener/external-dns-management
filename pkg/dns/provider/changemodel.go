@@ -260,9 +260,6 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHan
 	if !delete {
 		this.AddTargets(newset, oldset, targets...)
 	}
-	if done != nil {
-		done.SetProvider(view.provider.ObjectName())
-	}
 	mod := false
 	if oldset != nil {
 		if this.IsForeign(oldset) {

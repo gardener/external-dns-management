@@ -250,10 +250,14 @@ func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, erro
 					err = CheckAccess(e, p.Object())
 					if err == nil {
 						found = p
+						match = n
 					}
 				}
 			}
 		}
+	}
+	if found !=nil {
+		err=nil
 	}
 	return found, err
 }
