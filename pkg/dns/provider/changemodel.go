@@ -339,9 +339,9 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHan
 func (this *ChangeModel) Cleanup(logger logger.LogContext) bool {
 	mod := false
 	for _, view := range this.providergroups {
-		mod = mod || view.cleanup(logger, this)
+		mod = view.cleanup(logger, this) || mod
 	}
-	mod = mod || this.dangling.cleanup(logger, this)
+	mod = this.dangling.cleanup(logger, this) || mod
 	if mod {
 		logger.Infof("found entries to be deleted")
 	}
@@ -351,9 +351,9 @@ func (this *ChangeModel) Cleanup(logger logger.LogContext) bool {
 func (this *ChangeModel) Update(logger logger.LogContext) error {
 	failed := false
 	for _, view := range this.providergroups {
-		failed = failed || !view.update(logger, this)
+		failed = !view.update(logger, this) || failed
 	}
-	failed = failed || !this.dangling.update(logger, this)
+	failed = !this.dangling.update(logger, this) || failed
 	if failed {
 		return fmt.Errorf("entry reconcilation failed for some provider(s)")
 	}

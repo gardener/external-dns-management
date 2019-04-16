@@ -712,7 +712,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 		cur = this.deleting[pname]
 	}
 	if cur != nil {
-		logger.Infof("deleting provider")
+		logger.Infof("deleting PROVIDER")
 		entries := Entries{}
 		zones := this.providerzones[obj.ObjectName()]
 		for n, z := range zones {
@@ -723,9 +723,21 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 					// if this is the last provider for this zone
 					// it must be cleanuped before the provider is gone
 					logger.Infof("provider is exclusively handling zone %q -> cleanup", n)
-					err := this.reconcileZone(logger, n, Entries{}, nil, providers)
-					if err != nil {
-						logger.Errorf("cannot cleanup zone %q: %s", n, err)
+					done := false
+					msg := dnsutils.NewLogMessage("waiting for active zone reconcilation to finish")
+					for !done {
+						var err error
+						done, err = this.StartZoneReconcilation(logger, z, Entries{}, nil, providers)
+						if !done {
+							msg.Infof(logger)
+							time.Sleep(5 * time.Second)
+						} else {
+							if err != nil {
+								logger.Errorf("cannot cleanup zone %q: %s", n, err)
+							} else {
+								logger.Infof("reconcilation of zone %q done", n)
+							}
+						}
 					}
 					metrics.DeleteZone(n)
 					delete(this.zones, n)
@@ -870,7 +882,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				}
 			}
 		}
-		if new.status.State != api.STATE_READY && new.status.State != api.STATE_PENDING {
+		if new.valid && new.status.State != api.STATE_READY && new.status.State != api.STATE_PENDING {
 			msg := fmt.Sprintf("activating for %s", new.DNSName())
 			logger.Info(msg)
 			new.UpdateStatus(logger, api.STATE_PENDING, msg)
