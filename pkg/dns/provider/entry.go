@@ -236,7 +236,7 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 
 func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, defaultTTL int64, old *Entry) reconcile.Status {
 
-	hello := fmt.Sprintf("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider))
+	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider))
 
 	this.valid = false
 	spec := &this.object.DNSEntry().Spec
@@ -255,10 +255,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				state.RemoveFinalizer(this.object)
 				return reconcile.Succeeded(logger).RescheduleAfter(120 * time.Second)
 			}
-			if hello != "" {
-				logger.Info(hello)
-				hello = ""
-			}
+			hello.Infof(logger)
 			logger.Infof("probably no responsible controller found -> mark as error")
 			this.status.Provider = nil
 			this.status.ProviderType = nil
@@ -269,10 +266,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			}
 		} else {
 			// assign entry to actual type
-			if hello != "" {
-				logger.Info(hello)
-				hello = ""
-			}
+			hello.Infof(logger)
 			logger.Infof("assigning to provider type %q responsible for zone %s", p.ptype, p.zoneid)
 			this.status.State = api.STATE_PENDING
 			this.status.Message = StatusMessage("waiting for dns reconcilation")
@@ -281,10 +275,12 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	if p.zoneid == "" && !utils.IsEmptyString(this.status.ProviderType) && p.ptypes.Contains(*this.status.ProviderType) {
 		// revoke assignment to actual type
+		hello.Infof(logger)
+		old := utils.StringValue(this.status.ProviderType)
 		this.status.Provider = nil
 		this.status.ProviderType = nil
 		this.status.Zone = nil
-		err := this.updateStatus(logger, "", "not valid for known provider anymore -> releasing provider type %s", *this.status.ProviderType)
+		err := this.updateStatus(logger, "", "not valid for known provider anymore -> releasing provider type %s", old)
 		if err != nil {
 			return reconcile.Delay(logger, err)
 		}
@@ -316,12 +312,8 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	targets, warnings, verr := validate(state, this)
 
 	if verr != nil {
-		if hello != "" {
-			logger.Infof("%s, validation failed: %s", hello, verr)
-			hello = ""
-		} else {
-			logger.Infof("%s ENTRY: validation failed: %s", op, verr)
-		}
+		hello.Infof(logger, "validation failed: %s", verr)
+
 		state := api.STATE_INVALID
 		if this.status.State == api.STATE_READY {
 			state = api.STATE_STALE
@@ -332,12 +324,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	///////////// handle
 
-	if hello != "" {
-		logger.Infof("%s, validation ok", hello)
-		hello = ""
-	} else {
-		logger.Infof("validation ok")
-	}
+	hello.Infof(logger, "validation ok")
 
 	if this.IsDeleting() {
 		logger.Infof("update state to %s", api.STATE_DELETING)
@@ -393,7 +380,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			AssureStringPtrPtr(&e.Status.Zone, this.status.Zone).
 			AssureStringPtrPtr(&e.Status.Provider, this.status.Provider)
 		if mod.IsModified() {
-			logmsg.Info(logger)
+			logmsg.Infof(logger)
 		}
 		return mod.IsModified(), nil
 	}
@@ -422,7 +409,7 @@ func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg stri
 			}
 		}
 		if mod.IsModified() {
-			logmsg.Info(logger)
+			logmsg.Infof(logger)
 		}
 		return mod.IsModified(), nil
 	}

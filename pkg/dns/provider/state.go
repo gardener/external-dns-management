@@ -825,7 +825,10 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 		return new, reconcile.DelayOnError(logger, err)
 	}
 
-	this.entries[v.ObjectName()] = new
+	if this.IsManaging(v) {
+		this.entries[v.ObjectName()] = new
+	}
+
 	if old != nil && old != new {
 		// DNS name changed -> clean up old dns name
 		logger.Infof("dns name changed to %q", new.DNSName())
@@ -836,6 +839,11 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				this.triggerHostedZone(old.activezone)
 			}
 		}
+	}
+
+	if !this.IsManaging(v) {
+		logger.Infof("foreign zone %s(%s) -> skip reconcilation", utils.StringValue(v.status.Zone), utils.StringValue(v.status.ProviderType))
+		return nil, reconcile.Succeeded(logger)
 	}
 
 	dnsname := v.DNSName()
@@ -873,6 +881,11 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	}
 
 	return new, status
+}
+
+func (this *state) IsManaging(v *EntryVersion) bool {
+	ptype := this.GetHandlerFactory().TypeCode()
+	return utils.StringEqual(v.status.ProviderType, &ptype)
 }
 
 func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, error) {
@@ -915,15 +928,19 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	status := v.Setup(logger, this, p, op, err, this.config.TTL, old)
 	new, status := this.AddEntryVersion(logger, v, status)
 
-	if status.IsSucceeded() && new != nil && new.IsValid() {
-		if new.Interval() > 0 {
-			status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
-			status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
+	if new != nil {
+		if status.IsSucceeded() && new != nil && new.IsValid() {
+			if new.Interval() > 0 {
+				status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
+				status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
+			}
 		}
-	}
-	if new.IsModified() && new.ZoneId() != "" {
-		logger.Infof("trigger zone %q", new.ZoneId())
-		this.triggerHostedZone(new.ZoneId())
+		if new.IsModified() && new.ZoneId() != "" {
+			logger.Infof("trigger zone %q", new.ZoneId())
+			this.triggerHostedZone(new.ZoneId())
+		} else {
+			logger.Infof("skipping trigger zone %q because entry not modified", new.ZoneId())
+		}
 	}
 
 	if !object.IsDeleting() {

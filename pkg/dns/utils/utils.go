@@ -50,30 +50,36 @@ func (this *LogMessage) Get() string {
 	return this.msg
 }
 
-func (this *LogMessage) Info(logger logger.LogContext) {
+func (this *LogMessage) out(out func(string, ...interface{}), args ...interface{}) bool {
 	if !this.logged {
-		logger.Info(this.msg)
+		msgfmt := "%s"
+		msgargs := []interface{}{this.msg}
+		if len(args) > 0 {
+			msgfmt += ", " + fmt.Sprintf("%s", args[0])
+			msgargs = append(msgargs, args[1:]...)
+		}
+		out(msgfmt, msgargs...)
 		this.logged = true
+		return true
 	}
+	if len(args) > 0 {
+		out(fmt.Sprintf("%s", args[0]), args[1:]...)
+	}
+	return false
 }
 
-func (this *LogMessage) Error(logger logger.LogContext) {
-	if !this.logged {
-		logger.Error(this.msg)
-		this.logged = true
-	}
+func (this *LogMessage) Infof(logger logger.LogContext, add ...interface{}) bool {
+	return this.out(logger.Infof, add...)
 }
 
-func (this *LogMessage) Warn(logger logger.LogContext) {
-	if !this.logged {
-		logger.Warn(this.msg)
-		this.logged = true
-	}
+func (this *LogMessage) Errorf(logger logger.LogContext, add ...interface{}) bool {
+	return this.out(logger.Errorf, add...)
 }
 
-func (this *LogMessage) Debug(logger logger.LogContext) {
-	if !this.logged {
-		logger.Debug(this.msg)
-		this.logged = true
-	}
+func (this *LogMessage) Warnf(logger logger.LogContext, add ...interface{}) bool {
+	return this.out(logger.Warnf, add...)
+}
+
+func (this *LogMessage) Debugf(logger logger.LogContext, add ...interface{}) bool {
+	return this.out(logger.Debugf, add...)
 }
