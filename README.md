@@ -36,13 +36,44 @@ To do this a provisioning controller is responsible for a dedicated
 environment (for example Route53). For every such environment the controller
 uses a dedicated _type_ key. This key is used to look for `DNSProvider` objects.
 There might be multiple such objects per environment, specifying the
-credentials needed to access an external account. These accounts are then
+credentials needed to access different external accounts. These accounts are then
 scanned for DNS zones and domain names they support.
 This information is then used to dynamically assign `DNSEntry` objects to
 dedicated `DNSProvider` objects. If such an assignment can be done by
 a provisioning controller then it is _responsible_ for this entry and manages
 the corresponding entries in the external environment.
 
+Every DNS Provisioning Controller is responsible for a set of _Owner Identifiers_.
+DNS records in an external DNS environment are attached to such an identifier.
+This is used to identify the records in the DNS environment managed by a dedicated
+controller (manager). Every controller manager hosting DNS Provisioning Controllers
+offers an option to specify a default identifier. Additionally there might
+be dedicated `DNSOwner` objects that enable or disable additional owner ids.
+
+Every `DNSEntry` object may specify a dedicated owner that is used to tag
+the records in the DNS environment. A DNS provisioning controller only acts
+of DNS entries it is responsible for. Other resources in the external DNS
+environment are not touched at all.
+
+This way it is possbible to
+- identify records in the external DNS management environment that are managed
+  by the actual controller instance
+- distinguish different DNS source environments sharing the same hosted zones
+  in the external management environment 
+- cleanup unused entries, even if the whole resource set is already
+  gone
+- move the responsibility for dedicated sets of DNS entries among different
+  kubernetes clusters or DNS source environments running different
+  DNS Provisioning Controller without loosing the entries during the
+  migration process.
+  
+Multiple sets of controllers of the DNS ecosystem can run in parallel in
+a kubernetes cluster working on different object set. They are separated by
+using different _DNS Classes_. Adding a DNS class annotation to an object of the
+DNS ecosytems assigns this object to such a dedicated set of DNS controllers.
+This way it is possible to maintain clearly separated set of DNS objects in a
+single kubernetes cluster.
+ 
 ## The Content
 
 This project contains:
@@ -51,7 +82,8 @@ This project contains:
 - A library that can be used to implement _DNS Source Controllers_
 - A library that can be used to implement _DNS Provisioning Controllers_
 - Source controllers for Services and Ingresses based on annotations.
-- Provisioning Controllers for _Amazon Route53_, _Google CloudDNS_, and _Azure DNS_.
+- Provisioning Controllers for _Amazon Route53_, _Google CloudDNS_, 
+  _AliCloud DNS_ and _Azure DNS_.
 - A controller manager hosting all these controllers.
 
 ## How to implement Source Controllers
