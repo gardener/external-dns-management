@@ -76,8 +76,9 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 	}
 
 	limitedChanges := limitChangeSet(this.changes, this.maxChangeCount)
+	this.Infof("require %d batches for %d dns names", len(limitedChanges), len(this.changes))
 	for i, changes := range limitedChanges {
-		this.Infof("processing batch %d for zone %s", i+1, this.zone.Id())
+		this.Infof("processing batch %d for zone %s with %d requests", i+1, this.zone.Id(), len(changes))
 		for _, c := range changes {
 			this.Infof("desired change: %s %s %s", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type)
 		}
@@ -118,7 +119,7 @@ func limitChangeSet(changesByName map[string][]*Change, max int) [][]*Change {
 	for _, changes := range changesByName {
 		for _, change := range changes {
 			if aws.StringValue(change.Change.Action) == route53.ChangeActionDelete {
-				batch = addLimited(change, batch, batches, max)
+				batch, batches = addLimited(change, batch, batches, max)
 			}
 		}
 	}
@@ -132,7 +133,7 @@ func limitChangeSet(changesByName map[string][]*Change, max int) [][]*Change {
 	for _, changes := range changesByName {
 		for _, change := range changes {
 			if aws.StringValue(change.Change.Action) != route53.ChangeActionDelete {
-				batch = addLimited(change, batch, batches, max)
+				batch, batches = addLimited(change, batch, batches, max)
 			}
 		}
 	}
@@ -143,12 +144,12 @@ func limitChangeSet(changesByName map[string][]*Change, max int) [][]*Change {
 	return batches
 }
 
-func addLimited(change *Change, batch []*Change, batches [][]*Change, max int) []*Change {
+func addLimited(change *Change, batch []*Change, batches [][]*Change, max int) ([]*Change, [][]*Change) {
 	if len(batch) >= max {
 		batches = append(batches, batch)
 		batch = make([]*Change, 0)
 	}
-	return append(batch, change)
+	return append(batch, change), batches
 }
 
 func mapChanges(changes []*Change) []*route53.Change {

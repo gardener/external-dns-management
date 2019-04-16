@@ -256,8 +256,8 @@ func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, erro
 			}
 		}
 	}
-	if found !=nil {
-		err=nil
+	if found != nil {
+		err = nil
 	}
 	return found, err
 }
@@ -825,9 +825,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 		return new, reconcile.DelayOnError(logger, err)
 	}
 
-	if this.IsManaging(v) {
-		this.entries[v.ObjectName()] = new
-	}
+	this.entries[v.ObjectName()] = new
 
 	if old != nil && old != new {
 		// DNS name changed -> clean up old dns name
