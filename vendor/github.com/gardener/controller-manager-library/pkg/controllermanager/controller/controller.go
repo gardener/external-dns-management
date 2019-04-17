@@ -465,6 +465,13 @@ func (this *controller) GetIntOption(name string) (int, error) {
 	}
 	return opt.IntValue(), nil
 }
+func (this *controller) GetDurationOption(name string) (time.Duration, error) {
+	opt, err := this.GetOption(name)
+	if err != nil {
+		return 0, err
+	}
+	return opt.DurationValue(), nil
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // controller start up

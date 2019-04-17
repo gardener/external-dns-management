@@ -60,6 +60,7 @@ type Interface interface {
 	GetOption(name string) (*config.ArbitraryOption, error)
 	GetStringOption(name string) (string, error)
 	GetIntOption(name string) (int, error)
+	GetDurationOption(name string) (time.Duration, error)
 	GetBoolOption(name string) (bool, error)
 	GetStringArrayOption(name string) ([]string, error)
 
