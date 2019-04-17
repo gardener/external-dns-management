@@ -104,7 +104,7 @@ func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bo
 
 	reqs := this.requests
 	if len(reqs) > 0 {
-		err := this.provider.ExecuteRequests(logger, model.zone.zone, this.model.state, reqs)
+		err := this.provider.ExecuteRequests(logger, model.zone.zone, this.model.zonestate, reqs)
 		if err != nil {
 			model.Errorf("entry reconcilation failed for %s: %s", this.name, err)
 			ok = false
@@ -141,7 +141,7 @@ type ChangeModel struct {
 	applied        map[string]*dns.DNSSet
 	dangling       *ChangeGroup
 	providergroups map[string]*ChangeGroup
-	state          DNSZoneState
+	zonestate      DNSZoneState
 }
 
 func NewChangeModel(logger logger.LogContext, owners utils.StringSet, stale DNSNames, config Config, zone *dnsHostedZone, providers DNSProviders) *ChangeModel {
@@ -197,11 +197,11 @@ func (this *ChangeModel) Setup() error {
 	if provider == nil {
 		return fmt.Errorf("no provider found for zone %q", this.ZoneId())
 	}
-	this.state, err = provider.GetZoneState(this.zone.zone)
+	this.zonestate, err = provider.GetZoneState(this.zone.zone)
 	if err != nil {
 		return err
 	}
-	sets := this.state.GetDNSSets()
+	sets := this.zonestate.GetDNSSets()
 	this.dangling = newChangeGroup("dangling entries", provider, this)
 	for dnsName, set := range sets {
 		var view *ChangeGroup
@@ -317,7 +317,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHan
 		}
 	} else {
 		if !delete {
-			this.Infof("no existing entry found for %s", name)
+			this.Debugf("no existing entry found for %s", name)
 			if apply {
 				this.setOwner(newset, targets)
 				for ty := range newset.Sets {

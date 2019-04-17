@@ -34,6 +34,7 @@ type Config struct {
 	CacheTTL time.Duration
 	Ident    string
 	Dryrun   bool
+	Delay    time.Duration
 	Factory  DNSHandlerFactory
 }
 
@@ -51,7 +52,19 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 		cttl = 60
 	}
 	dryrun, _ := c.GetBoolOption(OPT_DRYRUN)
-	return Config{Ident: ident, Dryrun: dryrun, TTL: int64(ttl), CacheTTL: time.Duration(cttl) * time.Second, Factory: factory}
+
+	delay, err := c.GetDurationOption(OPT_DNSDELAY)
+	if err != nil {
+		delay = 10 * time.Second
+	}
+	return Config{
+		Ident:    ident,
+		Dryrun:   dryrun,
+		TTL:      int64(ttl),
+		CacheTTL: time.Duration(cttl) * time.Second,
+		Delay:    delay,
+		Factory:  factory,
+	}
 }
 
 type DNSHostedZone interface {

@@ -31,6 +31,7 @@ const (
 	OPT_TTL        = "ttl"
 	OPT_CACHE_TTL  = "cache-ttl"
 	OPT_SETUP      = "setup"
+	OPT_DNSDELAY   = "dns-delay"
 
 	HOSTEDZONE_PREFIX = "hostedzone:"
 )

@@ -723,27 +723,20 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 					// if this is the last provider for this zone
 					// it must be cleanuped before the provider is gone
 					logger.Infof("provider is exclusively handling zone %q -> cleanup", n)
-					done := false
-					msg := dnsutils.NewLogMessage("waiting for active zone reconcilation to finish")
-					for !done {
-						var err error
-						done, err = this.StartZoneReconcilation(logger, z, Entries{}, nil, providers)
-						if !done {
-							msg.Infof(logger)
-							time.Sleep(5 * time.Second)
-						} else {
-							if err != nil {
-								logger.Errorf("cannot cleanup zone %q: %s", n, err)
-							} else {
-								logger.Infof("reconcilation of zone %q done", n)
-							}
-						}
+					done, err := this.StartZoneReconcilation(logger, z, Entries{}, nil, providers)
+					if !done {
+						return reconcile.Delay(logger, fmt.Errorf("zone reconcilation busy -> delay deletion"))
+					}
+					if err != nil {
+						logger.Errorf("zone cleanup failed: %s", err)
+						return reconcile.Delay(logger, fmt.Errorf("zone reconcilation failed -> delay deletion"))
 					}
 					metrics.DeleteZone(n)
 					delete(this.zones, n)
 				} else {
 					// delete entries in hosted zone exclusively covered by this provider using
 					// other provider for this zone
+					logger.Infof("delegate zone cleanup to other provider")
 					this.triggerHostedZone(n)
 				}
 				this.removeProviderForZone(n, pname)
@@ -949,7 +942,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 			logger.Infof("trigger zone %q", new.ZoneId())
 			this.triggerHostedZone(new.ZoneId())
 		} else {
-			logger.Infof("skipping trigger zone %q because entry not modified", new.ZoneId())
+			logger.Debugf("skipping trigger zone %q because entry not modified", new.ZoneId())
 		}
 	}
 
@@ -1032,10 +1025,29 @@ func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHos
 	return zone, this.getProvidersForZone(zoneid), entries, stale
 }
 
+func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string) (time.Duration, *dnsHostedZone, DNSProviders, Entries, DNSNames) {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	zone := this.zones[zoneid]
+	if zone == nil {
+		return 0, nil, nil, nil, nil
+	}
+	now := time.Now()
+	if now.Before(zone.next) {
+		return zone.next.Sub(now), zone, nil, nil, nil
+	}
+	entries, stale := this.addEntriesForZone(logger, nil, nil, zone)
+	return 0, zone, this.getProvidersForZone(zoneid), entries, stale
+}
+
 func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconcile.Status {
-	zone, providers, entries, stale := this.GetZoneInfo(logger, zoneid)
+	delay, zone, providers, entries, stale := this.GetZoneReconcilation(logger, zoneid)
 	if zone == nil {
 		return reconcile.Failed(logger, fmt.Errorf("zone %s not used anymore -> stop reconciling", zoneid))
+	}
+	if delay > 0 {
+		logger.Infof("too early (required delay between two reconcilations: %s) -> skip and reschedule", this.config.Delay)
+		return reconcile.Succeeded(logger).RescheduleAfter(delay)
 	}
 	if done, err := this.StartZoneReconcilation(logger, zone, entries, stale, providers); done {
 		return reconcile.DelayOnError(logger, err)
@@ -1059,8 +1071,12 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, zone *dnsHos
 				logger.Errorf("???, duplicate entry in stale and entries")
 			}
 		}
+		logger.Infof("locking %d entries for zone reconcilation", len(list))
 		list.Lock()
-		defer list.Unlock()
+		defer func() {
+			logger.Infof("unlocking %d entries", len(list))
+			list.Unlock()
+		}()
 		return true, this.reconcileZone(logger, zone.Id(), entries, stale, providers)
 	}
 	return false, nil
@@ -1072,6 +1088,7 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 		metrics.DeleteZone(zoneid)
 		return nil
 	}
+	zone.next = time.Now().Add(this.config.Delay)
 	metrics.ReportZoneEntries(zone.ProviderType(), zoneid, len(entries))
 	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", zone.Id(), zone.Domain(), len(entries), len(stale))
 	changes := NewChangeModel(logger, this.ownerCache.GetIds(), stale, this.config, zone, providers)

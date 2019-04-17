@@ -19,6 +19,7 @@ package provider
 import (
 	"fmt"
 	"sync"
+	"time"
 )
 
 type dnsHostedZones map[string]*dnsHostedZone
@@ -27,6 +28,7 @@ type dnsHostedZone struct {
 	lock sync.Mutex
 	busy bool
 	zone DNSHostedZone
+	next time.Time
 }
 
 func newDNSHostedZone(zone DNSHostedZone) *dnsHostedZone {
