@@ -1,0 +1,17 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: mock
+  namespace: default
+spec:
+  # inmemory mock implementation does not create DNS records (only for testing purposes)
+  type: mock-inmemory
+  secretRef:
+    name: mock-credentials
+  providerConfig:
+    zones:
+    - in.memory.mock
+    httpPort: "8077"
+  domains:
+    include:
+    - in.memory.mock

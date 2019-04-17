@@ -67,6 +67,13 @@ func (dnssets DNSSets) AddRecordSet(name string, rs *RecordSet) {
 	dnsset.Sets[rs.Type] = rs
 }
 
+func (dnssets DNSSets) RemoveRecordSet(name string, recordSetType string) {
+	dnsset := dnssets[name]
+	if dnsset != nil {
+		delete(dnsset.Sets, recordSetType)
+	}
+}
+
 const (
 	ATTR_OWNER  = "owner"
 	ATTR_PREFIX = "prefix"
