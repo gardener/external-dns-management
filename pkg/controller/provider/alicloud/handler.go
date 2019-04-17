@@ -123,7 +123,7 @@ func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNS
 		exec.addChange(r)
 	}
 	if this.config.DryRun {
-		logger.Infof("no changes in dryrun mode for AWS")
+		logger.Infof("no changes in dryrun mode for AliCloud")
 		return nil
 	}
 	return exec.submitChanges()

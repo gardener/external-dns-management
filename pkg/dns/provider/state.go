@@ -29,7 +29,6 @@ import (
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 
@@ -41,10 +40,12 @@ import (
 type DNSNames map[string]*Entry
 
 type state struct {
-	lock       sync.RWMutex
-	classes    *dnsutils.Classes
-	controller controller.Interface
-	config     Config
+	lock sync.RWMutex
+
+	context Context
+
+	classes *dnsutils.Classes
+	config  Config
 
 	pending     utils.StringSet
 	pendingKeys resources.ClusterObjectKeySet
@@ -69,14 +70,14 @@ type state struct {
 	initialized bool
 }
 
-func NewDNSState(controller controller.Interface, classes *dnsutils.Classes, config Config) *state {
-	controller.Infof("responsible for classes: %s (%s)", classes, classes.Main())
-	controller.Infof("using default ttl:       %d", config.TTL)
-	controller.Infof("using identifier:        %s", config.Ident)
-	controller.Infof("dry run mode:            %t", config.Dryrun)
+func NewDNSState(ctx Context, classes *dnsutils.Classes, config Config) *state {
+	ctx.Infof("responsible for classes: %s (%s)", classes, classes.Main())
+	ctx.Infof("using default ttl:       %d", config.TTL)
+	ctx.Infof("using identifier:        %s", config.Ident)
+	ctx.Infof("dry run mode:            %t", config.Dryrun)
 	return &state{
 		classes:         classes,
-		controller:      controller,
+		context:         ctx,
 		config:          config,
 		accountCache:    NewAccountCache(config.CacheTTL),
 		ownerCache:      NewOwnerCache(&config),
@@ -101,36 +102,36 @@ func (this *state) IsResponsibleFor(logger logger.LogContext, obj resources.Obje
 }
 
 func (this *state) Setup() {
-	processors, err := this.controller.GetIntOption(OPT_SETUP)
+	processors, err := this.context.GetIntOption(OPT_SETUP)
 	if err != nil || processors <= 0 {
 		processors = 5
 	}
-	this.controller.Infof("using %d parallel workers for initialization", processors)
+	this.context.Infof("using %d parallel workers for initialization", processors)
 	this.setupFor(&api.DNSProvider{}, "providers", func(e resources.Object) {
 		p := dnsutils.DNSProvider(e)
 		if this.GetHandlerFactory().IsResponsibleFor(p) {
-			this.UpdateProvider(this.controller.NewContext("provider", p.ObjectName().String()), p)
+			this.UpdateProvider(this.context.NewContext("provider", p.ObjectName().String()), p)
 		}
 	}, processors)
 	this.setupFor(&api.DNSOwner{}, "owners", func(e resources.Object) {
 		p := dnsutils.DNSOwner(e)
-		this.UpdateOwner(this.controller.NewContext("owner", p.ObjectName().String()), p)
+		this.UpdateOwner(this.context.NewContext("owner", p.ObjectName().String()), p)
 	}, processors)
 	this.setupFor(&api.DNSEntry{}, "entries", func(e resources.Object) {
 		p := dnsutils.DNSEntry(e)
-		this.UpdateEntry(this.controller.NewContext("entry", p.ObjectName().String()), p)
+		this.UpdateEntry(this.context.NewContext("entry", p.ObjectName().String()), p)
 	}, processors)
 
 	this.initialized = true
-	this.controller.Infof("setup done - starting reconcilation")
+	this.context.Infof("setup done - starting reconcilation")
 }
 
 func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.Object), processors int) {
-	this.controller.Infof("### setup %s", msg)
-	res, _ := this.controller.GetMainCluster().Resources().GetByExample(obj)
+	this.context.Infof("### setup %s", msg)
+	res, _ := this.context.GetByExample(obj)
 	list, _ := res.ListCached(labels.Everything())
 	dnsutils.ProcessElements(list, func(e resources.Object) {
-		if this.IsResponsibleFor(this.controller, e) {
+		if this.IsResponsibleFor(this.context, e) {
 			exec(e)
 		}
 	}, processors)
@@ -138,31 +139,31 @@ func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.
 
 func (this *state) Start() {
 	for c := range this.pending {
-		this.controller.Infof("trigger %s", c)
-		this.controller.EnqueueCommand(c)
+		this.context.Infof("trigger %s", c)
+		this.context.EnqueueCommand(c)
 	}
 
 	for key := range this.pendingKeys {
-		this.controller.Infof("trigger key %s/%s", key.Namespace(), key.Name())
-		this.controller.EnqueueKey(key)
+		this.context.Infof("trigger key %s/%s", key.Namespace(), key.Name())
+		this.context.EnqueueKey(key)
 		delete(this.pendingKeys, key)
 	}
 }
 
 func (this *state) HasFinalizer(obj resources.Object) bool {
-	return this.GetController().HasFinalizer(obj)
+	return this.context.HasFinalizer(obj)
 }
 
 func (this *state) SetFinalizer(obj resources.Object) error {
-	return this.GetController().SetFinalizer(obj)
+	return this.context.SetFinalizer(obj)
 }
 
 func (this *state) RemoveFinalizer(obj resources.Object) error {
-	return this.GetController().RemoveFinalizer(obj)
+	return this.context.RemoveFinalizer(obj)
 }
 
-func (this *state) GetController() controller.Interface {
-	return this.controller
+func (this *state) GetContext() Context {
+	return this.context
 }
 
 func (this *state) GetConfig() Config {
@@ -455,16 +456,16 @@ loop:
 
 func (this *state) triggerHostedZone(name string) {
 	cmd := HOSTEDZONE_PREFIX + name
-	if this.controller.IsReady() {
-		this.controller.EnqueueCommand(cmd)
+	if this.context.IsReady() {
+		this.context.EnqueueCommand(cmd)
 	} else {
 		this.pending.Add(cmd)
 	}
 }
 
 func (this *state) triggerKey(key resources.ClusterObjectKey) {
-	if this.controller.IsReady() {
-		this.controller.EnqueueKey(key)
+	if this.context.IsReady() {
+		this.context.EnqueueKey(key)
 	} else {
 		this.pendingKeys.Add(key)
 	}
@@ -669,7 +670,7 @@ func (this *state) TriggerEntry(logger logger.LogContext, e *Entry) {
 	if logger != nil {
 		logger.Infof("trigger entry %s", e.ClusterKey())
 	}
-	this.controller.EnqueueKey(e.ClusterKey())
+	this.context.EnqueueKey(e.ClusterKey())
 }
 
 func (this *state) removeForeignProvider(logger logger.LogContext, pname resources.ObjectName) reconcile.Status {
@@ -767,7 +768,7 @@ func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) 
 	logger.Infof("reconcile SECRET")
 	for _, p := range providers {
 		logger.Infof("requeueing provider %q using secret %q", p.ObjectName(), obj.ObjectName())
-		if err := this.controller.Enqueue(p); err != nil {
+		if err := this.context.Enqueue(p); err != nil {
 			panic(fmt.Sprintf("cannot enqueue provider %q: %s", p.Description(), err))
 		}
 	}
@@ -1101,9 +1102,9 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 		// TODO: err handling
 		mod := false
 		if e.IsDeleting() {
-			mod, _ = changes.Delete(e.DNSName(), NewStatusUpdate(logger, e, this.GetController()))
+			mod, _ = changes.Delete(e.DNSName(), NewStatusUpdate(logger, e, this.GetContext()))
 		} else {
-			mod, _ = changes.Apply(e.DNSName(), NewStatusUpdate(logger, e, this.GetController()), e.Targets()...)
+			mod, _ = changes.Apply(e.DNSName(), NewStatusUpdate(logger, e, this.GetContext()), e.Targets()...)
 		}
 		modified = modified || mod
 	}

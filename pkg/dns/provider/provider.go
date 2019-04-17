@@ -137,7 +137,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 	a := this.cache[h]
 	if a == nil {
 		cfg := DNSHandlerConfig{
-			Context:    state.GetController().GetContext(),
+			Context:    state.GetContext().GetContext(),
 			Properties: props,
 			Config:     provider.Spec().ProviderConfig,
 			DryRun:     state.GetConfig().Dryrun,
@@ -275,7 +275,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 			ref.Namespace = provider.GetNamespace()
 		}
 		this.secret = resources.NewObjectName(ref.Namespace, ref.Name)
-		props, _, err = resources.GetCachedSecretPropertiesByRef(provider, ref)
+		props, _, err = state.GetContext().GetSecretPropertiesByRef(provider, ref)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				return this, this.failed(logger, false, fmt.Errorf("cannot get secret %s/%s for provider %s: %s",
