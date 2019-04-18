@@ -36,7 +36,7 @@ type Handler struct {
 
 type MockConfig struct {
 	Zones    []string `json:"zones"`
-	HttpPort string   `json:"httpPort,omitempty"`
+	HTTPPort string   `json:"httpPort,omitempty"`
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -70,9 +70,9 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		}
 	}
 
-	if mockConfig.HttpPort != "" {
-		logger.Infof("Running mock dump service at port %s", mockConfig.HttpPort)
-		go http.ListenAndServe(":"+mockConfig.HttpPort, mock)
+	if mockConfig.HTTPPort != "" {
+		logger.Infof("Running mock dump service at port %s", mockConfig.HTTPPort)
+		go http.ListenAndServe(":"+mockConfig.HTTPPort, mock)
 	}
 
 	return h, nil

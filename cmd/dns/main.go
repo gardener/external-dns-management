@@ -32,7 +32,6 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/aws"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/azure"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/google"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
