@@ -19,6 +19,7 @@ package controller
 import "github.com/gardener/controller-manager-library/pkg/resources"
 
 type Finalizer interface {
+	FinalizerName(obj resources.Object) string
 	HasFinalizer(obj resources.Object) bool
 	SetFinalizer(obj resources.Object) error
 	RemoveFinalizer(obj resources.Object) error
@@ -33,17 +34,17 @@ func NewDefaultFinalizer(name string) Finalizer {
 }
 
 func (this *DefaultFinalizer) HasFinalizer(obj resources.Object) bool {
-	return obj.HasFinalizer(this.FinalizerName())
+	return obj.HasFinalizer(this.FinalizerName(obj))
 }
 
 func (this *DefaultFinalizer) SetFinalizer(obj resources.Object) error {
-	return obj.SetFinalizer(this.FinalizerName())
+	return obj.SetFinalizer(this.FinalizerName(obj))
 }
 
 func (this *DefaultFinalizer) RemoveFinalizer(obj resources.Object) error {
-	return obj.RemoveFinalizer(this.FinalizerName())
+	return obj.RemoveFinalizer(this.FinalizerName(obj))
 }
 
-func (this *DefaultFinalizer) FinalizerName() string {
+func (this *DefaultFinalizer) FinalizerName(obj resources.Object) string {
 	return this.name
 }
