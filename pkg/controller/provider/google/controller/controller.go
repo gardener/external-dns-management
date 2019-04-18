@@ -14,16 +14,17 @@
  *
  */
 
-package mock
+package controller
 
 import (
+	"github.com/gardener/external-dns-management/pkg/controller/provider/google"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "mock-inmemory"
+const TYPE_CODE = "google-clouddns"
 
 func init() {
-	provider.DNSController(TYPE_CODE, provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)).
+	provider.DNSController("", google.Factory).
 		FinalizerDomain("dns.gardener.cloud").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

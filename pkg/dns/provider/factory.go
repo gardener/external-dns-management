@@ -17,7 +17,9 @@
 package provider
 
 import (
+	"fmt"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
@@ -36,13 +38,69 @@ func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction) DNS
 }
 
 func (this *Factory) IsResponsibleFor(object *dnsutils.DNSProviderObject) bool {
-	return object.DNSProvider().Spec.Type == this.TypeCode()
+	return object.DNSProvider().Spec.Type == this.typecode
 }
 
-func (this *Factory) TypeCode() string {
+func (this *Factory) TypeCodes() utils.StringSet {
+	return utils.NewStringSet(this.typecode)
+}
+
+func (this *Factory) Name() string {
 	return this.typecode
 }
 
-func (this *Factory) Create(logger logger.LogContext, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error) {
-	return this.create(logger, config, metrics)
+func (this *Factory) Create(logger logger.LogContext, typecode string, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error) {
+	if typecode == this.typecode {
+		return this.create(logger, config, metrics)
+	}
+	return nil, fmt.Errorf("not responsible for %q", typecode)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+type CompoundFactory struct {
+	name      string
+	typecodes utils.StringSet
+	factories map[string]DNSHandlerFactory
+}
+
+var _ DNSHandlerFactory = &CompoundFactory{}
+
+func NewDNSHandlerCompoundFactory(name string) *CompoundFactory {
+	return &CompoundFactory{name, utils.StringSet{}, map[string]DNSHandlerFactory{}}
+}
+
+func (this *CompoundFactory) Add(f DNSHandlerFactory) error {
+	typecodes := f.TypeCodes()
+	for t := range typecodes {
+		if this.typecodes.Contains(t) {
+			return fmt.Errorf("typecode %q already registered at compund factory %s", t, this.name)
+		}
+	}
+	for t := range typecodes {
+		this.factories[t] = f
+		this.typecodes.Add(t)
+	}
+	return nil
+}
+
+func (this *CompoundFactory) IsResponsibleFor(object *dnsutils.DNSProviderObject) bool {
+	_, ok := this.factories[object.DNSProvider().Spec.Type]
+	return ok
+}
+
+func (this *CompoundFactory) TypeCodes() utils.StringSet {
+	return this.typecodes.Copy()
+}
+
+func (this *CompoundFactory) Name() string {
+	return this.name
+}
+
+func (this *CompoundFactory) Create(logger logger.LogContext, typecode string, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error) {
+	f := this.factories[typecode]
+	if f != nil {
+		return f.Create(logger, typecode, config, metrics)
+	}
+	return nil, fmt.Errorf("not responsible for %q", typecode)
 }

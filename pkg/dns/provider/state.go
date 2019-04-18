@@ -422,22 +422,22 @@ func (this *state) GetZoneForEntry(e *Entry) string {
 	if !e.IsValid() {
 		return ""
 	}
-	zoneid, _ := this.GetZoneForName(e.DNSName())
+	zoneid, _, _ := this.GetZoneForName(e.DNSName())
 	return zoneid
 }
 
-func (this *state) GetZoneForName(name string) (string, int) {
+func (this *state) GetZoneForName(name string) (string, string, int) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
 	return this.getZoneForName(name)
 }
 
-func (this *state) getZoneForName(hostname string) (string, int) {
+func (this *state) getZoneForName(hostname string) (string, string, int) {
+	var found *dnsHostedZone
 	length := 0
-	found := ""
 loop:
-	for zoneid, zone := range this.zones {
+	for _, zone := range this.zones {
 		name := zone.Domain()
 		if dnsutils.Match(hostname, name) {
 			for _, f := range zone.ForwardedDomains() {
@@ -447,11 +447,14 @@ loop:
 			}
 			if length < len(name) {
 				length = len(name)
-				found = zoneid
+				found = zone
 			}
 		}
 	}
-	return found, length
+	if found != nil {
+		return found.Id(), found.ProviderType(), length
+	}
+	return "", "", length
 }
 
 func (this *state) triggerHostedZone(name string) {
@@ -888,8 +891,10 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 }
 
 func (this *state) IsManaging(v *EntryVersion) bool {
-	ptype := this.GetHandlerFactory().TypeCode()
-	return utils.StringEqual(v.status.ProviderType, &ptype)
+	if v.status.ProviderType == nil {
+		return false
+	}
+	return this.GetHandlerFactory().TypeCodes().Contains(*v.status.ProviderType)
 }
 
 func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, error) {
@@ -897,15 +902,10 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 	defer this.lock.RUnlock()
 
 	provider, err := this.lookupProvider(e)
-	zoneid, _ := this.getZoneForName(e.GetDNSName())
-	ptype := ""
-	if zoneid != "" {
-		ptype = this.GetHandlerFactory().TypeCode()
-	}
-	ptypes := utils.NewStringSet(this.GetHandlerFactory().TypeCode())
+	zoneid, ptype, _ := this.getZoneForName(e.GetDNSName())
 
 	return &EntryPremise{
-		ptypes,
+		this.GetHandlerFactory().TypeCodes(),
 		ptype,
 		provider,
 		zoneid,
@@ -962,7 +962,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ObjectKe
 
 	old := this.entries[key.ObjectName()]
 	if old != nil {
-		zoneid, _ := this.getZoneForName(old.DNSName())
+		zoneid, _, _ := this.getZoneForName(old.DNSName())
 		if zoneid != "" {
 			logger.Infof("removing entry %q (%s[%s])", key.ObjectName(), old.DNSName(), zoneid)
 			this.triggerHostedZone(zoneid)

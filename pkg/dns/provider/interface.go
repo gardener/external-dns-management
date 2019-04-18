@@ -129,8 +129,9 @@ type DNSHandler interface {
 ////////////////////////////////////////////////////////////////////////////////
 
 type DNSHandlerFactory interface {
-	TypeCode() string
-	Create(logger logger.LogContext, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error)
+	Name() string
+	TypeCodes() utils.StringSet
+	Create(logger logger.LogContext, typecode string, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error)
 	IsResponsibleFor(object *dnsutils.DNSProviderObject) bool
 }
 

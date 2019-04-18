@@ -14,16 +14,17 @@
  *
  */
 
-package aws
+package controller
 
 import (
+	"github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "aws-route53"
+const TYPE_CODE = "openstack-designate"
 
 func init() {
-	provider.DNSController(TYPE_CODE, provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)).
+	provider.DNSController("", openstack.Factory).
 		FinalizerDomain("dns.gardener.cloud").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

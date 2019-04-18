@@ -17,13 +17,14 @@
 package alicloud
 
 import (
+	"github.com/gardener/external-dns-management/pkg/controller/provider/compound"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 const TYPE_CODE = "alicloud-dns"
 
+var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)
+
 func init() {
-	provider.DNSController(TYPE_CODE, provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)).
-		FinalizerDomain("dns.gardener.cloud").
-		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
+	compound.MustRegister(Factory)
 }

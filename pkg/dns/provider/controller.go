@@ -44,6 +44,9 @@ var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKin
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
 func DNSController(name string, factory DNSHandlerFactory) controller.Configuration {
+	if name == "" {
+		name = factory.Name()
+	}
 	return controller.Configure(name).
 		RequireLease().
 		DefaultedStringOption(OPT_CLASS, dnsutils.DEFAULT_CLASS, "Identifier used to differentiate responsible controllers for entries").

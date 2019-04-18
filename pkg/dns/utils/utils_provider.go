@@ -47,6 +47,10 @@ func (this *DNSProviderObject) Status() *api.DNSProviderStatus {
 	return &this.DNSProvider().Status
 }
 
+func (this *DNSProviderObject) TypeCode() string {
+	return this.DNSProvider().Spec.Type
+}
+
 func (this *DNSProviderObject) SetState(state, message string) bool {
 	mod := &utils.ModificationState{}
 	status := &this.DNSProvider().Status

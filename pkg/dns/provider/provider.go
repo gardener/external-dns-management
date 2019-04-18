@@ -143,7 +143,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			DryRun:     state.GetConfig().Dryrun,
 		}
 		a = &DNSAccount{ttl: this.ttl, config: props, hash: h, clients: resources.ObjectNameSet{}}
-		a.handler, err = state.GetHandlerFactory().Create(logger, &cfg, a)
+		a.handler, err = state.GetHandlerFactory().Create(logger, provider.TypeCode(), &cfg, a)
 		if err != nil {
 			return nil, err
 		}
