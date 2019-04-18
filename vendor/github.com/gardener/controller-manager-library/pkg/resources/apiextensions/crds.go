@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -76,12 +75,12 @@ func _CreateCRDObject(status bool, groupName, version, rkind, rplural, shortName
 	return crd
 }
 
-func CreateCRD(cluster cluster.Interface, groupName, version, rkind, rplural, shortName string, namespaces bool, columns ...v1beta1.CustomResourceColumnDefinition) error {
+func CreateCRD(cluster resources.Cluster, groupName, version, rkind, rplural, shortName string, namespaces bool, columns ...v1beta1.CustomResourceColumnDefinition) error {
 	crd := CreateCRDObject(groupName, version, rkind, rplural, shortName, namespaces, columns...)
 	return CreateCRDFromObject(cluster, crd)
 }
 
-func CreateCRDFromObject(cluster cluster.Interface, crd *v1beta1.CustomResourceDefinition) error {
+func CreateCRDFromObject(cluster resources.Cluster, crd *v1beta1.CustomResourceDefinition) error {
 	_, err := cluster.Resources().CreateObject(crd)
 	if err != nil && !errors.IsAlreadyExists(err) {
 		return fmt.Errorf("failed to create CRD %s: %s", crd.Name, err)
@@ -89,7 +88,7 @@ func CreateCRDFromObject(cluster cluster.Interface, crd *v1beta1.CustomResourceD
 	return WaitCRDReady(cluster, crd.Name)
 }
 
-func WaitCRDReady(cluster cluster.Interface, crdName string) error {
+func WaitCRDReady(cluster resources.Cluster, crdName string) error {
 	err := wait.PollImmediate(5*time.Second, 60*time.Second, func() (bool, error) {
 		crd := &v1beta1.CustomResourceDefinition{}
 		_, err := cluster.Resources().GetObjectInto(resources.NewObjectName(crdName), crd)
