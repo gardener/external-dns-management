@@ -17,9 +17,9 @@
 package crds
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/clientsets/apiextensions"
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 
+	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 

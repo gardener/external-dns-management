@@ -57,7 +57,7 @@ func (m *InMemory) CloneDNSSets(zone provider.DNSHostedZone) (dns.DNSSets, error
 
 	data, ok := m.zones[zone.Id()]
 	if !ok {
-		return nil, fmt.Errorf("DNSZone %s not hosted", zone.Id)
+		return nil, fmt.Errorf("DNSZone %s not hosted", zone.Id())
 	}
 
 	dnssets := dns.DNSSets{}

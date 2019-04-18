@@ -23,15 +23,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/clientsets/apiextensions"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
-
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"k8s.io/client-go/tools/record"
 )
@@ -188,7 +187,7 @@ func NewController(env Environment, def Definition, cmp mappings.Definition) (*c
 		this.Infof("create required crds for cluster %q (used for %q)", cluster.GetName(), n)
 		for _, crd := range crds {
 			this.Infof("   %s", crd.Name)
-			apiextensions.CreateCRDFromObject(cluster.Clientsets(), crd)
+			apiextensions.CreateCRDFromObject(cluster, crd)
 		}
 	}
 	for n, t := range def.Reconcilers() {

@@ -19,14 +19,14 @@ package cluster
 import (
 	"context"
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"os"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	// "github.com/gardener/controller-manager-library/pkg/client/gardenextensions/clientset/versioned/scheme"
-	"github.com/gardener/controller-manager-library/pkg/clientsets"
-	"github.com/gardener/controller-manager-library/pkg/informerfactories"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -63,16 +63,17 @@ type Interface interface {
 	GetId() string
 	GetAttr(key interface{}) interface{}
 	SetAttr(key, value interface{})
-	Clientsets() clientsets.Interface
-	InformerFactories() informerfactories.Interface
 	GetObject(interface{}) (resources.Object, error)
 	GetObjectInto(resources.ObjectName, resources.ObjectData) (resources.Object, error)
 	GetCachedObject(interface{}) (resources.Object, error)
 	GetResource(groupKind schema.GroupKind) (resources.Interface, error)
 	Config() restclient.Config
 	Resources() resources.Resources
+	ResourceContext() resources.ResourceContext
 	IsLocal() bool
 	Definition() Definition
+
+	resources.ClusterSource
 }
 
 type Extension interface {
@@ -81,20 +82,22 @@ type Extension interface {
 }
 
 type _Cluster struct {
-	name                    string
-	id                      string
-	definition              Definition
-	local                   bool
-	kubeConfig              *restclient.Config
-	clientsets              clientsets.Interface
-	sharedInformerFactories informerfactories.Interface
-	ctx                     context.Context
-	rctx                    resources.ResourceContext
-	resources               resources.Resources
-	attributes              map[interface{}]interface{}
+	name       string
+	id         string
+	definition Definition
+	local      bool
+	kubeConfig *restclient.Config
+	ctx        context.Context
+	rctx       resources.ResourceContext
+	resources  resources.Resources
+	attributes map[interface{}]interface{}
 }
 
 var _ Interface = &_Cluster{}
+
+func (this *_Cluster) GetCluster() resources.Cluster {
+	return this
+}
 
 func (this *_Cluster) GetName() string {
 	return this.name
@@ -135,16 +138,12 @@ func (this *_Cluster) Config() restclient.Config {
 	return *this.kubeConfig
 }
 
-func (this *_Cluster) Clientsets() clientsets.Interface {
-	return this.clientsets
-}
-
 func (this *_Cluster) Resources() resources.Resources {
 	return this.resources
 }
 
-func (this *_Cluster) InformerFactories() informerfactories.Interface {
-	return this.sharedInformerFactories
+func (this *_Cluster) ResourceContext() resources.ResourceContext {
+	return this.rctx
 }
 
 func (this *_Cluster) GetObject(spec interface{}) (resources.Object, error) {
@@ -169,7 +168,6 @@ func (this *_Cluster) setup(logger logger.LogContext) error {
 		return err
 	}
 	this.rctx = rctx
-	this.sharedInformerFactories = informerfactories.NewForClientsets(this.clientsets)
 	this.resources = this.rctx.Resources()
 	return nil
 }
@@ -193,7 +191,6 @@ func CreateCluster(ctx context.Context, logger logger.LogContext, req Definition
 	cluster.id = id
 	cluster.kubeConfig = kubeConfig
 	cluster.local = kubeconfig == ""
-	cluster.clientsets = clientsets.NewForConfig(kubeConfig)
 
 	err = cluster.setup(logger)
 	if err != nil {
