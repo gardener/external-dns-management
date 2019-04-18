@@ -238,6 +238,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider))
 
+	hello.Infof(logger)
 	this.valid = false
 	spec := &this.object.DNSEntry().Spec
 

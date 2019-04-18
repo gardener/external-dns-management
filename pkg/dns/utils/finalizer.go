@@ -55,8 +55,12 @@ func (this *Finalizer) HasFinalizer(obj resources.Object) bool {
 	return false
 }
 
+func (this *Finalizer) FinalizerName(obj resources.Object) string {
+	return finalizer(this.name, this.classes.Main())
+}
+
 func (this *Finalizer) SetFinalizer(obj resources.Object) error {
-	err := obj.SetFinalizer(finalizer(this.name, this.classes.Main()))
+	err := obj.SetFinalizer(this.FinalizerName(obj))
 	if err != nil {
 		return err
 	}

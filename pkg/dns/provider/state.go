@@ -847,7 +847,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 
 	if !this.IsManaging(v) {
 		logger.Infof("foreign zone %s(%s) -> skip reconcilation", utils.StringValue(v.status.Zone), utils.StringValue(v.status.ProviderType))
-		return nil, reconcile.Succeeded(logger)
+		return nil, status
 	}
 
 	dnsname := v.DNSName()
@@ -935,7 +935,6 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	if new != nil {
 		if status.IsSucceeded() && new != nil && new.IsValid() {
 			if new.Interval() > 0 {
-				status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
 				status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
 			}
 		}
