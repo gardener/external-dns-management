@@ -33,5 +33,7 @@ const (
 	OPT_SETUP      = "setup"
 	OPT_DNSDELAY   = "dns-delay"
 
+	OPT_PROVIDERTYPES = "provider-types"
+
 	HOSTEDZONE_PREFIX = "hostedzone:"
 )

@@ -18,6 +18,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"time"
 
@@ -35,10 +36,11 @@ type Config struct {
 	Ident    string
 	Dryrun   bool
 	Delay    time.Duration
+	Enabled  utils.StringSet
 	Factory  DNSHandlerFactory
 }
 
-func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) Config {
+func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
 	ident, err := c.GetStringOption(OPT_IDENTIFIER)
 	if err != nil {
 		ident = "identifier-not-configured"
@@ -57,14 +59,34 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) C
 	if err != nil {
 		delay = 10 * time.Second
 	}
-	return Config{
+
+	enabled := utils.StringSet{}
+	types, err := c.GetStringOption(OPT_PROVIDERTYPES)
+	if err != nil || types == "" {
+		enabled.AddSet(factory.TypeCodes())
+	} else {
+		enabled.AddAllSplitted(types)
+		if enabled.Contains("all") {
+			enabled.Remove("all")
+			set := factory.TypeCodes()
+			set.Remove("mock-inmemory" /* mock.TYPE_CODE */)
+			enabled.AddSet(set)
+		}
+		_, del := enabled.DiffFrom(factory.TypeCodes())
+		if len(del) != 0 {
+			return nil, fmt.Errorf("unknown providers types %s", del)
+		}
+	}
+
+	return &Config{
 		Ident:    ident,
 		Dryrun:   dryrun,
 		TTL:      int64(ttl),
 		CacheTTL: time.Duration(cttl) * time.Second,
 		Delay:    delay,
+		Enabled:  enabled,
 		Factory:  factory,
-	}
+	}, nil
 }
 
 type DNSHostedZone interface {

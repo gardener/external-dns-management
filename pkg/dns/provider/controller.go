@@ -103,11 +103,15 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 	copt, _ := c.GetStringOption(OPT_CLASS)
 	classes := dnsutils.NewClasses(copt)
 	c.SetFinalizerHandler(dnsutils.NewFinalizer(c, c.GetDefinition().FinalizerName(), classes))
+	config, err := NewConfigForController(c, factory)
+	if err != nil {
+		return nil, err
+	}
 	return &reconciler{
 		controller: c,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewDNSState(NewDefaultContext(c), classes, NewConfigForController(c, factory))
+				return NewDNSState(NewDefaultContext(c), classes, *config)
 			}).(*state),
 	}, nil
 }

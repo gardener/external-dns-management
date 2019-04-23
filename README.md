@@ -121,10 +121,23 @@ in this repository and must implement the
 This factory returns implementations of the [`provider.DNSHandler` interface](pkg/dns/provider/interface.go)
 that does the effective work for a dedicated set of hosted zones.
 
-A provisioning controller can be implemented following this example:
+These factories can be embedded into a final controller manager (the runnable
+instance) in several ways:
+
+- The factory can be used to create a dedicated controller.
+  This controller can then be embedded into a controller manager, either in
+  its own controller manger or together with other controllers.
+- The factory can be added to a compound factory, able to handle multiple
+  infrastructures. This one can then be used to create a dedicated controller,
+  again.
+
+### Embedding a Factory into a Controller
+
+A provisioning controller can be implemented following this 
+[example](pkg/controller/provider/aws/controller/controller.go):
 
 ```go
-package route53
+package controller
 
 import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -139,9 +152,49 @@ func init() {
 }
 ```
 
+This controller can be embedded into a controller manager just by using
+an [anonymous import](cmd/dns/main.go) of the controller package in the main package
+of a dedicated controller manager.
+
 Complete examples are available in the sub packages of `pkg/controller/provider`.
 They also show a typical set of implementation structures that help
 to structure the implementation of such controllers.
+
+The provider implemented in this project always follow the same structure:
+- the provider package contains the provider code
+- the factory source file registers the factory at a default compound factory
+- it contains a sub package `controller`, which contains the embedding of
+  the factory into a dedicated controller
+
+### Embedding a Factory into a Compound Factory
+
+A provisioning controller based on a *Compound Factory* can be extended by
+a new provider factory by registering this factory at the compound factory.
+This could be done, for example,  by using the default compound factory provided
+in package [`pkg/controller/provider/compound`](pkg/controller/provider/compound/factory.go) as shown
+[here](pkg/controller/provider/aws/factory.go), where `NewHandler` is a function creating
+a dedicated handler for a dedicated provider type:
+
+```go
+
+package aws
+
+import (
+	"github.com/gardener/external-dns-management/pkg/controller/provider/compound"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
+)
+
+const TYPE_CODE = "aws-route53"
+
+var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)
+
+func init() {
+	compound.MustRegister(Factory)
+}
+```
+
+The compound factory is then again embedded into a provisioning controller as shown
+in the previous section (see the [`controller`sub package](pkg/controller/provider/compound/controller/controller.go)).
 
 ## Setting Up a Controller Manager
 
@@ -163,26 +216,113 @@ func main() {
 }
 ```
 
-## Multiple Cluster Support
+### Using the standard Compound Provisioning Controller
+
+If the standard *Compound Provisioning Controller* should be used it is required
+to additionally add the anonymous imports for the providers intended to be
+embedded into the compound factory like [this](cmd/compound/main.go):
+
+<details>
+<summary><b>Example Coding</b></summary>
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/gardener/controller-manager-library/pkg/controllermanager"
+
+
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/<your provider>"
+	...
+)
+
+func main() {
+	controllermanager.Start("dns-controller-manager", "dns controller manager", "nothing")
+}
+```
+</details>
+
+### Multiple Cluster Support
 
 The controller implementations provided in this project are prepared to work
-with multiple clusters.
+with multiple clusters by using the features of the used controller manager
+library.
 
-Source controllers can read the DNS source objects from one cluster and
-manage `DNSEntries` in another one. Therefore they are using two logical
-clusters, the default cluster and a `target` cluster.
+The *DNS Source Controllers* support two clusters:
+- the default cluster is used to scan for source objects
+- the logical cluster `target` is used to maintain the `DNSEnry` objects.
 
-Provisioning controllers can read the `DNSEntry` objects from one cluster
-and read `DNSProvider` objects from another cluster using the logical clusters
-`target` and `provider`.
+The *DNS Provisioning Controllers* also support two clusters:
+- the default cluster is used to scan for `DNSEntry` objects. It is mapped 
+  to the logical cluster `target`
+- the logical cluster `provider` is used to look to the `DNSProvider` objects
+  and their related secrets.
+
+
+If those controller types should be combined in a single controller manager,
+it can be configured to support three potential clusters with the
+source objects, the one for the entry objects and the one with provider
+objects using cluster mappings.
+
+This is shown in a complete [example](cmd/compound/main.go) using the dns
+source controllers, the compound provisioning controller configured to
+support all the included DNS provider type factories:
+
+<details>
+<summary><b>Example Coding</b></summary>
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+
+	"github.com/gardener/controller-manager-library/pkg/controllermanager"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
+
+	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
+	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
+
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/alicloud"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/aws"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/azure"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/google"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
+
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
+)
+
+func init() {
+	// target cluster already defined in dns source controller package
+	cluster.Configure(
+		dnsprovider.PROVIDER_CLUSTER,
+		"providers",
+		"cluster to look for provider objects",
+	).Fallback(dnssource.TARGET_CLUSTER)
+
+	mappings.ForControllerGroup(dnsprovider.CONTROLLER_GROUP_DNS_CONTROLLERS).
+		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
+
+}
+
+func main() {
+	controllermanager.Start("dns-controller-manager", "dns controller manager", "nothing")
+}
+```
+</details>
 
 Those clusters can the be separated by registering their names together with
 command line option names. These can be used to specify different kubeconfig 
-files for those clusters. If a controller manager includes different types
-of controllers then corresponding cluster mappings must be provided in
-the coding to assign the controller specific logical names to the
-registered external ones. For an example see the included
-[controller manager](cmd/dns/main.go).
+files for those clusters.
   
 By default all logical clusters are mapped to the default physical cluster
 specified via `--kubeconfig` or default cluster access.

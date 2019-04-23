@@ -71,10 +71,12 @@ type state struct {
 }
 
 func NewDNSState(ctx Context, classes *dnsutils.Classes, config Config) *state {
-	ctx.Infof("responsible for classes: %s (%s)", classes, classes.Main())
-	ctx.Infof("using default ttl:       %d", config.TTL)
-	ctx.Infof("using identifier:        %s", config.Ident)
-	ctx.Infof("dry run mode:            %t", config.Dryrun)
+	ctx.Infof("responsible for classes:     %s (%s)", classes, classes.Main())
+	ctx.Infof("availabled providers types   %s", config.Factory.TypeCodes())
+	ctx.Infof("enabled providers types:     %s", config.Enabled)
+	ctx.Infof("using default ttl:           %d", config.TTL)
+	ctx.Infof("using identifier:            %s", config.Ident)
+	ctx.Infof("dry run mode:                %t", config.Dryrun)
 	return &state{
 		classes:         classes,
 		context:         ctx,
@@ -537,13 +539,21 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 	return modified
 }
 
+func (this *state) RefineLogger(logger logger.LogContext, ptype string) logger.LogContext {
+	if len(this.config.Enabled) > 1 && ptype != "" {
+		logger = logger.NewContext("provider", ptype)
+	}
+	return logger
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // provider handling
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *state) UpdateProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status {
+	logger = this.RefineLogger(logger, obj.TypeCode())
 	logger.Infof("reconcile PROVIDER")
-	if !this.config.Factory.IsResponsibleFor(obj) {
+	if !this.config.Enabled.Contains(obj.TypeCode()) || !this.config.Factory.IsResponsibleFor(obj) {
 		return this._UpdateForeignProvider(logger, obj)
 	}
 	return this._UpdateLocalProvider(logger, obj)
@@ -905,7 +915,7 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 	zoneid, ptype, _ := this.getZoneForName(e.GetDNSName())
 
 	return &EntryPremise{
-		this.GetHandlerFactory().TypeCodes(),
+		this.config.Enabled,
 		ptype,
 		provider,
 		zoneid,
@@ -913,8 +923,6 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 }
 
 func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object *dnsutils.DNSEntryObject) reconcile.Status {
-	logger.Debugf("%s ENTRY", op)
-
 	old := this.GetEntry(object.ObjectName())
 	if old != nil {
 		old.lock.Lock()
@@ -928,6 +936,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		}
 	}
 
+	logger = this.RefineLogger(logger, p.ptype)
 	v := NewEntryVersion(object, old)
 	status := v.Setup(logger, this, p, op, err, this.config.TTL, old)
 	new, status := this.AddEntryVersion(logger, v, status)
@@ -1052,7 +1061,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 	if done, err := this.StartZoneReconcilation(logger, zone, entries, stale, providers); done {
 		return reconcile.DelayOnError(logger, err)
 	}
-	logger.Infof("reconciling zone %q (%s) already busy and skipped", zoneid, zone.Domain())
+	logger.Infof("reconciling %s zone %q (%s) already busy and skipped", zone.ProviderType(), zoneid, zone.Domain())
 	return reconcile.Succeeded(logger).RescheduleAfter(10 * time.Second)
 }
 
@@ -1090,7 +1099,7 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 	}
 	zone.next = time.Now().Add(this.config.Delay)
 	metrics.ReportZoneEntries(zone.ProviderType(), zoneid, len(entries))
-	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", zone.Id(), zone.Domain(), len(entries), len(stale))
+	logger.Infof("reconcile %s ZONE %s (%s) for %d dns entries (%d stale)", zone.ProviderType(), zone.Id(), zone.Domain(), len(entries), len(stale))
 	changes := NewChangeModel(logger, this.ownerCache.GetIds(), stale, this.config, zone, providers)
 	err := changes.Setup()
 	if err != nil {
