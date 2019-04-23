@@ -102,7 +102,7 @@ configuration:
 # kubeconfig: ""
 # kubeconfigId: ""
 # logLevel: info
-# namespace: default
+  namespace: default
 # namespaceLocalAccessOnly: false
 # omitLease: false
 # openstackDesignateCacheTtl: 120
