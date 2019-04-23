@@ -23,7 +23,10 @@ affinity: {}
 createCRDs: true
 
 configuration:
+# alicloudDNSCacheTtl: 120
 # alicloudDNSDefaultPoolSize: 2
+# alicloudDNSDnsClass: "gardendns"
+# alicloudDNSDnsDelay: 10s
 # alicloudDNSDnsPoolResyncPeriod: 30s
 # alicloudDNSDnsPoolSize: 1
 # alicloudDNSDryRun: false
@@ -31,8 +34,13 @@ configuration:
 # alicloudDNSOwneridsPoolSize: 1
 # alicloudDNSProvidersPoolResyncPeriod: 30s
 # alicloudDNSProvidersPoolSize: 2
+# alicloudDNSSecretsPoolSize: 2
+# alicloudDNSSetup: 10
 # alicloudDNSTtl: 120
+# awsRoute53CacheTtl: 120
 # awsRoute53DefaultPoolSize: 2
+# awsRoute53DnsClass: "gardendns"
+# awsRoute53DnsDelay: 10s
 # awsRoute53DnsPoolResyncPeriod: 30s
 # awsRoute53DnsPoolSize: 1
 # awsRoute53DryRun: false
@@ -40,8 +48,13 @@ configuration:
 # awsRoute53OwneridsPoolSize: 1
 # awsRoute53ProvidersPoolResyncPeriod: 30s
 # awsRoute53ProvidersPoolSize: 2
+# awsRouteSecretsPoolSize: 2
+# awsRoute53Setup: 10
 # awsRoute53Ttl: 120
+# azureDNSCacheTtl: 120
 # azureDNSDefaultPoolSize: 2
+# azureDNSDnsClass: "gardendns"
+# azureDNSDnsDelay: 10s
 # azureDNSDnsPoolResyncPeriod: 30s
 # azureDNSDnsPoolSize: 1
 # azureDNSDryRun: false
@@ -49,11 +62,22 @@ configuration:
 # azureDNSOwneridsPoolSize: 1
 # azureDNSProvidersPoolResyncPeriod: 30s
 # azureDNSProvidersPoolSize: 2
+# azureDNSSecretsPoolSize: 2
+# azureDNSSetup: 10
 # azureDNSTtl: 120
+# cacheTtl: 120
   controllers: all
+# cpuprofile: ""
+# disableNamespaceRestriction: false
+# dnsClass: "gardendns"
+# dnsDelay: 10s
+# dnsTargetClass: ""
 # dryRun: false
 # excludeDomains: google.com
+# googleCloudDNSCacheTtl: 120
 # googleCloudDNSDefaultPoolSize: 2
+# googleCloudDNSDnsClass: "gardendns"
+# googleCloudDNSDnsDelay: 10s
 # googleCloudDNSDnsPoolResyncPeriod: 30s
 # googleCloudDNSDnsPoolSize: 1
 # googleCloudDNSDryRun: false
@@ -61,10 +85,14 @@ configuration:
 # googleCloudDNSOwneridsPoolSize: 1
 # googleCloudDNSProvidersPoolResyncPeriod: 30s
 # googleCloudDNSProvidersPoolSize: 2
+# googleCloudDNSSecretsPoolSize: 2
+# googleCloudDNSSetup: 10
 # googleCloudDNSTtl: 120
   identifier: dns-test
 # ingressDNSDefaultPoolResyncPeriod: 30s
 # ingressDNSDefaultPoolSize: 2
+# ingressDNSDnsClass: "gardendns"
+# ingressDNSDnsTargetClass: ""
 # ingressDNSExcludeDomains: google.com
 # ingressDNSKey: ""
 # ingressDNSTargetNamePrefix: ""
@@ -77,7 +105,10 @@ configuration:
 # namespace: default
 # namespaceLocalAccessOnly: false
 # omitLease: false
+# openstackDesignateCacheTtl: 120
 # openstackDesignateDefaultPoolSize: 2
+# openstackDesignateDnsClass: "gardendns"
+# openstackDesignateDnsDelay: 10s
 # openstackDesignateDnsPoolResyncPeriod: 30s
 # openstackDesignateDnsPoolSize: 1
 # openstackDesignateDryRun: false
@@ -85,18 +116,23 @@ configuration:
 # openstackDesignateOwneridsPoolSize: 1
 # openstackDesignateProvidersPoolResyncPeriod: 30s
 # openstackDesignateProvidersPoolSize: 2
+# openstackDesignateSecretsPoolSize: 2
+# openstackDesignateSetup: 10
 # openstackDesignateTtl: 120
-# plugin-dir: ""
+# pluginDir: ""
 # poolResyncPeriod: 30s
 # poolSize: 2
   serverPortHttp: 8080
 # serviceDNSDefaultPoolResyncPeriod: 30s
 # serviceDNSDefaultPoolSize: 2
+# serviceDNSDnsClass: "gardendns"
+# serviceDNSDnsTargetClass: ""
 # serviceDNSExcludeDomains: google.com
 # serviceDNSKey: ""
 # serviceDNSTargetNamePrefix: ""
 # serviceDNSTargetNamespace: ""
 # serviceDNSTargetsPoolSize: 2
+# setup: 10
 # target: ""
 # targetNamePrefix: ""
 # targetNamespace: ""

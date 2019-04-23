@@ -26,8 +26,17 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
+        {{- if .Values.configuration.alicloudDNSCacheTtl }}
+        - --alicloud-dns.cache-ttl={{ .Values.configuration.alicloudDNSCacheTtl }}
+        {{- end }}
         {{- if .Values.configuration.alicloudDNSDefaultPoolSize }}
         - --alicloud-dns.default.pool.size={{ .Values.configuration.alicloudDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSDnsClass }}
+        - --alicloud-dns.dns-class={{ .Values.configuration.alicloudDNSDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSDnsDelay }}
+        - --alicloud-dns.dns-delay={{ .Values.configuration.alicloudDNSDnsDelay }}
         {{- end }}
         {{- if .Values.configuration.alicloudDNSDnsPoolResyncPeriod }}
         - --alicloud-dns.dns.pool.resync-period={{ .Values.configuration.alicloudDNSDnsPoolResyncPeriod }}
@@ -50,11 +59,26 @@ spec:
         {{- if .Values.configuration.alicloudDNSProvidersPoolSize }}
         - --alicloud-dns.providers.pool.size={{ .Values.configuration.alicloudDNSProvidersPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.alicloudDNSSecretsPoolSize }}
+        - --alicloud-dns.secrets.pool.size={{ .Values.configuration.alicloudDNSSecretsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSSetup }}
+        - --alicloud-dns.setup={{ .Values.configuration.alicloudDNSSetup }}
+        {{- end }}
         {{- if .Values.configuration.alicloudDNSTtl }}
         - --alicloud-dns.ttl={{ .Values.configuration.alicloudDNSTtl }}
         {{- end }}
+        {{- if .Values.configuration.awsRoute53CacheTtl }}
+        - --aws-route53.cache-ttl={{ .Values.configuration.awsRoute53CacheTtl }}
+        {{- end }}
         {{- if .Values.configuration.awsRoute53DefaultPoolSize }}
         - --aws-route53.default.pool.size={{ .Values.configuration.awsRoute53DefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53DnsClass }}
+        - --aws-route53.dns-class={{ .Values.configuration.awsRoute53DnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53DnsDelay }}
+        - --aws-route53.dns-delay={{ .Values.configuration.awsRoute53DnsDelay }}
         {{- end }}
         {{- if .Values.configuration.awsRoute53DnsPoolResyncPeriod }}
         - --aws-route53.dns.pool.resync-period={{ .Values.configuration.awsRoute53DnsPoolResyncPeriod }}
@@ -77,11 +101,26 @@ spec:
         {{- if .Values.configuration.awsRoute53ProvidersPoolSize }}
         - --aws-route53.providers.pool.size={{ .Values.configuration.awsRoute53ProvidersPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.awsRoute53SecretsPoolSize }}
+        - --aws-route53.secrets.pool.size={{ .Values.configuration.awsRoute53SecretsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53Setup }}
+        - --aws-route53.setup={{ .Values.configuration.awsRoute53Setup }}
+        {{- end }}
         {{- if .Values.configuration.awsRoute53Ttl }}
         - --aws-route53.ttl={{ .Values.configuration.awsRoute53Ttl }}
         {{- end }}
+        {{- if .Values.configuration.azureDNSCacheTtl }}
+        - --azure-dns.cache-ttl={{ .Values.configuration.azureDNSCacheTtl }}
+        {{- end }}
         {{- if .Values.configuration.azureDNSDefaultPoolSize }}
         - --azure-dns.default.pool.size={{ .Values.configuration.azureDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSDnsClass }}
+        - --azure-dns.dns-class={{ .Values.configuration.azureDNSDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSDnsDelay }}
+        - --azure-dns.dns-delay={{ .Values.configuration.azureDNSDnsDelay }}
         {{- end }}
         {{- if .Values.configuration.azureDNSDnsPoolResyncPeriod }}
         - --azure-dns.dns.pool.resync-period={{ .Values.configuration.azureDNSDnsPoolResyncPeriod }}
@@ -104,11 +143,35 @@ spec:
         {{- if .Values.configuration.azureDNSProvidersPoolSize }}
         - --azure-dns.providers.pool.size={{ .Values.configuration.azureDNSProvidersPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.azureDNSSecretsPoolSize }}
+        - --azure-dns.secrets.pool.size={{ .Values.configuration.azureDNSSecretsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSSetup }}
+        - --azure-dns.setup={{ .Values.configuration.azureDNSSetup }}
+        {{- end }}
         {{- if .Values.configuration.azureDNSTtl }}
         - --azure-dns.ttl={{ .Values.configuration.azureDNSTtl }}
         {{- end }}
+        {{- if .Values.configuration.cacheTtl }}
+        - --cache-ttl={{ .Values.configuration.cacheTtl }}
+        {{- end }}
         {{- if .Values.configuration.controllers }}
         - --controllers={{ .Values.configuration.controllers }}
+        {{- end }}
+        {{- if .Values.configuration.cpuprofile }}
+        - --cpuprofile={{ .Values.configuration.cpuprofile }}
+        {{- end }}
+        {{- if .Values.configuration.disableNamespaceRestriction }}
+        - --disable-namespace-restriction={{ .Values.configuration.disableNamespaceRestriction }}
+        {{- end }}
+        {{- if .Values.configuration.dnsClass }}
+        - --dns-class={{ .Values.configuration.dnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.dnsDelay }}
+        - --dns-delay={{ .Values.configuration.dnsDelay }}
+        {{- end }}
+        {{- if .Values.configuration.dnsTargetClass }}
+        - --dns-target-class={{ .Values.configuration.dnsTargetClass }}
         {{- end }}
         {{- if .Values.configuration.dryRun }}
         - --dry-run={{ .Values.configuration.dryRun }}
@@ -116,8 +179,17 @@ spec:
         {{- if .Values.configuration.excludeDomains }}
         - --exclude-domains={{ .Values.configuration.excludeDomains }}
         {{- end }}
+        {{- if .Values.configuration.googleCloudDNSCacheTtl }}
+        - --google-clouddns.cache-ttl={{ .Values.configuration.googleCloudDNSCacheTtl }}
+        {{- end }}
         {{- if .Values.configuration.googleCloudDNSDefaultPoolSize }}
         - --google-clouddns.default.pool.size={{ .Values.configuration.googleCloudDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSDnsClass }}
+        - --google-clouddns.dns-class={{ .Values.configuration.googleCloudDNSDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSDnsDelay }}
+        - --google-clouddns.dns-delay={{ .Values.configuration.googleCloudDNSDnsDelay }}
         {{- end }}
         {{- if .Values.configuration.googleCloudDNSDnsPoolResyncPeriod }}
         - --google-clouddns.dns.pool.resync-period={{ .Values.configuration.googleCloudDNSDnsPoolResyncPeriod }}
@@ -140,13 +212,23 @@ spec:
         {{- if .Values.configuration.googleCloudDNSProvidersPoolSize }}
         - --google-clouddns.providers.pool.size={{ .Values.configuration.googleCloudDNSProvidersPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.googleCloudDNSSecretsPoolSize }}
+        - --google-clouddns.secrets.pool.size={{ .Values.configuration.googleCloudDNSSecretsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSSetup }}
+        - --google-clouddns.setup={{ .Values.configuration.googleCloudDNSSetup }}
+        {{- end }}
         {{- if .Values.configuration.googleCloudDNSTtl }}
         - --google-clouddns.ttl={{ .Values.configuration.googleCloudDNSTtl }}
+        {{- end }}
+        {{- if .Values.configuration.help }}
+        - --help={{ .Values.configuration.help }}
         {{- end }}
         {{- if .Values.configuration.identifier }}
         - --identifier={{ .Values.configuration.identifier }}
         {{- else }}
         - --identifier=seed.gardener.cloud/{{ .Values.gardener.garden.identity }}/{{ .Values.gardener.seed.identity }}
+
         {{- end }}
         {{- if .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
         - --ingress-dns.default.pool.resync-period={{ .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
@@ -154,8 +236,14 @@ spec:
         {{- if .Values.configuration.ingressDNSDefaultPoolSize }}
         - --ingress-dns.default.pool.size={{ .Values.configuration.ingressDNSDefaultPoolSize }}
         {{- end }}
-        {{- if .Values.configuration.ingressDNSingressDNSExcludeDomains }}
-        - --ingress-dns.exclude-domains={{ .Values.configuration.ingressDNSingressDNSExcludeDomains }}
+        {{- if .Values.configuration.ingressDNSDnsClass }}
+        - --ingress-dns.dns-class={{ .Values.configuration.ingressDNSDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSDnsTargetClass }}
+        - --ingress-dns.dns-target-class={{ .Values.configuration.ingressDNSDnsTargetClass }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSExcludeDomains }}
+        - --ingress-dns.exclude-domains={{ .Values.configuration.ingressDNSExcludeDomains }}
         {{- end }}
         {{- if .Values.configuration.ingressDNSKey }}
         - --ingress-dns.key={{ .Values.configuration.ingressDNSKey }}
@@ -181,6 +269,9 @@ spec:
         {{- if .Values.configuration.logLevel }}
         - --log-level={{ .Values.configuration.logLevel }}
         {{- end }}
+        {{- if .Values.configuration.name }}
+        - --name={{ .Values.configuration.name }}
+        {{- end }}
         {{- if .Values.configuration.namespace }}
         - --namespace={{ .Values.configuration.namespace }}
         {{- end }}
@@ -190,8 +281,17 @@ spec:
         {{- if .Values.configuration.omitLease }}
         - --omit-lease={{ .Values.configuration.omitLease }}
         {{- end }}
+        {{- if .Values.configuration.openstackDesignateCacheTtl }}
+        - --openstack-designate.cache-ttl={{ .Values.configuration.openstackDesignateCacheTtl }}
+        {{- end }}
         {{- if .Values.configuration.openstackDesignateDefaultPoolSize }}
         - --openstack-designate.default.pool.size={{ .Values.configuration.openstackDesignateDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateDnsClass }}
+        - --openstack-designate.dns-class={{ .Values.configuration.openstackDesignateDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateDnsDelay }}
+        - --openstack-designate.dns-delay={{ .Values.configuration.openstackDesignateDnsDelay }}
         {{- end }}
         {{- if .Values.configuration.openstackDesignateDnsPoolResyncPeriod }}
         - --openstack-designate.dns.pool.resync-period={{ .Values.configuration.openstackDesignateDnsPoolResyncPeriod }}
@@ -214,11 +314,17 @@ spec:
         {{- if .Values.configuration.openstackDesignateProvidersPoolSize }}
         - --openstack-designate.providers.pool.size={{ .Values.configuration.openstackDesignateProvidersPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.openstackDesignateSecretsPoolSize }}
+        - --openstack-designate.secrets.pool.size={{ .Values.configuration.openstackDesignateSecretsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateSetup }}
+        - --openstack-designate.setup={{ .Values.configuration.openstackDesignateSetup }}
+        {{- end }}
         {{- if .Values.configuration.openstackDesignateTtl }}
         - --openstack-designate.ttl={{ .Values.configuration.openstackDesignateTtl }}
         {{- end }}
-        {{- if .Values.configuration.plugin }}
-        - --plugin-dir={{ .Values.configuration.plugin }}
+        {{- if .Values.configuration.pluginDir }}
+        - --plugin-dir={{ .Values.configuration.pluginDir }}
         {{- end }}
         {{- if .Values.configuration.poolResyncPeriod }}
         - --pool.resync-period={{ .Values.configuration.poolResyncPeriod }}
@@ -235,8 +341,14 @@ spec:
         {{- if .Values.configuration.serviceDNSDefaultPoolSize }}
         - --service-dns.default.pool.size={{ .Values.configuration.serviceDNSDefaultPoolSize }}
         {{- end }}
-        {{- if .Values.configuration.serviceDNSingressDNSExcludeDomains }}
-        - --service-dns.exclude-domains={{ .Values.configuration.serviceDNSingressDNSExcludeDomains }}
+        {{- if .Values.configuration.serviceDNSDnsClass }}
+        - --service-dns.dns-class={{ .Values.configuration.serviceDNSDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSDnsTargetClass }}
+        - --service-dns.dns-target-class={{ .Values.configuration.serviceDNSDnsTargetClass }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSExcludeDomains }}
+        - --service-dns.exclude-domains={{ .Values.configuration.serviceDNSExcludeDomains }}
         {{- end }}
         {{- if .Values.configuration.serviceDNSKey }}
         - --service-dns.key={{ .Values.configuration.serviceDNSKey }}
@@ -249,6 +361,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.serviceDNSTargetsPoolSize }}
         - --service-dns.targets.pool.size={{ .Values.configuration.serviceDNSTargetsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.setup }}
+        - --setup={{ .Values.configuration.setup }}
         {{- end }}
         {{- if .Values.configuration.target }}
         - --target={{ .Values.configuration.target }}
