@@ -56,6 +56,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedIntOption(OPT_CACHE_TTL, 120, "Time-to-live for provider hosted zone cache").
 		DefaultedIntOption(OPT_SETUP, 10, "number of processors for controller setup").
 		DefaultedDurationOption(OPT_DNSDELAY, 10*time.Second, "delay between two dns reconcilations").
+		DefaultedDurationOption(OPT_RESCHEDULEDELAY, 120*time.Second, "reschedule delay after losing provider").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
 		CustomResourceDefinitions(crds.DNSEntryCRD, crds.DNSOwnerCRD).

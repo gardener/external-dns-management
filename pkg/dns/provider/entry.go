@@ -234,7 +234,7 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 	return
 }
 
-func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, defaultTTL int64, old *Entry) reconcile.Status {
+func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config, old *Entry) reconcile.Status {
 
 	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider))
 
@@ -252,9 +252,9 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	if utils.IsEmptyString(this.status.ProviderType) || (p.zoneid != "" && *this.status.ProviderType != p.ptype) {
 		if p.zoneid == "" {
 			// mark unassigned foreign entries as errorneous
-			if this.object.GetCreationTimestamp().Add(120 * time.Second).After(time.Now()) {
+			if this.object.GetCreationTimestamp().Add(config.RescheduleDelay).After(time.Now()) {
 				state.RemoveFinalizer(this.object)
-				return reconcile.Succeeded(logger).RescheduleAfter(120 * time.Second)
+				return reconcile.Succeeded(logger).RescheduleAfter(config.RescheduleDelay)
 			}
 			hello.Infof(logger)
 			logger.Infof("probably no responsible controller found -> mark as error")
@@ -297,6 +297,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	if p.provider != nil {
 		provider = p.provider.ObjectName().String()
 		this.status.Provider = &provider
+		defaultTTL := config.TTL
 		this.status.TTL = &defaultTTL
 		if spec.TTL != nil {
 			this.status.TTL = spec.TTL
