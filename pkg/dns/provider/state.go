@@ -281,7 +281,7 @@ func (this *state) GetSecretUsage(name resources.ObjectName) []resources.Object 
 	return result
 }
 
-func (this *state) registerSecret(logger logger.LogContext, secret resources.ObjectName, provider *dnsProviderVersion) error {
+func (this *state) registerSecret(logger logger.LogContext, secret resources.ObjectName, provider *dnsProviderVersion) (bool, error) {
 	pname := provider.ObjectName()
 	old := this.providersecrets[pname]
 
@@ -295,14 +295,14 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 				if err != nil {
 					if !errors.IsNotFound(err) {
 						logger.Warnf("cannot release secret %q for provider %q: %s", old, pname, err)
-						return err
+						return true, err
 					}
 				} else {
 					logger.Infof("remove finalizer for unused secret %q", old)
 					err := this.RemoveFinalizer(s)
 					if err != nil && !errors.IsNotFound(err) {
 						logger.Warnf("cannot release secret %q for provider %q: 5s", old, pname, err)
-						return err
+						return true, err
 					}
 				}
 				delete(this.secrets, old)
@@ -311,6 +311,7 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 			}
 		}
 	}
+	mod := false
 	if secret != nil {
 		if old != secret {
 			logger.Infof("registering secret %q for provider %q", secret, pname)
@@ -322,6 +323,7 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 				this.secrets[secret] = curp
 			}
 			curp.Add(pname)
+			mod = true
 		}
 
 		r, err := provider.Object().Resources().Get(&corev1.Secret{})
@@ -331,13 +333,15 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 		}
 		if err != nil {
 			if errors.IsNotFound(err) {
-				return fmt.Errorf("secret %q for provider %q not found", secret, pname)
+				return mod, fmt.Errorf("secret %q for provider %q not found", secret, pname)
 			} else {
-				return fmt.Errorf("cannot set finalizer for secret %q for provider %q: %s", secret, pname, err)
+				return mod, fmt.Errorf("cannot set finalizer for secret %q for provider %q: %s", secret, pname, err)
 			}
 		}
+	} else {
+		delete(this.providersecrets, pname)
 	}
-	return nil
+	return mod, nil
 }
 
 func (this *state) GetProvider(name resources.ObjectName) DNSProvider {
@@ -580,6 +584,7 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 
 	this.lock.Lock()
 	defer this.lock.Unlock()
+	regmod, regerr := this.registerSecret(logger, new.secret, new)
 
 	this.providers[new.ObjectName()] = new
 	mod := this.updateZones(logger, last, new)
@@ -591,7 +596,14 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 				this.triggerHostedZone(z.Id())
 			}
 		}
+		if regmod {
+			return reconcile.Repeat(logger, regerr)
+		}
 		return status
+	}
+
+	if regerr != nil {
+		status = reconcile.Delay(logger, regerr)
 	}
 
 	entries := Entries{}
@@ -599,7 +611,6 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 		this.addEntriesForProvider(last, entries)
 		this.addEntriesForProvider(new, entries)
 	}
-	this.registerSecret(logger, new.secret, new)
 
 	if mod || (last != nil && !last.IsValid() && new.IsValid()) {
 		logger.Infof("found %d zones: ", len(new.zones))
@@ -757,7 +768,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 			}
 		}
 		this.TriggerEntries(logger, entries)
-		err := this.registerSecret(logger, nil, cur)
+		_, err := this.registerSecret(logger, nil, cur)
 		if err != nil {
 			return reconcile.Delay(logger, err)
 		}
@@ -1054,6 +1065,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 	if zone == nil {
 		return reconcile.Failed(logger, fmt.Errorf("zone %s not used anymore -> stop reconciling", zoneid))
 	}
+	logger = this.RefineLogger(logger, zone.ProviderType())
 	if delay > 0 {
 		logger.Infof("too early (required delay between two reconcilations: %s) -> skip and reschedule", this.config.Delay)
 		return reconcile.Succeeded(logger).RescheduleAfter(delay)
@@ -1061,7 +1073,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 	if done, err := this.StartZoneReconcilation(logger, zone, entries, stale, providers); done {
 		return reconcile.DelayOnError(logger, err)
 	}
-	logger.Infof("reconciling %s zone %q (%s) already busy and skipped", zone.ProviderType(), zoneid, zone.Domain())
+	logger.Infof("reconciling zone %q (%s) already busy and skipped", zoneid, zone.Domain())
 	return reconcile.Succeeded(logger).RescheduleAfter(10 * time.Second)
 }
 
@@ -1099,7 +1111,7 @@ func (this *state) reconcileZone(logger logger.LogContext, zoneid string, entrie
 	}
 	zone.next = time.Now().Add(this.config.Delay)
 	metrics.ReportZoneEntries(zone.ProviderType(), zoneid, len(entries))
-	logger.Infof("reconcile %s ZONE %s (%s) for %d dns entries (%d stale)", zone.ProviderType(), zone.Id(), zone.Domain(), len(entries), len(stale))
+	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", zone.Id(), zone.Domain(), len(entries), len(stale))
 	changes := NewChangeModel(logger, this.ownerCache.GetIds(), stale, this.config, zone, providers)
 	err := changes.Setup()
 	if err != nil {
