@@ -23,7 +23,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock/controller"
 	//_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	//_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
 )

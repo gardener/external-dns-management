@@ -27,7 +27,7 @@ import (
 
 const entryCount = 50
 
-var _ = Describe("Many DNSEntry, one DNSProvider", func() {
+var _ = Describe("ManyEntry_OneProvider", func() {
 	It("has correct lifecycle", func() {
 		oldTimeout := testEnv.defaultTimeout
 		testEnv.defaultTimeout = oldTimeout * time.Duration(int64(math.Sqrt(entryCount)))

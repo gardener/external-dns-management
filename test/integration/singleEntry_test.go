@@ -23,7 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Single DNSEntry", func() {
+var _ = Describe("SingleEntry", func() {
 	It("has correct life cycle", func() {
 		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())

@@ -21,33 +21,35 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("SingleEntry_TwoProvider", func() {
-	It("has correct life cycle", func() {
-		pr, domain, err := testEnv.CreateSecretAndProvider("pr-1.inmemory.mock", 0)
+func createDelete() {
+	secretName := testEnv.SecretName(0)
+	pr, _, err := testEnv.CreateProvider("inmemory.mock", 0, secretName)
+	Ω(err).Should(BeNil())
+	defer testEnv.DeleteProviderAndSecret(pr)
+
+	checkHasFinalizer(pr)
+
+	err = testEnv.AwaitProviderState(pr.GetName(), "Error")
+	Ω(err).Should(BeNil())
+
+	// create secret after provider
+	secret, err := testEnv.CreateSecret(0)
+	Ω(err).Should(BeNil())
+
+	// provider should be ready now
+	checkProvider(pr)
+
+	checkHasFinalizer(secret)
+}
+
+var _ = Describe("Provider_Secret", func() {
+	It("works if secret is created after provider", func() {
+		Context("first round", createDelete)
+
+		secretName := testEnv.SecretName(0)
+		err := testEnv.AwaitSecretDeletion(secretName)
 		Ω(err).Should(BeNil())
-		defer testEnv.DeleteProviderAndSecret(pr)
 
-		pr2, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 1)
-		Ω(err).Should(BeNil())
-		defer testEnv.DeleteProviderAndSecret(pr2)
-
-		e, err := testEnv.CreateEntry(0, domain)
-		Ω(err).Should(BeNil())
-
-		checkProvider(pr)
-
-		checkEntry(e, pr)
-
-		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).Should(BeNil())
-
-		// should be moved to other provider pr2
-		checkEntry(e, pr2)
-
-		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
-
-		err = testEnv.DeleteProviderAndSecret(pr2)
-		Ω(err).Should(BeNil())
+		Context("second round", createDelete)
 	})
 })

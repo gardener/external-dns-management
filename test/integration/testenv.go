@@ -58,7 +58,6 @@ func doInit() {
 
 	mappings.ForControllerGroup(dnsprovider.CONTROLLER_GROUP_DNS_CONTROLLERS).
 		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
-
 }
 
 func runControllerManager(args []string) {
@@ -77,16 +76,23 @@ func waitForCluster(kubeconfig string, logger logger.LogContext) (cluster.Interf
 		return nil, fmt.Errorf("CreateCluster failed: %s", err)
 	}
 
-	for i := 0; i < 30; i++ {
-		err = apiextensions.WaitCRDReady(cluster, "dnsproviders.dns.gardener.cloud")
-		if err == nil {
-			break
+	awaitCRD := func(max int, crdName string) error {
+		var err error
+		for i := 0; i < max; i++ {
+			err = apiextensions.WaitCRDReady(cluster, crdName)
+			if err == nil {
+				break
+			}
+			time.Sleep(1 * time.Second)
+			if i%5 == 4 {
+				logger.Infof("Still waiting for CRD %s ...", crdName)
+			}
 		}
-		time.Sleep(1 * time.Second)
-		if i%5 == 4 {
-			logger.Infof("Still waiting for CRDs...")
-		}
+		return err
 	}
+
+	awaitCRD(30, "dnsproviders.dns.gardener.cloud")
+	awaitCRD(10, "dnsentries.dns.gardener.cloud")
 	if err != nil {
 		return nil, fmt.Errorf("Wait for CRD failed: %s", err)
 	}
@@ -124,13 +130,17 @@ func (te *TestEnv) CreateNamespace(namespace string) error {
 	return err
 }
 
-func (te *TestEnv) CreateSecret(index int) (string, error) {
-	name := fmt.Sprintf("mock-secret-%d", index)
+func (te *TestEnv) SecretName(index int) string {
+	return fmt.Sprintf("mock-secret-%d", index)
+}
+
+func (te *TestEnv) CreateSecret(index int) (resources.Object, error) {
+	name := te.SecretName(index)
 	secret := api.Secret{}
 	secret.SetName(name)
 	secret.SetNamespace(te.Namespace)
-	_, err := te.resources.CreateOrUpdateObject(&secret)
-	return name, err
+	obj, err := te.resources.CreateOrUpdateObject(&secret)
+	return obj, err
 }
 
 func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretName string) (resources.Object, string, error) {
@@ -161,11 +171,11 @@ func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretNa
 }
 
 func (te *TestEnv) CreateSecretAndProvider(baseDomain string, index int) (resources.Object, string, error) {
-	secretName, err := te.CreateSecret(index)
+	secret, err := te.CreateSecret(index)
 	if err != nil {
 		return nil, "", fmt.Errorf("Creation of secret failed with: %s", err.Error())
 	}
-	return te.CreateProvider(baseDomain, index, secretName)
+	return te.CreateProvider(baseDomain, index, secret.GetName())
 }
 
 func (te *TestEnv) DeleteProviderAndSecret(pr resources.Object) error {
@@ -247,15 +257,27 @@ func (te *TestEnv) HasEntryState(name string, states ...string) (bool, error) {
 }
 
 func (te *TestEnv) GetProvider(name string) (resources.Object, *v1alpha1.DNSProvider, error) {
-	provider := v1alpha1.DNSProvider{}
+	provider := &v1alpha1.DNSProvider{}
 	provider.SetName(name)
 	provider.SetNamespace(te.Namespace)
-	obj, err := te.resources.GetObject(&provider)
+	obj, err := te.resources.GetObject(provider)
 
 	if err != nil {
 		return nil, nil, err
 	}
 	return obj, obj.Data().(*v1alpha1.DNSProvider), nil
+}
+
+func (te *TestEnv) GetSecret(name string) (resources.Object, error) {
+	secret := &api.Secret{}
+	secret.SetName(name)
+	secret.SetNamespace(te.Namespace)
+	obj, err := te.resources.GetObject(secret)
+
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
 }
 
 func (te *TestEnv) HasProviderState(name string, states ...string) (bool, error) {
@@ -338,11 +360,22 @@ func (te *TestEnv) AwaitEntryDeletion(name string) error {
 	})
 }
 
+func (te *TestEnv) AwaitSecretDeletion(name string) error {
+	msg := fmt.Sprintf("Secret %s still existing", name)
+	return te.Await(msg, func() (bool, error) {
+		_, err := te.GetSecret(name)
+		if errors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	})
+}
+
 func (te *TestEnv) DeleteSecretByName(name string) error {
-	secret := api.Secret{}
+	secret := &api.Secret{}
 	secret.SetName(name)
 	secret.SetNamespace(te.Namespace)
-	return te.resources.DeleteObject(&secret)
+	return te.resources.DeleteObject(secret)
 }
 
 func same(lst1 []string, lst2 []string) bool {

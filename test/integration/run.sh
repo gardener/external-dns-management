@@ -7,21 +7,38 @@ ROOTDIR=$(realpath "$SCRIPT_BASEDIR/../..")
 
 usage()
 {
-    echo "Runs integration tests for external-dns-management with mock provider"
-    echo "and local Kubernetes cluster in Docker (kind)"
-    echo "./run.sh [-r] [--restart] [-v] [--verbose] [-k] [--keep]"
+    cat <<EOM
+Usage:
+Runs integration tests for external-dns-management with mock provider
+and local Kubernetes cluster in Docker (kind)
+
+./run.sh [-r|--reuse] [-v] [-k|--keep] [-- <options> <for> <ginkgo>]
+
+Options:
+    -r | --reuse     reuse existing kind cluster
+    -k | --keep      keep kind cluster after run for reuse or inspection
+    -v               verbose output of script (not test itself)
+
+For options of ginkgo run:
+    ginkgo -h
+
+Example: ./run.sh -r -k -- -v -focus=Secret -dryRun
+EOM
 }
 
 while [ "$1" != "" ]; do
     case $1 in
-        -r | --restart )        shift
+        -r | --restart )   shift
                            NOBOOTSTRAP=true
                            ;;
-        -v | --verbose )        shift
+        -v )               shift
                            VERBOSE=true
                            ;;
-        -k | --keep )           shift
+        -k | --keep )      shift
                            KEEP_CLUSTER=true
+                           ;;
+        -- )               shift
+                           break
                            ;;
         * )                usage
                            exit 1
@@ -31,7 +48,6 @@ done
 docker version > /dev/null || (echo "Local Docker installation needed" && exit 1)
 
 if [ "$VERBOSE" != "" ]; then
-  VERBOSE_ARG="-v"
   set -x
 fi
 
@@ -50,8 +66,11 @@ fi
 export KUBECONFIG=$(kind get kubeconfig-path --name="integration")
 kubectl cluster-info
 
+# install ginkgo if missing
+which ginkgo || go install github.com/onsi/ginkgo/ginkgo
+
 # run test suite
-go test $ROOTDIR/test/integration -count=1 -failfast $VERBOSE_ARG
+cd $ROOTDIR/test/integration && ginkgo -failFast "$@" ; cd -
 
 # cleanup
 if [ "$KEEP_CLUSTER" == "" ]; then
