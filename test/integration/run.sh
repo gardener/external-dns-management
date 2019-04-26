@@ -62,7 +62,11 @@ if [ "$NOBOOTSTRAP" == "" ]; then
   kind create cluster --name integration 
 fi
 
-# store tmp kubeconfig
+# set KUBECONFIG
+if [ "$DOCKER_IN_DOCKER" != "" ]; then
+  echo `nslookup host.docker.internal | grep -o -E "\d+\.\d+\.\d+\.\d+"` kubernetes >> /etc/hosts
+  sed -i -e 's/server: https:\/\/localhost:/server: https:\/\/kubernetes:/' $(kind get kubeconfig-path --name="integration")
+fi
 export KUBECONFIG=$(kind get kubeconfig-path --name="integration")
 kubectl cluster-info
 
