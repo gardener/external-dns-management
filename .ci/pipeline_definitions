@@ -1,2 +1,11 @@
 external-dns-management:
   template: 'default'
+  variants:
+    release:
+      traits:
+        version:
+          preprocess: 'finalize'
+        release:
+          nextversion: 'bump_minor'
+          next_version_callback: '.ci/prepare_release'
+          release_callback: '.ci/prepare_release'
