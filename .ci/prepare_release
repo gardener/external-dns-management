@@ -16,6 +16,12 @@
 
 set -e
 
+
+# add full-fleshed tar
+apk update
+apk add --no-cache tar
+
+
 if [[ -z "${SOURCE_PATH}" ]]; then
   export SOURCE_PATH="$(readlink -f "$(dirname ${0})/..")"
 else
