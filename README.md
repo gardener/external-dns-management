@@ -42,6 +42,8 @@ This information is then used to dynamically assign `DNSEntry` objects to
 dedicated `DNSProvider` objects. If such an assignment can be done by
 a provisioning controller then it is _responsible_ for this entry and manages
 the corresponding entries in the external environment.
+`DNSProvider` objects can specify explicit inclusion and exclusion sets of domain names
+and/or DNS zone identifiers to override the scanning results of the account.
 
 Every DNS Provisioning Controller is responsible for a set of _Owner Identifiers_.
 DNS records in an external DNS environment are attached to such an identifier.
@@ -83,7 +85,7 @@ This project contains:
 - A library that can be used to implement _DNS Provisioning Controllers_
 - Source controllers for Services and Ingresses based on annotations.
 - Provisioning Controllers for _Amazon Route53_, _Google CloudDNS_, 
-  _AliCloud DNS_ and _Azure DNS_.
+  _AliCloud DNS_, _Azure DNS_, and _OpenStack Designate_.
 - A controller manager hosting all these controllers.
 
 ## How to implement Source Controllers

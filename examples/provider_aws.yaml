@@ -10,3 +10,10 @@ spec:
   domains:
     include:
     - my.own.domain.com
+    #exclude:
+    #- my.excluded.domain.com
+  #zones:
+  #  include:
+  #  - <ZONEID>
+  #  exclude:
+  #  - <ZONEID>
