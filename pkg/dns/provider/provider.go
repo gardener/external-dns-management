@@ -213,7 +213,9 @@ type dnsProviderVersion struct {
 	def_include utils.StringSet
 	def_exclude utils.StringSet
 
-	zones DNSHostedZones
+	zones          DNSHostedZones
+	included_zones utils.StringSet
+	excluded_zones utils.StringSet
 
 	included utils.StringSet
 	excluded utils.StringSet
@@ -244,6 +246,17 @@ func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
 		}
 	}
 	return true
+}
+
+func prepareSelection(sel *api.DNSSelection) (includes, excludes utils.StringSet) {
+	if sel != nil {
+		includes = utils.NewStringSetByArray(sel.Include)
+		excludes = utils.NewStringSetByArray(sel.Exclude)
+	} else {
+		includes = utils.StringSet{}
+		excludes = utils.StringSet{}
+	}
+	return
 }
 
 func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutils.DNSProviderObject, last *dnsProviderVersion) (*dnsProviderVersion, reconcile.Status) {
@@ -292,18 +305,44 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		return this, this.failed(logger, false, fmt.Errorf("%s", err), true)
 	}
 
-	dspec := provider.DNSProvider().Spec.Domains
-	if dspec != nil {
-		this.def_include = utils.NewStringSetByArray(dspec.Include)
-		this.def_exclude = utils.NewStringSetByArray(dspec.Exclude)
-	} else {
-		this.def_include = utils.StringSet{}
-		this.def_exclude = utils.StringSet{}
+	this.def_include, this.def_exclude = prepareSelection(provider.DNSProvider().Spec.Domains)
+	zones, err := this.account.GetZones()
+	if err != nil {
+		this.zones = nil
+		return this, this.failed(logger, false, fmt.Errorf("cannot get zones: %s", err), true)
 	}
 
-	this.zones, err = this.account.GetZones()
-	if err != nil {
-		return this, this.failed(logger, false, fmt.Errorf("cannot get zones: %s", err), true)
+	zinc, zexc := prepareSelection(provider.DNSProvider().Spec.Zones)
+	this.included_zones = utils.StringSet{}
+	this.excluded_zones = utils.StringSet{}
+	this.zones = DNSHostedZones{}
+	if len(zinc) > 0 {
+		for _, z := range zones {
+			if zinc.Contains(z.Id()) {
+				this.included_zones.Add(z.Id())
+				this.zones = append(this.zones, z)
+			} else {
+				this.excluded_zones.Add(z.Id())
+			}
+		}
+	} else {
+		for _, z := range zones {
+			this.included_zones.Add(z.Id())
+			this.zones = append(this.zones, z)
+		}
+	}
+	if len(zexc) > 0 {
+		for i, z := range this.zones {
+			if zexc.Contains(z.Id()) {
+				this.zones = append(this.zones[:i], this.zones[i+1:]...)
+				this.included_zones.Remove(z.Id())
+				this.excluded_zones.Add(z.Id())
+			}
+		}
+	}
+
+	if len(zones) > 0 && len(this.zones) == 0 {
+		return this, this.failed(logger, false, fmt.Errorf("no zone available in account matches zone filter"), false)
 	}
 
 	included, err := filterByZones(this.def_include, this.zones)
@@ -325,7 +364,6 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	} else {
 		if len(included) == 0 {
 			return this, this.failed(logger, false, fmt.Errorf("no domain matching hosting zones"), false)
-
 		}
 	}
 	for _, zone := range this.zones {
@@ -349,7 +387,9 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	this.excluded = excluded
 
 	this.valid = true
-	return this, this.succeeded(logger, this.object.SetDomains(included, excluded))
+	mod := this.object.SetSelection(included, excluded, &this.object.Status().Domains)
+	mod = this.object.SetSelection(this.included_zones, this.excluded_zones, &this.object.Status().Zones) || mod
+	return this, this.succeeded(logger, mod)
 }
 
 func (this *dnsProviderVersion) AccountHash() string {
@@ -390,9 +430,9 @@ func (this *dnsProviderVersion) Match(dns string) int {
 }
 
 func (this *dnsProviderVersion) setError(modified bool, err error) error {
-	m1 := this.object.SetDomains(utils.StringSet{}, utils.StringSet{})
-	m2 := this.object.SetState(api.STATE_ERROR, err.Error())
-	modified = modified || m1 || m2
+	modified = this.object.SetSelection(utils.StringSet{}, utils.StringSet{}, &this.object.Status().Domains) || modified
+	modified = this.object.SetSelection(utils.StringSet{}, utils.StringSet{}, &this.object.Status().Zones) || modified
+	modified = this.object.SetState(api.STATE_ERROR, err.Error()) || modified
 	if modified {
 		return this.object.UpdateStatus()
 	}

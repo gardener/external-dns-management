@@ -60,18 +60,17 @@ func (this *DNSProviderObject) SetState(state, message string) bool {
 	return mod.IsModified()
 }
 
-func (this *DNSProviderObject) SetDomains(included, excluded utils.StringSet) bool {
+func (this *DNSProviderObject) SetSelection(included, excluded utils.StringSet, target *api.DNSSelectionStatus) bool {
 	modified := false
-	status := &this.DNSProvider().Status
-	old_inc := utils.NewStringSetByArray(status.Domains.Included)
+	old_inc := utils.NewStringSetByArray(target.Included)
 	if !old_inc.Equals(included) {
 		modified = true
-		status.Domains.Included = included.AsArray()
+		target.Included = included.AsArray()
 	}
-	old_exc := utils.NewStringSetByArray(status.Domains.Excluded)
+	old_exc := utils.NewStringSetByArray(target.Excluded)
 	if !old_exc.Equals(excluded) {
 		modified = true
-		status.Domains.Excluded = excluded.AsArray()
+		target.Excluded = excluded.AsArray()
 	}
 	return modified
 }
