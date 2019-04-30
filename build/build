@@ -50,7 +50,7 @@ if [[ -z "$LOCAL_BUILD" ]]; then
     -a \
     -v \
     -o ${BINARY_PATH}/rel/$EXE \
-    -ldflags "-w -X $PKGPATH/pkg/version.Version=${VERSION}" \
+    -ldflags "-w -X main.Version=${VERSION}" \
     cmd/$CMD/*.go
 
 
@@ -59,7 +59,7 @@ else
   go build \
     -v \
     -o ${BINARY_PATH}/$EXE \
-    -ldflags "-w -X $PKGPATH/pkg/version.Version=${VERSION}" \
+    -ldflags "-w -X main.Version=${VERSION}" \
     cmd/$CMD/*.go
 
 fi
