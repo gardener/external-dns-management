@@ -22,6 +22,8 @@ import (
 	"os"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/intstr"
+
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 
@@ -34,8 +36,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/controller/source/service"
 	api "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
+	extensions "k8s.io/api/extensions/v1beta1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
@@ -144,30 +149,36 @@ func (te *TestEnv) CreateSecret(index int) (resources.Object, error) {
 }
 
 func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretName string) (resources.Object, string, error) {
-	name := fmt.Sprintf("mock-provider-%d", providerIndex)
 	domain := fmt.Sprintf("pr-%d.%s", providerIndex, baseDomain)
 
-	setSpec := func(p *v1alpha1.DNSProvider) {
-		p.Spec.Domains = &v1alpha1.DNSDomainSpec{Include: []string{domain}}
-		p.Spec.Type = "mock-inmemory"
-		p.Spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(fmt.Sprintf("{\"zones\": [\"%s\"]}", domain))}
-		p.Spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: te.Namespace}
+	setSpec := func(spec *v1alpha1.DNSProviderSpec) {
+		spec.Domains = &v1alpha1.DNSSelection{Include: []string{domain}}
+		spec.Type = "mock-inmemory"
+		spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(fmt.Sprintf("{\"zones\": [\"%s\"]}", domain))}
+		spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: te.Namespace}
 	}
+	obj, err := te.CreateProviderEx(providerIndex, secretName, setSpec)
+	return obj, domain, err
+}
 
+type ProviderSpecSetter func(p *v1alpha1.DNSProviderSpec)
+
+func (te *TestEnv) CreateProviderEx(providerIndex int, secretName string, setSpec ProviderSpecSetter) (resources.Object, error) {
+	name := fmt.Sprintf("mock-provider-%d", providerIndex)
 	provider := &v1alpha1.DNSProvider{}
 	provider.SetName(name)
 	provider.SetNamespace(te.Namespace)
-	setSpec(provider)
+	setSpec(&provider.Spec)
 	obj, err := te.resources.CreateObject(provider)
 	if errors.IsAlreadyExists(err) {
 		te.Infof("Provider %s already existing, updating...", name)
 		obj, provider, err = te.GetProvider(name)
 		if err == nil {
-			setSpec(provider)
+			setSpec(&provider.Spec)
 			err = obj.Update()
 		}
 	}
-	return obj, domain, err
+	return obj, err
 }
 
 func (te *TestEnv) CreateSecretAndProvider(baseDomain string, index int) (resources.Object, string, error) {
@@ -213,9 +224,9 @@ func (te *TestEnv) CreateEntry(index int, baseDomain string) (resources.Object, 
 	obj, err := te.resources.CreateObject(entry)
 	if errors.IsAlreadyExists(err) {
 		te.Infof("Entry %s already existing, updating...", name)
-		obj, entry, err = te.GetEntry(name)
+		obj, err = te.GetEntry(name)
 		if err == nil {
-			setSpec(entry)
+			setSpec(UnwrapEntry(obj))
 			err = obj.Update()
 		}
 	}
@@ -232,23 +243,119 @@ func (te *TestEnv) DeleteEntryAndWait(obj resources.Object) error {
 	return err
 }
 
-func (te *TestEnv) GetEntry(name string) (resources.Object, *v1alpha1.DNSEntry, error) {
+func (te *TestEnv) GetEntry(name string) (resources.Object, error) {
 	entry := v1alpha1.DNSEntry{}
 	entry.SetName(name)
 	entry.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(&entry)
 
 	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func UnwrapEntry(obj resources.Object) *v1alpha1.DNSEntry {
+	return obj.Data().(*v1alpha1.DNSEntry)
+}
+
+func (te *TestEnv) FindEntryByOwner(kind, name string) (resources.Object, error) {
+	entries, err := te.resources.GetByExample(&v1alpha1.DNSEntry{})
+	if err != nil {
+		return nil, err
+	}
+
+	objs, err := entries.List(metav1.ListOptions{})
+	for _, obj := range objs {
+		refs := obj.GetOwnerReferences()
+		if refs != nil {
+			for _, ref := range refs {
+				if ref.Kind == kind && ref.Name == name {
+					return obj, nil
+				}
+			}
+		}
+	}
+	return nil, fmt.Errorf("Entry for %s of kind %s not found", name, kind)
+}
+
+func (te *TestEnv) CreateIngressWithAnnotation(name, domainName string) (resources.Object, error) {
+	setter := func(e *extensions.Ingress) {
+		e.Annotations = map[string]string{"dns.gardener.cloud/dnsnames": domainName}
+		e.Spec.Rules = []extensions.IngressRule{extensions.IngressRule{Host: domainName}}
+	}
+
+	ingress := &extensions.Ingress{}
+	ingress.SetName(name)
+	ingress.SetNamespace(te.Namespace)
+	setter(ingress)
+	obj, err := te.resources.CreateObject(ingress)
+	if errors.IsAlreadyExists(err) {
+		te.Infof("Ingress %s already existing, updating...", name)
+		obj, ingress, err = te.GetIngress(name)
+		if err == nil {
+			setter(ingress)
+			err = obj.Update()
+		}
+	}
+	return obj, err
+}
+
+func (te *TestEnv) GetIngress(name string) (resources.Object, *extensions.Ingress, error) {
+	ingress := extensions.Ingress{}
+	ingress.SetName(name)
+	ingress.SetNamespace(te.Namespace)
+	obj, err := te.resources.GetObject(&ingress)
+
+	if err != nil {
 		return nil, nil, err
 	}
-	return obj, obj.Data().(*v1alpha1.DNSEntry), nil
+	return obj, obj.Data().(*extensions.Ingress), nil
+}
+
+func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP string, ttl int) (resources.Object, error) {
+	setter := func(e *api.Service) {
+		e.Annotations = map[string]string{"dns.gardener.cloud/dnsnames": domainName, "dns.gardener.cloud/ttl": fmt.Sprintf("%d", ttl)}
+		e.Spec.Type = corev1.ServiceTypeLoadBalancer
+		e.Spec.Ports = []corev1.ServicePort{corev1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(8080), Protocol: corev1.ProtocolTCP}}
+	}
+
+	ip := "1.2.3.4"
+	service.FakeTargetIP = &ip
+	svc := &api.Service{}
+	svc.SetName(name)
+	svc.SetNamespace(te.Namespace)
+	setter(svc)
+	obj, err := te.resources.CreateObject(svc)
+	if errors.IsAlreadyExists(err) {
+		te.Infof("Service %s already existing, updating...", name)
+		obj, svc, err = te.GetService(name)
+		if err == nil {
+			setter(svc)
+			err = obj.Update()
+		}
+	}
+	return obj, err
+}
+
+func (te *TestEnv) GetService(name string) (resources.Object, *api.Service, error) {
+	svc := api.Service{}
+	svc.SetName(name)
+	svc.SetNamespace(te.Namespace)
+	obj, err := te.resources.GetObject(&svc)
+
+	if err != nil {
+		return nil, nil, err
+	}
+	return obj, obj.Data().(*api.Service), nil
 }
 
 func (te *TestEnv) HasEntryState(name string, states ...string) (bool, error) {
-	_, entry, err := te.GetEntry(name)
+	obj, err := te.GetEntry(name)
 	if err != nil {
 		return false, err
 	}
+	entry := UnwrapEntry(obj)
 	found := false
 	for _, state := range states {
 		found = found || entry.Status.State == state
@@ -352,7 +459,7 @@ func (te *TestEnv) AwaitProviderDeletion(name string) error {
 func (te *TestEnv) AwaitEntryDeletion(name string) error {
 	msg := fmt.Sprintf("Entry %s still existing", name)
 	return te.Await(msg, func() (bool, error) {
-		_, _, err := te.GetEntry(name)
+		_, err := te.GetEntry(name)
 		if errors.IsNotFound(err) {
 			return true, nil
 		}
@@ -364,6 +471,17 @@ func (te *TestEnv) AwaitSecretDeletion(name string) error {
 	msg := fmt.Sprintf("Secret %s still existing", name)
 	return te.Await(msg, func() (bool, error) {
 		_, err := te.GetSecret(name)
+		if errors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	})
+}
+
+func (te *TestEnv) AwaitServiceDeletion(name string) error {
+	msg := fmt.Sprintf("Service %s still existing", name)
+	return te.Await(msg, func() (bool, error) {
+		_, _, err := te.GetService(name)
 		if errors.IsNotFound(err) {
 			return true, nil
 		}

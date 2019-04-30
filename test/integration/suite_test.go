@@ -24,8 +24,8 @@ import (
 	. "github.com/onsi/gomega"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock/controller"
-	//_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
-	//_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
 )
 
 var testEnv *TestEnv
@@ -45,7 +45,7 @@ var _ = BeforeSuite(func() {
 	args := []string{
 		"--kubeconfig", kubeconfig,
 		"--identifier", "integrationtest",
-		"--controllers", "mock-inmemory",
+		"--controllers", "mock-inmemory,dnssources",
 		"--omit-lease",
 		"--reschedule-delay", "15s",
 		"--pool.size", "10",

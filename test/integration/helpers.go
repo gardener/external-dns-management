@@ -39,8 +39,9 @@ func checkEntry(obj resources.Object, provider resources.Object) {
 
 	checkHasFinalizer(obj)
 
-	_, entry, err := testEnv.GetEntry(obj.GetName())
+	entryObj, err := testEnv.GetEntry(obj.GetName())
 	Ω(err).Should(BeNil())
+	entry := UnwrapEntry(entryObj)
 	Ω(entry.Status.ProviderType).ShouldNot(BeNil(), "Missing provider type")
 	Ω(*entry.Status.ProviderType).Should(Equal("mock-inmemory"))
 	Ω(entry.Status.Provider).ShouldNot(BeNil(), "Missing provider")
