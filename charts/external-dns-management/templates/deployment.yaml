@@ -228,7 +228,6 @@ spec:
         - --identifier={{ .Values.configuration.identifier }}
         {{- else }}
         - --identifier=seed.gardener.cloud/{{ .Values.gardener.garden.identity }}/{{ .Values.gardener.seed.identity }}
-
         {{- end }}
         {{- if .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
         - --ingress-dns.default.pool.resync-period={{ .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
@@ -269,9 +268,7 @@ spec:
         {{- if .Values.configuration.logLevel }}
         - --log-level={{ .Values.configuration.logLevel }}
         {{- end }}
-        {{- if .Values.configuration.name }}
-        - --name={{ .Values.configuration.name }}
-        {{- end }}
+        - --name={{ include "external-dns-management.fullname" . }}
         {{- if .Values.configuration.namespace }}
         - --namespace={{ .Values.configuration.namespace }}
         {{- end }}
