@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -e
+set -x
 
 SCRIPT_BASEDIR=$(dirname "$0")
 ROOTDIR=$(realpath "$SCRIPT_BASEDIR/../..")
