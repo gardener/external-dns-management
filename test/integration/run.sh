@@ -52,6 +52,8 @@ if [ "$VERBOSE" != "" ]; then
 fi
 
 if [ "$NOBOOTSTRAP" == "" ]; then
+  echo Starting Kubernetes IN Docker...
+  
   # prepare Kubernetes IN Docker - local clusters for testing Kubernetes
   go get sigs.k8s.io/kind
 
@@ -63,10 +65,6 @@ if [ "$NOBOOTSTRAP" == "" ]; then
 fi
 
 # set KUBECONFIG
-if [ "$DOCKER_IN_DOCKER" != "" ]; then
-  echo `nslookup host.docker.internal | grep -o -E "\d+\.\d+\.\d+\.\d+"` kubernetes >> /etc/hosts
-  sed -i -e 's/server: https:\/\/localhost:/server: https:\/\/kubernetes:/' $(kind get kubeconfig-path --name="integration")
-fi
 export KUBECONFIG=$(kind get kubeconfig-path --name="integration")
 kubectl cluster-info
 

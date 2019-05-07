@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -ex
+
+# docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock dind-go bash
+# docker run -it --rm --privileged dind-go bash
+
+docker run -it --rm --privileged -v $GOPATH/src:/go/src eu.gcr.io/gardener-project/test/dind-go-kind:0.5.0-dev /go/src/github.com/gardener/external-dns-management/test/integration/run_in_dind.sh

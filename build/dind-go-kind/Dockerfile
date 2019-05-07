@@ -25,4 +25,5 @@ RUN go get github.com/onsi/ginkgo/ginkgo && \
 
 WORKDIR $GOPATH
 
-ENV DOCKER_IN_DOCKER=1
+# start docker daemon
+ENTRYPOINT [ "/usr/local/bin/dockerd-entrypoint.sh" ]
