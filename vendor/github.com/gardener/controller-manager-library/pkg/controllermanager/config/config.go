@@ -96,8 +96,8 @@ func (this *Config) AddDurationOption(name string) (*ArbitraryOption, bool) {
 }
 
 func (this *Config) AddToCommand(cmd *cobra.Command) {
-	cmd.PersistentFlags().StringVarP(&this.Name, "name", "", "", "name used for conroller manager")
-	cmd.PersistentFlags().StringVarP(&this.Namespace, "namespace", "", "", "namepace for lease")
+	cmd.PersistentFlags().StringVarP(&this.Name, "name", "", "", "name used for controller manager")
+	cmd.PersistentFlags().StringVarP(&this.Namespace, "namespace", "", "", "namespace for lease")
 	cmd.PersistentFlags().BoolVarP(&this.OmitLease, "omit-lease", "", false, "omit lease for development")
 	cmd.PersistentFlags().StringVarP(&this.Controllers, "controllers", "c", "all", "comma separated list of controllers to start (<name>,source,target,all)")
 	cmd.PersistentFlags().StringVarP(&this.PluginDir, "plugin-dir", "", "", "directory containing go plugins")
