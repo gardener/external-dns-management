@@ -45,15 +45,17 @@ while [ "$1" != "" ]; do
     esac
 done
 
-docker version > /dev/null || (echo "Local Docker installation needed" && exit 1)
+if [ "$CLUSTER" == "" ]; then
+  docker version > /dev/null || (echo "Local Docker installation needed" && exit 1)
+fi
 
 if [ "$VERBOSE" != "" ]; then
   set -x
 fi
 
-if [ "$NOBOOTSTRAP" == "" ]; then
+if [ "$NOBOOTSTRAP" == "" ] && [ "$CLUSTER" == "" ]; then
   echo Starting Kubernetes IN Docker...
-  
+
   # prepare Kubernetes IN Docker - local clusters for testing Kubernetes
   go get sigs.k8s.io/kind
 
@@ -64,8 +66,19 @@ if [ "$NOBOOTSTRAP" == "" ]; then
   kind create cluster --name integration 
 fi
 
-# set KUBECONFIG
-export KUBECONFIG=$(kind get kubeconfig-path --name="integration")
+if [ "$CLUSTER" != "" ]; then
+  echo using GKE cluster
+
+  gcloud container clusters get-credentials $CLUSTER
+
+  kubectl config view --minify=true --raw > /tmp/kubeconfig-$CLUSTER.yaml
+  # set KUBECONFIG
+  export KUBECONFIG=/tmp/kubeconfig-$CLUSTER.yaml
+else
+  # set KUBECONFIG
+  export KUBECONFIG=$(kind get kubeconfig-path --name="integration")
+fi
+
 kubectl cluster-info
 
 # install ginkgo if missing
@@ -75,8 +88,7 @@ which ginkgo || go install github.com/onsi/ginkgo/ginkgo
 cd $ROOTDIR/test/integration && ginkgo -failFast "$@" ; cd -
 
 # cleanup
-if [ "$KEEP_CLUSTER" == "" ]; then
+if [ "$KEEP_CLUSTER" == "" ] && [ "$CLUSTER" == "" ]; then
   unset KUBECONFIG
   kind delete cluster --name integration
 fi
-

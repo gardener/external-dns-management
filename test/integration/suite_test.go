@@ -26,6 +26,9 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
+
+	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
+	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
 var testEnv *TestEnv
