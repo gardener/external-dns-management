@@ -173,7 +173,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ce17306f9d4b3622efd57b041f338fc446765ace8020c0217b4921a0d8305673"
+  digest = "1:14208f510cfc949d40f62dcdcca4e76f58c14f7a8928e0fd6495971850b07759"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/controllermanager",
@@ -197,7 +197,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "a7fbdaefeec95c5592e16f0846e596401ebb0968"
+  revision = "670efa3cd76c84042123c66aeb468ff6bcfd4a7e"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
@@ -800,7 +800,7 @@
   version = "v2.2.2"
 
 [[projects]]
-  digest = "1:c6b0cfc418f5e8bb9169d78f1024cb1c9f3e61c9a76235134d26d3f28ecdf27b"
+  digest = "1:4485f6050feae6844efd79bce3f5b35e5ed4a21dd79ef6a2dbbee263531cea09"
   name = "k8s.io/api"
   packages = [
     "admissionregistration/v1alpha1",
@@ -836,8 +836,8 @@
     "storage/v1beta1",
   ]
   pruneopts = "NUT"
-  revision = "fd83cbc87e7632ccd8bbab63d2b673d4e0c631cc"
-  version = "kubernetes-1.12.0"
+  revision = "266ff08fa05d59ecd33aa08f9e2c1bae4ba7a444"
+  version = "kubernetes-1.12.7"
 
 [[projects]]
   branch = "master"
@@ -851,7 +851,7 @@
   revision = "01b4f3c039db586ed6ec299cf30cc0e5a2a625d1"
 
 [[projects]]
-  digest = "1:3e353d8babd8117333e032d7f61229ef379f59302575eb87fea15052178e97c2"
+  digest = "1:e4957e6d4924300e40e590784853d4c119718e06f0505cc1dff95bcab10e6d33"
   name = "k8s.io/apimachinery"
   packages = [
     "pkg/api/errors",
@@ -898,11 +898,11 @@
     "third_party/forked/golang/reflect",
   ]
   pruneopts = "NUT"
-  revision = "6dd46049f39503a1fc8d65de4bd566829e95faff"
-  version = "kubernetes-1.12.0"
+  revision = "01f179d85dbce0f2e0e4351a92394b38694b7cae"
+  version = "kubernetes-1.12.7"
 
 [[projects]]
-  digest = "1:68895a7717175b4905daa8ea2717a8aec1e3fab7b192b2ae78993d5fc8f06145"
+  digest = "1:f1e88d9a31a6f67773e870255a8c79c83a37e4285dacf98281b00886739a2e6f"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -914,10 +914,13 @@
     "pkg/apis/clientauthentication/v1beta1",
     "pkg/version",
     "plugin/pkg/client/auth/exec",
+    "plugin/pkg/client/auth/gcp",
+    "plugin/pkg/client/auth/oidc",
     "rest",
     "rest/watch",
     "restmapper",
     "testing",
+    "third_party/forked/golang/template",
     "tools/auth",
     "tools/cache",
     "tools/clientcmd",
@@ -937,15 +940,16 @@
     "util/flowcontrol",
     "util/homedir",
     "util/integer",
+    "util/jsonpath",
     "util/retry",
     "util/workqueue",
   ]
   pruneopts = "NUT"
-  revision = "1638f8970cefaa404ff3a62950f88b08292b2696"
-  version = "kubernetes-1.12.0"
+  revision = "5392b64e5c0be49d332165ab1ac708daa9c6be1b"
+  version = "kubernetes-1.12.7"
 
 [[projects]]
-  digest = "1:4e2addcdbe0330f43800c1fcb905fc7a21b86415dfcca619e5c606c87257af1b"
+  digest = "1:26b81b5e76e3f84ea5140da4f74649576e470f79091d2ef8e0d1b5000bc636ca"
   name = "k8s.io/code-generator"
   packages = [
     "cmd/client-gen",
@@ -972,8 +976,8 @@
     "pkg/util",
   ]
   pruneopts = "T"
-  revision = "3dcf91f64f638563e5106f21f50c31fa361c918d"
-  version = "kubernetes-1.12.0"
+  revision = "b1289fc74931d4b6b04bd1a259acfc88a2cb0a66"
+  version = "kubernetes-1.12.7"
 
 [[projects]]
   branch = "master"
@@ -1066,6 +1070,8 @@
     "k8s.io/apimachinery/pkg/watch",
     "k8s.io/client-go/discovery",
     "k8s.io/client-go/discovery/fake",
+    "k8s.io/client-go/plugin/pkg/client/auth/gcp",
+    "k8s.io/client-go/plugin/pkg/client/auth/oidc",
     "k8s.io/client-go/rest",
     "k8s.io/client-go/testing",
     "k8s.io/client-go/tools/cache",
