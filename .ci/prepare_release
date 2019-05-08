@@ -36,5 +36,6 @@ fi
 
 VERSION_FILE="$(readlink -f "${SOURCE_PATH}/VERSION")"
 VERSION="$(cat "${VERSION_FILE}")"
+VERSIONTAG="${VERSION//-dev/-master}"
 
-sed -i -e "s/  tag: .*/  tag: ${VERSION}/" "${SOURCE_PATH}/charts/external-dns-management/values.yaml"
+sed -i -e "s/  tag: .*/  tag: ${VERSIONTAG}/" "${SOURCE_PATH}/charts/external-dns-management/values.yaml"
