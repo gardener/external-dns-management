@@ -368,7 +368,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		}
 	}
 
-	logger.Infof("%s: valid: %t, message: %s, err: %s", this.status.State, this.valid, utils.StringValue(this.status.Message), ErrorValue(err))
+	logger.Infof("%s: valid: %t, message: %s%s", this.status.State, this.valid, utils.StringValue(this.status.Message), errorValue(", err: %s", err))
 	logmsg := dnsutils.NewLogMessage("update entry status")
 	f := func(data resources.ObjectData) (bool, error) {
 		e := data.(*api.DNSEntry)

@@ -18,6 +18,7 @@ package provider
 
 import (
 	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -84,9 +85,9 @@ func CheckAccess(object resources.Object, used resources.Object) error {
 	return err
 }
 
-func ErrorValue(err error) string {
+func errorValue(format string, err error) string {
 	if err == nil {
-		return "<no error>"
+		return ""
 	}
-	return err.Error()
+	return fmt.Sprintf(format, err.Error())
 }

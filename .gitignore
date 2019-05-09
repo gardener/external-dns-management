@@ -3,6 +3,7 @@ bin/
 *.sw[pq]
 tmp/
 /local/
+/local
 /dns-controller-manager
 /main
 .vscode/
