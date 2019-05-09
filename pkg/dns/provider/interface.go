@@ -19,25 +19,27 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type Config struct {
-	TTL      int64
-	CacheTTL time.Duration
-	Ident    string
-	Dryrun   bool
-	Delay    time.Duration
-	Enabled  utils.StringSet
-	Factory  DNSHandlerFactory
+	TTL             int64
+	CacheTTL        time.Duration
+	RescheduleDelay time.Duration
+	Ident           string
+	Dryrun          bool
+	Delay           time.Duration
+	Enabled         utils.StringSet
+	Factory         DNSHandlerFactory
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
@@ -60,6 +62,11 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		delay = 10 * time.Second
 	}
 
+	rescheduleDelay, err := c.GetDurationOption(OPT_RESCHEDULEDELAY)
+	if err != nil {
+		delay = 120 * time.Second
+	}
+
 	enabled := utils.StringSet{}
 	types, err := c.GetStringOption(OPT_PROVIDERTYPES)
 	if err != nil || types == "" {
@@ -79,13 +86,14 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	}
 
 	return &Config{
-		Ident:    ident,
-		Dryrun:   dryrun,
-		TTL:      int64(ttl),
-		CacheTTL: time.Duration(cttl) * time.Second,
-		Delay:    delay,
-		Enabled:  enabled,
-		Factory:  factory,
+		Ident:           ident,
+		Dryrun:          dryrun,
+		TTL:             int64(ttl),
+		CacheTTL:        time.Duration(cttl) * time.Second,
+		RescheduleDelay: rescheduleDelay,
+		Delay:           delay,
+		Enabled:         enabled,
+		Factory:         factory,
 	}, nil
 }
 

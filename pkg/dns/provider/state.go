@@ -949,7 +949,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 
 	logger = this.RefineLogger(logger, p.ptype)
 	v := NewEntryVersion(object, old)
-	status := v.Setup(logger, this, p, op, err, this.config.TTL, old)
+	status := v.Setup(logger, this, p, op, err, this.config, old)
 	new, status := this.AddEntryVersion(logger, v, status)
 
 	if new != nil {

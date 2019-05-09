@@ -440,6 +440,33 @@
   version = "1.0.1"
 
 [[projects]]
+  digest = "1:044fe5b2b6dbdc0f41090e86466c27f480e7af860f425708b723008616625915"
+  name = "github.com/onsi/ginkgo"
+  packages = [
+    ".",
+    "config",
+    "internal/codelocation",
+    "internal/containernode",
+    "internal/failer",
+    "internal/leafnodes",
+    "internal/remote",
+    "internal/spec",
+    "internal/spec_iterator",
+    "internal/specrunner",
+    "internal/suite",
+    "internal/testingtproxy",
+    "internal/writer",
+    "reporters",
+    "reporters/stenographer",
+    "reporters/stenographer/support/go-colorable",
+    "reporters/stenographer/support/go-isatty",
+    "types",
+  ]
+  pruneopts = "NUT"
+  revision = "9eda700730cba42af70d53180f9dcce9266bc2bc"
+  version = "v1.4.0"
+
+[[projects]]
   digest = "1:feed851b93f9debbe8180092067c4e29a51c06dbb5fe2f643ec9feea039670a3"
   name = "github.com/onsi/gomega"
   packages = [
@@ -1049,6 +1076,7 @@
     "github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets",
     "github.com/gophercloud/gophercloud/openstack/dns/v2/zones",
     "github.com/gophercloud/gophercloud/pagination",
+    "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",
     "github.com/prometheus/client_golang/prometheus",
     "github.com/prometheus/client_golang/prometheus/promhttp",
@@ -1065,6 +1093,7 @@
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
+    "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/validation",
     "k8s.io/apimachinery/pkg/watch",
