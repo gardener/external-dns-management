@@ -173,7 +173,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:7ff2e62a31b02594ccce36d653035383e4391fb27cdad472525c5fbe0a9b2027"
+  digest = "1:14208f510cfc949d40f62dcdcca4e76f58c14f7a8928e0fd6495971850b07759"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/controllermanager",
@@ -197,7 +197,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "64050b65892ab405a84fa9d56f196b610b378c2d"
+  revision = "670efa3cd76c84042123c66aeb468ff6bcfd4a7e"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
@@ -929,7 +929,7 @@
   version = "kubernetes-1.12.7"
 
 [[projects]]
-  digest = "1:3b03605793c78c2c22167df28ec49626911988bbed985c9e182cf361f8470b50"
+  digest = "1:f1e88d9a31a6f67773e870255a8c79c83a37e4285dacf98281b00886739a2e6f"
   name = "k8s.io/client-go"
   packages = [
     "discovery",
@@ -1093,6 +1093,7 @@
     "k8s.io/apimachinery/pkg/runtime/schema",
     "k8s.io/apimachinery/pkg/runtime/serializer",
     "k8s.io/apimachinery/pkg/types",
+    "k8s.io/apimachinery/pkg/util/intstr",
     "k8s.io/apimachinery/pkg/util/runtime",
     "k8s.io/apimachinery/pkg/util/validation",
     "k8s.io/apimachinery/pkg/watch",
