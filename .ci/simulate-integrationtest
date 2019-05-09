@@ -1,8 +1,29 @@
-#!/bin/sh
+#!/usr/bin/env bash
+#
+# Copyright 2018 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-set -ex
+set -e
 
-# docker run -it --rm -v /var/run/docker.sock:/var/run/docker.sock dind-go bash
-# docker run -it --rm --privileged dind-go bash
+# start with 
+# docker run -it --rm -v $HOME/projects/cc-config:/cc-config -v $GOPATH/src:/go/src job-golang-gcloud bash
+# then run
+# src/github.com/gardener/external-dns-management/.ci/simulate-integrationtest
 
-docker run -it --rm --privileged -v $GOPATH/src:/go/src eu.gcr.io/gardener-project/test/dind-go-kind:0.5.0-dev /go/src/github.com/gardener/external-dns-management/test/integration/run_in_dind.sh
+SCRIPT_DIR="$(readlink -f "$(dirname ${0})")"
+
+export CC_CONFIG_DIR=/cc-config
+export TEST_ARGS="-focus Provider_Secret"
+
+$SCRIPT_DIR/integrationtest
