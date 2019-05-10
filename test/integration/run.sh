@@ -17,7 +17,8 @@
 set -ex
 
 SCRIPT_BASEDIR=$(dirname "$0")
-ROOTDIR=$SCRIPT_BASEDIR/../..
+#ROOTDIR=$SCRIPT_BASEDIR/../..
+ROOTDIR=$GOPATH/src/github.com/gardener/external-dns-management
 
 usage()
 {
