@@ -45,4 +45,4 @@ export GKE_CLUSTER=$(cli.py config attribute --cfg-type external_dns_mgmt_integr
 echo "Running integration tests..."
 export EXTERNAL=1
 set -x
-$SOURCE_PATH/test/integration/run.sh -- ${TEST_ARGS}
+./test/integration/run.sh -- ${TEST_ARGS}

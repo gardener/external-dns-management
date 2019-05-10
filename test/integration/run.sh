@@ -14,11 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -ex
-
+set -e
 SCRIPT_BASEDIR=$(dirname "$0")
-#ROOTDIR=$SCRIPT_BASEDIR/../..
-ROOTDIR=$GOPATH/src/github.com/gardener/external-dns-management
+ROOTDIR=$SCRIPT_BASEDIR/../..
+echo ROOTDIR: $ROOTDIR
 
 usage()
 {
