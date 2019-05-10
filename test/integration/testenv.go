@@ -233,6 +233,28 @@ func (te *TestEnv) CreateEntry(index int, baseDomain string) (resources.Object, 
 	return obj, err
 }
 
+func (te *TestEnv) UpdateEntryOwner(obj resources.Object, ownerID *string) (resources.Object, error) {
+	obj, err := te.GetEntry(obj.GetName())
+	if err != nil {
+		return nil, err
+	}
+	e := UnwrapEntry(obj)
+	e.Spec.OwnerId = ownerID
+	err = obj.Update()
+	return obj, err
+}
+
+func (te *TestEnv) UpdateEntryDomain(obj resources.Object, domain string) (resources.Object, error) {
+	obj, err := te.GetEntry(obj.GetName())
+	if err != nil {
+		return nil, err
+	}
+	e := UnwrapEntry(obj)
+	e.Spec.DNSName = domain
+	err = obj.Update()
+	return obj, err
+}
+
 func (te *TestEnv) DeleteEntryAndWait(obj resources.Object) error {
 	err := obj.Delete()
 	if err != nil {
@@ -278,6 +300,45 @@ func (te *TestEnv) FindEntryByOwner(kind, name string) (resources.Object, error)
 	}
 	return nil, fmt.Errorf("Entry for %s of kind %s not found", name, kind)
 }
+
+func (te *TestEnv) CreateOwner(name, ownerId string) (resources.Object, error) {
+
+	setSpec := func(e *v1alpha1.DNSOwner) {
+		e.Spec.OwnerId = ownerId
+	}
+
+	owner := &v1alpha1.DNSOwner{}
+	owner.SetName(name)
+	owner.SetNamespace(te.Namespace)
+	setSpec(owner)
+	obj, err := te.resources.CreateObject(owner)
+	if errors.IsAlreadyExists(err) {
+		te.Infof("DNSOwner %s already existing, updating...", name)
+		obj, err = te.GetOwner(name)
+		if err == nil {
+			setSpec(UnwrapOwner(obj))
+			err = obj.Update()
+		}
+	}
+	return obj, err
+}
+
+func (te *TestEnv) GetOwner(name string) (resources.Object, error) {
+	owner := v1alpha1.DNSOwner{}
+	owner.SetName(name)
+	owner.SetNamespace(te.Namespace)
+	obj, err := te.resources.GetObject(&owner)
+
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
+}
+
+func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {
+	return obj.Data().(*v1alpha1.DNSOwner)
+}
+
 
 func (te *TestEnv) CreateIngressWithAnnotation(name, domainName string) (resources.Object, error) {
 	setter := func(e *extensions.Ingress) {

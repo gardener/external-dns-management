@@ -23,8 +23,8 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("SingleEntry", func() {
-	It("has correct life cycle", func() {
+var _ = Describe("SingleEntry0", func() {
+	It("has correct life cycle with provider", func() {
 		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 
@@ -49,6 +49,77 @@ var _ = Describe("SingleEntry", func() {
 		Ω(err).Should(BeNil())
 
 		err = testEnv.AwaitFinalizers(e)
+		Ω(err).Should(BeNil())
+
+		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).Should(BeNil())
+	})
+
+	It("is handled only by owner", func() {
+		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		Ω(err).Should(BeNil())
+
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		e, err := testEnv.CreateEntry(0, domain)
+		Ω(err).Should(BeNil())
+		defer testEnv.DeleteEntryAndWait(e)
+
+		checkProvider(pr)
+
+		checkEntry(e, pr)
+
+		ownerID := "my/owner1"
+		e, err = testEnv.UpdateEntryOwner(e, &ownerID)
+		Ω(err).Should(BeNil())
+
+		err = testEnv.AwaitEntryState(e.GetName(), "Stale")
+		Ω(err).Should(BeNil())
+
+		owner1, err := testEnv.CreateOwner("owner1", ownerID)
+		Ω(err).Should(BeNil())
+
+		defer owner1.Delete()
+
+		err = testEnv.AwaitEntryReady(e.GetName())
+		Ω(err).Should(BeNil())
+
+		ownerID2 := "my/owner2"
+		e, err = testEnv.UpdateEntryOwner(e, &ownerID2)
+		Ω(err).Should(BeNil())
+
+		err = testEnv.AwaitEntryState(e.GetName(), "Stale")
+		Ω(err).Should(BeNil())
+
+		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).Should(BeNil())
+	})
+
+	It("is handled only by matching provider", func() {
+		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		Ω(err).Should(BeNil())
+
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		e, err := testEnv.CreateEntry(0, domain)
+		dnsName := UnwrapEntry(e).Spec.DNSName
+		Ω(err).Should(BeNil())
+		defer testEnv.DeleteEntryAndWait(e)
+
+		checkProvider(pr)
+
+		checkEntry(e, pr)
+
+		e, err = testEnv.UpdateEntryDomain(e, "foo.mock")
+		Ω(err).Should(BeNil())
+
+		err = testEnv.AwaitEntryState(e.GetName(), "Stale")
+		Ω(err).Should(BeNil())
+
+		e, err = testEnv.UpdateEntryDomain(e, dnsName)
+		Ω(err).Should(BeNil())
+
+		err = testEnv.AwaitEntryReady(e.GetName())
 		Ω(err).Should(BeNil())
 
 		err = testEnv.DeleteEntryAndWait(e)

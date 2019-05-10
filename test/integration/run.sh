@@ -99,7 +99,7 @@ kubectl cluster-info
 which ginkgo || go install github.com/onsi/ginkgo/ginkgo
 
 # run test suite
-cd $ROOTDIR/test/integration && ginkgo -failFast "$@" ; cd -
+cd $ROOTDIR/test/integration && ginkgo -failFast -trace "$@" ; cd -
 
 # cleanup
 if [ "$KEEP_CLUSTER" == "" ] && [ "$EXTERNAL" == "" ]; then
