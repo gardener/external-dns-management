@@ -113,7 +113,7 @@ var _ = Describe("SingleEntry0", func() {
 		e, err = testEnv.UpdateEntryDomain(e, "foo.mock")
 		Ω(err).Should(BeNil())
 
-		err = testEnv.AwaitEntryState(e.GetName(), "Stale")
+		err = testEnv.AwaitEntryState(e.GetName(), "Error")
 		Ω(err).Should(BeNil())
 
 		e, err = testEnv.UpdateEntryDomain(e, dnsName)
