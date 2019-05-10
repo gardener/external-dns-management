@@ -17,7 +17,7 @@
 set -e
 
 SCRIPT_BASEDIR=$(dirname "$0")
-ROOTDIR=$(realpath "$SCRIPT_BASEDIR/../..")
+ROOTDIR=$SCRIPT_BASEDIR/../..
 
 usage()
 {
