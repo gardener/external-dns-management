@@ -47,7 +47,7 @@ func createAndDelete() {
 	checkHasFinalizer(secret)
 }
 
-var _ = Describe("Provider_Secret", func() {
+var _ = Describe("ProviderSecret", func() {
 	It("works if secret is created after provider", func() {
 		Context("first round", createAndDelete)
 

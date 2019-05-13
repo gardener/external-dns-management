@@ -23,7 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("SingleEntry0", func() {
+var _ = Describe("EntryLivecycle", func() {
 	It("has correct life cycle with provider", func() {
 		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())

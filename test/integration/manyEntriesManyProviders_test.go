@@ -28,7 +28,7 @@ import (
 const count = 50
 const half = count / 2
 
-var _ = Describe("ManyEntry_ManyProvider", func() {
+var _ = Describe("ManyEntriesManyProviders", func() {
 	It("has correct lifecycle", func() {
 		oldTimeout := testEnv.defaultTimeout
 		testEnv.defaultTimeout = oldTimeout * time.Duration(int64(math.Sqrt(entryCount)))
