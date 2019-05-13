@@ -190,7 +190,10 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 	check := entry.object.GetDNSName()
 	if strings.HasPrefix(check, "*.") {
 		check = check[2:]
+	} else if strings.HasPrefix(check, "_") {
+		check = check[1:]
 	}
+
 	if errs := validation.IsDNS1123Subdomain(check); errs != nil {
 		if werrs := validation.IsWildcardDNS1123Subdomain(check); werrs != nil {
 			err = fmt.Errorf("%q is no valid dns name (%v)", check, append(errs, werrs...))
