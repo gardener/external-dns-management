@@ -54,4 +54,4 @@ gcloud container clusters create $CLUSTER_NAME \
   --service-account "$SERVICE_ACCOUNT" \
   --no-enable-cloud-logging --no-enable-cloud-monitoring
 
-gcloud container node-pools delete -quiet --cluster=$CLUSTER_NAME default-pool
+gcloud container node-pools delete --quiet --cluster=$CLUSTER_NAME default-pool

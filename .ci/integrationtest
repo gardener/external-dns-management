@@ -34,13 +34,22 @@ go get github.com/onsi/ginkgo/ginkgo
 
 ###############################################################################
 
+VERSION_FILE="$(readlink -f "${SOURCE_PATH}/VERSION")"
+VERSION="$(cat "${VERSION_FILE}")"
+
+if [[ "$VERSION" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]]; then
+  SUFFIX=release
+else
+  SUFFIX=master
+fi
+
 echo "Preparing access to GCP..."
 cli.py config attribute --cfg-type external_dns_mgmt_integration --cfg-name gcloud --key json > /tmp/key.json
 gcloud auth activate-service-account --key-file=/tmp/key.json
 
 export GKE_PROJECT=$(cli.py config attribute --cfg-type external_dns_mgmt_integration --cfg-name gcloud --key project)
 export GKE_ZONE=$(cli.py config attribute --cfg-type external_dns_mgmt_integration --cfg-name gcloud --key zone)
-export GKE_CLUSTER=$(cli.py config attribute --cfg-type external_dns_mgmt_integration --cfg-name gcloud --key cluster-prefix)-master
+export GKE_CLUSTER=$(cli.py config attribute --cfg-type external_dns_mgmt_integration --cfg-name gcloud --key cluster-prefix)-$SUFFIX
 
 echo "Running integration tests..."
 export EXTERNAL=1

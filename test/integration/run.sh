@@ -88,6 +88,11 @@ if [ "$EXTERNAL" != "" ]; then
   kubectl config view --minify=true --raw > /tmp/kubeconfig-gke.yaml
   # set KUBECONFIG
   export KUBECONFIG=/tmp/kubeconfig-gke.yaml
+
+  # improve robustness: collect possible garbage of former tests (if this does not help, delete cluster on GKE and recreate it with test/integration/prepare/prepare-gke.sh)
+  kubectl -n test delete dnse --all --wait=false --grace-period=0 --force 2> /dev/null || true
+  kubectl -n test delete dnso --all --wait=false --grace-period=0 --force 2> /dev/null || true
+  kubectl -n test delete dnspr --all --wait=false --grace-period=0 --force 2> /dev/null || true
 else
   # set KUBECONFIG
   export KUBECONFIG=$(kind get kubeconfig-path --name="integration")
