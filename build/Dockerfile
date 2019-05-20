@@ -14,7 +14,7 @@
 
 FROM alpine:3.7
 
-RUN apk add --update bash curl
+RUN apk add --update bash curl tzdata
 RUN mkdir /plugins
 
 ADD bin/rel/dns-controller-manager /dns-controller-manager
