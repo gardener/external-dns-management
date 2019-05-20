@@ -28,4 +28,12 @@ external-dns-management:
           channel_cfgs:
             internal_scp_workspace:
               channel_name: 'k8s-op-of-the-week'
-              slack_cfg_name: 'scp_workspace'          
+              slack_cfg_name: 'scp_workspace'
+    patch-release:
+      traits:
+        version:
+          preprocess: finalize
+        release:
+          nextversion: bump_patch
+          next_version_callback: '.ci/prepare_release'
+          release_callback: '.ci/prepare_release'
