@@ -29,29 +29,11 @@ source "$SOURCE_PATH/build/setupenv.src"
 
 # Install Ginkgo (test framework) to be able to execute the tests.
 echo "Installing Ginkgo..."
-go get github.com/onsi/gomega
-go get github.com/onsi/ginkgo/ginkgo
+go get -u github.com/onsi/gomega
+go get -u github.com/onsi/ginkgo/ginkgo
 
 ###############################################################################
 
-VERSION_FILE="$(readlink -f "${SOURCE_PATH}/VERSION")"
-VERSION="$(cat "${VERSION_FILE}")"
-
-if [[ "$VERSION" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]]; then
-  SUFFIX=release
-else
-  SUFFIX=master
-fi
-
-echo "Preparing access to GCP..."
-cli.py config attribute --cfg-type external_dns_mgmt_integration --cfg-name gcloud --key json > /tmp/key.json
-gcloud auth activate-service-account --key-file=/tmp/key.json
-
-export GKE_PROJECT=$(cli.py config attribute --cfg-type external_dns_mgmt_integration --cfg-name gcloud --key project)
-export GKE_ZONE=$(cli.py config attribute --cfg-type external_dns_mgmt_integration --cfg-name gcloud --key zone)
-export GKE_CLUSTER=$(cli.py config attribute --cfg-type external_dns_mgmt_integration --cfg-name gcloud --key cluster-prefix)-$SUFFIX
-
 echo "Running integration tests..."
-export EXTERNAL=1
 set -x
-./test/integration/run.sh -- ${TEST_ARGS}
+./test/integration/run.sh -l -- ${TEST_ARGS}

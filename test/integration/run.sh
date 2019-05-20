@@ -24,13 +24,14 @@ usage()
     cat <<EOM
 Usage:
 Runs integration tests for external-dns-management with mock provider
-and local Kubernetes cluster in Docker (kind)
+and local Kubernetes cluster in Docker (kind) or with local kube-apiserver and etcd
 
-./run.sh [-r|--reuse] [-v] [-k|--keep] [-- <options> <for> <ginkgo>]
+./run.sh [-r|--reuse] [-l] [-v] [-k|--keep] [-- <options> <for> <ginkgo>]
 
 Options:
     -r | --reuse     reuse existing kind cluster
     -k | --keep      keep kind cluster after run for reuse or inspection
+    -l               use local kube-apiserver and etcd (i.e. no kind cluster)
     -v               verbose output of script (not test itself)
 
 For options of ginkgo run:
@@ -48,6 +49,9 @@ while [ "$1" != "" ]; do
         -v )               shift
                            VERBOSE=true
                            ;;
+        -l )               shift
+                           LOCAL_APISERVER=true
+                           ;;
         -k | --keep )      shift
                            KEEP_CLUSTER=true
                            ;;
@@ -59,7 +63,7 @@ while [ "$1" != "" ]; do
     esac
 done
 
-if [ "$EXTERNAL" == "" ]; then
+if [ "$LOCAL_APISERVER" == "" ]; then
   docker version > /dev/null || (echo "Local Docker installation needed" && exit 1)
 fi
 
@@ -67,7 +71,7 @@ if [ "$VERBOSE" != "" ]; then
   set -x
 fi
 
-if [ "$NOBOOTSTRAP" == "" ] && [ "$EXTERNAL" == "" ]; then
+if [ "$NOBOOTSTRAP" == "" ] && [ "$LOCAL_APISERVER" == "" ]; then
   echo Starting Kubernetes IN Docker...
 
   # prepare Kubernetes IN Docker - local clusters for testing Kubernetes
@@ -80,21 +84,62 @@ if [ "$NOBOOTSTRAP" == "" ] && [ "$EXTERNAL" == "" ]; then
   kind create cluster --name integration 
 fi
 
-if [ "$EXTERNAL" != "" ]; then
-  echo using GKE cluster
+cd $ROOTDIR/test/integration
 
-  gcloud container clusters get-credentials $GKE_CLUSTER --project $GKE_PROJECT --zone $GKE_ZONE
+if [ "$LOCAL_APISERVER" != "" ]; then
+  echo using local kube-apiserver and etcd
 
-  kubectl config view --minify=true --raw > /tmp/kubeconfig-gke.yaml
-  # set KUBECONFIG
-  export KUBECONFIG=/tmp/kubeconfig-gke.yaml
+  # download kube-apiserver, etcd, and kubectl executables from kubebuilder release
+  KUBEBUILDER_VERSION=1.0.8
+  ARCH=$(go env GOARCH)
+  GOOS=$(go env GOOS)
+  KUBEBUILDER_BIN_DIR=$(realpath -m kubebuilder_${KUBEBUILDER_VERSION}_${GOOS}_${ARCH}/bin)
+  if [ ! -d $KUBEBUILDER_BIN_DIR ]; then
+    curl -Ls https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_${GOOS}_${ARCH}.tar.gz | tar xz
+  fi
+  export PATH=$KUBEBUILDER_BIN_DIR:$PATH
+  mkdir -p $KUBEBUILDER_BIN_DIR/../var
 
-  # improve robustness: collect possible garbage of former tests (if this does not help, delete cluster on GKE and recreate it with test/integration/prepare/prepare-gke.sh)
-  kubectl -n test delete dnse --all --wait=false --grace-period=0 --force 2> /dev/null || true
-  kubectl -n test delete dnso --all --wait=false --grace-period=0 --force 2> /dev/null || true
-  kubectl -n test delete dnspr --all --wait=false --grace-period=0 --force 2> /dev/null || true
+  # starting etcd
+  echo Starting Etcd
+  rm -rf default.etcd
+  if [ "$VERBOSE" != "" ]; then
+    $KUBEBUILDER_BIN_DIR/etcd &
+  else
+    $KUBEBUILDER_BIN_DIR/etcd >/dev/null 2>&1 &
+  fi
+  PID_ETCD=$!
+  trap "kill $PID_ETCD" SIGINT SIGTERM EXIT
+
+  # starting kube-apiserver
+  echo Starting Kube API Server
+  if [ "$VERBOSE" != "" ]; then
+    $KUBEBUILDER_BIN_DIR/kube-apiserver --etcd-servers http://localhost:2379 --cert-dir $KUBEBUILDER_BIN_DIR/../var &
+  else
+    $KUBEBUILDER_BIN_DIR/kube-apiserver --etcd-servers http://localhost:2379 --cert-dir $KUBEBUILDER_BIN_DIR/../var >/dev/null 2>&1 &
+  fi
+  PID_APISERVER=$!
+  trap "kill $PID_APISERVER && kill $PID_ETCD" SIGINT SIGTERM EXIT
+  sleep 3
+
+  # create local kubeconfig
+  cat > /tmp/kubeconfig-local.yaml << EOF
+apiVersion: v1
+clusters:
+- cluster:
+    server: http://localhost:8080
+  name: local
+contexts:
+- context:
+    cluster: local
+  name: local-ctx
+current-context: local-ctx
+kind: Config
+preferences: {}
+users: []
+EOF
+  export KUBECONFIG=/tmp/kubeconfig-local.yaml
 else
-  # set KUBECONFIG
   export KUBECONFIG=$(kind get kubeconfig-path --name="integration")
 fi
 
@@ -104,10 +149,15 @@ kubectl cluster-info
 which ginkgo || go install github.com/onsi/ginkgo/ginkgo
 
 # run test suite
-cd $ROOTDIR/test/integration && ginkgo -failFast -trace "$@" ; cd -
+ginkgo -failFast -trace "$@"
+RETCODE=$?
+
+cd -
 
 # cleanup
-if [ "$KEEP_CLUSTER" == "" ] && [ "$EXTERNAL" == "" ]; then
+if [ "$KEEP_CLUSTER" == "" ] && [ "$LOCAL_APISERVER" == "" ]; then
   unset KUBECONFIG
   kind delete cluster --name integration
 fi
+
+exit $RETCODE
