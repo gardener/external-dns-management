@@ -88,7 +88,7 @@ configuration:
 # googleCloudDNSSecretsPoolSize: 2
 # googleCloudDNSSetup: 10
 # googleCloudDNSTtl: 120
-  identifier: dns-test
+# identifier: my-unique-identifier
 # ingressDNSDefaultPoolResyncPeriod: 30s
 # ingressDNSDefaultPoolSize: 2
 # ingressDNSDnsClass: "gardendns"
@@ -145,4 +145,4 @@ gardener:
   garden:
     identity: garden
   seed:
-    identity: seed1
+    identity: ""
