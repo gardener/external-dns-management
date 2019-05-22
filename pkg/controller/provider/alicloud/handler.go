@@ -89,9 +89,9 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 			}
 			err := this.access.ListRecords(z.DomainName, f)
 			if err != nil {
-				if checkAccessForbiddern(err) {
+				if checkAccessForbidden(err) {
 					// It is reasonable for some RAM user, it is only allowed to access certain domain's records detail
-					// As a result, this domain should not appended to the host zones
+					// As a result, this domain should not be appended to the hosted zones
 					continue
 				}
 				return nil, err
@@ -135,7 +135,7 @@ func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNS
 	return exec.submitChanges()
 }
 
-func checkAccessForbiddern(err error) bool {
+func checkAccessForbidden(err error) bool {
 	if err != nil {
 		switch err.(type) {
 		case *errors.ServerError:
