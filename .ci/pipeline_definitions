@@ -11,7 +11,7 @@ external-dns-management:
       test:
         image: 'golang:1.12.4'
       integrationtest:
-        image: 'eu.gcr.io/gardener-project/test/job-golang-gcloud:latest'
+        image: 'golang:1.12.4'
       build:
         image: 'golang:1.12.4'
   variants:
