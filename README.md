@@ -45,6 +45,8 @@ the corresponding entries in the external environment.
 `DNSProvider` objects can specify explicit inclusion and exclusion sets of domain names
 and/or DNS zone identifiers to override the scanning results of the account.
 
+### Owner Identifiers
+
 Every DNS Provisioning Controller is responsible for a set of _Owner Identifiers_.
 DNS records in an external DNS environment are attached to such an identifier.
 This is used to identify the records in the DNS environment managed by a dedicated
@@ -68,14 +70,18 @@ This way it is possbible to
   kubernetes clusters or DNS source environments running different
   DNS Provisioning Controller without loosing the entries during the
   migration process.
-  
+
+**If multiple DNS controller instances have access to the same DNS zones, it is very important, that every instance uses a unique owner identifier! Otherwise the cleanup of stale DNS record will delete entries created by another instance if they use the same identifier.**
+
+### DNS Classes
+
 Multiple sets of controllers of the DNS ecosystem can run in parallel in
 a kubernetes cluster working on different object set. They are separated by
 using different _DNS Classes_. Adding a DNS class annotation to an object of the
 DNS ecosytems assigns this object to such a dedicated set of DNS controllers.
 This way it is possible to maintain clearly separated set of DNS objects in a
 single kubernetes cluster.
- 
+
 ## The Content
 
 This project contains:

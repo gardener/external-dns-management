@@ -241,7 +241,6 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider))
 
-	hello.Infof(logger)
 	this.valid = false
 	spec := &this.object.DNSEntry().Spec
 
@@ -279,8 +278,8 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	if p.zoneid == "" && !utils.IsEmptyString(this.status.ProviderType) && p.ptypes.Contains(*this.status.ProviderType) {
 		// revoke assignment to actual type
-		hello.Infof(logger)
 		old := utils.StringValue(this.status.ProviderType)
+		hello.Infof(logger, "revoke assignment to %s", old)
 		this.status.Provider = nil
 		this.status.ProviderType = nil
 		this.status.Zone = nil

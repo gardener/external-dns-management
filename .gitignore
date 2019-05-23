@@ -6,4 +6,6 @@ tmp/
 /local
 /dns-controller-manager
 /main
+/test/integration/kubebuilder*
+/test/integration/default.etcd
 .vscode/

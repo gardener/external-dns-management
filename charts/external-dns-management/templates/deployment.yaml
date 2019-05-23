@@ -224,8 +224,8 @@ spec:
         {{- if .Values.configuration.help }}
         - --help={{ .Values.configuration.help }}
         {{- end }}
-        {{- if .Values.configuration.identifier }}
-        - --identifier={{ .Values.configuration.identifier }}
+        {{- if or .Values.configuration.identifier (not .Values.gardener.seed.identity) }}
+        - --identifier={{ required "A value is required for configuration.identifier (or gardener.seed.identity)! It must be unique, globally or at least for all instances running with the same account." .Values.configuration.identifier }}
         {{- else }}
         - --identifier=seed.gardener.cloud/{{ .Values.gardener.garden.identity }}/{{ .Values.gardener.seed.identity }}
         {{- end }}

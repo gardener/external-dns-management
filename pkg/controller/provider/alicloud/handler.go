@@ -18,6 +18,7 @@ package alicloud
 
 import (
 	"fmt"
+	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -88,6 +89,11 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 			}
 			err := this.access.ListRecords(z.DomainName, f)
 			if err != nil {
+				if checkAccessForbidden(err) {
+					// It is reasonable for some RAM user, it is only allowed to access certain domain's records detail
+					// As a result, this domain should not be appended to the hosted zones
+					continue
+				}
 				return nil, err
 			}
 			hostedZone := provider.NewDNSHostedZone(
@@ -127,4 +133,18 @@ func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNS
 		return nil
 	}
 	return exec.submitChanges()
+}
+
+func checkAccessForbidden(err error) bool {
+	if err != nil {
+		switch err.(type) {
+		case *errors.ServerError:
+			serverErr := err.(*errors.ServerError)
+			if serverErr.ErrorCode() == "Forbidden.RAM" {
+				return true
+			}
+		}
+	}
+
+	return false
 }
