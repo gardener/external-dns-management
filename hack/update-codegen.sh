@@ -23,7 +23,7 @@ source "$SCRIPT_ROOT/build/settings.src"
 
 CODEGEN_PKG=${CODEGEN_PKG:-$(ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
 
-rm -rf "$SCRIPT_ROOT/pkg/client/dns"
+rm -rf "$SCRIPT_ROOT/pkg/client/$APINAME"
 
 # generate the code with:
 # --output-base    because this script should also be able to run inside the vendor dir of
