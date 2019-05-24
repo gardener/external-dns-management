@@ -17,6 +17,7 @@
 package azure
 
 import (
+	"strconv"
 	"strings"
 
 	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-03-01-preview/dns"
@@ -106,7 +107,12 @@ func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) (b
 		recordType = azure.TXT
 		txtrecords := []azure.TxtRecord{}
 		for _, r := range rset.Records {
-			txtrecords = append(txtrecords, azure.TxtRecord{Value: &[]string{r.Value}})
+			// AzureDNS stores value as given, i.e. including quotes, so text value must be unquoted
+			unquoted, err := strconv.Unquote(r.Value)
+			if err != nil {
+				unquoted = r.Value
+			}
+			txtrecords = append(txtrecords, azure.TxtRecord{Value: &[]string{unquoted}})
 		}
 		properties.TxtRecords = &txtrecords
 	default:

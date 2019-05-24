@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -193,7 +194,12 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 		if item.TxtRecords != nil {
 			rs := dns.NewRecordSet(dns.RS_TXT, *item.TTL, nil)
 			for _, record := range *item.TxtRecords {
-				rs.Add(&dns.Record{Value: strings.Join(*record.Value, "\n")})
+				quoted := strings.Join(*record.Value, "\n")
+				// AzureDNS stores values unquoted, but it is expected to be quoted in dns.Record
+				if len(quoted) > 0 && quoted[0] != '"' && quoted[len(quoted)-1] != '"' {
+					quoted = strconv.Quote(quoted)
+				}
+				rs.Add(&dns.Record{Value: quoted})
 			}
 			dnssets.AddRecordSetFromProvider(fullName, rs)
 		}
