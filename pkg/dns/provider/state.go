@@ -281,7 +281,9 @@ func (this *state) GetSecretUsage(name resources.ObjectName) []resources.Object 
 	result := make([]resources.Object, 0, len(set))
 	for n := range set {
 		o := this.providers[n]
-		result = append(result, o.object)
+		if o != nil {
+			result = append(result, o.object)
+		}
 	}
 	return result
 }
