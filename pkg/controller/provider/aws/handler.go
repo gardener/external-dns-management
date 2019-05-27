@@ -112,15 +112,24 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return zones, nil
 }
 
+func buildRecordSet(r *route53.ResourceRecordSet) *dns.RecordSet {
+	rs := dns.NewRecordSet(aws.StringValue(r.Type), aws.Int64Value(r.TTL), nil)
+	for _, rr := range r.ResourceRecords {
+		rs.Add(&dns.Record{Value: aws.StringValue(rr.Value)})
+	}
+	return rs
+}
+
 func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	aggr := func(r *route53.ResourceRecordSet) {
-		rtype := aws.StringValue(r.Type)
-		if dns.SupportedRecordType(rtype) {
-			rs := dns.NewRecordSet(rtype, aws.Int64Value(r.TTL), nil)
-			for _, rr := range r.ResourceRecords {
-				rs.Add(&dns.Record{Value: aws.StringValue(rr.Value)})
+		if dns.SupportedRecordType(aws.StringValue(r.Type)) {
+			var rs *dns.RecordSet
+			if isAliasTarget(r) {
+				rs = buildRecordSetForAliasTarget(r)
+			} else {
+				rs = buildRecordSet(r)
 			}
 			dnssets.AddRecordSetFromProvider(aws.StringValue(r.Name), rs)
 		}

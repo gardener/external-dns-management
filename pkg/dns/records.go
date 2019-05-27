@@ -44,9 +44,10 @@ func (this *Record) Clone() *Record {
 }
 
 type RecordSet struct {
-	Type    string
-	TTL     int64
-	Records Records
+	Type      string
+	TTL       int64
+	IgnoreTTL bool
+	Records   Records
 }
 
 func NewRecordSet(rtype string, ttl int64, records []*Record) *RecordSet {
@@ -57,7 +58,7 @@ func NewRecordSet(rtype string, ttl int64, records []*Record) *RecordSet {
 }
 
 func (this *RecordSet) Clone() *RecordSet {
-	set := &RecordSet{this.Type, this.TTL, nil}
+	set := &RecordSet{this.Type, this.TTL, this.IgnoreTTL, nil}
 	for _, r := range this.Records {
 		set.Records = append(set.Records, r.Clone())
 	}
@@ -96,7 +97,7 @@ func (this *RecordSet) Match(set *RecordSet) bool {
 		return false
 	}
 
-	if this.TTL != set.TTL {
+	if !this.IgnoreTTL && !set.IgnoreTTL && this.TTL != set.TTL {
 		return false
 	}
 
@@ -178,5 +179,5 @@ func newMetaRecord(name, value string) *Record {
 
 func newMetaRecordSet(name, value string) *RecordSet {
 	records := []*Record{newMetaRecord(name, value)}
-	return &RecordSet{RS_META, 600, records}
+	return &RecordSet{RS_META, 600, false, records}
 }
