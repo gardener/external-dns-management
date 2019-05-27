@@ -17,6 +17,7 @@
 package aws
 
 import (
+	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/route53"
 
@@ -44,6 +45,20 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 	return &Execution{LogContext: logger, handler: h, zone: zone, changes: map[string][]*Change{}, maxChangeCount: 50}
 }
 
+func buildResourceRecordSet(name string, rset *dns.RecordSet) *route53.ResourceRecordSet {
+	rrs := &route53.ResourceRecordSet{}
+	rrs.Name = aws.String(name)
+	rrs.Type = aws.String(rset.Type)
+	rrs.TTL = aws.Int64(rset.TTL)
+	rrs.ResourceRecords = make([]*route53.ResourceRecord, len(rset.Records))
+	for i, r := range rset.Records {
+		rrs.ResourceRecords[i] = &route53.ResourceRecord{
+			Value: aws.String(r.Value),
+		}
+	}
+	return rrs
+}
+
 func (this *Execution) addChange(action string, req *provider.ChangeRequest, dnsset *dns.DNSSet) {
 	name, rset := dns.MapToProvider(req.Type, dnsset, this.zone.Domain())
 	name = dns.AlignHostname(name)
@@ -51,22 +66,15 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 		return
 	}
 	this.Infof("%s %s record set %s[%s]: %s(%d)", action, rset.Type, name, this.zone.Id(), rset.RecordString(), rset.TTL)
-	change := &route53.Change{
-		Action: aws.String(action),
-		ResourceRecordSet: &route53.ResourceRecordSet{
-			Name: aws.String(name),
-		},
+
+	var rrs *route53.ResourceRecordSet
+	if canConvertToAliasTarget(rset) {
+		rrs = buildResourceRecordSetForAliasTarget(name, rset)
+	} else {
+		rrs = buildResourceRecordSet(name, rset)
 	}
 
-	change.ResourceRecordSet.Type = aws.String(rset.Type)
-	change.ResourceRecordSet.TTL = aws.Int64(rset.TTL)
-	change.ResourceRecordSet.ResourceRecords = make([]*route53.ResourceRecord, len(rset.Records))
-	for i, r := range rset.Records {
-		change.ResourceRecordSet.ResourceRecords[i] = &route53.ResourceRecord{
-			Value: aws.String(r.Value),
-		}
-	}
-
+	change := &route53.Change{Action: aws.String(action), ResourceRecordSet: rrs}
 	this.changes[name] = append(this.changes[name], &Change{Change: change, Done: req.Done})
 }
 
@@ -80,7 +88,11 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 	for i, changes := range limitedChanges {
 		this.Infof("processing batch %d for zone %s with %d requests", i+1, this.zone.Id(), len(changes))
 		for _, c := range changes {
-			this.Infof("desired change: %s %s %s", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type)
+			extraInfo := ""
+			if c.ResourceRecordSet.AliasTarget != nil {
+				extraInfo = fmt.Sprintf(" (alias target hosted zone %s)", *c.ResourceRecordSet.AliasTarget.HostedZoneId)
+			}
+			this.Infof("desired change: %s %s %s%s", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type, extraInfo)
 		}
 
 		params := &route53.ChangeResourceRecordSetsInput{

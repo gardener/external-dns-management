@@ -127,7 +127,7 @@ func (this *DNSSet) SetRecordSet(rtype string, ttl int64, values ...string) {
 	for i, r := range values {
 		records[i] = &Record{Value: r}
 	}
-	this.Sets[rtype] = &RecordSet{rtype, ttl, records}
+	this.Sets[rtype] = &RecordSet{rtype, ttl, false, records}
 }
 
 func NewDNSSet(name string) *DNSSet {
