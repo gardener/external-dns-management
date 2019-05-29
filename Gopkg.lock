@@ -173,7 +173,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:14208f510cfc949d40f62dcdcca4e76f58c14f7a8928e0fd6495971850b07759"
+  digest = "1:95381a765c551cb0156e8173fe296a3f8719b5f089e165281f3eb8091015281d"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/controllermanager",
@@ -197,7 +197,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "670efa3cd76c84042123c66aeb468ff6bcfd4a7e"
+  revision = "37f502d0111982ead4e1f231383f6599ae0e6a57"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
@@ -1053,6 +1053,7 @@
   input-imports = [
     "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-03-01-preview/dns",
     "github.com/Azure/go-autorest/autorest/azure/auth",
+    "github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors",
     "github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests",
     "github.com/aliyun/alibaba-cloud-sdk-go/services/alidns",
     "github.com/aws/aws-sdk-go/aws",

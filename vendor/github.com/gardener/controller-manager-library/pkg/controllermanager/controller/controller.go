@@ -187,7 +187,10 @@ func NewController(env Environment, def Definition, cmp mappings.Definition) (*c
 		this.Infof("create required crds for cluster %q (used for %q)", cluster.GetName(), n)
 		for _, crd := range crds {
 			this.Infof("   %s", crd.Name)
-			apiextensions.CreateCRDFromObject(cluster, crd)
+			err := apiextensions.CreateCRDFromObject(cluster, crd)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	for n, t := range def.Reconcilers() {
