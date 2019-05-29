@@ -103,7 +103,7 @@ func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bo
 
 	reqs := this.requests
 	if len(reqs) > 0 {
-		err := this.provider.ExecuteRequests(logger, model.zone.zone, this.model.zonestate, reqs)
+		err := this.provider.ExecuteRequests(logger, model.context.zone.zone, this.model.zonestate, reqs)
 		if err != nil {
 			model.Errorf("entry reconcilation failed for %s: %s", this.name, err)
 			ok = false
@@ -134,30 +134,26 @@ type ChangeModel struct {
 	logger.LogContext
 	config         Config
 	owners         utils.StringSet
-	stale          DNSNames
-	zone           *dnsHostedZone
-	providers      DNSProviders
+	context        *zoneReconcilation
 	applied        map[string]*dns.DNSSet
 	dangling       *ChangeGroup
 	providergroups map[string]*ChangeGroup
 	zonestate      DNSZoneState
 }
 
-func NewChangeModel(logger logger.LogContext, owners utils.StringSet, stale DNSNames, config Config, zone *dnsHostedZone, providers DNSProviders) *ChangeModel {
+func NewChangeModel(logger logger.LogContext, owners utils.StringSet, req *zoneReconcilation, config Config) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
 		config:         config,
 		owners:         owners,
-		stale:          stale,
-		zone:           zone,
-		providers:      providers,
+		context:        req,
 		applied:        map[string]*dns.DNSSet{},
 		providergroups: map[string]*ChangeGroup{},
 	}
 }
 
 func (this *ChangeModel) IsStale(dns string) *Entry {
-	return this.stale[dns]
+	return this.context.stale[dns]
 }
 
 func (this *ChangeModel) getProviderView(p DNSProvider) *ChangeGroup {
@@ -170,16 +166,16 @@ func (this *ChangeModel) getProviderView(p DNSProvider) *ChangeGroup {
 }
 
 func (this *ChangeModel) ZoneId() string {
-	return this.zone.Id()
+	return this.context.zone.Id()
 }
 
 func (this *ChangeModel) Domain() string {
-	return this.zone.Domain()
+	return this.context.zone.Domain()
 }
 
 func (this *ChangeModel) getDefaultProvider() DNSProvider {
 	var provider DNSProvider
-	for _, provider = range this.providers {
+	for _, provider = range this.context.providers {
 		break
 	}
 	return provider
@@ -196,7 +192,7 @@ func (this *ChangeModel) Setup() error {
 	if provider == nil {
 		return fmt.Errorf("no provider found for zone %q", this.ZoneId())
 	}
-	this.zonestate, err = provider.GetZoneState(this.zone.zone)
+	this.zonestate, err = provider.GetZoneState(this.context.zone.zone)
 	if err != nil {
 		return err
 	}
@@ -204,7 +200,7 @@ func (this *ChangeModel) Setup() error {
 	this.dangling = newChangeGroup("dangling entries", provider, this)
 	for dnsName, set := range sets {
 		var view *ChangeGroup
-		provider = this.providers.LookupFor(dnsName)
+		provider = this.context.providers.LookupFor(dnsName)
 		if provider != nil {
 			this.dumpf("  %s: %d types (provider %s)", dnsName, len(set.Sets), provider.ObjectName())
 			view = this.getProviderView(provider)
@@ -240,7 +236,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHan
 	if apply {
 		this.applied[name] = nil
 	}
-	p := this.providers.LookupFor(name)
+	p := this.context.providers.LookupFor(name)
 	if p == nil {
 		err := fmt.Errorf("no provider found for %q", name)
 		if done != nil {
