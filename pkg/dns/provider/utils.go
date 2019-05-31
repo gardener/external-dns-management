@@ -26,6 +26,13 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
+type NullMetrics struct{}
+
+var _ Metrics = &NullMetrics{}
+
+func (m *NullMetrics) AddRequests(request_type string, n int) {
+}
+
 func filterByZones(domains utils.StringSet, zones DNSHostedZones) (result utils.StringSet, err error) {
 	result = utils.StringSet{}
 	for d := range domains {

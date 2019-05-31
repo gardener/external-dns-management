@@ -71,7 +71,22 @@ func (dnssets DNSSets) RemoveRecordSet(name string, recordSetType string) {
 	dnsset := dnssets[name]
 	if dnsset != nil {
 		delete(dnsset.Sets, recordSetType)
+		if len(dnsset.Sets) == 0 {
+			delete(dnssets, name)
+		}
 	}
+}
+
+func (dnssets DNSSets) Clone() DNSSets {
+	clone := DNSSets{}
+	for dk, dv := range dnssets {
+		sets := RecordSets{}
+		for rk, rv := range dv.Sets {
+			sets[rk] = rv.Clone()
+		}
+		clone[dk] = &DNSSet{Name: dv.Name, Sets: sets}
+	}
+	return clone
 }
 
 const (

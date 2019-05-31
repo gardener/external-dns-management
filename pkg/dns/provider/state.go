@@ -87,6 +87,8 @@ func NewDNSState(ctx Context, classes *dnsutils.Classes, config Config) *state {
 	ctx.Infof("using default ttl:           %d", config.TTL)
 	ctx.Infof("using identifier:            %s", config.Ident)
 	ctx.Infof("dry run mode:                %t", config.Dryrun)
+	ctx.Infof("reschedule delay:            %t", config.RescheduleDelay)
+	ctx.Infof("disable zone state caching:  %t", !config.ZoneStateCaching)
 	return &state{
 		classes:         classes,
 		context:         ctx,
@@ -308,6 +310,10 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 			logger.Infof("releasing secret %q for provider %q", old, pname)
 			if len(oldp) <= 1 {
 				r, err := provider.Object().Resources().Get(&corev1.Secret{})
+				if err != nil {
+					logger.Warnf("cannot release secret %q for provider %q: %s", old, pname, err)
+					return true, err
+				}
 				s, err := r.GetCached(old)
 				if err != nil {
 					if !errors.IsNotFound(err) {
@@ -318,7 +324,7 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 					logger.Infof("remove finalizer for unused secret %q", old)
 					err := this.RemoveFinalizer(s)
 					if err != nil && !errors.IsNotFound(err) {
-						logger.Warnf("cannot release secret %q for provider %q: 5s", old, pname, err)
+						logger.Warnf("cannot release secret %q for provider %q: %s", old, pname, err)
 						return true, err
 					}
 				}
@@ -979,7 +985,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	new, status := this.AddEntryVersion(logger, v, status)
 
 	if new != nil {
-		if status.IsSucceeded() && new != nil && new.IsValid() {
+		if status.IsSucceeded() && new.IsValid() {
 			if new.Interval() > 0 {
 				status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
 			}

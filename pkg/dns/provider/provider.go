@@ -54,14 +54,6 @@ func (this DNSProviders) LookupFor(dns string) DNSProvider {
 	return found
 }
 
-type dnsProvider struct {
-	*dnsProviderVersion
-}
-
-func newProvider() *dnsProvider {
-	return &dnsProvider{}
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
 type DNSAccount struct {
@@ -71,12 +63,12 @@ type DNSAccount struct {
 
 	hash    string
 	clients resources.ObjectNameSet
-	metrics Metrics
 
-	ttl   time.Duration
-	next  time.Time
-	err   error
-	zones DNSHostedZones
+	ttl            time.Duration
+	next           time.Time
+	err            error
+	zones          DNSHostedZones
+	zoneStateCache ZoneStateCache
 }
 
 var _ DNSHandler = &DNSAccount{}
@@ -105,16 +97,34 @@ func (this *DNSAccount) GetZones() (DNSHostedZones, error) {
 		} else {
 			this.next = now.Add(this.ttl)
 		}
+		this.zoneStateCache.RestrictCacheToZones(this.zones)
 	}
 	return this.zones, this.err
 }
 
 func (this *DNSAccount) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
-	return this.handler.GetZoneState(zone)
+	state := this.zoneStateCache.GetZoneState(zone)
+	if state != nil {
+		this.AddRequests("cached_zonestate", 1)
+		return state, nil
+	}
+	state, err := this.handler.GetZoneState(zone)
+	if err == nil {
+		this.zoneStateCache.SetZoneState(zone, state)
+	} else {
+		this.zoneStateCache.DeleteZoneState(zone)
+	}
+	return state, err
 }
 
 func (this *DNSAccount) ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error {
-	return this.handler.ExecuteRequests(logger, zone, state, reqs)
+	err := this.handler.ExecuteRequests(logger, zone, state, reqs)
+	if err == nil {
+		this.zoneStateCache.ExecuteRequests(zone, reqs)
+	} else {
+		this.zoneStateCache.DeleteZoneState(zone)
+	}
+	return err
 }
 
 func (this *DNSAccount) MapTarget(t Target) Target {
@@ -140,16 +150,25 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 	defer this.lock.Unlock()
 	a := this.cache[h]
 	if a == nil {
+		a = &DNSAccount{ttl: this.ttl, config: props, hash: h, clients: resources.ObjectNameSet{}}
 		cfg := DNSHandlerConfig{
 			Context:    state.GetContext().GetContext(),
 			Properties: props,
 			Config:     provider.Spec().ProviderConfig,
 			DryRun:     state.GetConfig().Dryrun,
 		}
-		a = &DNSAccount{ttl: this.ttl, config: props, hash: h, clients: resources.ObjectNameSet{}}
 		a.handler, err = state.GetHandlerFactory().Create(logger, provider.TypeCode(), &cfg, a)
 		if err != nil {
 			return nil, err
+		}
+		if state.config.ZoneStateCaching {
+			syncPeriod := state.GetContext().GetPoolPeriod("dns")
+			if syncPeriod == nil {
+				return nil, fmt.Errorf("Pool dns not found")
+			}
+			a.zoneStateCache = NewZoneStateCache(*syncPeriod)
+		} else {
+			a.zoneStateCache = &nullZoneStateCache{}
 		}
 		logger.Infof("creating account for %s (%s)", name, a.Hash())
 		this.cache[h] = a
@@ -224,6 +243,8 @@ type dnsProviderVersion struct {
 	included utils.StringSet
 	excluded utils.StringSet
 }
+
+var _ DNSProvider = &dnsProviderVersion{}
 
 func (this *dnsProviderVersion) IsValid() bool {
 	return this.valid

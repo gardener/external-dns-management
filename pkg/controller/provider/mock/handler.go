@@ -20,8 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -32,18 +30,17 @@ type Handler struct {
 	config  provider.DNSHandlerConfig
 	ctx     context.Context
 	metrics provider.Metrics
-	mock    *InMemory
+	mock    *provider.InMemory
 }
 
 type MockConfig struct {
-	Zones    []string `json:"zones"`
-	HTTPPort string   `json:"httpPort,omitempty"`
+	Zones []string `json:"zones"`
 }
 
 var _ provider.DNSHandler = &Handler{}
 
 func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
-	mock := NewInMemory()
+	mock := provider.NewInMemory()
 
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
@@ -72,11 +69,6 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		}
 	}
 
-	if mockConfig.HTTPPort != "" {
-		logger.Infof("Running mock dump service at port %s", mockConfig.HTTPPort)
-		go http.ListenAndServe(":"+mockConfig.HTTPPort, mock)
-	}
-
 	return h, nil
 }
 
@@ -87,11 +79,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
-	dnssets, err := h.mock.CloneDNSSets(zone)
-	if err != nil {
-		return nil, err
-	}
-	return provider.NewDNSZoneState(dnssets), nil
+	return h.mock.CloneZoneState(zone)
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {

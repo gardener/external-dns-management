@@ -316,7 +316,11 @@ func (this *controller) getPool(name string) *pool {
 }
 
 func (this *controller) GetPool(name string) Pool {
-	return this.pools[name]
+	pool := this.pools[name]
+	if pool == nil {
+		return nil
+	}
+	return pool
 }
 
 func (this *controller) GetName() string {

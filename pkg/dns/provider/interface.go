@@ -32,14 +32,15 @@ import (
 )
 
 type Config struct {
-	TTL             int64
-	CacheTTL        time.Duration
-	RescheduleDelay time.Duration
-	Ident           string
-	Dryrun          bool
-	Delay           time.Duration
-	Enabled         utils.StringSet
-	Factory         DNSHandlerFactory
+	TTL              int64
+	CacheTTL         time.Duration
+	RescheduleDelay  time.Duration
+	Ident            string
+	Dryrun           bool
+	ZoneStateCaching bool
+	Delay            time.Duration
+	Enabled          utils.StringSet
+	Factory          DNSHandlerFactory
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
@@ -67,6 +68,8 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		delay = 120 * time.Second
 	}
 
+	disableZoneStateCaching, _ := c.GetBoolOption(OPT_DISABLE_ZONE_STATE_CACHING)
+
 	enabled := utils.StringSet{}
 	types, err := c.GetStringOption(OPT_PROVIDERTYPES)
 	if err != nil || types == "" {
@@ -86,14 +89,15 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	}
 
 	return &Config{
-		Ident:           ident,
-		Dryrun:          dryrun,
-		TTL:             int64(ttl),
-		CacheTTL:        time.Duration(cttl) * time.Second,
-		RescheduleDelay: rescheduleDelay,
-		Delay:           delay,
-		Enabled:         enabled,
-		Factory:         factory,
+		Ident:            ident,
+		TTL:              int64(ttl),
+		CacheTTL:         time.Duration(cttl) * time.Second,
+		RescheduleDelay:  rescheduleDelay,
+		Dryrun:           dryrun,
+		ZoneStateCaching: !disableZoneStateCaching,
+		Delay:            delay,
+		Enabled:          enabled,
+		Factory:          factory,
 	}, nil
 }
 
