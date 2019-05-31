@@ -71,7 +71,6 @@ type state struct {
 	providerzones   map[resources.ObjectName]map[string]*dnsHostedZone
 	providersecrets map[resources.ObjectName]resources.ObjectName
 
-	actions  map[string][]*Entry
 	entries  Entries
 	outdated Entries
 
@@ -105,7 +104,6 @@ func NewDNSState(ctx Context, classes *dnsutils.Classes, config Config) *state {
 		zoneproviders:   map[string]resources.ObjectNameSet{},
 		providerzones:   map[resources.ObjectName]map[string]*dnsHostedZone{},
 		providersecrets: map[resources.ObjectName]resources.ObjectName{},
-		actions:         map[string][]*Entry{},
 		entries:         Entries{},
 		outdated:        Entries{},
 		dnsnames:        map[string]*Entry{},
@@ -991,7 +989,6 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 			}
 		}
 		if new.IsModified() && new.ZoneId() != "" {
-			this.actions[new.ZoneId()] = append(this.actions[new.ZoneId()], new)
 			this.smartInfof(logger, "trigger zone %q", new.ZoneId())
 			this.triggerHostedZone(new.ZoneId())
 		} else {
