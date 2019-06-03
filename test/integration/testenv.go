@@ -111,7 +111,7 @@ func NewTestEnv(kubeconfig string, namespace string) (*TestEnv, error) {
 		return nil, err
 	}
 	te := &TestEnv{Cluster: cluster, Namespace: namespace, Logger: logger,
-		defaultTimeout: 20 * time.Second, resources: cluster.Resources()}
+		defaultTimeout: 30 * time.Second, resources: cluster.Resources()}
 	err = te.CreateNamespace(namespace)
 	return te, err
 }
@@ -338,7 +338,6 @@ func (te *TestEnv) GetOwner(name string) (resources.Object, error) {
 func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {
 	return obj.Data().(*v1alpha1.DNSOwner)
 }
-
 
 func (te *TestEnv) CreateIngressWithAnnotation(name, domainName string) (resources.Object, error) {
 	setter := func(e *extensions.Ingress) {

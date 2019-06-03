@@ -184,6 +184,7 @@ type DNSHandlerFactory interface {
 	TypeCodes() utils.StringSet
 	Create(logger logger.LogContext, typecode string, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error)
 	IsResponsibleFor(object *dnsutils.DNSProviderObject) bool
+	SupportZoneStateCache(typecode string) (bool, error)
 }
 
 type DNSProviders map[resources.ObjectName]DNSProvider

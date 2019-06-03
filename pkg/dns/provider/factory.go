@@ -27,14 +27,19 @@ import (
 type DNSHandlerCreatorFunction func(logger logger.LogContext, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error)
 
 type Factory struct {
-	typecode string
-	create   DNSHandlerCreatorFunction
+	typecode              string
+	create                DNSHandlerCreatorFunction
+	supportZoneStateCache bool
 }
 
 var _ DNSHandlerFactory = &Factory{}
 
-func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction) DNSHandlerFactory {
-	return &Factory{typecode, create}
+func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction, disableZoneStateCache ...bool) DNSHandlerFactory {
+	disable := false
+	for _, b := range disableZoneStateCache {
+		disable = disable || b
+	}
+	return &Factory{typecode, create, !disable}
 }
 
 func (this *Factory) IsResponsibleFor(object *dnsutils.DNSProviderObject) bool {
@@ -54,6 +59,13 @@ func (this *Factory) Create(logger logger.LogContext, typecode string, config *D
 		return this.create(logger, config, metrics)
 	}
 	return nil, fmt.Errorf("not responsible for %q", typecode)
+}
+
+func (this *Factory) SupportZoneStateCache(typecode string) (bool, error) {
+	if typecode == this.typecode {
+		return this.supportZoneStateCache, nil
+	}
+	return false, fmt.Errorf("not responsible for %q", typecode)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -103,4 +115,12 @@ func (this *CompoundFactory) Create(logger logger.LogContext, typecode string, c
 		return f.Create(logger, typecode, config, metrics)
 	}
 	return nil, fmt.Errorf("not responsible for %q", typecode)
+}
+
+func (this *CompoundFactory) SupportZoneStateCache(typecode string) (bool, error) {
+	f := this.factories[typecode]
+	if f != nil {
+		return f.SupportZoneStateCache(typecode)
+	}
+	return false, fmt.Errorf("not responsible for %q", typecode)
 }

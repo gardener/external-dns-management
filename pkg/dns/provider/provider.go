@@ -105,7 +105,7 @@ func (this *DNSAccount) GetZones() (DNSHostedZones, error) {
 func (this *DNSAccount) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
 	state := this.zoneStateCache.GetZoneState(zone)
 	if state != nil {
-		this.AddRequests("cached_zonestate", 1)
+		this.AddRequests("cached_getzonestate", 1)
 		return state, nil
 	}
 	state, err := this.handler.GetZoneState(zone)
@@ -161,7 +161,11 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 		if err != nil {
 			return nil, err
 		}
-		if state.config.ZoneStateCaching {
+		handlerSupportsZoneStateCache, err := state.GetHandlerFactory().SupportZoneStateCache(provider.TypeCode())
+		if err != nil {
+			return nil, err
+		}
+		if state.config.ZoneStateCaching && handlerSupportsZoneStateCache {
 			syncPeriod := state.GetContext().GetPoolPeriod("dns")
 			if syncPeriod == nil {
 				return nil, fmt.Errorf("Pool dns not found")
