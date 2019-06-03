@@ -49,7 +49,8 @@ func (this *dnsHostedZone) TestAndSetBusy() bool {
 }
 
 func (this *dnsHostedZone) String() string {
-	return fmt.Sprintf("%s: %s", this.zone.Id(), this.zone.Domain())
+	zone := this.getZone()
+	return fmt.Sprintf("%s: %s", zone.Id(), zone.Domain())
 }
 
 func (this *dnsHostedZone) Release() {
@@ -58,24 +59,32 @@ func (this *dnsHostedZone) Release() {
 	this.busy = false
 }
 
+func (this *dnsHostedZone) getZone() DNSHostedZone {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	return this.zone
+}
+
 func (this *dnsHostedZone) ProviderType() string {
-	return this.zone.ProviderType()
+	return this.getZone().ProviderType()
 }
 
 func (this *dnsHostedZone) Id() string {
-	return this.zone.Id()
+	return this.getZone().Id()
 }
 
 func (this *dnsHostedZone) Domain() string {
-	return this.zone.Domain()
+	return this.getZone().Domain()
 }
 
 func (this *dnsHostedZone) ForwardedDomains() []string {
-	return this.zone.ForwardedDomains()
+	return this.getZone().ForwardedDomains()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *dnsHostedZone) update(zone DNSHostedZone) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
 	this.zone = zone
 }
