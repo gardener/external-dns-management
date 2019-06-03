@@ -91,6 +91,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		return nil
 	}
 
+	failed := 0
 	limitedChanges := limitChangeSet(this.changes, this.batchSize)
 	this.Infof("require %d batches for %d dns names", len(limitedChanges), len(this.changes))
 	for i, changes := range limitedChanges {
@@ -114,6 +115,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		if _, err := this.r53.ChangeResourceRecordSets(params); err != nil {
 			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)
 			for _, c := range changes {
+				failed++
 				if c.Done != nil {
 					c.Done.Failed(err)
 				}
@@ -127,6 +129,9 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 			}
 			this.Infof("%d records in zone %s were successfully updated", len(changes), this.zone.Id())
 		}
+	}
+	if failed > 0 {
+		return fmt.Errorf("%d changes failed", failed)
 	}
 	return nil
 }

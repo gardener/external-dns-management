@@ -207,6 +207,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	}
 	if failed > 0 {
 		logger.Infof("Failed updates for records in zone %s: %d", zone.Domain(), failed)
+		return fmt.Errorf("%d changes failed", failed)
 	}
 
 	return nil

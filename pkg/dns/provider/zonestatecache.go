@@ -21,9 +21,10 @@ import (
 	"time"
 )
 
+type ZoneStateCacheUpdater func(zone DNSHostedZone) (DNSZoneState, error)
+
 type ZoneStateCache interface {
-	GetZoneState(zone DNSHostedZone) DNSZoneState
-	SetZoneState(zone DNSHostedZone, newState DNSZoneState)
+	GetZoneState(zone DNSHostedZone, updater ZoneStateCacheUpdater) (state DNSZoneState, cached bool, err error)
 	ExecuteRequests(zone DNSHostedZone, reqs []*ChangeRequest)
 	DeleteZoneState(zone DNSHostedZone)
 	RestrictCacheToZones(zones DNSHostedZones)
@@ -34,11 +35,9 @@ type nullZoneStateCache struct {
 
 var _ ZoneStateCache = &nullZoneStateCache{}
 
-func (c *nullZoneStateCache) GetZoneState(zone DNSHostedZone) DNSZoneState {
-	return nil
-}
-
-func (c *nullZoneStateCache) SetZoneState(zone DNSHostedZone, newState DNSZoneState) {
+func (c *nullZoneStateCache) GetZoneState(zone DNSHostedZone, updater ZoneStateCacheUpdater) (DNSZoneState, bool, error) {
+	state, err := updater(zone)
+	return state, false, err
 }
 
 func (c *nullZoneStateCache) DeleteZoneState(zone DNSHostedZone) {
@@ -50,56 +49,51 @@ func (c *nullZoneStateCache) ExecuteRequests(zone DNSHostedZone, reqs []*ChangeR
 func (c *nullZoneStateCache) RestrictCacheToZones(zones DNSHostedZones) {
 }
 
-type zoneStateCache struct {
+type defaultZoneStateCache struct {
 	lock       sync.Mutex
 	inMemory   *InMemory
-	lastSync   map[string]time.Time
+	nextSync   map[string]time.Time
 	syncPeriod time.Duration
 }
 
-var _ ZoneStateCache = &zoneStateCache{}
+var _ ZoneStateCache = &defaultZoneStateCache{}
 
-func NewZoneStateCache(syncPeriod time.Duration) *zoneStateCache {
-	return &zoneStateCache{inMemory: NewInMemory(), syncPeriod: syncPeriod, lastSync: map[string]time.Time{}}
+func NewZoneStateCache(syncPeriod time.Duration) *defaultZoneStateCache {
+	return &defaultZoneStateCache{inMemory: NewInMemory(), syncPeriod: syncPeriod, nextSync: map[string]time.Time{}}
 }
 
-func (c *zoneStateCache) GetZoneState(zone DNSHostedZone) DNSZoneState {
+func (c *defaultZoneStateCache) GetZoneState(zone DNSHostedZone, updater ZoneStateCacheUpdater) (DNSZoneState, bool, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	last, ok := c.lastSync[zone.Id()]
-	if !ok {
-		return nil
-	}
-	if last.Add(c.syncPeriod).Before(time.Now()) {
-		c.deleteZoneState(zone)
-		return nil
+	next, ok := c.nextSync[zone.Id()]
+	if !ok || time.Now().After(next) {
+		state, err := updater(zone)
+		if err == nil {
+			c.nextSync[zone.Id()] = time.Now().Add(c.syncPeriod)
+			c.inMemory.SetZone(zone, state)
+		} else {
+			c.deleteZoneState(zone)
+		}
+		return state, false, err
 	}
 	state, _ := c.inMemory.CloneZoneState(zone)
-	return state
+	return state, true, nil
 }
 
-func (c *zoneStateCache) SetZoneState(zone DNSHostedZone, newState DNSZoneState) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	c.lastSync[zone.Id()] = time.Now()
-	c.inMemory.SetZone(zone, newState)
-}
-
-func (c *zoneStateCache) DeleteZoneState(zone DNSHostedZone) {
+func (c *defaultZoneStateCache) DeleteZoneState(zone DNSHostedZone) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	c.deleteZoneState(zone)
 }
 
-func (c *zoneStateCache) deleteZoneState(zone DNSHostedZone) {
-	delete(c.lastSync, zone.Id())
+func (c *defaultZoneStateCache) deleteZoneState(zone DNSHostedZone) {
+	delete(c.nextSync, zone.Id())
 	c.inMemory.DeleteZone(zone)
 }
 
-func (c *zoneStateCache) ExecuteRequests(zone DNSHostedZone, reqs []*ChangeRequest) {
+func (c *defaultZoneStateCache) ExecuteRequests(zone DNSHostedZone, reqs []*ChangeRequest) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -117,7 +111,7 @@ func (c *zoneStateCache) ExecuteRequests(zone DNSHostedZone, reqs []*ChangeReque
 	}
 }
 
-func (c *zoneStateCache) RestrictCacheToZones(zones DNSHostedZones) {
+func (c *defaultZoneStateCache) RestrictCacheToZones(zones DNSHostedZones) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
