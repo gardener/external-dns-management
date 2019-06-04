@@ -86,13 +86,15 @@ func NewDNSState(ctx Context, classes *dnsutils.Classes, config Config) *state {
 	ctx.Infof("using default ttl:           %d", config.TTL)
 	ctx.Infof("using identifier:            %s", config.Ident)
 	ctx.Infof("dry run mode:                %t", config.Dryrun)
-	ctx.Infof("reschedule delay:            %t", config.RescheduleDelay)
+	ctx.Infof("reschedule delay:            %v", config.RescheduleDelay)
+	ctx.Infof("zone cache ttl for zones:    %v", config.CacheTTL)
+	ctx.Infof("zone cache persist dir:      %s", config.CacheDir)
 	ctx.Infof("disable zone state caching:  %t", !config.ZoneStateCaching)
 	return &state{
 		classes:         classes,
 		context:         ctx,
 		config:          config,
-		accountCache:    NewAccountCache(config.CacheTTL),
+		accountCache:    NewAccountCache(config.CacheTTL, config.CacheDir),
 		ownerCache:      NewOwnerCache(&config),
 		pending:         utils.StringSet{},
 		pendingKeys:     resources.ClusterObjectKeySet{},

@@ -35,6 +35,7 @@ import (
 type Handler struct {
 	provider.DefaultDNSHandler
 	config        provider.DNSHandlerConfig
+	cache         provider.ZoneCache
 	ctx           context.Context
 	metrics       provider.Metrics
 	zonesClient   *azure.ZonesClient
@@ -102,14 +103,23 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 
 	h.zonesClient = &zonesClient
 	h.recordsClient = &recordsClient
+
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	return h, nil
 }
 
 var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
 
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
-	zones := provider.DNSHostedZones{}
+	return h.cache.GetZones(h.getZones)
+}
 
+func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
+	zones := provider.DNSHostedZones{}
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
 	h.metrics.AddRequests("ZonesClient_ListComplete", 1)
 	if err != nil {
@@ -173,6 +183,10 @@ func splitZoneid(zoneid string) (string, string) {
 }
 
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone, h.getZoneState)
+}
+
+func (h *Handler) getZoneState(data interface{}, zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	resourceGroup, zoneName := splitZoneid(zone.Id())
@@ -218,6 +232,16 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	err := h.executeRequests(logger, zone, state, reqs)
+	if err == nil {
+		h.cache.ExecuteRequests(zone, reqs)
+	} else {
+		h.cache.DeleteZoneState(zone)
+	}
+	return err
+}
+
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	resourceGroup, zoneName := splitZoneid(zone.Id())
 	exec := NewExecution(logger, h, resourceGroup, zoneName)
 

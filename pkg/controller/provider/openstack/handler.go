@@ -30,6 +30,7 @@ import (
 type Handler struct {
 	provider.DefaultDNSHandler
 	config provider.DNSHandlerConfig
+	cache  provider.ZoneCache
 	ctx    context.Context
 
 	client designateClientInterface
@@ -54,6 +55,12 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		ctx:               config.Context,
 		client:            designateClient{serviceClient: serviceClient, metrics: metrics},
 	}
+
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	return &h, nil
 }
 
@@ -103,6 +110,10 @@ func readAuthConfig(config *provider.DNSHandlerConfig) (*authConfig, error) {
 }
 
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
+	return h.cache.GetZones(h.getZones)
+}
+
+func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
 	hostedZones := provider.DNSHostedZones{}
 
 	zoneHandler := func(zone *zones.Zone) error {
@@ -147,6 +158,10 @@ func (h *Handler) collectForwardedSubzones(zone *zones.Zone) []string {
 }
 
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone, h.getZoneState)
+}
+
+func (h *Handler) getZoneState(data interface{}, zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	recordSetHandler := func(recordSet *recordsets.RecordSet) error {
@@ -173,6 +188,16 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	err := h.executeRequests(logger, zone, state, reqs)
+	if err == nil {
+		h.cache.ExecuteRequests(zone, reqs)
+	} else {
+		h.cache.DeleteZoneState(zone)
+	}
+	return err
+}
+
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	exec := NewExecution(logger, h, zone)
 
 	var succeeded, failed int

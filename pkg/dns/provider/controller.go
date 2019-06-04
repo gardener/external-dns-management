@@ -51,6 +51,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		RequireLease().
 		DefaultedStringOption(OPT_CLASS, dnsutils.DEFAULT_CLASS, "Identifier used to differentiate responsible controllers for entries").
 		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries").
+		DefaultedStringOption(OPT_CACHE_DIR, "", "Directory to store zone caches (for reload after restart)").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
 		DefaultedBoolOption(OPT_DISABLE_ZONE_STATE_CACHING, false, "disable use of cached dns zone state on changes").
 		DefaultedIntOption(OPT_TTL, 300, "Default time-to-live for DNS entries").

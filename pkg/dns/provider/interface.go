@@ -34,6 +34,7 @@ import (
 type Config struct {
 	TTL              int64
 	CacheTTL         time.Duration
+	CacheDir         string
 	RescheduleDelay  time.Duration
 	Ident            string
 	Dryrun           bool
@@ -56,6 +57,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	if err != nil {
 		cttl = 60
 	}
+	cdir, _ := c.GetStringOption(OPT_CACHE_DIR)
 	dryrun, _ := c.GetBoolOption(OPT_DRYRUN)
 
 	delay, err := c.GetDurationOption(OPT_DNSDELAY)
@@ -92,6 +94,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		Ident:            ident,
 		TTL:              int64(ttl),
 		CacheTTL:         time.Duration(cttl) * time.Second,
+		CacheDir:         cdir,
 		RescheduleDelay:  rescheduleDelay,
 		Dryrun:           dryrun,
 		ZoneStateCaching: !disableZoneStateCaching,
@@ -128,10 +131,11 @@ outer:
 }
 
 type DNSHandlerConfig struct {
-	Properties utils.Properties
-	Config     *runtime.RawExtension
-	DryRun     bool
-	Context    context.Context
+	Properties  utils.Properties
+	Config      *runtime.RawExtension
+	DryRun      bool
+	Context     context.Context
+	CacheConfig ZoneCacheConfig
 }
 
 type DNSZoneState interface {
@@ -147,6 +151,9 @@ const (
 
 	M_UPDATERECORDS = "update_records"
 	M_PUPDATEREORDS = "update_records_pages"
+
+	M_CACHED_GETZONES     = "cached_getzones"
+	M_CACHED_GETZONESTATE = "cached_getzonestate"
 )
 
 type Metrics interface {

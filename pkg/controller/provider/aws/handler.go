@@ -2,7 +2,7 @@
  * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
+ * you may not use h file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
@@ -19,9 +19,10 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
-	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -34,6 +35,7 @@ type Handler struct {
 	provider.DefaultDNSHandler
 	config    provider.DNSHandlerConfig
 	awsConfig AWSConfig
+	cache     provider.ZoneCache
 	metrics   provider.Metrics
 	sess      *session.Session
 	r53       *route53.Route53
@@ -41,6 +43,14 @@ type Handler struct {
 
 type AWSConfig struct {
 	BatchSize int `json:"batchSize"`
+}
+
+type awsProviderData struct {
+	forwardedDomains map[string][]string
+}
+
+func NewProviderData() *awsProviderData {
+	return &awsProviderData{forwardedDomains: map[string][]string{}}
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -54,30 +64,30 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		}
 	}
 
-	this := &Handler{
+	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 
 		config:    *config,
 		awsConfig: awsConfig,
 		metrics:   metrics,
 	}
-	accessKeyID := this.config.Properties["AWS_ACCESS_KEY_ID"]
+	accessKeyID := h.config.Properties["AWS_ACCESS_KEY_ID"]
 	if accessKeyID == "" {
-		accessKeyID = this.config.Properties["accessKeyID"]
+		accessKeyID = h.config.Properties["accessKeyID"]
 	}
 	if accessKeyID == "" {
 		logger.Infof("creating aws-route53 handler failed because of missing access key id")
 		return nil, fmt.Errorf("'AWS_ACCESS_KEY_ID' or 'accessKeyID' required in secret")
 	}
 	logger.Infof("creating aws-route53 handler for %s", accessKeyID)
-	secretAccessKey := this.config.Properties["AWS_SECRET_ACCESS_KEY"]
+	secretAccessKey := h.config.Properties["AWS_SECRET_ACCESS_KEY"]
 	if secretAccessKey == "" {
-		secretAccessKey = this.config.Properties["secretAccessKey"]
+		secretAccessKey = h.config.Properties["secretAccessKey"]
 	}
 	if secretAccessKey == "" {
 		return nil, fmt.Errorf("'AWS_SECRET_ACCESS_KEY' or 'secretAccessKey' required in secret")
 	}
-	token := this.config.Properties["AWS_SESSION_TOKEN"]
+	token := h.config.Properties["AWS_SESSION_TOKEN"]
 	creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, token)
 
 	sess, err := session.NewSession(&aws.Config{
@@ -87,24 +97,34 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	if err != nil {
 		return nil, err
 	}
-	this.sess = sess
-	this.r53 = route53.New(sess)
-	return this, nil
+	h.sess = sess
+	h.r53 = route53.New(sess)
+
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, NewProviderData())
+	if err != nil {
+		return nil, err
+	}
+
+	return h, nil
 }
 
-func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
+func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
+	return h.cache.GetZones(h.getZones)
+}
+
+func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
 	rt := provider.M_LISTZONES
 	raw := []*route53.HostedZone{}
 	aggr := func(resp *route53.ListHostedZonesOutput, lastPage bool) bool {
 		for _, zone := range resp.HostedZones {
 			raw = append(raw, zone)
 		}
-		this.metrics.AddRequests(rt, 1)
+		h.metrics.AddRequests(rt, 1)
 		rt = provider.M_PLISTZONES
 		return true
 	}
 
-	err := this.r53.ListHostedZonesPages(&route53.ListHostedZonesInput{}, aggr)
+	err := h.r53.ListHostedZonesPages(&route53.ListHostedZonesInput{}, aggr)
 	if err != nil {
 		return nil, err
 	}
@@ -114,19 +134,16 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 		domain := aws.StringValue(z.Name)
 		comp := strings.Split(aws.StringValue(z.Id), "/")
 		id := comp[len(comp)-1]
-		forwarded := []string{}
-		aggr := func(r *route53.ResourceRecordSet) {
-			if aws.StringValue(r.Type) == dns.RS_NS {
-				name := aws.StringValue(r.Name)
-				if name != domain {
-					forwarded = append(forwarded, dns.NormalizeHostname(name))
-				}
-			}
-		}
-		this.handleRecordSets(id, aggr)
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(),
+			id, dns.NormalizeHostname(domain), aws.StringValue(z.Id), []string{})
 
-		hostedZone := provider.NewDNSHostedZone(this.ProviderType(),
-			id, dns.NormalizeHostname(domain), aws.StringValue(z.Id), forwarded)
+		// call GetZoneState for side effect to calculate forwarded domains
+		_, err := h.GetZoneState(hostedZone)
+		if err == nil {
+			providerData := data.(*awsProviderData)
+			hostedZone = provider.CopyDNSHostedZone(hostedZone, providerData.forwardedDomains[hostedZone.Id()])
+		}
+
 		zones = append(zones, hostedZone)
 	}
 	return zones, nil
@@ -140,7 +157,11 @@ func buildRecordSet(r *route53.ResourceRecordSet) *dns.RecordSet {
 	return rs
 }
 
-func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone, h.getZoneState)
+}
+
+func (h *Handler) getZoneState(data interface{}, zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	aggr := func(r *route53.ResourceRecordSet) {
@@ -154,30 +175,49 @@ func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZone
 			dnssets.AddRecordSetFromProvider(aws.StringValue(r.Name), rs)
 		}
 	}
-	if err := this.handleRecordSets(zone.Id(), aggr); err != nil {
+	domain := zone.Domain() + "."
+	if err := h.handleRecordSets(zone.Id(), domain, data.(*awsProviderData), aggr); err != nil {
 		return nil, err
 	}
 
 	return provider.NewDNSZoneState(dnssets), nil
 }
 
-func (this *Handler) handleRecordSets(zoneid string, f func(rs *route53.ResourceRecordSet)) error {
+func (h *Handler) handleRecordSets(zoneid string, domain string, providerData *awsProviderData, f func(rs *route53.ResourceRecordSet)) error {
 	rt := provider.M_LISTRECORDS
 	inp := (&route53.ListResourceRecordSetsInput{}).SetHostedZoneId(zoneid)
+	forwarded := []string{}
 	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
-		this.metrics.AddRequests(rt, 1)
+		h.metrics.AddRequests(rt, 1)
 		for _, r := range resp.ResourceRecordSets {
 			f(r)
+			if aws.StringValue(r.Type) == dns.RS_NS {
+				name := aws.StringValue(r.Name)
+				if name != domain {
+					forwarded = append(forwarded, dns.NormalizeHostname(name))
+				}
+			}
 		}
 		rt = provider.M_PLISTRECORDS
 
 		return true
 	}
-	return this.r53.ListResourceRecordSetsPages(inp, aggr)
+	providerData.forwardedDomains[zoneid] = forwarded
+	return h.r53.ListResourceRecordSetsPages(inp, aggr)
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	exec := NewExecution(logger, this, zone)
+func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	err := h.executeRequests(logger, zone, state, reqs)
+	if err == nil {
+		h.cache.ExecuteRequests(zone, reqs)
+	} else {
+		h.cache.DeleteZoneState(zone)
+	}
+	return err
+}
+
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	exec := NewExecution(logger, h, zone)
 
 	for _, r := range reqs {
 		switch r.Action {
@@ -189,11 +229,11 @@ func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNS
 			exec.addChange(route53.ChangeActionDelete, r, r.Deletion)
 		}
 	}
-	if this.config.DryRun {
+	if h.config.DryRun {
 		logger.Infof("no changes in dryrun mode for AWS")
 		return nil
 	}
-	return exec.submitChanges(this.metrics)
+	return exec.submitChanges(h.metrics)
 }
 
 func (this *Handler) MapTarget(t provider.Target) provider.Target {

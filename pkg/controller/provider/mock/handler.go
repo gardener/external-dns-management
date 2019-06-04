@@ -28,6 +28,7 @@ import (
 type Handler struct {
 	provider.DefaultDNSHandler
 	config  provider.DNSHandlerConfig
+	cache   provider.ZoneCache
 	ctx     context.Context
 	metrics provider.Metrics
 	mock    *provider.InMemory
@@ -69,20 +70,42 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		}
 	}
 
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, nil)
+	if err != nil {
+		return nil, err
+	}
+
 	return h, nil
 }
 
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
-	zones := h.mock.GetZones()
+	return h.cache.GetZones(h.getZones)
+}
 
+func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
+	zones := h.mock.GetZones()
 	return zones, nil
 }
 
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone, h.getZoneState)
+}
+
+func (h *Handler) getZoneState(data interface{}, zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	return h.mock.CloneZoneState(zone)
 }
 
-func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	err := this.executeRequests(logger, zone, state, reqs)
+	if err == nil {
+		this.cache.ExecuteRequests(zone, reqs)
+	} else {
+		this.cache.DeleteZoneState(zone)
+	}
+	return err
+}
+
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	var succeeded, failed int
 	for _, r := range reqs {
 		err := h.mock.Apply(zone.Id(), r, h.metrics)

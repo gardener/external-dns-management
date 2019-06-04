@@ -72,3 +72,8 @@ func (this *DefaultDNSHostedZone) ForwardedDomains() []string {
 func NewDNSHostedZone(ptype string, id, domain, key string, forwarded []string) DNSHostedZone {
 	return &DefaultDNSHostedZone{providerType: ptype, id: id, key: key, domain: domain, forwarded: forwarded}
 }
+
+func CopyDNSHostedZone(zone DNSHostedZone, forwardedDomains []string) DNSHostedZone {
+	return &DefaultDNSHostedZone{providerType: zone.ProviderType(), id: zone.Id(), key: zone.Key(),
+		domain: zone.Domain(), forwarded: forwardedDomains}
+}

@@ -30,6 +30,7 @@ const (
 	OPT_DRYRUN                     = "dry-run"
 	OPT_TTL                        = "ttl"
 	OPT_CACHE_TTL                  = "cache-ttl"
+	OPT_CACHE_DIR                  = "cache-dir"
 	OPT_SETUP                      = "setup"
 	OPT_DNSDELAY                   = "dns-delay"
 	OPT_RESCHEDULEDELAY            = "reschedule-delay"
