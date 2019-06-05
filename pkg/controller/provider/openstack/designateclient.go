@@ -80,6 +80,7 @@ func createDesignateServiceClient(logger logger.LogContext, authConfig *authConf
 		Password:         authConfig.Password,
 		TenantName:       authConfig.ProjectName,
 		DomainName:       authConfig.DomainName,
+		AllowReauth:      true,
 	}
 
 	logger.Infof("Using OpenStack Keystone at %s", opts.IdentityEndpoint)
