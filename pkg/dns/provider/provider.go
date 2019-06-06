@@ -115,19 +115,19 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 	var err error
 
 	name := provider.ObjectName()
-	h := this.Hash(props, provider.Spec().Type, provider.Spec().ProviderConfig)
+	hash := this.Hash(props, provider.Spec().Type, provider.Spec().ProviderConfig)
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	a := this.cache[h]
+	a := this.cache[hash]
 	if a == nil {
-		a = &DNSAccount{config: props, hash: h, clients: resources.ObjectNameSet{}}
+		a = &DNSAccount{config: props, hash: hash, clients: resources.ObjectNameSet{}}
 		syncPeriod := state.GetContext().GetPoolPeriod("dns")
 		if syncPeriod == nil {
 			return nil, fmt.Errorf("Pool dns not found")
 		}
 		persistDir := ""
 		if this.dir != "" {
-			persistDir = filepath.Join(this.dir, h)
+			persistDir = filepath.Join(this.dir, hash)
 		}
 		cacheConfig := ZoneCacheConfig{
 			context:               state.GetContext().GetContext(),
@@ -149,7 +149,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			return nil, err
 		}
 		logger.Infof("creating account for %s (%s)", name, a.Hash())
-		this.cache[h] = a
+		this.cache[hash] = a
 	}
 	old := len(a.clients)
 	a.clients.Add(name)
@@ -182,7 +182,7 @@ func (this *AccountCache) Release(logger logger.LogContext, a *DNSAccount, name 
 func (this *AccountCache) Hash(props utils.Properties, ptype string, extension *runtime.RawExtension) string {
 	keys := make([]string, len(props))
 	i := 0
-	h := sha256.New()
+	h := sha256.New224()
 	for k := range props {
 		keys[i] = k
 		i++
@@ -199,7 +199,9 @@ func (this *AccountCache) Hash(props utils.Properties, ptype string, extension *
 	if extension != nil {
 		h.Write(extension.Raw)
 	}
-	return hex.EncodeToString(h.Sum([]byte(ptype)))
+	h.Write(null)
+	h.Write([]byte(ptype))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 ///////////////////////////////////////////////////////////////////////////////
