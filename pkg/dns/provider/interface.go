@@ -166,6 +166,7 @@ type DNSHandler interface {
 	GetZoneState(DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
 	MapTarget(t Target) Target
+	Release()
 }
 
 type DefaultDNSHandler struct {

@@ -33,12 +33,13 @@ import (
 
 type Handler struct {
 	provider.DefaultDNSHandler
-	config    provider.DNSHandlerConfig
-	awsConfig AWSConfig
-	cache     provider.ZoneCache
-	metrics   provider.Metrics
-	sess      *session.Session
-	r53       *route53.Route53
+	config           provider.DNSHandlerConfig
+	awsConfig        AWSConfig
+	cache            provider.ZoneCache
+	forwardedDomains *provider.ForwardedDomainsHandlerData
+	metrics          provider.Metrics
+	sess             *session.Session
+	r53              *route53.Route53
 }
 
 type AWSConfig struct {
@@ -100,7 +101,8 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	h.sess = sess
 	h.r53 = route53.New(sess)
 
-	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, NewProviderData())
+	h.forwardedDomains = provider.NewForwardedDomainsHandlerData()
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, h.forwardedDomains)
 	if err != nil {
 		return nil, err
 	}
@@ -108,11 +110,15 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	return h, nil
 }
 
+func (h *Handler) Release() {
+	h.cache.Release()
+}
+
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones(h.getZones)
 }
 
-func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones() (provider.DNSHostedZones, error) {
 	rt := provider.M_LISTZONES
 	raw := []*route53.HostedZone{}
 	aggr := func(resp *route53.ListHostedZonesOutput, lastPage bool) bool {
@@ -140,8 +146,10 @@ func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
 		// call GetZoneState for side effect to calculate forwarded domains
 		_, err := h.GetZoneState(hostedZone)
 		if err == nil {
-			providerData := data.(*awsProviderData)
-			hostedZone = provider.CopyDNSHostedZone(hostedZone, providerData.forwardedDomains[hostedZone.Id()])
+			forwarded := h.forwardedDomains.GetForwardedDomains(hostedZone.Id())
+			if forwarded != nil {
+				hostedZone = provider.CopyDNSHostedZone(hostedZone, forwarded)
+			}
 		}
 
 		zones = append(zones, hostedZone)
@@ -161,7 +169,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone, h.getZoneState)
 }
 
-func (h *Handler) getZoneState(data interface{}, zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	aggr := func(r *route53.ResourceRecordSet) {
@@ -175,26 +183,25 @@ func (h *Handler) getZoneState(data interface{}, zone provider.DNSHostedZone) (p
 			dnssets.AddRecordSetFromProvider(aws.StringValue(r.Name), rs)
 		}
 	}
-	domain := zone.Domain() + "."
-	if err := h.handleRecordSets(zone.Id(), domain, data.(*awsProviderData), aggr); err != nil {
+	if err := h.handleRecordSets(zone, aggr); err != nil {
 		return nil, err
 	}
 
 	return provider.NewDNSZoneState(dnssets), nil
 }
 
-func (h *Handler) handleRecordSets(zoneid string, domain string, providerData *awsProviderData, f func(rs *route53.ResourceRecordSet)) error {
+func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route53.ResourceRecordSet)) error {
 	rt := provider.M_LISTRECORDS
-	inp := (&route53.ListResourceRecordSetsInput{}).SetHostedZoneId(zoneid)
+	inp := (&route53.ListResourceRecordSetsInput{}).SetHostedZoneId(zone.Id())
 	forwarded := []string{}
 	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
 		h.metrics.AddRequests(rt, 1)
 		for _, r := range resp.ResourceRecordSets {
 			f(r)
 			if aws.StringValue(r.Type) == dns.RS_NS {
-				name := aws.StringValue(r.Name)
-				if name != domain {
-					forwarded = append(forwarded, dns.NormalizeHostname(name))
+				name := dns.NormalizeHostname(aws.StringValue(r.Name))
+				if name != zone.Domain() {
+					forwarded = append(forwarded, name)
 				}
 			}
 		}
@@ -202,8 +209,9 @@ func (h *Handler) handleRecordSets(zoneid string, domain string, providerData *a
 
 		return true
 	}
-	providerData.forwardedDomains[zoneid] = forwarded
-	return h.r53.ListResourceRecordSetsPages(inp, aggr)
+	err := h.r53.ListResourceRecordSetsPages(inp, aggr)
+	h.forwardedDomains.SetForwardedDomains(zone.Id(), forwarded)
+	return err
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {

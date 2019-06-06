@@ -76,11 +76,15 @@ func (h *Handler) ProviderType() string {
 	return TYPE_CODE
 }
 
+func (h *Handler) Release() {
+	h.cache.Release()
+}
+
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones(h.getZones)
 }
 
-func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones() (provider.DNSHostedZones, error) {
 	raw := []alidns.Domain{}
 	{
 		f := func(zone alidns.Domain) (bool, error) {
@@ -129,7 +133,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone, h.getZoneState)
 }
 
-func (h *Handler) getZoneState(data interface{}, zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	state := newState()
 
 	f := func(r alidns.Record) (bool, error) {

@@ -48,6 +48,17 @@ func (m *InMemory) GetZones() DNSHostedZones {
 	return zones
 }
 
+func (m *InMemory) FindHostedZone(zoneid string) DNSHostedZone {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	data, ok := m.zones[zoneid]
+	if !ok {
+		return nil
+	}
+	return data.zone
+}
+
 func (m *InMemory) CloneZoneState(zone DNSHostedZone) (DNSZoneState, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()

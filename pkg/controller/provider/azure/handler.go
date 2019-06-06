@@ -114,11 +114,15 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 
 var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
 
+func (h *Handler) Release() {
+	h.cache.Release()
+}
+
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones(h.getZones)
 }
 
-func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones() (provider.DNSHostedZones, error) {
 	zones := provider.DNSHostedZones{}
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
 	h.metrics.AddRequests("ZonesClient_ListComplete", 1)
@@ -186,7 +190,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone, h.getZoneState)
 }
 
-func (h *Handler) getZoneState(data interface{}, zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	resourceGroup, zoneName := splitZoneid(zone.Id())

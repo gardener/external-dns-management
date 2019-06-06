@@ -20,6 +20,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"sync"
 	"time"
@@ -95,6 +96,10 @@ func (this *DNSAccount) MapTarget(t Target) Target {
 	return this.handler.MapTarget(t)
 }
 
+func (this *DNSAccount) Release() {
+	this.handler.Release()
+}
+
 type AccountCache struct {
 	lock  sync.Mutex
 	ttl   time.Duration
@@ -110,7 +115,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 	var err error
 
 	name := provider.ObjectName()
-	h := this.Hash(props, provider.Spec().ProviderConfig)
+	h := this.Hash(props, provider.Spec().Type, provider.Spec().ProviderConfig)
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	a := this.cache[h]
@@ -120,8 +125,14 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 		if syncPeriod == nil {
 			return nil, fmt.Errorf("Pool dns not found")
 		}
+		persistDir := ""
+		if this.dir != "" {
+			persistDir = filepath.Join(this.dir, h)
+		}
 		cacheConfig := ZoneCacheConfig{
-			persistDir:            this.dir,
+			context:               state.GetContext().GetContext(),
+			logger:                logger,
+			persistDir:            persistDir,
 			zonesTTL:              this.ttl,
 			stateTTL:              *syncPeriod,
 			disableZoneStateCache: !state.config.ZoneStateCaching,
@@ -161,13 +172,14 @@ func (this *AccountCache) Release(logger logger.LogContext, a *DNSAccount, name 
 			logger.Infof("releasing account for %s (%s)", name, a.Hash())
 			delete(this.cache, a.hash)
 			metrics.DeleteAccount(a.ProviderType(), a.Hash())
+			a.handler.Release()
 		} else {
 			logger.Infof("keeping account for %s (%s): %d client(s)", name, a.Hash(), len(a.clients))
 		}
 	}
 }
 
-func (this *AccountCache) Hash(props utils.Properties, extension *runtime.RawExtension) string {
+func (this *AccountCache) Hash(props utils.Properties, ptype string, extension *runtime.RawExtension) string {
 	keys := make([]string, len(props))
 	i := 0
 	h := sha256.New()
@@ -187,7 +199,7 @@ func (this *AccountCache) Hash(props utils.Properties, extension *runtime.RawExt
 	if extension != nil {
 		h.Write(extension.Raw)
 	}
-	return hex.EncodeToString(h.Sum(nil))
+	return hex.EncodeToString(h.Sum([]byte(ptype)))
 }
 
 ///////////////////////////////////////////////////////////////////////////////

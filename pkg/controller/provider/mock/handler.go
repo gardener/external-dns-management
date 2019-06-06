@@ -78,11 +78,15 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	return h, nil
 }
 
+func (h *Handler) Release() {
+	h.cache.Release()
+}
+
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones(h.getZones)
 }
 
-func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones() (provider.DNSHostedZones, error) {
 	zones := h.mock.GetZones()
 	return zones, nil
 }
@@ -91,7 +95,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone, h.getZoneState)
 }
 
-func (h *Handler) getZoneState(data interface{}, zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	return h.mock.CloneZoneState(zone)
 }
 

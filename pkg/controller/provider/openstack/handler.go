@@ -109,11 +109,15 @@ func readAuthConfig(config *provider.DNSHandlerConfig) (*authConfig, error) {
 	return &authConfig, nil
 }
 
+func (h *Handler) Release() {
+	h.cache.Release()
+}
+
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones(h.getZones)
 }
 
-func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones() (provider.DNSHostedZones, error) {
 	hostedZones := provider.DNSHostedZones{}
 
 	zoneHandler := func(zone *zones.Zone) error {
@@ -131,7 +135,7 @@ func (h *Handler) getZones(data interface{}) (provider.DNSHostedZones, error) {
 	}
 
 	if err := h.client.ForEachZone(zoneHandler); err != nil {
-		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
+		return nil, fmt.Errorf("listing DNS zones failed. Details: %s", err.Error())
 	}
 
 	return hostedZones, nil
@@ -161,7 +165,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone, h.getZoneState)
 }
 
-func (h *Handler) getZoneState(data interface{}, zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	recordSetHandler := func(recordSet *recordsets.RecordSet) error {

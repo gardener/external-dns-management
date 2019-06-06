@@ -199,6 +199,5 @@ func (c designateClient) GetRecordSet(zoneID, recordSetID string, handler func(r
 	if err != nil {
 		return err
 	}
-	handler(rs)
-	return nil
+	return handler(rs)
 }
