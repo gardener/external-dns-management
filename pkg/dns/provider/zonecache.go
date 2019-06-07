@@ -67,29 +67,7 @@ func NewZoneCache(config ZoneCacheConfig, metrics Metrics, handlerData HandlerDa
 		cache := &onlyZonesCache{config: config, handlerData: handlerData}
 		return cache, nil
 	} else {
-		if config.persistDir != "" {
-			err := os.MkdirAll(config.persistDir, 0777)
-			if err != nil {
-				return nil, fmt.Errorf("creating persistent directory for zone cache at %s failed with %s", config.persistDir, err)
-			}
-		}
-		state := &zoneState{
-			inMemory:    NewInMemory(),
-			ttl:         config.stateTTL,
-			persistDir:  config.persistDir,
-			next:        map[string]time.Time{},
-			handlerData: handlerData,
-		}
-		cache := &defaultZoneCache{config: config, logger: config.logger, metrics: metrics, state: state}
-		if config.persistDir != "" {
-			err := cache.restoreFromDisk()
-			if err != nil {
-				return nil, fmt.Errorf("restoring zone cache from persistent directory %s failed with %s", config.persistDir, err)
-			}
-			cache.persistC = make(chan string)
-			go cache.backgroundWriter()
-		}
-		return cache, nil
+		return newDefaultZoneCache(config, metrics, handlerData)
 	}
 }
 
@@ -199,10 +177,37 @@ type defaultZoneCache struct {
 	zonesErr  error
 	zonesNext time.Time
 	state     *zoneState
+	persist   bool
 	persistC  chan string
 }
 
 var _ ZoneCache = &defaultZoneCache{}
+
+func newDefaultZoneCache(config ZoneCacheConfig, metrics Metrics, handlerData HandlerData) (*defaultZoneCache, error) {
+	state := &zoneState{
+		inMemory:    NewInMemory(),
+		ttl:         config.stateTTL,
+		persistDir:  config.persistDir,
+		next:        map[string]time.Time{},
+		handlerData: handlerData,
+	}
+	persist := config.persistDir != ""
+	cache := &defaultZoneCache{config: config, logger: config.logger, metrics: metrics, state: state, persist: persist}
+	if persist {
+		err := os.MkdirAll(config.persistDir, 0777)
+		if err != nil {
+			return nil, fmt.Errorf("creating persistent directory for zone cache at %s failed with %s", config.persistDir, err)
+		}
+
+		err = cache.restoreFromDisk()
+		if err != nil {
+			return nil, fmt.Errorf("restoring zone cache from persistent directory %s failed with %s", config.persistDir, err)
+		}
+		cache.persistC = make(chan string)
+		go cache.backgroundWriter()
+	}
+	return cache, nil
+}
 
 func (c *defaultZoneCache) GetZones(updater ZoneCacheZoneUpdater) (DNSHostedZones, error) {
 	c.lock.Lock()
@@ -227,19 +232,25 @@ func (c *defaultZoneCache) GetZoneState(zone DNSHostedZone, updater ZoneCacheSta
 	if cached {
 		c.metrics.AddRequests(M_CACHED_GETZONESTATE, 1)
 	} else {
-		c.persistC <- zone.Id()
+		c.persistZone(zone)
 	}
 	return state, err
 }
 
+func (c *defaultZoneCache) persistZone(zone DNSHostedZone) {
+	if c.persist {
+		c.persistC <- zone.Id()
+	}
+}
+
 func (c *defaultZoneCache) DeleteZoneState(zone DNSHostedZone) {
 	c.state.DeleteZoneState(zone)
-	c.persistC <- zone.Id()
+	c.persistZone(zone)
 }
 
 func (c *defaultZoneCache) ExecuteRequests(zone DNSHostedZone, reqs []*ChangeRequest) {
 	c.state.ExecuteRequests(zone, reqs)
-	c.persistC <- zone.Id()
+	c.persistZone(zone)
 }
 
 func (c *defaultZoneCache) GetHandlerData() HandlerData {
