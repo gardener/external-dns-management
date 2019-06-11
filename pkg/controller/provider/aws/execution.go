@@ -34,15 +34,15 @@ type Change struct {
 
 type Execution struct {
 	logger.LogContext
-	handler *Handler
-	zone    provider.DNSHostedZone
+	r53  *route53.Route53
+	zone provider.DNSHostedZone
 
-	changes        map[string][]*Change
-	maxChangeCount int
+	changes   map[string][]*Change
+	batchSize int
 }
 
 func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZone) *Execution {
-	return &Execution{LogContext: logger, handler: h, zone: zone, changes: map[string][]*Change{}, maxChangeCount: 50}
+	return &Execution{LogContext: logger, r53: h.r53, zone: zone, changes: map[string][]*Change{}, batchSize: h.awsConfig.BatchSize}
 }
 
 func buildResourceRecordSet(name string, rset *dns.RecordSet) *route53.ResourceRecordSet {
@@ -75,7 +75,11 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 	}
 
 	change := &route53.Change{Action: aws.String(action), ResourceRecordSet: rrs}
-	this.changes[name] = append(this.changes[name], &Change{Change: change, Done: req.Done})
+	this.addRawChange(name, change, req.Done)
+}
+
+func (this *Execution) addRawChange(name string, change *route53.Change, done provider.DoneHandler) {
+	this.changes[name] = append(this.changes[name], &Change{Change: change, Done: done})
 }
 
 func (this *Execution) submitChanges(metrics provider.Metrics) error {
@@ -83,7 +87,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		return nil
 	}
 
-	limitedChanges := limitChangeSet(this.changes, this.maxChangeCount)
+	limitedChanges := limitChangeSet(this.changes, this.batchSize)
 	this.Infof("require %d batches for %d dns names", len(limitedChanges), len(this.changes))
 	for i, changes := range limitedChanges {
 		this.Infof("processing batch %d for zone %s with %d requests", i+1, this.zone.Id(), len(changes))
@@ -103,7 +107,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		}
 
 		metrics.AddRequests(provider.M_UPDATERECORDS, 1)
-		if _, err := this.handler.r53.ChangeResourceRecordSets(params); err != nil {
+		if _, err := this.r53.ChangeResourceRecordSets(params); err != nil {
 			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)
 			for _, c := range changes {
 				if c.Done != nil {
