@@ -53,20 +53,32 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 
 	subscriptionID := h.config.Properties["AZURE_SUBSCRIPTION_ID"]
 	if subscriptionID == "" {
-		return nil, fmt.Errorf("'AZURE_SUBSCRIPTION_ID' required in secret")
+		subscriptionID = h.config.Properties["subscriptionID"]
+	}
+	if subscriptionID == "" {
+		return nil, fmt.Errorf("'AZURE_SUBSCRIPTION_ID' or 'subscriptionID' required in secret")
 	}
 	// see https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization
 	clientID := h.config.Properties["AZURE_CLIENT_ID"]
 	if clientID == "" {
-		return nil, fmt.Errorf("'AZURE_CLIENT_ID' required in secret")
+		clientID = h.config.Properties["clientID"]
+	}
+	if clientID == "" {
+		return nil, fmt.Errorf("'AZURE_CLIENT_ID' or 'clientID' required in secret")
 	}
 	clientSecret := h.config.Properties["AZURE_CLIENT_SECRET"]
 	if clientSecret == "" {
-		return nil, fmt.Errorf("'AZURE_CLIENT_SECRET' required in secret")
+		clientSecret = h.config.Properties["clientSecret"]
+	}
+	if clientSecret == "" {
+		return nil, fmt.Errorf("'AZURE_CLIENT_SECRET' or 'clientSecret' required in secret")
 	}
 	tenantID := h.config.Properties["AZURE_TENANT_ID"]
 	if tenantID == "" {
-		return nil, fmt.Errorf("'AZURE_TENANT_ID' required in secret")
+		tenantID = h.config.Properties["tenantID"]
+	}
+	if tenantID == "" {
+		return nil, fmt.Errorf("'AZURE_TENANT_ID' or 'tenantID' required in secret")
 	}
 
 	authorizer, err := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID).Authorizer()

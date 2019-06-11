@@ -39,16 +39,22 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		config: *config,
 	}
 
-	accessKeyId := this.config.Properties["ACCESS_KEY_ID"]
-	if accessKeyId == "" {
-		return nil, fmt.Errorf("'ACCESS_KEY_ID' required in secret")
+	accessKeyID := this.config.Properties["ACCESS_KEY_ID"]
+	if accessKeyID == "" {
+		accessKeyID = this.config.Properties["accessKeyID"]
+	}
+	if accessKeyID == "" {
+		return nil, fmt.Errorf("'ACCESS_KEY_ID' or 'accessKeyID' required in secret")
 	}
 	accessKeySecret := this.config.Properties["ACCESS_KEY_SECRET"]
 	if accessKeySecret == "" {
-		return nil, fmt.Errorf("'ACCESS_KEY_SECRET' required in secret")
+		accessKeySecret = this.config.Properties["accessKeySecret"]
+	}
+	if accessKeySecret == "" {
+		return nil, fmt.Errorf("'ACCESS_KEY_SECRET' or 'accessKeySecret' required in secret")
 	}
 
-	access, err := NewAccess(accessKeyId, accessKeySecret, metrics)
+	access, err := NewAccess(accessKeyID, accessKeySecret, metrics)
 	if err != nil {
 		return nil, err
 	}

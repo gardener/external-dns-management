@@ -62,32 +62,39 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	return &h, nil
 }
 
-func readConfigProperty(config *provider.DNSHandlerConfig, key string) (value string, err error) {
+func readConfigProperty(config *provider.DNSHandlerConfig, key string, altKey string) (value string, err error) {
 	value = config.Properties[key]
+	if value == "" && altKey != "" {
+		value = config.Properties[altKey]
+	}
 	if value == "" {
-		err = fmt.Errorf("'%s' required in secret", key)
+		alt := ""
+		if altKey != "" {
+			alt = fmt.Sprintf(" or '%s'", altKey)
+		}
+		err = fmt.Errorf("'%s'%s required in secret", key, alt)
 	}
 	return
 }
 
 func readAuthConfig(config *provider.DNSHandlerConfig) (*authConfig, error) {
-	authURL, err := readConfigProperty(config, "OS_AUTH_URL")
+	authURL, err := readConfigProperty(config, "OS_AUTH_URL", "")
 	if err != nil {
 		return nil, err
 	}
-	username, err := readConfigProperty(config, "OS_USERNAME")
+	username, err := readConfigProperty(config, "OS_USERNAME", "username")
 	if err != nil {
 		return nil, err
 	}
-	domainName, err := readConfigProperty(config, "OS_DOMAIN_NAME")
+	domainName, err := readConfigProperty(config, "OS_DOMAIN_NAME", "domainName")
 	if err != nil {
 		return nil, err
 	}
-	password, err := readConfigProperty(config, "OS_PASSWORD")
+	password, err := readConfigProperty(config, "OS_PASSWORD", "password")
 	if err != nil {
 		return nil, err
 	}
-	projectName, err := readConfigProperty(config, "OS_PROJECT_NAME")
+	projectName, err := readConfigProperty(config, "OS_PROJECT_NAME", "tenantName")
 	if err != nil {
 		return nil, err
 	}

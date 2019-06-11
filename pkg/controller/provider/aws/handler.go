@@ -58,18 +58,24 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		awsConfig: awsConfig,
 		metrics:   metrics,
 	}
-	akid := this.config.Properties["AWS_ACCESS_KEY_ID"]
-	if akid == "" {
+	accessKeyID := this.config.Properties["AWS_ACCESS_KEY_ID"]
+	if accessKeyID == "" {
+		accessKeyID = this.config.Properties["accessKeyID"]
+	}
+	if accessKeyID == "" {
 		logger.Infof("creating aws-route53 handler failed because of missing access key id")
-		return nil, fmt.Errorf("'AWS_ACCESS_KEY_ID' required in secret")
+		return nil, fmt.Errorf("'AWS_ACCESS_KEY_ID' or 'accessKeyID' required in secret")
 	}
-	logger.Infof("creating aws-route53 handler for %s", akid)
-	sak := this.config.Properties["AWS_SECRET_ACCESS_KEY"]
-	if sak == "" {
-		return nil, fmt.Errorf("'AWS_SECRET_ACCESS_KEY' required in secret")
+	logger.Infof("creating aws-route53 handler for %s", accessKeyID)
+	secretAccessKey := this.config.Properties["AWS_SECRET_ACCESS_KEY"]
+	if secretAccessKey == "" {
+		secretAccessKey = this.config.Properties["secretAccessKey"]
 	}
-	st := this.config.Properties["AWS_SESSION_TOKEN"]
-	creds := credentials.NewStaticCredentials(akid, sak, st)
+	if secretAccessKey == "" {
+		return nil, fmt.Errorf("'AWS_SECRET_ACCESS_KEY' or 'secretAccessKey' required in secret")
+	}
+	token := this.config.Properties["AWS_SESSION_TOKEN"]
+	creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, token)
 
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String("us-west-2"),
