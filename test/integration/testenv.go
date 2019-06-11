@@ -500,7 +500,7 @@ func (te *TestEnv) AwaitWithTimeout(msg string, check CheckFunc, timeout time.Du
 		time.Sleep(50 * time.Millisecond)
 	}
 	if err != nil {
-		fmt.Errorf("Timeout during check %s with error %s", msg, err.Error())
+		return fmt.Errorf("Timeout during check %s with error %s", msg, err.Error())
 	}
 	return fmt.Errorf("Timeout during check  %s", msg)
 }
