@@ -33,6 +33,7 @@ import (
 )
 
 type Handler struct {
+	provider.DefaultDNSHandler
 	config        provider.DNSHandlerConfig
 	ctx           context.Context
 	metrics       provider.Metrics
@@ -45,8 +46,9 @@ var _ provider.DNSHandler = &Handler{}
 func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
 
 	h := &Handler{
-		config:  *config,
-		metrics: metrics,
+		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
+		config:            *config,
+		metrics:           metrics,
 	}
 
 	h.ctx = config.Context
@@ -104,10 +106,6 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 }
 
 var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
-
-func (h *Handler) ProviderType() string {
-	return TYPE_CODE
-}
 
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	zones := provider.DNSHostedZones{}

@@ -154,6 +154,23 @@ type DNSHandler interface {
 	GetZones() (DNSHostedZones, error)
 	GetZoneState(DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
+	MapTarget(t Target) Target
+}
+
+type DefaultDNSHandler struct {
+	providerType string
+}
+
+func NewDefaultDNSHandler(providerType string) DefaultDNSHandler {
+	return DefaultDNSHandler{providerType}
+}
+
+func (this *DefaultDNSHandler) ProviderType() string {
+	return this.providerType
+}
+
+func (this *DefaultDNSHandler) MapTarget(t Target) Target {
+	return t
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,6 +196,7 @@ type DNSProvider interface {
 	Match(dns string) int
 
 	AccountHash() string
+	MapTarget(t Target) Target
 }
 
 type DoneHandler interface {

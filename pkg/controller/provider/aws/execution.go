@@ -68,8 +68,12 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 	this.Infof("%s %s record set %s[%s]: %s(%d)", action, rset.Type, name, this.zone.Id(), rset.RecordString(), rset.TTL)
 
 	var rrs *route53.ResourceRecordSet
-	if canConvertToAliasTarget(rset) {
+	if rset.Type == dns.RS_ALIAS {
 		rrs = buildResourceRecordSetForAliasTarget(name, rset)
+		if rrs == nil {
+			this.Errorf("Corrupted alias record set %s[%s]", name, this.zone.Id())
+			return
+		}
 	} else {
 		rrs = buildResourceRecordSet(name, rset)
 	}
