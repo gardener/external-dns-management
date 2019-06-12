@@ -28,6 +28,7 @@ import (
 )
 
 type Handler struct {
+	provider.DefaultDNSHandler
 	config  provider.DNSHandlerConfig
 	ctx     context.Context
 	metrics provider.Metrics
@@ -45,9 +46,10 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	mock := NewInMemory()
 
 	h := &Handler{
-		config:  *config,
-		metrics: metrics,
-		mock:    mock,
+		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
+		config:            *config,
+		metrics:           metrics,
+		mock:              mock,
 	}
 
 	mockConfig := MockConfig{}
@@ -76,10 +78,6 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	}
 
 	return h, nil
-}
-
-func (h *Handler) ProviderType() string {
-	return TYPE_CODE
 }
 
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {

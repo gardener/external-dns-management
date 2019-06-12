@@ -31,6 +31,7 @@ import (
 )
 
 type Handler struct {
+	provider.DefaultDNSHandler
 	config    provider.DNSHandlerConfig
 	awsConfig AWSConfig
 	metrics   provider.Metrics
@@ -54,6 +55,8 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	}
 
 	this := &Handler{
+		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
+
 		config:    *config,
 		awsConfig: awsConfig,
 		metrics:   metrics,
@@ -87,10 +90,6 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	this.sess = sess
 	this.r53 = route53.New(sess)
 	return this, nil
-}
-
-func (h *Handler) ProviderType() string {
-	return TYPE_CODE
 }
 
 func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
@@ -144,28 +143,19 @@ func buildRecordSet(r *route53.ResourceRecordSet) *dns.RecordSet {
 func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
-	migrations := []*route53.ResourceRecordSet{}
-
 	aggr := func(r *route53.ResourceRecordSet) {
 		if dns.SupportedRecordType(aws.StringValue(r.Type)) {
 			var rs *dns.RecordSet
 			if isAliasTarget(r) {
-				rs = buildRecordSetForAliasTarget(r)
+				rs = buildRecordSetFromAliasTarget(r)
 			} else {
 				rs = buildRecordSet(r)
-				if canConvertToAliasTarget(rs) {
-					migrations = append(migrations, r)
-				}
 			}
 			dnssets.AddRecordSetFromProvider(aws.StringValue(r.Name), rs)
 		}
 	}
 	if err := this.handleRecordSets(zone.Id(), aggr); err != nil {
 		return nil, err
-	}
-
-	if len(migrations) > 0 {
-		this.migrateRecordsToAliasTargets(zone, migrations)
 	}
 
 	return provider.NewDNSZoneState(dnssets), nil
@@ -206,27 +196,12 @@ func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNS
 	return exec.submitChanges(this.metrics)
 }
 
-func (this *Handler) migrateRecordsToAliasTargets(zone provider.DNSHostedZone, migrations []*route53.ResourceRecordSet) {
-	logContext := logger.NewContext("provider", "aws-route53").NewContext("zone", zone.Id())
-	logContext.Infof("migrating %d records to alias targets", len(migrations))
-	exec := NewExecution(logContext, this, zone)
-
-	for _, r := range migrations {
-		rs := buildRecordSet(r)
-		name := aws.StringValue(r.Name)
-		dnsset := dns.NewDNSSet(dns.NormalizeHostname(name))
-		dnsset.Sets[rs.Type] = rs
-
-		// delete old CNAME DNS record
-		change := &route53.Change{Action: aws.String(route53.ChangeActionDelete), ResourceRecordSet: r}
-		exec.addRawChange(name, change, nil)
-		// add A alias target record (implicitly converted dns.RecordSet)
-		r := &provider.ChangeRequest{Action: provider.R_CREATE, Type: aws.StringValue(r.Type), Addition: dnsset}
-		exec.addChange(route53.ChangeActionCreate, r, r.Addition)
+func (this *Handler) MapTarget(t provider.Target) provider.Target {
+	if t.GetRecordType() == dns.RS_CNAME {
+		hostedZone := canonicalHostedZone(t.GetHostName())
+		if hostedZone != "" {
+			return provider.NewTarget(dns.RS_ALIAS, t.GetHostName(), t.GetEntry())
+		}
 	}
-
-	err := exec.submitChanges(this.metrics)
-	if err != nil {
-		logContext.Warnf("Migrating to alias targets failed with %s", err)
-	}
+	return t
 }

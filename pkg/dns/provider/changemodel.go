@@ -258,7 +258,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHan
 	oldset := view.dnssets[name]
 	newset := dns.NewDNSSet(name)
 	if !delete {
-		this.AddTargets(newset, oldset, targets...)
+		this.AddTargets(newset, oldset, p, targets...)
 	}
 	mod := false
 	if oldset != nil {
@@ -383,7 +383,7 @@ func (this *ChangeModel) setOwner(set *dns.DNSSet, targets []Target) bool {
 	return false
 }
 
-func (this *ChangeModel) AddTargets(set *dns.DNSSet, base *dns.DNSSet, targets ...Target) *dns.DNSSet {
+func (this *ChangeModel) AddTargets(set *dns.DNSSet, base *dns.DNSSet, provider DNSProvider, targets ...Target) *dns.DNSSet {
 	//if base != nil {
 	//	meta := base.Sets[RS_META]
 	//	if meta != nil {
@@ -400,10 +400,9 @@ func (this *ChangeModel) AddTargets(set *dns.DNSSet, base *dns.DNSSet, targets .
 	targetsets := set.Sets
 	cnames := []string{}
 	for _, t := range targets {
-		ty := t.GetRecordType()
 		// use status calculated in entry
 		ttl := t.GetEntry().TTL()
-		if ty == dns.RS_CNAME && len(targets) > 1 {
+		if t.GetRecordType() == dns.RS_CNAME && len(targets) > 1 {
 			cnames = append(cnames, t.GetHostName())
 			addrs, err := net.LookupHost(t.GetHostName())
 			if err == nil {
@@ -415,7 +414,8 @@ func (this *ChangeModel) AddTargets(set *dns.DNSSet, base *dns.DNSSet, targets .
 			}
 			this.Debugf("mapping target '%s' to A records: %s", t.GetHostName(), strings.Join(addrs, ","))
 		} else {
-			AddRecord(targetsets, ty, t.GetHostName(), ttl)
+			t = provider.MapTarget(t)
+			AddRecord(targetsets, t.GetRecordType(), t.GetHostName(), ttl)
 		}
 	}
 	set.Sets = targetsets

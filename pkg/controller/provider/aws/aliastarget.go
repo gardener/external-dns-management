@@ -75,43 +75,30 @@ func isAliasTarget(r *route53.ResourceRecordSet) bool {
 	return aws.StringValue(r.Type) == route53.RRTypeA && r.AliasTarget != nil
 }
 
-// buildRecordSetForAliasTarget transforms an A alias target to a CNAME dns.RecordSet
-func buildRecordSetForAliasTarget(r *route53.ResourceRecordSet) *dns.RecordSet {
-	rs := dns.NewRecordSet(dns.RS_CNAME, 0, nil)
+// buildRecordSetFromAliasTarget transforms an A alias target to a CNAME dns.RecordSet
+func buildRecordSetFromAliasTarget(r *route53.ResourceRecordSet) *dns.RecordSet {
+	rs := dns.NewRecordSet(dns.RS_ALIAS, 0, nil)
 	rs.IgnoreTTL = true // alias target has no settable TTL
 	rs.Add(&dns.Record{Value: dns.NormalizeHostname(aws.StringValue(r.AliasTarget.DNSName))})
 	return rs
 }
 
-// canConvertToAliasTarget determines if a given hostname belongs to an AWS load balancer.
-// Returns nil otherwise.
-func canConvertToAliasTarget(rset *dns.RecordSet) bool {
-	return getAliasTargetForAWSLoadBalancer(rset) != nil
-}
-
-// getAliasTargetForAWSLoadBalancer determines if a given hostname belongs to an AWS load balancer
-// and creates an AliasTarget. Returns nil otherwise.
-func getAliasTargetForAWSLoadBalancer(rset *dns.RecordSet) *route53.AliasTarget {
-	if rset.Type == dns.RS_CNAME && len(rset.Records) == 1 {
-		target := dns.NormalizeHostname(rset.Records[0].Value)
-		hostedZone := canonicalHostedZone(target)
-		if hostedZone != "" {
-			return &route53.AliasTarget{
-				DNSName:              aws.String(target),
-				HostedZoneId:         aws.String(hostedZone),
-				EvaluateTargetHealth: aws.Bool(true),
-			}
-		}
+func buildResourceRecordSetForAliasTarget(name string, rset *dns.RecordSet) *route53.ResourceRecordSet {
+	target := dns.NormalizeHostname(rset.Records[0].Value)
+	hostedZone := canonicalHostedZone(target)
+	if hostedZone == "" {
+		return nil
+	}
+	aliasTarget := &route53.AliasTarget{
+		DNSName:              aws.String(target),
+		HostedZoneId:         aws.String(hostedZone),
+		EvaluateTargetHealth: aws.Bool(true),
 	}
 
-	return nil
-}
-
-func buildResourceRecordSetForAliasTarget(name string, rset *dns.RecordSet) *route53.ResourceRecordSet {
 	return &route53.ResourceRecordSet{
 		Name:        aws.String(name),
 		Type:        aws.String(route53.RRTypeA),
-		AliasTarget: getAliasTargetForAWSLoadBalancer(rset),
+		AliasTarget: aliasTarget,
 	}
 }
 

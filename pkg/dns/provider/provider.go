@@ -117,6 +117,10 @@ func (this *DNSAccount) ExecuteRequests(logger logger.LogContext, zone DNSHosted
 	return this.handler.ExecuteRequests(logger, zone, state, reqs)
 }
 
+func (this *DNSAccount) MapTarget(t Target) Target {
+	return this.handler.MapTarget(t)
+}
+
 type AccountCache struct {
 	lock  sync.Mutex
 	ttl   time.Duration
@@ -427,6 +431,10 @@ func (this *dnsProviderVersion) Match(dns string) int {
 		return ilen
 	}
 	return -1
+}
+
+func (this *dnsProviderVersion) MapTarget(t Target) Target {
+	return this.account.MapTarget(t)
 }
 
 func (this *dnsProviderVersion) setError(modified bool, err error) error {

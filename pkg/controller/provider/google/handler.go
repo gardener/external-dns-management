@@ -32,6 +32,7 @@ import (
 )
 
 type Handler struct {
+	provider.DefaultDNSHandler
 	config      provider.DNSHandlerConfig
 	credentials *google.Credentials
 	client      *http.Client
@@ -46,8 +47,9 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	var err error
 
 	this := &Handler{
-		config:  *config,
-		metrics: metrics,
+		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
+		config:            *config,
+		metrics:           metrics,
 	}
 	scopes := []string{
 		//	"https://www.googleapis.com/auth/compute",
@@ -79,10 +81,6 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	}
 
 	return this, nil
-}
-
-func (h *Handler) ProviderType() string {
-	return TYPE_CODE
 }
 
 func (this *Handler) GetZones() (provider.DNSHostedZones, error) {

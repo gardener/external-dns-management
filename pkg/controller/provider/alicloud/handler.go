@@ -26,6 +26,7 @@ import (
 )
 
 type Handler struct {
+	provider.DefaultDNSHandler
 	config provider.DNSHandlerConfig
 	access Access
 }
@@ -36,7 +37,8 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	var err error
 
 	this := &Handler{
-		config: *config,
+		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
+		config:            *config,
 	}
 
 	accessKeyID := this.config.Properties["ACCESS_KEY_ID"]
@@ -61,10 +63,6 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 
 	this.access = access
 	return this, nil
-}
-
-func (h *Handler) ProviderType() string {
-	return TYPE_CODE
 }
 
 func (this *Handler) GetZones() (provider.DNSHostedZones, error) {

@@ -28,6 +28,7 @@ import (
 )
 
 type Handler struct {
+	provider.DefaultDNSHandler
 	config provider.DNSHandlerConfig
 	ctx    context.Context
 
@@ -55,9 +56,10 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	}
 
 	h := Handler{
-		config: *config,
-		ctx:    config.Context,
-		client: designateClient{serviceClient: serviceClient, metrics: metrics},
+		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
+		config:            *config,
+		ctx:               config.Context,
+		client:            designateClient{serviceClient: serviceClient, metrics: metrics},
 	}
 	return &h, nil
 }
@@ -105,10 +107,6 @@ func readAuthConfig(config *provider.DNSHandlerConfig) (*authConfig, error) {
 		DomainName: domainName, ProjectName: projectName, RegionName: regionName}
 
 	return &authConfig, nil
-}
-
-func (h *Handler) ProviderType() string {
-	return TYPE_CODE
 }
 
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
