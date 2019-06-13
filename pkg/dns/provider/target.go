@@ -71,12 +71,14 @@ func NewTarget(ty string, ta string, entry *EntryVersion) Target {
 	return &target{rtype: ty, host: ta, entry: entry}
 }
 
-func NewTargetFromEntryVersion(name string, entry *EntryVersion) Target {
+func NewTargetFromEntryVersion(name string, entry *EntryVersion) (Target, error) {
 	ip := net.ParseIP(name)
 	if ip == nil {
-		return NewTarget(dns.RS_CNAME, name, entry)
+		return NewTarget(dns.RS_CNAME, name, entry), nil
+	} else if ip.To4() != nil {
+		return NewTarget(dns.RS_A, name, entry), nil
 	} else {
-		return NewTarget(dns.RS_A, name, entry)
+		return nil, fmt.Errorf("IPv6 addresses are not supported yet: %s (%s)", ip.String(), name)
 	}
 }
 

@@ -210,7 +210,11 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 	}
 
 	for _, t := range spec.Targets {
-		new := NewTargetFromEntryVersion(t, entry)
+		var new Target
+		new, err = NewTargetFromEntryVersion(t, entry)
+		if err != nil {
+			return
+		}
 		if targets.Has(new) {
 			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate target %q", entry.ObjectName(), new))
 		} else {
@@ -337,8 +341,8 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		this.valid = true
 	} else {
 		this.warnings = warnings
-		targets, mappings := normalizeTargets(logger, this.object, targets...)
-		if len(mappings) > 0 {
+		targets, multiCName := normalizeTargets(logger, this.object, targets...)
+		if multiCName {
 			if spec.CNameLookupInterval != nil && *spec.CNameLookupInterval > 0 {
 				this.interval = *spec.CNameLookupInterval
 			} else {
@@ -472,13 +476,13 @@ func targetList(targets Targets) ([]string, string) {
 	return list, msg
 }
 
-func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject, targets ...Target) (Targets, map[string][]string) {
+func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject, targets ...Target) (Targets, bool) {
 	result := make(Targets, 0, len(targets))
-	mappings := map[string][]string{}
+	multiCNAME := false
 	for _, t := range targets {
 		ty := t.GetRecordType()
 		if ty == dns.RS_CNAME && len(targets) > 1 {
-			addrs, err := net.LookupHost(t.GetHostName())
+			addrs, err := lookupHostIPv4(t.GetHostName())
 			if err == nil {
 				for _, addr := range addrs {
 					result = append(result, NewTarget(dns.RS_A, addr, t.GetEntry()))
@@ -488,12 +492,30 @@ func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject,
 				logger.Warn(w)
 				object.Event(corev1.EventTypeNormal, "dnslookup", w)
 			}
-			mappings[t.GetHostName()] = addrs
+			multiCNAME = true
 		} else {
 			result = append(result, t)
 		}
 	}
-	return result, mappings
+	return result, multiCNAME
+}
+
+func lookupHostIPv4(hostname string) ([]string, error) {
+	ips, err := net.LookupIP(hostname)
+	if err != nil {
+		return nil, err
+	}
+	addrs := make([]string, 0, len(ips))
+	for _, ip := range ips {
+		if ip.To4() == nil {
+			continue
+		}
+		addrs = append(addrs, ip.String())
+	}
+	if len(addrs) == 0 {
+		return nil, fmt.Errorf("%s has no IPv4 address (of %d addresses)", hostname, len(ips))
+	}
+	return addrs, nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////

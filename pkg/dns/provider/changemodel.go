@@ -19,7 +19,6 @@ package provider
 import (
 	"fmt"
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"net"
 	"sort"
 	"strings"
 
@@ -404,7 +403,7 @@ func (this *ChangeModel) AddTargets(set *dns.DNSSet, base *dns.DNSSet, provider 
 		ttl := t.GetEntry().TTL()
 		if t.GetRecordType() == dns.RS_CNAME && len(targets) > 1 {
 			cnames = append(cnames, t.GetHostName())
-			addrs, err := net.LookupHost(t.GetHostName())
+			addrs, err := lookupHostIPv4(t.GetHostName())
 			if err == nil {
 				for _, addr := range addrs {
 					AddRecord(targetsets, dns.RS_A, addr, ttl)
