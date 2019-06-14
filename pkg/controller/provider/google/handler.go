@@ -34,22 +34,13 @@ import (
 
 type Handler struct {
 	provider.DefaultDNSHandler
-	config           provider.DNSHandlerConfig
-	cache            provider.ZoneCache
-	forwardedDomains *provider.ForwardedDomainsHandlerData
-	credentials      *google.Credentials
-	client           *http.Client
-	ctx              context.Context
-	metrics          provider.Metrics
-	service          *googledns.Service
-}
-
-type googleProviderData struct {
-	forwardedDomains map[string][]string
-}
-
-func NewProviderData() *googleProviderData {
-	return &googleProviderData{forwardedDomains: map[string][]string{}}
+	config      provider.DNSHandlerConfig
+	cache       provider.ZoneCache
+	credentials *google.Credentials
+	client      *http.Client
+	ctx         context.Context
+	metrics     provider.Metrics
+	service     *googledns.Service
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -91,8 +82,8 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		return nil, err
 	}
 
-	h.forwardedDomains = provider.NewForwardedDomainsHandlerData()
-	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, h.forwardedDomains)
+	forwardedDomains := provider.NewForwardedDomainsHandlerData()
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, forwardedDomains, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}
@@ -105,10 +96,10 @@ func (h *Handler) Release() {
 }
 
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
-	return h.cache.GetZones(h.getZones)
+	return h.cache.GetZones()
 }
 
-func (h *Handler) getZones() (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
 	rt := provider.M_LISTZONES
 	raw := []*googledns.ManagedZone{}
 	f := func(resp *googledns.ManagedZonesListResponse) error {
@@ -130,9 +121,9 @@ func (h *Handler) getZones() (provider.DNSHostedZones, error) {
 			z.Name, dns.NormalizeHostname(z.DnsName), "", []string{})
 
 		// call GetZoneState for side effect to calculate forwarded domains
-		_, err := h.GetZoneState(hostedZone)
+		_, err := cache.GetZoneState(hostedZone)
 		if err == nil {
-			forwarded := h.forwardedDomains.GetForwardedDomains(hostedZone.Id())
+			forwarded := cache.GetHandlerData().(*provider.ForwardedDomainsHandlerData).GetForwardedDomains(hostedZone.Id())
 			if forwarded != nil {
 				hostedZone = provider.CopyDNSHostedZone(hostedZone, forwarded)
 			}
@@ -144,7 +135,7 @@ func (h *Handler) getZones() (provider.DNSHostedZones, error) {
 	return zones, nil
 }
 
-func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *googledns.ResourceRecordSet)) error {
+func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *googledns.ResourceRecordSet)) ([]string, error) {
 	rt := provider.M_LISTRECORDS
 	forwarded := []string{}
 	aggr := func(resp *googledns.ResourceRecordSetsListResponse) error {
@@ -162,15 +153,14 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *google
 		return nil
 	}
 	err := h.service.ResourceRecordSets.List(h.credentials.ProjectID, zone.Id()).Pages(h.ctx, aggr)
-	h.forwardedDomains.SetForwardedDomains(zone.Id(), forwarded)
-	return err
+	return forwarded, err
 }
 
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
-	return h.cache.GetZoneState(zone, h.getZoneState)
+	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	f := func(r *googledns.ResourceRecordSet) {
@@ -183,20 +173,18 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 		}
 	}
 
-	if err := h.handleRecordSets(zone, f); err != nil {
+	forwarded, err := h.handleRecordSets(zone, f)
+	if err != nil {
 		return nil, err
 	}
+	cache.GetHandlerData().(*provider.ForwardedDomainsHandlerData).SetForwardedDomains(zone.Id(), forwarded)
 
 	return provider.NewDNSZoneState(dnssets), nil
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	err := h.executeRequests(logger, zone, state, reqs)
-	if err == nil {
-		h.cache.ExecuteRequests(zone, reqs)
-	} else {
-		h.cache.DeleteZoneState(zone)
-	}
+	h.cache.ApplyRequests(err, zone, reqs)
 	return err
 }
 

@@ -56,7 +56,7 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		client:            designateClient{serviceClient: serviceClient, metrics: metrics},
 	}
 
-	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, nil)
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, nil, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}
@@ -114,10 +114,10 @@ func (h *Handler) Release() {
 }
 
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
-	return h.cache.GetZones(h.getZones)
+	return h.cache.GetZones()
 }
 
-func (h *Handler) getZones() (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
 	hostedZones := provider.DNSHostedZones{}
 
 	zoneHandler := func(zone *zones.Zone) error {
@@ -162,10 +162,10 @@ func (h *Handler) collectForwardedSubzones(zone *zones.Zone) []string {
 }
 
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
-	return h.cache.GetZoneState(zone, h.getZoneState)
+	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	recordSetHandler := func(recordSet *recordsets.RecordSet) error {
@@ -193,11 +193,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	err := h.executeRequests(logger, zone, state, reqs)
-	if err == nil {
-		h.cache.ExecuteRequests(zone, reqs)
-	} else {
-		h.cache.DeleteZoneState(zone)
-	}
+	h.cache.ApplyRequests(err, zone, reqs)
 	return err
 }
 
