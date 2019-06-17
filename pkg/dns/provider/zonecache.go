@@ -359,7 +359,7 @@ func (c *defaultZoneCache) writeZone(zoneid string, written chan<- string) {
 	written <- zoneid
 }
 
-var alreadyCleanedupOutdated int32 = 0
+var alreadyCleanedupOutdated int32
 
 func zoneCacheCleanupOutdated(logger logger.LogContext, dir, prefix string) {
 	// only perform cleanup once and only if cache dir is set
@@ -542,7 +542,7 @@ func (s *zoneState) ReadZone(filename string) (DNSHostedZone, error) {
 }
 
 func (s *zoneState) buildFilename(zoneid string) string {
-	return filepath.Join(s.persistDir, strings.ReplaceAll(zoneid, "/", "_"))
+	return filepath.Join(s.persistDir, strings.Replace(zoneid, "/", "_", -1))
 }
 
 func (s *zoneState) WriteZone(zoneid string) error {
