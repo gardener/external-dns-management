@@ -190,9 +190,13 @@ func newMockHandler(mockZones ...*zones.Zone) *Handler {
 		}
 	}
 
-	return &Handler{
+	h := &Handler{
 		client: &c,
 	}
+
+	cache, _ := provider.NewZoneCache(provider.ZoneCacheConfig{}, mockMetrics, nil, h.getZones, h.getZoneState)
+	h.cache = cache
+	return h
 }
 
 func newPreparedMockHandler(t *testing.T) *Handler {
