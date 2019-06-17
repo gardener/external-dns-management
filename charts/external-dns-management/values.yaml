@@ -25,6 +25,7 @@ createCRDs: true
 configuration:
 # alicloudDNSCacheTtl: 120
 # alicloudDNSDefaultPoolSize: 2
+# alicloudDNSDisableZoneStateCaching: false
 # alicloudDNSDnsClass: "gardendns"
 # alicloudDNSDnsDelay: 10s
 # alicloudDNSDnsPoolResyncPeriod: 30s
@@ -39,6 +40,7 @@ configuration:
 # alicloudDNSTtl: 120
 # awsRoute53CacheTtl: 120
 # awsRoute53DefaultPoolSize: 2
+# awsRoute53DisableZoneStateCaching: false
 # awsRoute53DnsClass: "gardendns"
 # awsRoute53DnsDelay: 10s
 # awsRoute53DnsPoolResyncPeriod: 30s
@@ -53,6 +55,7 @@ configuration:
 # awsRoute53Ttl: 120
 # azureDNSCacheTtl: 120
 # azureDNSDefaultPoolSize: 2
+# azureDNSDisableZoneStateCaching: false
 # azureDNSDnsClass: "gardendns"
 # azureDNSDnsDelay: 10s
 # azureDNSDnsPoolResyncPeriod: 30s
@@ -69,6 +72,7 @@ configuration:
   controllers: all
 # cpuprofile: ""
 # disableNamespaceRestriction: false
+# disableZoneStateCaching: false
 # dnsClass: "gardendns"
 # dnsDelay: 10s
 # dnsTargetClass: ""
@@ -76,6 +80,7 @@ configuration:
 # excludeDomains: google.com
 # googleCloudDNSCacheTtl: 120
 # googleCloudDNSDefaultPoolSize: 2
+# googleCloudDNSDisableZoneStateCaching: false
 # googleCloudDNSDnsClass: "gardendns"
 # googleCloudDNSDnsDelay: 10s
 # googleCloudDNSDnsPoolResyncPeriod: 30s
@@ -107,6 +112,7 @@ configuration:
 # omitLease: false
 # openstackDesignateCacheTtl: 120
 # openstackDesignateDefaultPoolSize: 2
+# openstackDesignateDisableZoneStateCaching: false
 # openstackDesignateDnsClass: "gardendns"
 # openstackDesignateDnsDelay: 10s
 # openstackDesignateDnsPoolResyncPeriod: 30s
@@ -119,6 +125,7 @@ configuration:
 # openstackDesignateSecretsPoolSize: 2
 # openstackDesignateSetup: 10
 # openstackDesignateTtl: 120
+  persistentCache: false
 # pluginDir: ""
 # poolResyncPeriod: 30s
 # poolSize: 2

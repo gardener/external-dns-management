@@ -1,6 +1,10 @@
 ---
 apiVersion: apps/v1
+{{- if not .Values.configuration.persistentCache }}
 kind: Deployment
+{{- else }}
+kind: StatefulSet
+{{- end }}
 metadata:
   name: {{ include "external-dns-management.fullname" . }}
   namespace: {{ .Release.Namespace }}
@@ -31,6 +35,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.alicloudDNSDefaultPoolSize }}
         - --alicloud-dns.default.pool.size={{ .Values.configuration.alicloudDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSDisableZoneStateCaching }}
+        - --alicloud-dns.disable-zone-state-caching={{ .Values.configuration.alicloudDNSDisableZoneStateCaching }}
         {{- end }}
         {{- if .Values.configuration.alicloudDNSDnsClass }}
         - --alicloud-dns.dns-class={{ .Values.configuration.alicloudDNSDnsClass }}
@@ -74,6 +81,9 @@ spec:
         {{- if .Values.configuration.awsRoute53DefaultPoolSize }}
         - --aws-route53.default.pool.size={{ .Values.configuration.awsRoute53DefaultPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.awsRoute53DisableZoneStateCaching }}
+        - --aws-route53.disable-zone-state-caching={{ .Values.configuration.awsRoute53DisableZoneStateCaching }}
+        {{- end }}
         {{- if .Values.configuration.awsRoute53DnsClass }}
         - --aws-route53.dns-class={{ .Values.configuration.awsRoute53DnsClass }}
         {{- end }}
@@ -115,6 +125,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.azureDNSDefaultPoolSize }}
         - --azure-dns.default.pool.size={{ .Values.configuration.azureDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSDisableZoneStateCaching }}
+        - --azure-dns.disable-zone-state-caching={{ .Values.configuration.azureDNSDisableZoneStateCaching }}
         {{- end }}
         {{- if .Values.configuration.azureDNSDnsClass }}
         - --azure-dns.dns-class={{ .Values.configuration.azureDNSDnsClass }}
@@ -164,6 +177,9 @@ spec:
         {{- if .Values.configuration.disableNamespaceRestriction }}
         - --disable-namespace-restriction={{ .Values.configuration.disableNamespaceRestriction }}
         {{- end }}
+        {{- if .Values.configuration.disableZoneStateCaching }}
+        - --disable-zone-state-caching={{ .Values.configuration.disableZoneStateCaching }}
+        {{- end }}
         {{- if .Values.configuration.dnsClass }}
         - --dns-class={{ .Values.configuration.dnsClass }}
         {{- end }}
@@ -184,6 +200,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.googleCloudDNSDefaultPoolSize }}
         - --google-clouddns.default.pool.size={{ .Values.configuration.googleCloudDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSDisableZoneStateCaching }}
+        - --google-clouddns.disable-zone-state-caching={{ .Values.configuration.googleCloudDNSDisableZoneStateCaching }}
         {{- end }}
         {{- if .Values.configuration.googleCloudDNSDnsClass }}
         - --google-clouddns.dns-class={{ .Values.configuration.googleCloudDNSDnsClass }}
@@ -284,6 +303,9 @@ spec:
         {{- if .Values.configuration.openstackDesignateDefaultPoolSize }}
         - --openstack-designate.default.pool.size={{ .Values.configuration.openstackDesignateDefaultPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.openstackDesignateDisableZoneStateCaching }}
+        - --openstack-designate.disable-zone-state-caching={{ .Values.configuration.openstackDesignateDisableZoneStateCaching }}
+        {{- end }}
         {{- if .Values.configuration.openstackDesignateDnsClass }}
         - --openstack-designate.dns-class={{ .Values.configuration.openstackDesignateDnsClass }}
         {{- end }}
@@ -377,6 +399,9 @@ spec:
         {{- if .Values.configuration.ttl }}
         - --ttl={{ .Values.configuration.ttl }}
         {{- end }}
+        {{- if .Values.configuration.persistentCache }}
+        - --cache-dir=/persistent-cache
+        {{- end }}
         {{- range $idx, $flag := .Values.additionalConfiguration }}
         - {{ $flag }}
         {{- end }}
@@ -394,6 +419,11 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
+        {{- if .Values.configuration.persistentCache }}
+        volumeMounts:
+          - name: persistent-cache
+            mountPath: /persistent-cache
+        {{- end }}
       serviceAccountName: {{ include "external-dns-management.fullname" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -407,3 +437,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+  {{- if .Values.configuration.persistentCache }}
+  volumeClaimTemplates:
+    - metadata:
+        name: persistent-cache
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+  {{- end }}
