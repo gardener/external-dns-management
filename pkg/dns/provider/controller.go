@@ -51,7 +51,9 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		RequireLease().
 		DefaultedStringOption(OPT_CLASS, dnsutils.DEFAULT_CLASS, "Identifier used to differentiate responsible controllers for entries").
 		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries").
+		DefaultedStringOption(OPT_CACHE_DIR, "", "Directory to store zone caches (for reload after restart)").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
+		DefaultedBoolOption(OPT_DISABLE_ZONE_STATE_CACHING, false, "disable use of cached dns zone state on changes").
 		DefaultedIntOption(OPT_TTL, 300, "Default time-to-live for DNS entries").
 		DefaultedIntOption(OPT_CACHE_TTL, 120, "Time-to-live for provider hosted zone cache").
 		DefaultedIntOption(OPT_SETUP, 10, "number of processors for controller setup").
@@ -108,6 +110,9 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 	if err != nil {
 		return nil, err
 	}
+
+	zoneCacheCleanupOutdated(c, config.CacheDir, ZoneCachePrefix)
+
 	return &reconciler{
 		controller: c,
 		state: c.GetOrCreateSharedValue(KEY_STATE,

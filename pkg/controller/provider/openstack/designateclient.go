@@ -2,7 +2,7 @@
  * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. h file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use h file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
@@ -199,6 +199,5 @@ func (c designateClient) GetRecordSet(zoneID, recordSetID string, handler func(r
 	if err != nil {
 		return err
 	}
-	handler(rs)
-	return nil
+	return handler(rs)
 }

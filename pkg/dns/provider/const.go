@@ -25,14 +25,16 @@ import (
 */
 
 const (
-	OPT_IDENTIFIER      = "identifier"
-	OPT_CLASS           = source.OPT_CLASS
-	OPT_DRYRUN          = "dry-run"
-	OPT_TTL             = "ttl"
-	OPT_CACHE_TTL       = "cache-ttl"
-	OPT_SETUP           = "setup"
-	OPT_DNSDELAY        = "dns-delay"
-	OPT_RESCHEDULEDELAY = "reschedule-delay"
+	OPT_IDENTIFIER                 = "identifier"
+	OPT_CLASS                      = source.OPT_CLASS
+	OPT_DRYRUN                     = "dry-run"
+	OPT_TTL                        = "ttl"
+	OPT_CACHE_TTL                  = "cache-ttl"
+	OPT_CACHE_DIR                  = "cache-dir"
+	OPT_SETUP                      = "setup"
+	OPT_DNSDELAY                   = "dns-delay"
+	OPT_RESCHEDULEDELAY            = "reschedule-delay"
+	OPT_DISABLE_ZONE_STATE_CACHING = "disable-zone-state-caching"
 
 	OPT_PROVIDERTYPES = "provider-types"
 

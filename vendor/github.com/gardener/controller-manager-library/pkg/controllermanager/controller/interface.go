@@ -19,9 +19,10 @@ package controller
 import (
 	"context"
 	"fmt"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"reflect"
 	"time"
+
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
@@ -42,6 +43,7 @@ type Pool interface {
 	EnqueueCommand(name string)
 	EnqueueCommandRateLimited(name string)
 	EnqueueCommandAfter(name string, duration time.Duration)
+	Period() time.Duration
 }
 
 type Interface interface {

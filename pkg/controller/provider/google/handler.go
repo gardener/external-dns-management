@@ -19,8 +19,9 @@ package google
 import (
 	"context"
 	"fmt"
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"net/http"
+
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
@@ -34,6 +35,7 @@ import (
 type Handler struct {
 	provider.DefaultDNSHandler
 	config      provider.DNSHandlerConfig
+	cache       provider.ZoneCache
 	credentials *google.Credentials
 	client      *http.Client
 	ctx         context.Context
@@ -46,7 +48,7 @@ var _ provider.DNSHandler = &Handler{}
 func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
 	var err error
 
-	this := &Handler{
+	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *config,
 		metrics:           metrics,
@@ -58,80 +60,107 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		//	"https://www.googleapis.com/auth/devstorage.full_control",
 	}
 
-	json := this.config.Properties["serviceaccount.json"]
+	json := h.config.Properties["serviceaccount.json"]
 	if json == "" {
 		return nil, fmt.Errorf("'serviceaccount.json' required in secret")
 	}
 
 	//c:=*http.DefaultClient
-	//this.ctx=context.WithValue(config.Context,oauth2.HTTPClient,&c)
-	this.ctx = config.Context
+	//h.ctx=context.WithValue(config.Context,oauth2.HTTPClient,&c)
+	h.ctx = config.Context
 
-	this.credentials, err = google.CredentialsFromJSON(this.ctx, []byte(json), scopes...)
+	h.credentials, err = google.CredentialsFromJSON(h.ctx, []byte(json), scopes...)
 	//cfg, err:=google.JWTConfigFromJSON([]byte(json))
 	if err != nil {
 		return nil, fmt.Errorf("serviceaccount is invalid: %s", err)
 	}
-	this.client = oauth2.NewClient(this.ctx, this.credentials.TokenSource)
-	//this.client=cfg.Client(ctx)
+	h.client = oauth2.NewClient(h.ctx, h.credentials.TokenSource)
+	//h.client=cfg.Client(ctx)
 
-	this.service, err = googledns.New(this.client)
+	h.service, err = googledns.New(h.client)
 	if err != nil {
 		return nil, err
 	}
 
-	return this, nil
+	forwardedDomains := provider.NewForwardedDomainsHandlerData()
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, forwardedDomains, h.getZones, h.getZoneState)
+	if err != nil {
+		return nil, err
+	}
+
+	return h, nil
 }
 
-func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
+func (h *Handler) Release() {
+	h.cache.Release()
+}
+
+func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
+	return h.cache.GetZones()
+}
+
+func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
 	rt := provider.M_LISTZONES
 	raw := []*googledns.ManagedZone{}
 	f := func(resp *googledns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
 			raw = append(raw, zone)
 		}
-		this.metrics.AddRequests(rt, 1)
+		h.metrics.AddRequests(rt, 1)
 		rt = provider.M_PLISTZONES
 		return nil
 	}
 
-	if err := this.service.ManagedZones.List(this.credentials.ProjectID).Pages(this.ctx, f); err != nil {
+	if err := h.service.ManagedZones.List(h.credentials.ProjectID).Pages(h.ctx, f); err != nil {
 		return nil, err
 	}
 
 	zones := provider.DNSHostedZones{}
 	for _, z := range raw {
-		forwarded := []string{}
-		f := func(r *googledns.ResourceRecordSet) {
-			if r.Type == dns.RS_NS {
-				if r.Name != z.DnsName {
-					forwarded = append(forwarded, dns.NormalizeHostname(r.Name))
-				}
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(),
+			z.Name, dns.NormalizeHostname(z.DnsName), "", []string{})
+
+		// call GetZoneState for side effect to calculate forwarded domains
+		_, err := cache.GetZoneState(hostedZone)
+		if err == nil {
+			forwarded := cache.GetHandlerData().(*provider.ForwardedDomainsHandlerData).GetForwardedDomains(hostedZone.Id())
+			if forwarded != nil {
+				hostedZone = provider.CopyDNSHostedZone(hostedZone, forwarded)
 			}
 		}
-		this.handleRecordSets(z.Name, f)
-		hostedZone := provider.NewDNSHostedZone(this.ProviderType(),
-			z.Name, dns.NormalizeHostname(z.DnsName), "", forwarded)
+
 		zones = append(zones, hostedZone)
 	}
 
 	return zones, nil
 }
 
-func (this *Handler) handleRecordSets(zoneid string, f func(r *googledns.ResourceRecordSet)) error {
+func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *googledns.ResourceRecordSet)) ([]string, error) {
 	rt := provider.M_LISTRECORDS
+	forwarded := []string{}
 	aggr := func(resp *googledns.ResourceRecordSetsListResponse) error {
 		for _, r := range resp.Rrsets {
 			f(r)
+			if r.Type == dns.RS_NS {
+				name := dns.NormalizeHostname(r.Name)
+				if name != zone.Domain() {
+					forwarded = append(forwarded, name)
+				}
+			}
 		}
-		this.metrics.AddRequests(rt, 1)
+		h.metrics.AddRequests(rt, 1)
 		rt = provider.M_PLISTRECORDS
 		return nil
 	}
-	return this.service.ResourceRecordSets.List(this.credentials.ProjectID, zoneid).Pages(this.ctx, aggr)
+	err := h.service.ResourceRecordSets.List(h.credentials.ProjectID, zone.Id()).Pages(h.ctx, aggr)
+	return forwarded, err
 }
 
-func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone)
+}
+
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	f := func(r *googledns.ResourceRecordSet) {
@@ -144,22 +173,29 @@ func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZone
 		}
 	}
 
-	if err := this.handleRecordSets(zone.Id(), f); err != nil {
+	forwarded, err := h.handleRecordSets(zone, f)
+	if err != nil {
 		return nil, err
 	}
+	cache.GetHandlerData().(*provider.ForwardedDomainsHandlerData).SetForwardedDomains(zone.Id(), forwarded)
 
 	return provider.NewDNSZoneState(dnssets), nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	err := h.executeRequests(logger, zone, state, reqs)
+	h.cache.ApplyRequests(err, zone, reqs)
+	return err
+}
 
-	exec := NewExecution(logger, this, zone)
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	exec := NewExecution(logger, h, zone)
 	for _, r := range reqs {
 		exec.addChange(r)
 	}
-	if this.config.DryRun {
+	if h.config.DryRun {
 		logger.Infof("no changes in dryrun mode for AWS")
 		return nil
 	}
-	return exec.submitChanges(this.metrics)
+	return exec.submitChanges(h.metrics)
 }

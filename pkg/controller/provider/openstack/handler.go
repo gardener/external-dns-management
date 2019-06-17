@@ -2,7 +2,7 @@
  * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. h file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use h file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
@@ -30,19 +30,13 @@ import (
 type Handler struct {
 	provider.DefaultDNSHandler
 	config provider.DNSHandlerConfig
+	cache  provider.ZoneCache
 	ctx    context.Context
 
 	client designateClientInterface
 }
 
 var _ provider.DNSHandler = &Handler{}
-
-type nullMetrics struct{}
-
-var _ provider.Metrics = &nullMetrics{}
-
-func (m *nullMetrics) AddRequests(request_type string, n int) {
-}
 
 func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
 	authConfig, err := readAuthConfig(config)
@@ -61,6 +55,12 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		ctx:               config.Context,
 		client:            designateClient{serviceClient: serviceClient, metrics: metrics},
 	}
+
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, nil, h.getZones, h.getZoneState)
+	if err != nil {
+		return nil, err
+	}
+
 	return &h, nil
 }
 
@@ -109,7 +109,15 @@ func readAuthConfig(config *provider.DNSHandlerConfig) (*authConfig, error) {
 	return &authConfig, nil
 }
 
+func (h *Handler) Release() {
+	h.cache.Release()
+}
+
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
+	return h.cache.GetZones()
+}
+
+func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
 	hostedZones := provider.DNSHostedZones{}
 
 	zoneHandler := func(zone *zones.Zone) error {
@@ -127,7 +135,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	}
 
 	if err := h.client.ForEachZone(zoneHandler); err != nil {
-		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
+		return nil, fmt.Errorf("listing DNS zones failed. Details: %s", err.Error())
 	}
 
 	return hostedZones, nil
@@ -154,6 +162,10 @@ func (h *Handler) collectForwardedSubzones(zone *zones.Zone) []string {
 }
 
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone)
+}
+
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	recordSetHandler := func(recordSet *recordsets.RecordSet) error {
@@ -180,6 +192,12 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	err := h.executeRequests(logger, zone, state, reqs)
+	h.cache.ApplyRequests(err, zone, reqs)
+	return err
+}
+
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	exec := NewExecution(logger, h, zone)
 
 	var succeeded, failed int
@@ -214,6 +232,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	}
 	if failed > 0 {
 		logger.Infof("Failed updates for records in zone %s: %d", zone.Domain(), failed)
+		return fmt.Errorf("%d changes failed", failed)
 	}
 
 	return nil

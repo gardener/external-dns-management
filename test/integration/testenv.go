@@ -111,7 +111,7 @@ func NewTestEnv(kubeconfig string, namespace string) (*TestEnv, error) {
 		return nil, err
 	}
 	te := &TestEnv{Cluster: cluster, Namespace: namespace, Logger: logger,
-		defaultTimeout: 20 * time.Second, resources: cluster.Resources()}
+		defaultTimeout: 30 * time.Second, resources: cluster.Resources()}
 	err = te.CreateNamespace(namespace)
 	return te, err
 }
@@ -339,7 +339,6 @@ func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {
 	return obj.Data().(*v1alpha1.DNSOwner)
 }
 
-
 func (te *TestEnv) CreateIngressWithAnnotation(name, domainName string) (resources.Object, error) {
 	setter := func(e *extensions.Ingress) {
 		e.Annotations = map[string]string{"dns.gardener.cloud/dnsnames": domainName}
@@ -501,7 +500,7 @@ func (te *TestEnv) AwaitWithTimeout(msg string, check CheckFunc, timeout time.Du
 		time.Sleep(50 * time.Millisecond)
 	}
 	if err != nil {
-		fmt.Errorf("Timeout during check %s with error %s", msg, err.Error())
+		return fmt.Errorf("Timeout during check %s with error %s", msg, err.Error())
 	}
 	return fmt.Errorf("Timeout during check  %s", msg)
 }

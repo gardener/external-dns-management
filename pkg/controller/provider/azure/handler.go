@@ -2,7 +2,7 @@
  * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. h file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use h file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
@@ -35,6 +35,7 @@ import (
 type Handler struct {
 	provider.DefaultDNSHandler
 	config        provider.DNSHandlerConfig
+	cache         provider.ZoneCache
 	ctx           context.Context
 	metrics       provider.Metrics
 	zonesClient   *azure.ZonesClient
@@ -102,14 +103,27 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 
 	h.zonesClient = &zonesClient
 	h.recordsClient = &recordsClient
+
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, nil, h.getZones, h.getZoneState)
+	if err != nil {
+		return nil, err
+	}
+
 	return h, nil
 }
 
 var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
 
-func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
-	zones := provider.DNSHostedZones{}
+func (h *Handler) Release() {
+	h.cache.Release()
+}
 
+func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
+	return h.cache.GetZones()
+}
+
+func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+	zones := provider.DNSHostedZones{}
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
 	h.metrics.AddRequests("ZonesClient_ListComplete", 1)
 	if err != nil {
@@ -173,6 +187,10 @@ func splitZoneid(zoneid string) (string, string) {
 }
 
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone)
+}
+
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	resourceGroup, zoneName := splitZoneid(zone.Id())
@@ -218,6 +236,12 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	err := h.executeRequests(logger, zone, state, reqs)
+	h.cache.ApplyRequests(err, zone, reqs)
+	return err
+}
+
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	resourceGroup, zoneName := splitZoneid(zone.Id())
 	exec := NewExecution(logger, h, resourceGroup, zoneName)
 
@@ -265,6 +289,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	}
 	if failed > 0 {
 		logger.Infof("Failed updates for records in zone %s: %d", zoneName, failed)
+		return fmt.Errorf("%d changes failed", failed)
 	}
 
 	return nil

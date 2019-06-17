@@ -28,6 +28,7 @@ import (
 type Handler struct {
 	provider.DefaultDNSHandler
 	config provider.DNSHandlerConfig
+	cache  provider.ZoneCache
 	access Access
 }
 
@@ -36,21 +37,21 @@ var _ provider.DNSHandler = &Handler{}
 func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
 	var err error
 
-	this := &Handler{
+	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *config,
 	}
 
-	accessKeyID := this.config.Properties["ACCESS_KEY_ID"]
+	accessKeyID := h.config.Properties["ACCESS_KEY_ID"]
 	if accessKeyID == "" {
-		accessKeyID = this.config.Properties["accessKeyID"]
+		accessKeyID = h.config.Properties["accessKeyID"]
 	}
 	if accessKeyID == "" {
 		return nil, fmt.Errorf("'ACCESS_KEY_ID' or 'accessKeyID' required in secret")
 	}
-	accessKeySecret := this.config.Properties["ACCESS_KEY_SECRET"]
+	accessKeySecret := h.config.Properties["ACCESS_KEY_SECRET"]
 	if accessKeySecret == "" {
-		accessKeySecret = this.config.Properties["accessKeySecret"]
+		accessKeySecret = h.config.Properties["accessKeySecret"]
 	}
 	if accessKeySecret == "" {
 		return nil, fmt.Errorf("'ACCESS_KEY_SECRET' or 'accessKeySecret' required in secret")
@@ -61,18 +62,32 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		return nil, err
 	}
 
-	this.access = access
-	return this, nil
+	h.access = access
+
+	h.cache, err = provider.NewZoneCache(*config.CacheConfig.CopyWithDisabledZoneStateCache(), metrics, nil, h.getZones, h.getZoneState)
+	if err != nil {
+		return nil, err
+	}
+
+	return h, nil
 }
 
-func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
+func (h *Handler) Release() {
+	h.cache.Release()
+}
+
+func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
+	return h.cache.GetZones()
+}
+
+func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
 	raw := []alidns.Domain{}
 	{
 		f := func(zone alidns.Domain) (bool, error) {
 			raw = append(raw, zone)
 			return true, nil
 		}
-		err := this.access.ListDomains(f)
+		err := h.access.ListDomains(f)
 		if err != nil {
 			return nil, err
 		}
@@ -91,17 +106,17 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 				}
 				return true, nil
 			}
-			err := this.access.ListRecords(z.DomainName, f)
+			err := h.access.ListRecords(z.DomainName, f)
 			if err != nil {
 				if checkAccessForbidden(err) {
 					// It is reasonable for some RAM user, it is only allowed to access certain domain's records detail
-					// As a result, this domain should not be appended to the hosted zones
+					// As a result, h domain should not be appended to the hosted zones
 					continue
 				}
 				return nil, err
 			}
 			hostedZone := provider.NewDNSHostedZone(
-				this.ProviderType(), z.DomainId,
+				h.ProviderType(), z.DomainId,
 				z.DomainName, z.DomainName, forwarded)
 			zones = append(zones, hostedZone)
 		}
@@ -110,15 +125,18 @@ func (this *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return zones, nil
 }
 
-func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone)
+}
 
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
 	state := newState()
 
 	f := func(r alidns.Record) (bool, error) {
 		state.addRecord(r)
 		return true, nil
 	}
-	err := this.access.ListRecords(zone.Key(), f)
+	err := h.access.ListRecords(zone.Key(), f)
 	if err != nil {
 		return nil, err
 	}
@@ -126,13 +144,18 @@ func (this *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZone
 	return state, nil
 }
 
-func (this *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	err := h.executeRequests(logger, zone, state, reqs)
+	h.cache.ApplyRequests(err, zone, reqs)
+	return err
+}
 
-	exec := NewExecution(logger, this, state.(*zonestate), zone)
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+	exec := NewExecution(logger, h, state.(*zonestate), zone)
 	for _, r := range reqs {
 		exec.addChange(r)
 	}
-	if this.config.DryRun {
+	if h.config.DryRun {
 		logger.Infof("no changes in dryrun mode for AliCloud")
 		return nil
 	}

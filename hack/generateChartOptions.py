@@ -8,6 +8,7 @@ import re
 options = """
 alicloud-dns.cache-ttl
 alicloud-dns.default.pool.size
+alicloud-dns.disable-zone-state-caching
 alicloud-dns.dns-class
 alicloud-dns.dns-delay
 alicloud-dns.dns.pool.resync-period
@@ -22,6 +23,7 @@ alicloud-dns.setup
 alicloud-dns.ttl
 aws-route53.cache-ttl
 aws-route53.default.pool.size
+aws-route53.disable-zone-state-caching
 aws-route53.dns-class
 aws-route53.dns-delay
 aws-route53.dns.pool.resync-period
@@ -36,6 +38,7 @@ aws-route53.setup
 aws-route53.ttl
 azure-dns.cache-ttl
 azure-dns.default.pool.size
+azure-dns.disable-zone-state-caching
 azure-dns.dns-class
 azure-dns.dns-delay
 azure-dns.dns.pool.resync-period
@@ -52,6 +55,7 @@ cache-ttl
 controllers
 cpuprofile
 disable-namespace-restriction
+disable-zone-state-caching
 dns-class
 dns-delay
 dns-target-class
@@ -59,6 +63,7 @@ dry-run
 exclude-domains
 google-clouddns.cache-ttl
 google-clouddns.default.pool.size
+google-clouddns.disable-zone-state-caching
 google-clouddns.dns-class
 google-clouddns.dns-delay
 google-clouddns.dns.pool.resync-period
@@ -92,6 +97,7 @@ namespace-local-access-only
 omit-lease
 openstack-designate.cache-ttl
 openstack-designate.default.pool.size
+openstack-designate.disable-zone-state-caching
 openstack-designate.dns-class
 openstack-designate.dns-delay
 openstack-designate.dns.pool.resync-period

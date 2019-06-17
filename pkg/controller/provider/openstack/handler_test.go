@@ -2,7 +2,7 @@
  * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. h file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use h file except in compliance with the License.
+ * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *      http://www.apache.org/licenses/LICENSE-2.0
@@ -73,7 +73,7 @@ type designateMockClient struct {
 
 var _ designateClientInterface = &designateMockClient{}
 
-var mockMetrics provider.Metrics = &nullMetrics{}
+var mockMetrics provider.Metrics = &provider.NullMetrics{}
 
 func (c *designateMockClient) ForEachZone(handler func(zone *zones.Zone) error) error {
 	for _, tz := range c.tzmap {
@@ -274,31 +274,31 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 	Ω(len(dnssets)).Should(Equal(0), "dnssets should be empty initially")
 
 	initial := []recordsets.CreateOpts{
-		recordsets.CreateOpts{
+		{
 			Name:    "sub1.z1.test.",
 			TTL:     301,
 			Type:    "A",
 			Records: []string{"1.2.3.4", "5.6.7.8"},
 		},
-		recordsets.CreateOpts{
+		{
 			Name:    "comment-sub1.z1.test.",
 			TTL:     600,
 			Type:    "TXT",
 			Records: []string{"\"owner=test\"", "\"prefix=comment-\""},
 		},
-		recordsets.CreateOpts{
+		{
 			Name:    "sub2.z1.test.",
 			TTL:     302,
 			Type:    "CNAME",
 			Records: []string{"cname.target.test."},
 		},
-		recordsets.CreateOpts{
+		{
 			Name:    "comment-sub2.z1.test.",
 			TTL:     600,
 			Type:    "TXT",
 			Records: []string{"\"owner=test\"", "\"prefix=comment-\""},
 		},
-		recordsets.CreateOpts{
+		{
 			Name:    "sub3.z1.test.",
 			TTL:     303,
 			Type:    "TXT",
@@ -341,7 +341,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 
 	tlog := logger.New()
 	reqs := []*provider.ChangeRequest{
-		&provider.ChangeRequest{
+		{
 			Action: provider.R_CREATE,
 			Type:   "A",
 			Addition: &dns.DNSSet{
@@ -351,7 +351,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 				},
 			},
 		},
-		&provider.ChangeRequest{
+		{
 			Action: provider.R_CREATE,
 			Type:   "META",
 			Addition: &dns.DNSSet{
@@ -361,7 +361,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 				},
 			},
 		},
-		&provider.ChangeRequest{
+		{
 			Action: provider.R_UPDATE,
 			Type:   "A",
 			Addition: &dns.DNSSet{
@@ -371,17 +371,17 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 				},
 			},
 		},
-		&provider.ChangeRequest{
+		{
 			Action:   provider.R_DELETE,
 			Type:     "CNAME",
 			Deletion: expectedDnssets["sub2.z1.test"],
 		},
-		&provider.ChangeRequest{
+		{
 			Action:   provider.R_DELETE,
 			Type:     "META",
 			Deletion: expectedDnssets["sub2.z1.test"],
 		},
-		&provider.ChangeRequest{
+		{
 			Action:   provider.R_DELETE,
 			Type:     "TXT",
 			Deletion: expectedDnssets["sub3.z1.test"],

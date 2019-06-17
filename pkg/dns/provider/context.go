@@ -19,6 +19,7 @@ package provider
 import (
 	"context"
 	corev1 "k8s.io/api/core/v1"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -46,6 +47,7 @@ type Context interface {
 	HasFinalizer(resources.Object) bool
 
 	GetSecretPropertiesByRef(src resources.ResourcesSource, ref *corev1.SecretReference) (utils.Properties, *resources.SecretObject, error)
+	GetPoolPeriod(name string) *time.Duration
 }
 
 type DefaultContext struct {
@@ -101,4 +103,13 @@ func (this *DefaultContext) RemoveFinalizer(obj resources.Object) error {
 
 func (this *DefaultContext) GetSecretPropertiesByRef(src resources.ResourcesSource, ref *corev1.SecretReference) (utils.Properties, *resources.SecretObject, error) {
 	return resources.GetCachedSecretPropertiesByRef(src, ref)
+}
+
+func (this *DefaultContext) GetPoolPeriod(name string) *time.Duration {
+	p := this.controller.GetPool(name)
+	if p == nil {
+		return nil
+	}
+	d := p.Period()
+	return &d
 }

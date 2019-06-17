@@ -32,14 +32,16 @@ import (
 )
 
 type Config struct {
-	TTL             int64
-	CacheTTL        time.Duration
-	RescheduleDelay time.Duration
-	Ident           string
-	Dryrun          bool
-	Delay           time.Duration
-	Enabled         utils.StringSet
-	Factory         DNSHandlerFactory
+	TTL              int64
+	CacheTTL         time.Duration
+	CacheDir         string
+	RescheduleDelay  time.Duration
+	Ident            string
+	Dryrun           bool
+	ZoneStateCaching bool
+	Delay            time.Duration
+	Enabled          utils.StringSet
+	Factory          DNSHandlerFactory
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
@@ -55,6 +57,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	if err != nil {
 		cttl = 60
 	}
+	cdir, _ := c.GetStringOption(OPT_CACHE_DIR)
 	dryrun, _ := c.GetBoolOption(OPT_DRYRUN)
 
 	delay, err := c.GetDurationOption(OPT_DNSDELAY)
@@ -66,6 +69,8 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	if err != nil {
 		delay = 120 * time.Second
 	}
+
+	disableZoneStateCaching, _ := c.GetBoolOption(OPT_DISABLE_ZONE_STATE_CACHING)
 
 	enabled := utils.StringSet{}
 	types, err := c.GetStringOption(OPT_PROVIDERTYPES)
@@ -86,14 +91,16 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	}
 
 	return &Config{
-		Ident:           ident,
-		Dryrun:          dryrun,
-		TTL:             int64(ttl),
-		CacheTTL:        time.Duration(cttl) * time.Second,
-		RescheduleDelay: rescheduleDelay,
-		Delay:           delay,
-		Enabled:         enabled,
-		Factory:         factory,
+		Ident:            ident,
+		TTL:              int64(ttl),
+		CacheTTL:         time.Duration(cttl) * time.Second,
+		CacheDir:         cdir,
+		RescheduleDelay:  rescheduleDelay,
+		Dryrun:           dryrun,
+		ZoneStateCaching: !disableZoneStateCaching,
+		Delay:            delay,
+		Enabled:          enabled,
+		Factory:          factory,
 	}, nil
 }
 
@@ -124,10 +131,11 @@ outer:
 }
 
 type DNSHandlerConfig struct {
-	Properties utils.Properties
-	Config     *runtime.RawExtension
-	DryRun     bool
-	Context    context.Context
+	Properties  utils.Properties
+	Config      *runtime.RawExtension
+	DryRun      bool
+	Context     context.Context
+	CacheConfig ZoneCacheConfig
 }
 
 type DNSZoneState interface {
@@ -143,6 +151,9 @@ const (
 
 	M_UPDATERECORDS = "update_records"
 	M_PUPDATEREORDS = "update_records_pages"
+
+	M_CACHED_GETZONES     = "cached_getzones"
+	M_CACHED_GETZONESTATE = "cached_getzonestate"
 )
 
 type Metrics interface {
@@ -155,6 +166,7 @@ type DNSHandler interface {
 	GetZoneState(DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
 	MapTarget(t Target) Target
+	Release()
 }
 
 type DefaultDNSHandler struct {
@@ -180,6 +192,7 @@ type DNSHandlerFactory interface {
 	TypeCodes() utils.StringSet
 	Create(logger logger.LogContext, typecode string, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error)
 	IsResponsibleFor(object *dnsutils.DNSProviderObject) bool
+	SupportZoneStateCache(typecode string) (bool, error)
 }
 
 type DNSProviders map[resources.ObjectName]DNSProvider

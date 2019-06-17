@@ -63,12 +63,13 @@
   revision = "de5bf2ad457846296e2031421a34e2568e304e35"
 
 [[projects]]
-  digest = "1:99b28f9fefc9c73e56a47c24a0dca7f318d08c7b9ad8f93e802636bda2a43d38"
+  digest = "1:65c9557e28049d0bfd311c09bdc9efbcd965f67599dea735453266c0d852c604"
   name = "github.com/aliyun/alibaba-cloud-sdk-go"
   packages = [
     "sdk",
     "sdk/auth",
     "sdk/auth/credentials",
+    "sdk/auth/credentials/provider",
     "sdk/auth/signers",
     "sdk/endpoints",
     "sdk/errors",
@@ -78,11 +79,11 @@
     "services/alidns",
   ]
   pruneopts = "NUT"
-  revision = "97fb8dcd4a63b099605dc2f4dbe688e56de3bd00"
-  version = "1.51.22"
+  revision = "12ad9f921c0bca580a082688b2195d8a345c1f19"
+  version = "1.60.33"
 
 [[projects]]
-  digest = "1:de2b57d4697a882ee174be9a417cd26cd49c56630eb5d103fdc4d38569eea39b"
+  digest = "1:26d35831cba5b4853ae4a6d93aefa917448a5d0c404045f14fe5f7416401b53e"
   name = "github.com/aws/aws-sdk-go"
   packages = [
     "aws",
@@ -94,15 +95,22 @@
     "aws/credentials",
     "aws/credentials/ec2rolecreds",
     "aws/credentials/endpointcreds",
+    "aws/credentials/processcreds",
     "aws/credentials/stscreds",
+    "aws/csm",
     "aws/defaults",
     "aws/ec2metadata",
     "aws/endpoints",
     "aws/request",
     "aws/session",
     "aws/signer/v4",
+    "internal/ini",
+    "internal/sdkio",
+    "internal/sdkrand",
+    "internal/sdkuri",
     "internal/shareddefaults",
     "private/protocol",
+    "private/protocol/json/jsonutil",
     "private/protocol/query",
     "private/protocol/query/queryutil",
     "private/protocol/rest",
@@ -112,8 +120,8 @@
     "service/sts",
   ]
   pruneopts = "NUT"
-  revision = "b69f447375c7fa0047ebcdd8ae5d585d5aac2f71"
-  version = "v1.10.51"
+  revision = "5312c8dac9067d339c4e68d7e0dd5507b2f01849"
+  version = "v1.19.41"
 
 [[projects]]
   branch = "master"
@@ -173,7 +181,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:95381a765c551cb0156e8173fe296a3f8719b5f089e165281f3eb8091015281d"
+  digest = "1:a5846458282b161e2ca69884bba0d326cdd2f3bfc976046682d6a1130fd63497"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/controllermanager",
@@ -197,7 +205,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "37f502d0111982ead4e1f231383f6599ae0e6a57"
+  revision = "4db8db4aed9bef578cff52dea85d8fa772a744eb"
 
 [[projects]]
   digest = "1:81466b4218bf6adddac2572a30ac733a9255919bc2f470b4827a317bd4ee1756"
@@ -206,14 +214,6 @@
   pruneopts = "NUT"
   revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
   version = "v1.0.0"
-
-[[projects]]
-  digest = "1:5e92676b56ce4c69edf9ee1f6343c56f637e30af11b9d8b5edd1b6530f3fbc3d"
-  name = "github.com/go-ini/ini"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "6ed8d5f64cd79a498d1f3fab5880cc376ce41bbe"
-  version = "v1.41.0"
 
 [[projects]]
   digest = "1:260f7ebefc63024c8dfe2c9f1a2935a89fa4213637a1f522f592f80c001cc441"
@@ -372,12 +372,11 @@
   version = "v1.0"
 
 [[projects]]
-  digest = "1:7c818eb119c69fc685573449e8f799596ba81827074b006ff0cb71052424f254"
+  digest = "1:1f2aebae7e7c856562355ec0198d8ca2fa222fb05e5b1b66632a1fce39631885"
   name = "github.com/jmespath/go-jmespath"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "3433f3ea46d9f8019119e7dd41274e112a2359a9"
-  version = "0.2.2"
+  revision = "c2b33e84"
 
 [[projects]]
   digest = "1:8e36686e8b139f8fe240c1d5cf3a145bc675c22ff8e707857cdd3ae17b00d728"
@@ -542,14 +541,6 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "af7bedc223fba51343f25a6fa7aba84355d0357a"
-
-[[projects]]
-  digest = "1:6bc0652ea6e39e22ccd522458b8bdd8665bf23bdc5a20eec90056e4dc7e273ca"
-  name = "github.com/satori/go.uuid"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
-  version = "v1.2.0"
 
 [[projects]]
   digest = "1:e256b859ab89f005f2f639f5ed9807d0873d9135e27c6382f419b840ff9abe71"
@@ -817,6 +808,14 @@
   pruneopts = "NUT"
   revision = "d2d2541c53f18d2a059457998ce2876cc8e67cbf"
   version = "v0.9.1"
+
+[[projects]]
+  digest = "1:d74ba1aea6244ead12e4f16d5f61a15ced9a2f2d1cae2021fbb76088b27e7afa"
+  name = "gopkg.in/ini.v1"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "c85607071cf08ca1adaf48319cd1aa322e81d8c1"
+  version = "v1.42.0"
 
 [[projects]]
   digest = "1:18108594151654e9e696b27b181b953f9a90b16bf14d253dd1b397b025a1487f"

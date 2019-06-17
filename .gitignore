@@ -4,9 +4,9 @@ bin/
 tmp/
 /local/
 /local
-/functest/
 /dns-controller-manager
 /main
+/test/functional/tmp-*.yaml
 /test/integration/kubebuilder*
 /test/integration/default.etcd
 .vscode/
