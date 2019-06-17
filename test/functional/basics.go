@@ -264,7 +264,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 				u.AwaitLookup(dnsName(p, "a"), "11.11.11.11")
 				u.AwaitLookupTXT(dnsName(p, "txt"), "line1", "line2 bla bla")
 				randname := config.RandStringBytes(6)
-				u.AwaitLookup(dnsName(p, randname+".aws-wildcard"), "44.44.44.44")
+				u.AwaitLookup(randname+"."+dnsName(p, "wildcard"), "44.44.44.44")
 				u.AwaitLookupCName(dnsName(p, "cname"), "google-public-dns-a.google.com")
 				u.AwaitLookup(dnsName(p, "cname-multi"), "8.8.8.8", "8.8.4.4")
 			}
