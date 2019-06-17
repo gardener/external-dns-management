@@ -19,6 +19,11 @@ SCRIPT_BASEDIR=$(dirname "$0")
 ROOTDIR=$SCRIPT_BASEDIR/../..
 echo ROOTDIR: $ROOTDIR
 
+FUNCTEST_CONFIG=$ROOTDIR/local/functest-config.yaml
+DNS_LOOKUP=true
+DNS_SERVER=8.8.4.4
+RUN_CONTROLLER=false
+
 usage()
 {
     cat <<EOM
@@ -26,25 +31,24 @@ Usage:
 Runs functional tests for external-dns-management for all provider using secrets from a
 functest-config.yaml file (see functest-config-template.yaml for details how it should look).
 
-./run.sh [--no-dns] [-f <functest-config.yaml>] [-r|--reuse] [-l] [-v] [-k|--keep] [-- <options> <for> <ginkgo>]
+./run.sh [--no-dns] [-f <functest-config.yaml>] [-r|--reuse] [-l] [-v] [-k|--keep] [--dns-server <dns-server>] [--run-controller] [-- <options> <for> <ginkgo>]
 
 Options:
-    -r | --reuse        reuse existing kind cluster
-    -k | --keep         keep kind cluster after run for reuse or inspection
-    -l                  use local kube-apiserver and etcd (i.e. no kind cluster)
-    -v                  verbose output of script (not test itself)
-    --no-dns            do not perform DNS lookups (for faster testing)
-    -f <config.yaml>    path to functest configuration file (defaults to ../../local/functest-config.yaml)
+    -r | --reuse           reuse existing kind cluster
+    -k | --keep            keep kind cluster after run for reuse or inspection
+    -l                     use local kube-apiserver and etcd (i.e. no kind cluster)
+    -v                     verbose output of script (not test itself)
+    --dns-server <server>  dns server to use for DNS lookups (defaults to $DNS_SERVER)
+    --no-dns               do not perform DNS lookups (for faster testing)
+    -f <config.yaml>       path to functest configuration file (defaults to $FUNCTEST_CONFIG)
+    --run-controller       start the dns-controller-manager (otherwise it must be started separately)
 
 For options of ginkgo run:
     ginkgo -h
 
-Example: ./run.sh -r -k -- -v -focus=aws -dryRun
+Example: ./run.sh -r -k --no-dns -- -v -focus=aws -dryRun
 EOM
 }
-
-FUNCTEST_CONFIG=$ROOTDIR/local/functest-config.yaml
-DNS_LOOKUP=true
 
 while [ "$1" != "" ]; do
     case $1 in
@@ -66,6 +70,13 @@ while [ "$1" != "" ]; do
                            ;;
         --no-dns )         shift
                            DNS_LOOKUP=false
+                           ;;
+        --dns-server )     shift
+                           DNS_LOOKUP=$1
+                           shift
+                           ;;
+        --run-controller ) shift
+                           RUN_CONTROLLER=true
                            ;;
         -- )               shift
                            break
@@ -156,10 +167,19 @@ fi
 
 kubectl cluster-info
 
+if [ "$RUN_CONTROLLER" == "true" ]; then
+  go build -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/dns
+  $ROOTDIR/dns-controller-manager --controllers=dnscontrollers --identifier=functest >/dev/null 2>&1 &
+  PID_CONTROLLER=$!
+  trap "kill $PID_CONTROLLER" SIGINT SIGTERM EXIT
+fi
+
 # install ginkgo if missing
 which ginkgo || go install github.com/onsi/ginkgo/ginkgo
 
-FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP ginkgo -p "$@"
+cd $SCRIPT_BASEDIR
+
+FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER ginkgo -p "$@"
 
 RETCODE=$?
 

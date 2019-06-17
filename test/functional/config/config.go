@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ *
+ */
+
 package config
 
 import (
@@ -13,6 +29,7 @@ var (
 	kubeconfig     string
 	configFilename = "functest-config.yaml"
 	namespace      = "default"
+	dnsServer      = ""
 	dnsLookup      = true
 )
 
@@ -25,6 +42,11 @@ func init() {
 	value := os.Getenv("DNS_LOOKUP")
 	if value != "" {
 		dnsLookup = strings.ToLower(value) == "true"
+	}
+
+	value = os.Getenv("DNS_SERVER")
+	if value != "" {
+		dnsServer = value
 	}
 
 	value = os.Getenv("NAMESPACE")
@@ -42,6 +64,7 @@ func PrintConfigEnv() {
 	fmt.Printf("FUNCTEST_CONFIG=%s\n", configFilename)
 	fmt.Printf("KUBECONFIG=%s\n", kubeconfig)
 	fmt.Printf("DNS_LOOKUP=%t\n", dnsLookup)
+	fmt.Printf("DNS_SERVER=%s\n", dnsServer)
 	fmt.Printf("NAMESPACE=%s\n", namespace)
 }
 
@@ -54,6 +77,7 @@ type ProviderConfig struct {
 	Prefix        string `json:"prefix"`
 	AliasTarget   string `json:"aliasTarget,omitempty"`
 	ZoneID        string `json:"zoneID"`
+	PrivateDNS    bool   `json:privateDNS,omitempty`
 
 	Namespace           string
 	TmpManifestFilename string
@@ -98,7 +122,7 @@ func LoadConfig(filename string) (*Config, error) {
 		return nil, fmt.Errorf("Post processing config file %s failed with %s", filename, err)
 	}
 
-	config.Utils = CreateDefaultTestUtils()
+	config.Utils = CreateDefaultTestUtils(dnsServer)
 
 	return config, nil
 }

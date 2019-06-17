@@ -1,3 +1,19 @@
+/*
+ * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ *
+ */
+
 package config
 
 import (
@@ -5,7 +21,6 @@ import (
 	"fmt"
 	"github.com/onsi/gomega"
 	"math/rand"
-	"net"
 	"os/exec"
 	"strings"
 	"time"
@@ -20,15 +35,17 @@ type TestUtils struct {
 	PollingPeriod time.Duration
 	Namespace     string
 	Verbose       bool
+	dnsClient     *dnsClient
 }
 
-func CreateDefaultTestUtils() *TestUtils {
+func CreateDefaultTestUtils(dnsServer string) *TestUtils {
 	return &TestUtils{
 		AwaitTimeout:  30 * time.Second,
 		LookupTimeout: 420 * time.Second, // needed probably because of (too) long DNS caching settings at SAP(?)
-		PollingPeriod: 100 * time.Millisecond,
+		PollingPeriod: 200 * time.Millisecond,
 		Namespace:     "default",
 		Verbose:       true,
+		dnsClient:     createDNSClient(dnsServer),
 	}
 }
 
@@ -167,7 +184,7 @@ func (u *TestUtils) AwaitWithTimeout(msg string, check CheckFunc, timeout time.D
 }
 
 func (u *TestUtils) AwaitLookupCName(dnsname, target string) {
-	expectedAddrs, err := net.LookupHost(target)
+	expectedAddrs, err := u.dnsClient.LookupHost(target)
 	gomega.Ω(err).Should(gomega.BeNil())
 
 	u.AwaitLookup(dnsname, expectedAddrs...)
@@ -188,23 +205,23 @@ func (u *TestUtils) AwaitLookupFunc(lookup LookupFunc, dnsname string, expected 
 
 	itfs := toIfts(expected)
 
+	var addrs []string
+	var err error
 	gomega.Eventually(func() error {
-		_, err := lookup(dnsname)
+		addrs, err = lookup(dnsname)
 		return err
 	}, u.LookupTimeout, u.PollingPeriod).Should(gomega.BeNil())
-
-	addrs, err := lookup(dnsname)
 
 	gomega.Ω(err).Should(gomega.BeNil())
 	gomega.Ω(addrs).Should(gomega.ConsistOf(itfs...))
 }
 
 func (u *TestUtils) AwaitLookup(dnsname string, expected ...string) {
-	u.AwaitLookupFunc(net.LookupHost, dnsname, expected...)
+	u.AwaitLookupFunc(u.dnsClient.LookupHost, dnsname, expected...)
 }
 
 func (u *TestUtils) AwaitLookupTXT(dnsname string, expected ...string) {
-	u.AwaitLookupFunc(net.LookupTXT, dnsname, expected...)
+	u.AwaitLookupFunc(u.dnsClient.LookupTXT, dnsname, expected...)
 }
 
 func RandStringBytes(n int) string {
@@ -213,4 +230,11 @@ func RandStringBytes(n int) string {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
+}
+
+func (u *TestUtils) CanLookup(privateDNS bool) bool {
+	if u.dnsClient.client == nil {
+		return true
+	}
+	return !privateDNS
 }

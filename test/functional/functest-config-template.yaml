@@ -39,6 +39,7 @@ providers:
 - name: openstack-playground
   type: openstack-designate
   domain: my.openstack.designate.dns.zone
+  privateDNS: true # if domain names are reachable by DNS lookup
   secretData: |+
     OS_AUTH_URL: ...
     OS_REGION_NAME: ...

@@ -17,73 +17,20 @@
 package config
 
 import (
-	"fmt"
-	"github.com/miekg/dns"
-	"net"
-	"time"
+	"testing"
 )
 
-const (
-	defaultTimeout time.Duration = 5 * time.Second
-)
+func TestLookupHost(t *testing.T) {
+	c := createDNSClient("8.8.8.8")
 
-type dnsClient struct {
-	server string
-	client *dns.Client
-}
-
-func createDNSClient(server string) *dnsClient {
-	c := &dnsClient{server: server}
-	if server == "" {
-		return c
-	}
-
-	c.client = &dns.Client{ReadTimeout: defaultTimeout}
-
-	return c
-}
-
-func (c *dnsClient) LookupHost(name string) ([]string, error) {
-	if c.client == nil {
-		return net.LookupHost(name)
-	}
-
-	return c.lookup(name, dns.TypeA)
-}
-
-func (c *dnsClient) LookupTXT(name string) ([]string, error) {
-	if c.client == nil {
-		return net.LookupHost(name)
-	}
-
-	return c.lookup(name, dns.TypeTXT)
-}
-
-func (c *dnsClient) lookup(name string, qtype uint16) ([]string, error) {
-	msg := createMsg(name, qtype)
-	r, _, err := c.client.Exchange(msg, c.server+":53")
+	addrs, err := c.LookupHost("google-public-dns-a.google.com")
 	if err != nil {
-		return nil, err
+		t.Error("Error on LookupHost")
 	}
-	if r == nil {
-		return nil, fmt.Errorf("Lookup failed")
+	if len(addrs) != 1 {
+		t.Error("Wrong count of results")
 	}
-	if r.Rcode != dns.RcodeSuccess {
-		return nil, fmt.Errorf("Lookup failed with Rcode %v", r.Rcode)
-	}
-
-	values := []string{}
-	for _, rr := range r.Answer {
-		values = append(values, rr.String())
-	}
-	return values, nil
-}
-
-func createMsg(qname string, qtype uint16) *dns.Msg {
-	return &dns.Msg{
-		MsgHdr: dns.MsgHdr{
-			RecursionDesired: true,
-		},
-		Question: []dns.Question{{Name: qname, Qtype: qtype}},
+	if addrs[0] != "8.8.8.8" {
+		t.Errorf("Wrong address: %s != 8.8.8.8", addrs[0])
 	}
 }
