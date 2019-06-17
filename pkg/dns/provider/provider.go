@@ -40,6 +40,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
+const ZoneCachePrefix = "zc-"
+
 func (this DNSProviders) LookupFor(dns string) DNSProvider {
 	var found DNSProvider
 	match := -1
@@ -127,7 +129,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 		}
 		persistDir := ""
 		if this.dir != "" {
-			persistDir = filepath.Join(this.dir, hash)
+			persistDir = filepath.Join(this.dir, ZoneCachePrefix+hash)
 		}
 		cacheConfig := ZoneCacheConfig{
 			context:               state.GetContext().GetContext(),

@@ -23,10 +23,12 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"io/ioutil"
+	"k8s.io/apimachinery/pkg/runtime"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -113,7 +115,7 @@ func (hd *ForwardedDomainsHandlerData) Marshal(zoneID string) (*PersistentHandle
 	if err != nil {
 		return nil, err
 	}
-	return &PersistentHandlerData{Name: "ForwardedDomains", Version: "1", Value: string(bytes)}, nil
+	return &PersistentHandlerData{Name: "ForwardedDomains", Version: "1", Value: &runtime.RawExtension{Raw: bytes}}, nil
 }
 
 func (hd *ForwardedDomainsHandlerData) Unmarshal(zoneID string, data *PersistentHandlerData) error {
@@ -126,9 +128,12 @@ func (hd *ForwardedDomainsHandlerData) Unmarshal(zoneID string, data *Persistent
 	if data.Name != "ForwardedDomains" || data.Version != "1" {
 		return fmt.Errorf("unexpected HandlerData: %s %s", data.Name, data.Version)
 	}
+	if data.Value == nil {
+		return fmt.Errorf("missing value in HandlerData: %s %s", data.Name, data.Version)
+	}
 
 	var value []string
-	err := json.Unmarshal([]byte(data.Value), &value)
+	err := json.Unmarshal([]byte(data.Value.Raw), &value)
 	if err != nil {
 		return err
 	}
@@ -339,7 +344,7 @@ type PersistentZoneState struct {
 type PersistentHandlerData struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
-	Value   string `json:"value"`
+	Value   *runtime.RawExtension
 }
 
 const TempSuffix = ".~.tmp"
@@ -352,6 +357,45 @@ func (c *defaultZoneCache) writeZone(zoneid string, written chan<- string) {
 		c.logger.Warn(err)
 	}
 	written <- zoneid
+}
+
+var alreadyCleanedupOutdated int32 = 0
+
+func zoneCacheCleanupOutdated(logger logger.LogContext, dir, prefix string) {
+	// only perform cleanup once and only if cache dir is set
+	if !atomic.CompareAndSwapInt32(&alreadyCleanedupOutdated, 0, 1) || dir == "" {
+		return
+	}
+
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		logger.Warnf("reading cache dir %s failed with %s", dir, err)
+		return
+	}
+	outdated := time.Now().Add(-24 * time.Hour)
+
+outer:
+	for _, file := range files {
+		if file.IsDir() && strings.HasPrefix(file.Name(), prefix) && file.ModTime().Before(outdated) {
+			subDir := filepath.Join(dir, file.Name())
+			subdirFiles, err := ioutil.ReadDir(subDir)
+			if err != nil {
+				continue
+			}
+			for _, subfile := range subdirFiles {
+				if subfile.IsDir() || !subfile.ModTime().Before(outdated) {
+					continue outer
+				}
+				err = os.Remove(filepath.Join(subDir, subfile.Name()))
+			}
+			err = os.Remove(subDir)
+			if err != nil {
+				logger.Warnf("deleting outdated cache dir %s failed with %s", subDir, err)
+			} else {
+				logger.Infof("deleted outdated cache dir %s", subDir)
+			}
+		}
+	}
 }
 
 func (c *defaultZoneCache) restoreFromDisk() error {

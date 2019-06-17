@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+	"os"
 	"text/template"
 )
 
@@ -123,7 +124,10 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 			tmpl, err := template.New("Manifest").Parse(basicTemplate)
 			Ω(err).Should(BeNil())
 
-			err = p.CreateTempManifest(".", tmpl)
+			basePath, err := os.Getwd()
+			Ω(err).Should(BeNil())
+
+			err = p.CreateTempManifest(basePath, tmpl)
 			defer p.DeleteTempManifest()
 			Ω(err).Should(BeNil())
 

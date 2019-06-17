@@ -110,6 +110,9 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 	if err != nil {
 		return nil, err
 	}
+
+	zoneCacheCleanupOutdated(c, config.CacheDir, ZoneCachePrefix)
+
 	return &reconciler{
 		controller: c,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
