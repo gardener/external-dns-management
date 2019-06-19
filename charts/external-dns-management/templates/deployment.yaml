@@ -1,10 +1,6 @@
 ---
 apiVersion: apps/v1
-{{- if not .Values.configuration.persistentCache }}
 kind: Deployment
-{{- else }}
-kind: StatefulSet
-{{- end }}
 metadata:
   name: {{ include "external-dns-management.fullname" . }}
   namespace: {{ .Release.Namespace }}
@@ -15,6 +11,8 @@ metadata:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
 spec:
   replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/name: {{ include "external-dns-management.name" . }}
@@ -424,6 +422,12 @@ spec:
           - name: persistent-cache
             mountPath: /persistent-cache
         {{- end }}
+      {{- if .Values.configuration.persistentCache }}
+      volumes:
+        - name: persistent-cache
+          persistentVolumeClaim:
+            claimName: {{ include "external-dns-management.fullname" . }}
+      {{- end }}
       serviceAccountName: {{ include "external-dns-management.fullname" . }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -437,14 +441,3 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-  {{- if .Values.configuration.persistentCache }}
-  volumeClaimTemplates:
-    - metadata:
-        name: persistent-cache
-      spec:
-        accessModes:
-        - ReadWriteOnce
-        resources:
-          requests:
-            storage: 1Gi
-  {{- end }}

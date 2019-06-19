@@ -126,6 +126,7 @@ configuration:
 # openstackDesignateSetup: 10
 # openstackDesignateTtl: 120
   persistentCache: false
+  persistentCacheStorageSize: 1Gi
 # pluginDir: ""
 # poolResyncPeriod: 30s
 # poolSize: 2

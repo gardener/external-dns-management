@@ -1,0 +1,16 @@
+---
+{{- if .Values.configuration.persistentCache }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "external-dns-management.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: {{ include "external-dns-management.fullname" . }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.configuration.persistentCacheStorageSize }}
+{{- end }}
