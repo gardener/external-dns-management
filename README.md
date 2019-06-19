@@ -94,6 +94,104 @@ This project contains:
   _AliCloud DNS_, _Azure DNS_, and _OpenStack Designate_.
 - A controller manager hosting all these controllers.
 
+### Using the standard controller manager
+
+The controllers to run can be selected with the `--controllers` option.
+Here the following controller groups can be used:
+- `dnssources`: all DNS Source Controllers. It includes the conrollers
+  - `ingress-dns`: handle DNS annotations for the standard kubernetes ingress resource
+  - `service-dns`: handle DNS annotations for the standard kubernetes service resource
+ 
+- `dnscontrollers`: all DNS Provisioning Controllers. It includes the controllers
+  - `alicloud-dns`: 
+  - `aws-route53`:
+  - `azure-dns`:
+  - `google-clouddns`:
+  - `openstack-designate`:
+  
+- `all`: (default) all controllers
+
+It is also possible to list dedicated controllers by their name.
+
+If a DNS Provisioning Controller is enabled it is important to specify a
+unique controller identity using the `--identifier` option.
+This identifier is stored in the DNS system to identify the DNS entries
+managed by a dedicated controller. There should never be two
+DNS controllers with the same identifier running at the same time for the 
+same DNS domains/accounts.
+
+Here is the complete list of options provided:
+```
+Usage:
+  dns-controller-manager [flags]
+
+Flags:
+      --cache-ttl int                                     default for all controller "cache-ttl" options
+      --compound.cache-ttl int                            Time-to-live for provider hosted zone cache
+      --compound.default.pool.size int                    Worker pool size for pool default of controller compound (default: 2)
+      --compound.dns-class string                         Identifier used to differentiate responsible controllers for entries
+      --compound.dns-delay duration                       delay between two dns reconcilations
+      --compound.dns.pool.resync-period duration          Period for resynchronization of pool dns of controller compound (default: 15m0s)
+      --compound.dns.pool.size int                        Worker pool size for pool dns of controller compound (default: 1)
+      --compound.dry-run                                  just check, don't modify
+      --compound.identifier string                        Identifier used to mark DNS entries
+      --compound.ownerids.pool.size int                   Worker pool size for pool ownerids of controller compound (default: 1)
+      --compound.provider-types string                    comma separated list of provider types to enable
+      --compound.providers.pool.resync-period duration    Period for resynchronization of pool providers of controller compound (default: 10m0s)
+      --compound.providers.pool.size int                  Worker pool size for pool providers of controller compound (default: 2)
+      --compound.secrets.pool.size int                    Worker pool size for pool secrets of controller compound (default: 2)
+      --compound.setup int                                number of processors for controller setup
+      --compound.ttl int                                  Default time-to-live for DNS entries
+  -c, --controllers string                                comma separated list of controllers to start (<name>,source,target,all) (default "all")
+      --cpuprofile string                                 set file for cpu profiling
+      --disable-namespace-restriction                     disable access restriction for namespace local access only
+      --dns-class string                                  default for all controller "dns-class" options
+      --dns-delay duration                                default for all controller "dns-delay" options
+      --dns-target-class string                           default for all controller "dns-target-class" options
+      --dry-run                                           default for all controller "dry-run" options
+      --exclude-domains stringArray                       default for all controller "exclude-domains" options
+  -h, --help                                              help for dns-controller-manager
+      --identifier string                                 default for all controller "identifier" options
+      --ingress-dns.default.pool.resync-period duration   Period for resynchronization of pool default of controller ingress-dns (default: 2m0s)
+      --ingress-dns.default.pool.size int                 Worker pool size for pool default of controller ingress-dns (default: 2)
+      --ingress-dns.dns-class string                      Identifier used to differentiate responsible controllers for entries
+      --ingress-dns.dns-target-class string               Identifier used to differentiate responsible dns controllers for target entries
+      --ingress-dns.exclude-domains stringArray           excluded domains
+      --ingress-dns.key string                            selecting key for annotation
+      --ingress-dns.target-name-prefix string             name prefix in target namespace for cross cluster generation
+      --ingress-dns.target-namespace string               target namespace for cross cluster generation
+      --ingress-dns.targets.pool.size int                 Worker pool size for pool targets of controller ingress-dns (default: 2)
+      --key string                                        default for all controller "key" options
+      --kubeconfig string                                 default cluster access
+      --kubeconfig.id string                              id for cluster default
+  -D, --log-level string                                  logrus log level
+      --name string                                       name used for conroller manager
+      --namespace string                                  namepace for lease
+  -n, --namespace-local-access-only                       enable access restriction for namespace local access only (deprecated)
+      --omit-lease                                        omit lease for development
+      --plugin-dir string                                 directory containing go plugins
+      --pool.resync-period duration                       default for all controller "pool.resync-period" options
+      --pool.size int                                     default for all controller "pool.size" options
+      --provider-types string                             default for all controller "provider-types" options
+      --server-port-http int                              HTTP server port (serving /healthz, /metrics, ...)
+      --service-dns.default.pool.resync-period duration   Period for resynchronization of pool default of controller service-dns (default: 2m0s)
+      --service-dns.default.pool.size int                 Worker pool size for pool default of controller service-dns (default: 2)
+      --service-dns.dns-class string                      Identifier used to differentiate responsible controllers for entries
+      --service-dns.dns-target-class string               Identifier used to differentiate responsible dns controllers for target entries
+      --service-dns.exclude-domains stringArray           excluded domains
+      --service-dns.key string                            selecting key for annotation
+      --service-dns.target-name-prefix string             name prefix in target namespace for cross cluster generation
+      --service-dns.target-namespace string               target namespace for cross cluster generation
+      --service-dns.targets.pool.size int                 Worker pool size for pool targets of controller service-dns (default: 2)
+      --setup int                                         default for all controller "setup" options
+      --target string                                     target cluster for dns requests
+      --target-name-prefix string                         default for all controller "target-name-prefix" options
+      --target-namespace string                           default for all controller "target-namespace" options
+      --target.id string                                  id for cluster target
+      --ttl int                                           default for all controller "ttl" options
+
+```
+
 ## How to implement Source Controllers
 
 Based on the provided source controller library a source controller must
