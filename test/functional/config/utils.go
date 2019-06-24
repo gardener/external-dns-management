@@ -238,3 +238,17 @@ func (u *TestUtils) CanLookup(privateDNS bool) bool {
 	}
 	return !privateDNS
 }
+
+func (u *TestUtils) AwaitKubectlGetCRDs(crds ...string) error {
+	var err error
+	for _, crd := range crds {
+		gomega.Eventually(func() error {
+			_, err = u.runKubeCtl("get crd " + crd)
+			return err
+		}, u.AwaitTimeout, u.PollingPeriod).Should(gomega.BeNil())
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}

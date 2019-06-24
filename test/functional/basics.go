@@ -150,6 +150,9 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 
 			u := cfg.Utils
 
+			err = u.AwaitKubectlGetCRDs("dnsproviders.dns.gardener.cloud", "dnsentries.dns.gardener.cloud")
+			Ω(err).Should(BeNil())
+
 			err = u.KubectlApply(p.TmpManifestFilename)
 			Ω(err).Should(BeNil())
 

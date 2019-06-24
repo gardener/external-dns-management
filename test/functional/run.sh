@@ -16,13 +16,16 @@
 
 set -e
 SCRIPT_BASEDIR=$(dirname "$0")
-ROOTDIR=$SCRIPT_BASEDIR/../..
+ROOTDIR=../..
 echo ROOTDIR: $ROOTDIR
+
+cd $SCRIPT_BASEDIR
 
 FUNCTEST_CONFIG=$ROOTDIR/local/functest-config.yaml
 DNS_LOOKUP=true
 DNS_SERVER=8.8.4.4
 RUN_CONTROLLER=false
+GLOBAL_LOCK_URL=https://kvdb.io/8Kr6JtkwHUrq96Wk5aogEK/functest-lock
 
 usage()
 {
@@ -86,6 +89,65 @@ while [ "$1" != "" ]; do
     esac
 done
 
+trapHandler()
+{
+  if [[ -n "$LOCK_VALUE" ]]; then
+    curl -s -X DELETE $GLOBAL_LOCK_URL
+    echo --- Unlocked global functest lock ---
+  fi
+
+  if [[ -n "$PID_APISERVER" ]]; then
+    kill $PID_APISERVER
+  fi
+
+  if [[ -n "$PID_ETCD" ]]; then
+    kill $PID_ETCD
+  fi
+
+  if [[ -n "$PID_CONTROLLER" ]]; then
+    kill $PID_CONTROLLER
+  fi
+}
+
+globalLock()
+{
+    if [[ -z "$GLOBAL_LOCK_URL" ]]; then
+      return
+    fi
+
+    if [[ -n "$FORCE_UNLOCK" ]]; then
+      curl -s -X DELETE $GLOBAL_LOCK_URL
+    fi
+
+    echo Waiting for global functest lock...
+    i="600" # wait for maximal 600 seconds
+
+    while [ $i -gt 0 ]; do
+      val=$(curl -s $GLOBAL_LOCK_URL)
+      if [ "$val" = "Not Found" ]; then
+        break
+      fi
+      sleep 1
+      i=$[$i-1]
+      if ! ((i % 15)); then
+        echo "Still waiting for global functest lock... (for at most $i seconds )"
+      fi
+    done
+
+    if [ "$val" != "Not Found" ]; then
+      echo "Cannot retrieve global functest lock: LOCK_VALUE=$val"
+      exit 1
+    fi
+
+    LOCK_VALUE="$(date +%s | sha256sum | base64 | head -c 32)@$(hostname)"
+
+    curl -s -d $LOCK_VALUE $GLOBAL_LOCK_URL
+
+    echo '--- Locked global functest lock ('$LOCK_VALUE') ---'
+}
+
+trap trapHandler SIGINT SIGTERM EXIT
+
 if [ "$LOCAL_APISERVER" == "" ]; then
   docker version > /dev/null || (echo "Local Docker installation needed" && exit 1)
 fi
@@ -93,6 +155,8 @@ fi
 if [ "$VERBOSE" != "" ]; then
   set -x
 fi
+
+globalLock
 
 if [ "$NOBOOTSTRAP" == "" ] && [ "$LOCAL_APISERVER" == "" ]; then
   echo Starting Kubernetes IN Docker...
@@ -131,7 +195,6 @@ if [ "$LOCAL_APISERVER" != "" ]; then
     $KUBEBUILDER_BIN_DIR/etcd >/dev/null 2>&1 &
   fi
   PID_ETCD=$!
-  trap "kill $PID_ETCD" SIGINT SIGTERM EXIT
 
   # starting kube-apiserver
   echo Starting Kube API Server
@@ -141,7 +204,6 @@ if [ "$LOCAL_APISERVER" != "" ]; then
     $KUBEBUILDER_BIN_DIR/kube-apiserver --etcd-servers http://localhost:2379 --cert-dir $KUBEBUILDER_BIN_DIR/../var >/dev/null 2>&1 &
   fi
   PID_APISERVER=$!
-  trap "kill $PID_APISERVER && kill $PID_ETCD" SIGINT SIGTERM EXIT
   sleep 3
 
   # create local kubeconfig
@@ -171,13 +233,10 @@ if [ "$RUN_CONTROLLER" == "true" ]; then
   go build -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/dns
   $ROOTDIR/dns-controller-manager --controllers=dnscontrollers --identifier=functest >/dev/null 2>&1 &
   PID_CONTROLLER=$!
-  trap "kill $PID_CONTROLLER" SIGINT SIGTERM EXIT
 fi
 
 # install ginkgo if missing
 which ginkgo || go install github.com/onsi/ginkgo/ginkgo
-
-cd $SCRIPT_BASEDIR
 
 FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER ginkgo -p "$@"
 
