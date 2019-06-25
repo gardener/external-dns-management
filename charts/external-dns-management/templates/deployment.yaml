@@ -429,6 +429,9 @@ spec:
             claimName: {{ include "external-dns-management.fullname" . }}
       {{- end }}
       serviceAccountName: {{ include "external-dns-management.fullname" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

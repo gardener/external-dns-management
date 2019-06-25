@@ -19,6 +19,7 @@ resources:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+# priorityClassName: ""
 
 createCRDs: true
 
