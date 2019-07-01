@@ -12,5 +12,9 @@ spec:
     - ReadWriteOnce
   resources:
     requests:
+      {{- if not (eq .Values.gardener.seed.provider "alicloud") }}
       storage: {{ .Values.configuration.persistentCacheStorageSize }}
+      {{- else }}
+      storage: {{ .Values.configuration.persistentCacheStorageSizeAlicloud }}
+      {{- end }}
 {{- end }}
