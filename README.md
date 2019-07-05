@@ -440,3 +440,27 @@ this cluster. If no such option is specified the default is used.
 Therefore, even if the configuration is prepared for multiple clusters,
 such a controller manager can easily work on a single cluster if no special
 options are given on the command line.
+
+## Why not using the community external-dns solution?
+
+Some of the reasons are context-specific, i.e. relate to Gardener's highly dynamic requirements.
+
+1. Custom resource for DNS entries
+
+DNS entries are explicitly specified as custom resources. As an important side effect, each DNS entry provides an own status. Simply by querying the Kubernetes API, a client can check if a requested DNS entry has been successfully added to the DNS backend, or if an update has already been deployed, or if not to reason about the cause. It also opens for easy extensibility, as DNS entries can be created directly via the Kubernetes API. And it simplifies Day 2 operations, e.g. automatic cleanup of unused entries if a DNS provider is deleted.
+
+2. Management of multiple DNS providers
+
+The Gardener DNS controller uses a custom resource DNSProvider to dynamically manage the backend DNS services. While with external-dns you have to specify the single provider during startup, in the Gardener DNS controller you can add/update/delete providers during runtime with different credentials and/or backends. This is important for a multi-tenant environment as in Gardener, where users can bring their own accounts.
+
+A DNS provider can also restrict its actions on subset of the DNS domains (includes and excludes) for which the credentials are capable to edit.
+
+Each provider can define a separate “owner” identifier, to differentiate DNS entries in the same DNS zone from different providers.
+
+3. Multi cluster support
+
+The Gardener DNS controller distinguish three different logical Kubernetes clusters: Source cluster, target cluster and runtime cluster. The source cluster is monitored by the DNS source controllers for annotations on ingress and service resources. These controllers then create DNS entries in the target cluster. DNS entries in the target cluster are then reconciliated/synchronized with the corresponding DNS backend service by the privider controller. The runtime cluster is the cluster the DNS controller runs on. For example, this enables needed flexibility in the Gardener deployment. The DNS controller runs on the seed cluster. This is also the target cluster. DNS providers and entries resources are created in the corresponding namespace of the shoot control plane, while the source cluster is the shoot cluster itself.
+
+4. Optimizations for handling hundreds of DNS entries
+
+Some DNS backend services are restricted on the API calls per second (e.g. the AWS Route 53 API). To manage hundreds of DNS entries it is important to minimize the number of API calls. The Gardener DNS controller heavily makes usage of caches and batch processing for this reason.
