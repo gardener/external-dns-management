@@ -1,11 +1,180 @@
 # External DNS Management
 
-This project offers an environment to manage external DNS entries for
-a kubernetes cluster. It provides a flexible model allowing to
-add DNS source objects and DNS provisioning environments by adding
-new independent controllers.
+The main artefact of this project is the <b>DNS controller manager</b> for managing DNS records, also 
+nicknamed as the Gardener "DNS Controller".
+
+It contains provisioning controllers for creating DNS records in one of the DNS cloud services
+  - _Amazon Route53_,
+  - _Google CloudDNS_, 
+  - _AliCloud DNS_,
+   - _Azure DNS_, or
+   - _OpenStack Designate_,
+
+and source controllers for services and ingresses to create DNS entries by annotations.
+
+The configuration for the external DNS service is specified in a custom resource `DNSProvider`.
+Multiple `DNSProvider` can be used simultaneously and changed without restarting the DNS controller.
+
+DNS records are either created directly for a corresponding custom resource `DNSEntry` or by 
+annotating a service or ingress.
+
+For a detailed explanation of the model, see section [The Model](#the-model).
+
+For extending or adapting this project with your own source or provisioning controllers, see section
+[Extensions](#extensions) 
+
+## Quick start
+
+To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow these steps.
+
+1. Prerequisites
+    - Check out or download the project to get a copy of the Helm charts.
+      It is recommended to check out the tag of the 
+      [last release](https://github.com/gardener/external-dns-management/releases), so that Helm
+      values reference the newest released container image for the deployment.
+
+    - Make sure, that you have installed Helm client (`helm`) locally and Helm server (`tiller`) on 
+      the Kubernetes cluster. See e.g. [Helm installation](https://helm.sh/docs/install/) for more details.
+
+2. Install the DNS controller manager
+
+    As multiple Gardener DNS controllers can act on the same DNS Hosted Zone concurrently, each instance needs
+    an [owner identifier](#owner-identifiers). Therefore choose an identifier sufficiently unique across these instances.
+
+    Then install the DNS controller manager with
+
+    ```bash
+    helm install charts/external-dns-management --name dns-controller --namespace=<my-namespace> --set configuration.identifier=<my-identifier>
+    ```
+
+    This will use the default configuration with all source and provisioning controllers enabled.
+    The complete set of configuration variables can be found in `charts/external-dns-management/values.yaml`. 
+    Their meaning is explained by their corresponding command line options in section
+    [Using the DNS controller manager](#using-the-dns-controller-manager)
+    
+    By default, the DNS controller looks for custom resources in all namespaces. The choosen namespace is
+    only relevant for the deployment itself.
+
+3. Create a `DNSProvider`
+
+   To specify a DNS provider, you need to create a custom resource `DNSProvider` and a secret containing the
+   credentials for your account at the provider. E.g. if you want to use AWS Route53, create a secret and
+   provider with 
+   
+   ```bash
+   cat << EOF | kubectl apply -f -
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: aws-credentials
+     namespace: default
+   type: Opaque
+   data:
+     # replace '...' with values encoded as base64
+     # see https://docs.aws.amazon.com/general/latest/gr/managing-aws-access-keys.html
+     AWS_ACCESS_KEY_ID: ...
+     AWS_SECRET_ACCESS_KEY: ...
+   EOF
+   ```
+
+   and    
+   
+   ```bash
+   cat << EOF | kubectl apply -f -
+   apiVersion: dns.gardener.cloud/v1alpha1
+   kind: DNSProvider
+   metadata:
+     name: aws
+     namespace: default
+   spec:
+     type: aws-route53
+     secretRef:
+       name: aws-credentials
+     domains:
+       include:
+       # this must be replaced with a (sub)domain of the hosted zone
+       - my.own.domain.com
+   EOF
+   ```
+
+   Check the successful creation with
+   
+   ```bash
+   kubectl get dnspr
+   ```
+   
+   You should see something like 
+   
+   ```
+   NAME   TYPE          STATUS   AGE
+   aws    aws-route53   Ready    12s
+   ```
+
+4. Create a `DNSEntry`
+
+   Create an DNS entry with
+   
+   ```bash
+   cat << EOF | kubectl apply -f -
+   apiVersion: dns.gardener.cloud/v1alpha1
+   kind: DNSEntry
+   metadata:
+     name: mydnsentry
+     namespace: default
+   spec:
+     dnsName: "myentry.my-own-domain.com"
+     ttl: 600
+     targets:
+     - 1.2.3.4
+   EOF
+   ```
+   
+   Check the status of the DNS entry with 
+   
+    ```bash
+    kubectl get dnsentry
+    ```
+    
+    You should see something like
+    
+    ```
+    NAME          DNS                           TYPE          PROVIDER      STATUS    AGE
+    mydnsentry    myentry.my-own-domain.com     aws-route53   default/aws   Ready     24s
+    ```
+ 
+    As soon as the status of the entry is `Ready`, the provider has accepted the new DNS record.
+    Depending on the provider and your DNS settings and cache, it may take up to a few minutes before
+    the domain name can be resolved.
+   
+5. Wait for/check DNS record
+
+   To check the DNS resolution, use `nslookup` or `dig`.
+   
+   ```bash
+   nslookup myentry.my-own-domain.com
+   ```
+   
+   or with dig
+   
+   ```bash
+   # or with dig
+   dig +short myentry.my-own-domain.com
+   ```
+
+   Depending on your network settings, you may get a successful response faster using a public DNS server
+   (e.g. 8.8.8.8, 8.8.4.4, or 1.1.1.1)   
+   ```bash
+   dig @8.8.8.8 +short myentry.my-own-domain.com
+   ```
+
+For more examples about the custom resources and the annotations for services and ingresses
+see the `examples` directory.
 
 ## The Model
+
+This project provides a flexible model allowing to
+add DNS source objects and DNS provisioning environments by adding
+new independent controllers.
 
 There is no single DNS controller anymore. The decoupling between the
 handling of DNS source objects, like ingresses or services, and the
@@ -82,19 +251,8 @@ DNS ecosytems assigns this object to such a dedicated set of DNS controllers.
 This way it is possible to maintain clearly separated set of DNS objects in a
 single kubernetes cluster.
 
-## The Content
 
-This project contains:
-
-- The _API Group_ objects for `DNSEntry` and `DNSProvider`
-- A library that can be used to implement _DNS Source Controllers_
-- A library that can be used to implement _DNS Provisioning Controllers_
-- Source controllers for Services and Ingresses based on annotations.
-- Provisioning Controllers for _Amazon Route53_, _Google CloudDNS_, 
-  _AliCloud DNS_, _Azure DNS_, and _OpenStack Designate_.
-- A controller manager hosting all these controllers.
-
-### Using the standard controller manager
+## Using the DNS controller manager
 
 The controllers to run can be selected with the `--controllers` option.
 Here the following controller groups can be used:
@@ -192,7 +350,11 @@ Flags:
 
 ```
 
-## How to implement Source Controllers
+## Extensions
+
+This project can also be used as library to implement own source and provisioning controllers.
+
+### How to implement Source Controllers
 
 Based on the provided source controller library a source controller must
 implement the [`source.DNSSource` interface](pkg/dns/source/interface.go) and
@@ -219,7 +381,7 @@ func init() {
 
 Complete examples can be found in the sub packages of `pkg/controller/source`.
 
-## How to implement Provisioning Controllers
+### How to implement Provisioning Controllers
 
 Provisioning controllers can be implemented based on the provisioning controller library
 in this repository and must implement the
@@ -237,7 +399,7 @@ instance) in several ways:
   infrastructures. This one can then be used to create a dedicated controller,
   again.
 
-### Embedding a Factory into a Controller
+#### Embedding a Factory into a Controller
 
 A provisioning controller can be implemented following this 
 [example](pkg/controller/provider/aws/controller/controller.go):
@@ -272,7 +434,7 @@ The provider implemented in this project always follow the same structure:
 - it contains a sub package `controller`, which contains the embedding of
   the factory into a dedicated controller
 
-### Embedding a Factory into a Compound Factory
+#### Embedding a Factory into a Compound Factory
 
 A provisioning controller based on a *Compound Factory* can be extended by
 a new provider factory by registering this factory at the compound factory.
@@ -302,7 +464,7 @@ func init() {
 The compound factory is then again embedded into a provisioning controller as shown
 in the previous section (see the [`controller`sub package](pkg/controller/provider/compound/controller/controller.go)).
 
-## Setting Up a Controller Manager
+### Setting Up a Controller Manager
 
 One or multiple controller packages can be bundled into a controller manager,
 by implementing a main package like [this](cmd/dns/main.go):
