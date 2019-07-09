@@ -103,7 +103,7 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   dnsName: {{.Prefix}}cname.{{.Domain}}
-  ttl: 100
+  ttl: 160
   targets:
   - google-public-dns-a.google.com
 ---
@@ -114,7 +114,7 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   dnsName: {{.Prefix}}cname-multi.{{.Domain}}
-  ttl: 100
+  ttl: 160
   targets:
   - google-public-dns-a.google.com
   - google-public-dns-b.google.com
@@ -126,7 +126,7 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   dnsName: {{.Prefix}}foreign.{{.ForeignDomain}}
-  ttl: 100
+  ttl: 160
   targets:
   - 22.22.22.22
 `
