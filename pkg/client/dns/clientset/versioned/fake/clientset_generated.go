@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned"
-	kracv1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/typed/dns/v1alpha1"
-	fakekracv1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/typed/dns/v1alpha1/fake"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/typed/dns/v1alpha1"
+	fakednsv1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/typed/dns/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -71,12 +71,7 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// KracV1alpha1 retrieves the KracV1alpha1Client
-func (c *Clientset) KracV1alpha1() kracv1alpha1.KracV1alpha1Interface {
-	return &fakekracv1alpha1.FakeKracV1alpha1{Fake: &c.Fake}
-}
-
-// Krac retrieves the KracV1alpha1Client
-func (c *Clientset) Krac() kracv1alpha1.KracV1alpha1Interface {
-	return &fakekracv1alpha1.FakeKracV1alpha1{Fake: &c.Fake}
+// DnsV1alpha1 retrieves the DnsV1alpha1Client
+func (c *Clientset) DnsV1alpha1() dnsv1alpha1.DnsV1alpha1Interface {
+	return &fakednsv1alpha1.FakeDnsV1alpha1{Fake: &c.Fake}
 }

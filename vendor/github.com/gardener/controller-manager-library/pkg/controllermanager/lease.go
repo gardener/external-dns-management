@@ -25,7 +25,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 
-	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
@@ -98,7 +98,7 @@ func makeLeaderElectionConfig(cluster cluster.Interface, namespace, name string)
 	}
 
 	cfg := cluster.Config()
-	client, err := corev1.NewForConfig(&cfg)
+	client, err := k8s.NewForConfig(&cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +106,8 @@ func makeLeaderElectionConfig(cluster cluster.Interface, namespace, name string)
 		"configmaps",
 		namespace,
 		name,
-		client,
+		client.CoreV1(),
+		client.CoordinationV1(),
 		resourcelock.ResourceLockConfig{
 			Identity:      hostname,
 			EventRecorder: cluster.Resources(),

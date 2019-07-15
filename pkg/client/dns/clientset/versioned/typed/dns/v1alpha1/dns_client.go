@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,32 +25,32 @@ import (
 	rest "k8s.io/client-go/rest"
 )
 
-type KracV1alpha1Interface interface {
+type DnsV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	DNSEntriesGetter
 	DNSOwnersGetter
 	DNSProvidersGetter
 }
 
-// KracV1alpha1Client is used to interact with features provided by the krac group.
-type KracV1alpha1Client struct {
+// DnsV1alpha1Client is used to interact with features provided by the dns group.
+type DnsV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *KracV1alpha1Client) DNSEntries(namespace string) DNSEntryInterface {
+func (c *DnsV1alpha1Client) DNSEntries(namespace string) DNSEntryInterface {
 	return newDNSEntries(c, namespace)
 }
 
-func (c *KracV1alpha1Client) DNSOwners(namespace string) DNSOwnerInterface {
+func (c *DnsV1alpha1Client) DNSOwners(namespace string) DNSOwnerInterface {
 	return newDNSOwners(c, namespace)
 }
 
-func (c *KracV1alpha1Client) DNSProviders(namespace string) DNSProviderInterface {
+func (c *DnsV1alpha1Client) DNSProviders(namespace string) DNSProviderInterface {
 	return newDNSProviders(c, namespace)
 }
 
-// NewForConfig creates a new KracV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*KracV1alpha1Client, error) {
+// NewForConfig creates a new DnsV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*DnsV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -59,12 +59,12 @@ func NewForConfig(c *rest.Config) (*KracV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &KracV1alpha1Client{client}, nil
+	return &DnsV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new KracV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new DnsV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *KracV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *DnsV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -72,9 +72,9 @@ func NewForConfigOrDie(c *rest.Config) *KracV1alpha1Client {
 	return client
 }
 
-// New creates a new KracV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *KracV1alpha1Client {
-	return &KracV1alpha1Client{c}
+// New creates a new DnsV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *DnsV1alpha1Client {
+	return &DnsV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -92,7 +92,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *KracV1alpha1Client) RESTClient() rest.Interface {
+func (c *DnsV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

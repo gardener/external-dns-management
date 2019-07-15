@@ -154,7 +154,7 @@ func (c *designateMockClient) UpdateRecordSet(zoneID, recordSetID string, opts r
 	if err != nil {
 		return err
 	}
-	rs.TTL = opts.TTL
+	rs.TTL = *opts.TTL
 	rs.Records = opts.Records
 	return nil
 }

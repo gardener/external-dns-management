@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ limitations under the License.
 package versioned
 
 import (
-	kracv1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/typed/dns/v1alpha1"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/typed/dns/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -27,27 +27,19 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	KracV1alpha1() kracv1alpha1.KracV1alpha1Interface
-	// Deprecated: please explicitly pick a version if possible.
-	Krac() kracv1alpha1.KracV1alpha1Interface
+	DnsV1alpha1() dnsv1alpha1.DnsV1alpha1Interface
 }
 
 // Clientset contains the clients for groups. Each group has exactly one
 // version included in a Clientset.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	kracV1alpha1 *kracv1alpha1.KracV1alpha1Client
+	dnsV1alpha1 *dnsv1alpha1.DnsV1alpha1Client
 }
 
-// KracV1alpha1 retrieves the KracV1alpha1Client
-func (c *Clientset) KracV1alpha1() kracv1alpha1.KracV1alpha1Interface {
-	return c.kracV1alpha1
-}
-
-// Deprecated: Krac retrieves the default version of KracClient.
-// Please explicitly pick a version.
-func (c *Clientset) Krac() kracv1alpha1.KracV1alpha1Interface {
-	return c.kracV1alpha1
+// DnsV1alpha1 retrieves the DnsV1alpha1Client
+func (c *Clientset) DnsV1alpha1() dnsv1alpha1.DnsV1alpha1Interface {
+	return c.dnsV1alpha1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -66,7 +58,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 	}
 	var cs Clientset
 	var err error
-	cs.kracV1alpha1, err = kracv1alpha1.NewForConfig(&configShallowCopy)
+	cs.dnsV1alpha1, err = dnsv1alpha1.NewForConfig(&configShallowCopy)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +74,7 @@ func NewForConfig(c *rest.Config) (*Clientset, error) {
 // panics if there is an error in the config.
 func NewForConfigOrDie(c *rest.Config) *Clientset {
 	var cs Clientset
-	cs.kracV1alpha1 = kracv1alpha1.NewForConfigOrDie(c)
+	cs.dnsV1alpha1 = dnsv1alpha1.NewForConfigOrDie(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClientForConfigOrDie(c)
 	return &cs
@@ -91,7 +83,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.kracV1alpha1 = kracv1alpha1.New(c)
+	cs.dnsV1alpha1 = dnsv1alpha1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

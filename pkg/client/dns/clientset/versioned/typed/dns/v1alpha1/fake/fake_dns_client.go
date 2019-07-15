@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,25 +24,25 @@ import (
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeKracV1alpha1 struct {
+type FakeDnsV1alpha1 struct {
 	*testing.Fake
 }
 
-func (c *FakeKracV1alpha1) DNSEntries(namespace string) v1alpha1.DNSEntryInterface {
+func (c *FakeDnsV1alpha1) DNSEntries(namespace string) v1alpha1.DNSEntryInterface {
 	return &FakeDNSEntries{c, namespace}
 }
 
-func (c *FakeKracV1alpha1) DNSOwners(namespace string) v1alpha1.DNSOwnerInterface {
+func (c *FakeDnsV1alpha1) DNSOwners(namespace string) v1alpha1.DNSOwnerInterface {
 	return &FakeDNSOwners{c, namespace}
 }
 
-func (c *FakeKracV1alpha1) DNSProviders(namespace string) v1alpha1.DNSProviderInterface {
+func (c *FakeDnsV1alpha1) DNSProviders(namespace string) v1alpha1.DNSProviderInterface {
 	return &FakeDNSProviders{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeKracV1alpha1) RESTClient() rest.Interface {
+func (c *FakeDnsV1alpha1) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

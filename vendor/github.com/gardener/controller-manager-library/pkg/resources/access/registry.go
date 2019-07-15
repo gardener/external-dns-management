@@ -52,9 +52,9 @@ func Register(ctr AccessController, clusterId string, priority int) {
 	defer lock.Unlock()
 
 	if clusterId == "" {
-		logger.Infof("registering global access controller %q with priority %s", ctr.Name(), priority)
+		logger.Infof("registering global access controller %q with priority %d", ctr.Name(), priority)
 	} else {
-		logger.Infof("registering access controller %q for cluster %q with priority %s", ctr.Name(), clusterId, priority)
+		logger.Infof("registering access controller %q for cluster %q with priority %d", ctr.Name(), clusterId, priority)
 	}
 
 	var found *entry

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2018 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,13 +30,13 @@ import (
 
 // FakeDNSOwners implements DNSOwnerInterface
 type FakeDNSOwners struct {
-	Fake *FakeKracV1alpha1
+	Fake *FakeDnsV1alpha1
 	ns   string
 }
 
-var dnsownersResource = schema.GroupVersionResource{Group: "krac", Version: "v1alpha1", Resource: "dnsowners"}
+var dnsownersResource = schema.GroupVersionResource{Group: "dns", Version: "v1alpha1", Resource: "dnsowners"}
 
-var dnsownersKind = schema.GroupVersionKind{Group: "krac", Version: "v1alpha1", Kind: "DNSOwner"}
+var dnsownersKind = schema.GroupVersionKind{Group: "dns", Version: "v1alpha1", Kind: "DNSOwner"}
 
 // Get takes name of the dNSOwner, and returns the corresponding dNSOwner object, and an error if there is any.
 func (c *FakeDNSOwners) Get(name string, options v1.GetOptions) (result *v1alpha1.DNSOwner, err error) {
@@ -119,7 +119,7 @@ func (c *FakeDNSOwners) DeleteCollection(options *v1.DeleteOptions, listOptions 
 // Patch applies the patch and returns the patched dNSOwner.
 func (c *FakeDNSOwners) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.DNSOwner, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(dnsownersResource, c.ns, name, data, subresources...), &v1alpha1.DNSOwner{})
+		Invokes(testing.NewPatchSubresourceAction(dnsownersResource, c.ns, name, pt, data, subresources...), &v1alpha1.DNSOwner{})
 
 	if obj == nil {
 		return nil, err

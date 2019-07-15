@@ -134,7 +134,7 @@ func (exec *Execution) update(rset *recordsets.RecordSet) error {
 	}
 
 	opts := recordsets.UpdateOpts{
-		TTL:     rset.TTL,
+		TTL:     &rset.TTL,
 		Records: rset.Records,
 	}
 	err = exec.handler.client.UpdateRecordSet(exec.zone.Id(), recordSetID, opts)
