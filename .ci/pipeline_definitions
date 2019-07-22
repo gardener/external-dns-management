@@ -5,6 +5,7 @@ external-dns-management:
     traits:
       version:
         preprocess: 'inject-commit-hash'
+      component_descriptor: ~ 
     steps:
       check:
         image: 'golang:1.12.4'
