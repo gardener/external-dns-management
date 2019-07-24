@@ -350,7 +350,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	}
 
 	if len(zones) > 0 && len(this.zones) == 0 {
-		return this, this.failed(logger, false, fmt.Errorf("no zone available in account matches zone filter"), false)
+		return this, this.failedButRecheck(logger, fmt.Errorf("no zone available in account matches zone filter"))
 	}
 
 	included, err := filterByZones(this.def_include, this.zones)
@@ -364,14 +364,14 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 
 	if len(this.def_include) == 0 {
 		if len(this.zones) == 0 {
-			return this, this.failed(logger, false, fmt.Errorf("no hosted zones found"), false)
+			return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zones found"))
 		}
 		for _, z := range this.zones {
 			included.Add(z.Domain())
 		}
 	} else {
 		if len(included) == 0 {
-			return this, this.failed(logger, false, fmt.Errorf("no domain matching hosting zones"), false)
+			return this, this.failedButRecheck(logger, fmt.Errorf("no domain matching hosting zones"))
 		}
 	}
 	for _, zone := range this.zones {
@@ -468,6 +468,24 @@ func (this *dnsProviderVersion) failed(logger logger.LogContext, modified bool, 
 		return reconcile.Failed(logger, err)
 	}
 	return reconcile.Delay(logger, err)
+}
+
+func maxDuration(x, y time.Duration) time.Duration {
+	if x < y {
+		return y
+	}
+	return x
+}
+
+func (this *dnsProviderVersion) failedButRecheck(logger logger.LogContext, err error) reconcile.Status {
+	uerr := this.setError(false, err)
+	if uerr != nil {
+		logger.Error(err)
+		if errors.IsConflict(uerr) {
+			return reconcile.Repeat(logger, fmt.Errorf("cannot update provider %q: %s", this.ObjectName(), uerr))
+		}
+	}
+	return reconcile.Recheck(logger, err, maxDuration(this.state.config.CacheTTL, 30*time.Minute))
 }
 
 func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified bool) reconcile.Status {

@@ -18,6 +18,7 @@ package reconcile
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -64,6 +65,15 @@ func DelayOnError(logger logger.LogContext, err error) Status {
 func Failed(logger logger.LogContext, err error) Status {
 	logger.Error(err)
 	return Status{false, err, -1}
+}
+
+func Recheck(logger logger.LogContext, err error, interval ...time.Duration) Status {
+	logger.Error(err)
+	i := 30 * time.Minute
+	if len(interval) > 0 {
+		i = interval[0]
+	}
+	return Status{err == nil, err, i}
 }
 
 func FailedOnError(logger logger.LogContext, err error) Status {
