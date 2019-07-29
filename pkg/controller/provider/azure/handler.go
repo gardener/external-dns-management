@@ -37,51 +37,37 @@ type Handler struct {
 	config        provider.DNSHandlerConfig
 	cache         provider.ZoneCache
 	ctx           context.Context
-	metrics       provider.Metrics
 	zonesClient   *azure.ZonesClient
 	recordsClient *azure.RecordSetsClient
 }
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
+func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
-		config:            *config,
-		metrics:           metrics,
+		config:            *c,
 	}
 
-	h.ctx = config.Context
+	h.ctx = c.Context
 
-	subscriptionID := h.config.Properties["AZURE_SUBSCRIPTION_ID"]
-	if subscriptionID == "" {
-		subscriptionID = h.config.Properties["subscriptionID"]
-	}
-	if subscriptionID == "" {
-		return nil, fmt.Errorf("'AZURE_SUBSCRIPTION_ID' or 'subscriptionID' required in secret")
+	subscriptionID, err := c.GetRequiredProperty("AZURE_SUBSCRIPTION_ID", "subscriptionID")
+	if err != nil {
+		return nil, err
 	}
 	// see https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization
-	clientID := h.config.Properties["AZURE_CLIENT_ID"]
-	if clientID == "" {
-		clientID = h.config.Properties["clientID"]
+	clientID, err := c.GetRequiredProperty("AZURE_CLIENT_ID", "clientID")
+	if err != nil {
+		return nil, err
 	}
-	if clientID == "" {
-		return nil, fmt.Errorf("'AZURE_CLIENT_ID' or 'clientID' required in secret")
+	clientSecret, err := c.GetRequiredProperty("AZURE_CLIENT_SECRET", "clientSecret")
+	if err != nil {
+		return nil, err
 	}
-	clientSecret := h.config.Properties["AZURE_CLIENT_SECRET"]
-	if clientSecret == "" {
-		clientSecret = h.config.Properties["clientSecret"]
-	}
-	if clientSecret == "" {
-		return nil, fmt.Errorf("'AZURE_CLIENT_SECRET' or 'clientSecret' required in secret")
-	}
-	tenantID := h.config.Properties["AZURE_TENANT_ID"]
-	if tenantID == "" {
-		tenantID = h.config.Properties["tenantID"]
-	}
-	if tenantID == "" {
-		return nil, fmt.Errorf("'AZURE_TENANT_ID' or 'tenantID' required in secret")
+	tenantID, err := c.GetRequiredProperty("AZURE_TENANT_ID", "tenantID")
+	if err != nil {
+		return nil, err
 	}
 
 	authorizer, err := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID).Authorizer()
@@ -104,7 +90,7 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	h.zonesClient = &zonesClient
 	h.recordsClient = &recordsClient
 
-	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, nil, h.getZones, h.getZoneState)
+	h.cache, err = provider.NewZoneCache(c.CacheConfig, c.Metrics, nil, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +111,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
 	zones := provider.DNSHostedZones{}
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
-	h.metrics.AddRequests("ZonesClient_ListComplete", 1)
+	h.config.Metrics.AddRequests("ZonesClient_ListComplete", 1)
 	if err != nil {
 		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
 	}
@@ -162,7 +148,7 @@ func (h *Handler) collectForwardedSubzones(resourceGroup, zoneName string) []str
 	// There should only few NS entries. Therefore no paging is performed for simplicity.
 	var top int32 = 1000
 	result, err := h.recordsClient.ListByType(h.ctx, resourceGroup, zoneName, azure.NS, &top, "")
-	h.metrics.AddRequests("RecordSetsClient_ListByType_NS", 1)
+	h.config.Metrics.AddRequests("RecordSetsClient_ListByType_NS", 1)
 	if err != nil {
 		logger.Infof("Failed fetching NS records for %s: %s", zoneName, err.Error())
 		// just ignoring it
@@ -195,7 +181,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 	resourceGroup, zoneName := splitZoneid(zone.Id())
 	results, err := h.recordsClient.ListAllByDNSZoneComplete(h.ctx, resourceGroup, zoneName, nil, "")
-	h.metrics.AddRequests("RecordSetsClient_ListAllByDNSZoneComplete", 1)
+	h.config.Metrics.AddRequests("RecordSetsClient_ListAllByDNSZoneComplete", 1)
 	if err != nil {
 		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
 	}
@@ -264,7 +250,7 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 			continue
 		}
 
-		err := exec.apply(r.Action, recordType, rset, h.metrics)
+		err := exec.apply(r.Action, recordType, rset, h.config.Metrics)
 		if err != nil {
 			failed++
 			logger.Infof("Apply failed with %s", err.Error())

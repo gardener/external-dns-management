@@ -17,7 +17,6 @@
 package alicloud
 
 import (
-	"fmt"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -34,37 +33,31 @@ type Handler struct {
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
+func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	var err error
 
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
-		config:            *config,
+		config:            *c,
 	}
 
-	accessKeyID := h.config.Properties["ACCESS_KEY_ID"]
-	if accessKeyID == "" {
-		accessKeyID = h.config.Properties["accessKeyID"]
+	accessKeyID, err := c.GetRequiredProperty("ACCESS_KEY_ID", "accessKeyID")
+	if err != nil {
+		return nil, err
 	}
-	if accessKeyID == "" {
-		return nil, fmt.Errorf("'ACCESS_KEY_ID' or 'accessKeyID' required in secret")
-	}
-	accessKeySecret := h.config.Properties["ACCESS_KEY_SECRET"]
-	if accessKeySecret == "" {
-		accessKeySecret = h.config.Properties["accessKeySecret"]
-	}
-	if accessKeySecret == "" {
-		return nil, fmt.Errorf("'ACCESS_KEY_SECRET' or 'accessKeySecret' required in secret")
+	accessKeySecret, err := c.GetRequiredProperty("ACCESS_KEY_SECRET", "accessKeySecret")
+	if err != nil {
+		return nil, err
 	}
 
-	access, err := NewAccess(accessKeyID, accessKeySecret, metrics)
+	access, err := NewAccess(accessKeyID, accessKeySecret, c.Metrics)
 	if err != nil {
 		return nil, err
 	}
 
 	h.access = access
 
-	h.cache, err = provider.NewZoneCache(*config.CacheConfig.CopyWithDisabledZoneStateCache(), metrics, nil, h.getZones, h.getZoneState)
+	h.cache, err = provider.NewZoneCache(*c.CacheConfig.CopyWithDisabledZoneStateCache(), c.Metrics, nil, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}

@@ -39,19 +39,17 @@ type Handler struct {
 	credentials *google.Credentials
 	client      *http.Client
 	ctx         context.Context
-	metrics     provider.Metrics
 	service     *googledns.Service
 }
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
+func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	var err error
 
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *config,
-		metrics:           metrics,
 	}
 	scopes := []string{
 		//	"https://www.googleapis.com/auth/compute",
@@ -83,7 +81,7 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	}
 
 	forwardedDomains := provider.NewForwardedDomainsHandlerData()
-	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, forwardedDomains, h.getZones, h.getZoneState)
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, config.Metrics, forwardedDomains, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +104,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		for _, zone := range resp.ManagedZones {
 			raw = append(raw, zone)
 		}
-		h.metrics.AddRequests(rt, 1)
+		h.config.Metrics.AddRequests(rt, 1)
 		rt = provider.M_PLISTZONES
 		return nil
 	}
@@ -148,7 +146,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *google
 				}
 			}
 		}
-		h.metrics.AddRequests(rt, 1)
+		h.config.Metrics.AddRequests(rt, 1)
 		rt = provider.M_PLISTRECORDS
 		return nil
 	}
@@ -197,5 +195,5 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 		logger.Infof("no changes in dryrun mode for AWS")
 		return nil
 	}
-	return exec.submitChanges(h.metrics)
+	return exec.submitChanges(h.config.Metrics)
 }

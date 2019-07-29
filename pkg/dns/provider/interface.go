@@ -131,11 +131,13 @@ outer:
 }
 
 type DNSHandlerConfig struct {
+	Logger      logger.LogContext
 	Properties  utils.Properties
 	Config      *runtime.RawExtension
 	DryRun      bool
 	Context     context.Context
 	CacheConfig ZoneCacheConfig
+	Metrics     Metrics
 }
 
 type DNSZoneState interface {
@@ -190,7 +192,7 @@ func (this *DefaultDNSHandler) MapTarget(t Target) Target {
 type DNSHandlerFactory interface {
 	Name() string
 	TypeCodes() utils.StringSet
-	Create(logger logger.LogContext, typecode string, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error)
+	Create(typecode string, config *DNSHandlerConfig) (DNSHandler, error)
 	IsResponsibleFor(object *dnsutils.DNSProviderObject) bool
 	SupportZoneStateCache(typecode string) (bool, error)
 }

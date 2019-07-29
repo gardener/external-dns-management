@@ -36,7 +36,6 @@ type Handler struct {
 	config    provider.DNSHandlerConfig
 	awsConfig AWSConfig
 	cache     provider.ZoneCache
-	metrics   provider.Metrics
 	sess      *session.Session
 	r53       *route53.Route53
 }
@@ -47,10 +46,10 @@ type AWSConfig struct {
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
+func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	awsConfig := AWSConfig{BatchSize: 50}
-	if config.Config != nil {
-		err := json.Unmarshal(config.Config.Raw, &awsConfig)
+	if c.Config != nil {
+		err := json.Unmarshal(c.Config.Raw, &awsConfig)
 		if err != nil {
 			return nil, fmt.Errorf("unmarshal aws-route providerConfig failed with: %s", err)
 		}
@@ -58,28 +57,19 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
-
-		config:    *config,
-		awsConfig: awsConfig,
-		metrics:   metrics,
+		config:            *c,
+		awsConfig:         awsConfig,
 	}
-	accessKeyID := h.config.Properties["AWS_ACCESS_KEY_ID"]
-	if accessKeyID == "" {
-		accessKeyID = h.config.Properties["accessKeyID"]
+	accessKeyID, err := c.GetRequiredProperty("AWS_ACCESS_KEY_ID", "accessKeyID")
+	if err != nil {
+		return nil, err
 	}
-	if accessKeyID == "" {
-		logger.Infof("creating aws-route53 handler failed because of missing access key id")
-		return nil, fmt.Errorf("'AWS_ACCESS_KEY_ID' or 'accessKeyID' required in secret")
+	c.Logger.Infof("creating aws-route53 handler for %s", accessKeyID)
+	secretAccessKey, err := c.GetRequiredProperty("AWS_SECRET_ACCESS_KEY", "secretAccessKey")
+	if err != nil {
+		return nil, err
 	}
-	logger.Infof("creating aws-route53 handler for %s", accessKeyID)
-	secretAccessKey := h.config.Properties["AWS_SECRET_ACCESS_KEY"]
-	if secretAccessKey == "" {
-		secretAccessKey = h.config.Properties["secretAccessKey"]
-	}
-	if secretAccessKey == "" {
-		return nil, fmt.Errorf("'AWS_SECRET_ACCESS_KEY' or 'secretAccessKey' required in secret")
-	}
-	token := h.config.Properties["AWS_SESSION_TOKEN"]
+	token := c.GetProperty("AWS_SESSION_TOKEN")
 	creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, token)
 
 	sess, err := session.NewSession(&aws.Config{
@@ -93,7 +83,7 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	h.r53 = route53.New(sess)
 
 	forwardedDomains := provider.NewForwardedDomainsHandlerData()
-	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, forwardedDomains, h.getZones, h.getZoneState)
+	h.cache, err = provider.NewZoneCache(c.CacheConfig, c.Metrics, forwardedDomains, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +106,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		for _, zone := range resp.HostedZones {
 			raw = append(raw, zone)
 		}
-		h.metrics.AddRequests(rt, 1)
+		h.config.Metrics.AddRequests(rt, 1)
 		rt = provider.M_PLISTZONES
 		return true
 	}
@@ -189,7 +179,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route
 	inp := (&route53.ListResourceRecordSetsInput{}).SetHostedZoneId(zone.Id())
 	forwarded := []string{}
 	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
-		h.metrics.AddRequests(rt, 1)
+		h.config.Metrics.AddRequests(rt, 1)
 		for _, r := range resp.ResourceRecordSets {
 			f(r)
 			if aws.StringValue(r.Type) == dns.RS_NS {
@@ -230,7 +220,7 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 		logger.Infof("no changes in dryrun mode for AWS")
 		return nil
 	}
-	return exec.submitChanges(h.metrics)
+	return exec.submitChanges(h.config.Metrics)
 }
 
 func (h *Handler) MapTarget(t provider.Target) provider.Target {

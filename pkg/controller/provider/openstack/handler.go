@@ -38,13 +38,13 @@ type Handler struct {
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
+func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	authConfig, err := readAuthConfig(config)
 	if err != nil {
 		return nil, err
 	}
 
-	serviceClient, err := createDesignateServiceClient(logger, authConfig)
+	serviceClient, err := createDesignateServiceClient(config.Logger, authConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -53,10 +53,10 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *config,
 		ctx:               config.Context,
-		client:            designateClient{serviceClient: serviceClient, metrics: metrics},
+		client:            designateClient{serviceClient: serviceClient, metrics: config.Metrics},
 	}
 
-	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, nil, h.getZones, h.getZoneState)
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, config.Metrics, nil, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}
@@ -64,44 +64,29 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 	return &h, nil
 }
 
-func readConfigProperty(config *provider.DNSHandlerConfig, key string, altKey string) (value string, err error) {
-	value = config.Properties[key]
-	if value == "" && altKey != "" {
-		value = config.Properties[altKey]
-	}
-	if value == "" {
-		alt := ""
-		if altKey != "" {
-			alt = fmt.Sprintf(" or '%s'", altKey)
-		}
-		err = fmt.Errorf("'%s'%s required in secret", key, alt)
-	}
-	return
-}
-
-func readAuthConfig(config *provider.DNSHandlerConfig) (*authConfig, error) {
-	authURL, err := readConfigProperty(config, "OS_AUTH_URL", "")
+func readAuthConfig(c *provider.DNSHandlerConfig) (*authConfig, error) {
+	authURL, err := c.GetRequiredProperty("OS_AUTH_URL")
 	if err != nil {
 		return nil, err
 	}
-	username, err := readConfigProperty(config, "OS_USERNAME", "username")
+	username, err := c.GetRequiredProperty("OS_USERNAME", "username")
 	if err != nil {
 		return nil, err
 	}
-	domainName, err := readConfigProperty(config, "OS_DOMAIN_NAME", "domainName")
+	domainName, err := c.GetRequiredProperty("OS_DOMAIN_NAME", "domainName")
 	if err != nil {
 		return nil, err
 	}
-	password, err := readConfigProperty(config, "OS_PASSWORD", "password")
+	password, err := c.GetRequiredProperty("OS_PASSWORD", "password")
 	if err != nil {
 		return nil, err
 	}
-	projectName, err := readConfigProperty(config, "OS_PROJECT_NAME", "tenantName")
+	projectName, err := c.GetRequiredProperty("OS_PROJECT_NAME", "tenantName")
 	if err != nil {
 		return nil, err
 	}
 	// optional restriction to region
-	regionName := config.Properties["OS_REGION_NAME"]
+	regionName := c.GetProperty("OS_REGION_NAME")
 
 	authConfig := authConfig{AuthURL: authURL, Username: username, Password: password,
 		DomainName: domainName, ProjectName: projectName, RegionName: regionName}

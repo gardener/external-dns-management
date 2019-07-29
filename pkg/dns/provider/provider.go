@@ -141,12 +141,14 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 		}
 		cfg := DNSHandlerConfig{
 			Context:     state.GetContext().GetContext(),
+			Logger:      logger,
 			Properties:  props,
 			Config:      provider.Spec().ProviderConfig,
 			DryRun:      state.GetConfig().Dryrun,
 			CacheConfig: cacheConfig,
+			Metrics:     a,
 		}
-		a.handler, err = state.GetHandlerFactory().Create(logger, provider.TypeCode(), &cfg, a)
+		a.handler, err = state.GetHandlerFactory().Create(provider.TypeCode(), &cfg)
 		if err != nil {
 			return nil, err
 		}

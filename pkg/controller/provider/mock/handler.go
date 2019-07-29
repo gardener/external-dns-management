@@ -27,11 +27,10 @@ import (
 
 type Handler struct {
 	provider.DefaultDNSHandler
-	config  provider.DNSHandlerConfig
-	cache   provider.ZoneCache
-	ctx     context.Context
-	metrics provider.Metrics
-	mock    *provider.InMemory
+	config provider.DNSHandlerConfig
+	cache  provider.ZoneCache
+	ctx    context.Context
+	mock   *provider.InMemory
 }
 
 type MockConfig struct {
@@ -40,13 +39,12 @@ type MockConfig struct {
 
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, metrics provider.Metrics) (provider.DNSHandler, error) {
+func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	mock := provider.NewInMemory()
 
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *config,
-		metrics:           metrics,
 		mock:              mock,
 	}
 
@@ -70,7 +68,7 @@ func NewHandler(logger logger.LogContext, config *provider.DNSHandlerConfig, met
 		}
 	}
 
-	h.cache, err = provider.NewZoneCache(config.CacheConfig, metrics, nil, h.getZones, h.getZoneState)
+	h.cache, err = provider.NewZoneCache(config.CacheConfig, config.Metrics, nil, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +106,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	var succeeded, failed int
 	for _, r := range reqs {
-		err := h.mock.Apply(zone.Id(), r, h.metrics)
+		err := h.mock.Apply(zone.Id(), r, h.config.Metrics)
 		if err != nil {
 			failed++
 			logger.Infof("Apply failed with %s", err.Error())

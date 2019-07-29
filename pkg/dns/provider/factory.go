@@ -18,13 +18,12 @@ package provider
 
 import (
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
-type DNSHandlerCreatorFunction func(logger logger.LogContext, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error)
+type DNSHandlerCreatorFunction func(config *DNSHandlerConfig) (DNSHandler, error)
 
 type Factory struct {
 	typecode              string
@@ -54,9 +53,9 @@ func (this *Factory) Name() string {
 	return this.typecode
 }
 
-func (this *Factory) Create(logger logger.LogContext, typecode string, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error) {
+func (this *Factory) Create(typecode string, config *DNSHandlerConfig) (DNSHandler, error) {
 	if typecode == this.typecode {
-		return this.create(logger, config, metrics)
+		return this.create(config)
 	}
 	return nil, fmt.Errorf("not responsible for %q", typecode)
 }
@@ -109,10 +108,10 @@ func (this *CompoundFactory) Name() string {
 	return this.name
 }
 
-func (this *CompoundFactory) Create(logger logger.LogContext, typecode string, config *DNSHandlerConfig, metrics Metrics) (DNSHandler, error) {
+func (this *CompoundFactory) Create(typecode string, config *DNSHandlerConfig) (DNSHandler, error) {
 	f := this.factories[typecode]
 	if f != nil {
-		return f.Create(logger, typecode, config, metrics)
+		return f.Create(typecode, config)
 	}
 	return nil, fmt.Errorf("not responsible for %q", typecode)
 }
