@@ -19,7 +19,6 @@ package source
 import (
 	"fmt"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"reflect"
 	"strings"
 	"time"
 
@@ -148,21 +147,21 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 		}
 	}
 outer:
-	for dns := range info.Names {
+	for dnsname := range info.Names {
 		for _, s := range slaves {
 			found := dnsutils.DNSEntry(s).DNSEntry().Spec.DNSName
-			if found == dns {
+			if found == dnsname {
 				continue outer
 			}
 		}
-		missing.Add(dns)
+		missing.Add(dnsname)
 	}
 
 	for _, s := range slaves {
-		dns := dnsutils.DNSEntry(s).DNSEntry().Spec.DNSName
-		if !info.Names.Contains(dns) {
+		dnsname := dnsutils.DNSEntry(s).DNSEntry().Spec.DNSName
+		if !info.Names.Contains(dnsname) {
 			obsolete = append(obsolete, s)
-			obsolete_dns.Add(dns)
+			obsolete_dns.Add(dnsname)
 		} else {
 			current = append(current, s)
 		}
@@ -174,10 +173,10 @@ outer:
 	if len(missing) > 0 {
 		if len(info.Targets) > 0 {
 			logger.Infof("found missing dns entries: %s", missing)
-			for dns := range missing {
-				err := this.createEntryFor(logger, obj, dns, info)
+			for dnsname := range missing {
+				err := this.createEntryFor(logger, obj, dnsname, info)
 				if err != nil {
-					notified_errors = append(notified_errors, fmt.Errorf("cannot create dns entry object for %s: %s ", dns, err))
+					notified_errors = append(notified_errors, fmt.Errorf("cannot create dns entry object for %s: %s ", dnsname, err))
 					failed = true
 				}
 			}
@@ -188,10 +187,10 @@ outer:
 	if len(obsolete_dns) > 0 {
 		logger.Infof("found obsolete dns entries: %s", obsolete_dns)
 		for _, o := range obsolete {
-			dns := dnsutils.DNSEntry(o).DNSEntry().Spec.DNSName
+			dnsname := dnsutils.DNSEntry(o).DNSEntry().Spec.DNSName
 			err := this.deleteEntry(logger, obj, o)
 			if err != nil {
-				notified_errors = append(notified_errors, fmt.Errorf("cannot remove dns entry object %q(%s): %s", o.ClusterKey(), dns, err))
+				notified_errors = append(notified_errors, fmt.Errorf("cannot remove dns entry object %q(%s): %s", o.ClusterKey(), dnsname, err))
 				failed = true
 			}
 		}
@@ -199,11 +198,11 @@ outer:
 	}
 	if len(current) > 0 {
 		for _, o := range current {
-			dns := dnsutils.DNSEntry(o).DNSEntry().Spec.DNSName
+			dnsname := dnsutils.DNSEntry(o).DNSEntry().Spec.DNSName
 			mod, err := this.updateEntry(logger, info, o)
-			modified[dns] = mod
+			modified[dnsname] = mod
 			if err != nil {
-				notified_errors = append(notified_errors, fmt.Errorf("cannot update dns entry object %q(%s): %s", o.ClusterKey(), dns, err))
+				notified_errors = append(notified_errors, fmt.Errorf("cannot update dns entry object %q(%s): %s", o.ClusterKey(), dnsname, err))
 				failed = true
 			}
 		}
@@ -335,13 +334,13 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, dns string, info *DNSInfo) error {
+func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, dnsname string, info *DNSInfo) error {
 	entry := &api.DNSEntry{}
 	entry.GenerateName = strings.ToLower(this.nameprefix + obj.GetName() + "-" + obj.GroupKind().Kind + "-")
 	if this.targetclass != "" {
 		entry.SetAnnotations(map[string]string{CLASS_ANNOTATION: this.targetclass})
 	}
-	entry.Spec.DNSName = dns
+	entry.Spec.DNSName = dnsname
 	entry.Spec.Targets = info.Targets.AsArray()
 	if this.namespace == "" {
 		entry.Namespace = obj.GetNamespace()
@@ -355,14 +354,14 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	err := this.Slaves().CreateSlave(obj, e)
 	if err != nil {
 		if info.Feedback != nil {
-			info.Feedback.Failed(dns, err)
+			info.Feedback.Failed(dnsname, err)
 		}
 		return err
 	}
 	obj.Eventf(core.EventTypeNormal, "reconcile", "created dns entry object %s", e.ObjectName())
 	logger.Infof("created dns entry object %s", e.ObjectName())
 	if info.Feedback != nil {
-		info.Feedback.Pending(dns, "")
+		info.Feedback.Pending(dnsname, "")
 	}
 	return nil
 }
@@ -386,17 +385,15 @@ func (this *sourceReconciler) updateEntry(logger logger.LogContext, info *DNSInf
 	f := func(o resources.ObjectData) (bool, error) {
 		spec := &o.(*api.DNSEntry).Spec
 		mod := &utils.ModificationState{}
-		if this.targetclass != "" {
-			annos := map[string]string{CLASS_ANNOTATION: this.targetclass}
-			if !reflect.DeepEqual(annos, o.GetAnnotations()) {
-				o.SetAnnotations(annos)
-				mod.Modify(true)
-			}
-		} else {
-			if len(o.GetAnnotations()) != 0 {
-				o.SetAnnotations(map[string]string{})
-				mod.Modify(true)
-			}
+		annos := o.GetAnnotations()
+		if annos == nil {
+			annos = map[string]string{}
+		}
+		oldTargetClass := annos[CLASS_ANNOTATION]
+		if this.targetclass != oldTargetClass {
+			annos[CLASS_ANNOTATION] = this.targetclass
+			o.SetAnnotations(annos)
+			mod.Modify(true)
 		}
 		mod.AssureInt64PtrPtr(&spec.TTL, info.TTL)
 		mod.AssureInt64PtrPtr(&spec.CNameLookupInterval, info.Interval)
