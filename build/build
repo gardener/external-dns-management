@@ -26,7 +26,15 @@ else
   export SOURCE_PATH="$(readlink -f "${SOURCE_PATH}")"
 fi
 
-source "$SOURCE_PATH/build/setupenv.src"
+if [[ -z "${BINARY_PATH}" ]]; then
+  export BINARY_PATH="${SOURCE_PATH}/bin"
+else
+  export BINARY_PATH="$(readlink -f "${BINARY_PATH}")/bin"
+fi
+
+cd "${SOURCE_PATH}"
+
+source "$SOURCE_PATH/build/settings.src"
 if [ -z "$CMD" ]; then
   CMD="$EXE"
 fi
@@ -38,15 +46,17 @@ echo WORKDIR="$(pwd)"
 VERSION_FILE="$(readlink -f "${SOURCE_PATH}/VERSION")"
 VERSION="$(cat "${VERSION_FILE}")"
 
-# If no LOCAL_BUILD environment variable is set, we configure the `go build` command
-# to build for linux OS, amd64 architectures and without CGO enablement.
 echo "running code generator..."
 "hack/update-codegen.sh"
 #"hack/update-wrappers.sh"
+
+# If no LOCAL_BUILD environment variable is set, we configure the `go build` command
+# to build for linux OS, amd64 architectures and without CGO enablement.
 echo "running build..."
 
 if [[ -z "$LOCAL_BUILD" ]]; then
-  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
+  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build \
+    -mod=vendor \
     -a \
     -v \
     -o ${BINARY_PATH}/rel/$EXE \
@@ -56,7 +66,8 @@ if [[ -z "$LOCAL_BUILD" ]]; then
 
 # If the LOCAL_BUILD environment variable is set, we simply run `go build`.
 else
-  go build \
+  GO111MODULE=on go build \
+    -mod=vendor \
     -v \
     -o ${BINARY_PATH}/$EXE \
     -ldflags "-w -X main.Version=${VERSION}" \

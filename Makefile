@@ -7,15 +7,17 @@ VERSION=$(shell cat VERSION)
 
 
 build:
-	GOOS=linux GOARCH=amd64 go build -o $(EXECUTABLE) \
-	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
-	    ./cmd/dns
+	GOOS=linux GOARCH=amd64 GO111MODULE=on go build \
+		-mod=vendor \
+		-o $(EXECUTABLE) \
+		-ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)" \
+		./cmd/dns
 
 
 release:
 	GOOS=linux GOARCH=amd64 go build -o $(EXECUTABLE) \
-	    -ldflags "-X main.Version=$(VERSION) \
-	    ./cmd/dns
+		-ldflags "-X main.Version=$(VERSION) \
+		./cmd/dns
 
 test:
 	go test ./pkg/...
@@ -25,3 +27,7 @@ test:
 alltests:
 	go test ./pkg/...
 	test/integration/run.sh $(kindargs) -- $(args)
+
+revendor:
+	@GO111MODULE=on go mod vendor
+	@GO111MODULE=on go mod tidy

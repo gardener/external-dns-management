@@ -71,9 +71,10 @@ if [ "$WS" == / ]; then
 fi
 echo WORKSPACE="$WS"
 
-if [ -n "$ENSURE" ]; then
+if [ -n "$REVENDOR" ]; then
   echo "update dependencies $@"
-  dep ensure "$@"
+  GO111MODULE=on go mod vendor "$@"
+  GO111MODULE=on go mod tidy "$@"
 fi
 DEF="commondev.lst"
 if [ ! -f "$DEF" ]; then

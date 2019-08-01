@@ -16,6 +16,8 @@
 
 set -e
 
+export GO111MODULE=on
+
 # For the check step concourse will set the following environment variables:
 # SOURCE_PATH - path to component repository root directory.
 
@@ -25,12 +27,13 @@ else
   export SOURCE_PATH="$(readlink -f ${SOURCE_PATH})"
 fi
 
-source "$SOURCE_PATH/build/setupenv.src"
+cd "${SOURCE_PATH}"
 
-# Install Ginkgo (test framework) to be able to execute the tests.
-echo "Installing Ginkgo..."
-go get -u github.com/onsi/gomega
-go get -u github.com/onsi/ginkgo/ginkgo
+source "$SOURCE_PATH/build/settings.src"
+
+# Build the Ginkgo (test framework) binary to be able to execute the tests.
+echo "Building Ginkgo..."
+go install -mod=vendor ./vendor/github.com/onsi/ginkgo/ginkgo
 
 ###############################################################################
 
@@ -40,4 +43,4 @@ if [[ ! -z "$COVERAGE" ]]; then
 fi
 
 echo "Running tests..."
-ginkgo ${COVER_FLAG} -r cmd pkg plugin
+ginkgo ${COVER_FLAG} -r -mod=vendor cmd pkg plugin

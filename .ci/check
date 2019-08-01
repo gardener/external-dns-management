@@ -16,6 +16,8 @@
 
 set -e
 
+export GO111MODULE=on
+
 # For the check step concourse will set the following environment variables:
 # SOURCE_PATH - path to component repository root directory.
 
@@ -25,7 +27,9 @@ else
   export SOURCE_PATH="$(readlink -f ${SOURCE_PATH})"
 fi
 
-source "$SOURCE_PATH/build/setupenv.src"
+cd "${SOURCE_PATH}"
+
+source "$SOURCE_PATH/build/settings.src"
 
 ignore=(
    "receiver name should be a reflection of its identity; don't use generic names such as \"this\" or \"self\""
@@ -40,21 +44,21 @@ ignore=(
    ": exported "
 )
 
-# Install Golint (linting tool).
-go get -u golang.org/x/lint/golint
+# Build Golint.
+go install -mod=vendor ./vendor/golang.org/x/lint/golint
 
 ###############################################################################
 
 join_by() { local IFS="$1"; shift; echo "$*"; }
 
-PACKAGES="$(go list -e ./... | grep -vE '/tmp/|/vendor/|/local/')"
-LINT_FOLDERS="$(echo ${PACKAGES} | sed "s|$GITPROVIDER/$PROJECT|.|g")"
+PACKAGES="$(go list -mod=vendor -e ./... | grep -vE '/vendor/|/local/')"
+PACKAGES_DIRS="$(echo ${PACKAGES} | sed "s|$GITPROVIDER/$PROJECT|.|g")"
 
 # Execute static code checks.
 #go vet ${PACKAGES}
 
 # Execute automatic code formatting directive.
-go fmt ${PACKAGES}
+gofmt -l -w ${PACKAGES_DIRS}
 
 # Execute lint checks.
-hack/lint -vacs  ${LINT_FOLDERS}
+hack/lint -vacs  ${PACKAGES_DIRS}
