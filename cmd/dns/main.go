@@ -34,6 +34,7 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/google/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack/controller"
 
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/dnsentry"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
 

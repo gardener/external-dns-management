@@ -67,6 +67,9 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 	if err != nil {
 		return info, err
 	}
+	if info == nil {
+		return nil, nil
+	}
 	if info.TTL == nil {
 		a := obj.GetAnnotations()[TTL_ANNOTATION]
 		if a != "" {
