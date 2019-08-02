@@ -30,20 +30,20 @@ func convert(resource Interface, funcs *ResourceEventHandlerFuncs) *cache.Resour
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			data, ok:= obj.(ObjectData)
+			data, ok := obj.(ObjectData)
 			if !ok {
 				stale, ok := obj.(cache.DeletedFinalStateUnknown)
 				if !ok {
 					logger.Errorf("informer %q reported unknown object to be deleted (%T)", resource.Name(), obj)
 					return
 				}
-				if stale.Obj==nil {
+				if stale.Obj == nil {
 					logger.Errorf("informer %q reported no stale object to be deleted", resource.Name())
 					return
 				}
-				data, ok=stale.Obj.(ObjectData)
+				data, ok = stale.Obj.(ObjectData)
 				if !ok {
-					logger.Errorf("informer %q reported unknown stale object to be deleted (%T)", resource.Name() , stale.Obj)
+					logger.Errorf("informer %q reported unknown stale object to be deleted (%T)", resource.Name(), stale.Obj)
 					return
 				}
 			}
