@@ -43,28 +43,28 @@ func NewEventFeedback(logger logger.LogContext, obj resources.Object, events map
 	return &EventFeedback{logger, obj, events}
 }
 
-func (this *EventFeedback) Ready(dnsname, msg string) {
+func (this *EventFeedback) Ready(dnsname, msg string, state *DNSState) {
 	if msg == "" {
 		msg = fmt.Sprintf("dns entry is ready")
 	}
 	this.event(dnsname, msg)
 }
 
-func (this *EventFeedback) Pending(dnsname, msg string) {
+func (this *EventFeedback) Pending(dnsname, msg string, state *DNSState) {
 	if msg == "" {
 		msg = fmt.Sprintf("dns entry is pending")
 	}
 	this.event(dnsname, msg)
 }
 
-func (this *EventFeedback) Failed(dnsname string, err error) {
+func (this *EventFeedback) Failed(dnsname string, err error, state *DNSState) {
 	if err == nil {
 		err = fmt.Errorf("dns entry is errornous")
 	}
 	this.event(dnsname, err.Error())
 }
 
-func (this *EventFeedback) Invalid(dnsname string, msg error) {
+func (this *EventFeedback) Invalid(dnsname string, msg error, state *DNSState) {
 	if msg == nil {
 		msg = fmt.Errorf("dns entry is invalid")
 	}
@@ -143,8 +143,9 @@ func (this *DefaultDNSSource) GetDNSInfo(logger logger.LogContext, obj resources
 	events := this.GetEvents(obj.ClusterKey())
 	info := &DNSInfo{Feedback: NewEventFeedback(logger, obj, events)}
 	info.Names = current.AnnotatedNames
-	tgts, err := this.handler(logger, obj, current)
+	tgts, txts, err := this.handler(logger, obj, current)
 	info.Targets = tgts
+	info.Text = txts
 	return info, err
 }
 

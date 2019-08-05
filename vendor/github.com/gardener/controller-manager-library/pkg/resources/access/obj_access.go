@@ -21,16 +21,34 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 )
 
+const ANNOTATION_IGNORE_OWNERS = "resources.gardener.cloud/ignore-owners-for-access-control"
+
 func CheckAccess(object resources.Object, used resources.Object) error {
 	var err error
 
-	o := object.ClusterKey()
-	ok, msg, allowErr := Allowed(o, "use", used.ClusterKey())
-	if !ok {
-		if allowErr != nil {
-			err = fmt.Errorf("%s: %s: %s", used.ClusterKey(), msg, allowErr)
-		} else {
-			err = fmt.Errorf("%s: %s", used.ClusterKey(), msg)
+	value, _ := resources.GetAnnotation(object.Data(), ANNOTATION_IGNORE_OWNERS)
+	ignoreOwners := value == "true"
+	owners := object.GetOwners()
+	if !ignoreOwners && len(owners) > 0 {
+		for o := range owners {
+			ok, msg, aerr := Allowed(o, "use", used.ClusterKey())
+			if !ok {
+				if aerr != nil {
+					err = fmt.Errorf("%s: %s: %s", o, msg, err)
+				} else {
+					err = fmt.Errorf("%s: %s", o, msg)
+				}
+			}
+		}
+	} else {
+		o := object.ClusterKey()
+		ok, msg, aerr := Allowed(o, "use", used.ClusterKey())
+		if !ok {
+			if aerr != nil {
+				err = fmt.Errorf("%s: %s: %s", used.ClusterKey(), msg, err)
+			} else {
+				err = fmt.Errorf("%s: %s", used.ClusterKey(), msg)
+			}
 		}
 	}
 	return err

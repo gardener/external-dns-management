@@ -35,63 +35,75 @@ type updateOriginalFeedback struct {
 	logger     logger.LogContext
 	resources  resources.Resources
 	objectName resources.ObjectName
+	chain      source.DNSFeedback
 }
 
 func NewDNSEntrySource(c controller.Interface) (source.DNSSource, error) {
-	return &DNSEntrySource{resources: c.GetMainCluster().Resources()}, nil
+	return &DNSEntrySource{DefaultDNSSource: source.DefaultDNSSource{Events: map[resources.ClusterObjectKey]map[string]string{}}, resources: c.GetMainCluster().Resources()}, nil
 }
-
-var sourceProviderType = "source"
 
 func (this *DNSEntrySource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
 	data := obj.Data().(*api.DNSEntry)
 
+	eventFeedback := source.NewEventFeedback(logger, obj, this.GetEvents(obj.ClusterKey()))
 	info := &source.DNSInfo{
 		Names:    utils.NewStringSet(data.Spec.DNSName),
 		Targets:  utils.NewStringSetByArray(data.Spec.Targets),
+		Text:     utils.NewStringSetByArray(data.Spec.Text),
 		TTL:      data.Spec.TTL,
 		Interval: data.Spec.CNameLookupInterval,
-		Feedback: &updateOriginalFeedback{logger: logger, resources: this.resources, objectName: obj.ClusterKey().ObjectName()},
+		Feedback: &updateOriginalFeedback{
+			logger:     logger,
+			resources:  this.resources,
+			objectName: obj.ClusterKey().ObjectName(),
+			chain:      eventFeedback,
+		},
 	}
 	return info, nil
 }
 
 func (f *updateOriginalFeedback) Succeeded() {
+	f.chain.Succeeded()
 }
 
-func (f *updateOriginalFeedback) Pending(dnsname string, msg string) {
-	f.setStatus("Pending", msg)
-
+func (f *updateOriginalFeedback) Pending(dnsname string, msg string, state *source.DNSState) {
+	f.setStatus("Pending", msg, state)
+	f.chain.Pending(dnsname, msg, state)
 }
 
-func (f *updateOriginalFeedback) Ready(dnsname string, msg string) {
-	f.setStatus("Ready", msg)
+func (f *updateOriginalFeedback) Ready(dnsname string, msg string, state *source.DNSState) {
+	f.setStatus("Ready", msg, state)
+	f.chain.Ready(dnsname, msg, state)
 }
 
-func (f *updateOriginalFeedback) Invalid(dnsname string, err error) {
-	f.setStatus("Invalid", err.Error())
+func (f *updateOriginalFeedback) Invalid(dnsname string, err error, state *source.DNSState) {
+	f.setStatus("Invalid", err.Error(), state)
+	f.chain.Invalid(dnsname, err, state)
 }
 
-func (f *updateOriginalFeedback) Failed(dnsname string, err error) {
-	f.setStatus("Failed", err.Error())
+func (f *updateOriginalFeedback) Failed(dnsname string, err error, state *source.DNSState) {
+	f.setStatus("Error", err.Error(), state)
+	f.chain.Failed(dnsname, err, state)
 }
 
-func (f *updateOriginalFeedback) setStatus(state string, msg string) {
+func (f *updateOriginalFeedback) setStatus(state string, msg string, dnsState *source.DNSState) {
 	obj, err := f.resources.GetObjectInto(f.objectName, &api.DNSEntry{})
 	if err != nil {
-		logger.Warn("Cannot get object %v: %s", f.objectName, err)
+		logger.Warn("Cannot get object %s: %s", f.objectName, err)
 		return
 	}
 	data := obj.Data().(*api.DNSEntry)
-	if msg != "" {
-		data.Status.Message = &msg
+	if dnsState != nil {
+		data.Status = dnsState.DNSEntryStatus
 	} else {
-		data.Status.Message = nil
+		data.Status = api.DNSEntryStatus{State: state}
+		if msg != "" {
+			data.Status.Message = &msg
+		}
 	}
-	data.Status.State = state
-	data.Status.ProviderType = &sourceProviderType
+	data.Status.ObservedGeneration = data.GetGeneration()
 	err = obj.UpdateStatus()
 	if err != nil {
-		logger.Warn("Cannot update status for object %v: %s", f.objectName, err)
+		logger.Warn("Cannot update status for object %s: %s", f.objectName, err)
 	}
 }

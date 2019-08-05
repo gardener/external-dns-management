@@ -22,7 +22,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -32,15 +32,16 @@ type DNSInfo struct {
 	TTL      *int64
 	Interval *int64
 	Targets  utils.StringSet
+	Text     utils.StringSet
 	Feedback DNSFeedback
 }
 
 type DNSFeedback interface {
 	Succeeded()
-	Pending(dnsname string, msg string)
-	Ready(dnsname string, msg string)
-	Invalid(dnsname string, err error)
-	Failed(dnsname string, err error)
+	Pending(dnsname string, msg string, dnsState *DNSState)
+	Ready(dnsname string, msg string, dnsState *DNSState)
+	Invalid(dnsname string, err error, dnsState *DNSState)
+	Failed(dnsname string, err error, dnsState *DNSState)
 }
 
 type DNSSource interface {
@@ -59,12 +60,11 @@ type DNSSourceType interface {
 	Create(controller.Interface) (DNSSource, error)
 }
 
-type DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (utils.StringSet, error)
+type DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (utils.StringSet, utils.StringSet, error)
 type DNSSourceCreator func(controller.Interface) (DNSSource, error)
 
 type DNSState struct {
-	State             string
-	Message           *string
+	v1alpha1.DNSEntryStatus
 	CreationTimestamp metav1.Time
 }
 

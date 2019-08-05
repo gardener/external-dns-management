@@ -1,0 +1,8 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSOwner
+metadata:
+  name: second-owner
+  namespace: default
+spec:
+  ownerId: second-owner-id
+  active: true

@@ -29,10 +29,10 @@ import (
 // FakeTargetIP provides target for testing without load balancer
 var FakeTargetIP *string
 
-func GetTargets(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (utils.StringSet, error) {
+func GetTargets(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (utils.StringSet, utils.StringSet, error) {
 	svc := obj.Data().(*api.Service)
 	if svc.Spec.Type != api.ServiceTypeLoadBalancer {
-		return nil, fmt.Errorf("service is not of type LoadBalancer")
+		return nil, nil, fmt.Errorf("service is not of type LoadBalancer")
 	}
 	set := utils.StringSet{}
 	for _, i := range svc.Status.LoadBalancer.Ingress {
@@ -47,5 +47,5 @@ func GetTargets(logger logger.LogContext, obj resources.Object, current *source.
 	if FakeTargetIP != nil {
 		set.Add(*FakeTargetIP)
 	}
-	return set, nil
+	return set, nil, nil
 }
