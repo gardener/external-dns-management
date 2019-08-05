@@ -385,16 +385,8 @@ func (this *sourceReconciler) updateEntry(logger logger.LogContext, info *DNSInf
 	f := func(o resources.ObjectData) (bool, error) {
 		spec := &o.(*api.DNSEntry).Spec
 		mod := &utils.ModificationState{}
-		annos := o.GetAnnotations()
-		if annos == nil {
-			annos = map[string]string{}
-		}
-		oldTargetClass := annos[CLASS_ANNOTATION]
-		if this.targetclass != oldTargetClass {
-			annos[CLASS_ANNOTATION] = this.targetclass
-			o.SetAnnotations(annos)
-			mod.Modify(true)
-		}
+		changed := resources.SetAnnotation(o, CLASS_ANNOTATION, this.targetclass)
+		mod.Modify(changed)
 		mod.AssureInt64PtrPtr(&spec.TTL, info.TTL)
 		mod.AssureInt64PtrPtr(&spec.CNameLookupInterval, info.Interval)
 		mod.AssureStringSet(&spec.Targets, info.Targets)
