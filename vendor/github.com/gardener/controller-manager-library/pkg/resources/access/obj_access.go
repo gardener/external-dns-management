@@ -14,22 +14,24 @@
  *
  */
 
-package dnsentry
+package access
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
+	"fmt"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/crds"
-	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
-var _MAIN_RESOURCE = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
+func CheckAccess(object resources.Object, used resources.Object) error {
+	var err error
 
-func init() {
-	source.DNSSourceController(source.NewDNSSouceTypeForCreator("dnsentry-source", _MAIN_RESOURCE, NewDNSEntrySource), nil).
-		FinalizerDomain("dns.gardener.cloud").
-		Cluster(cluster.DEFAULT).
-		CustomResourceDefinitions(crds.DNSEntryCRD).
-		MustRegister(source.CONTROLLER_GROUP_DNS_SOURCES)
+	o := object.ClusterKey()
+	ok, msg, allowErr := Allowed(o, "use", used.ClusterKey())
+	if !ok {
+		if allowErr != nil {
+			err = fmt.Errorf("%s: %s: %s", used.ClusterKey(), msg, allowErr)
+		} else {
+			err = fmt.Errorf("%s: %s", used.ClusterKey(), msg)
+		}
+	}
+	return err
 }

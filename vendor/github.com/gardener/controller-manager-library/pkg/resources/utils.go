@@ -47,6 +47,15 @@ func RemoveAnnotation(o ObjectData, key string) bool {
 	return false
 }
 
+func GetAnnotation(o ObjectData, key string) (string, bool) {
+	annos := o.GetAnnotations()
+	if annos == nil {
+		return "", false
+	}
+	value, ok := annos[key]
+	return value, ok
+}
+
 func SetOwnerReference(o ObjectData, ref *metav1.OwnerReference) bool {
 	refs := o.GetOwnerReferences()
 	for _, r := range refs {
@@ -76,15 +85,15 @@ func FilterKeysByGroupKinds(keys ClusterObjectKeySet, kinds ...schema.GroupKind)
 	if len(kinds) == 0 {
 		return keys.Copy()
 	}
-	new := ClusterObjectKeySet{}
+	set := ClusterObjectKeySet{}
 outer:
 	for k := range keys {
 		for _, g := range kinds {
 			if k.GroupKind() == g {
-				new.Add(k)
+				set.Add(k)
 				continue outer
 			}
 		}
 	}
-	return new
+	return set
 }

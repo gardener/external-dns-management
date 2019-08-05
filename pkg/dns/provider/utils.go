@@ -19,8 +19,6 @@ package provider
 import (
 	"fmt"
 
-	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -61,35 +59,6 @@ func copyZones(src map[string]*dnsHostedZone) dnsHostedZones {
 		dst[k] = v
 	}
 	return dst
-}
-
-func CheckAccess(object resources.Object, used resources.Object) error {
-	var err error
-
-	owners := object.GetOwners()
-	if len(owners) > 0 {
-		for o := range owners {
-			ok, msg, aerr := access.Allowed(o, "use", used.ClusterKey())
-			if !ok {
-				if aerr != nil {
-					err = fmt.Errorf("%s: %s: %s", o, msg, err)
-				} else {
-					err = fmt.Errorf("%s: %s", o, msg)
-				}
-			}
-		}
-	} else {
-		o := object.ClusterKey()
-		ok, msg, aerr := access.Allowed(o, "use", used.ClusterKey())
-		if !ok {
-			if aerr != nil {
-				err = fmt.Errorf("%s: %s: %s", used.ClusterKey(), msg, err)
-			} else {
-				err = fmt.Errorf("%s: %s", used.ClusterKey(), msg)
-			}
-		}
-	}
-	return err
 }
 
 func errorValue(format string, err error) string {

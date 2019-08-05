@@ -18,6 +18,7 @@ package provider
 
 import (
 	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"strings"
 	"sync"
 	"time"
@@ -267,7 +268,7 @@ func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, erro
 			n := p.Match(e.GetDNSName())
 			if n > 0 {
 				if match < n {
-					err = CheckAccess(e, p.Object())
+					err = access.CheckAccess(e, p.Object())
 					if err == nil {
 						found = p
 						match = n
