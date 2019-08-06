@@ -18,6 +18,7 @@ package source
 
 import (
 	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"strings"
 	"time"
@@ -45,7 +46,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		copt, _ := c.GetStringOption(OPT_CLASS)
 		classes := dnsutils.NewClasses(copt)
 		c.SetFinalizerHandler(dnsutils.NewFinalizer(c, c.GetDefinition().FinalizerName(), classes))
-		targetclass, _ := c.GetStringOption(OPT_TARGETCLASS)
+		targetclass, _ := c.GetStringOption(OPT_TARGET_CLASS)
 		if targetclass == "" {
 			if !classes.Contains(dnsutils.DEFAULT_CLASS) && classes.Main() != dnsutils.DEFAULT_CLASS {
 				targetclass = classes.Main()
@@ -62,6 +63,11 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 
 		reconciler.namespace, _ = c.GetStringOption(OPT_NAMESPACE)
 		reconciler.nameprefix, _ = c.GetStringOption(OPT_NAMEPREFIX)
+		reconciler.creatorLabelName, _ = c.GetStringOption(OPT_TARGET_CREATOR_LABEL_NAME)
+		reconciler.creatorLabelValue, _ = c.GetStringOption(OPT_TARGET_CREATOR_LABEL_VALUE)
+		reconciler.ownerid, _ = c.GetStringOption(OPT_TARGET_OWNER_ID)
+		reconciler.setIgnoreOwners, _ = c.GetBoolOption(OPT_TARGET_SET_IGNORE_OWNERS)
+
 		excluded, _ := c.GetStringArrayOption(OPT_EXCLUDE)
 		reconciler.excluded = utils.NewStringSetByArray(excluded)
 		reconciler.Infof("found excluded domains: %v", reconciler.excluded)
@@ -83,12 +89,16 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 type sourceReconciler struct {
 	*reconcilers.NestedReconciler
 	*reconcilers.SlaveAccess
-	excluded    utils.StringSet
-	source      DNSSource
-	classes     *dnsutils.Classes
-	targetclass string
-	namespace   string
-	nameprefix  string
+	excluded          utils.StringSet
+	source            DNSSource
+	classes           *dnsutils.Classes
+	targetclass       string
+	namespace         string
+	nameprefix        string
+	creatorLabelName  string
+	creatorLabelValue string
+	ownerid           string
+	setIgnoreOwners   bool
 }
 
 func (this *sourceReconciler) Start() {
@@ -114,7 +124,7 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 	for n := range names {
 		s := this.AssertSingleSlave(logger, obj.ClusterKey(), slaves, dns.DNSNameMatcher(n))
 		e := dnsutils.DNSEntry(s).DNSEntry()
-		found.Names[n] = &DNSState{e.Status.State, e.Status.Message, e.CreationTimestamp}
+		found.Names[n] = &DNSState{DNSEntryStatus: e.Status, CreationTimestamp: e.CreationTimestamp}
 		found.Targets.AddAll(e.Spec.Targets)
 	}
 
@@ -171,7 +181,7 @@ outer:
 	var notified_errors []error
 	modified := map[string]bool{}
 	if len(missing) > 0 {
-		if len(info.Targets) > 0 {
+		if len(info.Targets) > 0 || (info.Text != nil && len(info.Text) > 0) {
 			logger.Infof("found missing dns entries: %s", missing)
 			for dnsname := range missing {
 				err := this.createEntryFor(logger, obj, dnsname, info)
@@ -217,13 +227,13 @@ outer:
 				sep = ", "
 			}
 			if info.Feedback != nil {
-				info.Feedback.Failed("", fmt.Errorf("%s", err))
+				info.Feedback.Failed("", fmt.Errorf("%s", err), nil)
 			}
 			return reconcile.Delay(logger, fmt.Errorf("reconcile failed: %s", err))
 		}
 		err := fmt.Errorf("reconcile failed")
 		if info.Feedback != nil {
-			info.Feedback.Failed("", err)
+			info.Feedback.Failed("", err, nil)
 		}
 		return reconcile.Delay(logger, err)
 	}
@@ -233,37 +243,42 @@ outer:
 		for n := range info.Names {
 			s := found.Names[n]
 			if s != nil && !modified[n] {
+				stateCopy := *s
+				if stateCopy.Provider != nil {
+					str := "remote: " + *stateCopy.Provider
+					stateCopy.Provider = &str
+				} else {
+					str := "remote"
+					stateCopy.Provider = &str
+				}
 				switch s.State {
 				case api.STATE_ERROR:
 					msg := fmt.Errorf("errornous dns entry")
 					if s.Message != nil {
-						info.Feedback.Failed(n, fmt.Errorf("%s: %s", msg, *s.Message))
-					} else {
-						info.Feedback.Failed(n, msg)
+						msg = fmt.Errorf("%s: %s", msg, *s.Message)
 					}
+					info.Feedback.Failed(n, msg, &stateCopy)
 				case api.STATE_INVALID:
 					msg := fmt.Errorf("dns entry invalid")
 					if s.Message != nil {
-						info.Feedback.Invalid(n, fmt.Errorf("%s: %s", msg, *s.Message))
-					} else {
-						info.Feedback.Invalid(n, msg)
+						msg = fmt.Errorf("%s: %s", msg, *s.Message)
 					}
+					info.Feedback.Invalid(n, msg, &stateCopy)
 				case api.STATE_PENDING:
 					msg := fmt.Sprintf("dns entry pending")
 					if s.Message != nil {
-						info.Feedback.Pending(n, fmt.Sprintf("%s: %s", msg, *s.Message))
-					} else {
-						info.Feedback.Pending(n, msg)
+						msg = fmt.Sprintf("%s: %s", msg, *s.Message)
 					}
+					info.Feedback.Pending(n, msg, &stateCopy)
 				case api.STATE_READY:
-					if s.Message != nil {
-						info.Feedback.Ready(n, *s.Message)
-					} else {
-						info.Feedback.Ready(n, fmt.Sprintf("dns entry ready"))
+					if stateCopy.Message == nil {
+						str := "dns entry ready"
+						stateCopy.Message = &str
 					}
+					info.Feedback.Ready(n, *stateCopy.Message, &stateCopy)
 				default:
 					if s.CreationTimestamp.Time.Before(threshold) {
-						info.Feedback.Pending(n, "no dns controller running?")
+						info.Feedback.Pending(n, "no dns controller running?", &stateCopy)
 					}
 				}
 			}
@@ -338,10 +353,22 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	entry := &api.DNSEntry{}
 	entry.GenerateName = strings.ToLower(this.nameprefix + obj.GetName() + "-" + obj.GroupKind().Kind + "-")
 	if this.targetclass != "" {
-		entry.SetAnnotations(map[string]string{CLASS_ANNOTATION: this.targetclass})
+		resources.SetAnnotation(entry, CLASS_ANNOTATION, this.targetclass)
+	}
+	if this.setIgnoreOwners {
+		resources.SetAnnotation(entry, access.ANNOTATION_IGNORE_OWNERS, "true")
+	}
+	if this.creatorLabelName != "" && this.creatorLabelValue != "" {
+		resources.SetLabel(entry, this.creatorLabelName, this.creatorLabelValue)
+	}
+	if this.ownerid != "" {
+		entry.Spec.OwnerId = &this.ownerid
 	}
 	entry.Spec.DNSName = dnsname
 	entry.Spec.Targets = info.Targets.AsArray()
+	if info.Text != nil {
+		entry.Spec.Text = info.Text.AsArray()
+	}
 	if this.namespace == "" {
 		entry.Namespace = obj.GetNamespace()
 	} else {
@@ -354,14 +381,14 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	err := this.Slaves().CreateSlave(obj, e)
 	if err != nil {
 		if info.Feedback != nil {
-			info.Feedback.Failed(dnsname, err)
+			info.Feedback.Failed(dnsname, err, nil)
 		}
 		return err
 	}
 	obj.Eventf(core.EventTypeNormal, "reconcile", "created dns entry object %s", e.ObjectName())
 	logger.Infof("created dns entry object %s", e.ObjectName())
 	if info.Feedback != nil {
-		info.Feedback.Pending(dnsname, "")
+		info.Feedback.Pending(dnsname, "", nil)
 	}
 	return nil
 }
@@ -385,11 +412,40 @@ func (this *sourceReconciler) updateEntry(logger logger.LogContext, info *DNSInf
 	f := func(o resources.ObjectData) (bool, error) {
 		spec := &o.(*api.DNSEntry).Spec
 		mod := &utils.ModificationState{}
-		changed := resources.SetAnnotation(o, CLASS_ANNOTATION, this.targetclass)
+		var changed bool
+		if this.targetclass == "" {
+			changed = resources.RemoveAnnotation(o, CLASS_ANNOTATION)
+		} else {
+			changed = resources.SetAnnotation(o, CLASS_ANNOTATION, this.targetclass)
+		}
 		mod.Modify(changed)
+		if this.setIgnoreOwners {
+			changed = resources.SetAnnotation(o, access.ANNOTATION_IGNORE_OWNERS, "true")
+		} else {
+			changed = resources.RemoveAnnotation(o, access.ANNOTATION_IGNORE_OWNERS)
+		}
+		mod.Modify(changed)
+		if this.creatorLabelName != "" {
+			if this.creatorLabelValue != "" {
+				changed = resources.SetAnnotation(o, this.creatorLabelName, this.creatorLabelValue)
+			} else if this.creatorLabelName != "" {
+				changed = resources.RemoveAnnotation(o, this.creatorLabelName)
+			}
+			mod.Modify(changed)
+		}
+		var p *string
+		if this.ownerid != "" {
+			p = &this.ownerid
+		}
+		mod.AssureStringPtrPtr(&spec.OwnerId, p)
 		mod.AssureInt64PtrPtr(&spec.TTL, info.TTL)
 		mod.AssureInt64PtrPtr(&spec.CNameLookupInterval, info.Interval)
 		mod.AssureStringSet(&spec.Targets, info.Targets)
+		if info.Text != nil {
+			mod.AssureStringSet(&spec.Text, info.Text)
+		} else {
+			mod.AssureStringSet(&spec.Text, utils.StringSet{})
+		}
 		if mod.IsModified() {
 			logger.Infof("update entry %s", obj.ObjectName())
 		}

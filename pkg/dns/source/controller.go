@@ -38,11 +38,15 @@ const PERIOD_ANNOTATION = "dns.gardener.cloud/cname-lookup-interval"
 const CLASS_ANNOTATION = utils.CLASS_ANNOTATION
 
 const OPT_CLASS = "dns-class"
-const OPT_TARGETCLASS = "dns-target-class"
+const OPT_TARGET_CLASS = "dns-target-class"
 const OPT_EXCLUDE = "exclude-domains"
 const OPT_KEY = "key"
 const OPT_NAMESPACE = "target-namespace"
 const OPT_NAMEPREFIX = "target-name-prefix"
+const OPT_TARGET_CREATOR_LABEL_NAME = "target-creator-label-name"
+const OPT_TARGET_CREATOR_LABEL_VALUE = "target-creator-label-value"
+const OPT_TARGET_OWNER_ID = "target-owner-id"
+const OPT_TARGET_SET_IGNORE_OWNERS = "target-set-ignore-owners"
 
 var ENTRY = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
@@ -53,12 +57,16 @@ func init() {
 func DNSSourceController(source DNSSourceType, reconcilerType controller.ReconcilerType) controller.Configuration {
 	gk := source.GroupKind()
 	return controller.Configure(source.Name()).
-		DefaultedStringOption(OPT_CLASS, utils.DEFAULT_CLASS, "Identifier used to differentiate responsible controllers for entries").
-		StringOption(OPT_TARGETCLASS, "Identifier used to differentiate responsible dns controllers for target entries").
+		DefaultedStringOption(OPT_CLASS, utils.DEFAULT_CLASS, "identifier used to differentiate responsible controllers for entries").
+		StringOption(OPT_TARGET_CLASS, "identifier used to differentiate responsible dns controllers for target entries").
 		StringArrayOption(OPT_EXCLUDE, "excluded domains").
 		StringOption(OPT_KEY, "selecting key for annotation").
 		DefaultedStringOption(OPT_NAMESPACE, "", "target namespace for cross cluster generation").
 		DefaultedStringOption(OPT_NAMEPREFIX, "", "name prefix in target namespace for cross cluster generation").
+		DefaultedStringOption(OPT_TARGET_CREATOR_LABEL_NAME, "creator", "label name to store the creator for generated DNS entries").
+		StringOption(OPT_TARGET_CREATOR_LABEL_VALUE, "label value for creator label").
+		StringOption(OPT_TARGET_OWNER_ID, "owner id to use for generated DNS entries").
+		BoolOption(OPT_TARGET_SET_IGNORE_OWNERS, "mark generated DNS entries to omit owner based access control").
 		FinalizerDomain(api.GroupName).
 		Reconciler(SourceReconciler(source, reconcilerType)).
 		Cluster(cluster.DEFAULT). // first one used as MAIN cluster

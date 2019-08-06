@@ -14,38 +14,22 @@
  *
  */
 
-package service
+package dnsentry
 
 import (
-	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/controller-manager-library/pkg/utils"
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/crds"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
-
-	api "k8s.io/api/core/v1"
 )
 
-// FakeTargetIP provides target for testing without load balancer
-var FakeTargetIP *string
+var _MAIN_RESOURCE = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
-func GetTargets(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (utils.StringSet, utils.StringSet, error) {
-	svc := obj.Data().(*api.Service)
-	if svc.Spec.Type != api.ServiceTypeLoadBalancer {
-		return nil, nil, fmt.Errorf("service is not of type LoadBalancer")
-	}
-	set := utils.StringSet{}
-	for _, i := range svc.Status.LoadBalancer.Ingress {
-		if i.Hostname != "" && i.IP == "" {
-			set.Add(i.Hostname)
-		} else {
-			if i.IP != "" {
-				set.Add(i.IP)
-			}
-		}
-	}
-	if FakeTargetIP != nil {
-		set.Add(*FakeTargetIP)
-	}
-	return set, nil, nil
+func init() {
+	source.DNSSourceController(source.NewDNSSouceTypeForCreator("dnsentry-source", _MAIN_RESOURCE, NewDNSEntrySource), nil).
+		FinalizerDomain("dns.gardener.cloud").
+		Cluster(cluster.DEFAULT).
+		CustomResourceDefinitions(crds.DNSEntryCRD).
+		MustRegister(source.CONTROLLER_GROUP_DNS_SOURCES)
 }
