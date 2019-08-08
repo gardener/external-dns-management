@@ -177,8 +177,7 @@ outer:
 		}
 	}
 
-	failed := false
-	var notified_errors []error
+	var notifiedErrors []string
 	modified := map[string]bool{}
 	if len(missing) > 0 {
 		if len(info.Targets) > 0 || (info.Text != nil && len(info.Text) > 0) {
@@ -186,8 +185,7 @@ outer:
 			for dnsname := range missing {
 				err := this.createEntryFor(logger, obj, dnsname, info)
 				if err != nil {
-					notified_errors = append(notified_errors, fmt.Errorf("cannot create dns entry object for %s: %s ", dnsname, err))
-					failed = true
+					notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot create dns entry object for %s: %s ", dnsname, err))
 				}
 			}
 		} else {
@@ -200,8 +198,7 @@ outer:
 			dnsname := dnsutils.DNSEntry(o).DNSEntry().Spec.DNSName
 			err := this.deleteEntry(logger, obj, o)
 			if err != nil {
-				notified_errors = append(notified_errors, fmt.Errorf("cannot remove dns entry object %q(%s): %s", o.ClusterKey(), dnsname, err))
-				failed = true
+				notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot remove dns entry object %q(%s): %s", o.ClusterKey(), dnsname, err))
 			}
 		}
 
@@ -212,30 +209,17 @@ outer:
 			mod, err := this.updateEntry(logger, info, o)
 			modified[dnsname] = mod
 			if err != nil {
-				notified_errors = append(notified_errors, fmt.Errorf("cannot update dns entry object %q(%s): %s", o.ClusterKey(), dnsname, err))
-				failed = true
+				notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot update dns entry object %q(%s): %s", o.ClusterKey(), dnsname, err))
 			}
 		}
 	}
 
-	if failed {
-		if len(notified_errors) > 0 {
-			err := ""
-			sep := ""
-			for _, e := range notified_errors {
-				err = fmt.Sprintf("%s%s%s", err, sep, e)
-				sep = ", "
-			}
-			if info.Feedback != nil {
-				info.Feedback.Failed("", fmt.Errorf("%s", err), nil)
-			}
-			return reconcile.Delay(logger, fmt.Errorf("reconcile failed: %s", err))
-		}
-		err := fmt.Errorf("reconcile failed")
+	if len(notifiedErrors) > 0 {
+		msg := strings.Join(notifiedErrors, ", ")
 		if info.Feedback != nil {
-			info.Feedback.Failed("", err, nil)
+			info.Feedback.Failed("", fmt.Errorf("%s", msg), nil)
 		}
-		return reconcile.Delay(logger, err)
+		return reconcile.Delay(logger, fmt.Errorf("reconcile failed: %s", msg))
 	}
 
 	if info.Feedback != nil {
