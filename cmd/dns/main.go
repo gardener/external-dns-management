@@ -49,7 +49,7 @@ func init() {
 		dnsprovider.PROVIDER_CLUSTER,
 		"providers",
 		"cluster to look for provider objects",
-	).Fallback(dnssource.TARGET_CLUSTER)
+	).Fallback(dnssource.TARGET_CLUSTER).MustRegister()
 
 	mappings.ForControllerGroup(dnsprovider.CONTROLLER_GROUP_DNS_CONTROLLERS).
 		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
