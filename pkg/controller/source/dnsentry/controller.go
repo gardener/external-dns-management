@@ -31,5 +31,5 @@ func init() {
 		FinalizerDomain("dns.gardener.cloud").
 		Cluster(cluster.DEFAULT).
 		CustomResourceDefinitions(crds.DNSEntryCRD).
-		MustRegister(source.CONTROLLER_GROUP_DNS_SOURCES)
+		MustRegister()
 }
