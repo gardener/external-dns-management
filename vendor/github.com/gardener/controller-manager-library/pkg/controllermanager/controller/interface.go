@@ -162,7 +162,7 @@ type Definition interface {
 	CustomResourceDefinitions() map[string][]*v1beta1.CustomResourceDefinition
 	RequireLease() bool
 	FinalizerName() string
-
+	ActivateExplicitly() bool
 	ConfigOptions() map[string]OptionDefinition
 
 	Definition() Definition

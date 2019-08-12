@@ -29,23 +29,32 @@ type Definitions interface {
 	Activate(controllers []string) (utils.StringSet, error)
 	AllGroups() map[string]utils.StringSet
 	AllControllers() utils.StringSet
+	AllActivateExplicitlyControllers() utils.StringSet
 }
 
 type Definition interface {
 	Controllers() utils.StringSet
+	ActivateExplicitlyControllers() utils.StringSet
 }
 
 type _Definition struct {
 	name        string
 	controllers utils.StringSet
+
+	activateExplicitylyControllers utils.StringSet
 }
 
 func (this *_Definition) copy() *_Definition {
-	return &_Definition{this.name, this.controllers.Copy()}
+	return &_Definition{name: this.name, controllers: this.controllers.Copy(),
+		activateExplicitylyControllers: this.activateExplicitylyControllers.Copy()}
 }
 
 func (this *_Definition) Controllers() utils.StringSet {
 	return this.controllers.Copy()
+}
+
+func (this *_Definition) ActivateExplicitlyControllers() utils.StringSet {
+	return this.activateExplicitylyControllers.Copy()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,6 +63,7 @@ func (this *_Definitions) Activate(controllers []string) (utils.StringSet, error
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 	active := utils.StringSet{}
+	explicitActive := utils.StringSet{}
 	if len(controllers) == 0 {
 		logger.Infof("activating all controllers")
 		active = this.AllControllers()
@@ -73,6 +83,7 @@ func (this *_Definitions) Activate(controllers []string) (utils.StringSet, error
 					if this.controllers.Contains(name) {
 						logger.Infof("activating controller %q", name)
 						active.Add(name)
+						explicitActive.Add(name)
 					} else {
 						return nil, fmt.Errorf("unknown controller or group %q", name)
 					}
@@ -80,6 +91,13 @@ func (this *_Definitions) Activate(controllers []string) (utils.StringSet, error
 			}
 		}
 	}
+	toBeActivatedExplicitly := this.AllActivateExplicitlyControllers()
+	for name := range active {
+		if !explicitActive.Contains(name) && toBeActivatedExplicitly.Contains(name) {
+			active.Remove(name)
+		}
+	}
+
 	logger.Infof("activated controllers: %s", active)
 	return active, nil
 }
@@ -102,4 +120,14 @@ func (this *_Definitions) AllControllers() utils.StringSet {
 		active.AddSet(g.controllers)
 	}
 	return active
+}
+
+func (this *_Definitions) AllActivateExplicitlyControllers() utils.StringSet {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	set := utils.StringSet{}
+	for _, g := range this.definitions {
+		set.AddSet(g.activateExplicitylyControllers)
+	}
+	return set
 }

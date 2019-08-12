@@ -109,19 +109,20 @@ func (this *cmddef) PoolName() string {
 }
 
 type _Definition struct {
-	name              string
-	main              ResourceKey
-	reconcilers       map[string]ReconcilerType
-	watches           Watches
-	commands          Commands
-	resource_filters  []ResourceFilter
-	required_clusters []string
-	require_lease     bool
-	pools             map[string]PoolDefinition
-	configs           map[string]OptionDefinition
-	finalizerName     string
-	finalizerDomain   string
-	crds              map[string][]*apiext.CustomResourceDefinition
+	name               string
+	main               ResourceKey
+	reconcilers        map[string]ReconcilerType
+	watches            Watches
+	commands           Commands
+	resource_filters   []ResourceFilter
+	required_clusters  []string
+	require_lease      bool
+	pools              map[string]PoolDefinition
+	configs            map[string]OptionDefinition
+	finalizerName      string
+	finalizerDomain    string
+	crds               map[string][]*apiext.CustomResourceDefinition
+	activateExplicitly bool
 }
 
 var _ Definition = &_Definition{}
@@ -204,6 +205,10 @@ func (this *_Definition) ConfigOptions() map[string]OptionDefinition {
 		cfgs[n] = d
 	}
 	return cfgs
+}
+
+func (this *_Definition) ActivateExplicitly() bool {
+	return this.activateExplicitly
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -318,6 +323,11 @@ func (this Configuration) ReconcilerWatches(reconciler string, keys ...ResourceK
 		//logger.Infof("adding watch for %q:%q to pool %q", this.cluster, key, this.pool)
 		this.settings.watches[this.cluster] = append(this.settings.watches[this.cluster], &watchdef{key, reconciler, this.pool})
 	}
+	return this
+}
+
+func (this Configuration) ActivateExplicitly() Configuration {
+	this.settings.activateExplicitly = true
 	return this
 }
 

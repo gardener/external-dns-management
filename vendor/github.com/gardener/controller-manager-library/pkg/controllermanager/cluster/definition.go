@@ -138,7 +138,7 @@ func (this *_Definitions) handleCluster(ctx context.Context, logger logger.LogCo
 	//	logger.Infof("  handle cluster %s (no config) fallback=%s", name, req.Fallback())
 	//}
 
-	if name != DEFAULT && opt != nil && opt.StringValue() != "" {
+	if name != DEFAULT && opt != nil && opt.Changed() {
 		c, err = this.create(ctx, logger, cfg, req, opt.StringValue())
 		if err != nil {
 			return err

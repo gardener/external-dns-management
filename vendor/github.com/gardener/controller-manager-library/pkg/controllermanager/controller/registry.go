@@ -191,6 +191,9 @@ func (this *_Registry) addControllerToGroup(def Definition, name string) error {
 	if err != nil {
 		return err
 	}
+	if def.ActivateExplicitly() {
+		grp.ActivateExplicitlyControllers(def.GetName())
+	}
 	return grp.Controllers(def.GetName())
 }
 
