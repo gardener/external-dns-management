@@ -1,0 +1,11 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  name: text
+  namespace: default
+spec:
+  dnsName: "text.ringtest.dev.k8s.ondemand.com"
+  ttl: 600
+  text:
+  - foo
+  - "bar bla"
