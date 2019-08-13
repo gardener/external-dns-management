@@ -72,7 +72,7 @@ func (this *_Definition) Fallback() string {
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *_Definitions) create(ctx context.Context, logger logger.LogContext, cfg *config.Config, req Definition, option string) (Interface, error) {
-	idopt := cfg.GetOption(req.ConfigOptionName() + ID_SUB_OPTION)
+	idopt := cfg.GetOption(req.ConfigOptionName() + SUBOPTION_ID)
 	id := ""
 	if idopt != nil && idopt.Changed() {
 		id = idopt.StringValue()
@@ -81,6 +81,11 @@ func (this *_Definitions) create(ctx context.Context, logger logger.LogContext, 
 	cluster, err := CreateCluster(ctx, logger, req, id, option)
 	if err != nil {
 		return nil, err
+	}
+
+	crdsOpt := cfg.GetOption(req.ConfigOptionName() + SUBOPTION_DISABLE_DEPLOY_CRDS)
+	if crdsOpt != nil && crdsOpt.Changed() {
+		cluster.SetAttr(SUBOPTION_DISABLE_DEPLOY_CRDS, true)
 	}
 
 	err = callExtensions(func(e Extension) error { return e.Extend(cluster, cfg) })
@@ -185,8 +190,11 @@ func (this *_Definitions) ExtendConfig(cfg *config.Config) {
 			opt, _ := cfg.AddStringOption(req.ConfigOptionName())
 			opt.Description = req.Description()
 
-			opt, _ = cfg.AddStringOption(req.ConfigOptionName() + ID_SUB_OPTION)
+			opt, _ = cfg.AddStringOption(req.ConfigOptionName() + SUBOPTION_ID)
 			opt.Description = fmt.Sprintf("id for cluster %s", req.Name())
+
+			opt, _ = cfg.AddBoolOption(req.ConfigOptionName() + SUBOPTION_DISABLE_DEPLOY_CRDS)
+			opt.Description = fmt.Sprintf("disable deployment of required crds for cluster %s", req.Name())
 		}
 		callExtensions(func(e Extension) error { e.ExtendConfig(req, cfg); return nil })
 	}

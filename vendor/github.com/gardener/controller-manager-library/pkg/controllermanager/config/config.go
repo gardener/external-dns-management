@@ -95,6 +95,10 @@ func (this *Config) AddDurationOption(name string) (*ArbitraryOption, bool) {
 	return this.AddOption(name, reflect.TypeOf((*time.Duration)(nil)).Elem())
 }
 
+func (this *Config) AddBoolOption(name string) (*ArbitraryOption, bool) {
+	return this.AddOption(name, reflect.TypeOf((*bool)(nil)).Elem())
+}
+
 func (this *Config) AddToCommand(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringVarP(&this.Name, "name", "", "", "name used for controller manager")
 	cmd.PersistentFlags().StringVarP(&this.Namespace, "namespace", "", "", "namespace for lease")

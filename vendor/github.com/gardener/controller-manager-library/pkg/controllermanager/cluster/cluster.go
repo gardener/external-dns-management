@@ -37,7 +37,8 @@ import (
 
 const DEFAULT = "default"
 
-const ID_SUB_OPTION = ".id"
+const SUBOPTION_ID = ".id"
+const SUBOPTION_DISABLE_DEPLOY_CRDS = ".disable-deploy-crds"
 
 func Canonical(names []string) []string {
 	if names == nil {
