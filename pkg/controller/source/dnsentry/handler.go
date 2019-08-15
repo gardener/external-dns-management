@@ -89,7 +89,7 @@ func (f *updateOriginalFeedback) Failed(dnsname string, err error, state *source
 func (f *updateOriginalFeedback) setStatus(state string, msg string, dnsState *source.DNSState) {
 	obj, err := f.resources.GetObjectInto(f.objectName, &api.DNSEntry{})
 	if err != nil {
-		logger.Warn("Cannot get object %s: %s", f.objectName, err)
+		logger.Warnf("Cannot get object %s: %s", f.objectName, err)
 		return
 	}
 	data := obj.Data().(*api.DNSEntry)
@@ -104,6 +104,6 @@ func (f *updateOriginalFeedback) setStatus(state string, msg string, dnsState *s
 	data.Status.ObservedGeneration = data.GetGeneration()
 	err = obj.UpdateStatus()
 	if err != nil {
-		logger.Warn("Cannot update status for object %s: %s", f.objectName, err)
+		logger.Warnf("Cannot update status for object %s: %s", f.objectName, err)
 	}
 }
