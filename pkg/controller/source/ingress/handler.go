@@ -39,7 +39,7 @@ func (this *IngressSource) GetDNSInfo(logger logger.LogContext, obj resources.Ob
 	info := &source.DNSInfo{Targets: this.GetTargets(obj), Feedback: source.NewEventFeedback(logger, obj, events)}
 	data := obj.Data().(*api.Ingress)
 	info.Names = utils.StringSet{}
-	all := current.AnnotatedNames.Contains("all")
+	all := current.AnnotatedNames.Contains("all") || current.AnnotatedNames.Contains("*")
 	for _, i := range data.Spec.Rules {
 		if i.Host != "" && (all || current.AnnotatedNames.Contains(i.Host)) {
 			info.Names.Add(i.Host)
@@ -47,6 +47,7 @@ func (this *IngressSource) GetDNSInfo(logger logger.LogContext, obj resources.Ob
 	}
 	_, del := current.AnnotatedNames.DiffFrom(info.Names)
 	del.Remove("all")
+	del.Remove("*")
 	if len(del) > 0 {
 		return info, fmt.Errorf("annotated dns names %s not declared by ingress", del)
 	}
