@@ -183,8 +183,15 @@ type Interface interface {
 	Create(ObjectData) (Object, error)
 	CreateOrUpdate(obj ObjectData) (Object, error)
 	Update(ObjectData) (Object, error)
+	Modify(obj ObjectData, modifier Modifier) (ObjectData, bool, error)
+	ModifyByName(obj ObjectDataName, modifier Modifier) (Object, bool, error)
+	ModifyStatus(obj ObjectData, modifier Modifier) (ObjectData, bool, error)
+	ModifyStatusByName(obj ObjectDataName, modifier Modifier) (Object, bool, error)
 	Delete(ObjectData) error
 	DeleteByName(ObjectDataName) error
+
+	NormalEventf(name ObjectDataName, reason, msgfmt string, args ...interface{})
+	WarningEventf(name ObjectDataName, reason, msgfmt string, args ...interface{})
 
 	Namespace(name string) Namespaced
 

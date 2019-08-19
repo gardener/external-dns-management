@@ -17,6 +17,7 @@
 package resources
 
 import (
+	"k8s.io/apimachinery/pkg/api/errors"
 	"reflect"
 	"sync"
 
@@ -38,6 +39,9 @@ type Internal interface {
 	I_update(data ObjectData) (ObjectData, error)
 	I_updateStatus(data ObjectData) (ObjectData, error)
 	I_delete(data ObjectDataName) error
+
+	I_modifyByName(name ObjectDataName, status_only, create bool, modifier Modifier) (Object, bool, error)
+	I_modify(data ObjectData, status_only, read, create bool, modifier Modifier) (ObjectData, bool, error)
 
 	I_getInformer() (GenericInformer, error)
 	I_list(namespace string) ([]Object, error)
@@ -141,4 +145,80 @@ func (this *_i_resource) I_list(namespace string) ([]Object, error) {
 		return nil, err
 	}
 	return this.handleList(result)
+}
+
+func (this *_i_resource) I_modifyByName(name ObjectDataName, status_only, create bool, modifier Modifier) (Object, bool, error) {
+	data := this.helper.CreateData()
+	data.SetName(name.GetName())
+	data.SetNamespace(name.GetNamespace())
+
+	data, mod, err := this.I_modify(data, status_only, true, create, modifier)
+	if err == nil {
+		return this.helper.ObjectAsResource(data), mod, err
+	}
+	return nil, mod, err
+}
+
+func (this *_i_resource) I_modify(data ObjectData, status_only, read, create bool, modifier Modifier) (ObjectData, bool, error) {
+	var lasterr error
+	var err error
+
+	if read {
+		err = this.I_get(data)
+	}
+
+	cnt := 10
+
+	if create {
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				return nil, false, err
+			}
+			_, err := modifier(data)
+			if err != nil {
+				return nil, false, err
+			}
+			created, err := this.I_create(data)
+			if err == nil {
+				return created, true, nil
+			}
+			if !errors.IsAlreadyExists(err) {
+				return nil, false, err
+			}
+			err = this.I_get(data)
+			if err != nil {
+				return nil, false, err
+			}
+		}
+	}
+
+	for cnt > 0 {
+		mod, err := modifier(data)
+		if !mod {
+			if err == nil {
+				return data, mod, err
+			}
+			return nil, mod, err
+		}
+		if err == nil {
+			var modified ObjectData
+			if status_only {
+				modified, lasterr = this.I_updateStatus(data)
+			} else {
+				modified, lasterr = this.I_update(data)
+			}
+			if lasterr == nil {
+				return modified, mod, nil
+			}
+			if !errors.IsConflict(lasterr) {
+				return nil, mod, lasterr
+			}
+			err = this.I_get(data)
+		}
+		if err != nil {
+			return nil, mod, err
+		}
+		cnt--
+	}
+	return data, true, lasterr
 }

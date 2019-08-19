@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
+	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/server/healthz"
 	"strconv"
@@ -29,6 +30,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/util/workqueue"
 )
+
+const DeletionActivity = "DeletionActivity"
 
 // worker describe a single threaded worker entity synchronously working
 // on requests provided by the controller workqueue
@@ -140,9 +143,15 @@ func (w *worker) processNextWorkItem() bool {
 		switch {
 		case r == nil:
 			deleted = true
+			if w.pool.Owning().GroupKind() == (*rkey).GroupKind() {
+				ctxutil.Tick(w.ctx, DeletionActivity)
+			}
 			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Deleted(w, *rkey) }
 		case r.IsDeleting():
 			deleted = true
+			if w.pool.Owning().GroupKind() == r.GroupKind() {
+				ctxutil.Tick(w.ctx, DeletionActivity)
+			}
 			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Delete(w, r) }
 		default:
 			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Reconcile(w, r) }

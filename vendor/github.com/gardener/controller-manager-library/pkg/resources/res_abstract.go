@@ -85,10 +85,14 @@ func (this *ResourceHelper) ObjectAsResource(obj ObjectData) Object {
 	return NewObject(obj, this.GetCluster(), this.Internal)
 }
 
-func (this *ResourceHelper) CreateData() ObjectData {
+func (this *ResourceHelper) CreateData(name ...ObjectDataName) ObjectData {
 	data := reflect.New(this.I_objectType()).Interface().(ObjectData)
 	if u, ok := data.(*unstructured.Unstructured); ok {
 		u.SetGroupVersionKind(this.GroupVersionKind())
+	}
+	if len(name) > 0 {
+		data.SetName(name[0].GetName())
+		data.SetNamespace(name[0].GetNamespace())
 	}
 	return data
 }

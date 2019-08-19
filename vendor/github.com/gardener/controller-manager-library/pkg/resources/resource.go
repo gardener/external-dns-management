@@ -17,6 +17,7 @@
 package resources
 
 import (
+	"k8s.io/api/core/v1"
 	"reflect"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -107,6 +108,14 @@ func (this *_resource) AddRawEventHandler(handlers cache.ResourceEventHandlerFun
 
 func (this *_resource) AddEventHandler(handlers ResourceEventHandlerFuncs) error {
 	return this.AddRawEventHandler(*convert(this, &handlers))
+}
+
+func (this *_resource) NormalEventf(name ObjectDataName, reason, msgfmt string, args ...interface{}) {
+	this.Resources().Eventf(this.helper.CreateData(name), v1.EventTypeNormal, reason, msgfmt, args...)
+}
+
+func (this *_resource) WarningEventf(name ObjectDataName, reason, msgfmt string, args ...interface{}) {
+	this.Resources().Eventf(this.helper.CreateData(name), v1.EventTypeWarning, reason, msgfmt, args...)
 }
 
 func (this *_resource) namespacedRequest(req *restclient.Request, namespace string) *restclient.Request {
