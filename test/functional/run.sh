@@ -24,7 +24,7 @@ cd $SCRIPT_BASEDIR
 FUNCTEST_CONFIG=$ROOTDIR/local/functest-config.yaml
 DNS_LOOKUP=true
 DNS_SERVER=8.8.4.4
-RUN_CONTROLLER=false
+RUN_CONTROLLER=true
 GLOBAL_LOCK_URL=https://kvdb.io/8Kr6JtkwHUrq96Wk5aogEK/functest-lock
 
 usage()
@@ -34,7 +34,7 @@ Usage:
 Runs functional tests for external-dns-management for all provider using secrets from a
 functest-config.yaml file (see functest-config-template.yaml for details how it should look).
 
-./run.sh [--no-dns] [-f <functest-config.yaml>] [-r|--reuse] [-l] [-v] [-k|--keep] [--dns-server <dns-server>] [--run-controller] [-- <options> <for> <ginkgo>]
+./run.sh [--no-dns] [-f <functest-config.yaml>] [-r|--reuse] [-l] [-v] [-k|--keep] [--dns-server <dns-server>] [--no-controller] [-- <options> <for> <ginkgo>]
 
 Options:
     -r | --reuse           reuse existing kind cluster
@@ -44,7 +44,7 @@ Options:
     --dns-server <server>  dns server to use for DNS lookups (defaults to $DNS_SERVER)
     --no-dns               do not perform DNS lookups (for faster testing)
     -f <config.yaml>       path to functest configuration file (defaults to $FUNCTEST_CONFIG)
-    --run-controller       start the dns-controller-manager (otherwise it must be started separately)
+    --no-controller        do not start the dns-controller-manager
 
 For options of ginkgo run:
     ginkgo -h
@@ -78,8 +78,8 @@ while [ "$1" != "" ]; do
                            DNS_LOOKUP=$1
                            shift
                            ;;
-        --run-controller ) shift
-                           RUN_CONTROLLER=true
+        --no-controller )  shift
+                           RUN_CONTROLLER=false
                            ;;
         -- )               shift
                            break
