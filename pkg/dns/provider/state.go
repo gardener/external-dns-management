@@ -47,6 +47,7 @@ type zoneReconcilation struct {
 	entries   Entries
 	stale     DNSNames
 	dedicated bool
+	deleting  bool
 }
 
 type state struct {
@@ -381,7 +382,7 @@ func (this *state) GetZonesForProvider(name resources.ObjectName) dnsHostedZones
 	return copyZones(this.providerzones[name])
 }
 
-func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid string) (Entries, DNSNames) {
+func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid string) (Entries, DNSNames, bool) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 	entries := Entries{}
@@ -389,16 +390,17 @@ func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid string) (E
 	if zone != nil {
 		return this.addEntriesForZone(logger, entries, DNSNames{}, zone)
 	}
-	return entries, nil
+	return entries, nil, false
 }
 
-func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale DNSNames, zone *dnsHostedZone) (Entries, DNSNames) {
+func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale DNSNames, zone *dnsHostedZone) (Entries, DNSNames, bool) {
 	if entries == nil {
 		entries = Entries{}
 	}
 	if stale == nil {
 		stale = DNSNames{}
 	}
+	deleting := true
 	domain := zone.Domain()
 	nested := utils.NewStringSet(zone.ForwardedDomains()...)
 	for _, z := range this.zones {
@@ -431,6 +433,7 @@ loop:
 					}
 				}
 				if e.IsActive() {
+					deleting = deleting || e.IsDeleting()
 					entries[e.ObjectName()] = e
 				} else {
 					logger.Infof("entry %q(%s) is inactive", e.ObjectName(), e.DNSName())
@@ -445,7 +448,7 @@ loop:
 			}
 		}
 	}
-	return entries, stale
+	return entries, stale, deleting
 }
 
 func (this *state) GetZoneForEntry(e *Entry) string {
@@ -773,7 +776,14 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 					// it must be cleanuped before the provider is gone
 					logger.Infof("provider is exclusively handling zone %q -> cleanup", n)
 
-					done, err := this.StartZoneReconcilation(logger, &zoneReconcilation{z, providers, Entries{}, nil, false})
+					done, err := this.StartZoneReconcilation(logger, &zoneReconcilation{
+						zone:z,
+						providers: providers,
+						entries: Entries{},
+						stale: nil,
+						dedicated: false,
+						deleting: false,
+					})
 					if !done {
 						return reconcile.Delay(logger, fmt.Errorf("zone reconcilation busy -> delay deletion"))
 					}
@@ -1067,15 +1077,15 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 // zone reconcilation
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHostedZone, DNSProviders, Entries, DNSNames) {
+func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHostedZone, DNSProviders, Entries, DNSNames, bool) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 	zone := this.zones[zoneid]
 	if zone == nil {
-		return nil, nil, nil, nil
+		return nil, nil, nil, nil, false
 	}
-	entries, stale := this.addEntriesForZone(logger, nil, nil, zone)
-	return zone, this.getProvidersForZone(zoneid), entries, stale
+	entries, stale, deleting := this.addEntriesForZone(logger, nil, nil, zone)
+	return zone, this.getProvidersForZone(zoneid), entries, stale, deleting
 }
 
 func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string) (time.Duration, bool, *zoneReconcilation) {
@@ -1094,7 +1104,7 @@ func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string)
 	if now.Before(zone.next) {
 		return zone.next.Sub(now), hasProviders, req
 	}
-	req.entries, req.stale = this.addEntriesForZone(logger, nil, nil, zone)
+	req.entries, req.stale, req.deleting = this.addEntriesForZone(logger, nil, nil, zone)
 	req.providers = this.getProvidersForZone(zoneid)
 	return 0, hasProviders, req
 }
@@ -1123,6 +1133,8 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 	if req.zone.TestAndSetBusy() {
 		defer req.zone.Release()
 
+		if req.deleting {
+		}
 		list := make(EntryList, 0, len(req.stale)+len(req.entries))
 		for _, e := range req.entries {
 			list = append(list, e)
