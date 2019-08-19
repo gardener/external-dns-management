@@ -19,6 +19,7 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -130,6 +131,18 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 			forwarded := cache.GetHandlerData().(*provider.ForwardedDomainsHandlerData).GetForwardedDomains(hostedZone.Id())
 			if forwarded != nil {
 				hostedZone = provider.CopyDNSHostedZone(hostedZone, forwarded)
+			}
+		} else {
+			a, ok := err.(awserr.Error)
+			if ok {
+				if a.Code() == "AccessDenied" {
+					h.config.Logger.Warnf("AWS permission missing for zone %s -> omit zone: %s", z.Id, err)
+					continue
+				} else {
+					h.config.Logger.Warnf("AWS error during get zone state for %s: %s: %s", z.Id, a.Code(), err)
+				}
+			} else {
+				h.config.Logger.Warnf("Error during get zone state for %s: %s", z.Id, err)
 			}
 		}
 
