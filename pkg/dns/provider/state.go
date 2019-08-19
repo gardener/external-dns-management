@@ -18,6 +18,8 @@ package provider
 
 import (
 	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
+	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"strings"
 	"sync"
@@ -1130,11 +1132,12 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 }
 
 func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneReconcilation) (bool, error) {
+	if req.deleting {
+		ctxutil.Tick(this.GetContext().GetContext(),controller.DeletionActivity)
+	}
 	if req.zone.TestAndSetBusy() {
 		defer req.zone.Release()
 
-		if req.deleting {
-		}
 		list := make(EntryList, 0, len(req.stale)+len(req.entries))
 		for _, e := range req.entries {
 			list = append(list, e)
