@@ -28,6 +28,16 @@ spec:
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         args:
+        - --name={{ include "external-dns-management.fullname" . }}
+        {{- if or .Values.configuration.identifier (not .Values.gardener.seed.identity) }}
+        - --identifier={{ required "A value is required for configuration.identifier (or gardener.seed.identity)! It must be unique, globally or at least for all instances running with the same account." .Values.configuration.identifier }}
+        {{- else }}
+        - --identifier=seed.gardener.cloud/{{ .Values.gardener.garden.identity }}/{{ .Values.gardener.seed.identity }}
+        {{- end }}
+        {{- if .Values.configuration.persistentCache }}
+        - --cache-dir=/persistent-cache
+        {{- end }}
+        ### start generated configuration
         {{- if .Values.configuration.alicloudDNSCacheTtl }}
         - --alicloud-dns.cache-ttl={{ .Values.configuration.alicloudDNSCacheTtl }}
         {{- end }}
@@ -63,6 +73,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.alicloudDNSProvidersPoolSize }}
         - --alicloud-dns.providers.pool.size={{ .Values.configuration.alicloudDNSProvidersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSRescheduleDelay }}
+        - --alicloud-dns.reschedule-delay={{ .Values.configuration.alicloudDNSRescheduleDelay }}
         {{- end }}
         {{- if .Values.configuration.alicloudDNSSecretsPoolSize }}
         - --alicloud-dns.secrets.pool.size={{ .Values.configuration.alicloudDNSSecretsPoolSize }}
@@ -109,6 +122,9 @@ spec:
         {{- if .Values.configuration.awsRoute53ProvidersPoolSize }}
         - --aws-route53.providers.pool.size={{ .Values.configuration.awsRoute53ProvidersPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.awsRoute53RescheduleDelay }}
+        - --aws-route53.reschedule-delay={{ .Values.configuration.awsRoute53RescheduleDelay }}
+        {{- end }}
         {{- if .Values.configuration.awsRoute53SecretsPoolSize }}
         - --aws-route53.secrets.pool.size={{ .Values.configuration.awsRoute53SecretsPoolSize }}
         {{- end }}
@@ -154,6 +170,9 @@ spec:
         {{- if .Values.configuration.azureDNSProvidersPoolSize }}
         - --azure-dns.providers.pool.size={{ .Values.configuration.azureDNSProvidersPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.azureDNSRescheduleDelay }}
+        - --azure-dns.reschedule-delay={{ .Values.configuration.azureDNSRescheduleDelay }}
+        {{- end }}
         {{- if .Values.configuration.azureDNSSecretsPoolSize }}
         - --azure-dns.secrets.pool.size={{ .Values.configuration.azureDNSSecretsPoolSize }}
         {{- end }}
@@ -187,8 +206,44 @@ spec:
         {{- if .Values.configuration.dnsTargetClass }}
         - --dns-target-class={{ .Values.configuration.dnsTargetClass }}
         {{- end }}
-        {{- if .Values.configuration.dryRun }}
-        - --dry-run={{ .Values.configuration.dryRun }}
+        {{- if .Values.configuration.dnsentrySourceDefaultPoolResyncPeriod }}
+        - --dnsentry-source.default.pool.resync-period={{ .Values.configuration.dnsentrySourceDefaultPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceDefaultPoolSize }}
+        - --dnsentry-source.default.pool.size={{ .Values.configuration.dnsentrySourceDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceDnsClass }}
+        - --dnsentry-source.dns-class={{ .Values.configuration.dnsentrySourceDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceDnsTargetClass }}
+        - --dnsentry-source.dns-target-class={{ .Values.configuration.dnsentrySourceDnsTargetClass }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceExcludeDomains }}
+        - --dnsentry-source.exclude-domains={{ .Values.configuration.dnsentrySourceExcludeDomains }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceKey }}
+        - --dnsentry-source.key={{ .Values.configuration.dnsentrySourceKey }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceTargetCreatorLabelName }}
+        - --dnsentry-source.target-creator-label-name={{ .Values.configuration.dnsentrySourceTargetCreatorLabelName }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceTargetCreatorLabelValue }}
+        - --dnsentry-source.target-creator-label-value={{ .Values.configuration.dnsentrySourceTargetCreatorLabelValue }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceTargetNamePrefix }}
+        - --dnsentry-source.target-name-prefix={{ .Values.configuration.dnsentrySourceTargetNamePrefix }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceTargetNamespace }}
+        - --dnsentry-source.target-namespace={{ .Values.configuration.dnsentrySourceTargetNamespace }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceTargetOwnerId }}
+        - --dnsentry-source.target-owner-id={{ .Values.configuration.dnsentrySourceTargetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceTargetSetIgnoreOwners }}
+        - --dnsentry-source.target-set-ignore-owners={{ .Values.configuration.dnsentrySourceTargetSetIgnoreOwners }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceTargetsPoolSize }}
+        - --dnsentry-source.targets.pool.size={{ .Values.configuration.dnsentrySourceTargetsPoolSize }}
         {{- end }}
         {{- if .Values.configuration.excludeDomains }}
         - --exclude-domains={{ .Values.configuration.excludeDomains }}
@@ -229,6 +284,9 @@ spec:
         {{- if .Values.configuration.googleCloudDNSProvidersPoolSize }}
         - --google-clouddns.providers.pool.size={{ .Values.configuration.googleCloudDNSProvidersPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.googleCloudDNSRescheduleDelay }}
+        - --google-clouddns.reschedule-delay={{ .Values.configuration.googleCloudDNSRescheduleDelay }}
+        {{- end }}
         {{- if .Values.configuration.googleCloudDNSSecretsPoolSize }}
         - --google-clouddns.secrets.pool.size={{ .Values.configuration.googleCloudDNSSecretsPoolSize }}
         {{- end }}
@@ -237,14 +295,6 @@ spec:
         {{- end }}
         {{- if .Values.configuration.googleCloudDNSTtl }}
         - --google-clouddns.ttl={{ .Values.configuration.googleCloudDNSTtl }}
-        {{- end }}
-        {{- if .Values.configuration.help }}
-        - --help={{ .Values.configuration.help }}
-        {{- end }}
-        {{- if or .Values.configuration.identifier (not .Values.gardener.seed.identity) }}
-        - --identifier={{ required "A value is required for configuration.identifier (or gardener.seed.identity)! It must be unique, globally or at least for all instances running with the same account." .Values.configuration.identifier }}
-        {{- else }}
-        - --identifier=seed.gardener.cloud/{{ .Values.gardener.garden.identity }}/{{ .Values.gardener.seed.identity }}
         {{- end }}
         {{- if .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
         - --ingress-dns.default.pool.resync-period={{ .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
@@ -264,11 +314,23 @@ spec:
         {{- if .Values.configuration.ingressDNSKey }}
         - --ingress-dns.key={{ .Values.configuration.ingressDNSKey }}
         {{- end }}
+        {{- if .Values.configuration.ingressDNSTargetCreatorLabelName }}
+        - --ingress-dns.target-creator-label-name={{ .Values.configuration.ingressDNSTargetCreatorLabelName }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSTargetCreatorLabelValue }}
+        - --ingress-dns.target-creator-label-value={{ .Values.configuration.ingressDNSTargetCreatorLabelValue }}
+        {{- end }}
         {{- if .Values.configuration.ingressDNSTargetNamePrefix }}
         - --ingress-dns.target-name-prefix={{ .Values.configuration.ingressDNSTargetNamePrefix }}
         {{- end }}
         {{- if .Values.configuration.ingressDNSTargetNamespace }}
         - --ingress-dns.target-namespace={{ .Values.configuration.ingressDNSTargetNamespace }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSTargetOwnerId }}
+        - --ingress-dns.target-owner-id={{ .Values.configuration.ingressDNSTargetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSTargetSetIgnoreOwners }}
+        - --ingress-dns.target-set-ignore-owners={{ .Values.configuration.ingressDNSTargetSetIgnoreOwners }}
         {{- end }}
         {{- if .Values.configuration.ingressDNSTargetsPoolSize }}
         - --ingress-dns.targets.pool.size={{ .Values.configuration.ingressDNSTargetsPoolSize }}
@@ -279,13 +341,15 @@ spec:
         {{- if .Values.configuration.kubeconfig }}
         - --kubeconfig={{ .Values.configuration.kubeconfig }}
         {{- end }}
+        {{- if .Values.configuration.kubeconfigDisableDeployCrds }}
+        - --kubeconfig.disable-deploy-crds={{ .Values.configuration.kubeconfigDisableDeployCrds }}
+        {{- end }}
         {{- if .Values.configuration.kubeconfigId }}
         - --kubeconfig.id={{ .Values.configuration.kubeconfigId }}
         {{- end }}
         {{- if .Values.configuration.logLevel }}
         - --log-level={{ .Values.configuration.logLevel }}
         {{- end }}
-        - --name={{ include "external-dns-management.fullname" . }}
         {{- if .Values.configuration.namespace }}
         - --namespace={{ .Values.configuration.namespace }}
         {{- end }}
@@ -331,6 +395,9 @@ spec:
         {{- if .Values.configuration.openstackDesignateProvidersPoolSize }}
         - --openstack-designate.providers.pool.size={{ .Values.configuration.openstackDesignateProvidersPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.openstackDesignateRescheduleDelay }}
+        - --openstack-designate.reschedule-delay={{ .Values.configuration.openstackDesignateRescheduleDelay }}
+        {{- end }}
         {{- if .Values.configuration.openstackDesignateSecretsPoolSize }}
         - --openstack-designate.secrets.pool.size={{ .Values.configuration.openstackDesignateSecretsPoolSize }}
         {{- end }}
@@ -348,6 +415,18 @@ spec:
         {{- end }}
         {{- if .Values.configuration.poolSize }}
         - --pool.size={{ .Values.configuration.poolSize }}
+        {{- end }}
+        {{- if .Values.configuration.providers }}
+        - --providers={{ .Values.configuration.providers }}
+        {{- end }}
+        {{- if .Values.configuration.providersDisableDeployCrds }}
+        - --providers.disable-deploy-crds={{ .Values.configuration.providersDisableDeployCrds }}
+        {{- end }}
+        {{- if .Values.configuration.providersId }}
+        - --providers.id={{ .Values.configuration.providersId }}
+        {{- end }}
+        {{- if .Values.configuration.rescheduleDelay }}
+        - --reschedule-delay={{ .Values.configuration.rescheduleDelay }}
         {{- end }}
         {{- if .Values.configuration.serverPortHttp }}
         - --server-port-http={{ .Values.configuration.serverPortHttp }}
@@ -370,11 +449,23 @@ spec:
         {{- if .Values.configuration.serviceDNSKey }}
         - --service-dns.key={{ .Values.configuration.serviceDNSKey }}
         {{- end }}
+        {{- if .Values.configuration.serviceDNSTargetCreatorLabelName }}
+        - --service-dns.target-creator-label-name={{ .Values.configuration.serviceDNSTargetCreatorLabelName }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSTargetCreatorLabelValue }}
+        - --service-dns.target-creator-label-value={{ .Values.configuration.serviceDNSTargetCreatorLabelValue }}
+        {{- end }}
         {{- if .Values.configuration.serviceDNSTargetNamePrefix }}
         - --service-dns.target-name-prefix={{ .Values.configuration.serviceDNSTargetNamePrefix }}
         {{- end }}
         {{- if .Values.configuration.serviceDNSTargetNamespace }}
         - --service-dns.target-namespace={{ .Values.configuration.serviceDNSTargetNamespace }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSTargetOwnerId }}
+        - --service-dns.target-owner-id={{ .Values.configuration.serviceDNSTargetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSTargetSetIgnoreOwners }}
+        - --service-dns.target-set-ignore-owners={{ .Values.configuration.serviceDNSTargetSetIgnoreOwners }}
         {{- end }}
         {{- if .Values.configuration.serviceDNSTargetsPoolSize }}
         - --service-dns.targets.pool.size={{ .Values.configuration.serviceDNSTargetsPoolSize }}
@@ -385,11 +476,26 @@ spec:
         {{- if .Values.configuration.target }}
         - --target={{ .Values.configuration.target }}
         {{- end }}
+        {{- if .Values.configuration.targetCreatorLabelName }}
+        - --target-creator-label-name={{ .Values.configuration.targetCreatorLabelName }}
+        {{- end }}
+        {{- if .Values.configuration.targetCreatorLabelValue }}
+        - --target-creator-label-value={{ .Values.configuration.targetCreatorLabelValue }}
+        {{- end }}
         {{- if .Values.configuration.targetNamePrefix }}
         - --target-name-prefix={{ .Values.configuration.targetNamePrefix }}
         {{- end }}
         {{- if .Values.configuration.targetNamespace }}
         - --target-namespace={{ .Values.configuration.targetNamespace }}
+        {{- end }}
+        {{- if .Values.configuration.targetOwnerId }}
+        - --target-owner-id={{ .Values.configuration.targetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.targetSetIgnoreOwners }}
+        - --target-set-ignore-owners={{ .Values.configuration.targetSetIgnoreOwners }}
+        {{- end }}
+        {{- if .Values.configuration.targetDisableDeployCrds }}
+        - --target.disable-deploy-crds={{ .Values.configuration.targetDisableDeployCrds }}
         {{- end }}
         {{- if .Values.configuration.targetId }}
         - --target.id={{ .Values.configuration.targetId }}
@@ -397,9 +503,7 @@ spec:
         {{- if .Values.configuration.ttl }}
         - --ttl={{ .Values.configuration.ttl }}
         {{- end }}
-        {{- if .Values.configuration.persistentCache }}
-        - --cache-dir=/persistent-cache
-        {{- end }}
+        ### end generated configuration
         {{- range $idx, $flag := .Values.additionalConfiguration }}
         - {{ $flag }}
         {{- end }}
