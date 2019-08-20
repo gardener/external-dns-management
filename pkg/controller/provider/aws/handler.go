@@ -136,13 +136,13 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 			a, ok := err.(awserr.Error)
 			if ok {
 				if a.Code() == "AccessDenied" {
-					h.config.Logger.Warnf("AWS permission missing for zone %s -> omit zone: %s", z.Id, err)
+					h.config.Logger.Warnf("AWS permission missing for zone %s -> omit zone: %s", aws.StringValue(z.Id), err)
 					continue
 				} else {
-					h.config.Logger.Warnf("AWS error during get zone state for %s: %s: %s", z.Id, a.Code(), err)
+					h.config.Logger.Warnf("AWS error during get zone state for %s: %s: %s", aws.StringValue(z.Id), a.Code(), err)
 				}
 			} else {
-				h.config.Logger.Warnf("Error during get zone state for %s: %s", z.Id, err)
+				h.config.Logger.Warnf("Error during get zone state for %s: %s", aws.StringValue(z.Id), err)
 			}
 		}
 

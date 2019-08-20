@@ -779,12 +779,12 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 					logger.Infof("provider is exclusively handling zone %q -> cleanup", n)
 
 					done, err := this.StartZoneReconcilation(logger, &zoneReconcilation{
-						zone:z,
+						zone:      z,
 						providers: providers,
-						entries: Entries{},
-						stale: nil,
+						entries:   Entries{},
+						stale:     nil,
 						dedicated: false,
-						deleting: false,
+						deleting:  false,
 					})
 					if !done {
 						return reconcile.Delay(logger, fmt.Errorf("zone reconcilation busy -> delay deletion"))
@@ -1133,7 +1133,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 
 func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneReconcilation) (bool, error) {
 	if req.deleting {
-		ctxutil.Tick(this.GetContext().GetContext(),controller.DeletionActivity)
+		ctxutil.Tick(this.GetContext().GetContext(), controller.DeletionActivity)
 	}
 	if req.zone.TestAndSetBusy() {
 		defer req.zone.Release()
