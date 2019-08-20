@@ -6,6 +6,14 @@ helper:
 
   branchset: (( |n,j,b|-> *.helper.templates.branchset ))
 
+  util:
+    notify:
+      slack:
+        default_channel: 'internal_scp_workspace'
+        channel_cfgs:
+          internal_scp_workspace:
+            channel_name: 'k8s-op-of-the-week'
+            slack_cfg_name: 'scp_workspace'
   templates:
     branchset:
       <<: (( &template ))
@@ -35,6 +43,7 @@ helper:
               next_version_callback: '.ci/prepare_release'
               release_callback: '.ci/prepare_release'
             component_descriptor: ~
+            <<: (( helper.util.notify )) 
 
       patch:
         <<: (( &template))
@@ -47,6 +56,7 @@ helper:
               next_version_callback: '.ci/prepare_release'
               release_callback: '.ci/prepare_release'
             component_descriptor: ~
+            <<: (( helper.util.notify )) 
 
     standard:
       <<: (( &template ))
@@ -75,4 +85,7 @@ helper:
           build:
             image: (( "golang:" .settings.goVersion ))
             output_dir: 'binary'
+          integrationtest:
+            image: (( "golang:" .settings.goVersion ))
+
       jobs: (( sum[j|{}|s,e|-> s eval("*.helper.templates.jobs." e)] ))
