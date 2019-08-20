@@ -2,6 +2,7 @@ helper:
   dev_branches: (( |b|->.helper.branchset("standard", [ "head" ], b ) ))
   main_branch: (( |b|->.helper.branchset("standard", [ "head", "minor", "pull" ], [ b ] ) ))
   patch_branch: (( |b|->.helper.branchset("standard", [ "head", "patch" ], [ b ] ) ))
+  main_patch_branch: (( |b|->.helper.branchset("standard", [ "head", "minor", "pull", "patch" ], [ b ] ) ))
 
   branchset: (( |n,j,b|-> *.helper.templates.branchset ))
 
@@ -31,6 +32,8 @@ helper:
               preprocess: 'finalize'
             release:
               nextversion: 'bump_minor'
+              next_version_callback: '.ci/prepare_release'
+              release_callback: '.ci/prepare_release'
             component_descriptor: ~
 
       patch:
@@ -41,6 +44,8 @@ helper:
               preprocess: 'finalize'
             release:
               nextversion: 'bump_patch'
+              next_version_callback: '.ci/prepare_release'
+              release_callback: '.ci/prepare_release'
             component_descriptor: ~
 
     standard:

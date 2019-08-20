@@ -5,5 +5,5 @@ settings:
   pipeline: external-dns-management
   goVersion: 1.12.8
   branchsets:
-    main: (( .helper.main_branch("master") ))
+    main: (( .helper.main_patch_branch("master") ))
     patch: (( .helper.patch_branch("patch") ))
