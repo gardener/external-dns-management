@@ -8,15 +8,15 @@ external-dns-management:
       component_descriptor: ~ 
     steps:
       check:
-        image: 'golang:1.12.7'
+        image: 'golang:1.12.8'
       test:
-        image: 'golang:1.12.7'
+        image: 'golang:1.12.8'
       integrationtest:
-        image: 'golang:1.12.7'
+        image: 'golang:1.12.8'
       #functionaltest:
-      #  image: 'golang:1.12.7'
+      #  image: 'golang:1.12.8'
       build:
-        image: 'golang:1.12.7'
+        image: 'golang:1.12.8'
   jobs:
     release:
       traits:

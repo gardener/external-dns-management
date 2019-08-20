@@ -1,4 +1,4 @@
-FROM golang:1.12.7
+FROM golang:1.12.8
 WORKDIR /go/src/github.com/gardener/external-dns-management/
 RUN go get -u github.com/golang/dep/cmd/dep
 COPY . .
