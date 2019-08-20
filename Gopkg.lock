@@ -189,7 +189,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:4d3a02a12b62f5e4b614bf805fe00a436b573b811f2b5a68e8d3850a5724c51e"
+  digest = "1:415cd88983570b818c10fb7edcff737dcfd239728f0e9b305f679c407c80ecb2"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/controllermanager",
@@ -213,7 +213,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "262f4a1fa812cd8e7d177c482c0733465e30f657"
+  revision = "99c2a0644c29784463726402a72913f1f755bac2"
 
 [[projects]]
   digest = "1:260f7ebefc63024c8dfe2c9f1a2935a89fa4213637a1f522f592f80c001cc441"
@@ -1143,6 +1143,7 @@
     "github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings",
     "github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile",
     "github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile/reconcilers",
+    "github.com/gardener/controller-manager-library/pkg/ctxutil",
     "github.com/gardener/controller-manager-library/pkg/logger",
     "github.com/gardener/controller-manager-library/pkg/resources",
     "github.com/gardener/controller-manager-library/pkg/resources/access",

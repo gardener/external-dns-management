@@ -55,7 +55,7 @@ func (this Configuration) Start(use, short string) {
 	)
 
 	signal.Notify(t, syscall.SIGTERM, syscall.SIGQUIT)
-	signal.Notify(t, syscall.SIGHUP, syscall.SIGINT)
+	signal.Notify(c, syscall.SIGHUP, syscall.SIGINT)
 	go func() {
 		cnt := 0
 	loop:
