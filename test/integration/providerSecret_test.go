@@ -19,7 +19,7 @@ package integration
 import (
 	"fmt"
 
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -81,8 +81,8 @@ var _ = Describe("ProviderSecret", func() {
 		_, data, err := testEnv.GetProvider(pr.GetName())
 		Ω(err).Should(BeNil())
 
-		Ω(data.Status.Zones.Included).Should(ConsistOf("pr1a.mock.xx", "pr1c.mock.xx"))
-		Ω(data.Status.Zones.Excluded).Should(ConsistOf("pr1b.mock.xx", "pr1d.mock.xx", "pr1e.mock.xx"))
+		Ω(data.Status.Zones.Included).Should(ConsistOf("pr1a.mock.xx"))
+		Ω(data.Status.Zones.Excluded).Should(ConsistOf("pr1b.mock.xx", "pr1c.mock.xx", "pr1d.mock.xx", "pr1e.mock.xx"))
 		Ω(data.Status.Domains.Included).Should(ConsistOf("pr1a.mock.xx"))
 	})
 })

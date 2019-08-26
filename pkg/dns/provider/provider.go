@@ -323,21 +323,21 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	}
 
 	zinc, zexc := prepareSelection(provider.DNSProvider().Spec.Zones)
-	this.included_zones = utils.StringSet{}
-	this.excluded_zones = utils.StringSet{}
+	included_zones := utils.StringSet{}
+	excluded_zones := utils.StringSet{}
 	this.zones = DNSHostedZones{}
 	if len(zinc) > 0 {
 		for _, z := range zones {
 			if zinc.Contains(z.Id()) {
-				this.included_zones.Add(z.Id())
+				included_zones.Add(z.Id())
 				this.zones = append(this.zones, z)
 			} else {
-				this.excluded_zones.Add(z.Id())
+				excluded_zones.Add(z.Id())
 			}
 		}
 	} else {
 		for _, z := range zones {
-			this.included_zones.Add(z.Id())
+			included_zones.Add(z.Id())
 			this.zones = append(this.zones, z)
 		}
 	}
@@ -345,8 +345,8 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		for i, z := range this.zones {
 			if zexc.Contains(z.Id()) {
 				this.zones = append(this.zones[:i], this.zones[i+1:]...)
-				this.included_zones.Remove(z.Id())
-				this.excluded_zones.Add(z.Id())
+				included_zones.Remove(z.Id())
+				excluded_zones.Add(z.Id())
 			}
 		}
 	}
@@ -376,15 +376,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 			return this, this.failedButRecheck(logger, fmt.Errorf("no domain matching hosting zones"))
 		}
 	}
-	for _, zone := range this.zones {
-		for _, sub := range zone.ForwardedDomains() {
-			for i := range included {
-				if dnsutils.Match(sub, i) {
-					excluded.Add(sub)
-				}
-			}
-		}
-	}
+
 	if last == nil || !included.Equals(last.included) || !excluded.Equals(last.excluded) {
 		if len(included) > 0 {
 			logger.Infof("  included domains: %s", included)
@@ -396,9 +388,30 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	this.included = included
 	this.excluded = excluded
 
+outer:
+	for _, zone := range this.zones {
+		for i := range included {
+			if dnsutils.Match(i, zone.Domain()) {
+				continue outer
+			}
+		}
+		included_zones.Remove(zone.Id())
+		excluded_zones.Add(zone.Id())
+	}
+	if last == nil || !included_zones.Equals(last.included_zones) || !excluded_zones.Equals(last.excluded_zones) {
+		if len(included_zones) > 0 {
+			logger.Infof("  included zones: %s", included_zones)
+		}
+		if len(excluded_zones) > 0 {
+			logger.Infof("  excluded zones: %s", excluded_zones)
+		}
+	}
+	this.included_zones = included_zones
+	this.excluded_zones = excluded_zones
+
 	this.valid = true
 	mod := this.object.SetSelection(included, excluded, &this.object.Status().Domains)
-	mod = this.object.SetSelection(this.included_zones, this.excluded_zones, &this.object.Status().Zones) || mod
+	mod = this.object.SetSelection(included_zones, excluded_zones, &this.object.Status().Zones) || mod
 	return this, this.succeeded(logger, mod)
 }
 
