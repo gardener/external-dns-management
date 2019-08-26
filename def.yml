@@ -7,3 +7,4 @@ settings:
   branchsets:
     main: (( .helper.main_patch_branch("master") ))
     patch: (( .helper.patch_branch("patch") ))
+    dev: (( .helper.dev_branches(["dev"]) ))
