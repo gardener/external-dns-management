@@ -73,9 +73,19 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	token := c.GetProperty("AWS_SESSION_TOKEN")
 	creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, token)
 
+	region := c.GetProperty("AWS_REGION", "region")
+	var endpoint *string
+	if region == "" {
+		region = "us-west-2"
+	}
+	if strings.HasPrefix(region, "us-gov-") {
+		endpoint = aws.String("route53.us-gov.amazonaws.com")
+	}
+
 	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String("us-west-2"),
+		Region:      aws.String(region),
 		Credentials: creds,
+		Endpoint:    endpoint, // temporary workarround for AWS problem
 	})
 	if err != nil {
 		return nil, err
