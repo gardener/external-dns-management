@@ -17,7 +17,7 @@
 package source
 
 import (
-	"github.com/gardener/external-dns-management/pkg/dns/utils"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
@@ -35,7 +35,7 @@ const TARGET_CLUSTER = "target"
 const DNS_ANNOTATION = "dns.gardener.cloud/dnsnames"
 const TTL_ANNOTATION = "dns.gardener.cloud/ttl"
 const PERIOD_ANNOTATION = "dns.gardener.cloud/cname-lookup-interval"
-const CLASS_ANNOTATION = utils.CLASS_ANNOTATION
+const CLASS_ANNOTATION = dns.CLASS_ANNOTATION
 
 const OPT_CLASS = "dns-class"
 const OPT_TARGET_CLASS = "dns-target-class"
@@ -57,7 +57,7 @@ func init() {
 func DNSSourceController(source DNSSourceType, reconcilerType controller.ReconcilerType) controller.Configuration {
 	gk := source.GroupKind()
 	return controller.Configure(source.Name()).
-		DefaultedStringOption(OPT_CLASS, utils.DEFAULT_CLASS, "identifier used to differentiate responsible controllers for entries").
+		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "identifier used to differentiate responsible controllers for entries").
 		StringOption(OPT_TARGET_CLASS, "identifier used to differentiate responsible dns controllers for target entries").
 		StringArrayOption(OPT_EXCLUDE, "excluded domains").
 		StringOption(OPT_KEY, "selecting key for annotation").

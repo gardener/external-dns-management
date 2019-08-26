@@ -44,9 +44,9 @@ func (this *sourceReconciler) exclude(dns string) bool {
 	return false
 }
 
-func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources.Object, s DNSSource, current *DNSCurrentState) (*DNSInfo, error) {
+func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources.Object, s DNSSource, current *DNSCurrentState) (*DNSInfo, bool, error) {
 	if !this.classes.IsResponsibleFor(logger, obj) {
-		return nil, nil
+		return nil, false, nil
 	}
 	a := obj.GetAnnotations()[DNS_ANNOTATION]
 	current.AnnotatedNames = utils.StringSet{}
@@ -65,17 +65,17 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 		}
 	}
 	if err != nil {
-		return info, err
+		return info, true, err
 	}
 	if info == nil {
-		return nil, nil
+		return nil, true, nil
 	}
 	if info.TTL == nil {
 		a := obj.GetAnnotations()[TTL_ANNOTATION]
 		if a != "" {
 			ttl, err := strconv.ParseInt(a, 10, 64)
 			if err != nil {
-				return info, fmt.Errorf("invalid TTL: %s", err)
+				return info, true, fmt.Errorf("invalid TTL: %s", err)
 			}
 			if ttl != 0 {
 				info.TTL = &ttl
@@ -87,12 +87,12 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 		if a != "" {
 			interval, err := strconv.ParseInt(a, 10, 64)
 			if err != nil {
-				return info, fmt.Errorf("invalid check Interval: %s", err)
+				return info, true, fmt.Errorf("invalid check Interval: %s", err)
 			}
 			if interval != 0 {
 				info.Interval = &interval
 			}
 		}
 	}
-	return info, nil
+	return info, true, nil
 }

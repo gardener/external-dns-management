@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/gardener/external-dns-management/pkg/crds"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
@@ -49,7 +50,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 	}
 	return controller.Configure(name).
 		RequireLease().
-		DefaultedStringOption(OPT_CLASS, dnsutils.DEFAULT_CLASS, "Identifier used to differentiate responsible controllers for entries").
+		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "Identifier used to differentiate responsible controllers for entries").
 		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries").
 		DefaultedStringOption(OPT_CACHE_DIR, "", "Directory to store zone caches (for reload after restart)").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
@@ -103,9 +104,8 @@ func DNSReconcilerType(factory DNSHandlerFactory) controller.ReconcilerType {
 ///////////////////////////////////////////////////////////////////////////////
 
 func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interface, error) {
-	copt, _ := c.GetStringOption(OPT_CLASS)
-	classes := dnsutils.NewClasses(copt)
-	c.SetFinalizerHandler(dnsutils.NewFinalizer(c, c.GetDefinition().FinalizerName(), classes))
+	classes := controller.NewClassesByOption(c, OPT_CLASS, source.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
+	c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
 	config, err := NewConfigForController(c, factory)
 	if err != nil {
 		return nil, err

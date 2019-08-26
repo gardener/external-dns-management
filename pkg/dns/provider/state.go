@@ -57,7 +57,7 @@ type state struct {
 
 	context Context
 
-	classes *dnsutils.Classes
+	classes *controller.Classes
 	config  Config
 
 	pending     utils.StringSet
@@ -83,7 +83,7 @@ type state struct {
 	initialized bool
 }
 
-func NewDNSState(ctx Context, classes *dnsutils.Classes, config Config) *state {
+func NewDNSState(ctx Context, classes *controller.Classes, config Config) *state {
 	ctx.Infof("responsible for classes:     %s (%s)", classes, classes.Main())
 	ctx.Infof("availabled providers types   %s", config.Factory.TypeCodes())
 	ctx.Infof("enabled providers types:     %s", config.Enabled)
@@ -271,7 +271,7 @@ func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, erro
 			n := p.Match(e.GetDNSName())
 			if n > 0 {
 				if match < n {
-					err = access.CheckAccess(e, p.Object())
+					err = access.CheckAccess(e, "use", p.Object())
 					if err == nil {
 						found = p
 						match = n

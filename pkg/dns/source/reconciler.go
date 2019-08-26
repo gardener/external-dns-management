@@ -43,22 +43,15 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		if err != nil {
 			return nil, err
 		}
-		copt, _ := c.GetStringOption(OPT_CLASS)
-		classes := dnsutils.NewClasses(copt)
-		c.SetFinalizerHandler(dnsutils.NewFinalizer(c, c.GetDefinition().FinalizerName(), classes))
-		targetclass, _ := c.GetStringOption(OPT_TARGET_CLASS)
-		if targetclass == "" {
-			if !classes.Contains(dnsutils.DEFAULT_CLASS) && classes.Main() != dnsutils.DEFAULT_CLASS {
-				targetclass = classes.Main()
-			}
-		}
-		c.Infof("responsible for classes: %s (%s)", classes, classes.Main())
-		c.Infof("target class           : %s", targetclass)
+		classes := controller.NewClassesByOption(c, OPT_CLASS,dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
+		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
+		targetclasses := controller.NewTargetClassesByOption(c, OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
+		slaves:=reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind()))
 		reconciler := &sourceReconciler{
-			SlaveAccess: reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind())),
+			SlaveAccess: slaves,
 			source:      s,
 			classes:     classes,
-			targetclass: targetclass,
+			targetclasses: targetclasses,
 		}
 
 		reconciler.namespace, _ = c.GetStringOption(OPT_NAMESPACE)
@@ -91,8 +84,8 @@ type sourceReconciler struct {
 	*reconcilers.SlaveAccess
 	excluded          utils.StringSet
 	source            DNSSource
-	classes           *dnsutils.Classes
-	targetclass       string
+	classes           *controller.Classes
+	targetclasses     *controller.Classes
 	namespace         string
 	nameprefix        string
 	creatorLabelName  string
@@ -128,12 +121,22 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 		found.Targets.AddAll(e.Spec.Targets)
 	}
 
-	info, err := this.getDNSInfo(logger, obj, this.source, found)
+	info, responsible, err := this.getDNSInfo(logger, obj, this.source, found)
 	if err != nil {
 		obj.Event(core.EventTypeWarning, "reconcile", err.Error())
 	}
 
+	if !responsible {
+		if len(slaves)>0 {
+			logger.Infof("not responsible anymore, but still found slaves (cleanup required): %v", resources.ObjectArrayToString(slaves...))
+			info=&DNSInfo{}
+		}
+	}
+
 	if info == nil {
+		if responsible {
+			logger.Debugf("no dns info found")
+		}
 		if err != nil {
 			return reconcile.Failed(logger, err)
 		}
@@ -156,6 +159,7 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 			return reconcile.Delay(logger, fmt.Errorf("cannot remove finalizer: %s", err))
 		}
 	}
+	logger.Debugf("found names: %s", info.Names)
 outer:
 	for dnsname := range info.Names {
 		for _, s := range slaves {
@@ -285,7 +289,7 @@ outer:
 func (this *sourceReconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
 	logger.Infof("%s finally deleted", key)
 	failed := false
-	for _, s := range this.Slaves().GetByKey(key) {
+	for _, s := range this.Slaves().GetByOwnerKey(key) {
 		err := s.Delete()
 		if err != nil && !errors.IsNotFound(err) {
 			logger.Warnf("cannot delete entry object %s for %s: %s", s.ObjectName(), dnsutils.DNSEntry(s).GetDNSName(), err)
@@ -305,7 +309,7 @@ func (this *sourceReconciler) Deleted(logger logger.LogContext, key resources.Cl
 func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	failed := false
 	logger.Infof("entry source is deleting -> delete all dns entries")
-	for _, s := range this.Slaves().Get(obj) {
+	for _, s := range this.Slaves().GetByOwner(obj) {
 		logger.Infof("delete dns entry %s(%s)", s.ObjectName(), dnsutils.DNSEntry(s).GetDNSName())
 		err := s.Delete()
 		if err != nil && !errors.IsNotFound(err) {
@@ -336,8 +340,8 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, dnsname string, info *DNSInfo) error {
 	entry := &api.DNSEntry{}
 	entry.GenerateName = strings.ToLower(this.nameprefix + obj.GetName() + "-" + obj.GroupKind().Kind + "-")
-	if this.targetclass != "" {
-		resources.SetAnnotation(entry, CLASS_ANNOTATION, this.targetclass)
+	if !this.targetclasses.IsDefault() {
+		resources.SetAnnotation(entry, CLASS_ANNOTATION, this.targetclasses.Main())
 	}
 	if this.setIgnoreOwners {
 		resources.SetAnnotation(entry, access.ANNOTATION_IGNORE_OWNERS, "true")
@@ -397,10 +401,10 @@ func (this *sourceReconciler) updateEntry(logger logger.LogContext, info *DNSInf
 		spec := &o.(*api.DNSEntry).Spec
 		mod := &utils.ModificationState{}
 		var changed bool
-		if this.targetclass == "" {
+		if !this.targetclasses.IsDefault() {
 			changed = resources.RemoveAnnotation(o, CLASS_ANNOTATION)
 		} else {
-			changed = resources.SetAnnotation(o, CLASS_ANNOTATION, this.targetclass)
+			changed = resources.SetAnnotation(o, CLASS_ANNOTATION, this.targetclasses.Main())
 		}
 		mod.Modify(changed)
 		if this.setIgnoreOwners {
