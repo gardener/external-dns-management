@@ -21,6 +21,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"strings"
 	"sync"
 	"time"
@@ -63,6 +64,8 @@ type state struct {
 	pending     utils.StringSet
 	pendingKeys resources.ClusterObjectKeySet
 
+	realms access.RealmTypes
+
 	accountCache *AccountCache
 	ownerCache   *OwnerCache
 
@@ -94,10 +97,14 @@ func NewDNSState(ctx Context, classes *controller.Classes, config Config) *state
 	ctx.Infof("zone cache ttl for zones:    %v", config.CacheTTL)
 	ctx.Infof("zone cache persist dir:      %s", config.CacheDir)
 	ctx.Infof("disable zone state caching:  %t", !config.ZoneStateCaching)
+
+	realms := access.RealmTypes{"use": access.NewRealmType(dns.REALM_ANNOTATION)}
+
 	return &state{
 		classes:         classes,
 		context:         ctx,
 		config:          config,
+		realms:          realms,
 		accountCache:    NewAccountCache(config.CacheTTL, config.CacheDir),
 		ownerCache:      NewOwnerCache(&config),
 		pending:         utils.StringSet{},
@@ -271,7 +278,7 @@ func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, erro
 			n := p.Match(e.GetDNSName())
 			if n > 0 {
 				if match < n {
-					err = access.CheckAccess(e, "use", p.Object())
+					err = access.CheckAccessWithRealms(e, "use", p.Object(), this.realms)
 					if err == nil {
 						found = p
 						match = n
