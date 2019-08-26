@@ -84,6 +84,7 @@ type SlaveAccess struct {
 	slaves           *resources.SlaveCache
 	slave_resources  *_resources
 	master_resources *_resources
+	slavefilters     []resources.ObjectFilter
 	spec             SlaveAccessSpec
 }
 
@@ -125,9 +126,16 @@ func (this *SlaveAccess) Setup() {
 	this.slaves = this.GetOrCreateSharedValue(this.Key(), this.setupSlaveCache).(*resources.SlaveCache)
 }
 
+func (this *SlaveAccess) AddSlaveFilter(filter ...resources.ObjectFilter) {
+	if this.slaves != nil {
+		this.slaves.AddSlaveFilter(filter...)
+	}
+	this.slavefilters = append(this.slavefilters, filter...)
+}
+
 func (this *SlaveAccess) setupSlaveCache() interface{} {
 	cache := resources.NewSlaveCache()
-
+	cache.AddSlaveFilter(this.slavefilters...)
 	this.Infof("setup %s owner cache", this.name)
 	for _, r := range this.slave_resources.resources {
 		list, _ := r.ListCached(labels.Everything())
@@ -162,7 +170,7 @@ func (this *SlaveAccess) LookupSlaves(key resources.ClusterObjectKey, kinds ...s
 	if len(kinds) == 0 {
 		kinds = this.slave_resources.kinds
 	}
-	for _, o := range this.slaves.GetByKey(key) {
+	for _, o := range this.slaves.GetByOwnerKey(key) {
 		for _, k := range kinds {
 			if o.GroupKind() == k {
 				found = append(found, o)

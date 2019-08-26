@@ -17,6 +17,7 @@
 package resources
 
 import (
+	"fmt"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -135,4 +136,14 @@ outer:
 		}
 	}
 	return set
+}
+
+func ObjectArrayToString(objs ...Object) string {
+	s := "["
+	sep := ""
+	for _, o := range objs {
+		s = fmt.Sprintf("%s%s%s", s, sep, o.ClusterKey())
+		sep = ", "
+	}
+	return s + "]"
 }

@@ -16,7 +16,10 @@
 
 package controller
 
-import "github.com/gardener/controller-manager-library/pkg/resources"
+import (
+	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/resources"
+)
 
 type Finalizer interface {
 	FinalizerName(obj resources.Object) string
@@ -47,4 +50,74 @@ func (this *DefaultFinalizer) RemoveFinalizer(obj resources.Object) error {
 
 func (this *DefaultFinalizer) FinalizerName(obj resources.Object) string {
 	return this.name
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+type ClassesFinalizer struct {
+	base    string
+	classes *Classes
+}
+
+func NewFinalizerForClasses(logger logger.LogContext, name string, classes *Classes) Finalizer {
+	this := ClassesFinalizer{name, classes}
+	n := this.finalizer()
+	if n != name {
+		logger.Infof("switching finalizer to %q", n)
+	}
+	if classes.Size() == 1 {
+		return NewDefaultFinalizer(n)
+	}
+	return &this
+
+}
+
+func (this *ClassesFinalizer) finalizer(eff ...string) string {
+	class := this.classes.Main()
+	if len(eff) > 0 {
+		class = eff[0]
+	}
+	if class == this.classes.Default() {
+		return this.base
+	}
+	return class + "." + this.base
+}
+
+func (this *ClassesFinalizer) HasFinalizer(obj resources.Object) bool {
+	for c := range this.classes.Classes() {
+		if obj.HasFinalizer(this.finalizer(c)) {
+			return true
+		}
+	}
+	return false
+}
+
+func (this *ClassesFinalizer) FinalizerName(obj resources.Object) string {
+	return this.finalizer()
+}
+
+func (this *ClassesFinalizer) SetFinalizer(obj resources.Object) error {
+	err := obj.SetFinalizer(this.FinalizerName(obj))
+	if err != nil {
+		return err
+	}
+	for c := range this.classes.Classes() {
+		if c != this.classes.Main() {
+			err = obj.RemoveFinalizer(this.finalizer(c))
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (this *ClassesFinalizer) RemoveFinalizer(obj resources.Object) error {
+	for c := range this.classes.Classes() {
+		err := obj.RemoveFinalizer(this.finalizer(c))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

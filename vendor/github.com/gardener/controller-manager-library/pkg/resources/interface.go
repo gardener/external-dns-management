@@ -26,6 +26,9 @@ import (
 	"k8s.io/client-go/tools/record"
 )
 
+type KeyFilter func(key ClusterObjectKey) bool
+type ObjectFilter func(obj Object) bool
+
 type GroupKindProvider interface {
 	GroupKind() schema.GroupKind
 }
