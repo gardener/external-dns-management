@@ -18,6 +18,8 @@
 package access
 
 import (
+	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
@@ -71,6 +73,20 @@ type Realms struct {
 
 func (this *Realms) String() string {
 	return this.realms.String()
+}
+
+func (this *Realms) AnnotationValue() string {
+	sep := ""
+	data := ""
+	for k := range this.realms {
+		data = fmt.Sprintf("%s%s%s", data, sep, k)
+		sep = ","
+	}
+	return data
+}
+
+func (this *Realms) IsDefault() bool {
+	return this.Size() == 0 || (this.Size() == 1 && this.Contains(""))
 }
 
 func (this *Realms) Size() int {

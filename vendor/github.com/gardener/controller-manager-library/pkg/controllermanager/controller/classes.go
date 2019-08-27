@@ -57,9 +57,6 @@ func NewTargetClassesByOption(c Interface, opt string, anno string, classes *Cla
 }
 
 func NewTargetClasses(c Interface, value string, anno string, classes *Classes, def string) *Classes {
-	if c != nil {
-		value, _ = c.GetStringOption(value)
-	}
 	if value == "" {
 		if !classes.Contains(def) || classes.Main() != def {
 			value = classes.Main()
