@@ -43,6 +43,13 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		if err != nil {
 			return nil, err
 		}
+		opt, err := c.GetStringOption(OPT_TARGET_REALMS)
+		if err!=nil {
+			opt=""
+		}
+		realmtype:=access.NewRealmType(dns.REALM_ANNOTATION)
+		realms:=realmtype.NewRealms(opt)
+		c.Infof("target realm(s): %v", realms)
 		classes := controller.NewClassesByOption(c, OPT_CLASS,dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
 		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
 		targetclasses := controller.NewTargetClassesByOption(c, OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
@@ -52,7 +59,9 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 			source:      s,
 			classes:     classes,
 			targetclasses: targetclasses,
+			targetrealms: realms,
 		}
+
 
 		reconciler.namespace, _ = c.GetStringOption(OPT_NAMESPACE)
 		reconciler.nameprefix, _ = c.GetStringOption(OPT_NAMEPREFIX)
@@ -86,6 +95,7 @@ type sourceReconciler struct {
 	source            DNSSource
 	classes           *controller.Classes
 	targetclasses     *controller.Classes
+	targetrealms      *access.Realms
 	namespace         string
 	nameprefix        string
 	creatorLabelName  string
@@ -343,6 +353,9 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	if !this.targetclasses.IsDefault() {
 		resources.SetAnnotation(entry, CLASS_ANNOTATION, this.targetclasses.Main())
 	}
+	if !this.targetrealms.IsDefault() {
+		resources.SetAnnotation(entry, dns.REALM_ANNOTATION, this.targetrealms.AnnotationValue())
+	}
 	if this.setIgnoreOwners {
 		resources.SetAnnotation(entry, access.ANNOTATION_IGNORE_OWNERS, "true")
 	}
@@ -381,32 +394,27 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	return nil
 }
 
-func (this *sourceReconciler) deleteEntry(logger logger.LogContext, obj resources.Object, e resources.Object) error {
-	err := e.Delete()
-	if err == nil {
-		obj.Eventf(core.EventTypeNormal, "reconcile", "deleted dns entry object %s", e.ObjectName())
-		logger.Infof("deleted dns entry object %s", e.ObjectName())
-	} else {
-		if !errors.IsNotFound(err) {
-			logger.Errorf("cannot delete dns entry object %s: %s", e.ObjectName(), err)
-		} else {
-			err = nil
-		}
-	}
-	return err
-}
-
 func (this *sourceReconciler) updateEntry(logger logger.LogContext, info *DNSInfo, obj resources.Object) (bool, error) {
 	f := func(o resources.ObjectData) (bool, error) {
 		spec := &o.(*api.DNSEntry).Spec
 		mod := &utils.ModificationState{}
 		var changed bool
+
 		if !this.targetclasses.IsDefault() {
-			changed = resources.RemoveAnnotation(o, CLASS_ANNOTATION)
-		} else {
 			changed = resources.SetAnnotation(o, CLASS_ANNOTATION, this.targetclasses.Main())
+		} else {
+			changed = resources.RemoveAnnotation(o, CLASS_ANNOTATION)
 		}
 		mod.Modify(changed)
+
+		if !this.targetrealms.IsDefault() {
+			changed = resources.SetAnnotation(o, dns.REALM_ANNOTATION, this.targetrealms.AnnotationValue())
+		} else {
+			changed = resources.RemoveAnnotation(o, dns.REALM_ANNOTATION)
+		}
+		mod.Modify(changed)
+
+
 		if this.setIgnoreOwners {
 			changed = resources.SetAnnotation(o, access.ANNOTATION_IGNORE_OWNERS, "true")
 		} else {
@@ -440,4 +448,19 @@ func (this *sourceReconciler) updateEntry(logger logger.LogContext, info *DNSInf
 		return mod.IsModified(), nil
 	}
 	return obj.Modify(f)
+}
+
+func (this *sourceReconciler) deleteEntry(logger logger.LogContext, obj resources.Object, e resources.Object) error {
+	err := e.Delete()
+	if err == nil {
+		obj.Eventf(core.EventTypeNormal, "reconcile", "deleted dns entry object %s", e.ObjectName())
+		logger.Infof("deleted dns entry object %s", e.ObjectName())
+	} else {
+		if !errors.IsNotFound(err) {
+			logger.Errorf("cannot delete dns entry object %s: %s", e.ObjectName(), err)
+		} else {
+			err = nil
+		}
+	}
+	return err
 }

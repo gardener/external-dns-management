@@ -47,6 +47,7 @@ const OPT_TARGET_CREATOR_LABEL_NAME = "target-creator-label-name"
 const OPT_TARGET_CREATOR_LABEL_VALUE = "target-creator-label-value"
 const OPT_TARGET_OWNER_ID = "target-owner-id"
 const OPT_TARGET_SET_IGNORE_OWNERS = "target-set-ignore-owners"
+const OPT_TARGET_REALMS = "target-realms"
 
 var ENTRY = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
@@ -67,6 +68,7 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		StringOption(OPT_TARGET_CREATOR_LABEL_VALUE, "label value for creator label").
 		StringOption(OPT_TARGET_OWNER_ID, "owner id to use for generated DNS entries").
 		BoolOption(OPT_TARGET_SET_IGNORE_OWNERS, "mark generated DNS entries to omit owner based access control").
+		StringOption(OPT_TARGET_REALMS, "realm(s) to use for generated DNS entries").
 		FinalizerDomain(api.GroupName).
 		Reconciler(SourceReconciler(source, reconcilerType)).
 		Cluster(cluster.DEFAULT). // first one used as MAIN cluster
