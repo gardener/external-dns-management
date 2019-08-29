@@ -1,8 +1,8 @@
 helper:
   dev_branches: (( |b|->.helper.branchset("standard", [ "head" ], b ) ))
-  main_branch: (( |b|->.helper.branchset("standard", [ "head", "minor", "pull" ], [ b ] ) ))
+  main_branch: (( |b|->.helper.branchset("standard", [ "head", "minor", "pull", "verbatim" ], [ b ] ) ))
   patch_branch: (( |b|->.helper.branchset("standard", [ "head", "patch" ], [ b ] ) ))
-  main_patch_branch: (( |b|->.helper.branchset("standard", [ "head", "minor", "pull", "patch" ], [ b ] ) ))
+  main_patch_branch: (( |b|->.helper.branchset("standard", [ "head", "minor", "pull", "patch", "verbatim" ], [ b ] ) ))
 
   branchset: (( |n,j,b|-> *.helper.templates.branchset ))
 
@@ -54,6 +54,17 @@ helper:
             release:
               nextversion: 'bump_patch'
               next_version_callback: '.ci/prepare_release'
+              release_callback: '.ci/prepare_release'
+            component_descriptor: ~
+            <<: (( helper.util.notify )) 
+      verbatim:
+        <<: (( &template))
+        verbatim-release:
+          traits:
+            version:
+              preprocess: 'noop'
+            release:
+              nextversion: 'noop'
               release_callback: '.ci/prepare_release'
             component_descriptor: ~
             <<: (( helper.util.notify )) 
