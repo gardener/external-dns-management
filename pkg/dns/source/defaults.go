@@ -17,76 +17,55 @@
 package source
 
 import (
-	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sync"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-
-	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-// EventFeedback
+// Events
 ////////////////////////////////////////////////////////////////////////////////
 
-type EventFeedback struct {
-	logger logger.LogContext
-	source resources.Object
-	events map[string]string
+type Events struct {
+	lock    sync.Mutex
+	Events  map[resources.ClusterObjectKey]map[string]string
 }
 
-func NewEventFeedback(logger logger.LogContext, obj resources.Object, events map[string]string) DNSFeedback {
-	return &EventFeedback{logger, obj, events}
+func NewEvents() *Events {
+	return &Events{ Events: map[resources.ClusterObjectKey]map[string]string{}}
 }
 
-func (this *EventFeedback) Ready(dnsname, msg string, state *DNSState) {
-	if msg == "" {
-		msg = fmt.Sprintf("dns entry is ready")
+func (this *Events) HasEvents(key resources.ClusterObjectKey) bool {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	return this.Events[key]!=nil
+}
+
+func (this *Events) GetEvents(key resources.ClusterObjectKey) map[string]string {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	events := this.Events[key]
+	if events == nil {
+		events = map[string]string{}
+		this.Events[key] = events
 	}
-	this.event(dnsname, msg)
+	return events
 }
 
-func (this *EventFeedback) Pending(dnsname, msg string, state *DNSState) {
-	if msg == "" {
-		msg = fmt.Sprintf("dns entry is pending")
-	}
-	this.event(dnsname, msg)
+
+func (this *Events) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
+	this.Deleted(logger, obj.ClusterKey())
+	return reconcile.Succeeded(logger)
 }
 
-func (this *EventFeedback) Failed(dnsname string, err error, state *DNSState) {
-	if err == nil {
-		err = fmt.Errorf("dns entry is errornous")
-	}
-	this.event(dnsname, err.Error())
-}
-
-func (this *EventFeedback) Invalid(dnsname string, msg error, state *DNSState) {
-	if msg == nil {
-		msg = fmt.Errorf("dns entry is invalid")
-	}
-	this.event(dnsname, msg.Error())
-}
-
-func (this *EventFeedback) Succeeded() {
-}
-
-func (this *EventFeedback) event(dnsname, msg string) {
-	if msg != this.events[dnsname] {
-		key := this.source.ClusterKey()
-		this.events[dnsname] = msg
-		if dnsname != "" {
-			this.logger.Infof("event for %q(%s): %s", key, dnsname, msg)
-			this.source.Event(v1.EventTypeNormal, "dns-annotation",
-				fmt.Sprintf("%s: %s", dnsname, msg))
-		} else {
-			this.logger.Infof("event for %q: %s", key, msg)
-			this.source.Event(v1.EventTypeNormal, "dns-annotation", msg)
-		}
-	}
+func (this *Events) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	delete(this.Events, key)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,17 +73,33 @@ func (this *EventFeedback) event(dnsname, msg string) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type DefaultDNSSource struct {
-	lock    sync.Mutex
 	handler DNSTargetExtractor
-	kind    schema.GroupKind
-	Events  map[resources.ClusterObjectKey]map[string]string
+	*Events
 }
 
 var _ DNSSource = &DefaultDNSSource{}
 
-func NewDefaultDNSSource(handler DNSTargetExtractor, kind schema.GroupKind) DefaultDNSSource {
-	return DefaultDNSSource{sync.Mutex{}, handler, kind, map[resources.ClusterObjectKey]map[string]string{}}
+func NewDefaultDNSSource(handler DNSTargetExtractor) DefaultDNSSource {
+	return DefaultDNSSource{handler, NewEvents()}
 }
+
+func (this *DefaultDNSSource) Setup() {
+}
+
+func (this *DefaultDNSSource) CreateDNSFeedback(obj resources.Object) DNSFeedback {
+	return NewEventFeedback(obj, this.GetEvents(obj.ClusterKey()))
+}
+
+func (this *DefaultDNSSource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (*DNSInfo, error) {
+	info := &DNSInfo{}
+	info.Names = current.AnnotatedNames
+	tgts, txts, err := this.handler(logger, obj, current)
+	info.Targets = tgts
+	info.Text = txts
+	return info, err
+}
+
+///////////////////////////////////////////////////////////////////////////////
 
 func (this *dnssourcetype) Name() string {
 	return this.name
@@ -122,40 +117,4 @@ func (this *creatordnssourcetype) Create(c controller.Interface) (DNSSource, err
 	return this.handler(c)
 }
 
-func (this *DefaultDNSSource) Setup() {
-}
 
-func (this *DefaultDNSSource) Start() {
-}
-
-func (this *DefaultDNSSource) GetEvents(key resources.ClusterObjectKey) map[string]string {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	events := this.Events[key]
-	if events == nil {
-		events = map[string]string{}
-		this.Events[key] = events
-	}
-	return events
-}
-
-func (this *DefaultDNSSource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (*DNSInfo, error) {
-	events := this.GetEvents(obj.ClusterKey())
-	info := &DNSInfo{Feedback: NewEventFeedback(logger, obj, events)}
-	info.Names = current.AnnotatedNames
-	tgts, txts, err := this.handler(logger, obj, current)
-	info.Targets = tgts
-	info.Text = txts
-	return info, err
-}
-
-func (this *DefaultDNSSource) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
-	this.Deleted(logger, obj.ClusterKey())
-	return reconcile.Succeeded(logger)
-}
-
-func (this *DefaultDNSSource) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	delete(this.Events, key)
-}

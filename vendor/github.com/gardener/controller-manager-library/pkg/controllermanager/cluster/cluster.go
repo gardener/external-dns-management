@@ -307,7 +307,7 @@ func (this *_Clusters) GetObject(key resources.ClusterObjectKey) (resources.Obje
 	if cluster == nil {
 		return nil, fmt.Errorf("cluster with id %q not found")
 	}
-	return cluster.GetObject(key.ObjectKey)
+	return cluster.GetObject(key.ObjectKey())
 }
 
 func (this *_Clusters) GetCachedObject(key resources.ClusterObjectKey) (resources.Object, error) {
@@ -315,5 +315,5 @@ func (this *_Clusters) GetCachedObject(key resources.ClusterObjectKey) (resource
 	if cluster == nil {
 		return nil, fmt.Errorf("cluster with id %q not found")
 	}
-	return cluster.GetCachedObject(key.ObjectKey)
+	return cluster.GetCachedObject(key.ObjectKey())
 }

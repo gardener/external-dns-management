@@ -32,61 +32,70 @@ type DNSEntrySource struct {
 }
 
 type updateOriginalFeedback struct {
-	logger     logger.LogContext
 	resources  resources.Resources
 	objectName resources.ObjectName
 	chain      source.DNSFeedback
 }
 
 func NewDNSEntrySource(c controller.Interface) (source.DNSSource, error) {
-	return &DNSEntrySource{DefaultDNSSource: source.DefaultDNSSource{Events: map[resources.ClusterObjectKey]map[string]string{}}, resources: c.GetMainCluster().Resources()}, nil
+	return &DNSEntrySource{DefaultDNSSource: source.NewDefaultDNSSource(nil), resources: c.GetMainCluster().Resources()}, nil
+}
+
+
+func (this *DNSEntrySource) CreateDNSFeedback(obj resources.Object) source.DNSFeedback {
+	eventFeedback := source.NewEventFeedback(obj, this.GetEvents(obj.ClusterKey()))
+	return &updateOriginalFeedback{
+		resources:  this.resources,
+		objectName: obj.ClusterKey().ObjectName(),
+		chain:      eventFeedback,
+	}
 }
 
 func (this *DNSEntrySource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
 	data := obj.Data().(*api.DNSEntry)
 
-	eventFeedback := source.NewEventFeedback(logger, obj, this.GetEvents(obj.ClusterKey()))
 	info := &source.DNSInfo{
 		Names:    utils.NewStringSet(data.Spec.DNSName),
 		Targets:  utils.NewStringSetByArray(data.Spec.Targets),
 		Text:     utils.NewStringSetByArray(data.Spec.Text),
 		TTL:      data.Spec.TTL,
 		Interval: data.Spec.CNameLookupInterval,
-		Feedback: &updateOriginalFeedback{
-			logger:     logger,
-			resources:  this.resources,
-			objectName: obj.ClusterKey().ObjectName(),
-			chain:      eventFeedback,
-		},
 	}
 	return info, nil
 }
 
-func (f *updateOriginalFeedback) Succeeded() {
-	f.chain.Succeeded()
+func (f *updateOriginalFeedback) Succeeded(logger logger.LogContext) {
+	f.chain.Succeeded(logger)
 }
 
-func (f *updateOriginalFeedback) Pending(dnsname string, msg string, state *source.DNSState) {
-	f.setStatus("Pending", msg, state)
-	f.chain.Pending(dnsname, msg, state)
+func (f *updateOriginalFeedback) Pending(logger logger.LogContext,dnsname string, msg string, state *source.DNSState) {
+	f.setStatus(logger,"Pending", msg, state)
+	f.chain.Pending(logger, dnsname, msg, state)
 }
 
-func (f *updateOriginalFeedback) Ready(dnsname string, msg string, state *source.DNSState) {
-	f.setStatus("Ready", msg, state)
-	f.chain.Ready(dnsname, msg, state)
+func (f *updateOriginalFeedback) Ready(logger logger.LogContext,dnsname string, msg string, state *source.DNSState) {
+	f.setStatus(logger,"Ready", msg, state)
+	f.chain.Ready(logger, dnsname, msg, state)
 }
 
-func (f *updateOriginalFeedback) Invalid(dnsname string, err error, state *source.DNSState) {
-	f.setStatus("Invalid", err.Error(), state)
-	f.chain.Invalid(dnsname, err, state)
+func (f *updateOriginalFeedback) Invalid(logger logger.LogContext,dnsname string, err error, state *source.DNSState) {
+	f.setStatus(logger,"Invalid", err.Error(), state)
+	f.chain.Invalid(logger,dnsname, err, state)
 }
 
-func (f *updateOriginalFeedback) Failed(dnsname string, err error, state *source.DNSState) {
-	f.setStatus("Error", err.Error(), state)
-	f.chain.Failed(dnsname, err, state)
+func (f *updateOriginalFeedback) Failed(logger logger.LogContext,dnsname string, err error, state *source.DNSState) {
+	f.setStatus(logger, "Error", err.Error(), state)
+	f.chain.Failed(logger, dnsname, err, state)
 }
 
-func (f *updateOriginalFeedback) setStatus(state string, msg string, dnsState *source.DNSState) {
+func (f *updateOriginalFeedback) Deleted(logger logger.LogContext,dnsname string, msg string, state *source.DNSState) {
+	f.chain.Deleted(logger, dnsname, msg, state)
+}
+
+func (f *updateOriginalFeedback) setStatus(logger logger.LogContext, state string, msg string, dnsState *source.DNSState) {
+	if dnsState==nil {
+		return
+	}
 	obj, err := f.resources.GetObjectInto(f.objectName, &api.DNSEntry{})
 	if err != nil {
 		logger.Warnf("Cannot get object %s: %s", f.objectName, err)

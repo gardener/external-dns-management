@@ -51,6 +51,8 @@ const OPT_TARGET_REALMS = "target-realms"
 
 var ENTRY = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
+const KEY_STATE = "source-state"
+
 func init() {
 	cluster.Register(TARGET_CLUSTER, "target", "target cluster for dns requests")
 }

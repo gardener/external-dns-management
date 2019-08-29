@@ -123,7 +123,7 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 }
 
 func (this *reconciler) Setup() {
-	this.controller.Infof("*** State Setup ")
+	this.controller.Infof("*** state Setup ")
 	this.state.Setup()
 }
 

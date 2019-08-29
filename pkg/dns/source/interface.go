@@ -33,21 +33,21 @@ type DNSInfo struct {
 	Interval *int64
 	Targets  utils.StringSet
 	Text     utils.StringSet
-	Feedback DNSFeedback
 }
 
 type DNSFeedback interface {
-	Succeeded()
-	Pending(dnsname string, msg string, dnsState *DNSState)
-	Ready(dnsname string, msg string, dnsState *DNSState)
-	Invalid(dnsname string, err error, dnsState *DNSState)
-	Failed(dnsname string, err error, dnsState *DNSState)
+	Succeeded(logger logger.LogContext)
+	Pending(logger logger.LogContext, dnsname string, msg string, dnsState *DNSState)
+	Ready(logger logger.LogContext, dnsname string, msg string, dnsState *DNSState)
+	Invalid(logger logger.LogContext, dnsname string, err error, dnsState *DNSState)
+	Failed(logger logger.LogContext, dnsname string, err error, dnsState *DNSState)
+	Deleted(logger logger.LogContext, dnsname string, msg string, dnsState *DNSState)
 }
 
 type DNSSource interface {
-	Start()
 	Setup()
 
+	CreateDNSFeedback(obj resources.Object) DNSFeedback
 	GetDNSInfo(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (*DNSInfo, error)
 
 	Delete(logger logger.LogContext, obj resources.Object) reconcile.Status
@@ -75,7 +75,7 @@ type DNSCurrentState struct {
 }
 
 func NewDNSSouceTypeForExtractor(name string, kind schema.GroupKind, handler DNSTargetExtractor) DNSSourceType {
-	return &handlerdnssourcetype{dnssourcetype{name, kind}, NewDefaultDNSSource(handler, kind)}
+	return &handlerdnssourcetype{dnssourcetype{name, kind}, NewDefaultDNSSource(handler)}
 }
 
 func NewDNSSouceTypeForCreator(name string, kind schema.GroupKind, handler DNSSourceCreator) DNSSourceType {

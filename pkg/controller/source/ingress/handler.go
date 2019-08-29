@@ -31,12 +31,11 @@ type IngressSource struct {
 }
 
 func NewIngressSource(controller.Interface) (source.DNSSource, error) {
-	return &IngressSource{DefaultDNSSource: source.DefaultDNSSource{Events: map[resources.ClusterObjectKey]map[string]string{}}}, nil
+	return &IngressSource{DefaultDNSSource: source.NewDefaultDNSSource(nil)}, nil
 }
 
 func (this *IngressSource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
-	events := this.GetEvents(obj.ClusterKey())
-	info := &source.DNSInfo{Targets: this.GetTargets(obj), Feedback: source.NewEventFeedback(logger, obj, events)}
+	info := &source.DNSInfo{Targets: this.GetTargets(obj)}
 	data := obj.Data().(*api.Ingress)
 	info.Names = utils.StringSet{}
 	all := current.AnnotatedNames.Contains("all") || current.AnnotatedNames.Contains("*")

@@ -18,8 +18,6 @@ package source
 
 import (
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/resources/access"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"strings"
 	"time"
 
@@ -28,6 +26,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile/reconcilers"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -35,11 +34,12 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType) controller.ReconcilerType {
 	return func(c controller.Interface) (reconcile.Interface, error) {
-		s, err := sourceType.Create(c)
+		source, err := sourceType.Create(c)
 		if err != nil {
 			return nil, err
 		}
@@ -56,13 +56,17 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		slaves:=reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind()))
 		reconciler := &sourceReconciler{
 			SlaveAccess: slaves,
-			source:      s,
 			classes:     classes,
 			targetclasses: targetclasses,
 			targetrealms: realms,
+
+			state: c.GetOrCreateSharedValue(KEY_STATE,
+				func() interface{} {
+					return NewState()
+				}).(*state),
 		}
 
-
+reconciler.state.source= source
 		reconciler.namespace, _ = c.GetStringOption(OPT_NAMESPACE)
 		reconciler.nameprefix, _ = c.GetStringOption(OPT_NAMEPREFIX)
 		reconciler.creatorLabelName, _ = c.GetStringOption(OPT_TARGET_CREATOR_LABEL_NAME)
@@ -92,7 +96,6 @@ type sourceReconciler struct {
 	*reconcilers.NestedReconciler
 	*reconcilers.SlaveAccess
 	excluded          utils.StringSet
-	source            DNSSource
 	classes           *controller.Classes
 	targetclasses     *controller.Classes
 	targetrealms      *access.Realms
@@ -102,17 +105,18 @@ type sourceReconciler struct {
 	creatorLabelValue string
 	ownerid           string
 	setIgnoreOwners   bool
+
+	state             *state
 }
 
 func (this *sourceReconciler) Start() {
 	this.SlaveAccess.Start()
-	this.source.Start()
 	this.NestedReconciler.Start()
 }
 
 func (this *sourceReconciler) Setup() {
 	this.SlaveAccess.Setup()
-	this.source.Setup()
+	this.state.source.Setup()
 	this.NestedReconciler.Setup()
 }
 
@@ -131,7 +135,7 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 		found.Targets.AddAll(e.Spec.Targets)
 	}
 
-	info, responsible, err := this.getDNSInfo(logger, obj, this.source, found)
+	info, responsible, err := this.getDNSInfo(logger, obj, this.state.source, found)
 	if err != nil {
 		obj.Event(core.EventTypeWarning, "reconcile", err.Error())
 	}
@@ -142,6 +146,8 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 			info=&DNSInfo{}
 		}
 	}
+
+	feedback:=this.state.GetFeedbackForObject(obj)
 
 	if info == nil {
 		if responsible {
@@ -197,7 +203,7 @@ outer:
 		if len(info.Targets) > 0 || (info.Text != nil && len(info.Text) > 0) {
 			logger.Infof("found missing dns entries: %s", missing)
 			for dnsname := range missing {
-				err := this.createEntryFor(logger, obj, dnsname, info)
+				err := this.createEntryFor(logger, obj, dnsname, info, feedback)
 				if err != nil {
 					notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot create dns entry object for %s: %s ", dnsname, err))
 				}
@@ -230,58 +236,30 @@ outer:
 
 	if len(notifiedErrors) > 0 {
 		msg := strings.Join(notifiedErrors, ", ")
-		if info.Feedback != nil {
-			info.Feedback.Failed("", fmt.Errorf("%s", msg), nil)
+		if feedback != nil {
+			feedback.Failed(logger,"", fmt.Errorf("%s", msg), nil)
 		}
 		return reconcile.Delay(logger, fmt.Errorf("reconcile failed: %s", msg))
 	}
 
-	if info.Feedback != nil {
+	if feedback != nil {
 		threshold := time.Now().Add(-2 * time.Minute)
 		for n := range info.Names {
 			s := found.Names[n]
 			if s != nil && !modified[n] {
-				stateCopy := *s
-				if stateCopy.Provider != nil {
-					str := "remote: " + *stateCopy.Provider
-					stateCopy.Provider = &str
-				} else {
-					str := "remote"
-					stateCopy.Provider = &str
-				}
 				switch s.State {
 				case api.STATE_ERROR:
-					msg := fmt.Errorf("errornous dns entry")
-					if s.Message != nil {
-						msg = fmt.Errorf("%s: %s", msg, *s.Message)
-					}
-					info.Feedback.Failed(n, msg, &stateCopy)
 				case api.STATE_INVALID:
-					msg := fmt.Errorf("dns entry invalid")
-					if s.Message != nil {
-						msg = fmt.Errorf("%s: %s", msg, *s.Message)
-					}
-					info.Feedback.Invalid(n, msg, &stateCopy)
 				case api.STATE_PENDING:
-					msg := fmt.Sprintf("dns entry pending")
-					if s.Message != nil {
-						msg = fmt.Sprintf("%s: %s", msg, *s.Message)
-					}
-					info.Feedback.Pending(n, msg, &stateCopy)
 				case api.STATE_READY:
-					if stateCopy.Message == nil {
-						str := "dns entry ready"
-						stateCopy.Message = &str
-					}
-					info.Feedback.Ready(n, *stateCopy.Message, &stateCopy)
 				default:
 					if s.CreationTimestamp.Time.Before(threshold) {
-						info.Feedback.Pending(n, "no dns controller running?", &stateCopy)
+						feedback.Pending(logger, n, "no dns controller running?", s)
 					}
 				}
 			}
 		}
-		info.Feedback.Succeeded()
+		feedback.Succeeded(logger)
 	}
 
 	status := this.NestedReconciler.Reconcile(logger, obj)
@@ -312,7 +290,8 @@ func (this *sourceReconciler) Deleted(logger logger.LogContext, key resources.Cl
 		return reconcile.Delay(logger, nil)
 	}
 
-	this.source.Deleted(logger, key)
+	this.state.DeleteFeedback(key)
+	this.state.source.Deleted(logger, key)
 	return this.NestedReconciler.Deleted(logger, key)
 }
 
@@ -331,7 +310,12 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 		return reconcile.Delay(logger, nil)
 	}
 
-	status := this.source.Delete(logger, obj)
+	fb:=this.state.GetFeedback(obj.ClusterKey())
+	if fb!=nil {
+		fb.Deleted(logger,"","deleting dns entries", nil)
+		this.state.DeleteFeedback(obj.ClusterKey())
+	}
+	status := this.state.source.Delete(logger, obj)
 	if status.IsSucceeded() {
 		status = this.NestedReconciler.Delete(logger, obj)
 		if status.IsSucceeded() {
@@ -347,7 +331,7 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, dnsname string, info *DNSInfo) error {
+func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, dnsname string, info *DNSInfo, feedback DNSFeedback) error {
 	entry := &api.DNSEntry{}
 	entry.GenerateName = strings.ToLower(this.nameprefix + obj.GetName() + "-" + obj.GroupKind().Kind + "-")
 	if !this.targetclasses.IsDefault() {
@@ -381,15 +365,15 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 
 	err := this.Slaves().CreateSlave(obj, e)
 	if err != nil {
-		if info.Feedback != nil {
-			info.Feedback.Failed(dnsname, err, nil)
+		if feedback != nil {
+			feedback.Failed(logger, dnsname, err, nil)
 		}
 		return err
 	}
 	obj.Eventf(core.EventTypeNormal, "reconcile", "created dns entry object %s", e.ObjectName())
 	logger.Infof("created dns entry object %s", e.ObjectName())
-	if info.Feedback != nil {
-		info.Feedback.Pending(dnsname, "", nil)
+	if feedback != nil {
+		feedback.Pending(logger, dnsname, "", nil)
 	}
 	return nil
 }
