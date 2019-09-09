@@ -33,7 +33,7 @@ func NewState() interface{} {
 }
 
 func (this *state) GetFeedbackForObject(obj resources.Object) DNSFeedback {
-	fb:=this.source.CreateDNSFeedback(obj)
+	fb := this.source.CreateDNSFeedback(obj)
 	this.SetFeedback(obj.ClusterKey(), fb)
 	return fb
 }
@@ -56,6 +56,5 @@ func (this *state) DeleteFeedback(key resources.ClusterObjectKey) {
 	this.lock.Lock()
 	this.lock.Unlock()
 
-	delete(this.feedback,key)
+	delete(this.feedback, key)
 }
-

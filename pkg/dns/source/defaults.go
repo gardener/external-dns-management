@@ -31,18 +31,18 @@ import (
 ////////////////////////////////////////////////////////////////////////////////
 
 type Events struct {
-	lock    sync.Mutex
-	Events  map[resources.ClusterObjectKey]map[string]string
+	lock   sync.Mutex
+	Events map[resources.ClusterObjectKey]map[string]string
 }
 
 func NewEvents() *Events {
-	return &Events{ Events: map[resources.ClusterObjectKey]map[string]string{}}
+	return &Events{Events: map[resources.ClusterObjectKey]map[string]string{}}
 }
 
 func (this *Events) HasEvents(key resources.ClusterObjectKey) bool {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	return this.Events[key]!=nil
+	return this.Events[key] != nil
 }
 
 func (this *Events) GetEvents(key resources.ClusterObjectKey) map[string]string {
@@ -55,7 +55,6 @@ func (this *Events) GetEvents(key resources.ClusterObjectKey) map[string]string 
 	}
 	return events
 }
-
 
 func (this *Events) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	this.Deleted(logger, obj.ClusterKey())
@@ -116,5 +115,3 @@ func (this *handlerdnssourcetype) Create(c controller.Interface) (DNSSource, err
 func (this *creatordnssourcetype) Create(c controller.Interface) (DNSSource, error) {
 	return this.handler(c)
 }
-
-

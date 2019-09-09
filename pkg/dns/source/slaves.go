@@ -149,9 +149,9 @@ func (this *slaveReconciler) Deleted(logger logger.LogContext, key resources.Clu
 	for k := range this.slaves.Slaves().GetOwnersFor(key) {
 		logger.Infof("found owner %s", k)
 		_, err := this.controller.GetObject(k)
-		if err == nil  {
+		if err == nil {
 			fb := this.state.GetFeedback(k)
-			if fb!=nil {
+			if fb != nil {
 				fb.Deleted(logger, "", "", nil)
 			}
 		}

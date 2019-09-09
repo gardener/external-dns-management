@@ -17,8 +17,7 @@
 
 package dns
 
-
 const DEFAULT_CLASS = "gardendns"
 const ANNOTATION_GROUP = "dns.gardener.cloud"
-const CLASS_ANNOTATION = ANNOTATION_GROUP+"/class"
-const REALM_ANNOTATION = ANNOTATION_GROUP+"/realms"
+const CLASS_ANNOTATION = ANNOTATION_GROUP + "/class"
+const REALM_ANNOTATION = ANNOTATION_GROUP + "/realms"

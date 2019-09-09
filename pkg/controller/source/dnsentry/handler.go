@@ -41,7 +41,6 @@ func NewDNSEntrySource(c controller.Interface) (source.DNSSource, error) {
 	return &DNSEntrySource{DefaultDNSSource: source.NewDefaultDNSSource(nil), resources: c.GetMainCluster().Resources()}, nil
 }
 
-
 func (this *DNSEntrySource) CreateDNSFeedback(obj resources.Object) source.DNSFeedback {
 	eventFeedback := source.NewEventFeedback(obj, this.GetEvents(obj.ClusterKey()))
 	return &updateOriginalFeedback{
@@ -68,32 +67,32 @@ func (f *updateOriginalFeedback) Succeeded(logger logger.LogContext) {
 	f.chain.Succeeded(logger)
 }
 
-func (f *updateOriginalFeedback) Pending(logger logger.LogContext,dnsname string, msg string, state *source.DNSState) {
-	f.setStatus(logger,"Pending", msg, state)
+func (f *updateOriginalFeedback) Pending(logger logger.LogContext, dnsname string, msg string, state *source.DNSState) {
+	f.setStatus(logger, "Pending", msg, state)
 	f.chain.Pending(logger, dnsname, msg, state)
 }
 
-func (f *updateOriginalFeedback) Ready(logger logger.LogContext,dnsname string, msg string, state *source.DNSState) {
-	f.setStatus(logger,"Ready", msg, state)
+func (f *updateOriginalFeedback) Ready(logger logger.LogContext, dnsname string, msg string, state *source.DNSState) {
+	f.setStatus(logger, "Ready", msg, state)
 	f.chain.Ready(logger, dnsname, msg, state)
 }
 
-func (f *updateOriginalFeedback) Invalid(logger logger.LogContext,dnsname string, err error, state *source.DNSState) {
-	f.setStatus(logger,"Invalid", err.Error(), state)
-	f.chain.Invalid(logger,dnsname, err, state)
+func (f *updateOriginalFeedback) Invalid(logger logger.LogContext, dnsname string, err error, state *source.DNSState) {
+	f.setStatus(logger, "Invalid", err.Error(), state)
+	f.chain.Invalid(logger, dnsname, err, state)
 }
 
-func (f *updateOriginalFeedback) Failed(logger logger.LogContext,dnsname string, err error, state *source.DNSState) {
+func (f *updateOriginalFeedback) Failed(logger logger.LogContext, dnsname string, err error, state *source.DNSState) {
 	f.setStatus(logger, "Error", err.Error(), state)
 	f.chain.Failed(logger, dnsname, err, state)
 }
 
-func (f *updateOriginalFeedback) Deleted(logger logger.LogContext,dnsname string, msg string, state *source.DNSState) {
+func (f *updateOriginalFeedback) Deleted(logger logger.LogContext, dnsname string, msg string, state *source.DNSState) {
 	f.chain.Deleted(logger, dnsname, msg, state)
 }
 
 func (f *updateOriginalFeedback) setStatus(logger logger.LogContext, state string, msg string, dnsState *source.DNSState) {
-	if dnsState==nil {
+	if dnsState == nil {
 		return
 	}
 	obj, err := f.resources.GetObjectInto(f.objectName, &api.DNSEntry{})

@@ -44,21 +44,21 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 			return nil, err
 		}
 		opt, err := c.GetStringOption(OPT_TARGET_REALMS)
-		if err!=nil {
-			opt=""
+		if err != nil {
+			opt = ""
 		}
-		realmtype:=access.NewRealmType(dns.REALM_ANNOTATION)
-		realms:=realmtype.NewRealms(opt)
+		realmtype := access.NewRealmType(dns.REALM_ANNOTATION)
+		realms := realmtype.NewRealms(opt)
 		c.Infof("target realm(s): %v", realms)
-		classes := controller.NewClassesByOption(c, OPT_CLASS,dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
+		classes := controller.NewClassesByOption(c, OPT_CLASS, dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
 		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
 		targetclasses := controller.NewTargetClassesByOption(c, OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
-		slaves:=reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind()))
+		slaves := reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind()))
 		reconciler := &sourceReconciler{
-			SlaveAccess: slaves,
-			classes:     classes,
+			SlaveAccess:   slaves,
+			classes:       classes,
 			targetclasses: targetclasses,
-			targetrealms: realms,
+			targetrealms:  realms,
 
 			state: c.GetOrCreateSharedValue(KEY_STATE,
 				func() interface{} {
@@ -66,7 +66,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 				}).(*state),
 		}
 
-reconciler.state.source= source
+		reconciler.state.source = source
 		reconciler.namespace, _ = c.GetStringOption(OPT_NAMESPACE)
 		reconciler.nameprefix, _ = c.GetStringOption(OPT_NAMEPREFIX)
 		reconciler.creatorLabelName, _ = c.GetStringOption(OPT_TARGET_CREATOR_LABEL_NAME)
@@ -106,7 +106,7 @@ type sourceReconciler struct {
 	ownerid           string
 	setIgnoreOwners   bool
 
-	state             *state
+	state *state
 }
 
 func (this *sourceReconciler) Start() {
@@ -141,13 +141,13 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 	}
 
 	if !responsible {
-		if len(slaves)>0 {
+		if len(slaves) > 0 {
 			logger.Infof("not responsible anymore, but still found slaves (cleanup required): %v", resources.ObjectArrayToString(slaves...))
-			info=&DNSInfo{}
+			info = &DNSInfo{}
 		}
 	}
 
-	feedback:=this.state.GetFeedbackForObject(obj)
+	feedback := this.state.GetFeedbackForObject(obj)
 
 	if info == nil {
 		if responsible {
@@ -237,7 +237,7 @@ outer:
 	if len(notifiedErrors) > 0 {
 		msg := strings.Join(notifiedErrors, ", ")
 		if feedback != nil {
-			feedback.Failed(logger,"", fmt.Errorf("%s", msg), nil)
+			feedback.Failed(logger, "", fmt.Errorf("%s", msg), nil)
 		}
 		return reconcile.Delay(logger, fmt.Errorf("reconcile failed: %s", msg))
 	}
@@ -310,9 +310,9 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 		return reconcile.Delay(logger, nil)
 	}
 
-	fb:=this.state.GetFeedback(obj.ClusterKey())
-	if fb!=nil {
-		fb.Deleted(logger,"","deleting dns entries", nil)
+	fb := this.state.GetFeedback(obj.ClusterKey())
+	if fb != nil {
+		fb.Deleted(logger, "", "deleting dns entries", nil)
 		this.state.DeleteFeedback(obj.ClusterKey())
 	}
 	status := this.state.source.Delete(logger, obj)
@@ -397,7 +397,6 @@ func (this *sourceReconciler) updateEntry(logger logger.LogContext, info *DNSInf
 			changed = resources.RemoveAnnotation(o, dns.REALM_ANNOTATION)
 		}
 		mod.Modify(changed)
-
 
 		if this.setIgnoreOwners {
 			changed = resources.SetAnnotation(o, access.ANNOTATION_IGNORE_OWNERS, "true")
