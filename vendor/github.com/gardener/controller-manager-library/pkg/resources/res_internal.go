@@ -43,7 +43,8 @@ type Internal interface {
 	I_modifyByName(name ObjectDataName, status_only, create bool, modifier Modifier) (Object, bool, error)
 	I_modify(data ObjectData, status_only, read, create bool, modifier Modifier) (ObjectData, bool, error)
 
-	I_getInformer() (GenericInformer, error)
+	I_getInformer(namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error)
+	I_lookupInformer(namespace string) (GenericInformer, error)
 	I_list(namespace string) ([]Object, error)
 }
 
@@ -109,7 +110,7 @@ func (this *_i_resource) I_delete(data ObjectDataName) error {
 		Error()
 }
 
-func (this *_i_resource) I_getInformer() (GenericInformer, error) {
+func (this *_i_resource) I_getInformer(namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error) {
 	if this.cache != nil {
 		return this.cache, nil
 	}
@@ -124,7 +125,7 @@ func (this *_i_resource) I_getInformer() (GenericInformer, error) {
 	if this.IsUnstructured() {
 		informers = this.context.SharedInformerFactory().Unstructured()
 	}
-	informer, err := informers.InformerFor(this.gvk)
+	informer, err := informers.FilteredInformerFor(this.gvk, namespace, optionsFunc)
 	if err != nil {
 		return nil, err
 	}
@@ -132,8 +133,36 @@ func (this *_i_resource) I_getInformer() (GenericInformer, error) {
 		return nil, err
 	}
 
-	this.cache = informer
-	return this.cache, nil
+	if namespace == "" && optionsFunc == nil {
+		this.cache = informer
+	}
+	return informer, nil
+}
+
+func (this *_i_resource) I_lookupInformer(namespace string) (GenericInformer, error) {
+	if this.cache != nil {
+		return this.cache, nil
+	}
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	if this.cache != nil {
+		return this.cache, nil
+	}
+
+	informers := this.context.SharedInformerFactory().Structured()
+	if this.IsUnstructured() {
+		informers = this.context.SharedInformerFactory().Unstructured()
+	}
+	informer, err := informers.LookupInformerFor(this.gvk, namespace)
+	if err != nil {
+		return nil, err
+	}
+	if err := informerfactories.Start(this.context.ctx, informers, informer.Informer().HasSynced); err != nil {
+		return nil, err
+	}
+
+	return informer, nil
 }
 
 func (this *_i_resource) I_list(namespace string) ([]Object, error) {

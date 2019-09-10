@@ -22,15 +22,14 @@ import (
 	"os"
 	"time"
 
+	"github.com/Masterminds/semver"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
-	// "github.com/gardener/controller-manager-library/pkg/client/gardenextensions/clientset/versioned/scheme"
-
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -62,6 +61,7 @@ func Canonical(names []string) []string {
 type Interface interface {
 	GetName() string
 	GetId() string
+	GetServerVersion() *semver.Version
 	GetAttr(key interface{}) interface{}
 	SetAttr(key, value interface{})
 	GetObject(interface{}) (resources.Object, error)
@@ -161,6 +161,10 @@ func (this *_Cluster) GetCachedObject(spec interface{}) (resources.Object, error
 
 func (this *_Cluster) GetResource(groupKind schema.GroupKind) (resources.Interface, error) {
 	return this.resources.Get(groupKind)
+}
+
+func (this *_Cluster) GetServerVersion() *semver.Version {
+	return this.rctx.GetServerVersion()
 }
 
 func (this *_Cluster) setup(logger logger.LogContext) error {

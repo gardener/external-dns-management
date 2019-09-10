@@ -172,7 +172,7 @@ func (this *_Definitions) handleCluster(ctx context.Context, logger logger.LogCo
 		}
 	}
 	if c != nil {
-		logger.Infof("adding cluster %q[%s] as %q%s", c.GetName(), c.GetId(), name, fallback)
+		logger.Infof("adding cluster %q[%s](%s) as %q%s", c.GetName(), c.GetId(), c.GetServerVersion().Original(), name, fallback)
 		found.Add(name, c, fmt.Sprintf("%s%s", name, fallback))
 	} else {
 		missing.Add(name)

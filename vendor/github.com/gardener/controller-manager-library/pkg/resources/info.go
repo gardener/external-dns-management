@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+	"github.com/Masterminds/semver"
 	"strings"
 	"sync"
 
@@ -93,6 +94,7 @@ type ResourceInfos struct {
 	preferredVersions map[string]string
 	cluster           Cluster
 	mapper            meta.RESTMapper
+	version           *semver.Version
 }
 
 func NewResourceInfos(c Cluster) (*ResourceInfos, error) {
@@ -139,6 +141,10 @@ func (this *ResourceInfos) update() error {
 		return err
 	}
 
+	v, err := dc.ServerVersion()
+	if err == nil {
+		this.version, err = semver.NewVersion(v.GitVersion)
+	}
 	//list, err := discovery.ServerResources(dc)
 	list, err := dc.ServerResources()
 	if err != nil {
@@ -265,4 +271,8 @@ func (this *ResourceInfos) get(gvk schema.GroupVersionKind) *Info {
 		return nil
 	}
 	return g[gvk.Kind]
+}
+
+func (this *ResourceInfos) GetServerVersion() *semver.Version {
+	return this.version
 }

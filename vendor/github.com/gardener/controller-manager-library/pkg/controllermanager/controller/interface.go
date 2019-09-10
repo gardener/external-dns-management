@@ -19,10 +19,10 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/Masterminds/semver"
+	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"reflect"
 	"time"
-
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
@@ -50,6 +50,7 @@ type Interface interface {
 	GetName() string
 	IsReady() bool
 	Owning() ResourceKey
+	GetMainWatchResource() WatchResource
 	GetContext() context.Context
 	GetEnvironment() Environment
 	GetPool(name string) Pool
@@ -87,8 +88,15 @@ type Interface interface {
 	GetCachedObject(key resources.ClusterObjectKey) (resources.Object, error)
 }
 
-type Watch interface {
+type WatchSelectionFunction func(c Interface) (string, resources.TweakListOptionsFunc)
+
+type WatchResource interface {
 	ResourceType() ResourceKey
+	WatchSelectionFunction() WatchSelectionFunction
+}
+
+type Watch interface {
+	WatchResource
 	Reconciler() string
 	PoolName() string
 }
@@ -154,12 +162,13 @@ type Definition interface {
 	//Create(Object) (Reconciler, error)
 	Reconcilers() map[string]ReconcilerType
 	MainResource() ResourceKey
+	MainWatchResource() WatchResource
 	Watches() Watches
 	Commands() Commands
 	Pools() map[string]PoolDefinition
 	ResourceFilters() []ResourceFilter
 	RequiredClusters() []string
-	CustomResourceDefinitions() map[string][]*v1beta1.CustomResourceDefinition
+	CustomResourceDefinitions() map[string][]*CustomResourceDefinition
 	RequireLease() bool
 	FinalizerName() string
 	ActivateExplicitly() bool
@@ -168,4 +177,32 @@ type Definition interface {
 	Definition() Definition
 
 	String() string
+}
+
+type CustomResourceDefinition struct {
+	versioned *utils.Versioned
+}
+
+func NewCustomResourceDefinition(crd ...*v1beta1.CustomResourceDefinition) *CustomResourceDefinition {
+	if len(crd) > 1 {
+		return nil
+	}
+	def := &CustomResourceDefinition{utils.NewVersioned(&v1beta1.CustomResourceDefinition{})}
+	if len(crd) > 0 {
+		def.versioned.SetDefault(crd[0])
+	}
+	return def
+}
+
+func (this *CustomResourceDefinition) GetFor(c cluster.Interface) *v1beta1.CustomResourceDefinition {
+	f := this.versioned.GetFor(c.GetServerVersion())
+	if f != nil {
+		return f.(*v1beta1.CustomResourceDefinition)
+	}
+	return nil
+}
+
+func (this *CustomResourceDefinition) RegisterVersion(v *semver.Version, crd v1beta1.CustomResourceDefinition) *CustomResourceDefinition {
+	this.versioned.MustRegisterVersion(v, crd)
+	return this
 }

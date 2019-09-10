@@ -47,6 +47,14 @@
   version = "v11.4.0"
 
 [[projects]]
+  digest = "1:a26f8da48b22e6176c1c6a2459904bb30bd0c49ada04b2963c2c3a203e81a620"
+  name = "github.com/Masterminds/semver"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "c7af12943936e8c39859482e61f0574c2fd7fc75"
+  version = "v1.4.2"
+
+[[projects]]
   digest = "1:0a111edd8693fd977f42a0c4f199a0efb13c20aec9da99ad8830c7bb6a87e8d6"
   name = "github.com/PuerkitoBio/purell"
   packages = ["."]
@@ -189,7 +197,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:fed1b4f0a2767d0741007ada6edf3b0667e098f9bd2f55e840d095bc977c4f32"
+  digest = "1:36ab9386058ac36d8b522d1504f6c6374fa7c57571ef9da4289d7111f02217d9"
   name = "github.com/gardener/controller-manager-library"
   packages = [
     "pkg/controllermanager",
@@ -213,7 +221,7 @@
     "pkg/utils",
   ]
   pruneopts = "NUT"
-  revision = "1a1296828114306bd05a746d422f4c963df092c6"
+  revision = "2212c59b771e592728f7dc31ecb9dd91eefc639c"
 
 [[projects]]
   digest = "1:260f7ebefc63024c8dfe2c9f1a2935a89fa4213637a1f522f592f80c001cc441"

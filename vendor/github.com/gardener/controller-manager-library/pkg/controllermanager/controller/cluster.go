@@ -62,7 +62,7 @@ func (c *ClusterHandler) GetResource(resourceKey ResourceKey) (resources.Interfa
 	return c.cluster.GetResource(resourceKey.GroupKind())
 }
 
-func (c *ClusterHandler) register(resourceKey ResourceKey, usedpool *pool) error {
+func (c *ClusterHandler) register(resourceKey ResourceKey, namespace string, optionsFunc resources.TweakListOptionsFunc, usedpool *pool) error {
 	i := c.resources[resourceKey]
 	if i == nil {
 		i = &clusterResourceInfo{[]*pool{usedpool}}
@@ -73,7 +73,7 @@ func (c *ClusterHandler) register(resourceKey ResourceKey, usedpool *pool) error
 			return err
 		}
 
-		if err := resource.AddEventHandler(c.GetEventHandlerFuncs()); err != nil {
+		if err := resource.AddSelectedEventHandler(c.GetEventHandlerFuncs(), namespace, optionsFunc); err != nil {
 			return err
 		}
 	} else {
