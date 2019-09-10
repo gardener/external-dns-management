@@ -56,7 +56,7 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   dnsName: {{.Prefix}}a.{{.Domain}}
-  ttl: 101
+  ttl: {{.TTL}}
   targets:
   - 11.11.11.11
 ---
@@ -67,7 +67,7 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   dnsName: {{.Prefix}}txt.{{.Domain}}
-  ttl: 102
+  ttl: {{.TTL}}
   text:
   - "line1"
   - "line2 bla bla"
@@ -80,7 +80,7 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   dnsName: {{.Prefix}}alias.{{.Domain}}
-  ttl: 103
+  ttl: {{.TTL}}
   targets:
   - {{.AliasTarget}}
 ---
@@ -92,7 +92,7 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   dnsName: "*.{{.Prefix}}wildcard.{{.Domain}}"
-  ttl: 104
+  ttl: {{.TTL}}
   targets:
   - 44.44.44.44
 ---
@@ -103,7 +103,7 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   dnsName: {{.Prefix}}cname.{{.Domain}}
-  ttl: 160
+  ttl: {{.TTL}}
   targets:
   - google-public-dns-a.google.com
 ---
@@ -114,7 +114,7 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   dnsName: {{.Prefix}}cname-multi.{{.Domain}}
-  ttl: 160
+  ttl: {{.TTL}}
   targets:
   - google-public-dns-a.google.com
   - google-public-dns-b.google.com
@@ -126,7 +126,7 @@ metadata:
   namespace: {{.Namespace}}
 spec:
   dnsName: {{.Prefix}}foreign.{{.ForeignDomain}}
-  ttl: 160
+  ttl: {{.TTL}}
   targets:
   - 22.22.22.22
 `
@@ -147,6 +147,8 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 			err = p.CreateTempManifest(basePath, tmpl)
 			defer p.DeleteTempManifest()
 			Ω(err).Should(BeNil())
+
+			ttl := p.TTLValue()
 
 			u := cfg.Utils
 
@@ -187,7 +189,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 						"providerType": Equal(p.Type),
 						"state":        Equal("Ready"),
 						"targets":      And(HaveLen(1), ContainElement("11.11.11.11")),
-						"ttl":          Equal(float64(101)),
+						"ttl":          Equal(float64(ttl)),
 						"zone":         Equal(p.ZoneID),
 					}),
 				}),
@@ -208,7 +210,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 					}),
 					"status": MatchKeys(IgnoreExtras, Keys{
 						"state":   Equal("Ready"),
-						"ttl":     Equal(float64(104)),
+						"ttl":     Equal(float64(ttl)),
 						"targets": And(HaveLen(1), ContainElement("44.44.44.44")),
 					}),
 				}),
@@ -251,7 +253,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 								"providerType": Equal(p.Type),
 								"state":        Equal("Ready"),
 								"targets":      And(HaveLen(1), ContainElement(p.AliasTarget)),
-								"ttl":          Equal(float64(103)),
+								"ttl":          Equal(float64(ttl)),
 								"zone":         Equal(p.ZoneID),
 							}),
 						}),

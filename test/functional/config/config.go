@@ -18,11 +18,13 @@ package config
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/yaml"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"text/template"
+
+	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
 var (
@@ -77,7 +79,8 @@ type ProviderConfig struct {
 	Prefix        string `json:"prefix"`
 	AliasTarget   string `json:"aliasTarget,omitempty"`
 	ZoneID        string `json:"zoneID"`
-	PrivateDNS    bool   `json:privateDNS,omitempty`
+	PrivateDNS    bool   `json:"privateDNS,omitempty"`
+	TTL           string `json:"ttl,omitempty"`
 
 	Namespace           string
 	TmpManifestFilename string
@@ -152,8 +155,19 @@ func (c *Config) postProcess(namespace string) error {
 		}
 		indent := "    "
 		provider.SecretData = indent + reNewline.ReplaceAllString(provider.SecretData, "$1"+indent)
+		if provider.TTL == "" {
+			provider.TTL = "101"
+		}
 	}
 	return nil
+}
+
+func (p *ProviderConfig) TTLValue() int {
+	i, err := strconv.Atoi(p.TTL)
+	if err != nil {
+		panic(err)
+	}
+	return i
 }
 
 func (p *ProviderConfig) CreateTempManifest(basePath string, manifestTemplate *template.Template) error {
