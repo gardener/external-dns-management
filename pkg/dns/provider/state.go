@@ -1012,7 +1012,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		}
 		if new.IsModified() && new.ZoneId() != "" {
 			this.smartInfof(logger, "trigger zone %q", new.ZoneId())
-			this.triggerHostedZone(new.ZoneId())
+			this.TriggerHostedZone(new.ZoneId())
 		} else {
 			logger.Debugf("skipping trigger zone %q because entry not modified", new.ZoneId())
 		}
@@ -1026,6 +1026,12 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		}
 	}
 	return status
+}
+
+func (this *state) TriggerHostedZone(name string) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.triggerHostedZone(name)
 }
 
 func (this *state) EntryDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
