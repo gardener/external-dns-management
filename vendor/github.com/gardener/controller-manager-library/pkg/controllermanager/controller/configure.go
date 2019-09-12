@@ -317,8 +317,9 @@ func (this Configuration) CustomResourceDefinitions(crds ...*apiext.CustomResour
 	list = append([]*CustomResourceDefinition{}, list...)
 	for _, crd := range crds {
 		vers := NewCustomResourceDefinition(crd)
-		m[this.cluster] = append(list, vers)
+		list = append(list, vers)
 	}
+	m[this.cluster] = list
 	this.settings.crds = m
 	return this
 }
