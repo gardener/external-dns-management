@@ -258,3 +258,27 @@ func (h *Handler) MapTarget(t provider.Target) provider.Target {
 	}
 	return t
 }
+
+func (h *Handler) AssociateVPCWithHostedZone(vpcId string, vpcRegion string, hostedZoneId string) (*route53.AssociateVPCWithHostedZoneOutput, error) {
+	input := route53.AssociateVPCWithHostedZoneInput{
+		HostedZoneId: &hostedZoneId,
+		VPC:          &route53.VPC{VPCId: &vpcId, VPCRegion: &vpcRegion},
+	}
+	out, err := h.r53.AssociateVPCWithHostedZone(&input)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (h *Handler) DisassociateVPCFromHostedZone(vpcId string, vpcRegion string, hostedZoneId string) (*route53.DisassociateVPCFromHostedZoneOutput, error) {
+	input := route53.DisassociateVPCFromHostedZoneInput{
+		HostedZoneId: &hostedZoneId,
+		VPC:          &route53.VPC{VPCId: &vpcId, VPCRegion: &vpcRegion},
+	}
+	out, err := h.r53.DisassociateVPCFromHostedZone(&input)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
