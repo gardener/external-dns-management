@@ -67,6 +67,10 @@ func (tz *testzone) ForwardedDomains() []string {
 	return []string{} // not implemented
 }
 
+func (tz *testzone) IsPrivate() bool {
+	return false
+}
+
 type designateMockClient struct {
 	tzmap map[string]*testzone
 }

@@ -132,8 +132,11 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		domain := aws.StringValue(z.Name)
 		comp := strings.Split(aws.StringValue(z.Id), "/")
 		id := comp[len(comp)-1]
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(),
-			id, dns.NormalizeHostname(domain), aws.StringValue(z.Id), []string{})
+		var isPrivateZone bool
+		if z.Config.PrivateZone != nil && *z.Config.PrivateZone {
+			isPrivateZone = true
+		}
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), id, dns.NormalizeHostname(domain), aws.StringValue(z.Id), []string{}, isPrivateZone)
 
 		// call GetZoneState for side effect to calculate forwarded domains
 		_, err := cache.GetZoneState(hostedZone)

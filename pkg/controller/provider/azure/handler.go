@@ -129,13 +129,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		forwarded := h.collectForwardedSubzones(resourceGroup, *item.Name)
 
 		// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
-		hostedZone := provider.NewDNSHostedZone(
-			h.ProviderType(),
-			resourceGroup+"/"+*item.Name,
-			dns.NormalizeHostname(*item.Name),
-			"",
-			forwarded,
-		)
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), resourceGroup+"/"+*item.Name, dns.NormalizeHostname(*item.Name), "", forwarded, false)
 
 		zones = append(zones, hostedZone)
 	}

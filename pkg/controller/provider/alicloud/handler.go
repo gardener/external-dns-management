@@ -108,9 +108,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 				}
 				return nil, err
 			}
-			hostedZone := provider.NewDNSHostedZone(
-				h.ProviderType(), z.DomainId,
-				z.DomainName, z.DomainName, forwarded)
+			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.DomainId, z.DomainName, z.DomainName, forwarded, false)
 			zones = append(zones, hostedZone)
 		}
 	}

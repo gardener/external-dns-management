@@ -110,6 +110,7 @@ type DNSHostedZone interface {
 	Id() string
 	Domain() string
 	ForwardedDomains() []string
+	IsPrivate() bool
 }
 
 type DNSHostedZones []DNSHostedZone
