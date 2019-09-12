@@ -259,6 +259,8 @@ func (h *Handler) MapTarget(t provider.Target) provider.Target {
 	return t
 }
 
+// AssociateVPCWithHostedZone associates a VPC with a private hosted zone
+// in use by external controller
 func (h *Handler) AssociateVPCWithHostedZone(vpcId string, vpcRegion string, hostedZoneId string) (*route53.AssociateVPCWithHostedZoneOutput, error) {
 	input := route53.AssociateVPCWithHostedZoneInput{
 		HostedZoneId: &hostedZoneId,
@@ -271,12 +273,27 @@ func (h *Handler) AssociateVPCWithHostedZone(vpcId string, vpcRegion string, hos
 	return out, nil
 }
 
+// DisassociateVPCFromHostedZone disassociates a VPC from a private hosted zone
+// in use by external controller
 func (h *Handler) DisassociateVPCFromHostedZone(vpcId string, vpcRegion string, hostedZoneId string) (*route53.DisassociateVPCFromHostedZoneOutput, error) {
 	input := route53.DisassociateVPCFromHostedZoneInput{
 		HostedZoneId: &hostedZoneId,
 		VPC:          &route53.VPC{VPCId: &vpcId, VPCRegion: &vpcRegion},
 	}
 	out, err := h.r53.DisassociateVPCFromHostedZone(&input)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// GetZoneByName returns detailed information about a zone
+// in use by external controller
+func (h *Handler) GetZoneByName(hostedZoneId string) (*route53.GetHostedZoneOutput, error) {
+	input := route53.GetHostedZoneInput{
+		Id: &hostedZoneId,
+	}
+	out, err := h.r53.GetHostedZone(&input)
 	if err != nil {
 		return nil, err
 	}
