@@ -317,10 +317,11 @@ type PersistentZone struct {
 	Id               string   `json:"id"`
 	Domain           string   `json:"domain"`
 	ForwardedDomains []string `json:"forwardedDomains"`
+	IsPrivate        bool     `json:"isPrivate"`
 }
 
 func (z *PersistentZone) ToDNSHostedZone() DNSHostedZone {
-	return NewDNSHostedZone(z.ProviderType, z.Id, z.Domain, z.Key, z.ForwardedDomains)
+	return NewDNSHostedZone(z.ProviderType, z.Id, z.Domain, z.Key, z.ForwardedDomains, z.IsPrivate)
 }
 
 func NewPersistentZone(zone DNSHostedZone) *PersistentZone {
@@ -330,6 +331,7 @@ func NewPersistentZone(zone DNSHostedZone) *PersistentZone {
 		Key:              zone.Key(),
 		Domain:           zone.Domain(),
 		ForwardedDomains: zone.ForwardedDomains(),
+		IsPrivate:        zone.IsPrivate(),
 	}
 }
 

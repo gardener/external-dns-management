@@ -115,8 +115,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 
 	zones := provider.DNSHostedZones{}
 	for _, z := range raw {
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(),
-			z.Name, dns.NormalizeHostname(z.DnsName), "", []string{})
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.Name, dns.NormalizeHostname(z.DnsName), "", []string{}, false)
 
 		// call GetZoneState for side effect to calculate forwarded domains
 		_, err := cache.GetZoneState(hostedZone)

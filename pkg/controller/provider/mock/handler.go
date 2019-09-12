@@ -57,13 +57,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	for _, dnsName := range mockConfig.Zones {
 		if dnsName != "" {
 			logger.Infof("Providing mock DNSZone %s", dnsName)
-			hostedZone := provider.NewDNSHostedZone(
-				h.ProviderType(),
-				dnsName,
-				dnsName,
-				"",
-				[]string{},
-			)
+			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), dnsName, dnsName, "", []string{}, false)
 			mock.AddZone(hostedZone)
 		}
 	}
