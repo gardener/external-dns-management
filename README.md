@@ -355,6 +355,7 @@ Flags:
       --dnsentry-source.target-name-prefix string                   name prefix in target namespace for cross cluster generation
       --dnsentry-source.target-namespace string                     target namespace for cross cluster generation
       --dnsentry-source.target-owner-id string                      owner id to use for generated DNS entries
+      --dnsentry-source.target-realms string                        realm(s) to use for generated DNS entries
       --dnsentry-source.target-set-ignore-owners                    mark generated DNS entries to omit owner based access control
       --dnsentry-source.targets.pool.size int                       Worker pool size for pool targets of controller dnsentry-source (default: 2)
       --dry-run                                                     default for all controller "dry-run" options
@@ -376,6 +377,7 @@ Flags:
       --google-clouddns.secrets.pool.size int                       Worker pool size for pool secrets of controller google-clouddns (default: 2)
       --google-clouddns.setup int                                   number of processors for controller setup
       --google-clouddns.ttl int                                     Default time-to-live for DNS entries
+      --grace-period duration                                       inactivity grace period for detecting end of cleanup for shutdown
   -h, --help                                                        help for dns-controller-manager
       --identifier string                                           default for all controller "identifier" options
       --ingress-dns.default.pool.resync-period duration             Period for resynchronization of pool default of controller ingress-dns (default: 2m0s)
@@ -389,6 +391,7 @@ Flags:
       --ingress-dns.target-name-prefix string                       name prefix in target namespace for cross cluster generation
       --ingress-dns.target-namespace string                         target namespace for cross cluster generation
       --ingress-dns.target-owner-id string                          owner id to use for generated DNS entries
+      --ingress-dns.target-realms string                            realm(s) to use for generated DNS entries
       --ingress-dns.target-set-ignore-owners                        mark generated DNS entries to omit owner based access control
       --ingress-dns.targets.pool.size int                           Worker pool size for pool targets of controller ingress-dns (default: 2)
       --key string                                                  default for all controller "key" options
@@ -436,6 +439,7 @@ Flags:
       --service-dns.target-name-prefix string                       name prefix in target namespace for cross cluster generation
       --service-dns.target-namespace string                         target namespace for cross cluster generation
       --service-dns.target-owner-id string                          owner id to use for generated DNS entries
+      --service-dns.target-realms string                            realm(s) to use for generated DNS entries
       --service-dns.target-set-ignore-owners                        mark generated DNS entries to omit owner based access control
       --service-dns.targets.pool.size int                           Worker pool size for pool targets of controller service-dns (default: 2)
       --setup int                                                   default for all controller "setup" options
@@ -445,6 +449,7 @@ Flags:
       --target-name-prefix string                                   default for all controller "target-name-prefix" options
       --target-namespace string                                     default for all controller "target-namespace" options
       --target-owner-id string                                      default for all controller "target-owner-id" options
+      --target-realms string                                        default for all controller "target-realms" options
       --target-set-ignore-owners                                    default for all controller "target-set-ignore-owners" options
       --target.disable-deploy-crds                                  disable deployment of required crds for cluster target
       --target.id string                                            id for cluster target
@@ -576,7 +581,7 @@ package main
 import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager"
 
-	_ "github.com/<your conroller package>"
+	_ "github.com/<your controller package>"
 	...
 )
 

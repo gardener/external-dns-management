@@ -239,6 +239,9 @@ spec:
         {{- if .Values.configuration.dnsentrySourceTargetOwnerId }}
         - --dnsentry-source.target-owner-id={{ .Values.configuration.dnsentrySourceTargetOwnerId }}
         {{- end }}
+        {{- if .Values.configuration.dnsentrySourceTargetRealms }}
+        - --dnsentry-source.target-realms={{ .Values.configuration.dnsentrySourceTargetRealms }}
+        {{- end }}
         {{- if .Values.configuration.dnsentrySourceTargetSetIgnoreOwners }}
         - --dnsentry-source.target-set-ignore-owners={{ .Values.configuration.dnsentrySourceTargetSetIgnoreOwners }}
         {{- end }}
@@ -296,6 +299,9 @@ spec:
         {{- if .Values.configuration.googleCloudDNSTtl }}
         - --google-clouddns.ttl={{ .Values.configuration.googleCloudDNSTtl }}
         {{- end }}
+        {{- if .Values.configuration.gracePeriod }}
+        - --grace-period={{ .Values.configuration.gracePeriod }}
+        {{- end }}
         {{- if .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
         - --ingress-dns.default.pool.resync-period={{ .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
         {{- end }}
@@ -328,6 +334,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.ingressDNSTargetOwnerId }}
         - --ingress-dns.target-owner-id={{ .Values.configuration.ingressDNSTargetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSTargetRealms }}
+        - --ingress-dns.target-realms={{ .Values.configuration.ingressDNSTargetRealms }}
         {{- end }}
         {{- if .Values.configuration.ingressDNSTargetSetIgnoreOwners }}
         - --ingress-dns.target-set-ignore-owners={{ .Values.configuration.ingressDNSTargetSetIgnoreOwners }}
@@ -464,6 +473,9 @@ spec:
         {{- if .Values.configuration.serviceDNSTargetOwnerId }}
         - --service-dns.target-owner-id={{ .Values.configuration.serviceDNSTargetOwnerId }}
         {{- end }}
+        {{- if .Values.configuration.serviceDNSTargetRealms }}
+        - --service-dns.target-realms={{ .Values.configuration.serviceDNSTargetRealms }}
+        {{- end }}
         {{- if .Values.configuration.serviceDNSTargetSetIgnoreOwners }}
         - --service-dns.target-set-ignore-owners={{ .Values.configuration.serviceDNSTargetSetIgnoreOwners }}
         {{- end }}
@@ -490,6 +502,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.targetOwnerId }}
         - --target-owner-id={{ .Values.configuration.targetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.targetRealms }}
+        - --target-realms={{ .Values.configuration.targetRealms }}
         {{- end }}
         {{- if .Values.configuration.targetSetIgnoreOwners }}
         - --target-set-ignore-owners={{ .Values.configuration.targetSetIgnoreOwners }}
