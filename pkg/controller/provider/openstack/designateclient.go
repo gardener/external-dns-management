@@ -64,36 +64,16 @@ type designateClient struct {
 
 var _ designateClientInterface = &designateClient{}
 
-type authConfig struct {
-	AuthURL     string
-	Username    string
-	DomainName  string
-	DomainID    string
-	Password    string
-	ProjectName string
-	ProjectID   string
-	// UserDomainName/ID are optional
-	UserDomainID   string
-	UserDomainName string
-	// RegionName is optional
+type clientAuthConfig struct {
+	clientconfig.AuthInfo
 	RegionName string
 }
 
 // authenticate in OpenStack and obtain Designate service endpoint
-func createDesignateServiceClient(logger logger.LogContext, authConfig *authConfig) (*gophercloud.ServiceClient, error) {
+func createDesignateServiceClient(logger logger.LogContext, clientAuthConfig *clientAuthConfig) (*gophercloud.ServiceClient, error) {
 	clientOpts := new(clientconfig.ClientOpts)
-	authInfo := &clientconfig.AuthInfo{
-		AuthURL:        authConfig.AuthURL,
-		Username:       authConfig.Username,
-		Password:       authConfig.Password,
-		DomainName:     authConfig.DomainName,
-		DomainID:       authConfig.DomainID,
-		ProjectName:    authConfig.ProjectName,
-		ProjectID:      authConfig.ProjectID,
-		UserDomainName: authConfig.UserDomainName,
-		UserDomainID:   authConfig.UserDomainID,
-	}
-	clientOpts.AuthInfo = authInfo
+	clientOpts.AuthInfo = &clientAuthConfig.AuthInfo
+	clientOpts.EnvPrefix = "_NEVER_OVERWRITE_FROM_ENV_"
 
 	ao, err := clientconfig.AuthOptions(clientOpts)
 	if err != nil {
@@ -124,7 +104,7 @@ func createDesignateServiceClient(logger logger.LogContext, authConfig *authConf
 	}
 
 	eo := gophercloud.EndpointOpts{
-		Region: authConfig.RegionName,
+		Region: clientAuthConfig.RegionName,
 	}
 
 	client, err := openstack.NewDNSV2(providerClient, eo)

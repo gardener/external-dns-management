@@ -25,6 +25,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets"
 	"github.com/gophercloud/gophercloud/openstack/dns/v2/zones"
+	"github.com/gophercloud/utils/openstack/clientconfig"
 )
 
 // Handler is the main DNSHandler struct.
@@ -66,7 +67,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	return &h, nil
 }
 
-func readAuthConfig(c *provider.DNSHandlerConfig) (*authConfig, error) {
+func readAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
 	authURL, err := c.GetRequiredProperty("OS_AUTH_URL")
 	if err != nil {
 		return nil, err
@@ -75,39 +76,35 @@ func readAuthConfig(c *provider.DNSHandlerConfig) (*authConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	domainName := c.GetProperty("OS_DOMAIN_NAME", "domainName")
-	domainID := c.GetProperty("OS_DOMAIN_ID", "domainID")
-
 	password, err := c.GetRequiredProperty("OS_PASSWORD", "password")
 	if err != nil {
 		return nil, err
 	}
+
+	domainName := c.GetProperty("OS_DOMAIN_NAME", "domainName")
+	domainID := c.GetProperty("OS_DOMAIN_ID", "domainID")
 	projectName := c.GetProperty("OS_PROJECT_NAME", "tenantName")
 	projectID := c.GetProperty("OS_PROJECT_ID", "tenantID")
-
-	// optional restriction to region
-	regionName := c.GetProperty("OS_REGION_NAME")
 	userDomainName := c.GetProperty("OS_USER_DOMAIN_NAME", "userDomainName")
 	userDomainID := c.GetProperty("OS_USER_DOMAIN_ID", "userDomainID")
 
-	if domainID != "" && userDomainName != "" {
-		return nil, fmt.Errorf("userDomainName can't be used together with domainID")
-	}
-	if domainName != "" && userDomainID != "" {
-		return nil, fmt.Errorf("userDomainID can't be used together with domainName")
-	}
+	// optional restriction to region
+	regionName := c.GetProperty("OS_REGION_NAME")
 
-	authConfig := authConfig{
-		AuthURL:        authURL,
-		Username:       username,
-		Password:       password,
-		DomainName:     domainName,
-		DomainID:       domainID,
-		ProjectName:    projectName,
-		ProjectID:      projectID,
-		UserDomainID:   userDomainID,
-		UserDomainName: userDomainName,
-		RegionName:     regionName}
+	authConfig := clientAuthConfig{
+		AuthInfo: clientconfig.AuthInfo{
+			AuthURL:        authURL,
+			Username:       username,
+			Password:       password,
+			DomainName:     domainName,
+			DomainID:       domainID,
+			ProjectName:    projectName,
+			ProjectID:      projectID,
+			UserDomainID:   userDomainID,
+			UserDomainName: userDomainName,
+		},
+		RegionName: regionName,
+	}
 
 	return &authConfig, nil
 }
