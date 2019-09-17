@@ -99,6 +99,7 @@ func createDesignateServiceClient(logger logger.LogContext, authConfig *authConf
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client auth options: %+v", err)
 	}
+	ao.AllowReauth = true
 
 	logger.Infof("Using OpenStack Keystone at %s", ao.IdentityEndpoint)
 	providerClient, err := openstack.NewClient(ao.IdentityEndpoint)
