@@ -17,6 +17,7 @@
 package openstack
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -28,6 +29,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets"
 	"github.com/gophercloud/gophercloud/openstack/dns/v2/zones"
 	"github.com/gophercloud/gophercloud/pagination"
+	"github.com/gophercloud/utils/openstack/clientconfig"
 )
 
 // interface between provider and OpenStack DNS API
@@ -66,25 +68,41 @@ type authConfig struct {
 	AuthURL     string
 	Username    string
 	DomainName  string
+	DomainID    string
 	Password    string
 	ProjectName string
+	ProjectID   string
+	// UserDomainName/ID are optional
+	UserDomainID   string
+	UserDomainName string
 	// RegionName is optional
 	RegionName string
 }
 
 // authenticate in OpenStack and obtain Designate service endpoint
 func createDesignateServiceClient(logger logger.LogContext, authConfig *authConfig) (*gophercloud.ServiceClient, error) {
-	opts := gophercloud.AuthOptions{
-		IdentityEndpoint: authConfig.AuthURL,
-		Username:         authConfig.Username,
-		Password:         authConfig.Password,
-		TenantName:       authConfig.ProjectName,
-		DomainName:       authConfig.DomainName,
-		AllowReauth:      true,
+	clientOpts := new(clientconfig.ClientOpts)
+	authInfo := &clientconfig.AuthInfo{
+		AuthURL:        authConfig.AuthURL,
+		Username:       authConfig.Username,
+		Password:       authConfig.Password,
+		DomainName:     authConfig.DomainName,
+		DomainID:       authConfig.DomainID,
+		ProjectName:    authConfig.ProjectName,
+		ProjectID:      authConfig.ProjectID,
+		UserDomainName: authConfig.UserDomainName,
+		UserDomainID:   authConfig.UserDomainID,
 	}
+	clientOpts.AuthInfo = authInfo
 
-	logger.Infof("Using OpenStack Keystone at %s", opts.IdentityEndpoint)
-	authProvider, err := openstack.NewClient(opts.IdentityEndpoint)
+	ao, err := clientconfig.AuthOptions(clientOpts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create client auth options: %+v", err)
+	}
+	ao.AllowReauth = true
+
+	logger.Infof("Using OpenStack Keystone at %s", ao.IdentityEndpoint)
+	providerClient, err := openstack.NewClient(ao.IdentityEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -99,9 +117,9 @@ func createDesignateServiceClient(logger logger.LogContext, authConfig *authConf
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
 	}
-	authProvider.HTTPClient.Transport = transport
+	providerClient.HTTPClient.Transport = transport
 
-	if err = openstack.Authenticate(authProvider, opts); err != nil {
+	if err = openstack.Authenticate(providerClient, *ao); err != nil {
 		return nil, err
 	}
 
@@ -109,7 +127,7 @@ func createDesignateServiceClient(logger logger.LogContext, authConfig *authConf
 		Region: authConfig.RegionName,
 	}
 
-	client, err := openstack.NewDNSV2(authProvider, eo)
+	client, err := openstack.NewDNSV2(providerClient, eo)
 	if err != nil {
 		return nil, err
 	}

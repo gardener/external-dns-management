@@ -328,6 +328,14 @@
   version = "v0.2.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:4a14c92687d36a3875744de509bae52334a00ba487eb285b8a57645ec46acc7e"
+  name = "github.com/gophercloud/utils"
+  packages = ["openstack/clientconfig"]
+  pruneopts = "NUT"
+  revision = "25f1b77b8c0367b43939dbb20f5dd12e3c9b0053"
+
+[[projects]]
   digest = "1:b42cde0e1f3c816dd57f57f7bbcf05ca40263ad96f168714c130c611fc0856a6"
   name = "github.com/hashicorp/golang-lru"
   packages = [
@@ -1163,6 +1171,7 @@
     "github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets",
     "github.com/gophercloud/gophercloud/openstack/dns/v2/zones",
     "github.com/gophercloud/gophercloud/pagination",
+    "github.com/gophercloud/utils/openstack/clientconfig",
     "github.com/miekg/dns",
     "github.com/onsi/ginkgo",
     "github.com/onsi/gomega",

@@ -27,6 +27,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/dns/v2/zones"
 )
 
+// Handler is the main DNSHandler struct.
 type Handler struct {
 	provider.DefaultDNSHandler
 	config provider.DNSHandlerConfig
@@ -38,6 +39,7 @@ type Handler struct {
 
 var _ provider.DNSHandler = &Handler{}
 
+// NewHandler constructs a new DNSHandler object.
 func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	authConfig, err := readAuthConfig(config)
 	if err != nil {
@@ -73,31 +75,49 @@ func readAuthConfig(c *provider.DNSHandlerConfig) (*authConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	domainName, err := c.GetRequiredProperty("OS_DOMAIN_NAME", "domainName")
-	if err != nil {
-		return nil, err
-	}
+	domainName := c.GetProperty("OS_DOMAIN_NAME", "domainName")
+	domainID := c.GetProperty("OS_DOMAIN_ID", "domainID")
+
 	password, err := c.GetRequiredProperty("OS_PASSWORD", "password")
 	if err != nil {
 		return nil, err
 	}
-	projectName, err := c.GetRequiredProperty("OS_PROJECT_NAME", "tenantName")
-	if err != nil {
-		return nil, err
-	}
+	projectName := c.GetProperty("OS_PROJECT_NAME", "tenantName")
+	projectID := c.GetProperty("OS_PROJECT_ID", "tenantID")
+
 	// optional restriction to region
 	regionName := c.GetProperty("OS_REGION_NAME")
+	userDomainName := c.GetProperty("OS_USER_DOMAIN_NAME", "userDomainName")
+	userDomainID := c.GetProperty("OS_USER_DOMAIN_ID", "userDomainID")
 
-	authConfig := authConfig{AuthURL: authURL, Username: username, Password: password,
-		DomainName: domainName, ProjectName: projectName, RegionName: regionName}
+	if domainID != "" && userDomainName != "" {
+		return nil, fmt.Errorf("userDomainName can't be used together with domainID")
+	}
+	if domainName != "" && userDomainID != "" {
+		return nil, fmt.Errorf("userDomainID can't be used together with domainName")
+	}
+
+	authConfig := authConfig{
+		AuthURL:        authURL,
+		Username:       username,
+		Password:       password,
+		DomainName:     domainName,
+		DomainID:       domainID,
+		ProjectName:    projectName,
+		ProjectID:      projectID,
+		UserDomainID:   userDomainID,
+		UserDomainName: userDomainName,
+		RegionName:     regionName}
 
 	return &authConfig, nil
 }
 
+// Release releases the zone cache.
 func (h *Handler) Release() {
 	h.cache.Release()
 }
 
+// GetZones returns a list of hosted zones from the cache.
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
@@ -140,6 +160,7 @@ func (h *Handler) collectForwardedSubzones(zone *zones.Zone) []string {
 	return forwarded
 }
 
+// GetZoneState returns the state for a given zone.
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	return h.cache.GetZoneState(zone)
 }
@@ -170,6 +191,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	return provider.NewDNSZoneState(dnssets), nil
 }
 
+// ExecuteRequests applies a given change request to a given hosted zone.
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	err := h.executeRequests(logger, zone, state, reqs)
 	h.cache.ApplyRequests(err, zone, reqs)
