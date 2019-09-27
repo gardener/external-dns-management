@@ -1034,6 +1034,14 @@ func (this *state) TriggerHostedZone(name string) {
 	this.triggerHostedZone(name)
 }
 
+func (this *state) TriggerHostedZones() {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	for name := range this.zones {
+		this.triggerHostedZone(name)
+	}
+}
+
 func (this *state) EntryDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
 	this.lock.Lock()
 	defer this.lock.Unlock()
@@ -1223,13 +1231,19 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconcilatio
 func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject) reconcile.Status {
 	changed, active := this.ownerCache.UpdateOwner(owner)
 	logger.Infof("update: changed owner ids %s, active owner ids %s", changed, active)
-	this.TriggerEntriesByOwner(logger, changed)
+	if len(changed) > 0 {
+		this.TriggerEntriesByOwner(logger, changed)
+		this.TriggerHostedZones()
+	}
 	return reconcile.Succeeded(logger)
 }
 
 func (this *state) OwnerDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
 	changed, active := this.ownerCache.DeleteOwner(key)
 	logger.Infof("delete: changed owner ids %s, active owner ids %s", changed, active)
-	this.TriggerEntriesByOwner(logger, changed)
+	if len(changed) > 0 {
+		this.TriggerEntriesByOwner(logger, changed)
+		this.TriggerHostedZones()
+	}
 	return reconcile.Succeeded(logger)
 }
