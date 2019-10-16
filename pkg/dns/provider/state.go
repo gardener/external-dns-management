@@ -1189,9 +1189,10 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconcilatio
 		return nil
 	}
 	req.zone.next = time.Now().Add(this.config.Delay)
+	ownerids:= this.ownerCache.GetIds()
 	metrics.ReportZoneEntries(req.zone.ProviderType(), zoneid, len(req.entries))
-	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", req.zone.Id(), req.zone.Domain(), len(req.entries), len(req.stale))
-	changes := NewChangeModel(logger, this.ownerCache.GetIds(), req, this.config)
+	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale) (ownerids: %s)", req.zone.Id(), req.zone.Domain(), len(req.entries), len(req.stale), ownerids)
+	changes := NewChangeModel(logger, ownerids, req, this.config)
 	err := changes.Setup()
 	if err != nil {
 		return err

@@ -25,18 +25,23 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
+type OwnerInfo struct {
+	active bool
+	id     string
+}
+
 type OwnerCache struct {
 	lock sync.RWMutex
 
 	ownerids utils.StringSet
-	owners   map[resources.ObjectName]*dnsutils.DNSOwnerObject
+	owners   map[string]OwnerInfo
 	ownercnt map[string]int
 }
 
 func NewOwnerCache(config *Config) *OwnerCache {
 	return &OwnerCache{
 		ownerids: utils.NewStringSet(config.Ident),
-		owners:   map[resources.ObjectName]*dnsutils.DNSOwnerObject{},
+		owners:   map[string]OwnerInfo{},
 		ownercnt: map[string]int{config.Ident: 1},
 	}
 }
@@ -53,56 +58,60 @@ func (this *OwnerCache) GetIds() utils.StringSet {
 	return this.ownerids.Copy()
 }
 
-func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changed utils.StringSet, active utils.StringSet) {
+func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changeset utils.StringSet, activeset utils.StringSet) {
+	return this.UpdateOwnerData(owner.ObjectName().String(), owner.GetOwnerId(), owner.IsActive())
+}
+
+func (this *OwnerCache) UpdateOwnerData(name, id string, active bool) (changeset utils.StringSet, activeset utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
-	changed = utils.StringSet{}
-	old := this.owners[owner.ObjectName()]
-	if old != nil {
-		if old.GetOwnerId() == owner.GetOwnerId() && old.IsActive() == owner.IsActive() {
-			this.owners[owner.ObjectName()] = owner
-			return changed, this.ownerids.Copy()
+	changeset = utils.StringSet{}
+	old, ok := this.owners[name]
+	if ok {
+		if old.id == id && old.active == active {
+			return changeset, this.ownerids.Copy()
 		}
-		this.deactivate(old, changed)
+		this.deactivate(name, old, changeset)
 	}
-	this.activate(owner, changed)
-	return changed, this.ownerids.Copy()
+	this.activate(name, id, active, changeset)
+	return changeset, this.ownerids.Copy()
 }
 
-func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changed utils.StringSet, active utils.StringSet) {
+func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changeset utils.StringSet, activeset utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	changed = utils.StringSet{}
-	this.deactivate(this.owners[key.ObjectName()], changed)
-	return changed, this.ownerids.Copy()
-}
-
-func (this *OwnerCache) deactivate(old *dnsutils.DNSOwnerObject, changed utils.StringSet) {
-	if old != nil {
-		if old.IsActive() {
-			cnt := this.ownercnt[old.GetOwnerId()]
-			cnt--
-			this.ownercnt[old.GetOwnerId()] = cnt
-			if cnt == 0 {
-				this.ownerids.Remove(old.GetOwnerId())
-				changed.Add(old.GetOwnerId())
-			}
-		}
-		delete(this.owners, old.ObjectName())
+	changeset = utils.StringSet{}
+	name := key.ObjectName().String()
+	old, ok := this.owners[name]
+	if ok {
+		this.deactivate(name, old, changeset)
 	}
+	return changeset, this.ownerids.Copy()
 }
 
-func (this *OwnerCache) activate(new *dnsutils.DNSOwnerObject, changed utils.StringSet) {
-	if new.IsActive() {
-		id := new.GetOwnerId()
+func (this *OwnerCache) deactivate(name string, old OwnerInfo, changeset utils.StringSet) {
+	if old.active {
+		cnt := this.ownercnt[old.id]
+		cnt--
+		this.ownercnt[old.id] = cnt
+		if cnt == 0 {
+			this.ownerids.Remove(old.id)
+			changeset.Add(old.id)
+		}
+	}
+	delete(this.owners, name)
+}
+
+func (this *OwnerCache) activate(name string, id string, active bool, changeset utils.StringSet) {
+	if active {
 		cnt := this.ownercnt[id]
 		cnt++
 		this.ownercnt[id] = cnt
 		this.ownerids.Add(id)
 		if cnt == 1 {
-			changed.Add(id)
+			changeset.Add(id)
 		}
 	}
-	this.owners[new.ObjectName()] = new
+	this.owners[name] = OwnerInfo{id:id, active: active}
 }
