@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -934,7 +935,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				if cur.Before(new) {
 					new.duplicate = true
 					new.modified = false
-					err := fmt.Errorf("DNS name %q already busy for %q", dnsname, cur.ObjectName())
+					err := &perrs.AlreadyBusyForEntry{dnsname, cur.ObjectName()}
 					logger.Warnf("%s", err)
 					if status.IsSucceeded() {
 						_, err := v.UpdateStatus(logger, api.STATE_ERROR, err.Error())
@@ -1198,13 +1199,21 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconcilatio
 		return err
 	}
 	modified := false
+	var conflictErr error
 	for _, e := range req.entries {
 		// TODO: err handling
 		mod := false
 		if e.IsDeleting() {
-			mod, _ = changes.Delete(e.DNSName(), NewStatusUpdate(logger, e, this.GetContext()))
+			mod, _ = changes.Delete(e.DNSName(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()))
 		} else {
-			mod, _ = changes.Apply(e.DNSName(), NewStatusUpdate(logger, e, this.GetContext()), e.Targets()...)
+			var applyErr error
+			mod, applyErr = changes.Apply(e.DNSName(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), e.Targets()...)
+			if applyErr != nil {
+				busyErr, ok := applyErr.(*perrs.AlreadyBusyForOwner)
+				if ok && busyErr.Retry {
+					conflictErr = busyErr
+				}
+			}
 		}
 		modified = modified || mod
 	}
@@ -1221,6 +1230,9 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconcilatio
 				delete(this.outdated, k)
 			}
 		}
+	}
+	if err == nil {
+		err = conflictErr
 	}
 	return err
 }

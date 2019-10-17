@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
@@ -56,6 +57,7 @@ type ZoneCache interface {
 	ApplyRequests(err error, zone DNSHostedZone, reqs []*ChangeRequest)
 	GetHandlerData() HandlerData
 	Release()
+	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
 }
 
 type HandlerData interface {
@@ -182,6 +184,10 @@ func (c *onlyZonesCache) GetHandlerData() HandlerData {
 	return c.handlerData
 }
 
+func (c *onlyZonesCache) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
+	return false
+}
+
 func (c *onlyZonesCache) Release() {
 }
 
@@ -201,7 +207,7 @@ func newDefaultZoneCache(common abstractZonesCache, metrics Metrics, handlerData
 		inMemory:    NewInMemory(),
 		ttl:         common.config.stateTTL,
 		persistDir:  common.config.persistDir,
-		next:        map[string]time.Time{},
+		next:        map[string]endOfLive{},
 		handlerData: handlerData,
 	}
 	persist := common.config.persistDir != ""
@@ -248,6 +254,10 @@ func (c *defaultZoneCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error
 		c.persistZone(zone)
 	}
 	return state, err
+}
+
+func (c *defaultZoneCache) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
+	return c.state.ReportZoneStateConflict(zone, err)
 }
 
 func (c *defaultZoneCache) persistZone(zone DNSHostedZone) {
@@ -432,12 +442,17 @@ func (c *defaultZoneCache) restoreFromDisk() error {
 	return nil
 }
 
+type endOfLive struct {
+	updateStart time.Time
+	eol         time.Time
+}
+
 type zoneState struct {
 	lock        sync.Mutex
 	persistDir  string
 	ttl         time.Duration
 	inMemory    *InMemory
-	next        map[string]time.Time
+	next        map[string]endOfLive
 	handlerData HandlerData
 }
 
@@ -446,10 +461,11 @@ func (s *zoneState) GetZoneState(zone DNSHostedZone, cache *defaultZoneCache) (D
 	defer s.lock.Unlock()
 
 	next, ok := s.next[zone.Id()]
-	if !ok || time.Now().After(next) {
+	start := time.Now()
+	if !ok || start.After(next.eol) {
 		state, err := cache.stateUpdater(zone, cache)
 		if err == nil {
-			s.next[zone.Id()] = time.Now().Add(s.ttl)
+			s.next[zone.Id()] = endOfLive{start, time.Now().Add(s.ttl)}
 			s.inMemory.SetZone(zone, state)
 		} else {
 			s.deleteZoneState(zone)
@@ -459,6 +475,26 @@ func (s *zoneState) GetZoneState(zone DNSHostedZone, cache *defaultZoneCache) (D
 
 	state, _ := s.inMemory.CloneZoneState(zone)
 	return state, true, nil
+}
+
+func (s *zoneState) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	next, found := s.next[zone.Id()]
+	if found {
+		ownerConflict, ok := err.(*errors.AlreadyBusyForOwner)
+		if ok {
+			if ownerConflict.EntryCreatedAt.After(next.updateStart) {
+				// If a DNSEntry ownership is moved to another DNS controller manager (e.g. shoot recreation on another seed)
+				// the zone cache may have stale owner information. In this case the cache is invalidated
+				// if the entry is newer than the last cache refresh.
+				s.deleteZoneState(zone)
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (s *zoneState) ExecuteRequests(zone DNSHostedZone, reqs []*ChangeRequest) {
@@ -590,7 +626,7 @@ func (s *zoneState) BuildPersistentZoneState(zoneid string) *PersistentZoneState
 	persistentState := &PersistentZoneState{
 		Version: "1",
 		Zone:    *NewPersistentZone(zone),
-		Valid:   s.next[zoneid],
+		Valid:   s.next[zoneid].eol,
 	}
 
 	state, err := s.inMemory.CloneZoneState(zone)
@@ -611,7 +647,7 @@ func (s *zoneState) RestoreZone(persistentState *PersistentZoneState) DNSHostedZ
 	zone := persistentState.Zone.ToDNSHostedZone()
 	zoneState := NewDNSZoneState(persistentState.DNSSets)
 	s.inMemory.SetZone(zone, zoneState)
-	s.next[zone.Id()] = persistentState.Valid
+	s.next[zone.Id()] = endOfLive{persistentState.Valid.Add(-s.ttl), persistentState.Valid}
 	if persistentState.HandlerData != nil && s.GetHandlerData() != nil {
 		_ = s.GetHandlerData().Unmarshal(zone.Id(), persistentState.HandlerData)
 	}

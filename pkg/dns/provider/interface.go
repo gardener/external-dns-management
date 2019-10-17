@@ -167,6 +167,7 @@ type DNSHandler interface {
 	ProviderType() string
 	GetZones() (DNSHostedZones, error)
 	GetZoneState(DNSHostedZone) (DNSZoneState, error)
+	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
 	MapTarget(t Target) Target
 	Release()
@@ -213,6 +214,10 @@ type DNSProvider interface {
 
 	AccountHash() string
 	MapTarget(t Target) Target
+
+	// ReportZoneStateConflict is used to report a conflict because of stale data.
+	// It returns true if zone data will be updated and a retry may resolve the conflict
+	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
 }
 
 type DoneHandler interface {

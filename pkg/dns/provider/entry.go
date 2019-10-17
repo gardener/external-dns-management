@@ -523,6 +523,7 @@ func lookupHostIPv4(hostname string) ([]string, error) {
 type Entry struct {
 	lock       sync.Mutex
 	key        string
+	createdAt  time.Time
 	modified   bool
 	activezone string
 	state      *state
@@ -536,6 +537,7 @@ func NewEntry(v *EntryVersion, state *state) *Entry {
 		EntryVersion: v,
 		state:        state,
 		modified:     true,
+		createdAt:    time.Now(),
 		activezone:   utils.StringValue(v.status.Zone),
 	}
 }
@@ -554,6 +556,10 @@ func (this *Entry) IsActive() bool {
 
 func (this *Entry) IsModified() bool {
 	return this.modified
+}
+
+func (this *Entry) CreatedAt() time.Time {
+	return this.createdAt
 }
 
 func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
