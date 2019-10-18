@@ -90,6 +90,10 @@ func (this *DNSAccount) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
 	return this.handler.GetZoneState(zone)
 }
 
+func (this *DNSAccount) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
+	return this.handler.ReportZoneStateConflict(zone, err)
+}
+
 func (this *DNSAccount) ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error {
 	return this.handler.ExecuteRequests(logger, zone, state, reqs)
 }
@@ -514,6 +518,10 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 
 func (this *dnsProviderVersion) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
 	return this.account.GetZoneState(zone)
+}
+
+func (this *dnsProviderVersion) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
+	return this.account.ReportZoneStateConflict(zone, err)
 }
 
 func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error {

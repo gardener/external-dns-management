@@ -21,10 +21,12 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
+	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,17 +219,17 @@ func (this *ChangeModel) Setup() error {
 	return err
 }
 
-func (this *ChangeModel) Check(name string, done DoneHandler, targets ...Target) (bool, error) {
-	return this.Exec(false, false, name, done, targets...)
+func (this *ChangeModel) Check(name string, createdAt time.Time, done DoneHandler, targets ...Target) (bool, error) {
+	return this.Exec(false, false, name, createdAt, done, targets...)
 }
-func (this *ChangeModel) Apply(name string, done DoneHandler, targets ...Target) (bool, error) {
-	return this.Exec(true, false, name, done, targets...)
+func (this *ChangeModel) Apply(name string, createdAt time.Time, done DoneHandler, targets ...Target) (bool, error) {
+	return this.Exec(true, false, name, createdAt, done, targets...)
 }
-func (this *ChangeModel) Delete(name string, done DoneHandler) (bool, error) {
-	return this.Exec(true, true, name, done)
+func (this *ChangeModel) Delete(name string, createdAt time.Time, done DoneHandler) (bool, error) {
+	return this.Exec(true, true, name, createdAt, done)
 }
 
-func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHandler, targets ...Target) (bool, error) {
+func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt time.Time, done DoneHandler, targets ...Target) (bool, error) {
 	//this.Infof("%s: %v", name, targets)
 	if len(targets) == 0 && !delete {
 		return false, nil
@@ -258,9 +260,10 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, done DoneHan
 	mod := false
 	if oldset != nil {
 		if this.IsForeign(oldset) {
-			err := fmt.Errorf("dns name %q already busy for owner %q", name, oldset.GetOwner())
+			err := &perrs.AlreadyBusyForOwner{DNSName: name, EntryCreatedAt: createdAt, Owner: oldset.GetOwner()}
+			err.Retry = p.ReportZoneStateConflict(this.context.zone.getZone(), err)
 			if done != nil {
-				if apply {
+				if apply && !err.Retry {
 					done.SetInvalid(err)
 				}
 			} else {
