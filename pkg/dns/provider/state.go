@@ -1190,7 +1190,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconcilatio
 		return nil
 	}
 	req.zone.next = time.Now().Add(this.config.Delay)
-	ownerids:= this.ownerCache.GetIds()
+	ownerids := this.ownerCache.GetIds()
 	metrics.ReportZoneEntries(req.zone.ProviderType(), zoneid, len(req.entries))
 	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale) (ownerids: %s)", req.zone.Id(), req.zone.Domain(), len(req.entries), len(req.stale), ownerids)
 	changes := NewChangeModel(logger, ownerids, req, this.config)
@@ -1202,20 +1202,16 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconcilatio
 	var conflictErr error
 	for _, e := range req.entries {
 		// TODO: err handling
-		mod := false
+		var changeResult ChangeResult
 		if e.IsDeleting() {
-			mod, _ = changes.Delete(e.DNSName(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()))
+			changeResult = changes.Delete(e.DNSName(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()))
 		} else {
-			var applyErr error
-			mod, applyErr = changes.Apply(e.DNSName(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), e.Targets()...)
-			if applyErr != nil {
-				busyErr, ok := applyErr.(*perrs.AlreadyBusyForOwner)
-				if ok && busyErr.Retry {
-					conflictErr = busyErr
-				}
+			changeResult = changes.Apply(e.DNSName(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), e.Targets()...)
+			if changeResult.Error != nil && changeResult.Retry {
+				conflictErr = changeResult.Error
 			}
 		}
-		modified = modified || mod
+		modified = modified || changeResult.Modified
 	}
 	modified = changes.Cleanup(logger) || modified
 	if modified {

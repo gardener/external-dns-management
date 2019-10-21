@@ -143,6 +143,12 @@ type ChangeModel struct {
 	zonestate      DNSZoneState
 }
 
+type ChangeResult struct {
+	Modified bool
+	Retry    bool
+	Error    error
+}
+
 func NewChangeModel(logger logger.LogContext, owners utils.StringSet, req *zoneReconcilation, config Config) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
@@ -219,20 +225,20 @@ func (this *ChangeModel) Setup() error {
 	return err
 }
 
-func (this *ChangeModel) Check(name string, createdAt time.Time, done DoneHandler, targets ...Target) (bool, error) {
+func (this *ChangeModel) Check(name string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
 	return this.Exec(false, false, name, createdAt, done, targets...)
 }
-func (this *ChangeModel) Apply(name string, createdAt time.Time, done DoneHandler, targets ...Target) (bool, error) {
+func (this *ChangeModel) Apply(name string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
 	return this.Exec(true, false, name, createdAt, done, targets...)
 }
-func (this *ChangeModel) Delete(name string, createdAt time.Time, done DoneHandler) (bool, error) {
+func (this *ChangeModel) Delete(name string, createdAt time.Time, done DoneHandler) ChangeResult {
 	return this.Exec(true, true, name, createdAt, done)
 }
 
-func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt time.Time, done DoneHandler, targets ...Target) (bool, error) {
+func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
 	//this.Infof("%s: %v", name, targets)
 	if len(targets) == 0 && !delete {
-		return false, nil
+		return ChangeResult{}
 	}
 
 	if apply {
@@ -248,7 +254,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt ti
 		} else {
 			this.Warnf("no done handler and %s", err)
 		}
-		return false, err
+		return ChangeResult{Error: err}
 	}
 
 	view := this.getProviderView(p)
@@ -261,15 +267,15 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt ti
 	if oldset != nil {
 		if this.IsForeign(oldset) {
 			err := &perrs.AlreadyBusyForOwner{DNSName: name, EntryCreatedAt: createdAt, Owner: oldset.GetOwner()}
-			err.Retry = p.ReportZoneStateConflict(this.context.zone.getZone(), err)
+			retry := p.ReportZoneStateConflict(this.context.zone.getZone(), err)
 			if done != nil {
-				if apply && !err.Retry {
+				if apply && !retry {
 					done.SetInvalid(err)
 				}
 			} else {
 				this.Warnf("no done handler and %s", err)
 			}
-			return false, err
+			return ChangeResult{Error: err, Retry: retry}
 		} else {
 			if !this.Owns(oldset) {
 				this.Infof("catch entry %q by reassigning owner", name)
@@ -331,7 +337,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt ti
 			done.Succeeded()
 		}
 	}
-	return mod, nil
+	return ChangeResult{Modified: mod}
 }
 
 func (this *ChangeModel) Cleanup(logger logger.LogContext) bool {

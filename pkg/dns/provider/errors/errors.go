@@ -35,7 +35,6 @@ type AlreadyBusyForOwner struct {
 	DNSName        string
 	EntryCreatedAt time.Time
 	Owner          string
-	Retry          bool
 }
 
 func (e *AlreadyBusyForOwner) Error() string {
