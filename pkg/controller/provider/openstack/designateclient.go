@@ -17,6 +17,8 @@
 package openstack
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/http"
@@ -67,6 +69,10 @@ var _ designateClientInterface = &designateClient{}
 type clientAuthConfig struct {
 	clientconfig.AuthInfo
 	RegionName string
+	Insecure    bool
+	CACert     string
+	ClientCert string
+	ClientKey  string
 }
 
 // authenticate in OpenStack and obtain Designate service endpoint
@@ -87,6 +93,26 @@ func createDesignateServiceClient(logger logger.LogContext, clientAuthConfig *cl
 		return nil, err
 	}
 
+	var tlscfg *tls.Config
+	if clientAuthConfig.CACert !="" {
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM([]byte(clientAuthConfig.CACert))
+			tlscfg.RootCAs = caCertPool
+	}
+	if clientAuthConfig.Insecure {
+		tlscfg.InsecureSkipVerify = true
+	}
+
+	if clientAuthConfig.ClientCert != "" && clientAuthConfig.ClientKey != "" {
+		cert, err:=tls.X509KeyPair([]byte(clientAuthConfig.ClientCert), []byte(clientAuthConfig.ClientKey))
+		if err != nil {
+		    return nil, err
+		}
+		tlscfg.Certificates = []tls.Certificate{cert}
+		tlscfg.BuildNameToCertificate()
+	}
+
+
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
@@ -96,6 +122,7 @@ func createDesignateServiceClient(logger logger.LogContext, clientAuthConfig *cl
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		TLSClientConfig:       tlscfg,
 	}
 	providerClient.HTTPClient.Transport = transport
 

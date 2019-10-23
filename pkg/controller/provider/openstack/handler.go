@@ -87,9 +87,13 @@ func readAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
 	projectID := c.GetProperty("OS_PROJECT_ID", "tenantID")
 	userDomainName := c.GetProperty("OS_USER_DOMAIN_NAME", "userDomainName")
 	userDomainID := c.GetProperty("OS_USER_DOMAIN_ID", "userDomainID")
-
 	// optional restriction to region
 	regionName := c.GetProperty("OS_REGION_NAME")
+	// optional CA Certificate for keystone
+	caCert := c.GetProperty("CACERT", "caCert")
+	// optional Client Certificate
+	clientCert := c.GetProperty("CLIENTCERT", "clientCert")
+	clientKey := c.GetProperty("CLIENTKEY", "clientKey")
 
 	authConfig := clientAuthConfig{
 		AuthInfo: clientconfig.AuthInfo{
@@ -104,6 +108,9 @@ func readAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
 			UserDomainName: userDomainName,
 		},
 		RegionName: regionName,
+		CACert:     caCert,
+		ClientCert: clientCert,
+		ClientKey:  clientKey,
 	}
 
 	return &authConfig, nil
