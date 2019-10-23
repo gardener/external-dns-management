@@ -32,6 +32,8 @@ helper:
           traits:
             pull-request: ~
             component_descriptor: ~
+            version:
+              preprocess: inject-commit-hash
       minor:
         <<: (( &template ))
         release:
