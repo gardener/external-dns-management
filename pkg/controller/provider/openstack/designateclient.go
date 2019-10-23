@@ -69,7 +69,7 @@ var _ designateClientInterface = &designateClient{}
 type clientAuthConfig struct {
 	clientconfig.AuthInfo
 	RegionName string
-	Insecure    bool
+	Insecure   bool
 	CACert     string
 	ClientCert string
 	ClientKey  string
@@ -93,25 +93,25 @@ func createDesignateServiceClient(logger logger.LogContext, clientAuthConfig *cl
 		return nil, err
 	}
 
-	var tlscfg *tls.Config
-	if clientAuthConfig.CACert !="" {
-			caCertPool := x509.NewCertPool()
-			caCertPool.AppendCertsFromPEM([]byte(clientAuthConfig.CACert))
-			tlscfg.RootCAs = caCertPool
+	tlscfg := &tls.Config{}
+
+	if clientAuthConfig.CACert != "" {
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM([]byte(clientAuthConfig.CACert))
+		tlscfg.RootCAs = caCertPool
 	}
 	if clientAuthConfig.Insecure {
 		tlscfg.InsecureSkipVerify = true
 	}
 
 	if clientAuthConfig.ClientCert != "" && clientAuthConfig.ClientKey != "" {
-		cert, err:=tls.X509KeyPair([]byte(clientAuthConfig.ClientCert), []byte(clientAuthConfig.ClientKey))
+		cert, err := tls.X509KeyPair([]byte(clientAuthConfig.ClientCert), []byte(clientAuthConfig.ClientKey))
 		if err != nil {
-		    return nil, err
+			return nil, err
 		}
 		tlscfg.Certificates = []tls.Certificate{cert}
 		tlscfg.BuildNameToCertificate()
 	}
-
 
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{

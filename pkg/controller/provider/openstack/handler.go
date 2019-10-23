@@ -19,6 +19,7 @@ package openstack
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -94,6 +95,7 @@ func readAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
 	// optional Client Certificate
 	clientCert := c.GetProperty("CLIENTCERT", "clientCert")
 	clientKey := c.GetProperty("CLIENTKEY", "clientKey")
+	insecure := strings.ToLower(c.GetProperty("INSECURE", "insecure"))
 
 	authConfig := clientAuthConfig{
 		AuthInfo: clientconfig.AuthInfo{
@@ -111,6 +113,7 @@ func readAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
 		CACert:     caCert,
 		ClientCert: clientCert,
 		ClientKey:  clientKey,
+		Insecure:   insecure=="true" || insecure=="yes",
 	}
 
 	return &authConfig, nil
