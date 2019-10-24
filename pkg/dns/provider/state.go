@@ -798,8 +798,10 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 						return reconcile.Delay(logger, fmt.Errorf("zone reconcilation busy -> delay deletion"))
 					}
 					if err != nil {
-						logger.Errorf("zone cleanup failed: %s", err)
-						return reconcile.Delay(logger, fmt.Errorf("zone reconcilation failed -> delay deletion"))
+						if _, ok := err.(*perrs.NoSuchHostedZone); !ok {
+							logger.Errorf("zone cleanup failed: %s", err)
+							return reconcile.Delay(logger, fmt.Errorf("zone reconcilation failed -> delay deletion"))
+						}
 					}
 					metrics.DeleteZone(n)
 					delete(this.zones, n)
@@ -1147,6 +1149,15 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 		return reconcile.Succeeded(logger).RescheduleAfter(delay)
 	}
 	if done, err := this.StartZoneReconcilation(logger, req); done {
+		if err != nil {
+			if _, ok := err.(*perrs.NoSuchHostedZone); ok {
+				for _, provider := range req.providers {
+					// trigger provider reconciliation to update its status
+					_ = this.context.Enqueue(provider.Object())
+				}
+				return reconcile.Succeeded(logger)
+			}
+		}
 		return reconcile.DelayOnError(logger, err)
 	}
 	logger.Infof("reconciling zone %q (%s) already busy and skipped", zoneid, req.zone.Domain())

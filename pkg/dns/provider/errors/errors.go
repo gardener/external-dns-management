@@ -40,3 +40,12 @@ type AlreadyBusyForOwner struct {
 func (e *AlreadyBusyForOwner) Error() string {
 	return fmt.Sprintf("DNS name %q already busy for owner %q", e.DNSName, e.Owner)
 }
+
+type NoSuchHostedZone struct {
+	ZoneId string
+	Err    error
+}
+
+func (e *NoSuchHostedZone) Error() string {
+	return fmt.Sprintf("No such hosted zone %s: %s", e.ZoneId, e.Err)
+}
