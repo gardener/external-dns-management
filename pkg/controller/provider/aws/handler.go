@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -192,6 +193,9 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	}
 	forwarded, err := h.handleRecordSets(zone, aggr)
 	if err != nil {
+		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "NoSuchHostedZone" {
+			err = &errors.NoSuchHostedZone{ZoneId: zone.Id(), Err: err}
+		}
 		return nil, err
 	}
 
