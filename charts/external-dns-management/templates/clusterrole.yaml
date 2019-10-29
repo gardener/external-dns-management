@@ -14,6 +14,7 @@ rules:
   - extensions
   resources:
   - services
+  - services/finalizers
   - secrets
   - ingresses
   verbs:
