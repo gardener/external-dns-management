@@ -11,6 +11,8 @@ build:
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
 	    ./cmd/dns
 
+build-local: local-build
+
 local-build:
 	go build -o $(EXECUTABLE) \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
