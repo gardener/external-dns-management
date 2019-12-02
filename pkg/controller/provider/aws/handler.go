@@ -307,3 +307,38 @@ func (h *Handler) GetZoneByName(hostedZoneId string) (*route53.GetHostedZoneOutp
 	}
 	return out, nil
 }
+
+// CreateVPCAssociationAuthorization authorizes the AWS account that created a specified VPC to submit an AssociateVPCWithHostedZone
+// request to associate the VPC with a specified hosted zone that was created
+// by a different account
+func (h *Handler) CreateVPCAssociationAuthorization(hostedZoneId string, vpcId string, vpcRegion string) (*route53.CreateVPCAssociationAuthorizationOutput, error) {
+	input := route53.CreateVPCAssociationAuthorizationInput{
+		HostedZoneId: &hostedZoneId,
+		VPC: &route53.VPC{
+			VPCId:     &vpcId,
+			VPCRegion: &vpcRegion,
+		},
+	}
+	out, err := h.r53.CreateVPCAssociationAuthorization(&input)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// DeleteVPCAssociationAuthorization removes authorization to submit an AssociateVPCWithHostedZone request to
+// associate a specified VPC with a hosted zone that was created by a different account.
+func (h *Handler) DeleteVPCAssociationAuthorization(hostedZoneId string, vpcId string, vpcRegion string) (*route53.DeleteVPCAssociationAuthorizationOutput, error) {
+	input := route53.DeleteVPCAssociationAuthorizationInput{
+		HostedZoneId: &hostedZoneId,
+		VPC:  &route53.VPC{
+			VPCId:     &vpcId,
+			VPCRegion: &vpcRegion,
+		},
+	}
+	out, err := h.r53.DeleteVPCAssociationAuthorization(&input)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
