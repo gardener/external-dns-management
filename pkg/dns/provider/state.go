@@ -79,8 +79,9 @@ type state struct {
 	providerzones   map[resources.ObjectName]map[string]*dnsHostedZone
 	providersecrets map[resources.ObjectName]resources.ObjectName
 
-	entries  Entries
-	outdated Entries
+	entries         Entries
+	outdated        Entries
+	blockingEntries map[resources.ObjectName]time.Time
 
 	dnsnames DNSNames
 
@@ -120,6 +121,7 @@ func NewDNSState(ctx Context, classes *controller.Classes, config Config) *state
 		providersecrets: map[resources.ObjectName]resources.ObjectName{},
 		entries:         Entries{},
 		outdated:        Entries{},
+		blockingEntries: map[resources.ObjectName]time.Time{},
 		dnsnames:        map[string]*Entry{},
 	}
 }
@@ -657,6 +659,7 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 				logger.Infof("        forwarded: %s", utils.Strings(z.ForwardedDomains()...))
 			}
 		}
+		this.addBlockingEntries(logger, entries)
 		this.TriggerEntries(logger, entries)
 	}
 	if last != nil && !last.IsValid() && new.IsValid() {
@@ -722,8 +725,21 @@ func (this *state) GetEntriesByOwner(owners utils.StringSet) Entries {
 }
 
 func (this *state) TriggerEntries(logger logger.LogContext, entries Entries) {
-	for _, e := range this.entries {
+	for _, e := range entries {
 		this.TriggerEntry(logger, e)
+	}
+}
+
+func (this *state) addBlockingEntries(logger logger.LogContext, entries Entries) {
+	if len(entries) == 0 {
+		return
+	}
+	logger.Infof("blocking hosted zone reconciliation for %d entries", len(entries))
+	now := time.Now()
+	for _, e := range entries {
+		if _, ok := this.blockingEntries[e.ObjectName()]; !ok {
+			this.blockingEntries[e.ObjectName()] = now
+		}
 	}
 }
 
@@ -814,7 +830,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 				this.removeProviderForZone(n, pname)
 			}
 		}
-		this.TriggerEntries(logger, entries)
+		this.TriggerEntries(logger, this.entries)
 		_, err := this.registerSecret(logger, nil, cur)
 		if err != nil {
 			return reconcile.Delay(logger, err)
@@ -875,6 +891,8 @@ func (this *state) smartInfof(logger logger.LogContext, format string, args ...i
 func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, status reconcile.Status) (*Entry, reconcile.Status) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
+
+	delete(this.blockingEntries, v.ObjectName())
 
 	var new *Entry
 	old := this.entries[v.ObjectName()]
@@ -1049,6 +1067,8 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ObjectKe
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
+	delete(this.blockingEntries, key.ObjectName())
+
 	old := this.entries[key.ObjectName()]
 	if old != nil {
 		zoneid, _, _ := this.getZoneForName(old.DNSName())
@@ -1135,7 +1155,30 @@ func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string)
 	return 0, hasProviders, req
 }
 
+func (this *state) reconcileZoneBlockingEntries(logger logger.LogContext) int {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+
+	// remove long blockings to avoid blocking forever
+	maxBlocking := 10 * time.Minute
+	outdated := time.Now().Add(-1 * maxBlocking)
+	for n, t := range this.blockingEntries {
+		if t.Before(outdated) {
+			// should never happen
+			delete(this.blockingEntries, n)
+			logger.Warnf("deleting blocking entry %s because blocked longer than %fm", n, maxBlocking.Minutes())
+		}
+	}
+	return len(this.blockingEntries)
+}
+
 func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconcile.Status {
+	blockingCount := this.reconcileZoneBlockingEntries(logger)
+	if blockingCount > 0 {
+		logger.Infof("reconciliation of zone %s is blocked due to %d pending entry reconciliations", zoneid, blockingCount)
+		return reconcile.Succeeded(logger).RescheduleAfter(5 * time.Second)
+	}
+
 	delay, hasProviders, req := this.GetZoneReconcilation(logger, zoneid)
 	if req == nil || req.zone == nil {
 		if !hasProviders {
