@@ -40,21 +40,21 @@ func (this *state) GetFeedbackForObject(obj resources.Object) DNSFeedback {
 
 func (this *state) GetFeedback(key resources.ClusterObjectKey) DNSFeedback {
 	this.lock.Lock()
-	this.lock.Unlock()
+	defer this.lock.Unlock()
 
 	return this.feedback[key]
 }
 
 func (this *state) SetFeedback(key resources.ClusterObjectKey, f DNSFeedback) {
 	this.lock.Lock()
-	this.lock.Unlock()
+	defer this.lock.Unlock()
 
 	this.feedback[key] = f
 }
 
 func (this *state) DeleteFeedback(key resources.ClusterObjectKey) {
 	this.lock.Lock()
-	this.lock.Unlock()
+	defer this.lock.Unlock()
 
 	delete(this.feedback, key)
 }
