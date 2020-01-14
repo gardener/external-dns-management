@@ -205,11 +205,15 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 		return
 	}
 	if spec.TTL != nil && (*spec.TTL == 0 || *spec.TTL < 0) {
-		err = fmt.Errorf("TTL must be  greater than zero: %s", err)
+		err = fmt.Errorf("TTL must be greater than zero: %s", err)
 		return
 	}
 
-	for _, t := range spec.Targets {
+	for i, t := range spec.Targets {
+		if strings.TrimSpace(t) == "" {
+			err = fmt.Errorf("target %d must not be empty", i+1)
+			return
+		}
 		var new Target
 		new, err = NewTargetFromEntryVersion(t, entry)
 		if err != nil {
@@ -222,12 +226,20 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 		}
 	}
 	for _, t := range spec.Text {
+		if t == "" {
+			warnings = append(warnings, fmt.Sprintf("dns entry %q has empty text", entry.ObjectName()))
+			continue
+		}
 		new := NewText(t, entry)
 		if targets.Has(new) {
 			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate text %q", entry.ObjectName(), new))
 		} else {
 			targets = append(targets, new)
 		}
+	}
+	if len(spec.Targets) == 0 {
+		err = fmt.Errorf("dns entry has only empty text")
+		return
 	}
 
 	if utils.StringValue(spec.OwnerId) != "" {
@@ -343,10 +355,21 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		this.warnings = warnings
 		targets, multiCName := normalizeTargets(logger, this.object, targets...)
 		if multiCName {
+			this.interval = int64(600)
 			if spec.CNameLookupInterval != nil && *spec.CNameLookupInterval > 0 {
 				this.interval = *spec.CNameLookupInterval
-			} else {
-				this.interval = 600
+			}
+			if len(targets) == 0 {
+				msg := "targets cannot be resolved to any valid IPv4 address"
+				verr := fmt.Errorf(msg)
+				hello.Infof(logger, msg)
+
+				state := api.STATE_INVALID
+				if this.status.State == api.STATE_READY {
+					state = api.STATE_STALE
+				}
+				this.UpdateStatus(logger, state, verr.Error())
+				return reconcile.Recheck(logger, verr, time.Duration(this.interval)*time.Second)
 			}
 		} else {
 			this.interval = 0
