@@ -331,7 +331,7 @@ func (h *Handler) CreateVPCAssociationAuthorization(hostedZoneId string, vpcId s
 func (h *Handler) DeleteVPCAssociationAuthorization(hostedZoneId string, vpcId string, vpcRegion string) (*route53.DeleteVPCAssociationAuthorizationOutput, error) {
 	input := route53.DeleteVPCAssociationAuthorizationInput{
 		HostedZoneId: &hostedZoneId,
-		VPC:  &route53.VPC{
+		VPC: &route53.VPC{
 			VPCId:     &vpcId,
 			VPCRegion: &vpcRegion,
 		},

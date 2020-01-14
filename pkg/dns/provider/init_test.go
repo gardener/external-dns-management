@@ -18,9 +18,9 @@
 package provider
 
 import (
-	"testing"
 	"github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"testing"
 )
 
 func Test(t *testing.T) {

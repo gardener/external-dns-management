@@ -113,5 +113,5 @@ func (this *OwnerCache) activate(name string, id string, active bool, changeset 
 			changeset.Add(id)
 		}
 	}
-	this.owners[name] = OwnerInfo{id:id, active: active}
+	this.owners[name] = OwnerInfo{id: id, active: active}
 }

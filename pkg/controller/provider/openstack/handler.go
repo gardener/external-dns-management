@@ -113,7 +113,7 @@ func readAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
 		CACert:     caCert,
 		ClientCert: clientCert,
 		ClientKey:  clientKey,
-		Insecure:   insecure=="true" || insecure=="yes",
+		Insecure:   insecure == "true" || insecure == "yes",
 	}
 
 	return &authConfig, nil
