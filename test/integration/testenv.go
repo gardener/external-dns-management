@@ -206,8 +206,9 @@ func (te *TestEnv) DeleteProviderAndSecret(pr resources.Object) error {
 	return err
 }
 
+type SpecSetter func(e *v1alpha1.DNSEntry)
+
 func (te *TestEnv) CreateEntry(index int, baseDomain string) (resources.Object, error) {
-	name := fmt.Sprintf("mock-entry-%d", index)
 	target := fmt.Sprintf("1.1.%d.%d", (index/256)%256, index%256)
 	ttl := int64(100 + index)
 
@@ -216,17 +217,33 @@ func (te *TestEnv) CreateEntry(index int, baseDomain string) (resources.Object, 
 		e.Spec.DNSName = fmt.Sprintf("e%d.%s", index, baseDomain)
 		e.Spec.Targets = []string{target}
 	}
+	return te.CreateEntryGeneric(index, setSpec)
+}
 
+func (te *TestEnv) CreateTXTEntry(index int, baseDomain string) (resources.Object, error) {
+	txt := fmt.Sprintf("text-%d", index)
+	ttl := int64(100 + index)
+
+	setSpec := func(e *v1alpha1.DNSEntry) {
+		e.Spec.TTL = &ttl
+		e.Spec.DNSName = fmt.Sprintf("e%d.%s", index, baseDomain)
+		e.Spec.Text = []string{txt}
+	}
+	return te.CreateEntryGeneric(index, setSpec)
+}
+
+func (te *TestEnv) CreateEntryGeneric(index int, specSetter SpecSetter) (resources.Object, error) {
+	name := fmt.Sprintf("mock-entry-%d", index)
 	entry := &v1alpha1.DNSEntry{}
 	entry.SetName(name)
 	entry.SetNamespace(te.Namespace)
-	setSpec(entry)
+	specSetter(entry)
 	obj, err := te.resources.CreateObject(entry)
 	if errors.IsAlreadyExists(err) {
 		te.Infof("Entry %s already existing, updating...", name)
 		obj, err = te.GetEntry(name)
 		if err == nil {
-			setSpec(UnwrapEntry(obj))
+			specSetter(UnwrapEntry(obj))
 			err = obj.Update()
 		}
 	}

@@ -237,7 +237,7 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 			targets = append(targets, new)
 		}
 	}
-	if len(spec.Targets) == 0 {
+	if len(targets) == 0 {
 		err = fmt.Errorf("dns entry has only empty text")
 		return
 	}

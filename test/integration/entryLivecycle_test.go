@@ -55,6 +55,37 @@ var _ = Describe("EntryLivecycle", func() {
 		Ω(err).Should(BeNil())
 	})
 
+	It("has correct life cycle with provider for TXT record", func() {
+		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		Ω(err).Should(BeNil())
+
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		e, err := testEnv.CreateTXTEntry(0, domain)
+		Ω(err).Should(BeNil())
+
+		checkProvider(pr)
+
+		checkEntry(e, pr)
+
+		err = testEnv.DeleteProviderAndSecret(pr)
+		Ω(err).Should(BeNil())
+
+		err = testEnv.AwaitEntryState(e.GetName(), "Error", "")
+		Ω(err).Should(BeNil())
+
+		time.Sleep(10 * time.Second)
+
+		err = testEnv.AwaitEntryState(e.GetName(), "Error")
+		Ω(err).Should(BeNil())
+
+		err = testEnv.AwaitFinalizers(e)
+		Ω(err).Should(BeNil())
+
+		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).Should(BeNil())
+	})
+
 	It("is handled only by owner", func() {
 		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
