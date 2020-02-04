@@ -25,6 +25,7 @@ helper:
         <<: (( &template ))
         head-update:
           traits:
+            draft_release: (( b != ["master"] ? ~~ :~ ))
             component_descriptor: ~
       pull:
         <<: (( &template ))
