@@ -31,7 +31,7 @@ release:
 	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o $(EXECUTABLE) \
 	    -a \
 	    -mod=vendor \
-	    -ldflags "-X main.Version=$(VERSION) \
+	    -ldflags "-w -X main.Version=$(VERSION)" \
 	    ./cmd/dns
 
 .PHONY: test

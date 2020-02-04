@@ -38,28 +38,8 @@ echo WORKDIR="$(pwd)"
 VERSION_FILE="$(readlink -f "${SOURCE_PATH}/VERSION")"
 VERSION="$(cat "${VERSION_FILE}")"
 
-# If no LOCAL_BUILD environment variable is set, we configure the `go build` command
-# to build for linux OS, amd64 architectures and without CGO enablement.
 echo "running code generator..."
-"hack/update-codegen.sh"
-#"hack/update-wrappers.sh"
+#make generate
+
 echo "running build..."
-
-if [[ -z "$LOCAL_BUILD" ]]; then
-  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build \
-    -a \
-    -v \
-    -o ${BINARY_PATH}/rel/$EXE \
-    -ldflags "-w -X main.Version=${VERSION}" \
-    cmd/$CMD/*.go
-
-
-# If the LOCAL_BUILD environment variable is set, we simply run `go build`.
-else
-  go build \
-    -v \
-    -o ${BINARY_PATH}/$EXE \
-    -ldflags "-w -X main.Version=${VERSION}" \
-    cmd/$CMD/*.go
-
-fi
+make -e EXECUTABLE="${BINARY_PATH}/rel/$EXE" release
