@@ -168,6 +168,7 @@ type Definition interface {
 	Pools() map[string]PoolDefinition
 	ResourceFilters() []ResourceFilter
 	RequiredClusters() []string
+	RequiredControllers() []string
 	CustomResourceDefinitions() map[string][]*CustomResourceDefinition
 	RequireLease() bool
 	FinalizerName() string

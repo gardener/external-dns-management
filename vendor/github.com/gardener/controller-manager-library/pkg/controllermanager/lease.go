@@ -75,7 +75,14 @@ func (g *leasestartupgroup) Startup() error {
 		}
 
 		leaderElectionConfig.Callbacks = leaderelection.LeaderCallbacks{
-			OnStartedLeading: func(ctx context.Context) { runit() },
+			OnStartedLeading: func(ctx context.Context) {
+				go func() {
+					<-ctx.Done()
+					g.manager.Infof("lease group %s stopped -> shutdown controller manager", g.cluster.GetName())
+					ctxutil.Cancel(g.manager.ctx)
+				}()
+				runit()
+			},
 			OnStoppedLeading: func() {
 				g.manager.Infof("Lost leadership, cleaning up %s.", msg)
 			},

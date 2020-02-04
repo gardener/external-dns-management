@@ -2,32 +2,48 @@ EXECUTABLE=dns-controller-manager
 PROJECT=github.com/gardener/external-dns-management
 VERSION=$(shell cat VERSION)
 
+.PHONY: revendor
+revendor:
+	@GO111MODULE=on go mod vendor
+	@GO111MODULE=on go mod tidy
 
-.PHONY: build local-build release test alltests
 
+.PHONY: check
+check:
+	@.ci/check
 
+.PHONY: build
 build:
-	GOOS=linux GOARCH=amd64 go build -o $(EXECUTABLE) \
+    @CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o $(EXECUTABLE) \
+        -mod=vendor \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
 	    ./cmd/dns
 
-build-local: local-build
-
-local-build:
-	go build -o $(EXECUTABLE) \
+.PHONY: build-local
+build-local:
+	@CGO_ENABLED=0 GO111MODULE=on go build -o $(EXECUTABLE) \
+	    -mod=vendor \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
 	    ./cmd/dns
 
+.PHONY: release
 release:
-	GOOS=linux GOARCH=amd64 go build -o $(EXECUTABLE) \
+	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o $(EXECUTABLE) \
+	    -a \
+	    -mod=vendor \
 	    -ldflags "-X main.Version=$(VERSION) \
 	    ./cmd/dns
 
+.PHONY: test
 test:
-	go test ./pkg/...
+	GO111MODULE=on go test -mod=vendor ./pkg/...
 	@echo ----- Skipping long running integration tests, use \'make alltests\' to run all tests -----
 	test/integration/run.sh $(kindargs) -- -skip Many $(args)
 
+.PHONY: generate
+generate:
+	@./hack/generate-code
+
 alltests:
-	go test ./pkg/...
+	GO111MODULE=on go test -mod=vendor ./pkg/...
 	test/integration/run.sh $(kindargs) -- $(args)

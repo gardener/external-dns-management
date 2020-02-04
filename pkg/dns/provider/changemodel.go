@@ -436,5 +436,5 @@ func AddRecord(targetsets dns.RecordSets, ty string, host string, ttl int64) {
 		rs = dns.NewRecordSet(ty, ttl, nil)
 		targetsets[ty] = rs
 	}
-	rs.Records = append(rs.Records, &dns.Record{host})
+	rs.Records = append(rs.Records, &dns.Record{Value: host})
 }

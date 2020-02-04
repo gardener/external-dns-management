@@ -31,6 +31,7 @@ type Definitions interface {
 	Size() int
 	Names() utils.StringSet
 	Groups() groups.Definitions
+	GetRequiredControllers(name string) (utils.StringSet, error)
 	GetMappingsFor(name string) (mappings.Definition, error)
 	DetermineRequestedClusters(clusters cluster.Definitions, sets ...utils.StringSet) (utils.StringSet, error)
 	Registrations(names ...string) (Registrations, error)
@@ -51,6 +52,30 @@ func (this *_Definitions) Names() utils.StringSet {
 		set.Add(n)
 	}
 	return set
+}
+
+func (this *_Definitions) GetRequiredControllers(name string) (utils.StringSet, error) {
+	required := utils.StringSet{}
+	missing := utils.StringSet{}
+	this.getRequiredControllers(name, &required, &missing)
+	if len(missing) > 0 {
+		return nil, fmt.Errorf("controller %q required controllers %s, which are missing", missing)
+	}
+	return required, nil
+}
+
+func (this *_Definitions) getRequiredControllers(name string, required, missing *utils.StringSet) {
+	if !required.Contains(name) {
+		required.Add(name)
+		def := this.Get(name)
+		if def != nil {
+			for _, d := range def.RequiredControllers() {
+				this.getRequiredControllers(d, required, missing)
+			}
+		} else {
+			missing.Add(name)
+		}
+	}
 }
 
 func (this *_Definitions) GetMappingsFor(name string) (mappings.Definition, error) {

@@ -125,20 +125,21 @@ func (this *cmddef) PoolName() string {
 }
 
 type _Definition struct {
-	name               string
-	main               rescdef
-	reconcilers        map[string]ReconcilerType
-	watches            Watches
-	commands           Commands
-	resource_filters   []ResourceFilter
-	required_clusters  []string
-	require_lease      bool
-	pools              map[string]PoolDefinition
-	configs            map[string]OptionDefinition
-	finalizerName      string
-	finalizerDomain    string
-	crds               map[string][]*CustomResourceDefinition
-	activateExplicitly bool
+	name                 string
+	main                 rescdef
+	reconcilers          map[string]ReconcilerType
+	watches              Watches
+	commands             Commands
+	resource_filters     []ResourceFilter
+	required_clusters    []string
+	required_controllers []string
+	require_lease        bool
+	pools                map[string]PoolDefinition
+	configs              map[string]OptionDefinition
+	finalizerName        string
+	finalizerDomain      string
+	crds                 map[string][]*CustomResourceDefinition
+	activateExplicitly   bool
 }
 
 var _ Definition = &_Definition{}
@@ -147,6 +148,7 @@ func (this *_Definition) String() string {
 	s := fmt.Sprintf("controller %q:\n", this.name)
 	s += fmt.Sprintf("  main rsc:    %s\n", this.main)
 	s += fmt.Sprintf("  clusters:    %s\n", utils.Strings(this.RequiredClusters()...))
+	s += fmt.Sprintf("  required:    %s\n", utils.Strings(this.RequiredControllers()...))
 	s += fmt.Sprintf("  reconcilers: %s\n", toString(this.reconcilers))
 	s += fmt.Sprintf("  watches:     %s\n", toString(this.watches))
 	s += fmt.Sprintf("  commands:    %s\n", toString(this.commands))
@@ -179,7 +181,9 @@ func (this *_Definition) RequiredClusters() []string {
 	}
 	return []string{cluster.DEFAULT}
 }
-
+func (this *_Definition) RequiredControllers() []string {
+	return this.required_controllers
+}
 func (this *_Definition) RequireLease() bool {
 	return this.require_lease
 }
@@ -253,6 +257,19 @@ func Configure(name string) Configuration {
 
 func (this Configuration) Name(name string) Configuration {
 	this.settings.name = name
+	return this
+}
+
+func (this Configuration) Require(names ...string) Configuration {
+names:
+	for _, n := range names {
+		for _, o := range this.settings.required_controllers {
+			if n == o {
+				continue names
+			}
+		}
+		this.settings.required_controllers = append(this.settings.required_controllers, n)
+	}
 	return this
 }
 

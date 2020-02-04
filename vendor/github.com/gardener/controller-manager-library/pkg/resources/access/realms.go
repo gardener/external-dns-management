@@ -28,11 +28,12 @@ import (
 
 /*
  * If krac is NOT used, there would be no useful access control
- * mechanism. There we support some special canse by introducing the
+ * mechanism. Therefore we support some special cases by introducing the
  * notion of realms. An object might be "used" by another one
  * if its set of responsibility realms contains at least one of the
  * realms of the other object.
  */
+
 type RealmTypes map[string]*RealmType
 
 ////////////////////////////////////////////////////////////////////////////////

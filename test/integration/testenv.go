@@ -359,7 +359,7 @@ func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {
 func (te *TestEnv) CreateIngressWithAnnotation(name, domainName string) (resources.Object, error) {
 	setter := func(e *extensions.Ingress) {
 		e.Annotations = map[string]string{"dns.gardener.cloud/dnsnames": domainName}
-		e.Spec.Rules = []extensions.IngressRule{extensions.IngressRule{Host: domainName}}
+		e.Spec.Rules = []extensions.IngressRule{{Host: domainName}}
 	}
 
 	ingress := &extensions.Ingress{}
@@ -394,7 +394,7 @@ func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP 
 	setter := func(e *api.Service) {
 		e.Annotations = map[string]string{"dns.gardener.cloud/dnsnames": domainName, "dns.gardener.cloud/ttl": fmt.Sprintf("%d", ttl)}
 		e.Spec.Type = corev1.ServiceTypeLoadBalancer
-		e.Spec.Ports = []corev1.ServicePort{corev1.ServicePort{Name: "http", Port: 80, TargetPort: intstr.FromInt(8080), Protocol: corev1.ProtocolTCP}}
+		e.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(8080), Protocol: corev1.ProtocolTCP}}
 	}
 
 	ip := "1.2.3.4"

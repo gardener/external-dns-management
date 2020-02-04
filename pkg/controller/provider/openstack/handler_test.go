@@ -264,7 +264,7 @@ func getDNSHostedZone(h *Handler, zoneID string) (provider.DNSHostedZone, error)
 func buildRecordSet(rrtype string, ttl int, recordValues ...string) *dns.RecordSet {
 	records := dns.Records{}
 	for _, value := range recordValues {
-		records = append(records, &dns.Record{value})
+		records = append(records, &dns.Record{Value: value})
 	}
 	return &dns.RecordSet{Type: rrtype, TTL: int64(ttl), Records: records}
 }

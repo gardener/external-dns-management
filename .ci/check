@@ -40,21 +40,26 @@ ignore=(
    ": exported "
 )
 
-# Install Golint (linting tool).
-go get -u golang.org/x/lint/golint
+# Build Golint.
+go install -mod=vendor ./vendor/golang.org/x/lint/golint
 
 ###############################################################################
 
 join_by() { local IFS="$1"; shift; echo "$*"; }
 
-PACKAGES="$(go list -e ./... | grep -vE '/tmp/|/vendor/|/local/')"
-LINT_FOLDERS="$(echo ${PACKAGES} | sed "s|$GITPROVIDER/$PROJECT|.|g")"
+PACKAGES="$(go list -mod=vendor -e ./... | grep -vE '/tmp/|/vendor/|/local/')"
+PACKAGES_DIRS="$(echo ${PACKAGES} | sed "s|$GITPROVIDER/$PROJECT|.|g")"
 
 # Execute static code checks.
-#go vet ${PACKAGES}
+go vet -mod=vendor ${PACKAGES}
+
+# go fmt ignores -mod=vendor and performs module lookup (https://github.com/golang/go/issues/27841).
+# Also go fmt is just alias for gofmt -l -w and does not support flags that gofmt does.
+# That is why gofmt is used.
 
 # Execute automatic code formatting directive.
-go fmt ${PACKAGES}
+echo "Running gofmt..."
+gofmt -l -w -s ${PACKAGES_DIRS}
 
 # Execute lint checks.
-hack/lint -vacs  ${LINT_FOLDERS}
+hack/lint -vacs  ${PACKAGES_DIRS}

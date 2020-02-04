@@ -57,6 +57,7 @@ type Environment interface {
 	GetCluster(name string) cluster.Interface
 	GetConfig() *config.Config
 	GetSharedValue(key interface{}) interface{}
+	GetOrCreateSharedValue(key interface{}, create func() interface{}) interface{}
 	//GetSharedOption(name string) *config.ArbitraryOption
 }
 
@@ -64,36 +65,6 @@ type _ReconcilerMapping struct {
 	key        interface{}
 	cluster    string
 	reconciler string
-}
-
-type SharedAttributes struct {
-	logger.LogContext
-	lock   sync.RWMutex
-	shared map[interface{}]interface{}
-}
-
-func (c *SharedAttributes) GetSharedValue(key interface{}) interface{} {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	if c.shared == nil {
-		return nil
-	}
-	return c.shared[key]
-}
-
-func (c *SharedAttributes) GetOrCreateSharedValue(key interface{}, create func() interface{}) interface{} {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if c.shared == nil {
-		c.shared = map[interface{}]interface{}{}
-	}
-	v, ok := c.shared[key]
-	if !ok {
-		c.Infof("creating shared value for key %v", key)
-		v = create()
-		c.shared[key] = v
-	}
-	return v
 }
 
 type ReadyFlag struct {

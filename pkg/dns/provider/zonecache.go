@@ -151,7 +151,6 @@ func (hd *ForwardedDomainsHandlerData) DeleteZone(zoneID string) {
 }
 
 type abstractZonesCache struct {
-	lock         sync.Mutex
 	config       ZoneCacheConfig
 	zones        DNSHostedZones
 	zonesErr     error
@@ -162,6 +161,7 @@ type abstractZonesCache struct {
 
 type onlyZonesCache struct {
 	abstractZonesCache
+	lock        sync.Mutex
 	handlerData HandlerData
 }
 
@@ -193,6 +193,7 @@ func (c *onlyZonesCache) Release() {
 
 type defaultZoneCache struct {
 	abstractZonesCache
+	lock     sync.Mutex
 	logger   logger.LogContext
 	metrics  Metrics
 	state    *zoneState

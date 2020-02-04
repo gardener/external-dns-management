@@ -185,7 +185,7 @@ func (u *TestUtils) AwaitWithTimeout(msg string, check CheckFunc, timeout time.D
 
 func (u *TestUtils) AwaitLookupCName(dnsname, target string) {
 	expectedAddrs, err := u.dnsClient.LookupHost(target)
-	gomega.Ω(err).Should(gomega.BeNil())
+	gomega.Ω(err).Should(gomega.BeNil(), "Cannot lookup CNAME "+target)
 
 	u.AwaitLookup(dnsname, expectedAddrs...)
 }

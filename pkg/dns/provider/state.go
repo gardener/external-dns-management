@@ -955,7 +955,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				if cur.Before(new) {
 					new.duplicate = true
 					new.modified = false
-					err := &perrs.AlreadyBusyForEntry{dnsname, cur.ObjectName()}
+					err := &perrs.AlreadyBusyForEntry{DNSName: dnsname, ObjectName: cur.ObjectName()}
 					logger.Warnf("%s", err)
 					if status.IsSucceeded() {
 						_, err := v.UpdateStatus(logger, api.STATE_ERROR, err.Error())

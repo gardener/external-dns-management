@@ -37,7 +37,7 @@ func (this *DNSProviderObject) DNSProvider() *api.DNSProvider {
 }
 
 func DNSProviderKey(namespace, name string) resources.ObjectKey {
-	return resources.NewKey(schema.GroupKind{api.GroupName, api.DNSProviderKind}, namespace, name)
+	return resources.NewKey(schema.GroupKind{Group: api.GroupName, Kind: api.DNSProviderKind}, namespace, name)
 }
 
 func (this *DNSProviderObject) Spec() *api.DNSProviderSpec {

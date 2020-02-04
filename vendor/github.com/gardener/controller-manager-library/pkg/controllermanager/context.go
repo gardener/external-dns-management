@@ -35,6 +35,6 @@ func Get(ctx context.Context) *ControllerManager {
 func GetSharedValue(ctx context.Context, key interface{}) interface{} {
 	return ctx.Value(cmkey).(*ControllerManager).GetSharedValue(key)
 }
-func GetOrCreateSharedValue(ctx context.Context, key interface{}, create func(*ControllerManager) interface{}) interface{} {
+func GetOrCreateSharedValue(ctx context.Context, key interface{}, create func() interface{}) interface{} {
 	return ctx.Value(cmkey).(*ControllerManager).GetOrCreateSharedValue(key, create)
 }

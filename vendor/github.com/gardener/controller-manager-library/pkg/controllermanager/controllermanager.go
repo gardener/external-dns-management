@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 	"io/ioutil"
 	"log"
 	"os"
@@ -38,7 +39,7 @@ import (
 
 type ControllerManager struct {
 	lock sync.Mutex
-	logger.LogContext
+	controller.SharedAttributes
 
 	name       string
 	definition *Definition
@@ -49,7 +50,6 @@ type ControllerManager struct {
 	registrations controller.Registrations
 	plain_groups  map[string]StartupGroup
 	lease_groups  map[string]StartupGroup
-	shared        map[interface{}]interface{}
 	//shared_options map[string]*config.ArbitraryOption
 }
 
@@ -69,6 +69,14 @@ type Controller interface {
 func NewControllerManager(ctx context.Context, def *Definition) (*ControllerManager, error) {
 	config := config.Get(ctx)
 	ctx = context.WithValue(ctx, resources.ATTR_EVENTSOURCE, def.GetName())
+
+	for n := range def.controller_defs.Names() {
+		for _, r := range def.controller_defs.Get(n).RequiredControllers() {
+			if def.controller_defs.Get(r) == nil {
+				return nil, fmt.Errorf("controller %q requires controller %q, which is not declared", n, r)
+			}
+		}
+	}
 
 	if config.NamespaceRestriction && config.DisableNamespaceRestriction {
 		log.Fatalf("contradiction options given for namespace restriction")
@@ -125,6 +133,20 @@ func NewControllerManager(ctx context.Context, def *Definition) (*ControllerMana
 		return nil, err
 	}
 
+	added := utils.StringSet{}
+	for c := range active {
+		req, err := def.controller_defs.GetRequiredControllers(c)
+		if err != nil {
+			return nil, err
+		}
+		added.AddSet(req)
+	}
+	added, _ = active.DiffFrom(added)
+	if len(added) > 0 {
+		logger.Infof("controllers implied by activated controllers: %s", added)
+		active.AddSet(added)
+	}
+
 	registrations, err := def.Registrations(active.AsArray()...)
 	if err != nil {
 		return nil, err
@@ -145,8 +167,10 @@ func NewControllerManager(ctx context.Context, def *Definition) (*ControllerMana
 	}
 
 	cm := &ControllerManager{
-		LogContext: lgr,
-		clusters:   clusters,
+		SharedAttributes: controller.SharedAttributes{
+			LogContext: lgr,
+		},
+		clusters: clusters,
 
 		name:          name,
 		definition:    def,
@@ -155,7 +179,6 @@ func NewControllerManager(ctx context.Context, def *Definition) (*ControllerMana
 
 		plain_groups: map[string]StartupGroup{},
 		lease_groups: map[string]StartupGroup{},
-		shared:       map[interface{}]interface{}{},
 	}
 
 	ctx = logger.Set(ctxutil.SyncContext(ctx), lgr)
@@ -182,21 +205,6 @@ func (c *ControllerManager) GetCluster(name string) cluster.Interface {
 
 func (c *ControllerManager) GetClusters() cluster.Clusters {
 	return c.clusters
-}
-
-func (c *ControllerManager) GetSharedValue(key interface{}) interface{} {
-	return c.shared[key]
-}
-
-func (c *ControllerManager) GetOrCreateSharedValue(key interface{}, create func(*ControllerManager) interface{}) interface{} {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	v, ok := c.shared[key]
-	if !ok {
-		v = create(c)
-		c.shared[key] = v
-	}
-	return v
 }
 
 func (c *ControllerManager) Run() error {

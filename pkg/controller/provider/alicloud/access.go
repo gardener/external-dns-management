@@ -96,7 +96,6 @@ func (this *access) ListDomains(consume func(domain alidns.Domain) (bool, error)
 			return nil
 		}
 	}
-	return nil
 }
 
 func (this *access) ListRecords(domain string, consume func(record alidns.Record) (bool, error)) error {
@@ -122,7 +121,6 @@ func (this *access) ListRecords(domain string, consume func(record alidns.Record
 			return nil
 		}
 	}
-	return nil
 }
 
 func (this *access) CreateRecord(r alidns.Record) error {

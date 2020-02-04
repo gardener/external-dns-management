@@ -25,7 +25,7 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
-	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-03-01-preview/dns"
+	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 
 	"github.com/gardener/external-dns-management/pkg/dns"

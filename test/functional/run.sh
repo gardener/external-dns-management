@@ -162,7 +162,7 @@ if [ "$NOBOOTSTRAP" == "" ] && [ "$LOCAL_APISERVER" == "" ]; then
   echo Starting Kubernetes IN Docker...
 
   # prepare Kubernetes IN Docker - local clusters for testing Kubernetes
-  go get sigs.k8s.io/kind
+  go install -mod=vendor sigs.k8s.io/kind
 
   # delete old cluster
   kind delete cluster --name integration || true
@@ -230,15 +230,15 @@ fi
 kubectl cluster-info
 
 if [ "$RUN_CONTROLLER" == "true" ]; then
-  go build -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/dns
+  go build -mod=vendor -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/dns
   $ROOTDIR/dns-controller-manager --controllers=dnscontrollers --identifier=functest >/dev/null 2>&1 &
   PID_CONTROLLER=$!
 fi
 
-# install ginkgo if missing
-which ginkgo || go install github.com/onsi/ginkgo/ginkgo
+# install ginkgo
+go install -mod=vendor github.com/onsi/ginkgo/ginkgo
 
-FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER ginkgo -p "$@"
+GOFLAGS="-mod=vendor" FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER ginkgo -p "$@"
 
 RETCODE=$?
 
