@@ -155,6 +155,9 @@ const (
 	M_UPDATERECORDS = "update_records"
 	M_PUPDATEREORDS = "update_records_pages"
 
+	M_CREATERECORDS = "create_records"
+	M_DELETERECORDS = "delete_records"
+
 	M_CACHED_GETZONES     = "cached_getzones"
 	M_CACHED_GETZONESTATE = "cached_getzonestate"
 )
