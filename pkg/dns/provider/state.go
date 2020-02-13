@@ -1200,8 +1200,10 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 				}
 				return reconcile.Succeeded(logger)
 			}
+			logger.Infof("zone reconcilation failed for %s: %s", req.zone.Id(), err)
+			return reconcile.Succeeded(logger).RescheduleAfter(req.zone.RateLimit())
 		}
-		return reconcile.DelayOnError(logger, err)
+		return reconcile.Succeeded(logger)
 	}
 	logger.Infof("reconciling zone %q (%s) already busy and skipped", zoneid, req.zone.Domain())
 	return reconcile.Succeeded(logger).RescheduleAfter(10 * time.Second)
@@ -1282,7 +1284,10 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		}
 	}
 	if err == nil {
+		req.zone.Succeeded()
 		err = conflictErr
+	} else {
+		req.zone.Failed(this.config.Delay)
 	}
 	return err
 }

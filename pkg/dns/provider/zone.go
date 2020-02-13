@@ -29,11 +29,33 @@ type dnsHostedZone struct {
 	busy bool
 	zone DNSHostedZone
 	next time.Time
+	rate time.Duration
 }
 
 func newDNSHostedZone(zone DNSHostedZone) *dnsHostedZone {
 	return &dnsHostedZone{
 		zone: zone,
+	}
+}
+
+func (this *dnsHostedZone) RateLimit() time.Duration {
+	return this.rate
+}
+
+func (this *dnsHostedZone) Succeeded() {
+	this.rate = 0
+}
+
+func (this *dnsHostedZone) Failed(min time.Duration) {
+	if this.rate == 0 {
+		this.rate = min
+		if this.rate == 0 {
+			this.rate = 10 * time.Second
+		}
+	} else {
+		if this.rate < 10*time.Minute {
+			this.rate = time.Duration(1.1*float64(this.rate)) + time.Second
+		}
 	}
 }
 
