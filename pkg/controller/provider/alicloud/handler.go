@@ -20,8 +20,10 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
 )
 
 type Handler struct {
@@ -121,17 +123,19 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 }
 
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
-	state := newState()
+	state := raw.NewState()
 
 	f := func(r alidns.Record) (bool, error) {
-		state.addRecord(r)
+		a := (*Record)(&r)
+		state.AddRecord(a)
+		//fmt.Printf("**** found %s %s: %s\n", a.GetType(), a.GetDNSName(), a.GetValue() )
 		return true, nil
 	}
 	err := h.access.ListRecords(zone.Key(), f)
 	if err != nil {
 		return nil, err
 	}
-	state.calculateDNSSets()
+	state.CalculateDNSSets()
 	return state, nil
 }
 
@@ -140,21 +144,9 @@ func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	err := h.executeRequests(logger, zone, state, reqs)
+	err := raw.ExecuteRequests(logger, &h.config, h.access, zone, state, reqs)
 	h.cache.ApplyRequests(err, zone, reqs)
 	return err
-}
-
-func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	exec := NewExecution(logger, h, state.(*zonestate), zone)
-	for _, r := range reqs {
-		exec.addChange(r)
-	}
-	if h.config.DryRun {
-		logger.Infof("no changes in dryrun mode for AliCloud")
-		return nil
-	}
-	return exec.submitChanges()
 }
 
 func checkAccessForbidden(err error) bool {
