@@ -21,6 +21,8 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
+
 	"strings"
 )
 
@@ -49,9 +51,7 @@ type Access interface {
 	ListDomains(consume func(domain alidns.Domain) (bool, error)) error
 	ListRecords(domain string, consume func(record alidns.Record) (bool, error)) error
 
-	CreateRecord(r alidns.Record) error
-	UpdateRecord(r alidns.Record) error
-	DeleteRecord(r alidns.Record) error
+	raw.Executor
 }
 
 type access struct {
@@ -123,34 +123,41 @@ func (this *access) ListRecords(domain string, consume func(record alidns.Record
 	}
 }
 
-func (this *access) CreateRecord(r alidns.Record) error {
+func (this *access) CreateRecord(r raw.Record) error {
+	a := r.(*Record)
 	req := alidns.CreateAddDomainRecordRequest()
-	req.DomainName = r.DomainName
-	req.RR = r.RR
-	req.Type = r.Type
-	req.TTL = requests.NewInteger(r.TTL)
-	req.Value = r.Value
+	req.DomainName = a.DomainName
+	req.RR = a.RR
+	req.Type = a.Type
+	req.TTL = requests.NewInteger(a.TTL)
+	req.Value = a.Value
 	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
 	_, err := this.AddDomainRecord(req)
 	return err
 }
 
-func (this *access) UpdateRecord(r alidns.Record) error {
+func (this *access) UpdateRecord(r raw.Record) error {
+	a := r.(*Record)
 	req := alidns.CreateUpdateDomainRecordRequest()
-	req.RecordId = r.RecordId
-	req.RR = r.RR
-	req.Type = r.Type
-	req.TTL = requests.NewInteger(r.TTL)
-	req.Value = r.Value
+	req.RecordId = a.RecordId
+	req.RR = a.RR
+	req.Type = a.Type
+	req.TTL = requests.NewInteger(a.TTL)
+	req.Value = a.Value
 	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
 	_, err := this.UpdateDomainRecord(req)
 	return err
 }
 
-func (this *access) DeleteRecord(r alidns.Record) error {
+func (this *access) DeleteRecord(r raw.Record) error {
 	req := alidns.CreateDeleteDomainRecordRequest()
-	req.RecordId = r.RecordId
+	req.RecordId = r.GetId()
 	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
 	_, err := this.DeleteDomainRecord(req)
 	return err
+}
+
+func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) raw.Record {
+	rr := GetRR(fqdn, zone.Domain())
+	return (*Record)(&alidns.Record{RR: rr, Type: rtype, Value: value, DomainName: zone.Domain(), TTL: int(ttl)})
 }

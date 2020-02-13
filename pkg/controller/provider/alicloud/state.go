@@ -17,72 +17,23 @@
 package alicloud
 
 import (
-	"fmt"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
-	"strings"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
 )
 
-type RecordSet []alidns.Record
-type DNSSet map[string]RecordSet
+type Record alidns.Record
 
-type zonestate struct {
-	dnssets dns.DNSSets
-	records map[string]DNSSet
-}
-
-var _ provider.DNSZoneState = &zonestate{}
-
-func newState() *zonestate {
-	return &zonestate{records: map[string]DNSSet{}}
-}
-
-func (this *zonestate) GetDNSSets() dns.DNSSets {
-	return this.dnssets
-}
-
-func (this *zonestate) addRecord(r alidns.Record) {
-	if dns.SupportedRecordType(r.Type) {
-		name := GetDNSName(r)
-		e := this.records[name]
-		if e == nil {
-			e = DNSSet{}
-			this.records[name] = e
-		}
-		r = unescape(r)
-		e[r.Type] = append(e[r.Type], r)
+func (r *Record) GetType() string    { return r.Type }
+func (r *Record) GetId() string      { return r.RecordId }
+func (r *Record) GetDNSName() string { return GetDNSName(alidns.Record(*r)) }
+func (r *Record) GetValue() string {
+	if r.Type == dns.RS_TXT {
+		return raw.EnsureQuotedText(r.Value)
 	}
+	return r.Value
 }
-
-func (this *zonestate) getRecord(dnsname, rtype, value string) *alidns.Record {
-	e := this.records[dnsname]
-	if e != nil {
-		for _, r := range e[rtype] {
-			if r.Value == value {
-				return &r
-			}
-		}
-	}
-	return nil
-}
-
-func (this *zonestate) calculateDNSSets() {
-	this.dnssets = dns.DNSSets{}
-	for dnsname, dset := range this.records {
-		for rtype, rset := range dset {
-			rs := dns.NewRecordSet(rtype, int64(rset[0].TTL), nil)
-			for _, r := range rset {
-				rs.Add(&dns.Record{Value: r.Value})
-			}
-			this.dnssets.AddRecordSetFromProvider(dnsname, rs)
-		}
-	}
-}
-
-func unescape(r alidns.Record) alidns.Record {
-	if r.Type == dns.RS_TXT && !strings.HasPrefix(r.Value, "\"") {
-		r.Value = fmt.Sprintf("\"%s\"", r.Value)
-	}
-	return r
-}
+func (r *Record) GetTTL() int      { return r.TTL }
+func (r *Record) SetTTL(ttl int)   { r.TTL = ttl }
+func (r *Record) Copy() raw.Record { n := *r; return &n }
