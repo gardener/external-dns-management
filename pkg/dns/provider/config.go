@@ -35,7 +35,7 @@ func (c *DNSHandlerConfig) GetProperty(key string, altKeys ...string) string {
 
 func (c *DNSHandlerConfig) GetRequiredIntProperty(key string, altKeys ...string) (int, error) {
 	value, err := c.getProperty(key, true, altKeys...)
-	if err!=nil {
+	if err != nil {
 		return 0, err
 	}
 	return strconv.Atoi(value)
@@ -43,7 +43,7 @@ func (c *DNSHandlerConfig) GetRequiredIntProperty(key string, altKeys ...string)
 
 func (c *DNSHandlerConfig) GetDefaultedProperty(key string, def string, altKeys ...string) string {
 	value, _ := c.getProperty(key, false, altKeys...)
-	if value=="" {
+	if value == "" {
 		return def
 	}
 	return value
@@ -51,12 +51,11 @@ func (c *DNSHandlerConfig) GetDefaultedProperty(key string, def string, altKeys 
 
 func (c *DNSHandlerConfig) GetDefaultedIntProperty(key string, def int, altKeys ...string) (int, error) {
 	value, _ := c.getProperty(key, false, altKeys...)
-	if value=="" {
+	if value == "" {
 		return def, nil
 	}
 	return strconv.Atoi(value)
 }
-
 
 func (c *DNSHandlerConfig) getProperty(key string, required bool, altKeys ...string) (string, error) {
 	usedKey := key
@@ -93,7 +92,6 @@ func (c *DNSHandlerConfig) getProperty(key string, required bool, altKeys ...str
 	return tvalue, nil
 }
 
-
 func (c *DNSHandlerConfig) FillRequiredProperty(target **string, prop string, alt ...string) error {
 	if utils.IsEmptyString(*target) {
 		value, err := c.GetRequiredProperty(prop, alt...)
@@ -104,14 +102,14 @@ func (c *DNSHandlerConfig) FillRequiredProperty(target **string, prop string, al
 	} else {
 		value := c.GetProperty(prop, alt...)
 		if value != "" {
-			return  fmt.Errorf("version defined in secret and provider config")
+			return fmt.Errorf("version defined in secret and provider config")
 		}
 	}
 	return nil
 }
 
-func (c *DNSHandlerConfig)  FillRequiredIntProperty(target **int, prop string, alt ...string) error {
-	if *target==nil || **target==0 {
+func (c *DNSHandlerConfig) FillRequiredIntProperty(target **int, prop string, alt ...string) error {
+	if *target == nil || **target == 0 {
 		value, err := c.GetRequiredProperty(prop, alt...)
 		if err != nil {
 			return err
@@ -124,17 +122,17 @@ func (c *DNSHandlerConfig)  FillRequiredIntProperty(target **int, prop string, a
 	} else {
 		value := c.GetProperty(prop, alt...)
 		if value != "" {
-			return  fmt.Errorf("property %s defined in secret and provider config", prop)
+			return fmt.Errorf("property %s defined in secret and provider config", prop)
 		}
 	}
 	return nil
 }
 
-func (c *DNSHandlerConfig)  FillDefaultedIntProperty(target **int, def int, prop string, alt ...string) error {
-	if *target==nil || **target==0 {
+func (c *DNSHandlerConfig) FillDefaultedIntProperty(target **int, def int, prop string, alt ...string) error {
+	if *target == nil || **target == 0 {
 		value := c.GetProperty(prop, alt...)
-		if value=="" {
-			*target=&def
+		if value == "" {
+			*target = &def
 		}
 		i, err := strconv.Atoi(value)
 		if err != nil {
@@ -144,7 +142,7 @@ func (c *DNSHandlerConfig)  FillDefaultedIntProperty(target **int, def int, prop
 	} else {
 		value := c.GetProperty(prop, alt...)
 		if value != "" {
-			return  fmt.Errorf("%s defined in secret and provider config", prop)
+			return fmt.Errorf("%s defined in secret and provider config", prop)
 		}
 	}
 	return nil
