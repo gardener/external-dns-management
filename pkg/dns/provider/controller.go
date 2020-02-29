@@ -58,7 +58,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedIntOption(OPT_TTL, 300, "Default time-to-live for DNS entries").
 		DefaultedIntOption(OPT_CACHE_TTL, 120, "Time-to-live for provider hosted zone cache").
 		DefaultedIntOption(OPT_SETUP, 10, "number of processors for controller setup").
-		DefaultedDurationOption(OPT_DNSDELAY, 10*time.Second, "delay between two dns reconcilations").
+		DefaultedDurationOption(OPT_DNSDELAY, 10*time.Second, "delay between two dns reconciliations").
 		DefaultedDurationOption(OPT_RESCHEDULEDELAY, 120*time.Second, "reschedule delay after losing provider").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
@@ -95,7 +95,6 @@ var _ reconcile.Interface = &reconciler{}
 const KEY_STATE = "dns-state"
 
 func DNSReconcilerType(factory DNSHandlerFactory) controller.ReconcilerType {
-
 	return func(c controller.Interface) (reconcile.Interface, error) {
 		return Create(c, factory)
 	}
@@ -133,7 +132,6 @@ func (this *reconciler) Start() {
 }
 
 func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.Status {
-
 	zoneid := this.state.DecodeZoneCommand(cmd)
 	if zoneid != "" {
 		return this.state.ReconcileZone(logger, zoneid)

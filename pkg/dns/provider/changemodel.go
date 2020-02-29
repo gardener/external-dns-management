@@ -18,15 +18,16 @@ package provider
 
 import (
 	"fmt"
-	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"sort"
 	"strings"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+
+	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -107,7 +108,7 @@ func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bo
 	if len(reqs) > 0 {
 		err := this.provider.ExecuteRequests(logger, model.context.zone.getZone(), this.model.zonestate, reqs)
 		if err != nil {
-			model.Errorf("entry reconcilation failed for %s: %s", this.name, err)
+			model.Errorf("entry reconciliation failed for %s: %s", this.name, err)
 			ok = false
 		}
 	}
@@ -136,7 +137,7 @@ type ChangeModel struct {
 	logger.LogContext
 	config         Config
 	owners         utils.StringSet
-	context        *zoneReconcilation
+	context        *zoneReconciliation
 	applied        map[string]*dns.DNSSet
 	dangling       *ChangeGroup
 	providergroups map[string]*ChangeGroup
@@ -149,7 +150,7 @@ type ChangeResult struct {
 	Error    error
 }
 
-func NewChangeModel(logger logger.LogContext, owners utils.StringSet, req *zoneReconcilation, config Config) *ChangeModel {
+func NewChangeModel(logger logger.LogContext, owners utils.StringSet, req *zoneReconciliation, config Config) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
 		config:         config,
@@ -359,7 +360,7 @@ func (this *ChangeModel) Update(logger logger.LogContext) error {
 	}
 	failed = !this.dangling.update(logger, this) || failed
 	if failed {
-		return fmt.Errorf("entry reconcilation failed for some provider(s)")
+		return fmt.Errorf("entry reconciliation failed for some provider(s)")
 	}
 	return nil
 }

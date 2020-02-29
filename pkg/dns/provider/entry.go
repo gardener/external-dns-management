@@ -254,7 +254,6 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 }
 
 func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config, old *Entry) reconcile.Status {
-
 	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider))
 
 	this.valid = false
@@ -269,7 +268,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	if utils.IsEmptyString(this.status.ProviderType) || (p.zoneid != "" && *this.status.ProviderType != p.ptype) {
 		if p.zoneid == "" {
-			// mark unassigned foreign entries as errorneous
+			// mark unassigned foreign entries as erroneous
 			if this.object.GetCreationTimestamp().Add(config.RescheduleDelay).After(time.Now()) {
 				state.RemoveFinalizer(this.object)
 				return reconcile.Succeeded(logger).RescheduleAfter(config.RescheduleDelay)
@@ -288,7 +287,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			hello.Infof(logger)
 			logger.Infof("assigning to provider type %q responsible for zone %s", p.ptype, p.zoneid)
 			this.status.State = api.STATE_PENDING
-			this.status.Message = StatusMessage("waiting for dns reconcilation")
+			this.status.Message = StatusMessage("waiting for dns reconciliation")
 		}
 	}
 
@@ -586,7 +585,6 @@ func (this *Entry) CreatedAt() time.Time {
 }
 
 func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
-
 	if this.DNSName() != new.DNSName() {
 		return NewEntry(new, this.state)
 	}

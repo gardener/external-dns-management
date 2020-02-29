@@ -44,7 +44,6 @@ type Handler struct {
 var _ provider.DNSHandler = &Handler{}
 
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
-
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *c,

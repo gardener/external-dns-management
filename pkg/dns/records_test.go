@@ -29,7 +29,6 @@ func TestMatch(t *testing.T) {
 	}
 
 	for _, entry := range table {
-
 		isEqual := entry.recordSetOne.Match(&entry.recordSetTwo)
 
 		if isEqual != entry.recordSetsAreEqual {

@@ -81,7 +81,6 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 }
 
 func (this *Execution) submitChanges(metrics provider.Metrics) error {
-
 	if len(this.change.Additions) == 0 && len(this.change.Deletions) == 0 {
 		return nil
 	}
@@ -124,7 +123,7 @@ func mapRecordSet(dnsname string, rs *dns.RecordSet) *googledns.ResourceRecordSe
 		}
 	}
 
-	// no annotation results in a TTL of 0, default to 300 for backwards-compatability
+	// no annotation results in a TTL of 0, default to 300 for backwards-compatibility
 	var ttl int64 = googleRecordTTL
 	if rs.TTL > 0 {
 		ttl = rs.TTL

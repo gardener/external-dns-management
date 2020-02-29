@@ -294,7 +294,6 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 
 	ref := this.object.DNSProvider().Spec.SecretRef
 	if ref != nil {
-
 		localref := *ref
 		ref = &localref
 

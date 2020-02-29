@@ -32,7 +32,6 @@ func (this *DNSOwnerObject) DNSOwner() *api.DNSOwner {
 }
 
 func DNSOwner(o resources.Object) *DNSOwnerObject {
-
 	if o.IsA(DNSOwnerType) {
 		return &DNSOwnerObject{o}
 	}

@@ -87,7 +87,6 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 }
 
 func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) (buildStatus, azure.RecordType, *azure.RecordSet) {
-
 	var properties azure.RecordSetProperties
 	var recordType azure.RecordType
 
