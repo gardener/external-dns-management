@@ -18,13 +18,14 @@ package provider
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/external-dns-management/pkg/dns"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -45,7 +46,7 @@ import (
 
 type DNSNames map[string]*Entry
 
-type zoneReconcilation struct {
+type zoneReconciliation struct {
 	zone      *dnsHostedZone
 	providers DNSProviders
 	entries   Entries
@@ -152,7 +153,7 @@ func (this *state) Setup() {
 	}, processors)
 
 	this.initialized = true
-	this.context.Infof("setup done - starting reconcilation")
+	this.context.Infof("setup done - starting reconciliation")
 }
 
 func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.Object), processors int) {
@@ -628,7 +629,7 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 	this.providers[new.ObjectName()] = new
 	mod := this.updateZones(logger, last, new)
 	if !status.IsSucceeded() {
-		logger.Infof("errorneous provider: %s", status.Error)
+		logger.Infof("erroneous provider: %s", status.Error)
 		if last != nil {
 			logger.Infof("trigger old zones")
 			for _, z := range last.zones {
@@ -760,7 +761,6 @@ func (this *state) removeForeignProvider(logger logger.LogContext, pname resourc
 }
 
 func (this *state) ProviderDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
-
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
@@ -802,7 +802,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 					// it must be cleanuped before the provider is gone
 					logger.Infof("provider is exclusively handling zone %q -> cleanup", n)
 
-					done, err := this.StartZoneReconcilation(logger, &zoneReconcilation{
+					done, err := this.StartZoneReconciliation(logger, &zoneReconciliation{
 						zone:      z,
 						providers: providers,
 						entries:   Entries{},
@@ -811,12 +811,12 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 						deleting:  false,
 					})
 					if !done {
-						return reconcile.Delay(logger, fmt.Errorf("zone reconcilation busy -> delay deletion"))
+						return reconcile.Delay(logger, fmt.Errorf("zone reconciliation busy -> delay deletion"))
 					}
 					if err != nil {
 						if _, ok := err.(*perrs.NoSuchHostedZone); !ok {
 							logger.Errorf("zone cleanup failed: %s", err)
-							return reconcile.Delay(logger, fmt.Errorf("zone reconcilation failed -> delay deletion"))
+							return reconcile.Delay(logger, fmt.Errorf("zone reconciliation failed -> delay deletion"))
 						}
 					}
 					metrics.DeleteZone(n)
@@ -919,7 +919,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				err = this.RemoveFinalizer(v.object)
 			}
 		} else {
-			this.smartInfof(logger, "deleting yet unmanaged or errorneous entry")
+			this.smartInfof(logger, "deleting yet unmanaged or erroneous entry")
 			err = this.RemoveFinalizer(v.object)
 		}
 		if err != nil {
@@ -943,7 +943,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	}
 
 	if !this.IsManaging(v) {
-		this.smartInfof(logger, "foreign zone %s(%s) -> skip reconcilation", utils.StringValue(v.status.Zone), utils.StringValue(v.status.ProviderType))
+		this.smartInfof(logger, "foreign zone %s(%s) -> skip reconciliation", utils.StringValue(v.status.Zone), utils.StringValue(v.status.ProviderType))
 		return nil, status
 	}
 
@@ -1042,7 +1042,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	if !object.IsDeleting() {
 		check, _ := this.EntryPremise(object)
 		if !check.Equals(p) {
-			logger.Infof("%s -> repeat reconcilation", p.NotifyChange(check))
+			logger.Infof("%s -> repeat reconciliation", p.NotifyChange(check))
 			return reconcile.Repeat(logger)
 		}
 	}
@@ -1120,7 +1120,7 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// zone reconcilation
+// zone reconciliation
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHostedZone, DNSProviders, Entries, DNSNames, bool) {
@@ -1134,8 +1134,8 @@ func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHos
 	return zone, this.getProvidersForZone(zoneid), entries, stale, deleting
 }
 
-func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string) (time.Duration, bool, *zoneReconcilation) {
-	req := &zoneReconcilation{}
+func (this *state) GetZoneReconciliation(logger logger.LogContext, zoneid string) (time.Duration, bool, *zoneReconciliation) {
+	req := &zoneReconciliation{}
 
 	this.lock.RLock()
 	defer this.lock.RUnlock()
@@ -1179,7 +1179,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 		return reconcile.Succeeded(logger).RescheduleAfter(5 * time.Second)
 	}
 
-	delay, hasProviders, req := this.GetZoneReconcilation(logger, zoneid)
+	delay, hasProviders, req := this.GetZoneReconciliation(logger, zoneid)
 	if req == nil || req.zone == nil {
 		if !hasProviders {
 			return reconcile.Succeeded(logger).Stop()
@@ -1188,10 +1188,10 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 	}
 	logger = this.RefineLogger(logger, req.zone.ProviderType())
 	if delay > 0 {
-		logger.Infof("too early (required delay between two reconcilations: %s) -> skip and reschedule", this.config.Delay)
+		logger.Infof("too early (required delay between two reconciliations: %s) -> skip and reschedule", this.config.Delay)
 		return reconcile.Succeeded(logger).RescheduleAfter(delay)
 	}
-	if done, err := this.StartZoneReconcilation(logger, req); done {
+	if done, err := this.StartZoneReconciliation(logger, req); done {
 		if err != nil {
 			if _, ok := err.(*perrs.NoSuchHostedZone); ok {
 				for _, provider := range req.providers {
@@ -1207,7 +1207,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 	return reconcile.Succeeded(logger).RescheduleAfter(10 * time.Second)
 }
 
-func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneReconcilation) (bool, error) {
+func (this *state) StartZoneReconciliation(logger logger.LogContext, req *zoneReconciliation) (bool, error) {
 	if req.deleting {
 		ctxutil.Tick(this.GetContext().GetContext(), controller.DeletionActivity)
 	}
@@ -1225,7 +1225,7 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 				logger.Errorf("???, duplicate entry in stale and entries")
 			}
 		}
-		logger.Infof("locking %d entries for zone reconcilation", len(list))
+		logger.Infof("locking %d entries for zone reconciliation", len(list))
 		list.Lock()
 		defer func() {
 			logger.Infof("unlocking %d entries", len(list))
@@ -1236,7 +1236,7 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 	return false, nil
 }
 
-func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconcilation) error {
+func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliation) error {
 	zoneid := req.zone.Id()
 	req.zone = this.zones[zoneid]
 	if req.zone == nil {

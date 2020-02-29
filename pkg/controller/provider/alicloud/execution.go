@@ -18,6 +18,7 @@ package alicloud
 
 import (
 	"fmt"
+
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -123,7 +124,6 @@ func (this *Execution) add(dnsname, rr string, rset *dns.RecordSet, modonly bool
 }
 
 func (this *Execution) submitChanges() error {
-
 	if len(this.additions) == 0 && len(this.updates) == 0 && len(this.deletions) == 0 {
 		return nil
 	}

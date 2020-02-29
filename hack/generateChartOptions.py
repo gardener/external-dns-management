@@ -11,7 +11,7 @@ options = """
       --alicloud-dns.default.pool.size int                          Worker pool size for pool default of controller alicloud-dns (default: 2)
       --alicloud-dns.disable-zone-state-caching                     disable use of cached dns zone state on changes
       --alicloud-dns.dns-class string                               Identifier used to differentiate responsible controllers for entries
-      --alicloud-dns.dns-delay duration                             delay between two dns reconcilations
+      --alicloud-dns.dns-delay duration                             delay between two dns reconciliations
       --alicloud-dns.dns.pool.resync-period duration                Period for resynchronization of pool dns of controller alicloud-dns (default: 15m0s)
       --alicloud-dns.dns.pool.size int                              Worker pool size for pool dns of controller alicloud-dns (default: 1)
       --alicloud-dns.dry-run                                        just check, don't modify
@@ -28,7 +28,7 @@ options = """
       --aws-route53.default.pool.size int                           Worker pool size for pool default of controller aws-route53 (default: 2)
       --aws-route53.disable-zone-state-caching                      disable use of cached dns zone state on changes
       --aws-route53.dns-class string                                Identifier used to differentiate responsible controllers for entries
-      --aws-route53.dns-delay duration                              delay between two dns reconcilations
+      --aws-route53.dns-delay duration                              delay between two dns reconciliations
       --aws-route53.dns.pool.resync-period duration                 Period for resynchronization of pool dns of controller aws-route53 (default: 15m0s)
       --aws-route53.dns.pool.size int                               Worker pool size for pool dns of controller aws-route53 (default: 1)
       --aws-route53.dry-run                                         just check, don't modify
@@ -45,7 +45,7 @@ options = """
       --azure-dns.default.pool.size int                             Worker pool size for pool default of controller azure-dns (default: 2)
       --azure-dns.disable-zone-state-caching                        disable use of cached dns zone state on changes
       --azure-dns.dns-class string                                  Identifier used to differentiate responsible controllers for entries
-      --azure-dns.dns-delay duration                                delay between two dns reconcilations
+      --azure-dns.dns-delay duration                                delay between two dns reconciliations
       --azure-dns.dns.pool.resync-period duration                   Period for resynchronization of pool dns of controller azure-dns (default: 15m0s)
       --azure-dns.dns.pool.size int                                 Worker pool size for pool dns of controller azure-dns (default: 1)
       --azure-dns.dry-run                                           just check, don't modify
@@ -87,7 +87,7 @@ options = """
       --google-clouddns.default.pool.size int                       Worker pool size for pool default of controller google-clouddns (default: 2)
       --google-clouddns.disable-zone-state-caching                  disable use of cached dns zone state on changes
       --google-clouddns.dns-class string                            Identifier used to differentiate responsible controllers for entries
-      --google-clouddns.dns-delay duration                          delay between two dns reconcilations
+      --google-clouddns.dns-delay duration                          delay between two dns reconciliations
       --google-clouddns.dns.pool.resync-period duration             Period for resynchronization of pool dns of controller google-clouddns (default: 15m0s)
       --google-clouddns.dns.pool.size int                           Worker pool size for pool dns of controller google-clouddns (default: 1)
       --google-clouddns.dry-run                                     just check, don't modify
@@ -130,7 +130,7 @@ options = """
       --openstack-designate.default.pool.size int                   Worker pool size for pool default of controller openstack-designate (default: 2)
       --openstack-designate.disable-zone-state-caching              disable use of cached dns zone state on changes
       --openstack-designate.dns-class string                        Identifier used to differentiate responsible controllers for entries
-      --openstack-designate.dns-delay duration                      delay between two dns reconcilations
+      --openstack-designate.dns-delay duration                      delay between two dns reconciliations
       --openstack-designate.dns.pool.resync-period duration         Period for resynchronization of pool dns of controller openstack-designate (default: 15m0s)
       --openstack-designate.dns.pool.size int                       Worker pool size for pool dns of controller openstack-designate (default: 1)
       --openstack-designate.dry-run                                 just check, don't modify

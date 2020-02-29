@@ -32,7 +32,6 @@ func (this *DNSEntryObject) DNSEntry() *api.DNSEntry {
 }
 
 func DNSEntry(o resources.Object) *DNSEntryObject {
-
 	if o.IsA(DNSEntryType) {
 		return &DNSEntryObject{o}
 	}

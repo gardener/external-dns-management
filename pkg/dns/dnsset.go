@@ -37,7 +37,7 @@ import "github.com/gardener/controller-manager-library/pkg/utils"
 // This record set must be stored and restored by the provider in some
 //  applicable way.
 //
-// This library supports a default mechanis for ths task, that can be used by
+// This library supports a default mechanics for ths task, that can be used by
 // the provider:
 // This record set always contains a prefix attribute used to map META
 // records to TXT records finally stored by the provider.
@@ -46,7 +46,7 @@ import "github.com/gardener/controller-manager-library/pkg/utils"
 // the prefix and the original name.
 // This mapping is done by the the two functions MapFromProvider and
 // MapToProvider. These methods can be called by the provider when reading
-// or writing a record set, respectivly. The map the given set to
+// or writing a record set, respectively. The map the given set to
 // an effective set and dns name for the desired purpose.
 
 type DNSSets map[string]*DNSSet
