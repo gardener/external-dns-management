@@ -19,6 +19,7 @@ package controller
 import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 type Finalizer interface {
@@ -28,11 +29,19 @@ type Finalizer interface {
 	RemoveFinalizer(obj resources.Object) error
 }
 
+type FinalizerGroup interface {
+	Finalizer
+	Main() string
+	Finalizers() utils.StringSet
+}
+
+type NameMapper func(name ...string) string
+
 type DefaultFinalizer struct {
 	name string
 }
 
-func NewDefaultFinalizer(name string) Finalizer {
+func NewDefaultFinalizer(name string) FinalizerGroup {
 	return &DefaultFinalizer{name}
 }
 
@@ -52,7 +61,116 @@ func (this *DefaultFinalizer) FinalizerName(obj resources.Object) string {
 	return this.name
 }
 
+func (this *DefaultFinalizer) Main() string {
+	return this.name
+}
+
+func (this *DefaultFinalizer) Finalizers() utils.StringSet {
+	return utils.NewStringSet(this.name)
+}
+
 ///////////////////////////////////////////////////////////////////////////////
+
+type DefaultFinalizerGroup struct {
+	main string
+	set  utils.StringSet
+}
+
+func NewFinalizerGroup(name string, set utils.StringSet, mapper ...NameMapper) FinalizerGroup {
+	set.Add(name)
+	this := DefaultFinalizerGroup{name, set}
+	if len(set) == 1 {
+		return NewDefaultFinalizer(name)
+	}
+	return &this
+
+}
+
+func (this *DefaultFinalizerGroup) HasFinalizer(obj resources.Object) bool {
+	for c := range this.set {
+		if obj.HasFinalizer(c) {
+			return true
+		}
+	}
+	return false
+}
+
+func (this *DefaultFinalizerGroup) FinalizerName(obj resources.Object) string {
+	return this.main
+}
+
+func (this *DefaultFinalizerGroup) SetFinalizer(obj resources.Object) error {
+	err := obj.SetFinalizer(this.FinalizerName(obj))
+	if err != nil {
+		return err
+	}
+	for c := range this.set {
+		if c != this.main {
+			err = obj.RemoveFinalizer(c)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (this *DefaultFinalizerGroup) RemoveFinalizer(obj resources.Object) error {
+	for c := range this.set {
+		err := obj.RemoveFinalizer(c)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (this *DefaultFinalizerGroup) Main() string {
+	return this.main
+}
+
+func (this *DefaultFinalizerGroup) Finalizers() utils.StringSet {
+	return utils.NewStringSetBySets(this.set)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+func NewFinalizerForGroupAndClasses(group FinalizerGroup, classes *Classes) FinalizerGroup {
+	set := classesFinalizerSet(group, classes)
+	main := classFinalizer(group.Main(), classes)
+	return NewFinalizerGroup(main, set)
+}
+
+func classFinalizer(base string, classes *Classes, class ...string) string {
+	classname := classes.Main()
+	if len(class) > 0 {
+		classname = class[0]
+	}
+	if classname == classes.Default() {
+		return base
+	}
+	return classname + "." + base
+}
+
+func classFinalizers(group FinalizerGroup, classes *Classes, class string) utils.StringSet {
+	set := utils.StringSet{}
+
+	for b := range group.Finalizers() {
+		set.Add(classFinalizer(b, classes, class))
+	}
+	return set
+}
+
+func classesFinalizerSet(group FinalizerGroup, classes *Classes) utils.StringSet {
+	set := utils.StringSet{}
+
+	for c := range classes.classes {
+		set.AddSet(classFinalizers(group, classes, c))
+	}
+	return set
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 type ClassesFinalizer struct {
 	base    string
@@ -73,14 +191,7 @@ func NewFinalizerForClasses(logger logger.LogContext, name string, classes *Clas
 }
 
 func (this *ClassesFinalizer) finalizer(eff ...string) string {
-	class := this.classes.Main()
-	if len(eff) > 0 {
-		class = eff[0]
-	}
-	if class == this.classes.Default() {
-		return this.base
-	}
-	return class + "." + this.base
+	return classFinalizer(this.base, this.classes, eff...)
 }
 
 func (this *ClassesFinalizer) HasFinalizer(obj resources.Object) bool {

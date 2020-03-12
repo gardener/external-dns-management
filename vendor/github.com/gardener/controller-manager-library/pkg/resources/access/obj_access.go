@@ -18,7 +18,9 @@ package access
 
 import (
 	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 )
 
 const ANNOTATION_IGNORE_OWNERS = "resources.gardener.cloud/ignore-owners-for-access-control"
@@ -33,7 +35,8 @@ func CheckAccessWithRealms(object resources.Object, verb string, used resources.
 		if rtype != nil {
 			granted := rtype.RealmsForObject(used)
 			if !granted.IsResponsibleFor(object) {
-				return fmt.Errorf("permission denied by realms")
+				return errors.New(errors.ERR_PERMISSION_DENIED, "permission denied by realms: %s <%s> %s",
+					object.ClusterKey(), verb, used.ClusterKey())
 			}
 		}
 	}

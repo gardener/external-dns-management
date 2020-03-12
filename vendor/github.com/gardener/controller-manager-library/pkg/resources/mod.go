@@ -17,103 +17,67 @@
 package resources
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile/conditions"
-	"github.com/gardener/controller-manager-library/pkg/fieldpath"
-	"github.com/gardener/controller-manager-library/pkg/utils"
-	"reflect"
+	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 )
 
-type ModificationState struct {
-	utils.ModificationState
-	object  Object
-	handler conditions.ModificationHandler
+type ObjectUpdater interface {
+	Update() error
 }
 
+type ObjectStatusUpdater interface {
+	UpdateStatus() error
+}
+
+type ModificationUpdater interface {
+	IsModified() bool
+	ObjectUpdater
+}
+
+type ModificationStatusUpdater interface {
+	IsModified() bool
+	ObjectStatusUpdater
+}
+
+type ModificationState struct {
+	*abstract.ModificationState
+}
+
+var _ ModificationUpdater = (*ModificationState)(nil)
+
 func NewModificationState(object Object, mod ...bool) *ModificationState {
-	aggr := false
-	for _, m := range mod {
-		aggr = aggr || m
-	}
-	s := &ModificationState{utils.ModificationState{aggr}, object, nil}
-	s.handler = &modhandler{s}
-	return s
+	return &ModificationState{abstract.NewModificationState(object, mod...)}
 }
 
 func (this *ModificationState) Object() Object {
-	return this.object
-}
-
-func (this *ModificationState) Data() ObjectData {
-	return this.object.Data()
-}
-
-func (this *ModificationState) Condition(t *conditions.ConditionType) *conditions.Condition {
-	c := t.GetCondition(this.Data())
-	if c != nil {
-		c.AddModificationHandler(this.handler)
-	}
-	return c
+	return this.ModificationState.Object().(Object)
 }
 
 func (this *ModificationState) Update() error {
 	if this.Modified {
-		return this.object.Update()
+		return this.Object().Update()
 	}
 	return nil
 }
 
 func (this *ModificationState) UpdateStatus() error {
 	if this.Modified {
-		return this.object.UpdateStatus()
+		return this.Object().UpdateStatus()
 	}
 	return nil
 }
 
-func (this *ModificationState) Apply(f func(obj Object) bool) *ModificationState {
-	this.Modified = this.Modified || f(this.object)
-	return this
-}
-
 func (this *ModificationState) AssureLabel(name, value string) *ModificationState {
-	labels := this.object.GetLabels()
-	if labels[name] != value {
-		if value == "" {
-			delete(labels, name)
-		} else {
-			labels[name] = value
-		}
-		this.Modified = true
-	}
+	this.ModificationState.AssureLabel(name, value)
 	return this
 }
 
 func (this *ModificationState) AddOwners(objs ...Object) *ModificationState {
 	for _, o := range objs {
-		if this.object.AddOwner(o) {
+		if this.Object().AddOwner(o) {
 			this.Modified = true
 		}
 	}
 	return this
-}
-
-func (this *ModificationState) Get(field fieldpath.Field) (interface{}, error) {
-	return field.Get(this.object.Data())
-}
-
-func (this *ModificationState) Set(field fieldpath.Field, value interface{}) error {
-	old, err := field.Get(this.object.Data())
-	if err != nil {
-		return err
-	}
-	if reflect.DeepEqual(old, value) {
-		return nil
-	}
-	err = field.Set(this.object.Data(), value)
-	if err != nil {
-		return err
-	}
-	this.Modified = true
-	return nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,12 +106,4 @@ func CreateOrModify(obj Object, f func(*ModificationState) error) (bool, error) 
 		return mod.Modified, err
 	}
 	return obj.CreateOrModify(m)
-}
-
-type modhandler struct {
-	state *ModificationState
-}
-
-func (this *modhandler) Modified(interface{}) {
-	this.state.Modify(true)
 }

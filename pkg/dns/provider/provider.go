@@ -547,7 +547,7 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	mod.AssureStringValue(&status.State, api.STATE_READY)
 	mod.AssureStringPtrValue(&status.Message, "provider operational")
 	mod.AssureInt64Value(&status.ObservedGeneration, this.object.DNSProvider().Generation)
-	return reconcile.UpdateStatus(logger, mod.UpdateStatus())
+	return reconcile.UpdateStatus(logger, mod)
 }
 
 func (this *dnsProviderVersion) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {

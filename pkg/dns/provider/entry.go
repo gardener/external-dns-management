@@ -664,6 +664,19 @@ func (this Entries) Delete(e *Entry) {
 	}
 }
 
+func (this Entries) UpdateOwnerInfo(counts OwnerCounts) {
+	for _, e := range this {
+		if e.IsResponsible() {
+			p := counts[e.OwnerId()]
+			if p == nil {
+				p = ProviderTypeCounts{}
+				counts[e.OwnerId()] = p
+			}
+			p[e.ProviderType()]++
+		}
+	}
+}
+
 func testUpdate(msg string, object resources.Object) {
 	err := object.UpdateStatus()
 	logger.Infof("**** %s %s %s: status update: %s", msg, object.ObjectName(), object.GetResourceVersion(), err)

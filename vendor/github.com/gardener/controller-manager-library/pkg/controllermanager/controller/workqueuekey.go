@@ -18,12 +18,14 @@ package controller
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"strings"
 
-	"github.com/gardener/controller-manager-library/pkg/resources"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/gardener/controller-manager-library/pkg/resources"
 )
 
 type Object interface {

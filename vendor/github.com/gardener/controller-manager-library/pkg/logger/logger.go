@@ -23,8 +23,11 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type FormattingFunction func(msgfmt string, args ...interface{})
+
 type LogContext interface {
 	NewContext(key, value string) LogContext
+	AddIndent(indent string) LogContext
 
 	Info(msg ...interface{})
 	Debug(msg ...interface{})
@@ -49,8 +52,9 @@ func SetLevel(name string) error {
 }
 
 type _context struct {
-	key   string
-	entry *logrus.Entry
+	key    string
+	indent string
+	entry  *logrus.Entry
 }
 
 var _ LogContext = _context{}
@@ -73,35 +77,39 @@ func New() LogContext {
 }
 
 func (this _context) NewContext(key, value string) LogContext {
-	return _context{key: fmt.Sprintf("%s%s: ", this.key, value), entry: this.entry}
+	return _context{key: fmt.Sprintf("%s%s: ", this.key, value), indent: this.indent, entry: this.entry}
+}
+
+func (this _context) AddIndent(indent string) LogContext {
+	return _context{key: this.key, indent: this.indent + indent, entry: this.entry}
 }
 
 func (this _context) Info(msg ...interface{}) {
-	this.entry.Infof("%s%s", this.key, fmt.Sprint(msg...))
+	this.entry.Infof("%s%s%s", this.key, this.indent, fmt.Sprint(msg...))
 }
 func (this _context) Infof(msgfmt string, args ...interface{}) {
-	this.entry.Infof(this.key+msgfmt, args...)
+	this.entry.Infof(this.key+this.indent+msgfmt, args...)
 }
 
 func (this _context) Debug(msg ...interface{}) {
-	this.entry.Debugf("%s%s", this.key, fmt.Sprint(msg...))
+	this.entry.Debugf("%s%s%s", this.key, this.indent, fmt.Sprint(msg...))
 }
 func (this _context) Debugf(msgfmt string, args ...interface{}) {
-	this.entry.Debugf(this.key+msgfmt, args...)
+	this.entry.Debugf(this.key+this.indent+msgfmt, args...)
 }
 
 func (this _context) Warn(msg ...interface{}) {
-	this.entry.Warnf("%s%s", this.key, fmt.Sprint(msg...))
+	this.entry.Warnf("%s%s%s", this.key, this.indent, fmt.Sprint(msg...))
 }
 func (this _context) Warnf(msgfmt string, args ...interface{}) {
-	this.entry.Warnf(this.key+msgfmt, args...)
+	this.entry.Warnf(this.key+this.indent+msgfmt, args...)
 }
 
 func (this _context) Error(msg ...interface{}) {
-	this.entry.Errorf("%s%s", this.key, fmt.Sprint(msg...))
+	this.entry.Errorf("%s%s%s", this.key, this.indent, fmt.Sprint(msg...))
 }
 func (this _context) Errorf(msgfmt string, args ...interface{}) {
-	this.entry.Errorf(this.key+msgfmt, args...)
+	this.entry.Errorf(this.key+this.indent+msgfmt, args...)
 }
 
 func Info(msg ...interface{}) {

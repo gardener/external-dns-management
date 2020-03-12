@@ -18,8 +18,14 @@ package resources
 
 import (
 	"fmt"
+	"reflect"
+
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	rerrors "github.com/gardener/controller-manager-library/pkg/resources/errors"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 func SetAnnotation(o ObjectData, key, value string) bool {
@@ -108,6 +114,74 @@ func SetOwnerReference(o ObjectData, ref *metav1.OwnerReference) bool {
 	return true
 }
 
+func getField(o ObjectData, name string) (interface{}, bool) {
+	if utils.IsNil(o) {
+		return nil, false
+	}
+	v := reflect.ValueOf(o)
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return nil, false
+	}
+	f := v.FieldByName(name)
+	if f.IsZero() {
+		return nil, false
+	}
+	if f.Kind() == reflect.Struct {
+		return f.Addr().Interface(), true
+	}
+	if f.Kind() == reflect.Ptr {
+		return f.Interface(), true
+	}
+	return f.Interface(), false
+}
+
+func GetObjectSpec(o ObjectData) (interface{}, bool) {
+	return getField(o, "Spec")
+}
+
+func GetObjectStatus(o ObjectData) (interface{}, bool) {
+	return getField(o, "Status")
+}
+
+func setField(o ObjectData, name string, value interface{}) error {
+	if utils.IsNil(o) {
+		return rerrors.New(rerrors.ERR_INVALID, "no object given")
+	}
+	v := reflect.ValueOf(o)
+	for v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+	if v.Kind() != reflect.Struct {
+		return rerrors.New(rerrors.ERR_INVALID, "no struct given")
+	}
+	f := v.FieldByName(name)
+	if f.IsZero() {
+		return rerrors.New(rerrors.ERR_INVALID, "invalid field %q", name)
+	}
+	if !f.CanSet() {
+		return rerrors.New(rerrors.ERR_INVALID, "cannot set field %q for type %T", name, o)
+	}
+	tv := reflect.ValueOf(value)
+	for tv.Kind() == reflect.Ptr && f.Kind() != reflect.Ptr {
+		tv = tv.Elem()
+	}
+	if tv.Type() != f.Type() {
+		if !tv.Type().ConvertibleTo(f.Type()) {
+			return rerrors.New(rerrors.ERR_INVALID, "cannot set field %q for type %T: invalid type %T", name, o, value)
+		}
+		tv = tv.Convert(f.Type())
+	}
+	f.Set(tv)
+	return nil
+}
+
+func SetObjectSpec(obj ObjectData, value interface{}) error {
+	return setField(obj, "Spec", value)
+}
+
 func RemoveOwnerReference(o ObjectData, ref *metav1.OwnerReference) bool {
 	refs := o.GetOwnerReferences()
 	for i, r := range refs {
@@ -146,4 +220,30 @@ func ObjectArrayToString(objs ...Object) string {
 		sep = ", "
 	}
 	return s + "]"
+}
+
+func AddLabel(labels map[string]string, key, value string) map[string]string {
+	new := map[string]string{}
+	for k, v := range labels {
+		new[k] = v
+	}
+	new[key] = value
+	return new
+}
+
+func IsObjectDeletionError(err error) bool {
+	return FilterObjectDeletionError(err) != nil
+}
+
+func FilterObjectDeletionError(args ...interface{}) error {
+	if len(args) == 0 {
+		return nil
+	}
+	if err, ok := args[len(args)-1].(error); ok {
+		if err == nil || errors.IsNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
 }

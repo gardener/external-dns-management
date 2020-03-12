@@ -25,11 +25,12 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/server/healthz"
 
+	"k8s.io/client-go/util/workqueue"
+
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"k8s.io/client-go/util/workqueue"
 )
 
 var poolkey reflect.Type
@@ -113,7 +114,7 @@ func NewPool(controller *controller, name string, size int, period time.Duration
 		reconcilers: newReconcilerMapping(),
 	}
 	pool.ctx, pool.LogContext = logger.WithLogger(
-		ctxutil.SyncContext(context.WithValue(controller.ctx, poolkey, pool)),
+		ctxutil.WaitGroupContext(context.WithValue(controller.GetContext(), poolkey, pool)),
 		"pool", name)
 	if pool.period != 0 {
 		pool.Infof("pool size %d, resync period %s", pool.size, pool.period.String())
@@ -175,12 +176,12 @@ func (p *pool) Run() {
 	<-p.ctx.Done()
 	p.workqueue.ShutDown()
 	p.Infof("waiting for workers to shutdown")
-	ctxutil.SyncPointWait(p.ctx, 120*time.Second)
+	ctxutil.WaitGroupWait(p.ctx, 120*time.Second)
 	healthz.End(p.Key())
 }
 
 func (p *pool) startWorker(number int, stopCh <-chan struct{}) {
-	ctxutil.SyncPointRunUntilCancelled(p.ctx, func() { newWorker(p, number).Run() })
+	ctxutil.WaitGroupRunUntilCancelled(p.ctx, func() { newWorker(p, number).Run() })
 }
 func (p *pool) EnqueueCommand(cmd string) {
 	p.enqueueCommand(cmd, p.workqueue.Add)

@@ -19,6 +19,8 @@ package fieldpath
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 type Field interface {
@@ -73,12 +75,20 @@ func (this *field) Get(base interface{}) (interface{}, error) {
 	if valueType(reflect.TypeOf(base)) != this.baseType {
 		return nil, fmt.Errorf("invalid base element: got %T, expected %s", base, this.baseType)
 	}
-	return this.node.Get(base)
+	v, err := this.node.Get(base)
+	if utils.IsNil(v) {
+		return nil, err
+	}
+	return v, err
 }
+
 func (this *field) GetAsValue(base interface{}) (interface{}, error) {
 	v, err := this.Get(base)
 	if err != nil {
 		return nil, err
+	}
+	if utils.IsNil(v) {
+		return nil, nil
 	}
 	value := reflect.ValueOf(v)
 	if value.IsNil() {

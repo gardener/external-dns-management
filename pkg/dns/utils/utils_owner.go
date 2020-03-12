@@ -50,3 +50,11 @@ func (this *DNSOwnerObject) IsActive() bool {
 	a := this.DNSOwner().Spec.Active
 	return a == nil || *a
 }
+
+func (this *DNSOwnerObject) GetCounts() map[string]int {
+	return this.DNSOwner().Status.Entries.ByType
+}
+
+func (this *DNSOwnerObject) GetCount() int {
+	return this.DNSOwner().Status.Entries.Amount
+}

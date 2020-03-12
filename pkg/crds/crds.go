@@ -23,12 +23,18 @@ import (
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
-var DNSOwnerCRD = apiextensions.CreateCRDObject(api.GroupName, api.Version, api.DNSOwnerKind, api.DNSOwnerPlural, "dnso", false,
+var DNSOwnerCRD = apiextensions.CreateCRDObjectWithStatus(api.GroupName, api.Version, api.DNSOwnerKind, api.DNSOwnerPlural, "dnso", false,
 	v1beta1.CustomResourceColumnDefinition{
 		Name:        "OWNERID",
 		Description: "Owner Id",
 		Type:        "string",
 		JSONPath:    ".spec.ownerId",
+	},
+	v1beta1.CustomResourceColumnDefinition{
+		Name:        "USAGES",
+		Description: "Number of using DNS Entries",
+		Type:        "integer",
+		JSONPath:    ".status.entries",
 	})
 
 var DNSProviderCRD = apiextensions.CreateCRDObjectWithStatus(api.GroupName, api.Version, api.DNSProviderKind, api.DNSProviderPlural, "dnspr", true,

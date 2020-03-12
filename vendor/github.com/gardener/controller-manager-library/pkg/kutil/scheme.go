@@ -17,10 +17,11 @@
 package kutil
 
 import (
+	"reflect"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"reflect"
 )
 
 func IsListType(t reflect.Type) (reflect.Type, bool) {

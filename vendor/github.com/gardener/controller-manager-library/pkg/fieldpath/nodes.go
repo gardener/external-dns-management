@@ -122,7 +122,7 @@ func (this *node) Set(src interface{}, val interface{}) error {
 func (this *node) _value(v reflect.Value, addMissing bool) (reflect.Value, error) {
 	var err error
 
-	//fmt.Printf("value: %s\n", this.self.String())
+	// fmt.Printf("value: %s\n", this.self.String())
 	if this.next != nil {
 		v, err = this.next._value(v, addMissing)
 		if err != nil {
@@ -175,7 +175,7 @@ func (this *node) _set(v reflect.Value, val interface{}) error {
 	}
 
 	a := reflect.ValueOf(val)
-	//fmt.Printf("assign %s: %s from %T(%#v)\n", this.self.String(), field.Type(), val, val)
+	// fmt.Printf("assign %s: %s from %T(%#v)\n", this.self.String(), field.Type(), val, val)
 
 	if val == nil {
 		k := v.Kind()
@@ -230,7 +230,7 @@ func (this *FieldNode) value(v reflect.Value, addMissing bool) (reflect.Value, e
 	if v.Kind() != reflect.Struct {
 		return reflect.Value{}, fmt.Errorf("%s is no struct", this.node.String())
 	}
-	//fmt.Printf("TYPE %s: %s lookup %s\n", this.node.String(), v.Type(), this.name)
+	// fmt.Printf("TYPE %s: %s lookup %s\n", this.node.String(), v.Type(), this.name)
 	field := v.FieldByName(this.name)
 	if !field.IsValid() {
 		return reflect.Value{}, fmt.Errorf("%s has no field %q", this.node.String(), this.name)
@@ -267,7 +267,7 @@ func (this *SliceEntryNode) value(v reflect.Value, addMissing bool) (reflect.Val
 		}
 		e := reflect.New(v.Type().Elem())
 		for v.Len() <= this.index {
-			//fmt.Printf("APPEND %d\n", v.Len())
+			// fmt.Printf("APPEND %d\n", v.Len())
 			v.Set(reflect.Append(v, e.Elem()))
 		}
 	}

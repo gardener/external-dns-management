@@ -18,8 +18,9 @@ package controller
 
 import (
 	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
+	areacfg "github.com/gardener/controller-manager-library/pkg/controllermanager/controller/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/groups"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -35,7 +36,7 @@ type Definitions interface {
 	GetMappingsFor(name string) (mappings.Definition, error)
 	DetermineRequestedClusters(clusters cluster.Definitions, sets ...utils.StringSet) (utils.StringSet, error)
 	Registrations(names ...string) (Registrations, error)
-	ExtendConfig(cfg *config.Config)
+	ExtendConfig(cfg *areacfg.Config)
 }
 
 func (this *_Definitions) Size() int {
@@ -104,7 +105,7 @@ func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, 
 			return nil, fmt.Errorf("controller %q not definied", n)
 		}
 		names := cluster.Canonical(def.RequiredClusters())
-		cmp, err := this.GetMappingsFor(def.GetName())
+		cmp, err := this.GetMappingsFor(def.Name())
 		if err != nil {
 			return nil, err
 		}
@@ -114,7 +115,7 @@ func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, 
 
 		set, found, err := mappings.DetermineClusters(cdefs, cmp, names...)
 		if err != nil {
-			return nil, fmt.Errorf("controller %q %s", def.GetName(), err)
+			return nil, fmt.Errorf("controller %q %s", def.Name(), err)
 		}
 		clusters.AddSet(set)
 		logger.Infof("  mapped to %s", utils.Strings(found...))

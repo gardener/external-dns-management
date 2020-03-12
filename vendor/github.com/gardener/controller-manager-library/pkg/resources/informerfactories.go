@@ -17,10 +17,11 @@
 package resources
 
 import (
-	"fmt"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 
 	"github.com/gardener/controller-manager-library/pkg/kutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -113,9 +114,9 @@ func (f *genericInformerFactory) informerFor(informerType reflect.Type, gvk sche
 		return informer, nil
 	}
 
-	l := kutil.DetermineListType(f.context.Scheme, gvk.GroupVersion(), informerType)
+	l := kutil.DetermineListType(f.context.Scheme(), gvk.GroupVersion(), informerType)
 	if l == nil {
-		return nil, fmt.Errorf("no list type found for %s", informerType)
+		return nil, errors.New(errors.ERR_NO_LIST_TYPE, "no list type found for %s", informerType)
 	}
 
 	client, err := f.getClient(gvk.GroupVersion())

@@ -18,6 +18,7 @@ package mappings
 
 import (
 	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
@@ -53,7 +54,7 @@ func DetermineClusters(cdefs cluster.Definitions, cmp Definition, names ...strin
 }
 
 func MapClusters(clusters cluster.Clusters, cmp Definition, names ...string) (cluster.Clusters, error) {
-	mapped := cluster.NewClusters()
+	mapped := cluster.NewClusters(clusters.Cache())
 	var main_cluster cluster.Interface
 	main_info := ""
 	for i, name := range names {

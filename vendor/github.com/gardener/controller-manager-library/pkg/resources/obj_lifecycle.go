@@ -17,7 +17,7 @@
 package resources
 
 import (
-	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 )
 
 func (this *AbstractObject) Create() error {
@@ -74,7 +74,7 @@ func (this *AbstractObject) Update() error {
 func (this *AbstractObject) UpdateStatus() error {
 	rsc := this.self.I_resource()
 	if !rsc.Info().HasStatusSubResource() {
-		return fmt.Errorf("resource %q has no status sub resource", rsc.GroupVersionKind())
+		return errors.ErrNoStatusSubResource.New(rsc.GroupVersionKind())
 	}
 	result, err := rsc.I_updateStatus(this.ObjectData)
 	if err == nil {

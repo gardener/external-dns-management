@@ -19,19 +19,21 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"time"
+
+	"github.com/gardener/controller-manager-library/pkg/controllermanager"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/server/healthz"
-	"strconv"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/util/workqueue"
 )
 
-const DeletionActivity = "DeletionActivity"
+const DeletionActivity = controllermanager.DeletionActivity
 
 // worker describe a single threaded worker entity synchronously working
 // on requests provided by the controller workqueue
@@ -159,6 +161,7 @@ func (w *worker) processNextWorkItem() bool {
 
 		for _, reconciler := range reconcilers {
 			status := f(reconciler)
+			w.pool.controller.requestHandled(w, reconciler, *rkey)
 			if !status.Completed {
 				ok = false
 			}

@@ -63,3 +63,10 @@ var _ Definition = &DefinitionWrapper{}
 func AddFilters(def Definition, filters ...ResourceFilter) Definition {
 	return &DefinitionWrapper{def, filters}
 }
+
+func FinalizerName(domain, controller string) string {
+	if domain == "" {
+		return "acme.com" + "/" + controller
+	}
+	return domain + "/" + controller
+}

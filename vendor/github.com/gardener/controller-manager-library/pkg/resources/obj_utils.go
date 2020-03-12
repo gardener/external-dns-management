@@ -16,7 +16,7 @@
 
 package resources
 
-func (this *_object) GetLabel(name string) string {
+func (this *AbstractObject) GetLabel(name string) string {
 	labels := this.ObjectData.GetLabels()
 	return labels[name]
 }

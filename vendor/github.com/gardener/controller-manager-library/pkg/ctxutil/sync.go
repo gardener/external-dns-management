@@ -26,7 +26,7 @@ import (
 
 var synckey = ""
 
-func SyncContext(ctx context.Context) context.Context {
+func WaitGroupContext(ctx context.Context) context.Context {
 	var wg sync.WaitGroup
 	return context.WithValue(ctx, &synckey, &wg)
 }
@@ -35,15 +35,15 @@ func get_wg(ctx context.Context) *sync.WaitGroup {
 	return ctx.Value(&synckey).(*sync.WaitGroup)
 }
 
-func SyncPointAdd(ctx context.Context) {
+func WaitGroupAdd(ctx context.Context) {
 	get_wg(ctx).Add(1)
 }
 
-func SyncPointDone(ctx context.Context) {
+func WaitGroupDone(ctx context.Context) {
 	get_wg(ctx).Done()
 }
 
-func SyncPointWait(ctx context.Context, duration time.Duration) {
+func WaitGroupWait(ctx context.Context, duration time.Duration) {
 	if duration <= 0 {
 		get_wg(ctx).Wait()
 	} else {
@@ -62,23 +62,23 @@ func SyncPointWait(ctx context.Context, duration time.Duration) {
 	}
 }
 
-func SyncPointRun(ctx context.Context, f func()) {
-	SyncPointAdd(ctx)
+func WaitGroupRun(ctx context.Context, f func()) {
+	WaitGroupAdd(ctx)
 	go func() {
-		defer SyncPointDone(ctx)
+		defer WaitGroupDone(ctx)
 		f()
 	}()
 }
 
-func SyncPointRunAndCancelOnExit(ctx context.Context, f func()) {
-	SyncPointAdd(ctx)
+func WaitGroupRunAndCancelOnExit(ctx context.Context, f func()) {
+	WaitGroupAdd(ctx)
 	go func() {
 		defer Cancel(ctx)
-		defer SyncPointDone(ctx)
+		defer WaitGroupDone(ctx)
 		f()
 	}()
 }
 
-func SyncPointRunUntilCancelled(ctx context.Context, f func()) {
-	SyncPointRun(ctx, func() { wait.Until(f, time.Second, ctx.Done()) })
+func WaitGroupRunUntilCancelled(ctx context.Context, f func()) {
+	WaitGroupRun(ctx, func() { wait.Until(f, time.Second, ctx.Done()) })
 }

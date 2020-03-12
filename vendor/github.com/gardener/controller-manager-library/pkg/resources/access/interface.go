@@ -17,9 +17,9 @@
 package access
 
 import (
-	"fmt"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 )
 
 const (
@@ -56,7 +56,7 @@ func Allowed(src resources.ClusterObjectKey, verb string, tgt resources.ClusterO
 			case ACCESS_DENIED:
 				return false, "denied by " + c.Name(), nil
 			default:
-				return false, "denied by " + c.Name(), fmt.Errorf("invalid response from %s: %d", c.Name(), a)
+				return false, "denied by " + c.Name(), errors.New(errors.ERR_INVALID_RESPONSE, "invalid response from %s: %d", c.Name(), a)
 			}
 		}
 	}
