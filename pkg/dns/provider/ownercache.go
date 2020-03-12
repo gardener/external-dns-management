@@ -25,24 +25,40 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
-type OwnerInfo struct {
+type ProviderTypeCounts map[string]int
+type OwnerCounts map[string]ProviderTypeCounts
+
+type OwnerObjectInfo struct {
 	active bool
 	id     string
+}
+type OwnerObjectInfos map[string]OwnerObjectInfo
+
+type OwnerIdInfo struct {
+	refcount    int
+	entrycounts map[string]int
+}
+type OwnerIdInfos map[string]OwnerIdInfo
+
+func (this OwnerIdInfos) Contains(id string) bool {
+	_, ok := this[id]
+	return ok
+}
+func (this OwnerIdInfos) KeySet() utils.StringSet {
+	return utils.StringKeySet(this)
 }
 
 type OwnerCache struct {
 	lock sync.RWMutex
 
-	ownerids utils.StringSet
-	owners   map[string]OwnerInfo
-	ownercnt map[string]int
+	owners   OwnerObjectInfos
+	ownerids OwnerIdInfos
 }
 
 func NewOwnerCache(config *Config) *OwnerCache {
 	return &OwnerCache{
-		ownerids: utils.NewStringSet(config.Ident),
-		owners:   map[string]OwnerInfo{},
-		ownercnt: map[string]int{config.Ident: 1},
+		owners:   OwnerObjectInfos{},
+		ownerids: OwnerIdInfos{config.Ident: {refcount: 1}},
 	}
 }
 
@@ -55,14 +71,37 @@ func (this *OwnerCache) IsResponsibleFor(id string) bool {
 func (this *OwnerCache) GetIds() utils.StringSet {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
-	return this.ownerids.Copy()
+	return this.ownerids.KeySet()
+}
+
+func (this *OwnerCache) UpdateCountsWith(counts OwnerCounts) OwnerCounts {
+	changed := OwnerCounts{}
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	for k, p := range counts {
+		e, ok := this.ownerids[k]
+		if ok {
+			for n, c := range p {
+				if e.entrycounts[n] != c {
+					e.entrycounts[n] = c
+					this.ownerids[k] = e
+					for n, o := range this.owners {
+						if o.id == k {
+							changed[n] = e.entrycounts
+						}
+					}
+				}
+			}
+		}
+	}
+	return changed
 }
 
 func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changeset utils.StringSet, activeset utils.StringSet) {
-	return this.UpdateOwnerData(owner.ObjectName().String(), owner.GetOwnerId(), owner.IsActive())
+	return this.UpdateOwnerData(owner.ObjectName().Name(), owner.GetOwnerId(), owner.IsActive(), owner.GetCounts())
 }
 
-func (this *OwnerCache) UpdateOwnerData(name, id string, active bool) (changeset utils.StringSet, activeset utils.StringSet) {
+func (this *OwnerCache) UpdateOwnerData(name, id string, active bool, counts ProviderTypeCounts) (changeset utils.StringSet, activeset utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
@@ -70,12 +109,12 @@ func (this *OwnerCache) UpdateOwnerData(name, id string, active bool) (changeset
 	old, ok := this.owners[name]
 	if ok {
 		if old.id == id && old.active == active {
-			return changeset, this.ownerids.Copy()
+			return changeset, this.ownerids.KeySet()
 		}
 		this.deactivate(name, old, changeset)
 	}
-	this.activate(name, id, active, changeset)
-	return changeset, this.ownerids.Copy()
+	this.activate(name, id, active, changeset, counts)
+	return changeset, this.ownerids.KeySet()
 }
 
 func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changeset utils.StringSet, activeset utils.StringSet) {
@@ -87,31 +126,36 @@ func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changeset utils.St
 	if ok {
 		this.deactivate(name, old, changeset)
 	}
-	return changeset, this.ownerids.Copy()
+	return changeset, this.ownerids.KeySet()
 }
 
-func (this *OwnerCache) deactivate(name string, old OwnerInfo, changeset utils.StringSet) {
+func (this *OwnerCache) deactivate(name string, old OwnerObjectInfo, changeset utils.StringSet) {
 	if old.active {
-		cnt := this.ownercnt[old.id]
-		cnt--
-		this.ownercnt[old.id] = cnt
-		if cnt == 0 {
-			this.ownerids.Remove(old.id)
+		e := this.ownerids[old.id]
+		e.refcount--
+		this.ownerids[old.id] = e
+		if e.refcount == 0 {
+			delete(this.ownerids, old.id)
 			changeset.Add(old.id)
 		}
 	}
 	delete(this.owners, name)
 }
 
-func (this *OwnerCache) activate(name string, id string, active bool, changeset utils.StringSet) {
+func (this *OwnerCache) activate(name string, id string, active bool, changeset utils.StringSet, counts ProviderTypeCounts) {
 	if active {
-		cnt := this.ownercnt[id]
-		cnt++
-		this.ownercnt[id] = cnt
-		this.ownerids.Add(id)
-		if cnt == 1 {
+		e, ok := this.ownerids[id]
+		if !ok {
+			e.entrycounts = counts
+		}
+		if e.entrycounts == nil {
+			e.entrycounts = ProviderTypeCounts{}
+		}
+		e.refcount++
+		this.ownerids[id] = e
+		if e.refcount == 1 {
 			changeset.Add(id)
 		}
 	}
-	this.owners[name] = OwnerInfo{id: id, active: active}
+	this.owners[name] = OwnerObjectInfo{id: id, active: active}
 }

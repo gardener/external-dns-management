@@ -56,10 +56,10 @@ func toValue(v reflect.Value, addMissing bool) reflect.Value {
 	if isPtr(v) {
 		if v.IsNil() {
 			if addMissing {
-				//fmt.Printf("CREATE %s\n", v.Type().Elem())
+				// fmt.Printf("CREATE %s\n", v.Type().Elem())
 				v.Set(reflect.New(v.Type().Elem()))
 			} else {
-				//fmt.Print("NIL\n")
+				// fmt.Print("NIL\n")
 				return reflect.Value{}
 			}
 		}

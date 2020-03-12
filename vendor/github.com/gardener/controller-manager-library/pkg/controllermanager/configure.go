@@ -18,39 +18,46 @@ package controllermanager
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/groups"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
+
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
 type Configuration struct {
-	name           string
-	description    string
-	cluster_reg    cluster.Registry
-	controller_reg controller.Registry
+	name          string
+	description   string
+	extension_reg extension.ExtensionRegistry
+	cluster_reg   cluster.Registry
 }
 
 var _ cluster.RegistrationInterface = &Configuration{}
-var _ mappings.RegistrationInterface = &Configuration{}
-var _ groups.RegistrationInterface = &Configuration{}
-var _ controller.RegistrationInterface = &Configuration{}
 
 func Configure(name, desc string, scheme *runtime.Scheme) Configuration {
 	return Configuration{
-		name:           name,
-		description:    desc,
-		cluster_reg:    cluster.NewRegistry(scheme),
-		controller_reg: controller.NewRegistry(),
+		name:          name,
+		description:   desc,
+		extension_reg: extension.NewExtensionRegistry(),
+		cluster_reg:   cluster.NewRegistry(scheme),
 	}
 }
 
 func (this Configuration) ByDefault() Configuration {
+	this.extension_reg = extension.DefaultRegistry()
 	this.cluster_reg = cluster.DefaultRegistry()
-	this.controller_reg = controller.DefaultRegistry()
 	return this
 }
 
+func (this Configuration) RegisterExtension(reg extension.ExtensionType) {
+	this.extension_reg.RegisterExtension(reg)
+}
+func (this Configuration) Extension(name string) extension.ExtensionType {
+	for _, e := range this.extension_reg.GetExtensionTypes() {
+		if e.Name() == name {
+			return e
+		}
+	}
+	return nil
+}
 func (this Configuration) RegisterCluster(reg cluster.Registerable) error {
 	return this.cluster_reg.RegisterCluster(reg)
 }
@@ -58,32 +65,11 @@ func (this Configuration) MustRegisterCluster(reg cluster.Registerable) cluster.
 	return this.cluster_reg.MustRegisterCluster(reg)
 }
 
-func (this Configuration) RegisterMapping(reg mappings.Registerable) error {
-	return this.controller_reg.RegisterMapping(reg)
-}
-func (this Configuration) MustRegisterMapping(reg mappings.Registerable) mappings.RegistrationInterface {
-	return this.controller_reg.MustRegisterMapping(reg)
-}
-
-func (this Configuration) RegisterGroup(name string) (*groups.Configuration, error) {
-	return this.controller_reg.RegisterGroup(name)
-}
-func (this Configuration) MustRegisterGroup(name string) *groups.Configuration {
-	return this.controller_reg.MustRegisterGroup(name)
-}
-
-func (this Configuration) RegisterController(reg controller.Registerable, groups ...string) error {
-	return this.controller_reg.RegisterController(reg, groups...)
-}
-func (this Configuration) MustRegisterController(reg controller.Registerable, groups ...string) controller.RegistrationInterface {
-	return this.controller_reg.MustRegisterController(reg, groups...)
-}
-
 func (this Configuration) Definition() *Definition {
 	return &Definition{
-		name:            this.name,
-		description:     this.description,
-		cluster_defs:    this.cluster_reg.GetDefinitions(),
-		controller_defs: this.controller_reg.GetDefinitions(),
+		name:         this.name,
+		description:  this.description,
+		extensions:   this.extension_reg.GetDefinitions(),
+		cluster_defs: this.cluster_reg.GetDefinitions(),
 	}
 }

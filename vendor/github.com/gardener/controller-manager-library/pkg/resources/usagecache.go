@@ -141,9 +141,10 @@ func (this *UsageCache) renewOwner(obj Object) bool {
 			this.remove(key, e)
 		}
 		return len(add)+len(del) > 0
-	}
-	for e := range ńewused {
-		this.add(key, e)
+	} else {
+		for e := range ńewused {
+			this.add(key, e)
+		}
 	}
 	return true
 }

@@ -18,12 +18,14 @@ package controller
 
 import (
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/groups"
+	"sync"
+
+	"github.com/gardener/controller-manager-library/pkg/config"
+	cgroups "github.com/gardener/controller-manager-library/pkg/controllermanager/controller/groups"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension/groups"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"sync"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -83,7 +85,7 @@ var _ Definition = &_Definition{}
 var _ Definitions = &_Definitions{}
 
 func NewRegistry() Registry {
-	return newRegistry(mappings.DefaultRegistry(), groups.DefaultRegistry())
+	return newRegistry(mappings.NewRegistry(), cgroups.NewRegistry())
 }
 
 func newRegistry(mappings mappings.Registry, groups groups.Registry) Registry {
@@ -111,27 +113,27 @@ func (this *_Registry) RegisterController(reg Registerable, group ...string) err
 	defer this.lock.Unlock()
 
 	if def.MainResource() == nil {
-		return fmt.Errorf("no main resource for controller %q", def.GetName())
+		return fmt.Errorf("no main resource for controller %q", def.Name())
 	}
-	if d, ok := this.definitions[def.GetName()]; ok && d != def {
-		return fmt.Errorf("multiple registration of controller %q", def.GetName())
+	if d, ok := this.definitions[def.Name()]; ok && d != def {
+		return fmt.Errorf("multiple registration of controller %q", def.Name())
 	}
-	logger.Infof("Registering controller %s", def.GetName())
+	logger.Infof("Registering controller %s", def.Name())
 
 	if len(group) == 0 {
-		err := this.addControllerToGroup(def, groups.DEFAULT)
+		err := this.addToGroup(def, groups.DEFAULT)
 		if err != nil {
 			return err
 		}
 	} else {
 		for _, g := range group {
-			err := this.addControllerToGroup(def, g)
+			err := this.addToGroup(def, g)
 			if err != nil {
 				return err
 			}
 		}
 	}
-	this.definitions[def.GetName()] = def
+	this.definitions[def.Name()] = def
 	return nil
 }
 
@@ -184,17 +186,17 @@ func (this *_Definition) Definition() Definition {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-var registry = newRegistry(mappings.DefaultRegistry(), groups.DefaultRegistry())
+var registry = newRegistry(mappings.DefaultRegistry(), cgroups.DefaultRegistry())
 
-func (this *_Registry) addControllerToGroup(def Definition, name string) error {
+func (this *_Registry) addToGroup(def Definition, name string) error {
 	grp, err := this.groups.RegisterGroup(name)
 	if err != nil {
 		return err
 	}
 	if def.ActivateExplicitly() {
-		grp.ActivateExplicitlyControllers(def.GetName())
+		grp.ActivateExplicitly(def.Name())
 	}
-	return grp.Controllers(def.GetName())
+	return grp.Members(def.Name())
 }
 
 ///////////////////////////////////////////////////////////////////////////////

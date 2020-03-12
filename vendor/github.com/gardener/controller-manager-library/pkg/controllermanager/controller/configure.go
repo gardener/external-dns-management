@@ -18,12 +18,15 @@ package controller
 
 import (
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
-	"github.com/gardener/controller-manager-library/pkg/resources"
-	"reflect"
 	"time"
 
-	apiext "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/gardener/controller-manager-library/pkg/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
+	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
@@ -34,32 +37,27 @@ func NamespaceSelection(namespace string) WatchSelectionFunction {
 	}
 }
 
+func OptionSourceCreator(proto config.OptionSource) extension.OptionSourceCreator {
+	return extension.OptionSourceCreatorByExample(proto)
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
-type configdef struct {
-	name         string
-	gotype       reflect.Type
-	defaultValue interface{}
-	desc         string
+type syncerdef struct {
+	name     string
+	cluster  string
+	resource ResourceKey
 }
 
-func (this *configdef) GetName() string {
+func (this *syncerdef) GetName() string {
 	return this.name
 }
-
-func (this *configdef) Type() reflect.Type {
-	return this.gotype
+func (this *syncerdef) GetCluster() string {
+	return this.cluster
 }
-
-func (this *configdef) Default() interface{} {
-	return this.defaultValue
+func (this *syncerdef) GetResource() ResourceKey {
+	return this.resource
 }
-
-func (this *configdef) Description() string {
-	return this.desc
-}
-
-var _ OptionDefinition = &configdef{}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -98,6 +96,12 @@ func (this *rescdef) ResourceType() ResourceKey {
 func (this *rescdef) WatchSelectionFunction() WatchSelectionFunction {
 	return this.selectFunc
 }
+func (this *rescdef) String() string {
+	if this.selectFunc != nil {
+		return this.rtype.String() + " with selector"
+	}
+	return this.rtype.String()
+}
 
 func (this *watchdef) Reconciler() string {
 	return this.reconciler
@@ -128,18 +132,23 @@ type _Definition struct {
 	name                 string
 	main                 rescdef
 	reconcilers          map[string]ReconcilerType
+	syncers              map[string]SyncerDefinition
 	watches              Watches
 	commands             Commands
 	resource_filters     []ResourceFilter
+	after                []string
+	before               []string
 	required_clusters    []string
 	required_controllers []string
 	require_lease        bool
 	pools                map[string]PoolDefinition
-	configs              map[string]OptionDefinition
+	configs              extension.OptionDefinitions
+	configsources        extension.OptionSourceDefinitions
 	finalizerName        string
 	finalizerDomain      string
-	crds                 map[string][]*CustomResourceDefinition
+	crds                 map[string][]*apiextensions.CustomResourceDefinitionVersions
 	activateExplicitly   bool
+	scheme               *runtime.Scheme
 }
 
 var _ Definition = &_Definition{}
@@ -149,15 +158,21 @@ func (this *_Definition) String() string {
 	s += fmt.Sprintf("  main rsc:    %s\n", this.main)
 	s += fmt.Sprintf("  clusters:    %s\n", utils.Strings(this.RequiredClusters()...))
 	s += fmt.Sprintf("  required:    %s\n", utils.Strings(this.RequiredControllers()...))
+	s += fmt.Sprintf("  after:       %s\n", utils.Strings(this.After()...))
+	s += fmt.Sprintf("  before:       %s\n", utils.Strings(this.Before()...))
 	s += fmt.Sprintf("  reconcilers: %s\n", toString(this.reconcilers))
 	s += fmt.Sprintf("  watches:     %s\n", toString(this.watches))
 	s += fmt.Sprintf("  commands:    %s\n", toString(this.commands))
 	s += fmt.Sprintf("  pools:       %s\n", toString(this.pools))
 	s += fmt.Sprintf("  finalizer:   %s\n", this.FinalizerName())
+	s += fmt.Sprintf("  explicit :   %t\n", this.activateExplicitly)
+	if this.scheme != nil {
+		s += fmt.Sprintf("  scheme is set\n")
+	}
 	return s
 }
 
-func (this *_Definition) GetName() string {
+func (this *_Definition) Name() string {
 	return this.name
 }
 func (this *_Definition) MainResource() ResourceKey {
@@ -172,8 +187,17 @@ func (this *_Definition) Watches() Watches {
 func (this *_Definition) Commands() Commands {
 	return this.commands
 }
+func (this *_Definition) Scheme() *runtime.Scheme {
+	return this.scheme
+}
 func (this *_Definition) ResourceFilters() []ResourceFilter {
 	return this.resource_filters
+}
+func (this *_Definition) After() []string {
+	return this.after
+}
+func (this *_Definition) Before() []string {
+	return this.before
 }
 func (this *_Definition) RequiredClusters() []string {
 	if len(this.required_clusters) > 0 {
@@ -189,18 +213,15 @@ func (this *_Definition) RequireLease() bool {
 }
 func (this *_Definition) FinalizerName() string {
 	if this.finalizerName == "" {
-		if this.finalizerDomain == "" {
-			return "acme.com" + "/" + this.GetName()
-		}
-		return this.finalizerDomain + "/" + this.GetName()
+		return FinalizerName(this.finalizerDomain, this.name)
 	}
 	return this.finalizerName
 }
 
-func (this *_Definition) CustomResourceDefinitions() map[string][]*CustomResourceDefinition {
-	crds := map[string][]*CustomResourceDefinition{}
+func (this *_Definition) CustomResourceDefinitions() map[string][]*apiextensions.CustomResourceDefinitionVersions {
+	crds := map[string][]*apiextensions.CustomResourceDefinitionVersions{}
 	for n, l := range this.crds {
-		crds[n] = append([]*CustomResourceDefinition{}, l...)
+		crds[n] = append([]*apiextensions.CustomResourceDefinitionVersions{}, l...)
 	}
 	return this.crds
 }
@@ -211,6 +232,13 @@ func (this *_Definition) Reconcilers() map[string]ReconcilerType {
 		types[n] = d
 	}
 	return types
+}
+func (this *_Definition) Syncers() map[string]SyncerDefinition {
+	syncers := map[string]SyncerDefinition{}
+	for n, d := range this.syncers {
+		syncers[n] = d
+	}
+	return syncers
 }
 func (this *_Definition) Pools() map[string]PoolDefinition {
 	pools := map[string]PoolDefinition{}
@@ -230,6 +258,14 @@ func (this *_Definition) ConfigOptions() map[string]OptionDefinition {
 	return cfgs
 }
 
+func (this *_Definition) ConfigOptionSources() extension.OptionSourceDefinitions {
+	cfgs := extension.OptionSourceDefinitions{}
+	for n, d := range this.configsources {
+		cfgs[n] = d
+	}
+	return cfgs
+}
+
 func (this *_Definition) ActivateExplicitly() bool {
 	return this.activateExplicitly
 }
@@ -237,21 +273,25 @@ func (this *_Definition) ActivateExplicitly() bool {
 ////////////////////////////////////////////////////////////////////////////////
 
 type Configuration struct {
-	settings _Definition
-	cluster  string
-	pool     string
+	settings   _Definition
+	cluster    string
+	pool       string
+	reconciler string
 }
 
 func Configure(name string) Configuration {
 	return Configuration{
 		settings: _Definition{
-			name:        name,
-			reconcilers: map[string]ReconcilerType{},
-			pools:       map[string]PoolDefinition{},
-			configs:     map[string]OptionDefinition{},
+			name:          name,
+			reconcilers:   map[string]ReconcilerType{},
+			syncers:       map[string]SyncerDefinition{},
+			pools:         map[string]PoolDefinition{},
+			configs:       extension.OptionDefinitions{},
+			configsources: extension.OptionSourceDefinitions{},
 		},
-		cluster: CLUSTER_MAIN,
-		pool:    DEFAULT_POOL,
+		cluster:    CLUSTER_MAIN,
+		pool:       DEFAULT_POOL,
+		reconciler: DEFAULT_RECONCILER,
 	}
 }
 
@@ -260,16 +300,18 @@ func (this Configuration) Name(name string) Configuration {
 	return this
 }
 
+func (this Configuration) After(names ...string) Configuration {
+	utils.StringArrayAddUnique(&this.settings.after, names...)
+	return this
+}
+
+func (this Configuration) Before(names ...string) Configuration {
+	utils.StringArrayAddUnique(&this.settings.before, names...)
+	return this
+}
+
 func (this Configuration) Require(names ...string) Configuration {
-names:
-	for _, n := range names {
-		for _, o := range this.settings.required_controllers {
-			if n == o {
-				continue names
-			}
-		}
-		this.settings.required_controllers = append(this.settings.required_controllers, n)
-	}
+	utils.StringArrayAddUnique(&this.settings.required_controllers, names...)
 	return this
 }
 
@@ -304,6 +346,10 @@ func (this Configuration) Pool(name string) Configuration {
 	return this
 }
 
+func (this Configuration) DefaultCluster() Configuration {
+	return this.Cluster(cluster.DEFAULT)
+}
+
 func (this Configuration) Cluster(name string) Configuration {
 	this.cluster = name
 	this.pool = DEFAULT_POOL
@@ -322,18 +368,19 @@ func (this Configuration) Cluster(name string) Configuration {
 	return this
 }
 
-func (this Configuration) CustomResourceDefinitions(crds ...*apiext.CustomResourceDefinition) Configuration {
-	m := map[string][]*CustomResourceDefinition{}
+func (this Configuration) CustomResourceDefinitions(crds ...apiextensions.CRDSpecification) Configuration {
+	m := map[string][]*apiextensions.CustomResourceDefinitionVersions{}
 	for k, v := range this.settings.crds {
 		m[k] = v
 	}
 	list := m[this.cluster]
 	if list == nil {
-		list = []*CustomResourceDefinition{}
+		list = []*apiextensions.CustomResourceDefinitionVersions{}
 	}
-	list = append([]*CustomResourceDefinition{}, list...)
+	list = append([]*apiextensions.CustomResourceDefinitionVersions{}, list...)
 	for _, crd := range crds {
-		vers := NewCustomResourceDefinition(crd)
+		vers, err := apiextensions.NewDefaultedCustomResourceDefinitionVersions(crd)
+		utils.Must(err)
 		list = append(list, vers)
 	}
 	m[this.cluster] = list
@@ -342,18 +389,30 @@ func (this Configuration) CustomResourceDefinitions(crds ...*apiext.CustomResour
 }
 
 func (this Configuration) VersionedCustomResourceDefinitions(crds ...*CustomResourceDefinition) Configuration {
-	m := map[string][]*CustomResourceDefinition{}
+	m := map[string][]*apiextensions.CustomResourceDefinitionVersions{}
 	for k, v := range this.settings.crds {
 		m[k] = v
 	}
 	list := m[this.cluster]
 	if list == nil {
-		list = []*CustomResourceDefinition{}
+		list = []*apiextensions.CustomResourceDefinitionVersions{}
 	}
-	list = append([]*CustomResourceDefinition{}, list...)
+	list = append([]*apiextensions.CustomResourceDefinitionVersions{}, list...)
 
-	m[this.cluster] = append(list, crds...)
+	for _, crd := range crds {
+		m[this.cluster] = append(list, crd.GetVersions())
+	}
 	this.settings.crds = m
+	return this
+}
+
+func (this Configuration) Syncer(name string, resc ResourceKey) Configuration {
+	copy := map[string]SyncerDefinition{}
+	for n, s := range this.settings.syncers {
+		copy[n] = s
+	}
+	copy[name] = &syncerdef{name: name, cluster: this.cluster, resource: resc}
+	this.settings.syncers = copy
 	return this
 }
 
@@ -377,6 +436,20 @@ func (this Configuration) SelectedWatch(sel WatchSelectionFunction, group, kind 
 	return this.ReconcilerSelectedWatches(DEFAULT_RECONCILER, sel, NewResourceKey(group, kind))
 }
 
+func (this Configuration) ForWatches(keys ...ResourceKey) Configuration {
+	return this.ReconcilerWatches(this.reconciler, keys...)
+}
+func (this Configuration) ForSelectedWatches(sel WatchSelectionFunction, keys ...ResourceKey) Configuration {
+	return this.ReconcilerSelectedWatches(this.reconciler, sel, keys...)
+}
+
+func (this Configuration) ForWatch(group, kind string) Configuration {
+	return this.ReconcilerWatches(this.reconciler, NewResourceKey(group, kind))
+}
+func (this Configuration) ForSelectedWatch(sel WatchSelectionFunction, group, kind string) Configuration {
+	return this.ReconcilerSelectedWatches(this.reconciler, sel, NewResourceKey(group, kind))
+}
+
 func (this Configuration) ReconcilerWatch(reconciler, group, kind string) Configuration {
 	return this.ReconcilerWatches(reconciler, NewResourceKey(group, kind))
 }
@@ -384,7 +457,7 @@ func (this Configuration) ReconcilerWatch(reconciler, group, kind string) Config
 func (this Configuration) ReconcilerWatches(reconciler string, keys ...ResourceKey) Configuration {
 	this.assureWatches()
 	for _, key := range keys {
-		//logger.Infof("adding watch for %q:%q to pool %q", this.cluster, key, this.pool)
+		// logger.Infof("adding watch for %q:%q to pool %q", this.cluster, key, this.pool)
 		this.settings.watches[this.cluster] = append(this.settings.watches[this.cluster], &watchdef{rescdef{key, nil}, reconciler, this.pool})
 	}
 	return this
@@ -393,7 +466,7 @@ func (this Configuration) ReconcilerWatches(reconciler string, keys ...ResourceK
 func (this Configuration) ReconcilerSelectedWatches(reconciler string, sel WatchSelectionFunction, keys ...ResourceKey) Configuration {
 	this.assureWatches()
 	for _, key := range keys {
-		//logger.Infof("adding watch for %q:%q to pool %q", this.cluster, key, this.pool)
+		// logger.Infof("adding watch for %q:%q to pool %q", this.cluster, key, this.pool)
 		this.settings.watches[this.cluster] = append(this.settings.watches[this.cluster], &watchdef{rescdef{key, sel}, reconciler, this.pool})
 	}
 	return this
@@ -418,6 +491,14 @@ func (this Configuration) CommandMatchers(cmd ...utils.Matcher) Configuration {
 	return this.ReconcilerCommandMatchers(DEFAULT_RECONCILER, cmd...)
 }
 
+func (this Configuration) ForCommands(cmd ...string) Configuration {
+	return this.ReconcilerCommands(this.reconciler, cmd...)
+}
+
+func (this Configuration) ForCommandMatchers(cmd ...utils.Matcher) Configuration {
+	return this.ReconcilerCommandMatchers(this.reconciler, cmd...)
+}
+
 func (this Configuration) ReconcilerCommands(reconciler string, cmd ...string) Configuration {
 	this.assureCommands()
 	for _, cmd := range cmd {
@@ -436,9 +517,11 @@ func (this Configuration) ReconcilerCommandMatchers(reconciler string, cmd ...ut
 func (this Configuration) Reconciler(t ReconcilerType, name ...string) Configuration {
 	if len(name) == 0 {
 		this.settings.reconcilers[DEFAULT_RECONCILER] = t
+		this.reconciler = DEFAULT_RECONCILER
 	} else {
 		for _, n := range name {
 			this.settings.reconcilers[n] = t
+			this.reconciler = n
 		}
 	}
 	return this
@@ -458,42 +541,67 @@ func (this Configuration) RequireLease() Configuration {
 	return this
 }
 
-func (this Configuration) StringOption(name string, desc string) Configuration {
-	return this.addOption(name, reflect.TypeOf((*string)(nil)).Elem(), nil, desc)
+func (this Configuration) Scheme(scheme *runtime.Scheme) Configuration {
+	this.settings.scheme = scheme
+	return this
 }
-func (this Configuration) StringArrayOption(name string, desc string) Configuration {
-	return this.addOption(name, reflect.TypeOf(([]string)(nil)), nil, desc)
+
+func (this Configuration) StringOption(name string, desc string) Configuration {
+	return this.addOption(name, config.StringOption, "", desc)
 }
 func (this Configuration) DefaultedStringOption(name, def string, desc string) Configuration {
-	return this.addOption(name, reflect.TypeOf((*string)(nil)).Elem(), &def, desc)
+	return this.addOption(name, config.StringOption, def, desc)
+}
+
+func (this Configuration) StringArrayOption(name string, desc string) Configuration {
+	return this.addOption(name, config.StringArrayOption, nil, desc)
+}
+func (this Configuration) DefaultedStringArrayOption(name string, def []string, desc string) Configuration {
+	return this.addOption(name, config.StringArrayOption, def, desc)
 }
 
 func (this Configuration) IntOption(name string, desc string) Configuration {
-	return this.addOption(name, reflect.TypeOf((*int)(nil)).Elem(), nil, desc)
+	return this.addOption(name, config.IntOption, 0, desc)
 }
 func (this Configuration) DefaultedIntOption(name string, def int, desc string) Configuration {
-	return this.addOption(name, reflect.TypeOf((*int)(nil)).Elem(), &def, desc)
+	return this.addOption(name, config.IntOption, def, desc)
 }
 
 func (this Configuration) BoolOption(name string, desc string) Configuration {
-	return this.addOption(name, reflect.TypeOf((*bool)(nil)).Elem(), nil, desc)
+	return this.addOption(name, config.BoolOption, false, desc)
 }
 func (this Configuration) DefaultedBoolOption(name string, def bool, desc string) Configuration {
-	return this.addOption(name, reflect.TypeOf((*bool)(nil)).Elem(), &def, desc)
+	return this.addOption(name, config.BoolOption, def, desc)
 }
 
 func (this Configuration) DurationOption(name string, desc string) Configuration {
-	return this.addOption(name, reflect.TypeOf((*time.Duration)(nil)).Elem(), nil, desc)
+	return this.addOption(name, config.DurationOption, time.Duration(0), desc)
 }
 func (this Configuration) DefaultedDurationOption(name string, def time.Duration, desc string) Configuration {
-	return this.addOption(name, reflect.TypeOf((*time.Duration)(nil)).Elem(), &def, desc)
+	return this.addOption(name, config.DurationOption, def, desc)
 }
 
-func (this Configuration) addOption(name string, t reflect.Type, def interface{}, desc string) Configuration {
+func (this Configuration) addOption(name string, t config.OptionType, def interface{}, desc string) Configuration {
 	if this.settings.configs[name] != nil {
 		panic(fmt.Sprintf("option %q already defined", name))
 	}
-	this.settings.configs[name] = &configdef{name, t, def, desc}
+	this.settings.configs[name] = extension.NewOptionDefinition(name, t, def, desc)
+	return this
+}
+
+func (this Configuration) OptionSource(name string, creator extension.OptionSourceCreator) Configuration {
+	if this.settings.configsources[name] != nil {
+		panic(fmt.Sprintf("option source %q already defined", name))
+	}
+	this.settings.configsources[name] = extension.NewOptionSourceDefinition(name, creator)
+	return this
+}
+
+func (this Configuration) OptionsByExample(name string, proto config.OptionSource) Configuration {
+	if this.settings.configsources[name] != nil {
+		panic(fmt.Sprintf("option source %q already defined", name))
+	}
+	this.settings.configsources[name] = extension.NewOptionSourceDefinition(name, OptionSourceCreator(proto))
 	return this
 }
 

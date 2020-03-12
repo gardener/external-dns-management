@@ -39,6 +39,7 @@ type DNSOwnersGetter interface {
 type DNSOwnerInterface interface {
 	Create(*v1alpha1.DNSOwner) (*v1alpha1.DNSOwner, error)
 	Update(*v1alpha1.DNSOwner) (*v1alpha1.DNSOwner, error)
+	UpdateStatus(*v1alpha1.DNSOwner) (*v1alpha1.DNSOwner, error)
 	Delete(name string, options *v1.DeleteOptions) error
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.DNSOwner, error)
@@ -126,6 +127,22 @@ func (c *dNSOwners) Update(dNSOwner *v1alpha1.DNSOwner) (result *v1alpha1.DNSOwn
 		Namespace(c.ns).
 		Resource("dnsowners").
 		Name(dNSOwner.Name).
+		Body(dNSOwner).
+		Do().
+		Into(result)
+	return
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+
+func (c *dNSOwners) UpdateStatus(dNSOwner *v1alpha1.DNSOwner) (result *v1alpha1.DNSOwner, err error) {
+	result = &v1alpha1.DNSOwner{}
+	err = c.client.Put().
+		Namespace(c.ns).
+		Resource("dnsowners").
+		Name(dNSOwner.Name).
+		SubResource("status").
 		Body(dNSOwner).
 		Do().
 		Into(result)

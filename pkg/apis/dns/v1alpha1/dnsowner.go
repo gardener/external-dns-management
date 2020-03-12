@@ -36,10 +36,20 @@ type DNSOwnerList struct {
 type DNSOwner struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              DNSOwnerSpec `json:"spec"`
+	Spec              DNSOwnerSpec   `json:"spec"`
+	Status            DNSOwnerStatus `json:"status"`
 }
 
 type DNSOwnerSpec struct {
 	OwnerId string `json:"ownerId,omitempty"`
 	Active  *bool  `json:"active,omitempty"`
+}
+
+type DNSOwnerStatus struct {
+	Entries DNSOwnerStatusEntries `json:"entries,omitempty"`
+}
+
+type DNSOwnerStatusEntries struct {
+	Amount int            `json:"amount,omitempty"`
+	ByType map[string]int `json:"types,omitempty"`
 }

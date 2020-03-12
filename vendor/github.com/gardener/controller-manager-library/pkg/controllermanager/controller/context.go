@@ -18,16 +18,12 @@ package controller
 
 import (
 	"context"
-	"github.com/gardener/controller-manager-library/pkg/utils"
-	"reflect"
+
+	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 )
 
-var typekey reflect.Type
+var ctx_controller = ctxutil.NewValueKey(TYPE, (*controller)(nil))
 
-func init() {
-	typekey, _ = utils.TypeKey((*controller)(nil))
-}
-
-func Get(ctx context.Context) *controller {
-	return ctx.Value(typekey).(*controller)
+func GetController(ctx context.Context) Interface {
+	return ctx.Value(ctx_controller).(Interface)
 }

@@ -33,6 +33,8 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	corev1 "k8s.io/api/core/v1"
+
+	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.12"
 )
 
 const CONTROLLER_GROUP_DNS_CONTROLLERS = "dnscontrollers"
@@ -112,11 +114,16 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 
 	zoneCacheCleanupOutdated(c, config.CacheDir, ZoneCachePrefix)
 
+	ownerresc, err := c.GetCluster(TARGET_CLUSTER).Resources().GetByGK(ownerGroupKind)
+	if err != nil {
+		return nil, err
+	}
+
 	return &reconciler{
 		controller: c,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewDNSState(NewDefaultContext(c), classes, *config)
+				return NewDNSState(NewDefaultContext(c), ownerresc, classes, *config)
 			}).(*state),
 	}, nil
 }

@@ -19,17 +19,23 @@
 package controller
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/logger"
 	"sync"
+
+	"github.com/gardener/controller-manager-library/pkg/logger"
 )
 
-type SharedAttributes struct {
+type SharedAttributes interface {
+	GetSharedValue(key interface{}) interface{}
+	GetOrCreateSharedValue(key interface{}, create func() interface{}) interface{}
+}
+
+type sharedAttributes struct {
 	logger.LogContext
 	lock   sync.RWMutex
 	shared map[interface{}]interface{}
 }
 
-func (c *SharedAttributes) GetSharedValue(key interface{}) interface{} {
+func (c *sharedAttributes) GetSharedValue(key interface{}) interface{} {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	if c.shared == nil {
@@ -38,7 +44,7 @@ func (c *SharedAttributes) GetSharedValue(key interface{}) interface{} {
 	return c.shared[key]
 }
 
-func (c *SharedAttributes) GetOrCreateSharedValue(key interface{}, create func() interface{}) interface{} {
+func (c *sharedAttributes) GetOrCreateSharedValue(key interface{}, create func() interface{}) interface{} {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	if c.shared == nil {

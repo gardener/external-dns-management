@@ -17,10 +17,11 @@
 package resources
 
 import (
-	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/utils"
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 type SecretObject struct {
@@ -53,7 +54,7 @@ func GetSecret(src ResourcesSource, namespace, name string) (*SecretObject, erro
 
 	s := Secret(o)
 	if s == nil {
-		return nil, fmt.Errorf("oops, unexpected type for secret: %T", o.Data())
+		return nil, errors.ErrUnexpectedType.New("access", o.Data())
 	}
 	return s, nil
 }
@@ -70,7 +71,7 @@ func GetCachedSecret(src ResourcesSource, namespace, name string) (*SecretObject
 
 	s := Secret(o)
 	if s == nil {
-		return nil, fmt.Errorf("oops, unexpected typo for secret: %T", o.Data())
+		return nil, errors.ErrUnexpectedType.New("access", o.Data())
 	}
 	return s, nil
 }

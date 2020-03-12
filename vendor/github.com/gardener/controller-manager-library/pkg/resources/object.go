@@ -17,10 +17,9 @@
 package resources
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/utils"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"reflect"
+
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 var cluster_key reflect.Type
@@ -34,52 +33,18 @@ func init() {
 // based on the internal object interface. (see _i_object)
 type _object struct {
 	AbstractObject
-	cluster  Cluster
 	resource Internal
 }
 
 var _ Object = &_object{}
 
-func NewObject(data ObjectData, cluster Cluster, resource Internal) Object {
-	o := &_object{AbstractObject{}, cluster, resource}
-	o.AbstractObject = NewAbstractObject(&_i_object{o}, data)
+func newObject(data ObjectData, resource Internal) Object {
+	o := &_object{AbstractObject{}, resource}
+	o.AbstractObject = NewAbstractObject(&_i_object{o}, data, resource.Resource())
 	return o
 }
 
 func (this *_object) DeepCopy() Object {
 	data := this.ObjectData.DeepCopyObject().(ObjectData)
-	return NewObject(data, this.cluster, this.resource)
-}
-
-/////////////////////////////////////////////////////////////////////////////////
-
-func (this *_object) GetCluster() Cluster {
-	return this.cluster
-}
-
-func (this *_object) GetResource() Interface {
-	return this.resource
-}
-
-func (this *_object) IsA(spec interface{}) bool {
-	switch s := spec.(type) {
-	case GroupKindProvider:
-		return s.GroupKind() == this.GroupKind()
-	case runtime.Object:
-		t := reflect.TypeOf(s)
-		for t.Kind() == reflect.Ptr {
-			t = t.Elem()
-		}
-		return t == this.resource.I_objectType()
-	case schema.GroupVersionKind:
-		return s == this.resource.GroupVersionKind()
-	case *schema.GroupVersionKind:
-		return *s == this.resource.GroupVersionKind()
-	case schema.GroupKind:
-		return s == this.GroupKind()
-	case *schema.GroupKind:
-		return *s == this.GroupKind()
-	default:
-		return false
-	}
+	return newObject(data, this.resource)
 }

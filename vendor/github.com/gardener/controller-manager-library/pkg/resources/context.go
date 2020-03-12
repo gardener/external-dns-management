@@ -18,12 +18,13 @@ package resources
 
 import (
 	"context"
-	"fmt"
-	"github.com/Masterminds/semver"
-	"sync"
+	"reflect"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/ctxutil"
+	"github.com/Masterminds/semver"
+
+	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -31,52 +32,58 @@ import (
 )
 
 type ResourceContext interface {
-	GetGroups() []schema.GroupVersion
+	abstract.ResourceContext
 	GetResourceInfos(gv schema.GroupVersion) []*Info
+	Cluster
 
 	GetParameterCodec() runtime.ParameterCodec
 	GetClient(gv schema.GroupVersion) (restclient.Interface, error)
 
-	Resources() Resources
 	SharedInformerFactory() SharedInformerFactory
 
 	GetPreferred(gk schema.GroupKind) (*Info, error)
 	Get(gvk schema.GroupVersionKind) (*Info, error)
-
-	GetServerVersion() *semver.Version
 }
 
 type resourceContext struct {
 	*ResourceInfos
 	*Clients
 	Cluster
-	*runtime.Scheme
 
-	lock                  sync.Mutex
-	ctx                   context.Context
+	*abstract.AbstractResourceContext
+
 	defaultResync         time.Duration
-	resources             *_resources
 	sharedInformerFactory *sharedInformerFactory
 }
 
 func NewResourceContext(ctx context.Context, c Cluster, scheme *runtime.Scheme, defaultResync time.Duration) (ResourceContext, error) {
-	ctx = ctxutil.CancelContext(ctx)
-	if scheme == nil {
-		scheme = DefaultScheme()
-	}
+
 	res, err := NewResourceInfos(c)
 	if err != nil {
 		return nil, err
 	}
-	return &resourceContext{
-		Scheme:        scheme,
+	rc := &resourceContext{
 		Cluster:       c,
 		ResourceInfos: res,
-		Clients:       NewClients(c.Config(), scheme),
-		ctx:           ctx,
 		defaultResync: defaultResync,
-	}, nil
+	}
+	rc.AbstractResourceContext = abstract.NewAbstractResourceContext(ctx, rc, scheme, factory{})
+	rc.Clients = NewClients(c.Config(), rc.Scheme())
 
+	return rc, nil
+}
+
+func (c *resourceContext) GetServerVersion() *semver.Version {
+	return c.ResourceInfos.GetServerVersion()
+}
+
+func (c *resourceContext) GetGroups() []schema.GroupVersion {
+	return c.ResourceInfos.GetGroups()
+}
+
+func (c *resourceContext) Resources() Resources {
+	c.SharedInformerFactory()
+	return c.AbstractResourceContext.Resources().(Resources)
 }
 
 func (c *resourceContext) GetGVK(obj runtime.Object) (schema.GroupVersionKind, error) {
@@ -88,7 +95,7 @@ func (c *resourceContext) GetGVK(obj runtime.Object) (schema.GroupVersionKind, e
 	}
 	switch len(gvks) {
 	case 0:
-		return empty, fmt.Errorf("%T unknown info type", obj)
+		return empty, errors.ErrUnknownResource.New("resource object type", reflect.TypeOf(obj))
 	case 1:
 		return gvks[0], nil
 	default:
@@ -102,33 +109,16 @@ func (c *resourceContext) GetGVK(obj runtime.Object) (schema.GroupVersionKind, e
 			}
 		}
 	}
-	return empty, fmt.Errorf("non.unique mapping for %T", obj)
+	return empty, errors.New(errors.ERR_NON_UNIQUE_MAPPING, "non unique mapping for %T", obj)
 }
 
 // NewSharedInformerFactory constructs a new instance of sharedInformerFactory for all namespaces.
 func (c *resourceContext) SharedInformerFactory() SharedInformerFactory {
-	c.lock.Lock()
-	defer c.lock.Unlock()
+	c.AbstractResourceContext.Lock()
+	defer c.AbstractResourceContext.Unlock()
 
 	if c.sharedInformerFactory == nil {
 		c.sharedInformerFactory = newSharedInformerFactory(c, c.defaultResync)
 	}
 	return c.sharedInformerFactory
-}
-
-func (c *resourceContext) Resources() Resources {
-	c.SharedInformerFactory()
-
-	c.lock.Lock()
-	defer c.lock.Unlock()
-
-	if c.resources == nil {
-		source := "controller"
-		src := c.ctx.Value(ATTR_EVENTSOURCE)
-		if src != nil {
-			source = src.(string)
-		}
-		c.resources = newResources(c, source)
-	}
-	return c.resources
 }

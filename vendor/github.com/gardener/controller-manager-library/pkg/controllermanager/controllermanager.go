@@ -19,251 +19,216 @@ package controllermanager
 import (
 	"context"
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/controller-manager-library/pkg/resources/access"
-	"github.com/gardener/controller-manager-library/pkg/utils"
-	"io/ioutil"
-	"log"
-	"os"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
-	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/server"
+
+	"github.com/gardener/controller-manager-library/pkg/configmain"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
+	areacfg "github.com/gardener/controller-manager-library/pkg/controllermanager/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
+	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/access"
+	"github.com/gardener/controller-manager-library/pkg/run"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 type ControllerManager struct {
-	lock sync.Mutex
-	controller.SharedAttributes
+	logger.LogContext
+	lock       sync.Mutex
+	extensions extension.Extensions
+	order      []string
 
-	name       string
+	namespace  string
 	definition *Definition
 
-	ctx           context.Context
-	config        *config.Config
-	clusters      cluster.Clusters
-	registrations controller.Registrations
-	plain_groups  map[string]StartupGroup
-	lease_groups  map[string]StartupGroup
-	//shared_options map[string]*config.ArbitraryOption
+	context  context.Context
+	config   *areacfg.Config
+	clusters cluster.Clusters
 }
 
-var _ controller.Environment = &ControllerManager{}
-
-type Controller interface {
-	GetName() string
-	Owning() controller.ResourceKey
-	GetDefinition() controller.Definition
-	GetClusterHandler(name string) (*controller.ClusterHandler, error)
-
-	Check() error
-	Prepare() error
-	Run()
-}
+var _ extension.ControllerManager = &ControllerManager{}
 
 func NewControllerManager(ctx context.Context, def *Definition) (*ControllerManager, error) {
-	config := config.Get(ctx)
+	maincfg := configmain.Get(ctx)
+	cfg := areacfg.GetConfig(maincfg)
+	lgr := logger.New()
+	logger.Info("using option settings:")
+	config.Print(logger.Infof, "", cfg.OptionSet)
+	logger.Info("-----------------------")
+	ctx = logger.Set(ctxutil.WaitGroupContext(ctx), lgr)
 	ctx = context.WithValue(ctx, resources.ATTR_EVENTSOURCE, def.GetName())
 
-	for n := range def.controller_defs.Names() {
-		for _, r := range def.controller_defs.Get(n).RequiredControllers() {
-			if def.controller_defs.Get(r) == nil {
-				return nil, fmt.Errorf("controller %q requires controller %q, which is not declared", n, r)
-			}
+	for _, e := range def.extensions {
+		err := e.Validate()
+		if err != nil {
+			return nil, err
 		}
 	}
 
-	if config.NamespaceRestriction && config.DisableNamespaceRestriction {
-		log.Fatalf("contradiction options given for namespace restriction")
-	}
-	if !config.DisableNamespaceRestriction {
-		config.NamespaceRestriction = true
-	}
-	config.DisableNamespaceRestriction = false
-
-	if config.NamespaceRestriction {
+	if cfg.NamespaceRestriction {
 		logger.Infof("enable namespace restriction for access control")
 		access.RegisterNamespaceOnlyAccess()
 	} else {
 		logger.Infof("disable namespace restriction for access control")
 	}
-	if config.Namespace == "" {
-		n := os.Getenv("NAMESPACE")
-		if n != "" {
-			config.Namespace = n
-		} else {
-			f := "/var/run/secrets/kubernetes.io/serviceaccount/namespace"
-			bytes, err := ioutil.ReadFile(f)
-			if err == nil {
-				n = string(bytes)
-				n = strings.TrimSpace(n)
-				if n != "" {
-					config.Namespace = n
-
-				}
-			}
-		}
-	}
 
 	name := def.GetName()
-	if config.Name != "" {
-		name = config.Name
+	if cfg.Name != "" {
+		name = cfg.Name
+	} else {
+		cfg.Name = name
+	}
+	if cfg.Maintainer == "" {
+		cfg.Maintainer = cfg.Name
 	}
 
-	if config.Namespace == "" {
-		config.Namespace = "kube-system"
-	}
-	groups := def.Groups()
-
-	logger.Infof("configured groups: %s", groups.AllGroups())
-
-	if def.ControllerDefinitions().Size() == 0 {
-		return nil, fmt.Errorf("no controller registered")
+	namespace := run.GetConfig(maincfg).Namespace
+	if namespace == "" {
+		namespace = "kube-system"
 	}
 
-	logger.Infof("configured controllers: %s", def.ControllerDefinitions().Names())
-
-	active, err := groups.Activate(strings.Split(config.Controllers, ","))
-	if err != nil {
-		return nil, err
-	}
-
-	added := utils.StringSet{}
-	for c := range active {
-		req, err := def.controller_defs.GetRequiredControllers(c)
-		if err != nil {
-			return nil, err
+	found := false
+	for _, e := range def.extensions {
+		if e.Size() > 0 {
+			found = true
+			break
 		}
-		added.AddSet(req)
 	}
-	added, _ = active.DiffFrom(added)
-	if len(added) > 0 {
-		logger.Infof("controllers implied by activated controllers: %s", added)
-		active.AddSet(added)
+	if !found {
+		return nil, fmt.Errorf("no controller manager extension registered")
 	}
 
-	registrations, err := def.Registrations(active.AsArray()...)
-	if err != nil {
-		return nil, err
-	}
-	if len(registrations) == 0 {
-		return nil, fmt.Errorf("no controller activated")
+	for _, e := range def.extensions {
+		if e.Size() > 0 {
+			logger.Infof("configured %s: %s", e.Name(), e.Names())
+		}
 	}
 
-	set, err := def.ControllerDefinitions().DetermineRequestedClusters(def.ClusterDefinitions(), registrations.Names())
+	order, _, err := extension.Order(def.extensions)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("controller manager extension cycle: %s", err)
 	}
-
-	lgr := logger.New()
-	clusters, err := def.ClusterDefinitions().CreateClusters(ctx, lgr, config, set)
-	if err != nil {
-		return nil, err
+	logger.Infof("found configured controller manager extensions:")
+	for _, n := range order {
+		logger.Infof(" - %s (%d elements): %s", n, def.extensions[n].Size(), def.extensions[n].Description())
 	}
 
 	cm := &ControllerManager{
-		SharedAttributes: controller.SharedAttributes{
-			LogContext: lgr,
-		},
-		clusters: clusters,
+		LogContext: lgr,
+		namespace:  namespace,
+		definition: def,
+		order:      order,
+		config:     cfg,
+	}
+	ctx = ctx_controllermanager.WithValue(ctx, cm)
+	cm.context = ctx
 
-		name:          name,
-		definition:    def,
-		config:        config,
-		registrations: registrations,
+	set := utils.StringSet{}
 
-		plain_groups: map[string]StartupGroup{},
-		lease_groups: map[string]StartupGroup{},
+	cm.extensions = extension.Extensions{}
+	for _, n := range order {
+		d := def.extensions[n]
+		e, err := d.CreateExtension(cm)
+		if err != nil {
+			return nil, err
+		}
+		if e == nil {
+			logger.Infof("skipping unused extension %q", d.Name())
+			continue
+		}
+		cm.extensions[d.Name()] = e
+		s, err := e.RequiredClusters()
+		if err != nil {
+			return nil, err
+		}
+		set.AddSet(s)
 	}
 
-	ctx = logger.Set(ctxutil.SyncContext(ctx), lgr)
-	ctx = context.WithValue(ctx, cmkey, cm)
-	cm.ctx = ctx
+	if len(cm.extensions) == 0 {
+		return nil, fmt.Errorf("no controller manager extension activated")
+	}
+
+	clusters, err := def.ClusterDefinitions().CreateClusters(ctx, lgr, cfg, cluster.NewSchemeCache(), set)
+	if err != nil {
+		return nil, err
+	}
+
+	cm.clusters = clusters
+
+	for _, n := range cm.order {
+		e := cm.extensions[n]
+		err = e.Setup(cm.context)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return cm, nil
 }
 
-func (c *ControllerManager) GetName() string {
-	return c.name
+func (this *ControllerManager) GetName() string {
+	return this.config.Name
 }
 
-func (c *ControllerManager) GetContext() context.Context {
-	return c.ctx
+func (this *ControllerManager) GetMaintainer() string {
+	return this.config.Maintainer
 }
 
-func (c *ControllerManager) GetConfig() *config.Config {
-	return c.config
+func (this *ControllerManager) GetNamespace() string {
+	return this.namespace
 }
 
-func (c *ControllerManager) GetCluster(name string) cluster.Interface {
-	return c.clusters.GetCluster(name)
+func (this *ControllerManager) GetContext() context.Context {
+	return this.context
 }
 
-func (c *ControllerManager) GetClusters() cluster.Clusters {
-	return c.clusters
+func (this *ControllerManager) GetConfig() *areacfg.Config {
+	return this.config
 }
 
-func (c *ControllerManager) Run() error {
-	c.Infof("run %s\n", c.name)
+func (this *ControllerManager) GetExtension(name string) extension.Extension {
+	return this.extensions[name]
+}
 
-	if c.config.ServerPortHTTP > 0 {
-		server.Serve(c.ctx, "", c.config.ServerPortHTTP)
-	}
+func (this *ControllerManager) ClusterDefinitions() cluster.Definitions {
+	return this.definition.ClusterDefinitions()
+}
 
-	for _, def := range c.registrations {
-		lines := strings.Split(def.String(), "\n")
-		c.Infof("creating %s", lines[0])
-		for _, l := range lines[1:] {
-			c.Info(l)
-		}
-		cmp, err := c.definition.GetMappingsFor(def.GetName())
+func (this *ControllerManager) GetCluster(name string) cluster.Interface {
+	return this.clusters.GetCluster(name)
+}
+
+func (this *ControllerManager) GetClusters() cluster.Clusters {
+	return this.clusters
+}
+
+func (this *ControllerManager) GetDefaultScheme() *runtime.Scheme {
+	return this.definition.cluster_defs.GetScheme()
+}
+
+func (this *ControllerManager) Run() error {
+	var err error
+	this.Infof("run %s\n", this.config.Name)
+
+	server.ServeFromMainConfig(this.context, "httpserver")
+
+	for _, n := range this.order {
+		err = this.extensions[n].Start(this.context)
 		if err != nil {
 			return err
 		}
-		cntr, err := controller.NewController(c, def, cmp)
-		if err != nil {
-			return err
-		}
-
-		if def.RequireLease() {
-			c.getLeaseStartupGroup(cntr.GetMainCluster()).Add(cntr)
-		} else {
-			c.getPlainStartupGroup(cntr.GetMainCluster()).Add(cntr)
-		}
 	}
 
-	err := c.startGroups(c.plain_groups, c.lease_groups)
-	if err != nil {
-		return err
-	}
-
-	<-c.ctx.Done()
-	c.Info("waiting for controllers to shutdown")
-	ctxutil.SyncPointWait(c.ctx, 120*time.Second)
-	c.Info("exit controller manager")
-	return nil
-}
-
-// checkController does all the checks that might cause startController to fail
-// after the check startController can execute without error
-func (c *ControllerManager) checkController(cntr Controller) error {
-	return cntr.Check()
-}
-
-// startController finally starts the controller
-// all error conditions MUST also be checked
-// in checkController, so after a successful checkController
-// startController MUST not return an error.
-func (c *ControllerManager) startController(cntr Controller) error {
-	err := cntr.Prepare()
-	if err != nil {
-		return err
-	}
-
-	ctxutil.SyncPointRunAndCancelOnExit(c.ctx, cntr.Run)
+	<-this.context.Done()
+	this.Info("waiting for extensions to shutdown")
+	ctxutil.WaitGroupWait(this.context, 120*time.Second)
+	this.Info("all extensions down -> exit controller manager")
 	return nil
 }
