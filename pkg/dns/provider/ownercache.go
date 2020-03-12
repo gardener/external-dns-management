@@ -22,6 +22,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
+	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
@@ -58,7 +59,7 @@ type OwnerCache struct {
 func NewOwnerCache(config *Config) *OwnerCache {
 	return &OwnerCache{
 		owners:   OwnerObjectInfos{},
-		ownerids: OwnerIdInfos{config.Ident: {refcount: 1}},
+		ownerids: OwnerIdInfos{config.Ident: {refcount: 1, entrycounts: ProviderTypeCounts{}}},
 	}
 }
 
@@ -74,27 +75,38 @@ func (this *OwnerCache) GetIds() utils.StringSet {
 	return this.ownerids.KeySet()
 }
 
-func (this *OwnerCache) UpdateCountsWith(counts OwnerCounts) OwnerCounts {
+func (this *OwnerCache) UpdateCountsWith(statistic statistic.OwnerStatistic, types utils.StringSet) OwnerCounts {
 	changed := OwnerCounts{}
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	for k, p := range counts {
-		e, ok := this.ownerids[k]
-		if ok {
-			for n, c := range p {
-				if e.entrycounts[n] != c {
-					e.entrycounts[n] = c
-					this.ownerids[k] = e
-					for n, o := range this.owners {
-						if o.id == k {
-							changed[n] = e.entrycounts
-						}
-					}
+	for id, e := range this.ownerids {
+		mod := false
+		pts := statistic.Get(id)
+		for t := range types {
+			c := 0
+			if v, ok := pts[t]; ok {
+				c = v.Count()
+			}
+			mod = mod || this.checkCount(&e, t, c)
+		}
+		if mod {
+			this.ownerids[id] = e
+			for n, o := range this.owners {
+				if o.id == id {
+					changed[n] = e.entrycounts
 				}
 			}
 		}
 	}
 	return changed
+}
+
+func (this *OwnerCache) checkCount(e *OwnerIdInfo, ptype string, count int) bool {
+	if e.entrycounts[ptype] != count {
+		e.entrycounts[ptype] = count
+		return true
+	}
+	return false
 }
 
 func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changeset utils.StringSet, activeset utils.StringSet) {
