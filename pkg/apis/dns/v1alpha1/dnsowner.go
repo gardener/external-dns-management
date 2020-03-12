@@ -50,6 +50,6 @@ type DNSOwnerStatus struct {
 }
 
 type DNSOwnerStatusEntries struct {
-	Amount int            `json:"amount,omitempty"`
+	Amount int            `json:"amount"`
 	ByType map[string]int `json:"types,omitempty"`
 }

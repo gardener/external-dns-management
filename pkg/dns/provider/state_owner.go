@@ -25,7 +25,9 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,67 +55,71 @@ func (this *state) OwnerDeleted(logger logger.LogContext, key resources.ObjectKe
 }
 
 func (this *state) UpdateOwnerCounts(log logger.LogContext) {
-	counts := OwnerCounts{}
-	this.updateOwnerCounts(counts)
-	changes := this.ownerCache.UpdateCountsWith(counts)
-	log.Infof("found %d changes for owner usages", len(changes))
+	if !this.initialized {
+		return
+	}
+	statistic := statistic.NewEntryStatistic()
+	this.updateStatistics(statistic)
+	types := this.GetHandlerFactory().TypeCodes()
+	metrics.UpdateOwnerStatistic(statistic, types)
+	changes := this.ownerCache.UpdateCountsWith(statistic.Owners, types)
 	if len(changes) > 0 {
+		log.Infof("found %d changes for owner usages", len(changes))
 		this.ownerupd <- changes
 	}
 }
 
-func (this *state) updateOwnerCounts(counts OwnerCounts) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	this.entries.UpdateOwnerInfo(counts)
-	this.outdated.UpdateOwnerInfo(counts)
-}
+////////////////////////////////////////////////////////////////////////////////
 
-func (this *state) ownerupdater() {
-	log := this.context.AddIndent(" updater: ")
-	log.Infof("starting owner count updater")
+func startOwnerUpdater(ctx Context, ownerresc resources.Interface) chan OwnerCounts {
+	log := ctx.AddIndent("updater: ")
 
-	for {
-		select {
-		case <-this.context.GetContext().Done():
-			log.Infof("stopping owner updater")
-			return
-		case changes := <-this.ownerupd:
-			log.Infof("starting owner update for %d changes", len(changes))
-			for n, counts := range changes {
-				log.Infof("  updating owner counts %v for %s", counts, n)
-				_, _, err := this.ownerresc.ModifyStatusByName(resources.NewObjectName(n), func(data resources.ObjectData) (bool, error) {
-					owner, ok := data.(*v1alpha1.DNSOwner)
-					if !ok {
-						return false, fmt.Errorf("invalid owner object type %T", data)
-					}
-					mod := false
-					if owner.Status.Entries.ByType == nil {
-						owner.Status.Entries.ByType = ProviderTypeCounts{}
-					}
-					for t, v := range counts {
-						if owner.Status.Entries.ByType[t] != v {
+	requests := make(chan OwnerCounts, 2)
+	go func() {
+		log.Infof("starting owner count updater")
+		for {
+			select {
+			case <-ctx.GetContext().Done():
+				log.Infof("stopping owner updater")
+				return
+			case changes := <-requests:
+				log.Infof("starting owner update for %d changes", len(changes))
+				for n, counts := range changes {
+					log.Infof("  updating owner counts %v for %s", counts, n)
+					_, _, err := ownerresc.ModifyStatusByName(resources.NewObjectName(n), func(data resources.ObjectData) (bool, error) {
+						owner, ok := data.(*v1alpha1.DNSOwner)
+						if !ok {
+							return false, fmt.Errorf("invalid owner object type %T", data)
+						}
+						mod := false
+						if owner.Status.Entries.ByType == nil {
+							owner.Status.Entries.ByType = ProviderTypeCounts{}
+						}
+						for t, v := range counts {
+							if owner.Status.Entries.ByType[t] != v {
+								mod = true
+								owner.Status.Entries.ByType[t] = v
+							}
+							if v == 0 {
+								delete(owner.Status.Entries.ByType, t)
+							}
+						}
+						sum := 0
+						for _, v := range owner.Status.Entries.ByType {
+							sum += v
+						}
+						if owner.Status.Entries.Amount != sum {
+							owner.Status.Entries.Amount = sum
 							mod = true
-							owner.Status.Entries.ByType[t] = v
 						}
-						if v == 0 {
-							delete(owner.Status.Entries.ByType, t)
-						}
+						return mod, nil
+					})
+					if err != nil {
+						log.Errorf("update failed: %s", err)
 					}
-					sum := 0
-					for _, v := range owner.Status.Entries.ByType {
-						sum += v
-					}
-					if owner.Status.Entries.Amount != sum {
-						owner.Status.Entries.Amount = sum
-						mod = true
-					}
-					return mod, nil
-				})
-				if err != nil {
-					log.Errorf("update failed: %s", err)
 				}
 			}
 		}
-	}
+	}()
+	return requests
 }

@@ -105,7 +105,6 @@ func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller
 		classes:         classes,
 		context:         ctx,
 		ownerresc:       ownerresc,
-		ownerupd:        make(chan OwnerCounts),
 		config:          config,
 		realms:          realms,
 		accountCache:    NewAccountCache(config.CacheTTL, config.CacheDir),
@@ -132,7 +131,7 @@ func (this *state) IsResponsibleFor(logger logger.LogContext, obj resources.Obje
 }
 
 func (this *state) Setup() {
-	go this.ownerupdater()
+	this.ownerupd = startOwnerUpdater(this.context, this.ownerresc)
 	processors, err := this.context.GetIntOption(OPT_SETUP)
 	if err != nil || processors <= 0 {
 		processors = 5

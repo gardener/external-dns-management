@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -71,11 +72,12 @@ func (this *EntryPremise) NotifyChange(p *EntryPremise) string {
 }
 
 type EntryVersion struct {
-	object   *dnsutils.DNSEntryObject
-	dnsname  string
-	targets  Targets
-	mappings map[string][]string
-	warnings []string
+	object       *dnsutils.DNSEntryObject
+	providername resources.ObjectName
+	dnsname      string
+	targets      Targets
+	mappings     map[string][]string
+	warnings     []string
 
 	status api.DNSEntryStatus
 
@@ -185,6 +187,10 @@ func (this *EntryVersion) IsResponsible() bool {
 
 func (this *EntryVersion) ProviderType() string {
 	return utils.StringValue(this.status.ProviderType)
+}
+
+func (this *EntryVersion) ProviderName() resources.ObjectName {
+	return this.providername
 }
 
 func (this *EntryVersion) OwnerId() string {
@@ -327,6 +333,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	this.status.ProviderType = &p.ptype
 	this.responsible = true
 	if p.provider != nil {
+		this.providername = p.provider.ObjectName()
 		provider = p.provider.ObjectName().String()
 		this.status.Provider = &provider
 		defaultTTL := config.TTL
@@ -335,6 +342,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			this.status.TTL = spec.TTL
 		}
 	} else {
+		this.providername = nil
 		this.status.Provider = nil
 		this.status.TTL = nil
 	}
@@ -661,6 +669,15 @@ func (this Entries) AddEntry(entry *Entry) *Entry {
 func (this Entries) Delete(e *Entry) {
 	if this[e.ObjectName()] == e {
 		delete(this, e.ObjectName())
+	}
+}
+
+func (this Entries) UpdateStatistic(statistic *statistic.EntryStatistic) {
+	for _, e := range this {
+		if e.IsResponsible() {
+			statistic.Owners.Inc(e.OwnerId(), e.ProviderType(), e.ProviderName())
+			statistic.Providers.Inc(e.ProviderType(), e.ProviderName())
+		}
 	}
 }
 
