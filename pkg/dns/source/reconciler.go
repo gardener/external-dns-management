@@ -406,9 +406,9 @@ func (this *sourceReconciler) updateEntry(logger logger.LogContext, info *DNSInf
 		mod.Modify(changed)
 		if this.creatorLabelName != "" {
 			if this.creatorLabelValue != "" {
-				changed = resources.SetAnnotation(o, this.creatorLabelName, this.creatorLabelValue)
+				changed = resources.SetLabel(o, this.creatorLabelName, this.creatorLabelValue)
 			} else if this.creatorLabelName != "" {
-				changed = resources.RemoveAnnotation(o, this.creatorLabelName)
+				changed = resources.RemoveLabel(o, this.creatorLabelName)
 			}
 			mod.Modify(changed)
 		}
