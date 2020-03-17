@@ -46,6 +46,10 @@ spec:
   type: {{.Type}}
   secretRef:
     name: {{.Name}}
+{{if .SpecProviderConfig}}
+  providerConfig:
+{{.SpecProviderConfig}}
+{{end}}
   domains:
     include:
       - {{.Domain}}

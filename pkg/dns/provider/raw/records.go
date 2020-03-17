@@ -35,7 +35,24 @@ type Record interface {
 }
 
 type RecordSet []Record
+
+func (this RecordSet) Clone() RecordSet {
+	clone := make(RecordSet, len(this), len(this))
+	for i, r := range this {
+		clone[i] = r.Copy()
+	}
+	return clone
+}
+
 type DNSSet map[string]RecordSet
+
+func (this DNSSet) Clone() DNSSet {
+	clone := DNSSet{}
+	for rk, rv := range this {
+		clone[rk] = rv.Clone()
+	}
+	return clone
+}
 
 type ZoneState struct {
 	dnssets dns.DNSSets
@@ -50,6 +67,16 @@ func NewState() *ZoneState {
 
 func (this *ZoneState) GetDNSSets() dns.DNSSets {
 	return this.dnssets
+}
+
+func (this *ZoneState) Clone() provider.DNSZoneState {
+	clone := NewState()
+	clone.dnssets = this.dnssets.Clone()
+	clone.records = map[string]DNSSet{}
+	for k, v := range this.records {
+		clone.records[k] = v.Clone()
+	}
+	return clone
 }
 
 func (this *ZoneState) AddRecord(r Record) {
@@ -83,6 +110,7 @@ func (this *ZoneState) CalculateDNSSets() {
 		for rtype, rset := range dset {
 			rs := dns.NewRecordSet(rtype, 0, nil)
 			for _, r := range rset {
+				rs.TTL = int64(r.GetTTL())
 				rs.Add(&dns.Record{Value: r.GetValue()})
 			}
 			this.dnssets.AddRecordSetFromProvider(dnsname, rs)

@@ -1,0 +1,37 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: infoblox
+  namespace: default
+spec:
+  type: infoblox-dns
+  secretRef:
+    name: infoblox-credentials
+  providerConfig:
+    host: 10.11.23.45
+    #port: 443
+    sslVerify: false
+
+    # version is the api version
+    version: "2.10"
+
+    # view is the Infoblox DNS view to use
+    #view: default
+
+    # httpPoolConnections is the size of the connection pool
+    #httpPoolConnections: 10
+
+    # request timeout in seconds
+    #httpRequestTimeout: 60
+
+    # cacert is an inlined certificate. Only needed if sslVerify = true and use of self-signed/internal certificate
+    #caCert:
+
+    # max results = 0 means unrestricted
+    #maxResults: 0
+
+    # proxyUrl is only needed if Infoblox is reachable only via proxy
+    #proxyUrl: http://10.1.2.3:8888
+  domains:
+    include:
+    - my.own.domain.com
