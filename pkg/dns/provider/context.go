@@ -36,7 +36,10 @@ type Context interface {
 	IsReady() bool
 	GetByExample(runtime.Object) (resources.Interface, error)
 
+	GetStringOption(name string) (string, error)
 	GetIntOption(name string) (int, error)
+
+	Synchronize(log logger.LogContext, name string, initiator resources.Object) (bool, error)
 
 	Enqueue(obj resources.Object) error
 	EnqueueCommand(cmd string) error
@@ -75,6 +78,14 @@ func (this *DefaultContext) GetByExample(obj runtime.Object) (resources.Interfac
 
 func (this *DefaultContext) GetIntOption(name string) (int, error) {
 	return this.controller.GetIntOption(name)
+}
+
+func (this *DefaultContext) GetStringOption(name string) (string, error) {
+	return this.controller.GetStringOption(name)
+}
+
+func (this *DefaultContext) Synchronize(log logger.LogContext, name string, obj resources.Object) (bool, error) {
+	return this.controller.Synchronize(log, name, obj)
 }
 
 func (this *DefaultContext) Enqueue(obj resources.Object) error {

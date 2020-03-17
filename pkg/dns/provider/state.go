@@ -143,7 +143,7 @@ func (this *state) Setup() {
 	}, processors)
 	this.setupFor(&api.DNSOwner{}, "owners", func(e resources.Object) {
 		p := dnsutils.DNSOwner(e)
-		this.UpdateOwner(this.context.NewContext("owner", p.ObjectName().String()), p)
+		this.UpdateOwner(this.context.NewContext("owner", p.ObjectName().String()), p, true)
 	}, processors)
 	this.setupFor(&api.DNSEntry{}, "entries", func(e resources.Object) {
 		p := dnsutils.DNSEntry(e)

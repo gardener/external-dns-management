@@ -42,6 +42,8 @@ const CONTROLLER_GROUP_DNS_CONTROLLERS = "dnscontrollers"
 const TARGET_CLUSTER = source.TARGET_CLUSTER
 const PROVIDER_CLUSTER = "provider"
 
+const SYNC_ENTRIES = "entries"
+
 var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
@@ -64,6 +66,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedDurationOption(OPT_RESCHEDULEDELAY, 120*time.Second, "reschedule delay after losing provider").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
+		Syncer(SYNC_ENTRIES, controller.NewResourceKey(api.GroupName, api.DNSEntryKind )).
 		CustomResourceDefinitions(crds.DNSEntryCRD, crds.DNSOwnerCRD).
 		MainResource(api.GroupName, api.DNSEntryKind).
 		DefaultWorkerPool(2, 0).
@@ -151,7 +154,7 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 	switch {
 	case obj.IsA(&api.DNSOwner{}):
 		if this.state.IsResponsibleFor(logger, obj) {
-			return this.state.UpdateOwner(logger, dnsutils.DNSOwner(obj))
+			return this.state.UpdateOwner(logger, dnsutils.DNSOwner(obj), false)
 		} else {
 			return this.state.OwnerDeleted(logger, obj.Key())
 		}

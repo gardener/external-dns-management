@@ -42,7 +42,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("adds active  owner", func() {
 		cache := NewOwnerCache(config)
 
-		cache.UpdateOwnerData(name1, "id1", true)
+		cache.UpdateOwnerData(name1, "id1", true, nil)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet("TEST", "id1")))
 	})
@@ -50,7 +50,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("adds inactive  owner", func() {
 		cache := NewOwnerCache(config)
 
-		cache.UpdateOwnerData(name1, "id1", false)
+		cache.UpdateOwnerData(name1, "id1", false, nil)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet("TEST")))
 	})
@@ -58,8 +58,8 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("activate inactive  owner", func() {
 		cache := NewOwnerCache(config)
 
-		cache.UpdateOwnerData(name1, "id1", false)
-		cache.UpdateOwnerData(name1, "id1", true)
+		cache.UpdateOwnerData(name1, "id1", false, nil)
+		cache.UpdateOwnerData(name1, "id1", true, nil)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet("TEST", "id1")))
 	})
@@ -67,8 +67,8 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("deactivate active  owner", func() {
 		cache := NewOwnerCache(config)
 
-		cache.UpdateOwnerData(name1, "id1", true)
-		cache.UpdateOwnerData(name1, "id1", false)
+		cache.UpdateOwnerData(name1, "id1", true, nil)
+		cache.UpdateOwnerData(name1, "id1", false, nil)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet("TEST")))
 	})
@@ -76,7 +76,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("readd inactive owner", func() {
 		cache := NewOwnerCache(config)
 
-		cache.UpdateOwnerData(name1, "TEST", false)
+		cache.UpdateOwnerData(name1, "TEST", false, nil)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet("TEST")))
 	})
@@ -84,7 +84,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("delete readded inactive owner", func() {
 		cache := NewOwnerCache(config)
 
-		cache.UpdateOwnerData(name1, "TEST", false)
+		cache.UpdateOwnerData(name1, "TEST", false, nil)
 		cache.DeleteOwner(key1)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet("TEST")))
@@ -93,8 +93,8 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("delete inactive owner", func() {
 		cache := NewOwnerCache(config)
 
-		cache.UpdateOwnerData(name1, "id1", false)
-		cache.UpdateOwnerData(name2, "id1", true)
+		cache.UpdateOwnerData(name1, "id1", false, nil)
+		cache.UpdateOwnerData(name2, "id1", true, nil)
 		changed, _ := cache.DeleteOwner(key1)
 		Expect(changed).To(Equal(utils.NewStringSet()))
 
@@ -109,7 +109,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("delete readded inactive owner twice", func() {
 		cache := NewOwnerCache(config)
 
-		cache.UpdateOwnerData(name1, "TEST", false)
+		cache.UpdateOwnerData(name1, "TEST", false, nil)
 		cache.DeleteOwner(key1)
 		cache.DeleteOwner(key1)
 
@@ -119,11 +119,11 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("activate and deactivate two active owner", func() {
 		cache := NewOwnerCache(config)
 
-		cache.UpdateOwnerData(name1, "TEST", false)
-		cache.UpdateOwnerData(name2, "TEST", true)
-		cache.UpdateOwnerData(name1, "TEST", true)
-		cache.UpdateOwnerData(name1, "TEST", false)
-		changed, _ := cache.UpdateOwnerData(name2, "TEST", false)
+		cache.UpdateOwnerData(name1, "TEST", false, nil)
+		cache.UpdateOwnerData(name2, "TEST", true, nil)
+		cache.UpdateOwnerData(name1, "TEST", true, nil)
+		cache.UpdateOwnerData(name1, "TEST", false, nil)
+		changed, _ := cache.UpdateOwnerData(name2, "TEST", false, nil)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet("TEST")))
 		Expect(changed).To(Equal(utils.NewStringSet()))
@@ -132,13 +132,13 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("activate and deactivate two active owner", func() {
 		cache := NewOwnerCache(config)
 
-		changed, _ := cache.UpdateOwnerData(name1, "id1", false)
+		changed, _ := cache.UpdateOwnerData(name1, "id1", false, nil)
 		Expect(changed).To(Equal(utils.NewStringSet()))
-		changed, _ = cache.UpdateOwnerData(name2, "id1", true)
+		changed, _ = cache.UpdateOwnerData(name2, "id1", true, nil)
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
-		changed, _ = cache.UpdateOwnerData(name1, "id1", true)
+		changed, _ = cache.UpdateOwnerData(name1, "id1", true, nil)
 		Expect(changed).To(Equal(utils.NewStringSet()))
-		changed, _ = cache.UpdateOwnerData(name2, "id1", false)
+		changed, _ = cache.UpdateOwnerData(name2, "id1", false, nil)
 		Expect(changed).To(Equal(utils.NewStringSet()))
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet("TEST", "id1")))
@@ -147,11 +147,11 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("activate and deactivate two active owner", func() {
 		cache := NewOwnerCache(config)
 
-		cache.UpdateOwnerData(name1, "id1", false)
-		cache.UpdateOwnerData(name2, "id1", true)
-		cache.UpdateOwnerData(name1, "id1", true)
-		cache.UpdateOwnerData(name2, "id1", false)
-		changed, _ := cache.UpdateOwnerData(name1, "id1", false)
+		cache.UpdateOwnerData(name1, "id1", false, nil)
+		cache.UpdateOwnerData(name2, "id1", true, nil)
+		cache.UpdateOwnerData(name1, "id1", true, nil)
+		cache.UpdateOwnerData(name2, "id1", false, nil)
+		changed, _ := cache.UpdateOwnerData(name1, "id1", false, nil)
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet("TEST")))
@@ -160,7 +160,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("activate and delete active owner", func() {
 		cache := NewOwnerCache(config)
 
-		changed, _ := cache.UpdateOwnerData(name1, "id1", true)
+		changed, _ := cache.UpdateOwnerData(name1, "id1", true, nil)
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
 		changed, _ = cache.DeleteOwner(key1)
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
@@ -171,9 +171,9 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("activate and delete (one) active two owner2", func() {
 		cache := NewOwnerCache(config)
 
-		changed, _ := cache.UpdateOwnerData(name1, "id1", true)
+		changed, _ := cache.UpdateOwnerData(name1, "id1", true, nil)
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
-		changed, _ = cache.UpdateOwnerData(name2, "id1", true)
+		changed, _ = cache.UpdateOwnerData(name2, "id1", true, nil)
 		Expect(changed).To(Equal(utils.NewStringSet()))
 
 		changed, _ = cache.DeleteOwner(key1)
@@ -184,9 +184,9 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	ginkgo.It("activate and delete (all) active two owner2", func() {
 		cache := NewOwnerCache(config)
 
-		changed, _ := cache.UpdateOwnerData(name1, "id1", true)
+		changed, _ := cache.UpdateOwnerData(name1, "id1", true, nil)
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
-		changed, _ = cache.UpdateOwnerData(name2, "id1", true)
+		changed, _ = cache.UpdateOwnerData(name2, "id1", true, nil)
 		Expect(changed).To(Equal(utils.NewStringSet()))
 
 		changed, _ = cache.DeleteOwner(key1)
