@@ -34,7 +34,15 @@ import (
 // state handling for OwnerIds
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject) reconcile.Status {
+func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject, setup bool) reconcile.Status {
+	if !setup && !this.ownerCache.IsResponsibleFor(owner.GetOwnerId()) && owner.IsActive() {
+		logger.Infof("would activate new owner -> ensure all entries are synchronized")
+		done, err:=this.context.Synchronize(logger,SYNC_ENTRIES, owner.Object)
+		if !done || err != nil {
+		    return reconcile.DelayOnError(logger,err)
+		}
+		logger.Infof("entries synchronized")
+	}
 	changed, active := this.ownerCache.UpdateOwner(owner)
 	logger.Infof("update: changed owner ids %s, active owner ids %s", changed, active)
 	if len(changed) > 0 {

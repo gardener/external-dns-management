@@ -133,7 +133,7 @@ func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changeset utils.St
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	changeset = utils.StringSet{}
-	name := key.ObjectName().String()
+	name := key.ObjectName().Name()
 	old, ok := this.owners[name]
 	if ok {
 		this.deactivate(name, old, changeset)
