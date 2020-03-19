@@ -79,9 +79,11 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	zonesClient.Authorizer = authorizer
 	recordsClient.Authorizer = authorizer
+
 	// dummy call to check authentication
 	var one int32 = 1
-	_, err = zonesClient.List(h.ctx, &one)
+	ctx := context.TODO()
+	_, err = zonesClient.List(ctx, &one)
 	if err != nil {
 		return nil, fmt.Errorf("Authentication test to Azure with client credentials failed. Please check secret for DNSProvider. Details: %s", err.Error())
 	}

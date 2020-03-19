@@ -10,3 +10,4 @@ tmp/
 /test/integration/kubebuilder*
 /test/integration/default.etcd
 .vscode/
+.kubeconfig-kind-integration
