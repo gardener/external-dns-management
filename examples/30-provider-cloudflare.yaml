@@ -1,0 +1,12 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: cloudflare
+  namespace: default
+spec:
+  type: cloudflare-dns
+  secretRef:
+    name: cloudflare-credentials
+  domains:
+    include:
+    - my.own.domain.com

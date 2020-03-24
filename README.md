@@ -9,6 +9,7 @@ It contains provisioning controllers for creating DNS records in one of the DNS 
   - _AliCloud DNS_,
    - _Azure DNS_, or
    - _OpenStack Designate_,
+   - Cloudflare DNS
 
 and source controllers for services and ingresses to create DNS entries by annotations.
 
@@ -266,6 +267,7 @@ Here the following controller groups can be used:
   - `azure-dns`:
   - `google-clouddns`:
   - `openstack-designate`:
+  - `cloudflare-dns`
   
 - `all`: (default) all controllers
 
@@ -335,6 +337,23 @@ Flags:
       --azure-dns.secrets.pool.size int                             Worker pool size for pool secrets of controller azure-dns (default: 2)
       --azure-dns.setup int                                         number of processors for controller setup
       --azure-dns.ttl int                                           Default time-to-live for DNS entries
+      --cloudflare-dns.cache-dir string                             Directory to store zone caches (for reload after restart)
+      --cloudflare-dns.cache-ttl int                                Time-to-live for provider hosted zone cache
+      --cloudflare-dns.default.pool.size int                        Worker pool size for pool default of controller cloudflare-dns (default: 2)
+      --cloudflare-dns.disable-zone-state-caching                   disable use of cached dns zone state on changes
+      --cloudflare-dns.dns-class string                             Identifier used to differentiate responsible controllers for entries
+      --cloudflare-dns.dns-delay duration                           delay between two dns reconciliations
+      --cloudflare-dns.dns.pool.resync-period duration              Period for resynchronization of pool dns of controller cloudflare-dns (default: 15m0s)
+      --cloudflare-dns.dns.pool.size int                            Worker pool size for pool dns of controller cloudflare-dns (default: 1)
+      --cloudflare-dns.dry-run                                      just check, don't modify
+      --cloudflare-dns.identifier string                            Identifier used to mark DNS entries
+      --cloudflare-dns.ownerids.pool.size int                       Worker pool size for pool ownerids of controller cloudflare-dns (default: 1)
+      --cloudflare-dns.providers.pool.resync-period duration        Period for resynchronization of pool providers of controller cloudflare-dns (default: 10m0s)
+      --cloudflare-dns.providers.pool.size int                      Worker pool size for pool providers of controller cloudflare-dns (default: 2)
+      --cloudflare-dns.reschedule-delay duration                    reschedule delay after losing provider
+      --cloudflare-dns.secrets.pool.size int                        Worker pool size for pool secrets of controller cloudflare-dns (default: 2)
+      --cloudflare-dns.setup int                                    number of processors for controller setup
+      --cloudflare-dns.ttl int                                      Default time-to-live for DNS entries
       --cache-dir string                                            default for all controller "cache-dir" options
       --cache-ttl int                                               default for all controller "cache-ttl" options
   -c, --controllers string                                          comma separated list of controllers to start (<name>,source,target,all) (default "all")
@@ -670,6 +689,7 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/azure"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/google"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/cloudflare"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
