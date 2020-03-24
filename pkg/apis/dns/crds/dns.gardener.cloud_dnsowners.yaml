@@ -1,0 +1,80 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.4
+  creationTimestamp: null
+  name: dnsowners.dns.gardener.cloud
+spec:
+  group: dns.gardener.cloud
+  names:
+    kind: DNSOwner
+    listKind: DNSOwnerList
+    plural: dnsowners
+    shortNames:
+    - dnso
+    singular: dnsowner
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.ownerId
+      name: OwnerId
+      type: string
+    - jsonPath: .spec.active
+      name: Active
+      type: string
+    - jsonPath: .status.amount
+      name: Usages
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              active:
+                type: boolean
+              ownerId:
+                type: string
+            type: object
+          status:
+            properties:
+              entries:
+                properties:
+                  amount:
+                    type: integer
+                  types:
+                    additionalProperties:
+                      type: integer
+                    type: object
+                required:
+                - amount
+                type: object
+            type: object
+        required:
+        - spec
+        - status
+        type: object
+    served: true
+    storage: true
+    subresources: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

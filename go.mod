@@ -37,6 +37,7 @@ require (
 	k8s.io/client-go v0.16.4
 	k8s.io/code-generator v0.16.4
 	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
+	sigs.k8s.io/controller-tools v0.2.4
 	sigs.k8s.io/kind v0.7.0
 )
 

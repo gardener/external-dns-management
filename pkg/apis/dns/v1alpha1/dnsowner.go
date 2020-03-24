@@ -30,6 +30,13 @@ type DNSOwnerList struct {
 	Items           []DNSOwner `json:"items"`
 }
 
+
+// +kubebuilder:storageversion
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Cluster,path=dnsowners,shortName=dnso,singular=dnsowner
+// +kubebuilder:printcolumn:name=OwnerId,JSONPath=".spec.ownerId",type=string
+// +kubebuilder:printcolumn:name=Active,JSONPath=".spec.active",type=string
+// +kubebuilder:printcolumn:name=Usages,JSONPath=".status.amount",type=string
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
