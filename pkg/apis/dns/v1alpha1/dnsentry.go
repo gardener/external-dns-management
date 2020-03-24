@@ -30,6 +30,14 @@ type DNSEntryList struct {
 	Items           []DNSEntry `json:"items"`
 }
 
+// +kubebuilder:storageversion
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Namespaced,path=dnsentries,shortName=dnse,singular=dnsentry
+// +kubebuilder:printcolumn:name=DNS,description="FQDN of DNS Entry",JSONPath=".spec.dnsName",type=string
+// +kubebuilder:printcolumn:name=OWNERID,JSONPath=".spec.ownerId",type=string
+// +kubebuilder:printcolumn:name=TYPE,JSONPath=".status.providerType",type=string
+// +kubebuilder:printcolumn:name=PROVIDER,JSONPath=".status.provider",type=string
+// +kubebuilder:printcolumn:name=STATUS,JSONPath="..status.state",type=string
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

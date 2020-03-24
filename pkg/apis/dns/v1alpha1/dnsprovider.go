@@ -32,6 +32,11 @@ type DNSProviderList struct {
 	Items           []DNSProvider `json:"items"`
 }
 
+// +kubebuilder:storageversion
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:scope=Namespaced,path=dnsproviders,shortName=dnspr,singular=dnsprovider
+// +kubebuilder:printcolumn:name=TYPE,JSONPath=".spec.type",type=string
+// +kubebuilder:printcolumn:name=STATUS,JSONPath="..status.state",type=string
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
