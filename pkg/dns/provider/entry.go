@@ -25,8 +25,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"k8s.io/apimachinery/pkg/util/validation"
+
+	"github.com/gardener/external-dns-management/pkg/dns"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -39,7 +40,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-const MSG_PRESERVED = "errornous entry preserved in provider"
+const MSG_PRESERVED = "errorneous entry preserved in provider"
 
 type EntryPremise struct {
 	ptypes   utils.StringSet
@@ -61,7 +62,7 @@ func (this *EntryPremise) NotifyChange(p *EntryPremise) string {
 		r = append(r, fmt.Sprintf("provider (%s -> %s)", Provider(this.provider), Provider(p.provider)))
 	}
 	if this.zoneid != p.zoneid {
-		r = append(r, fmt.Sprintf("provider (%s -> %s)", this.zoneid, p.zoneid))
+		r = append(r, fmt.Sprintf("zone (%s -> %s)", this.zoneid, p.zoneid))
 	}
 	if len(r) == 0 {
 		return ""
@@ -78,9 +79,10 @@ type EntryVersion struct {
 
 	status api.DNSEntryStatus
 
-	interval  int64
-	valid     bool
-	duplicate bool
+	interval    int64
+	responsible bool
+	valid       bool
+	duplicate   bool
 }
 
 func NewEntryVersion(object *dnsutils.DNSEntryObject, old *Entry) *EntryVersion {
@@ -110,6 +112,9 @@ func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string) 
 	}
 	if this.ZoneId() != e.ZoneId() {
 		reasons = append(reasons, "zone changed")
+	}
+	if this.OwnerId() != e.OwnerId() {
+		reasons = append(reasons, "ownerid changed")
 	}
 	if this.targets.DifferFrom(e.targets) {
 		reasons = append(reasons, "targets changed")
@@ -172,6 +177,14 @@ func (this *EntryVersion) TTL() int64 {
 
 func (this *EntryVersion) Interval() int64 {
 	return this.interval
+}
+
+func (this *EntryVersion) IsResponsible() bool {
+	return this.responsible
+}
+
+func (this *EntryVersion) ProviderType() string {
+	return utils.StringValue(this.status.ProviderType)
 }
 
 func (this *EntryVersion) OwnerId() string {
@@ -257,6 +270,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider))
 
 	this.valid = false
+	this.responsible = false
 	spec := &this.object.DNSEntry().Spec
 
 	///////////// handle type responsibility
@@ -311,6 +325,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	provider := ""
 	this.status.Zone = &p.zoneid
 	this.status.ProviderType = &p.ptype
+	this.responsible = true
 	if p.provider != nil {
 		provider = p.provider.ObjectName().String()
 		this.status.Provider = &provider
