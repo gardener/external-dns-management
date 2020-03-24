@@ -44,6 +44,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	if err != nil {
 		return nil, err
 	}
+	//Email would be necessary in case of API KEY based auth which I am not supporting now. API token is more secure anyway
 	//email, err := c.GetRequiredProperty("CLOUDFLARE_API_EMAIL", "email")
 	//if err != nil {
 	//	return nil, err
