@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/gardener/controller-manager-library/pkg/logger"
-
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/hashicorp/go-multierror"
 )
 
 type Handler struct {
@@ -111,8 +111,12 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	}
 
 	for _, entry := range results {
-		rs := dns.NewRecordSet(entry.Type, int64(entry.TTL), nil)
-		dnssets.AddRecordSetFromProvider(entry.Name, rs)
+		switch entry.Type {
+		case dns.RS_A, dns.RS_CNAME, dns.RS_TXT:
+			rs := dns.NewRecordSet(entry.Type, int64(entry.TTL), nil)
+			rs.Add(&dns.Record{Value: entry.Content})
+			dnssets.AddRecordSetFromProvider(entry.Name, rs)
+		}
 	}
 
 	return provider.NewDNSZoneState(dnssets), nil
@@ -150,19 +154,26 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 			continue
 		}
 
+		var recordFailed int
+		var recordErrors error
+
 		for _, dnsRecord := range *dnsRecords {
 			err := exec.apply(r.Action, dnsRecord, h.config.Metrics)
 			if err != nil {
-				failed++
+				recordFailed++
 				logger.Infof("Apply failed with %s", err.Error())
-				if r.Done != nil {
-					r.Done.Failed(err)
-				}
-			} else {
-				succeeded++
-				if r.Done != nil {
-					r.Done.Succeeded()
-				}
+				recordErrors = multierror.Append(recordErrors, err)
+			}
+		}
+		if recordFailed > 0 {
+			failed++
+			if r.Done != nil {
+				r.Done.Failed(recordErrors)
+			}
+		} else {
+			succeeded++
+			if r.Done != nil {
+				r.Done.Succeeded()
 			}
 		}
 	}

@@ -17,30 +17,23 @@
 package cloudflare
 
 import (
+	"fmt"
 	"github.com/cloudflare/cloudflare-go"
 	"strings"
 
-	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-type Change struct {
-	rs   *azure.RecordSet
-	Done provider.DoneHandler
-}
-
 type Execution struct {
 	logger.LogContext
 	handler *Handler
 	zone    provider.DNSHostedZone
-
-	changes map[string][]*Change
 }
 
 func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZone) *Execution {
-	return &Execution{LogContext: logger, handler: h, zone: zone, changes: map[string][]*Change{}}
+	return &Execution{LogContext: logger, handler: h, zone: zone}
 }
 
 type buildStatus int
@@ -130,13 +123,39 @@ func (exec *Execution) create(record cloudflare.DNSRecord, metrics provider.Metr
 }
 
 func (exec *Execution) update(record cloudflare.DNSRecord, metrics provider.Metrics) error {
-	err := exec.handler.api.UpdateDNSRecord(exec.zone.Id(), record.ID, record)
+	recordID, err := exec.lookupRecordID(record)
+	if err != nil {
+		return err
+	}
+	err = exec.handler.api.UpdateDNSRecord(exec.zone.Id(), recordID, record)
 	metrics.AddRequests("RecordSetsClient_Update", 1)
 	return err
 }
 
 func (exec *Execution) delete(record cloudflare.DNSRecord, metrics provider.Metrics) error {
-	err := exec.handler.api.DeleteDNSRecord(exec.zone.Id(), record.ID)
+	recordID, err := exec.lookupRecordID(record)
+	if err != nil {
+		return err
+	}
+	err = exec.handler.api.DeleteDNSRecord(exec.zone.Id(), recordID)
 	metrics.AddRequests("RecordSetsClient_Delete", 1)
 	return err
+}
+
+func (exec *Execution) lookupRecordID(record cloudflare.DNSRecord) (string, error) {
+	name := &record.Name
+	if !strings.HasSuffix(*name, exec.zone.Domain()) {
+		*name = *name + "." + exec.zone.Domain()
+	}
+	dnsRecords, err := exec.handler.api.DNSRecords(exec.zone.Id(), record)
+	if err != nil {
+		return "", err
+	}
+	if len(dnsRecords) > 1 {
+		return "", fmt.Errorf("More than 1 records found for the given record.")
+	}
+	if dnsRecords == nil {
+		return "", fmt.Errorf("No records found for the given record")
+	}
+	return dnsRecords[0].ID, nil
 }
