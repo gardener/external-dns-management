@@ -99,13 +99,9 @@ func (c *DNSHandlerConfig) FillRequiredProperty(target **string, prop string, al
 			return err
 		}
 		*target = &value
-	} else {
-		value := c.GetProperty(prop, alt...)
-		if value != "" {
-			return fmt.Errorf("version defined in secret and provider config")
-		}
+		return nil
 	}
-	return nil
+	return c.checkNotDefinedInConfig(prop, alt...)
 }
 
 func (c *DNSHandlerConfig) FillRequiredIntProperty(target **int, prop string, alt ...string) error {
@@ -119,13 +115,9 @@ func (c *DNSHandlerConfig) FillRequiredIntProperty(target **int, prop string, al
 			return fmt.Errorf("property %s must be an int value: %s", prop, err)
 		}
 		*target = &i
-	} else {
-		value := c.GetProperty(prop, alt...)
-		if value != "" {
-			return fmt.Errorf("property %s defined in secret and provider config", prop)
-		}
+		return nil
 	}
-	return nil
+	return c.checkNotDefinedInConfig(prop, alt...)
 }
 
 func (c *DNSHandlerConfig) FillDefaultedIntProperty(target **int, def int, prop string, alt ...string) error {
@@ -136,14 +128,18 @@ func (c *DNSHandlerConfig) FillDefaultedIntProperty(target **int, def int, prop 
 		}
 		i, err := strconv.Atoi(value)
 		if err != nil {
-			return fmt.Errorf("property %s must be an int value: %s", err)
+			return fmt.Errorf("property %s must be an int value: %s", prop, err)
 		}
 		*target = &i
-	} else {
-		value := c.GetProperty(prop, alt...)
-		if value != "" {
-			return fmt.Errorf("%s defined in secret and provider config", prop)
-		}
+		return nil
+	}
+	return c.checkNotDefinedInConfig(prop, alt...)
+}
+
+func (c *DNSHandlerConfig) checkNotDefinedInConfig(prop string, alt ...string) error {
+	value := c.GetProperty(prop, alt...)
+	if value != "" {
+		return fmt.Errorf("property %s defined in secret and provider config", prop)
 	}
 	return nil
 }
