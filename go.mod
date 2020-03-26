@@ -10,26 +10,28 @@ require (
 	github.com/ahmetb/gen-crd-api-reference-docs v0.1.5
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190603021944-12ad9f921c0b
 	github.com/aws/aws-sdk-go v1.19.41
+	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
 	github.com/gardener/controller-manager-library v0.1.1-0.20200204110458-c263b9bb97ad
 	github.com/go-openapi/swag v0.19.4 // indirect
-	github.com/golang/groupcache v0.0.0-20190129154638-5b532d6fd5ef // indirect
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gophercloud/gophercloud v0.2.0
 	github.com/gophercloud/utils v0.0.0-20190527093828-25f1b77b8c03
 	github.com/imdario/mergo v0.3.7 // indirect
+	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e // indirect
+	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/miekg/dns v1.1.14
 	github.com/onsi/ginkgo v1.10.1
 	github.com/onsi/gomega v1.7.0
-	github.com/prometheus/client_golang v0.9.2
-	github.com/prometheus/client_model v0.0.0-20190129233127-fd36f4220a90 // indirect
-	github.com/prometheus/common v0.2.0 // indirect
-	github.com/prometheus/procfs v0.0.0-20190328153300-af7bedc223fb // indirect
+	github.com/prometheus/client_golang v0.9.3
+	github.com/spf13/cobra v0.0.6 // indirect
 	golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
-	golang.org/x/tools v0.0.0-20190715044752-607ca053a137 // indirect
+	golang.org/x/sys v0.0.0-20200317113312-5766fd39f98d // indirect
+	golang.org/x/tools v0.0.0-20191127201027-ecd32218bd7f // indirect
 	google.golang.org/api v0.4.0
+	gopkg.in/yaml.v2 v2.2.8 // indirect
 	k8s.io/api v0.16.4
 	k8s.io/apiextensions-apiserver v0.16.4
 	k8s.io/apimachinery v0.17.0
