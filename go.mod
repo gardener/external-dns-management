@@ -17,7 +17,6 @@ require (
 	github.com/googleapis/gnostic v0.2.0 // indirect
 	github.com/gophercloud/gophercloud v0.2.0
 	github.com/gophercloud/utils v0.0.0-20190527093828-25f1b77b8c03
-	github.com/hashicorp/go-multierror v1.0.0
 	github.com/imdario/mergo v0.3.7 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/mailru/easyjson v0.0.0-20190626092158-b2ccc519800e // indirect

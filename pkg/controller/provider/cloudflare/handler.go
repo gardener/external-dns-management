@@ -17,24 +17,26 @@
 package cloudflare
 
 import (
-	"fmt"
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
-	"github.com/hashicorp/go-multierror"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
+	"strings"
 )
 
 type Handler struct {
 	provider.DefaultDNSHandler
 	config provider.DNSHandlerConfig
 	cache  provider.ZoneCache
-	api    *cloudflare.API
+	access Access
 }
 
 var _ provider.DNSHandler = &Handler{}
 
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
+	var err error
+
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *c,
@@ -50,18 +52,14 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	//	return nil, err
 	//}
 
-	h.api, err = cloudflare.NewWithAPIToken(apiToken)
+	access, err := NewAccess(apiToken, c.Metrics)
 	if err != nil {
-		return nil, fmt.Errorf("Creating Cloudflare object with api token failed: %s", err.Error())
+		return nil, err
 	}
 
-	// dummy call to check authentication
-	_, err = h.api.ListZones()
-	if err != nil {
-		return nil, fmt.Errorf("Authentication test to Cloudflare with api token failed. Please check secret for DNSProvider. Details: %s", err.Error())
-	}
+	h.access = access
 
-	h.cache, err = provider.NewZoneCache(c.CacheConfig, c.Metrics, nil, h.getZones, h.getZoneState)
+	h.cache, err = provider.NewZoneCache(*c.CacheConfig.CopyWithDisabledZoneStateCache(), c.Metrics, nil, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}
@@ -78,20 +76,42 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
-	zones := provider.DNSHostedZones{}
-	results, err := h.api.ListZones()
-	h.config.Metrics.AddRequests("ZonesClient_ListComplete", 1)
-	if err != nil {
-		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
+	rawZones := []cloudflare.Zone{}
+	{
+		f := func(zone cloudflare.Zone) (bool, error) {
+			rawZones = append(rawZones, zone)
+			return true, nil
+		}
+		err := h.access.ListZones(f)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	for _, zone := range results {
-		// Check if the current api token has access to the zone.
-		_, err := h.api.ZoneDetails(zone.ID)
-		if err == nil {
-			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zone.ID, dns.NormalizeHostname(zone.Name), "", []string{}, false)
-			zones = append(zones, hostedZone)
+	zones := provider.DNSHostedZones{}
+
+	for _, z := range rawZones {
+		forwarded := []string{}
+		f := func(r cloudflare.DNSRecord) (bool, error) {
+			if r.Type == dns.RS_NS {
+				name := r.Name
+				if name != z.Name {
+					forwarded = append(forwarded, name)
+				}
+			}
+			return true, nil
 		}
+		err := h.access.ListRecords(z.ID, f)
+		if err != nil {
+			if checkAccessForbidden(err) {
+				// It is possible to deny access to certain zones in the account
+				// As a result, z zone should not be appended to the hosted zones
+				continue
+			}
+			return nil, err
+		}
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.ID, z.Name, z.ID, forwarded, false)
+		zones = append(zones, hostedZone)
 	}
 
 	return zones, nil
@@ -102,25 +122,19 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 }
 
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
-	dnssets := dns.DNSSets{}
+	state := raw.NewState()
 
-	results, err := h.api.DNSRecords(zone.Id(), cloudflare.DNSRecord{})
-
-	h.config.Metrics.AddRequests("RecordSetsClient_ListAllByDNSZoneComplete", 1)
+	f := func(r cloudflare.DNSRecord) (bool, error) {
+		a := (*Record)(&r)
+		state.AddRecord(a)
+		return true, nil
+	}
+	err := h.access.ListRecords(zone.Key(), f)
 	if err != nil {
-		return nil, fmt.Errorf("Listing DNS zones failed. Details: %s", err.Error())
+		return nil, err
 	}
-
-	for _, entry := range results {
-		switch entry.Type {
-		case dns.RS_A, dns.RS_CNAME, dns.RS_TXT:
-			rs := dns.NewRecordSet(entry.Type, int64(entry.TTL), nil)
-			rs.Add(&dns.Record{Value: entry.Content})
-			dnssets.AddRecordSetFromProvider(entry.Name, rs)
-		}
-	}
-
-	return provider.NewDNSZoneState(dnssets), nil
+	state.CalculateDNSSets()
+	return state, nil
 }
 
 func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error) bool {
@@ -128,69 +142,14 @@ func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	err := h.executeRequests(logger, zone, state, reqs)
+	err := raw.ExecuteRequests(logger, &h.config, h.access, zone, state, reqs)
 	h.cache.ApplyRequests(err, zone, reqs)
 	return err
 }
 
-func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	exec := NewExecution(logger, h, zone)
-
-	var succeeded, failed int
-	for _, r := range reqs {
-		status, name, dnsRecords := exec.buildRecordSet(r)
-		if status == bs_empty || status == bs_dryrun {
-			continue
-		} else if status == bs_invalidType {
-			err := fmt.Errorf("Unexpected record type: %s", r.Type)
-			if r.Done != nil {
-				r.Done.SetInvalid(err)
-			}
-			continue
-		} else if status == bs_invalidName {
-			err := fmt.Errorf("Unexpected dns name: %s", name)
-			if r.Done != nil {
-				r.Done.SetInvalid(err)
-			}
-			continue
-		}
-
-		var recordFailed int
-		var recordErrors error
-
-		for _, dnsRecord := range *dnsRecords {
-			err := exec.apply(r.Action, dnsRecord, h.config.Metrics)
-			if err != nil {
-				recordFailed++
-				logger.Infof("Apply failed with %s", err.Error())
-				recordErrors = multierror.Append(recordErrors, err)
-			}
-		}
-		if recordFailed > 0 {
-			failed++
-			if r.Done != nil {
-				r.Done.Failed(recordErrors)
-			}
-		} else {
-			succeeded++
-			if r.Done != nil {
-				r.Done.Succeeded()
-			}
-		}
+func checkAccessForbidden(err error) bool {
+	if err != nil && strings.Contains(err.Error(), "403") {
+		return true
 	}
-
-	if h.config.DryRun {
-		logger.Infof("no changes in dryrun mode for Cloudflare")
-		return nil
-	}
-
-	if succeeded > 0 {
-		logger.Infof("Succeeded updates for records in zone %s: %d", zone.Domain(), succeeded)
-	}
-	if failed > 0 {
-		logger.Infof("Failed updates for records in zone %s: %d", zone.Domain(), failed)
-		return fmt.Errorf("%d changes failed", failed)
-	}
-
-	return nil
+	return false
 }
