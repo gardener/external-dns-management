@@ -25,6 +25,8 @@ import (
 
 type Record alidns.Record
 
+var _ raw.Record = &Record{}
+
 func (r *Record) GetType() string    { return r.Type }
 func (r *Record) GetId() string      { return r.RecordId }
 func (r *Record) GetDNSName() string { return GetDNSName(alidns.Record(*r)) }
