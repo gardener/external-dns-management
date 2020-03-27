@@ -18,6 +18,7 @@ package provider
 
 import (
 	"fmt"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -70,18 +71,21 @@ func (this *Factory) SupportZoneStateCache(typecode string) (bool, error) {
 ///////////////////////////////////////////////////////////////////////////////
 
 type CompoundFactory struct {
-	name      string
-	typecodes utils.StringSet
-	factories map[string]DNSHandlerFactory
+	name       string
+	typecodes  utils.StringSet
+	finalizers utils.StringSet
+	factories  map[string]DNSHandlerFactory
 }
 
 var _ DNSHandlerFactory = &CompoundFactory{}
 
 func NewDNSHandlerCompoundFactory(name string) *CompoundFactory {
-	return &CompoundFactory{name, utils.StringSet{}, map[string]DNSHandlerFactory{}}
+	return &CompoundFactory{name,
+		utils.StringSet{}, utils.StringSet{},
+		map[string]DNSHandlerFactory{}}
 }
 
-func (this *CompoundFactory) Add(f DNSHandlerFactory) error {
+func (this *CompoundFactory) Add(f DNSHandlerFactory, finalizer ...string) error {
 	typecodes := f.TypeCodes()
 	for t := range typecodes {
 		if this.typecodes.Contains(t) {
@@ -91,7 +95,9 @@ func (this *CompoundFactory) Add(f DNSHandlerFactory) error {
 	for t := range typecodes {
 		this.factories[t] = f
 		this.typecodes.Add(t)
+		this.finalizers.Add(controller.FinalizerName("dns.gardener.cloud", t))
 	}
+	this.finalizers.Add(finalizer...)
 	return nil
 }
 
@@ -106,6 +112,10 @@ func (this *CompoundFactory) TypeCodes() utils.StringSet {
 
 func (this *CompoundFactory) Name() string {
 	return this.name
+}
+
+func (this *CompoundFactory) Finalizers() utils.StringSet {
+	return this.finalizers.Copy()
 }
 
 func (this *CompoundFactory) Create(typecode string, config *DNSHandlerConfig) (DNSHandler, error) {

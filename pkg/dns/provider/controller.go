@@ -54,8 +54,8 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 	}
 	return controller.Configure(name).
 		RequireLease().
-		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "Identifier used to differentiate responsible controllers for entries").
-		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries").
+		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "Class identifier used to differentiate responsible controllers for entry resources").
+		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries in DNS system").
 		DefaultedStringOption(OPT_CACHE_DIR, "", "Directory to store zone caches (for reload after restart)").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
 		DefaultedBoolOption(OPT_DISABLE_ZONE_STATE_CACHING, false, "disable use of cached dns zone state on changes").
@@ -64,9 +64,10 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedIntOption(OPT_SETUP, 10, "number of processors for controller setup").
 		DefaultedDurationOption(OPT_DNSDELAY, 10*time.Second, "delay between two dns reconciliations").
 		DefaultedDurationOption(OPT_RESCHEDULEDELAY, 120*time.Second, "reschedule delay after losing provider").
+		FinalizerDomain("dns.gardener.cloud").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
-		Syncer(SYNC_ENTRIES, controller.NewResourceKey(api.GroupName, api.DNSEntryKind )).
+		Syncer(SYNC_ENTRIES, controller.NewResourceKey(api.GroupName, api.DNSEntryKind)).
 		CustomResourceDefinitions(crds.DNSEntryCRD, crds.DNSOwnerCRD).
 		MainResource(api.GroupName, api.DNSEntryKind).
 		DefaultWorkerPool(2, 0).
@@ -109,7 +110,13 @@ func DNSReconcilerType(factory DNSHandlerFactory) controller.ReconcilerType {
 
 func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interface, error) {
 	classes := controller.NewClassesByOption(c, OPT_CLASS, source.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
-	c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
+	if f, ok := factory.(Finalizers); ok {
+		g := controller.NewFinalizerGroup(c.GetDefinition().FinalizerName(), f.Finalizers())
+		c.SetFinalizerHandler(controller.NewFinalizerForGroupAndClasses(g, classes))
+	} else {
+		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
+	}
+
 	config, err := NewConfigForController(c, factory)
 	if err != nil {
 		return nil, err

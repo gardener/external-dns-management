@@ -24,8 +24,8 @@ import (
 var registry = apiextensions.NewRegistry()
 
 func init() {
-  var data string
-  data=`
+	var data string
+	data = `
 
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -141,8 +141,8 @@ status:
   conditions: []
   storedVersions: []
   `
-  utils.Must(registry.RegisterCRD(data))
-  data=`
+	utils.Must(registry.RegisterCRD(data))
+	data = `
 
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -224,8 +224,8 @@ status:
   conditions: []
   storedVersions: []
   `
-  utils.Must(registry.RegisterCRD(data))
-  data=`
+	utils.Must(registry.RegisterCRD(data))
+	data = `
 
 ---
 apiVersion: apiextensions.k8s.io/v1
@@ -361,9 +361,9 @@ status:
   conditions: []
   storedVersions: []
   `
-  utils.Must(registry.RegisterCRD(data))
+	utils.Must(registry.RegisterCRD(data))
 }
 
 func AddToRegistry(r apiextensions.Registry) {
-  registry.AddToRegistry(r)
+	registry.AddToRegistry(r)
 }

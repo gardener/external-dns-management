@@ -166,6 +166,10 @@ type Metrics interface {
 	AddRequests(request_type string, n int)
 }
 
+type Finalizers interface {
+	Finalizers() utils.StringSet
+}
+
 type DNSHandler interface {
 	ProviderType() string
 	GetZones() (DNSHostedZones, error)
