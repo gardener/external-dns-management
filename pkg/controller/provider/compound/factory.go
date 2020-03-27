@@ -22,12 +22,12 @@ const NAME = "compound"
 
 var Factory = provider.NewDNSHandlerCompoundFactory(NAME)
 
-func Register(fac provider.DNSHandlerFactory) error {
-	return Factory.Add(fac)
+func Register(fac provider.DNSHandlerFactory, finalizer ...string) error {
+	return Factory.Add(fac, finalizer...)
 }
 
-func MustRegister(fac provider.DNSHandlerFactory) {
-	if err := Factory.Add(fac); err != nil {
+func MustRegister(fac provider.DNSHandlerFactory, finalizer ...string) {
+	if err := Factory.Add(fac, finalizer...); err != nil {
 		panic(err)
 	}
 }

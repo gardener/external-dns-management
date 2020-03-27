@@ -29,13 +29,13 @@ import (
 func main() {
 	var r raw.Record
 
-	ali:=alidns.Record{Value: "test"}
+	ali := alidns.Record{Value: "test"}
 
-	r=(*alicloud.Record)(&ali)
+	r = (*alicloud.Record)(&ali)
 
 	fmt.Printf("Value: %s\n", r.GetValue())
 
-	back:=(*alidns.Record)(r.(*alicloud.Record))
+	back := (*alidns.Record)(r.(*alicloud.Record))
 	fmt.Printf("Value: %s\n", back.Value)
 
 }

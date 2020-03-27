@@ -37,9 +37,9 @@ import (
 func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject, setup bool) reconcile.Status {
 	if !setup && !this.ownerCache.IsResponsibleFor(owner.GetOwnerId()) && owner.IsActive() {
 		logger.Infof("would activate new owner -> ensure all entries are synchronized")
-		done, err:=this.context.Synchronize(logger,SYNC_ENTRIES, owner.Object)
+		done, err := this.context.Synchronize(logger, SYNC_ENTRIES, owner.Object)
 		if !done || err != nil {
-		    return reconcile.DelayOnError(logger,err)
+			return reconcile.DelayOnError(logger, err)
 		}
 		logger.Infof("entries synchronized")
 	}

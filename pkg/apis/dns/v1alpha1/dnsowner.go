@@ -30,7 +30,6 @@ type DNSOwnerList struct {
 	Items           []DNSOwner `json:"items"`
 }
 
-
 // +kubebuilder:storageversion
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster,path=dnsowners,shortName=dnso,singular=dnsowner
