@@ -185,6 +185,54 @@ spec:
         {{- if .Values.configuration.cacheTtl }}
         - --cache-ttl={{ .Values.configuration.cacheTtl }}
         {{- end }}
+        {{- if .Values.configuration.cloudflareDNSCacheTtl }}
+        - --cloudflare-dns.cache-ttl={{ .Values.configuration.cloudflareDNSCacheTtl }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSDefaultPoolSize }}
+        - --cloudflare-dns.default.pool.size={{ .Values.configuration.cloudflareDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSDisableZoneStateCaching }}
+        - --cloudflare-dns.disable-zone-state-caching={{ .Values.configuration.cloudflareDNSDisableZoneStateCaching }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSDnsClass }}
+        - --cloudflare-dns.dns-class={{ .Values.configuration.cloudflareDNSDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSDnsDelay }}
+        - --cloudflare-dns.dns-delay={{ .Values.configuration.cloudflareDNSDnsDelay }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSDnsPoolResyncPeriod }}
+        - --cloudflare-dns.dns.pool.resync-period={{ .Values.configuration.cloudflareDNSDnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSDnsPoolSize }}
+        - --cloudflare-dns.dns.pool.size={{ .Values.configuration.cloudflareDNSDnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSDryRun }}
+        - --cloudflare-dns.dry-run={{ .Values.configuration.cloudflareDNSDryRun }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSIdentifier }}
+        - --cloudflare-dns.identifier={{ .Values.configuration.cloudflareDNSIdentifier }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSOwneridsPoolSize }}
+        - --cloudflare-dns.ownerids.pool.size={{ .Values.configuration.cloudflareDNSOwneridsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSProvidersPoolResyncPeriod }}
+        - --cloudflare-dns.providers.pool.resync-period={{ .Values.configuration.cloudflareDNSProvidersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSProvidersPoolSize }}
+        - --cloudflare-dns.providers.pool.size={{ .Values.configuration.cloudflareDNSProvidersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSRescheduleDelay }}
+        - --cloudflare-dns.reschedule-delay={{ .Values.configuration.cloudflareDNSRescheduleDelay }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSSecretsPoolSize }}
+        - --cloudflare-dns.secrets.pool.size={{ .Values.configuration.cloudflareDNSSecretsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSSetup }}
+        - --cloudflare-dns.setup={{ .Values.configuration.cloudflareDNSSetup }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSTtl }}
+        - --cloudflare-dns.ttl={{ .Values.configuration.cloudflareDNSTtl }}
+        {{- end }}
         {{- if .Values.configuration.controllers }}
         - --controllers={{ .Values.configuration.controllers }}
         {{- end }}

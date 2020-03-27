@@ -59,6 +59,23 @@ options = """
       --azure-dns.ttl int                                           Default time-to-live for DNS entries
       --cache-dir string                                            default for all controller "cache-dir" options
       --cache-ttl int                                               default for all controller "cache-ttl" options
+      --cloudflare-dns.cache-dir string                             Directory to store zone caches (for reload after restart)
+      --cloudflare-dns.cache-ttl int                                Time-to-live for provider hosted zone cache
+      --cloudflare-dns.default.pool.size int                        Worker pool size for pool default of controller cloudflare-dns (default: 2)
+      --cloudflare-dns.disable-zone-state-caching                   disable use of cached dns zone state on changes
+      --cloudflare-dns.dns-class string                             Identifier used to differentiate responsible controllers for entries
+      --cloudflare-dns.dns-delay duration                           delay between two dns reconciliations
+      --cloudflare-dns.dns.pool.resync-period duration              Period for resynchronization of pool dns of controller cloudflare-dns (default: 15m0s)
+      --cloudflare-dns.dns.pool.size int                            Worker pool size for pool dns of controller cloudflare-dns (default: 1)
+      --cloudflare-dns.dry-run                                      just check, don't modify
+      --cloudflare-dns.identifier string                            Identifier used to mark DNS entries
+      --cloudflare-dns.ownerids.pool.size int                       Worker pool size for pool ownerids of controller cloudflare-dns (default: 1)
+      --cloudflare-dns.providers.pool.resync-period duration        Period for resynchronization of pool providers of controller cloudflare-dns (default: 10m0s)
+      --cloudflare-dns.providers.pool.size int                      Worker pool size for pool providers of controller cloudflare-dns (default: 2)
+      --cloudflare-dns.reschedule-delay duration                    reschedule delay after losing provider
+      --cloudflare-dns.secrets.pool.size int                        Worker pool size for pool secrets of controller cloudflare-dns (default: 2)
+      --cloudflare-dns.setup int                                    number of processors for controller setup
+      --cloudflare-dns.ttl int                                      Default time-to-live for DNS entries
   -c, --controllers string                                          comma separated list of controllers to start (<name>,source,target,all) (default "all")
       --cpuprofile string                                           set file for cpu profiling
       --disable-namespace-restriction                               disable access restriction for namespace local access only
@@ -187,10 +204,11 @@ def toCamelCase(name):
   str = str.replace("ingressDns", "ingressDNS")
   str = str.replace("serviceDns", "serviceDNS")
   str = str.replace("googleClouddns", "googleCloudDNS")
+  str = str.replace("cloudflareDns", "cloudflareDNS")
   return str
 
 excluded = {"name", "help", "identifier", "dry-run",
-  "cache-dir", "alicloud-dns.cache-dir", "aws-route53.cache-dir", "azure-dns.cache-dir", "google-clouddns.cache-dir", "openstack-designate.cache-dir"}
+  "cache-dir", "alicloud-dns.cache-dir", "aws-route53.cache-dir", "azure-dns.cache-dir", "google-clouddns.cache-dir", "openstack-designate.cache-dir", "cloudflare-dns.cache-dir"}
 for line in options.split("\n"):
     m = re.match(r"\s+(?:-[^-]+)?--(\S+)\s", line)
     if m:

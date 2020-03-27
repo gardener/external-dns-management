@@ -53,7 +53,7 @@ configuration:
   # awsRoute53ProvidersPoolResyncPeriod: 30s
   # awsRoute53ProvidersPoolSize: 2
   # awsRoute53RescheduleDelay: 120s
-  # awsRouteSecretsPoolSize: 2
+  # awsRoute53SecretsPoolSize: 2
   # awsRoute53Setup: 10
   # awsRoute53Ttl: 120
   # azureDNSCacheTtl: 120
@@ -73,6 +73,22 @@ configuration:
   # azureDNSSetup: 10
   # azureDNSTtl: 120
   # cacheTtl: 120
+  # cloudflareDNSCacheTtl: 120
+  # cloudflareDNSDefaultPoolSize: 2
+  # cloudflareDNSDisableZoneStateCaching: false
+  # cloudflareDNSDnsClass: "gardendns"
+  # cloudflareDNSDnsDelay: 10s
+  # cloudflareDNSDnsPoolResyncPeriod: 30s
+  # cloudflareDNSDnsPoolSize: 1
+  # cloudflareDNSDryRun: false
+  # cloudflareDNSIdentifier: ""
+  # cloudflareDNSOwneridsPoolSize: 1
+  # cloudflareDNSProvidersPoolResyncPeriod: 30s
+  # cloudflareDNSProvidersPoolSize: 2
+  # cloudflareDNSRescheduleDelay: 120s
+  # cloudflareDNSSecretsPoolSize: 2
+  # cloudflareDNSSetup: 10
+  # cloudflareDNSTtl: 120
   controllers: all
   # cpuprofile: ""
   # disableNamespaceRestriction: false
@@ -107,6 +123,7 @@ configuration:
   # googleCloudDNSOwneridsPoolSize: 1
   # googleCloudDNSProvidersPoolResyncPeriod: 30s
   # googleCloudDNSProvidersPoolSize: 2
+  # googleCloudDNSRescheduleDelay: 120s
   # googleCloudDNSSecretsPoolSize: 2
   # googleCloudDNSSetup: 10
   # googleCloudDNSTtl: 120
