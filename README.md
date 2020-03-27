@@ -1,28 +1,28 @@
 # External DNS Management
 
-The main artefact of this project is the <b>DNS controller manager</b> for managing DNS records, also 
+The main artefact of this project is the <b>DNS controller manager</b> for managing DNS records, also
 nicknamed as the Gardener "DNS Controller".
 
 It contains provisioning controllers for creating DNS records in one of the DNS cloud services
   - _Amazon Route53_,
-  - _Google CloudDNS_, 
+  - _Google CloudDNS_,
   - _AliCloud DNS_,
-   - _Azure DNS_, or
-   - _OpenStack Designate_,
-   - Cloudflare DNS
+  - _Azure DNS_,
+  - _OpenStack Designate_,
+  - _Cloudflare DNS_
 
 and source controllers for services and ingresses to create DNS entries by annotations.
 
 The configuration for the external DNS service is specified in a custom resource `DNSProvider`.
 Multiple `DNSProvider` can be used simultaneously and changed without restarting the DNS controller.
 
-DNS records are either created directly for a corresponding custom resource `DNSEntry` or by 
+DNS records are either created directly for a corresponding custom resource `DNSEntry` or by
 annotating a service or ingress.
 
 For a detailed explanation of the model, see section [The Model](#the-model).
 
 For extending or adapting this project with your own source or provisioning controllers, see section
-[Extensions](#extensions) 
+[Extensions](#extensions)
 
 ## Quick start
 
@@ -30,11 +30,11 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
 
 1. Prerequisites
     - Check out or download the project to get a copy of the Helm charts.
-      It is recommended to check out the tag of the 
+      It is recommended to check out the tag of the
       [last release](https://github.com/gardener/external-dns-management/releases), so that Helm
       values reference the newest released container image for the deployment.
 
-    - Make sure, that you have installed Helm client (`helm`) locally and Helm server (`tiller`) on 
+    - Make sure, that you have installed Helm client (`helm`) locally and Helm server (`tiller`) on
       the Kubernetes cluster. See e.g. [Helm installation](https://helm.sh/docs/install/) for more details.
 
 2. Install the DNS controller manager
@@ -49,10 +49,10 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
     ```
 
     This will use the default configuration with all source and provisioning controllers enabled.
-    The complete set of configuration variables can be found in `charts/external-dns-management/values.yaml`. 
+    The complete set of configuration variables can be found in `charts/external-dns-management/values.yaml`.
     Their meaning is explained by their corresponding command line options in section
     [Using the DNS controller manager](#using-the-dns-controller-manager)
-    
+
     By default, the DNS controller looks for custom resources in all namespaces. The choosen namespace is
     only relevant for the deployment itself.
 
@@ -60,8 +60,8 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
 
    To specify a DNS provider, you need to create a custom resource `DNSProvider` and a secret containing the
    credentials for your account at the provider. E.g. if you want to use AWS Route53, create a secret and
-   provider with 
-   
+   provider with
+
    ```bash
    cat << EOF | kubectl apply -f -
    apiVersion: v1
@@ -78,8 +78,8 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
    EOF
    ```
 
-   and    
-   
+   and
+
    ```bash
    cat << EOF | kubectl apply -f -
    apiVersion: dns.gardener.cloud/v1alpha1
@@ -99,13 +99,13 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
    ```
 
    Check the successful creation with
-   
+
    ```bash
    kubectl get dnspr
    ```
-   
-   You should see something like 
-   
+
+   You should see something like
+
    ```
    NAME   TYPE          STATUS   AGE
    aws    aws-route53   Ready    12s
@@ -114,7 +114,7 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
 4. Create a `DNSEntry`
 
    Create an DNS entry with
-   
+
    ```bash
    cat << EOF | kubectl apply -f -
    apiVersion: dns.gardener.cloud/v1alpha1
@@ -129,41 +129,42 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
      - 1.2.3.4
    EOF
    ```
-   
-   Check the status of the DNS entry with 
-   
+
+   Check the status of the DNS entry with
+
     ```bash
     kubectl get dnsentry
     ```
-    
+
     You should see something like
-    
-    ```
+
+    ```txt
     NAME          DNS                           TYPE          PROVIDER      STATUS    AGE
     mydnsentry    myentry.my-own-domain.com     aws-route53   default/aws   Ready     24s
     ```
- 
+
     As soon as the status of the entry is `Ready`, the provider has accepted the new DNS record.
     Depending on the provider and your DNS settings and cache, it may take up to a few minutes before
     the domain name can be resolved.
-   
+
 5. Wait for/check DNS record
 
    To check the DNS resolution, use `nslookup` or `dig`.
-   
+
    ```bash
    nslookup myentry.my-own-domain.com
    ```
-   
+
    or with dig
-   
+
    ```bash
    # or with dig
    dig +short myentry.my-own-domain.com
    ```
 
    Depending on your network settings, you may get a successful response faster using a public DNS server
-   (e.g. 8.8.8.8, 8.8.4.4, or 1.1.1.1)   
+   (e.g. 8.8.8.8, 8.8.4.4, or 1.1.1.1)
+
    ```bash
    dig @8.8.8.8 +short myentry.my-own-domain.com
    ```
@@ -233,7 +234,7 @@ This way it is possbible to
 - identify records in the external DNS management environment that are managed
   by the actual controller instance
 - distinguish different DNS source environments sharing the same hosted zones
-  in the external management environment 
+  in the external management environment
 - cleanup unused entries, even if the whole resource set is already
   gone
 - move the responsibility for dedicated sets of DNS entries among different
@@ -260,15 +261,15 @@ Here the following controller groups can be used:
 - `dnssources`: all DNS Source Controllers. It includes the conrollers
   - `ingress-dns`: handle DNS annotations for the standard kubernetes ingress resource
   - `service-dns`: handle DNS annotations for the standard kubernetes service resource
- 
+
 - `dnscontrollers`: all DNS Provisioning Controllers. It includes the controllers
-  - `alicloud-dns`: 
+  - `alicloud-dns`:
   - `aws-route53`:
   - `azure-dns`:
   - `google-clouddns`:
   - `openstack-designate`:
   - `cloudflare-dns`
-  
+
 - `all`: (default) all controllers
 
 It is also possible to list dedicated controllers by their name.
@@ -277,11 +278,12 @@ If a DNS Provisioning Controller is enabled it is important to specify a
 unique controller identity using the `--identifier` option.
 This identifier is stored in the DNS system to identify the DNS entries
 managed by a dedicated controller. There should never be two
-DNS controllers with the same identifier running at the same time for the 
+DNS controllers with the same identifier running at the same time for the
 same DNS domains/accounts.
 
 Here is the complete list of options provided:
-```
+
+```txt
 Usage:
   dns-controller-manager [flags]
 
@@ -491,16 +493,16 @@ A source controller can be implemented following this example:
 package service
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/dns/source"
+    "github.com/gardener/controller-manager-library/pkg/resources"
+    "github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
 var _MAIN_RESOURCE = resources.NewGroupKind("core", "Service")
 
 func init() {
-	source.DNSSourceController(source.NewDNSSouceTypeForExtractor("service-dns", _MAIN_RESOURCE, GetTargets),nil).
-		FinalizerDomain("dns.gardener.cloud").
-		MustRegister(source.CONTROLLER_GROUP_DNS_SOURCES)
+    source.DNSSourceController(source.NewDNSSouceTypeForExtractor("service-dns", _MAIN_RESOURCE, GetTargets),nil).
+        FinalizerDomain("dns.gardener.cloud").
+        MustRegister(source.CONTROLLER_GROUP_DNS_SOURCES)
 }
 ```
 
@@ -526,22 +528,22 @@ instance) in several ways:
 
 #### Embedding a Factory into a Controller
 
-A provisioning controller can be implemented following this 
+A provisioning controller can be implemented following this
 [example](pkg/controller/provider/aws/controller/controller.go):
 
 ```go
 package controller
 
 import (
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
+    "github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 const CONTROLLER_NAME = "route53-dns-controller"
 
 func init() {
-	provider.DNSController(CONTROLLER_NAME, &Factory{}).
-		FinalizerDomain("dns.gardener.cloud").
-		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
+    provider.DNSController(CONTROLLER_NAME, &Factory{}).
+        FinalizerDomain("dns.gardener.cloud").
+        MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }
 ```
 
@@ -554,6 +556,7 @@ They also show a typical set of implementation structures that help
 to structure the implementation of such controllers.
 
 The provider implemented in this project always follow the same structure:
+
 - the provider package contains the provider code
 - the factory source file registers the factory at a default compound factory
 - it contains a sub package `controller`, which contains the embedding of
@@ -573,8 +576,8 @@ a dedicated handler for a dedicated provider type:
 package aws
 
 import (
-	"github.com/gardener/external-dns-management/pkg/controller/provider/compound"
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
+    "github.com/gardener/external-dns-management/pkg/controller/provider/compound"
+    "github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 const TYPE_CODE = "aws-route53"
@@ -582,7 +585,7 @@ const TYPE_CODE = "aws-route53"
 var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)
 
 func init() {
-	compound.MustRegister(Factory)
+    compound.MustRegister(Factory)
 }
 ```
 
@@ -598,14 +601,14 @@ by implementing a main package like [this](cmd/dns/main.go):
 package main
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/controllermanager"
+    "github.com/gardener/controller-manager-library/pkg/controllermanager"
 
-	_ "github.com/<your controller package>"
-	...
+    _ "github.com/<your controller package>"
+    ...
 )
 
 func main() {
-	controllermanager.Start("my-dns-controller-manager", "dns controller manager", "some description")
+    controllermanager.Start("my-dns-controller-manager", "dns controller manager", "some description")
 }
 ```
 
@@ -622,21 +625,22 @@ embedded into the compound factory like [this](cmd/compound/main.go):
 package main
 
 import (
-	"fmt"
-	"os"
+    "fmt"
+    "os"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager"
+    "github.com/gardener/controller-manager-library/pkg/controllermanager"
 
 
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/<your provider>"
-	...
+    _ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
+    _ "github.com/gardener/external-dns-management/pkg/controller/provider/<your provider>"
+    ...
 )
 
 func main() {
-	controllermanager.Start("dns-controller-manager", "dns controller manager", "nothing")
+    controllermanager.Start("dns-controller-manager", "dns controller manager", "nothing")
 }
 ```
+
 </details>
 
 ### Multiple Cluster Support
@@ -650,11 +654,10 @@ The *DNS Source Controllers* support two clusters:
 - the logical cluster `target` is used to maintain the `DNSEnry` objects.
 
 The *DNS Provisioning Controllers* also support two clusters:
-- the default cluster is used to scan for `DNSEntry` objects. It is mapped 
+- the default cluster is used to scan for `DNSEntry` objects. It is mapped
   to the logical cluster `target`
 - the logical cluster `provider` is used to look to the `DNSProvider` objects
   and their related secrets.
-
 
 If those controller types should be combined in a single controller manager,
 it can be configured to support three potential clusters with the
@@ -672,52 +675,53 @@ support all the included DNS provider type factories:
 package main
 
 import (
-	"fmt"
-	"os"
+    "fmt"
+    "os"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
+    "github.com/gardener/controller-manager-library/pkg/controllermanager"
+    "github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
+    "github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
+    "github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
 
-	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
-	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
+    dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
+    dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
 
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/alicloud"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/aws"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/azure"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/google"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/cloudflare"
+    _ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
+    _ "github.com/gardener/external-dns-management/pkg/controller/provider/alicloud"
+    _ "github.com/gardener/external-dns-management/pkg/controller/provider/aws"
+    _ "github.com/gardener/external-dns-management/pkg/controller/provider/azure"
+    _ "github.com/gardener/external-dns-management/pkg/controller/provider/google"
+    _ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
+    _ "github.com/gardener/external-dns-management/pkg/controller/provider/cloudflare"
 
-	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
-	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
+    _ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
+    _ "github.com/gardener/external-dns-management/pkg/controller/source/service"
 )
 
 func init() {
-	// target cluster already defined in dns source controller package
-	cluster.Configure(
-		dnsprovider.PROVIDER_CLUSTER,
-		"providers",
-		"cluster to look for provider objects",
-	).Fallback(dnssource.TARGET_CLUSTER)
+    // target cluster already defined in dns source controller package
+    cluster.Configure(
+        dnsprovider.PROVIDER_CLUSTER,
+        "providers",
+        "cluster to look for provider objects",
+    ).Fallback(dnssource.TARGET_CLUSTER)
 
-	mappings.ForControllerGroup(dnsprovider.CONTROLLER_GROUP_DNS_CONTROLLERS).
-		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
+    mappings.ForControllerGroup(dnsprovider.CONTROLLER_GROUP_DNS_CONTROLLERS).
+        Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
 
 }
 
 func main() {
-	controllermanager.Start("dns-controller-manager", "dns controller manager", "nothing")
+    controllermanager.Start("dns-controller-manager", "dns controller manager", "nothing")
 }
 ```
+
 </details>
 
 Those clusters can the be separated by registering their names together with
-command line option names. These can be used to specify different kubeconfig 
+command line option names. These can be used to specify different kubeconfig
 files for those clusters.
-  
+
 By default all logical clusters are mapped to the default physical cluster
 specified via `--kubeconfig` or default cluster access.
 
