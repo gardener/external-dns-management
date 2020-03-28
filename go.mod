@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go v1.19.41
 	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
-	github.com/gardener/controller-manager-library v0.1.1-0.20200204110458-c263b9bb97ad
+	github.com/gardener/controller-manager-library v0.1.1-0.20200328092648-1c2baf754795
 	github.com/go-openapi/swag v0.19.4 // indirect
 	github.com/gophercloud/gophercloud v0.2.0
 	github.com/gophercloud/utils v0.0.0-20190527093828-25f1b77b8c03
@@ -42,7 +42,5 @@ require (
 )
 
 //gopkg.in/fsnotify.v1 v1.4.7 => github.com/fsnotify/fsnotify v1.4.7
-replace (
-	github.com/gardener/controller-manager-library => ../controller-manager-library
-	k8s.io/apimachinery => k8s.io/apimachinery v0.16.4
-)
+//github.com/gardener/controller-manager-library => ../controller-manager-library
+replace k8s.io/apimachinery => k8s.io/apimachinery v0.16.4
