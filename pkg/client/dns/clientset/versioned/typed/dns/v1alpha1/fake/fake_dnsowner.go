@@ -34,9 +34,9 @@ type FakeDNSOwners struct {
 	ns   string
 }
 
-var dnsownersResource = schema.GroupVersionResource{Group: "dns", Version: "v1alpha1", Resource: "dnsowners"}
+var dnsownersResource = schema.GroupVersionResource{Group: "dns.gardener.cloud", Version: "v1alpha1", Resource: "dnsowners"}
 
-var dnsownersKind = schema.GroupVersionKind{Group: "dns", Version: "v1alpha1", Kind: "DNSOwner"}
+var dnsownersKind = schema.GroupVersionKind{Group: "dns.gardener.cloud", Version: "v1alpha1", Kind: "DNSOwner"}
 
 // Get takes name of the dNSOwner, and returns the corresponding dNSOwner object, and an error if there is any.
 func (c *FakeDNSOwners) Get(name string, options v1.GetOptions) (result *v1alpha1.DNSOwner, err error) {

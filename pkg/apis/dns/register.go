@@ -14,7 +14,8 @@
  *
  */
 
-//go:generate ../../../vendor/github.com/gardener/controller-manager-library/hack/generate-crds
+//go:generate bash ../../../vendor/github.com/gardener/controller-manager-library/hack/generate-crds
+//xgo:generate bash ../../../hack/generate-code
 // +kubebuilder:skip
 
 package dns
