@@ -12,7 +12,7 @@ helper:
         default_channel: 'internal_scp_workspace'
         channel_cfgs:
           internal_scp_workspace:
-            channel_name: 'k8s-gardener'
+            channel_name: 'C9CEBQPGE' #sap-tech-gardener
             slack_cfg_name: 'scp_workspace'
   templates:
     branchset:
