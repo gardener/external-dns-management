@@ -18,12 +18,14 @@ package utils
 
 import (
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/utils"
-
-	"github.com/gardener/controller-manager-library/pkg/resources"
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/utils"
+
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
 var DNSProviderType = (*api.DNSProvider)(nil)
@@ -51,10 +53,32 @@ func (this *DNSProviderObject) TypeCode() string {
 	return this.DNSProvider().Spec.Type
 }
 
-func (this *DNSProviderObject) SetState(state, message string) bool {
+func (this *DNSProviderObject) SetStateWithError(state string, err error) bool {
+	type causer interface {
+		error
+		Cause() error
+	}
+
+	message := err.Error()
+	if cause, ok := err.(causer); ok {
+		suffix := cause.Error()
+		prefix := message
+		if strings.HasSuffix(message, suffix) {
+			prefix = message[:len(message)-len(suffix)]
+		}
+		return this.SetState(api.STATE_ERROR, message, prefix)
+	}
+	return this.SetState(api.STATE_ERROR, message)
+}
+
+func (this *DNSProviderObject) SetState(state, message string, commonMessagePrefix ...string) bool {
 	mod := &utils.ModificationState{}
 	status := &this.DNSProvider().Status
-	mod.AssureStringPtrValue(&status.Message, message)
+	if len(commonMessagePrefix) != 1 || status.Message == nil || !strings.HasPrefix(*status.Message, commonMessagePrefix[0]) {
+		// only update if prefix has changed. This avoids race conditions (state update <-> reconcilie) if message
+		// contains time stamps or correlation ids
+		mod.AssureStringPtrValue(&status.Message, message)
+	}
 	mod.AssureStringValue(&status.State, state)
 	mod.AssureInt64Value(&status.ObservedGeneration, this.DNSProvider().Generation)
 	return mod.IsModified()
