@@ -26,6 +26,13 @@ build-local:
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
 	    ./cmd/dns
 
+.PHONY: build-local-compound
+build-local-compound:
+	@CGO_ENABLED=0 GO111MODULE=on go build -o $(EXECUTABLE)-compound \
+	    -mod=vendor \
+	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
+	    ./cmd/compound
+
 .PHONY: release
 release:
 	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o $(EXECUTABLE) \
