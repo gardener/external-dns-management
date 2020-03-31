@@ -120,7 +120,7 @@ func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string) 
 		reasons = append(reasons, "targets changed")
 	}
 	if this.State() != e.State() {
-		if e.State() != api.STATE_READY {
+		if e.State() != api.StateReady {
 			reasons = append(reasons, "state changed")
 		}
 	}
@@ -292,7 +292,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			this.status.Provider = nil
 			this.status.ProviderType = nil
 			this.status.Zone = nil
-			err := this.updateStatus(logger, api.STATE_ERROR, "No responsible provider found")
+			err := this.updateStatus(logger, api.StateError, "No responsible provider found")
 			if err != nil {
 				return reconcile.Delay(logger, err)
 			}
@@ -300,7 +300,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			// assign entry to actual type
 			hello.Infof(logger)
 			logger.Infof("assigning to provider type %q responsible for zone %s", p.ptype, p.zoneid)
-			this.status.State = api.STATE_PENDING
+			this.status.State = api.StatePending
 			this.status.Message = StatusMessage("waiting for dns reconciliation")
 		}
 	}
@@ -348,9 +348,9 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	if verr != nil {
 		hello.Infof(logger, "validation failed: %s", verr)
 
-		state := api.STATE_INVALID
-		if this.status.State == api.STATE_READY {
-			state = api.STATE_STALE
+		state := api.StateInvalid
+		if this.status.State == api.StateReady {
+			state = api.StateStale
 		}
 		this.UpdateStatus(logger, state, verr.Error())
 		return reconcile.Failed(logger, verr)
@@ -361,8 +361,8 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	hello.Infof(logger, "validation ok")
 
 	if this.IsDeleting() {
-		logger.Infof("update state to %s", api.STATE_DELETING)
-		this.status.State = api.STATE_DELETING
+		logger.Infof("update state to %s", api.StateDeleting)
+		this.status.State = api.StateDeleting
 		this.status.Message = StatusMessage("entry is scheduled to be deleted")
 		this.valid = true
 	} else {
@@ -378,9 +378,9 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				verr := fmt.Errorf(msg)
 				hello.Infof(logger, msg)
 
-				state := api.STATE_INVALID
-				if this.status.State == api.STATE_READY {
-					state = api.STATE_STALE
+				state := api.StateInvalid
+				if this.status.State == api.StateReady {
+					state = api.StateStale
 				}
 				this.UpdateStatus(logger, state, verr.Error())
 				return reconcile.Recheck(logger, verr, time.Duration(this.interval)*time.Second)
@@ -391,8 +391,8 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 		this.targets = targets
 		if err != nil {
-			if this.status.State != api.STATE_STALE {
-				this.status.State = api.STATE_ERROR
+			if this.status.State != api.StateStale {
+				this.status.State = api.StateError
 				this.status.Message = StatusMessage(err.Error())
 			} else {
 				if strings.HasPrefix(*this.status.Message, MSG_PRESERVED) {
@@ -403,7 +403,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			}
 		} else {
 			if p.zoneid == "" {
-				this.status.State = api.STATE_ERROR
+				this.status.State = api.StateError
 				this.status.Provider = nil
 				this.status.Message = StatusMessagef("no provider found for %q", this.dnsname)
 			} else {
@@ -466,12 +466,12 @@ func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg stri
 func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, msg string) (bool, error) {
 	f := func(data resources.ObjectData) (bool, error) {
 		o := data.(*api.DNSEntry)
-		if state == api.STATE_PENDING && o.Status.State != "" {
+		if state == api.StatePending && o.Status.State != "" {
 			return false, nil
 		}
 		mod := &utils.ModificationState{}
 
-		if state == api.STATE_READY {
+		if state == api.StateReady {
 			mod.AssureInt64PtrPtr(&o.Status.TTL, this.status.TTL)
 			list, msg := targetList(this.targets)
 			if !reflect.DeepEqual(list, o.Status.Targets) {
@@ -484,11 +484,11 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 			}
 		}
 		mod.AssureInt64Value(&o.Status.ObservedGeneration, o.Generation)
-		if !(this.status.State == api.STATE_STALE && this.status.State == state) {
+		if !(this.status.State == api.StateStale && this.status.State == state) {
 			mod.AssureStringPtrValue(&o.Status.Message, msg)
 			this.status.Message = &msg
 		}
-		if !(this.status.State == api.STATE_STALE && state == api.STATE_INVALID) {
+		if !(this.status.State == api.StateStale && state == api.StateInvalid) {
 			mod.AssureStringValue(&o.Status.State, state)
 			this.status.State = state
 		}

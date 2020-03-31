@@ -66,9 +66,9 @@ func (this *DNSProviderObject) SetStateWithError(state string, err error) bool {
 		if strings.HasSuffix(message, suffix) {
 			prefix = message[:len(message)-len(suffix)]
 		}
-		return this.SetState(api.STATE_ERROR, message, prefix)
+		return this.SetState(api.StateError, message, prefix)
 	}
-	return this.SetState(api.STATE_ERROR, message)
+	return this.SetState(api.StateError, message)
 }
 
 func (this *DNSProviderObject) SetState(state, message string, commonMessagePrefix ...string) bool {

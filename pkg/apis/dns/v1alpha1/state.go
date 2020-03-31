@@ -16,9 +16,13 @@
 
 package v1alpha1
 
-const STATE_PENDING = "Pending"
-const STATE_ERROR = "Error"
-const STATE_INVALID = "Invalid"
-const STATE_STALE = "Stale"
-const STATE_READY = "Ready"
-const STATE_DELETING = "Deleting"
+// TODO: use string type aliases to express DNSEntryState and DNSProviderState.
+
+const (
+	StatePending  = "Pending"
+	StateError    = "Error"
+	StateInvalid  = "Invalid"
+	StateStale    = "Stale"
+	StateReady    = "Ready"
+	StateDeleting = "Deleting"
+)

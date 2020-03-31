@@ -45,7 +45,7 @@ func (this *StatusUpdate) SetInvalid(err error) {
 		this.done = true
 		this.modified = false
 		this.fhandler.RemoveFinalizer(this.Entry.object)
-		_, err := this.UpdateStatus(this.logger, api.STATE_INVALID, err.Error())
+		_, err := this.UpdateStatus(this.logger, api.StateInvalid, err.Error())
 		if err != nil {
 			this.logger.Errorf("cannot update: %s", err)
 		}
@@ -56,7 +56,7 @@ func (this *StatusUpdate) Failed(err error) {
 		this.done = true
 		this.modified = false
 		this.fhandler.RemoveFinalizer(this.Entry.Object())
-		_, err := this.UpdateStatus(this.logger, api.STATE_ERROR, err.Error())
+		_, err := this.UpdateStatus(this.logger, api.StateError, err.Error())
 		if err != nil {
 			this.logger.Errorf("cannot update: %s", err)
 		}
@@ -72,7 +72,7 @@ func (this *StatusUpdate) Succeeded() {
 		} else {
 			this.Entry.activezone = this.ZoneId()
 			this.fhandler.SetFinalizer(this.Entry.Object())
-			_, err := this.UpdateStatus(this.logger, api.STATE_READY, "dns entry active")
+			_, err := this.UpdateStatus(this.logger, api.StateReady, "dns entry active")
 			if err != nil {
 				this.logger.Errorf("cannot update: %s", err)
 			}

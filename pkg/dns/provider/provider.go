@@ -463,7 +463,7 @@ func (this *dnsProviderVersion) MapTarget(t Target) Target {
 func (this *dnsProviderVersion) setError(modified bool, err error) error {
 	modified = this.object.SetSelection(utils.StringSet{}, utils.StringSet{}, &this.object.Status().Domains) || modified
 	modified = this.object.SetSelection(utils.StringSet{}, utils.StringSet{}, &this.object.Status().Zones) || modified
-	modified = this.object.SetStateWithError(api.STATE_ERROR, err) || modified
+	modified = this.object.SetStateWithError(api.StateError, err) || modified
 	if modified {
 		return this.object.UpdateStatus()
 	}
@@ -510,7 +510,7 @@ func (this *dnsProviderVersion) failedButRecheck(logger logger.LogContext, err e
 func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified bool) reconcile.Status {
 	status := &this.object.DNSProvider().Status
 	mod := resources.NewModificationState(this.object, modified)
-	mod.AssureStringValue(&status.State, api.STATE_READY)
+	mod.AssureStringValue(&status.State, api.StateReady)
 	mod.AssureStringPtrValue(&status.Message, "provider operational")
 	mod.AssureInt64Value(&status.ObservedGeneration, this.object.DNSProvider().Generation)
 	return reconcile.UpdateStatus(logger, mod.UpdateStatus())
