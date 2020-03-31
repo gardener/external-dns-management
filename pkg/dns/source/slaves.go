@@ -93,25 +93,25 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 
 				logger.Infof("update event")
 				switch s.State {
-				case api.STATE_ERROR:
+				case api.StateError:
 					msg := fmt.Errorf("errornous dns entry")
 					if s.Message != nil {
 						msg = fmt.Errorf("%s: %s", msg, *s.Message)
 					}
 					fb.Failed(logger, n, msg, &stateCopy)
-				case api.STATE_INVALID:
+				case api.StateInvalid:
 					msg := fmt.Errorf("dns entry invalid")
 					if s.Message != nil {
 						msg = fmt.Errorf("%s: %s", msg, *s.Message)
 					}
 					fb.Invalid(logger, n, msg, &stateCopy)
-				case api.STATE_PENDING:
+				case api.StatePending:
 					msg := fmt.Sprintf("dns entry pending")
 					if s.Message != nil {
 						msg = fmt.Sprintf("%s: %s", msg, *s.Message)
 					}
 					fb.Pending(logger, n, msg, &stateCopy)
-				case api.STATE_READY:
+				case api.StateReady:
 					if stateCopy.Message == nil {
 						str := "dns entry ready"
 						stateCopy.Message = &str

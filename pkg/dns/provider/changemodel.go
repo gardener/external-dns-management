@@ -76,14 +76,14 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 					status := e.Object().Status()
 					msg := MSG_PRESERVED
 					trigger := false
-					if status.State == v1alpha1.STATE_ERROR || status.State == v1alpha1.STATE_INVALID {
+					if status.State == v1alpha1.StateError || status.State == v1alpha1.StateInvalid {
 						msg = msg + ": " + utils.StringValue(status.Message)
 						model.Infof("found stale set '%s': %s -> preserve unchanged", utils.StringValue(status.Message), s.Name)
 					} else {
 						model.Infof("found stale set '%s' -> preserve unchanged", s.Name)
 						trigger = true
 					}
-					upd, err := e.UpdateStatus(logger, v1alpha1.STATE_STALE, msg)
+					upd, err := e.UpdateStatus(logger, v1alpha1.StateStale, msg)
 					if trigger && (!upd || err != nil) {
 						e.Trigger(logger)
 					}

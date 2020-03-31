@@ -958,7 +958,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 					err := &perrs.AlreadyBusyForEntry{DNSName: dnsname, ObjectName: cur.ObjectName()}
 					logger.Warnf("%s", err)
 					if status.IsSucceeded() {
-						_, err := v.UpdateStatus(logger, api.STATE_ERROR, err.Error())
+						_, err := v.UpdateStatus(logger, api.StateError, err.Error())
 						if err != nil {
 							return new, reconcile.DelayOnError(logger, err)
 						}
@@ -973,10 +973,10 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				}
 			}
 		}
-		if new.valid && new.status.State != api.STATE_READY && new.status.State != api.STATE_PENDING {
+		if new.valid && new.status.State != api.StateReady && new.status.State != api.StatePending {
 			msg := fmt.Sprintf("activating for %s", new.DNSName())
 			logger.Info(msg)
-			new.UpdateStatus(logger, api.STATE_PENDING, msg)
+			new.UpdateStatus(logger, api.StatePending, msg)
 		}
 		this.dnsnames[dnsname] = new
 	}

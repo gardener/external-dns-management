@@ -248,10 +248,10 @@ outer:
 			s := found.Names[n]
 			if s != nil && !modified[n] {
 				switch s.State {
-				case api.STATE_ERROR:
-				case api.STATE_INVALID:
-				case api.STATE_PENDING:
-				case api.STATE_READY:
+				case api.StateError:
+				case api.StateInvalid:
+				case api.StatePending:
+				case api.StateReady:
 				default:
 					if s.CreationTimestamp.Time.Before(threshold) {
 						feedback.Pending(logger, n, "no dns controller running?", s)
