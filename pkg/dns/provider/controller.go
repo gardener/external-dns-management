@@ -19,7 +19,9 @@ package provider
 import (
 	"time"
 
-	"github.com/gardener/external-dns-management/pkg/crds"
+	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 
@@ -48,6 +50,10 @@ var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
+func init() {
+	crds.AddToRegistry(apiextensions.DefaultRegistry())
+}
+
 func DNSController(name string, factory DNSHandlerFactory) controller.Configuration {
 	if name == "" {
 		name = factory.Name()
@@ -68,7 +74,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
 		Syncer(SYNC_ENTRIES, controller.NewResourceKey(api.GroupName, api.DNSEntryKind)).
-		CustomResourceDefinitions(crds.DNSEntryCRD, crds.DNSOwnerCRD).
+		CustomResourceDefinitions(ownerGroupKind, entryGroupKind).
 		MainResource(api.GroupName, api.DNSEntryKind).
 		DefaultWorkerPool(2, 0).
 		WorkerPool("ownerids", 1, 0).
@@ -76,7 +82,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 			controller.NewResourceKey(api.GroupName, api.DNSOwnerKind),
 		).
 		Cluster(PROVIDER_CLUSTER).
-		CustomResourceDefinitions(crds.DNSProviderCRD).
+		CustomResourceDefinitions(providerGroupKind).
 		WorkerPool("providers", 2, 10*time.Minute).
 		Watches(
 			controller.NewResourceKey(api.GroupName, api.DNSProviderKind),

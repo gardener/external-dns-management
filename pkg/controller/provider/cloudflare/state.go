@@ -34,6 +34,6 @@ func (r *Record) GetValue() string {
 	}
 	return r.Content
 }
-func (r *Record) GetTTL() int       { return r.TTL }
-func (r *Record) SetTTL(ttl int)    { r.TTL = ttl }
-func (r *Record) Copy() raw.Record  { n := *r; return &n }
+func (r *Record) GetTTL() int      { return r.TTL }
+func (r *Record) SetTTL(ttl int)   { r.TTL = ttl }
+func (r *Record) Copy() raw.Record { n := *r; return &n }

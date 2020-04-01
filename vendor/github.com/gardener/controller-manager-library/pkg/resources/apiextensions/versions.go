@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	reserr "github.com/gardener/controller-manager-library/pkg/resources/errors"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
@@ -41,12 +42,22 @@ var v116 = semver.MustParse("1.16.0")
 var otype runtime.Object
 
 func NewDefaultedCustomResourceDefinitionVersions(spec CRDSpecification) (*CustomResourceDefinitionVersions, error) {
-	o, err := GetCustomResourceDefinition(spec)
-	if err != nil {
-		return nil, err
+	var def *CustomResourceDefinitionVersions
+
+	switch s := spec.(type) {
+	case schema.GroupKind:
+		def = registry.GetCRDs(s)
+		if def == nil {
+			return nil, reserr.ErrNotFound.New("CRD", spec)
+		}
+	default:
+		o, err := GetCustomResourceDefinition(spec)
+		if err != nil {
+			return nil, err
+		}
+		def = NewCustomResourceDefinitionVersions(o.CRDGroupKind())
+		def.versioned.SetDefault(o)
 	}
-	def := NewCustomResourceDefinitionVersions(o.CRDGroupKind())
-	def.versioned.SetDefault(o)
 	return def, nil
 }
 
