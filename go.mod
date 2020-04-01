@@ -24,6 +24,7 @@ require (
 	github.com/miekg/dns v1.1.14
 	github.com/onsi/ginkgo v1.10.1
 	github.com/onsi/gomega v1.7.0
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v0.9.3
 	github.com/spf13/cobra v0.0.6 // indirect
 	golang.org/x/lint v0.0.0-20190313153728-d0100b6bd8b3
