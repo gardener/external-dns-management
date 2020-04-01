@@ -33,6 +33,7 @@ type DNSEntryList struct {
 // +kubebuilder:storageversion
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced,path=dnsentries,shortName=dnse,singular=dnsentry
+// +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name=DNS,description="FQDN of DNS Entry",JSONPath=".spec.dnsName",type=string
 // +kubebuilder:printcolumn:name=OWNERID,JSONPath=".spec.ownerId",type=string
 // +kubebuilder:printcolumn:name=TYPE,JSONPath=".status.providerType",type=string
@@ -44,8 +45,9 @@ type DNSEntryList struct {
 type DNSEntry struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              DNSEntrySpec   `json:"spec"`
-	Status            DNSEntryStatus `json:"status"`
+	Spec              DNSEntrySpec `json:"spec"`
+	// +optional
+	Status DNSEntryStatus `json:"status,omitempty"`
 }
 
 type DNSEntrySpec struct {

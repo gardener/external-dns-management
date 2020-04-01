@@ -24,7 +24,7 @@ spec:
       type: string
     - jsonPath: .spec.active
       name: Active
-      type: string
+      type: boolean
     - jsonPath: .status.amount
       name: Usages
       type: string
@@ -67,11 +67,11 @@ spec:
             type: object
         required:
         - spec
-        - status
         type: object
     served: true
     storage: true
-    subresources: {}
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""

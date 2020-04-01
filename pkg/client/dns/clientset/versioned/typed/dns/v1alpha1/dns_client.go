@@ -26,6 +26,7 @@ import (
 
 type DnsV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	DNSAnnotationsGetter
 	DNSEntriesGetter
 	DNSOwnersGetter
 	DNSProvidersGetter
@@ -34,6 +35,10 @@ type DnsV1alpha1Interface interface {
 // DnsV1alpha1Client is used to interact with features provided by the dns.gardener.cloud group.
 type DnsV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *DnsV1alpha1Client) DNSAnnotations(namespace string) DNSAnnotationInterface {
+	return newDNSAnnotations(c, namespace)
 }
 
 func (c *DnsV1alpha1Client) DNSEntries(namespace string) DNSEntryInterface {

@@ -53,6 +53,8 @@ func (f *genericInformer) Lister() cache.GenericLister {
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
 	// Group=dns.gardener.cloud, Version=v1alpha1
+	case v1alpha1.SchemeGroupVersion.WithResource("dnsannotations"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Dns().V1alpha1().DNSAnnotations().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("dnsentries"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Dns().V1alpha1().DNSEntries().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("dnsowners"):

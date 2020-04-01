@@ -33,8 +33,9 @@ type DNSOwnerList struct {
 // +kubebuilder:storageversion
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Cluster,path=dnsowners,shortName=dnso,singular=dnsowner
+// +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name=OwnerId,JSONPath=".spec.ownerId",type=string
-// +kubebuilder:printcolumn:name=Active,JSONPath=".spec.active",type=string
+// +kubebuilder:printcolumn:name=Active,JSONPath=".spec.active",type=boolean
 // +kubebuilder:printcolumn:name=Usages,JSONPath=".status.amount",type=string
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -42,8 +43,9 @@ type DNSOwnerList struct {
 type DNSOwner struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              DNSOwnerSpec   `json:"spec"`
-	Status            DNSOwnerStatus `json:"status"`
+	Spec              DNSOwnerSpec `json:"spec"`
+	// +optional
+	Status DNSOwnerStatus `json:"status,omitempty"`
 }
 
 type DNSOwnerSpec struct {

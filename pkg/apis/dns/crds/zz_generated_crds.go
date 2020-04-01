@@ -34,6 +34,117 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.2.4
   creationTimestamp: null
+  name: dnsannotations.dns.gardener.cloud
+spec:
+  group: dns.gardener.cloud
+  names:
+    kind: DNSAnnotation
+    listKind: DNSAnnotationList
+    plural: dnsannotations
+    shortNames:
+    - dnsa
+    singular: dnsannotation
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .spec.resourceRef.apiVersion
+      name: RefGroup
+      type: string
+    - jsonPath: .spec.resourceRef.kind
+      name: RefKind
+      type: string
+    - jsonPath: .spec.resourceRef.name
+      name: RefName
+      type: string
+    - jsonPath: .spec.resourceRef.namespace
+      name: RefNamespace
+      type: string
+    - jsonPath: .status.active
+      name: Active
+      type: boolean
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              annotations:
+                additionalProperties:
+                  type: string
+                type: object
+              resourceRef:
+                properties:
+                  apiVersion:
+                    description: API Version of the annotated object
+                    type: string
+                  kind:
+                    description: 'Kind of the annotated object More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+                    type: string
+                  name:
+                    description: Name of the annotated object
+                    type: string
+                  namespace:
+                    description: Namspace of the annotated object Defaulted by the
+                      namespace of the containing resource.
+                    type: string
+                required:
+                - apiVersion
+                - kind
+                type: object
+            required:
+            - annotations
+            - resourceRef
+            type: object
+          status:
+            properties:
+              active:
+                description: Indicates that annotation is observed by a DNS sorce
+                  controller
+                type: boolean
+              message:
+                description: In case of a configuration problem this field describes
+                  the reason
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+  `
+	utils.Must(registry.RegisterCRD(data))
+	data = `
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.4
+  creationTimestamp: null
   name: dnsentries.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -129,11 +240,11 @@ spec:
             type: object
         required:
         - spec
-        - status
         type: object
     served: true
     storage: true
-    subresources: {}
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""
@@ -169,7 +280,7 @@ spec:
       type: string
     - jsonPath: .spec.active
       name: Active
-      type: string
+      type: boolean
     - jsonPath: .status.amount
       name: Usages
       type: string
@@ -212,11 +323,11 @@ spec:
             type: object
         required:
         - spec
-        - status
         type: object
     served: true
     storage: true
-    subresources: {}
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""
@@ -349,11 +460,11 @@ spec:
             type: object
         required:
         - spec
-        - status
         type: object
     served: true
     storage: true
-    subresources: {}
+    subresources:
+      status: {}
 status:
   acceptedNames:
     kind: ""

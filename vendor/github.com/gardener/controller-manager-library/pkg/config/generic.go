@@ -231,7 +231,7 @@ func (this *GenericOptionSource) Complete() {
 }
 
 func (this *GenericOptionSource) Evaluate() error {
-	err := this.call(func(targets OptionSet) interface{} { targets.Evaluate(); return nil })
+	err := this.call(func(targets OptionSet) interface{} { return targets.Evaluate() })
 	if err != nil {
 		return err.(error)
 	}
