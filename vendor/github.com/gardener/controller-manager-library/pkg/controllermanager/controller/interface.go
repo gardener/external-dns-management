@@ -101,7 +101,7 @@ type Command interface {
 }
 
 // ResourceKey implementations are used as key and MUST therefore be value types
-type ResourceKey extension.ResourceKey
+type ResourceKey = extension.ResourceKey
 
 func NewResourceKey(group, kind string) ResourceKey {
 	return extension.NewResourceKey(group, kind)

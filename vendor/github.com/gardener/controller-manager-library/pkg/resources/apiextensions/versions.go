@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 	reserr "github.com/gardener/controller-manager-library/pkg/resources/errors"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
@@ -45,6 +46,13 @@ func NewDefaultedCustomResourceDefinitionVersions(spec CRDSpecification) (*Custo
 	var def *CustomResourceDefinitionVersions
 
 	switch s := spec.(type) {
+	case abstract.GroupKindProvider:
+		{
+			def = registry.GetCRDs(s.GroupKind())
+			if def == nil {
+				return nil, reserr.ErrNotFound.New("CRD", s.GroupKind())
+			}
+		}
 	case schema.GroupKind:
 		def = registry.GetCRDs(s)
 		if def == nil {

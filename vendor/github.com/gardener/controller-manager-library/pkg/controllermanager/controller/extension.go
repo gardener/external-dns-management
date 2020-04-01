@@ -213,11 +213,6 @@ func (this *Extension) Start(ctx context.Context) error {
 			return err
 		}
 
-		if def.RequireLease() {
-			this.getLeaseStartupGroup(cntr.GetMainCluster()).Add(cntr)
-		} else {
-			this.getPlainStartupGroup(cntr.GetMainCluster()).Add(cntr)
-		}
 		this.controllers = append(this.controllers, cntr)
 		this.prepared[cntr.GetName()] = &sync.SyncPoint{}
 	}
@@ -228,6 +223,13 @@ func (this *Extension) Start(ctx context.Context) error {
 	}
 
 	for _, cntr := range this.controllers {
+		def := this.registrations[cntr.GetName()]
+		if def.RequireLease() {
+			this.getLeaseStartupGroup(cntr.GetMainCluster()).Add(cntr)
+		} else {
+			this.getPlainStartupGroup(cntr.GetMainCluster()).Add(cntr)
+		}
+
 		err := this.checkController(cntr)
 		if err != nil {
 			return err
@@ -279,7 +281,7 @@ func (this *Extension) startController(cntr *controller) error {
 			cntr.Infof("  omittimg unused controller %q", a)
 		}
 	}
-
+	cntr.Infof("starting controller")
 	err := cntr.prepare()
 	if err != nil {
 		return err

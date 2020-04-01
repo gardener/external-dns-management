@@ -28,6 +28,10 @@ type FakeDnsV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeDnsV1alpha1) DNSAnnotations(namespace string) v1alpha1.DNSAnnotationInterface {
+	return &FakeDNSAnnotations{c, namespace}
+}
+
 func (c *FakeDnsV1alpha1) DNSEntries(namespace string) v1alpha1.DNSEntryInterface {
 	return &FakeDNSEntries{c, namespace}
 }

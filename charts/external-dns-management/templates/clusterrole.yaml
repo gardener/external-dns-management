@@ -29,6 +29,8 @@ rules:
   - dnsproviders/status
   - dnsentries
   - dnsentries/status
+  - dnsannotations
+  - dnsannotations/status
   - dnsowners
   verbs:
   - get

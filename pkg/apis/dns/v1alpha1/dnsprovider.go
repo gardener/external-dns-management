@@ -35,6 +35,7 @@ type DNSProviderList struct {
 // +kubebuilder:storageversion
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced,path=dnsproviders,shortName=dnspr,singular=dnsprovider
+// +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name=TYPE,JSONPath=".spec.type",type=string
 // +kubebuilder:printcolumn:name=STATUS,JSONPath="..status.state",type=string
 // +genclient
@@ -43,8 +44,9 @@ type DNSProviderList struct {
 type DNSProvider struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	Spec              DNSProviderSpec   `json:"spec"`
-	Status            DNSProviderStatus `json:"status"`
+	Spec              DNSProviderSpec `json:"spec"`
+	// +optional
+	Status DNSProviderStatus `json:"status,omitempty"`
 }
 
 type DNSProviderSpec struct {

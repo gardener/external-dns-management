@@ -39,7 +39,7 @@ import (
 	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.12"
 )
 
-const CONTROLLER_GROUP_DNS_CONTROLLERS = "dnscontrollers"
+const CONTROLLER_GROUP_DNS_CONTROLLERS = dns.CONTROLLER_GROUP_DNS_CONTROLLERS
 
 const TARGET_CLUSTER = source.TARGET_CLUSTER
 const PROVIDER_CLUSTER = "provider"

@@ -36,6 +36,9 @@ const (
 
 	DNSEntryKind   = "DNSEntry"
 	DNSEntryPlural = "dnsentries"
+
+	DNSAnnotationKind   = "DNSAnnotation"
+	DNSAnnotationPlural = "dnsannotations"
 )
 
 // SchemeGroupVersion is group version used to register these objects
@@ -65,6 +68,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&DNSProviderList{},
 		&DNSEntry{},
 		&DNSEntryList{},
+		&DNSAnnotation{},
+		&DNSAnnotationList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

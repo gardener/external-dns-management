@@ -48,7 +48,19 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 	if !this.classes.IsResponsibleFor(logger, obj) {
 		return nil, false, nil
 	}
-	a := obj.GetAnnotations()[DNS_ANNOTATION]
+	annos := obj.GetAnnotations()
+	addons := this.annotations.GetInfoFor(obj.ClusterKey())
+	if len(addons) > 0 {
+		for k, v := range addons {
+			if _, ok := annos[k]; !ok {
+				annos[k] = v
+				logger.Infof("using annotation injection: %s=%s", k, v)
+			}
+		}
+		obj.SetAnnotations(annos)
+	}
+
+	a := annos[DNS_ANNOTATION]
 	current.AnnotatedNames = utils.StringSet{}
 	for _, e := range strings.Split(a, ",") {
 		e = strings.TrimSpace(e)

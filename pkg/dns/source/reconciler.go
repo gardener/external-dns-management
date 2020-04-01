@@ -30,6 +30,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/controller/annotation/annotations"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
@@ -64,8 +65,10 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 				func() interface{} {
 					return NewState()
 				}).(*state),
+			annotations: annotations.GetOrCreateWatches(c),
 		}
 
+		reconciler.annotations.RegisterHandler(c, c.GetMainWatchResource().ResourceType().GroupKind(), reconciler)
 		reconciler.state.source = source
 		reconciler.namespace, _ = c.GetStringOption(OPT_NAMESPACE)
 		reconciler.nameprefix, _ = c.GetStringOption(OPT_NAMEPREFIX)
@@ -106,7 +109,13 @@ type sourceReconciler struct {
 	ownerid           string
 	setIgnoreOwners   bool
 
-	state *state
+	state       *state
+	annotations *annotations.State
+}
+
+func (this *sourceReconciler) ObjectUpdated(key resources.ClusterObjectKey) {
+	this.Infof("requeue %s because of change in annotation resource", key)
+	this.EnqueueKey(key)
 }
 
 func (this *sourceReconciler) Start() {
@@ -152,11 +161,21 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 	if info == nil {
 		if responsible {
 			logger.Debugf("no dns info found")
+			err2 := this.annotations.SetActive(obj.ClusterKey(), false)
+			if err2 != nil {
+				err = err2
+			}
 		}
 		if err != nil {
 			return reconcile.Failed(logger, err)
 		}
 		return reconcile.Succeeded(logger).Stop()
+	} else {
+		// if not responsible now  it was responsible, therefore cleanup the active state
+		err = this.annotations.SetActive(obj.ClusterKey(), responsible)
+		if err != nil {
+			return reconcile.Delay(logger, err)
+		}
 	}
 	missing := utils.StringSet{}
 	obsolete := []resources.Object{}

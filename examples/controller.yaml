@@ -57,6 +57,8 @@ rules:
   - dnsentries
   - dnsentries/status
   - dnsowners
+  - dnsannotations
+  - dnsannotations/status
   verbs:
   - get
   - list

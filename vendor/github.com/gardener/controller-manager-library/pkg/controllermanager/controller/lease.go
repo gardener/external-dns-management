@@ -36,35 +36,36 @@ type leasestartupgroup struct {
 	startupgroup
 }
 
-func (g *leasestartupgroup) Startup() error {
-	if len(g.controllers) == 0 {
+func (this *leasestartupgroup) Startup() error {
+	if len(this.controllers) == 0 {
 		return nil
 	}
 
-	msg := g.cluster.GetName()
+	msg := this.cluster.GetName()
 	sep := " ("
-	for _, c := range g.controllers {
+	for _, c := range this.controllers {
 		msg = fmt.Sprintf("%s%s%s", msg, sep, c.GetName())
 		sep = ", "
 	}
 	msg += ")"
 
+	this.extension.Infof("leader election required for %s", msg)
 	runit := func() {
-		g.extension.Infof("Acquired leadership, starting controllers for %s.", msg)
-		for _, c := range g.controllers {
-			g.extension.startController(c)
+		this.extension.Infof("Acquired leadership, starting controllers for %s.", msg)
+		for _, c := range this.controllers {
+			this.extension.startController(c)
 		}
 	}
 
-	if g.extension.config.OmitLease {
-		g.extension.Infof("omitting lease %q for cluster %s in namespace %q",
-			g.extension.Name(), msg, g.extension.Namespace())
-		ctxutil.WaitGroupRun(g.extension.GetContext(), runit)
+	if this.extension.config.OmitLease {
+		this.extension.Infof("omitting lease %q for cluster %s in namespace %q",
+			this.extension.Name(), msg, this.extension.Namespace())
+		ctxutil.WaitGroupRun(this.extension.GetContext(), runit)
 	} else {
-		g.extension.Infof("requesting lease %q for cluster %s in namespace %q",
-			g.extension.config.LeaseName, msg, g.extension.Namespace())
-		leaderElectionConfig, err := makeLeaderElectionConfig(g.cluster,
-			g.extension.Namespace(), g.extension.config.LeaseName)
+		this.extension.Infof("requesting lease %q for cluster %s in namespace %q",
+			this.extension.config.LeaseName, msg, this.extension.Namespace())
+		leaderElectionConfig, err := makeLeaderElectionConfig(this.cluster,
+			this.extension.Namespace(), this.extension.config.LeaseName)
 		if err != nil {
 			return err
 		}
@@ -73,20 +74,20 @@ func (g *leasestartupgroup) Startup() error {
 			OnStartedLeading: func(ctx context.Context) {
 				go func() {
 					<-ctx.Done()
-					g.extension.Infof("lease group %s stopped -> shutdown controller manager", g.cluster.GetName())
-					ctxutil.Cancel(g.extension.ControllerManager().GetContext())
+					this.extension.Infof("lease group %s stopped -> shutdown controller manager", this.cluster.GetName())
+					ctxutil.Cancel(this.extension.ControllerManager().GetContext())
 				}()
 				runit()
 			},
 			OnStoppedLeading: func() {
-				g.extension.Infof("Lost leadership, cleaning up %s.", msg)
+				this.extension.Infof("Lost leadership, cleaning up %s.", msg)
 			},
 		}
 		leaderElector, err := leaderelection.NewLeaderElector(*leaderElectionConfig)
 		if err != nil {
 			return fmt.Errorf("couldn't create leader elector: %v", err)
 		}
-		ctxutil.WaitGroupRun(g.extension.GetContext(), func() { leaderElector.Run(g.extension.GetContext()) })
+		ctxutil.WaitGroupRun(this.extension.GetContext(), func() { leaderElector.Run(this.extension.GetContext()) })
 	}
 
 	return nil

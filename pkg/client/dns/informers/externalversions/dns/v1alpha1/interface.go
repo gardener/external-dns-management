@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// DNSAnnotations returns a DNSAnnotationInformer.
+	DNSAnnotations() DNSAnnotationInformer
 	// DNSEntries returns a DNSEntryInformer.
 	DNSEntries() DNSEntryInformer
 	// DNSOwners returns a DNSOwnerInformer.
@@ -41,6 +43,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// DNSAnnotations returns a DNSAnnotationInformer.
+func (v *version) DNSAnnotations() DNSAnnotationInformer {
+	return &dNSAnnotationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // DNSEntries returns a DNSEntryInformer.

@@ -17,24 +17,27 @@
 package source
 
 import (
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"time"
+
+	"github.com/gardener/external-dns-management/pkg/controller/annotation"
+	"github.com/gardener/external-dns-management/pkg/dns"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile/reconcilers"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/crds"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-const CONTROLLER_GROUP_DNS_SOURCES = "dnssources"
+const CONTROLLER_GROUP_DNS_SOURCES = dns.CONTROLLER_GROUP_DNS_SOURCES
 const TARGET_CLUSTER = "target"
 
-const DNS_ANNOTATION = "dns.gardener.cloud/dnsnames"
-const TTL_ANNOTATION = "dns.gardener.cloud/ttl"
-const PERIOD_ANNOTATION = "dns.gardener.cloud/cname-lookup-interval"
+const DNS_ANNOTATION = dns.ANNOTATION_GROUP + "/dnsnames"
+const TTL_ANNOTATION = dns.ANNOTATION_GROUP + "/ttl"
+const PERIOD_ANNOTATION = dns.ANNOTATION_GROUP + "/cname-lookup-interval"
 const CLASS_ANNOTATION = dns.CLASS_ANNOTATION
 
 const OPT_CLASS = "dns-class"
@@ -60,6 +63,8 @@ func init() {
 func DNSSourceController(source DNSSourceType, reconcilerType controller.ReconcilerType) controller.Configuration {
 	gk := source.GroupKind()
 	return controller.Configure(source.Name()).
+		After(annotation.CONTROLLER).
+		RequireLease().
 		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "identifier used to differentiate responsible controllers for entries").
 		StringOption(OPT_TARGET_CLASS, "identifier used to differentiate responsible dns controllers for target entries").
 		StringArrayOption(OPT_EXCLUDE, "excluded domains").
