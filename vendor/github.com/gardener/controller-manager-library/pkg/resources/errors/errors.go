@@ -92,6 +92,9 @@ const (
 	ERR_NON_UNIQUE_MAPPING = "NON_UNIQUE_MAPPING"
 	// objs: key
 
+	ERR_NOT_FOUND = "NOTFOUND"
+	// objs: element type/kind, element spec
+
 	ERR_INVALID = "INVALID"
 	// objs: some invalid element
 
@@ -114,6 +117,8 @@ const (
 )
 
 var (
+	// ErrNotFound is returned if and element of a dedicated kind couldn't be found for a given name/spec
+	ErrNotFound = errors.DeclareFormalType(GROUP, ERR_NOT_FOUND, "%s not found: %s")
 	// ErrTypeMismatch is returned if wrong type given
 	ErrTypeMismatch = errors.DeclareFormalType(GROUP, ERR_TYPE_MISMATCH, "unexpected type %T (expected %s)")
 	// ErrUnexpectedType is returned if invalid type for a dedicated use case
@@ -162,6 +167,10 @@ func WrapForObjects(err error, o []interface{}, kind string, msgfmt string, args
 
 func NewInvalid(msgfmt string, elem interface{}) error {
 	return New(ERR_INVALID, msgfmt, elem)
+}
+
+func NewNotFound(msgfmt string, elem interface{}) error {
+	return New(ERR_NOT_FOUND, msgfmt, elem)
 }
 
 func IsGroup(err error) bool {
