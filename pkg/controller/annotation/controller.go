@@ -39,8 +39,8 @@ import (
 const CONTROLLER = "annotation"
 
 func init() {
-
 	crds.AddToRegistry(apiextensions.DefaultRegistry())
+
 	controller.Configure(CONTROLLER).
 		Reconciler(Create).
 		DefaultWorkerPool(5, 0*time.Second).

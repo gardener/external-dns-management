@@ -19,8 +19,8 @@ package dnsentry
 import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/crds"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
@@ -30,7 +30,7 @@ func init() {
 	source.DNSSourceController(source.NewDNSSouceTypeForCreator("dnsentry-source", _MAIN_RESOURCE, NewDNSEntrySource), nil).
 		FinalizerDomain("dns.gardener.cloud").
 		Cluster(cluster.DEFAULT).
-		CustomResourceDefinitions(crds.DNSEntryCRD).
+		CustomResourceDefinitions(_MAIN_RESOURCE).
 		ActivateExplicitly().
 		MustRegister()
 }
