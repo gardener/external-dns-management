@@ -199,6 +199,15 @@ spec:
                 type: string
               ownerId:
                 type: string
+              reference:
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                required:
+                - name
+                type: object
               targets:
                 items:
                   type: string
@@ -235,8 +244,6 @@ spec:
                 type: integer
               zone:
                 type: string
-            required:
-            - state
             type: object
         required:
         - spec
@@ -306,6 +313,8 @@ spec:
                 type: boolean
               ownerId:
                 type: string
+            required:
+            - ownerId
             type: object
           status:
             properties:
@@ -317,8 +326,6 @@ spec:
                     additionalProperties:
                       type: integer
                     type: object
-                required:
-                - amount
                 type: object
             type: object
         required:
@@ -453,10 +460,6 @@ spec:
                       type: string
                     type: array
                 type: object
-            required:
-            - domains
-            - state
-            - zones
             type: object
         required:
         - spec

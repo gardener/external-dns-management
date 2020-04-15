@@ -63,11 +63,15 @@ type DNSSelection struct {
 }
 
 type DNSProviderStatus struct {
-	ObservedGeneration int64              `json:"observedGeneration,omitempty"`
-	State              string             `json:"state"`
-	Message            *string            `json:"message,omitempty"`
-	Domains            DNSSelectionStatus `json:"domains"`
-	Zones              DNSSelectionStatus `json:"zones"`
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// +optional
+	State   string  `json:"state"`
+	Message *string `json:"message,omitempty"`
+	// +optional
+	Domains DNSSelectionStatus `json:"domains"`
+	// +optional
+	Zones DNSSelectionStatus `json:"zones"`
 }
 
 type DNSSelectionStatus struct {

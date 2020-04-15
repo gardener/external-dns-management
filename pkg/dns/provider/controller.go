@@ -181,7 +181,7 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 		if this.state.IsResponsibleFor(logger, obj) {
 			return this.state.UpdateEntry(logger, dnsutils.DNSEntry(obj))
 		} else {
-			return this.state.EntryDeleted(logger, obj.Key())
+			return this.state.EntryDeleted(logger, obj.ClusterKey())
 		}
 	case obj.IsA(&corev1.Secret{}):
 		return this.state.UpdateSecret(logger, obj)
@@ -213,7 +213,7 @@ func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterO
 	case providerGroupKind:
 		return this.state.ProviderDeleted(logger, key.ObjectKey())
 	case entryGroupKind:
-		return this.state.EntryDeleted(logger, key.ObjectKey())
+		return this.state.EntryDeleted(logger, key)
 	}
 	return reconcile.Succeeded(logger)
 }

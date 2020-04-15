@@ -51,21 +51,30 @@ type DNSEntry struct {
 }
 
 type DNSEntrySpec struct {
-	DNSName             string   `json:"dnsName"`
-	OwnerId             *string  `json:"ownerId,omitempty"`
-	TTL                 *int64   `json:"ttl,omitempty"`
-	CNameLookupInterval *int64   `json:"cnameLookupInterval,omitempty"`
-	Text                []string `json:"text,omitempty"`
-	Targets             []string `json:"targets,omitempty"`
+	DNSName             string          `json:"dnsName"`
+	Reference           *EntryReference `json:"reference,omitempty"`
+	OwnerId             *string         `json:"ownerId,omitempty"`
+	TTL                 *int64          `json:"ttl,omitempty"`
+	CNameLookupInterval *int64          `json:"cnameLookupInterval,omitempty"`
+	Text                []string        `json:"text,omitempty"`
+	Targets             []string        `json:"targets,omitempty"`
 }
 
 type DNSEntryStatus struct {
-	ObservedGeneration int64    `json:"observedGeneration,omitempty"`
-	State              string   `json:"state"`
-	Message            *string  `json:"message,omitempty"`
-	ProviderType       *string  `json:"providerType,omitempty"`
-	Provider           *string  `json:"provider,omitempty"`
-	Zone               *string  `json:"zone,omitempty"`
-	TTL                *int64   `json:"ttl,omitempty"`
-	Targets            []string `json:"targets,omitempty"`
+	// +optional
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
+	// +optional
+	State        string   `json:"state"`
+	Message      *string  `json:"message,omitempty"`
+	ProviderType *string  `json:"providerType,omitempty"`
+	Provider     *string  `json:"provider,omitempty"`
+	Zone         *string  `json:"zone,omitempty"`
+	TTL          *int64   `json:"ttl,omitempty"`
+	Targets      []string `json:"targets,omitempty"`
+}
+
+type EntryReference struct {
+	Name string `json:"name"`
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
 }

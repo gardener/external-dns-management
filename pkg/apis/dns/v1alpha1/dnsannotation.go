@@ -73,7 +73,9 @@ type ResourceReference struct {
 
 type DNSAnnotationStatus struct {
 	// Indicates that annotation is observed by a DNS sorce controller
+	// +optional
 	Active bool `json:"active,omitempty"`
 	// In case of a configuration problem this field describes the reason
+	// +optional
 	Message string `json:"message,omitempty"`
 }

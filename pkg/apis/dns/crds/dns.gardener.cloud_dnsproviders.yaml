@@ -114,10 +114,6 @@ spec:
                       type: string
                     type: array
                 type: object
-            required:
-            - domains
-            - state
-            - zones
             type: object
         required:
         - spec

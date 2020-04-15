@@ -20,10 +20,10 @@ loop()
   for f in *.yaml; do
     if [ -f "$f" ]; then
       cat <<EOF
-    data=\`
+${TAB}data = \`
 $(cat "$f")
   \`
-    utils.Must(registry.RegisterCRD(data))
+${TAB}utils.Must(registry.RegisterCRD(data))
 EOF
     fi
   done
@@ -34,6 +34,7 @@ PROJECT_ROOT=$(dirname $0)/..
 #echo "ROOT=$PROJECT_ROOT"
 #echo "DIR=$(pwd)"
 
+TAB="$(echo -e "\t")"
 paths=
 sep=
 if [ -n "$*" ]; then
@@ -62,18 +63,18 @@ $(cat "$PROJECT_ROOT"/hack/LICENSE_BOILERPLATE.txt)
 package crds
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
-	"github.com/gardener/controller-manager-library/pkg/utils"
+${TAB}"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
+${TAB}"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 var registry = apiextensions.NewRegistry()
 
 func init() {
-    var data string
+${TAB}var data string
 $(loop)
 }
 
 func AddToRegistry(r apiextensions.Registry) {
-    registry.AddToRegistry(r)
+${TAB}registry.AddToRegistry(r)
 }
 EOF

@@ -60,6 +60,15 @@ spec:
                 type: string
               ownerId:
                 type: string
+              reference:
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                required:
+                - name
+                type: object
               targets:
                 items:
                   type: string
@@ -96,8 +105,6 @@ spec:
                 type: integer
               zone:
                 type: string
-            required:
-            - state
             type: object
         required:
         - spec

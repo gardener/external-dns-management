@@ -82,7 +82,8 @@ type state struct {
 	outdated        Entries
 	blockingEntries map[resources.ObjectName]time.Time
 
-	dnsnames DNSNames
+	dnsnames   DNSNames
+	references *References
 
 	initialized bool
 }
@@ -123,6 +124,7 @@ func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller
 		outdated:        Entries{},
 		blockingEntries: map[resources.ObjectName]time.Time{},
 		dnsnames:        map[string]*Entry{},
+		references:      NewReferenceCache(),
 	}
 }
 
