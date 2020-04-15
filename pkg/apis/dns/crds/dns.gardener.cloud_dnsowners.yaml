@@ -50,6 +50,8 @@ spec:
                 type: boolean
               ownerId:
                 type: string
+            required:
+            - ownerId
             type: object
           status:
             properties:
@@ -61,8 +63,6 @@ spec:
                     additionalProperties:
                       type: integer
                     type: object
-                required:
-                - amount
                 type: object
             type: object
         required:

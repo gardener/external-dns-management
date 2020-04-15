@@ -49,15 +49,19 @@ type DNSOwner struct {
 }
 
 type DNSOwnerSpec struct {
-	OwnerId string `json:"ownerId,omitempty"`
-	Active  *bool  `json:"active,omitempty"`
+	OwnerId string `json:"ownerId"`
+	// +optional
+	Active *bool `json:"active,omitempty"`
 }
 
 type DNSOwnerStatus struct {
+	// +optional
 	Entries DNSOwnerStatusEntries `json:"entries,omitempty"`
 }
 
 type DNSOwnerStatusEntries struct {
-	Amount int            `json:"amount"`
+	// +optional
+	Amount int `json:"amount"`
+	// +optional
 	ByType map[string]int `json:"types,omitempty"`
 }

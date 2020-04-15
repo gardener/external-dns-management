@@ -240,6 +240,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	}
 
 	defer this.UpdateOwnerCounts(logger)
+	defer this.references.NotifyHolder(this.context, object.ClusterKey())
 
 	logger = this.RefineLogger(logger, p.ptype)
 	v := NewEntryVersion(object, old)
@@ -270,9 +271,13 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	return status
 }
 
-func (this *state) EntryDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
+func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
 	this.lock.Lock()
-	defer this.lock.Unlock()
+	defer func() {
+		this.lock.Unlock()
+		this.references.DelRef(key)
+		this.references.NotifyHolder(this.context, key)
+	}()
 
 	delete(this.blockingEntries, key.ObjectName())
 
