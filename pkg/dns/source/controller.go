@@ -19,6 +19,9 @@ package source
 import (
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	"github.com/gardener/external-dns-management/pkg/controller/annotation"
 	"github.com/gardener/external-dns-management/pkg/dns"
 
@@ -29,7 +32,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/crds"
 )
 
 const CONTROLLER_GROUP_DNS_SOURCES = dns.CONTROLLER_GROUP_DNS_SOURCES
@@ -58,6 +60,8 @@ const KEY_STATE = "source-state"
 
 func init() {
 	cluster.Register(TARGET_CLUSTER, "target", "target cluster for dns requests")
+
+	crds.AddToRegistry(apiextensions.DefaultRegistry())
 }
 
 func DNSSourceController(source DNSSourceType, reconcilerType controller.ReconcilerType) controller.Configuration {
@@ -83,7 +87,7 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		MainResource(gk.Group, gk.Kind).
 		Reconciler(reconcilers.SlaveReconcilerType(source.Name(), SlaveResources, SlaveReconcilerType, MasterResourcesType(source.GroupKind())), "entries").
 		Cluster(TARGET_CLUSTER).
-		CustomResourceDefinitions(crds.DNSEntryCRD).
+		CustomResourceDefinitions(ENTRY).
 		WorkerPool("targets", 2, 0).
 		ReconcilerWatch("entries", api.GroupName, api.DNSEntryKind)
 }
