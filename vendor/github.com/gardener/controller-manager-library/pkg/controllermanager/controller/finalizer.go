@@ -100,6 +100,12 @@ func (this *DefaultFinalizerGroup) FinalizerName(obj resources.Object) string {
 }
 
 func (this *DefaultFinalizerGroup) SetFinalizer(obj resources.Object) error {
+	if obj.IsDeleting() {
+		// to avoid finalizer migration during deletion
+		// the new finalizer is NOT added, but the old ones are still kept.
+		// they will be removed later by the corresponding call to RemoveFinalizer
+		return nil
+	}
 	err := obj.SetFinalizer(this.FinalizerName(obj))
 	if err != nil {
 		return err
@@ -208,6 +214,12 @@ func (this *ClassesFinalizer) FinalizerName(obj resources.Object) string {
 }
 
 func (this *ClassesFinalizer) SetFinalizer(obj resources.Object) error {
+	if obj.IsDeleting() {
+		// to avoid finalizer migration during deletion
+		// the new finalizer is NOT added, but the old ones are still kept.
+		// they will be removed later by the corresponding call to RemoveFinalizer
+		return nil
+	}
 	err := obj.SetFinalizer(this.FinalizerName(obj))
 	if err != nil {
 		return err
