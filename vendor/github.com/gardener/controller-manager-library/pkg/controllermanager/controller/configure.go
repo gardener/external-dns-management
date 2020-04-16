@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
@@ -318,7 +319,9 @@ func (this Configuration) Require(names ...string) Configuration {
 func (this Configuration) MainResource(group, kind string, sel ...WatchSelectionFunction) Configuration {
 	return this.MainResourceByKey(NewResourceKey(group, kind), sel...)
 }
-
+func (this Configuration) MainResourceByGK(gk schema.GroupKind, sel ...WatchSelectionFunction) Configuration {
+	return this.MainResourceByKey(NewResourceKeyByGK(gk), sel...)
+}
 func (this Configuration) MainResourceByKey(key ResourceKey, sel ...WatchSelectionFunction) Configuration {
 	this.settings.main.rtype = key
 	if len(sel) > 0 {
@@ -425,33 +428,60 @@ func (this *Configuration) assureWatches() {
 func (this Configuration) Watches(keys ...ResourceKey) Configuration {
 	return this.ReconcilerWatches(DEFAULT_RECONCILER, keys...)
 }
+func (this Configuration) WatchesByGK(gks ...schema.GroupKind) Configuration {
+	return this.ReconcilerWatchesByGK(DEFAULT_RECONCILER, gks...)
+}
 func (this Configuration) SelectedWatches(sel WatchSelectionFunction, keys ...ResourceKey) Configuration {
 	return this.ReconcilerSelectedWatches(DEFAULT_RECONCILER, sel, keys...)
+}
+func (this Configuration) SelectedWatchesByGK(sel WatchSelectionFunction, gks ...schema.GroupKind) Configuration {
+	return this.ReconcilerSelectedWatchesByGK(DEFAULT_RECONCILER, sel, gks...)
 }
 
 func (this Configuration) Watch(group, kind string) Configuration {
 	return this.ReconcilerWatches(DEFAULT_RECONCILER, NewResourceKey(group, kind))
 }
+func (this Configuration) WatchByGK(gk schema.GroupKind) Configuration {
+	return this.ReconcilerWatchesByGK(DEFAULT_RECONCILER, gk)
+}
 func (this Configuration) SelectedWatch(sel WatchSelectionFunction, group, kind string) Configuration {
 	return this.ReconcilerSelectedWatches(DEFAULT_RECONCILER, sel, NewResourceKey(group, kind))
+}
+func (this Configuration) SelectedWatchByGK(sel WatchSelectionFunction, gk schema.GroupKind) Configuration {
+	return this.ReconcilerSelectedWatchesByGK(DEFAULT_RECONCILER, sel, gk)
 }
 
 func (this Configuration) ForWatches(keys ...ResourceKey) Configuration {
 	return this.ReconcilerWatches(this.reconciler, keys...)
 }
+func (this Configuration) ForWatchesByGK(gks ...schema.GroupKind) Configuration {
+	return this.ReconcilerWatchesByGK(this.reconciler, gks...)
+}
 func (this Configuration) ForSelectedWatches(sel WatchSelectionFunction, keys ...ResourceKey) Configuration {
 	return this.ReconcilerSelectedWatches(this.reconciler, sel, keys...)
+}
+func (this Configuration) ForSelectedWatchesByGK(sel WatchSelectionFunction, gks ...schema.GroupKind) Configuration {
+	return this.ReconcilerSelectedWatchesByGK(this.reconciler, sel, gks...)
 }
 
 func (this Configuration) ForWatch(group, kind string) Configuration {
 	return this.ReconcilerWatches(this.reconciler, NewResourceKey(group, kind))
 }
+func (this Configuration) ForWatchByGK(gk schema.GroupKind) Configuration {
+	return this.ReconcilerWatches(this.reconciler, NewResourceKeyByGK(gk))
+}
 func (this Configuration) ForSelectedWatch(sel WatchSelectionFunction, group, kind string) Configuration {
 	return this.ReconcilerSelectedWatches(this.reconciler, sel, NewResourceKey(group, kind))
+}
+func (this Configuration) ForSelectedWatchByGK(sel WatchSelectionFunction, gk schema.GroupKind) Configuration {
+	return this.ReconcilerSelectedWatchesByGK(this.reconciler, sel, gk)
 }
 
 func (this Configuration) ReconcilerWatch(reconciler, group, kind string) Configuration {
 	return this.ReconcilerWatches(reconciler, NewResourceKey(group, kind))
+}
+func (this Configuration) ReconcilerWatchByGK(reconciler string, gk schema.GroupKind) Configuration {
+	return this.ReconcilerWatches(reconciler, NewResourceKeyByGK(gk))
 }
 
 func (this Configuration) ReconcilerWatches(reconciler string, keys ...ResourceKey) Configuration {
@@ -462,10 +492,28 @@ func (this Configuration) ReconcilerWatches(reconciler string, keys ...ResourceK
 	}
 	return this
 }
+func (this Configuration) ReconcilerWatchesByGK(reconciler string, gks ...schema.GroupKind) Configuration {
+	this.assureWatches()
+	for _, gk := range gks {
+		key := NewResourceKeyByGK(gk)
+		// logger.Infof("adding watch for %q:%q to pool %q", this.cluster, key, this.pool)
+		this.settings.watches[this.cluster] = append(this.settings.watches[this.cluster], &watchdef{rescdef{key, nil}, reconciler, this.pool})
+	}
+	return this
+}
 
 func (this Configuration) ReconcilerSelectedWatches(reconciler string, sel WatchSelectionFunction, keys ...ResourceKey) Configuration {
 	this.assureWatches()
 	for _, key := range keys {
+		// logger.Infof("adding watch for %q:%q to pool %q", this.cluster, key, this.pool)
+		this.settings.watches[this.cluster] = append(this.settings.watches[this.cluster], &watchdef{rescdef{key, sel}, reconciler, this.pool})
+	}
+	return this
+}
+func (this Configuration) ReconcilerSelectedWatchesByGK(reconciler string, sel WatchSelectionFunction, gks ...schema.GroupKind) Configuration {
+	this.assureWatches()
+	for _, gk := range gks {
+		key := NewResourceKeyByGK(gk)
 		// logger.Infof("adding watch for %q:%q to pool %q", this.cluster, key, this.pool)
 		this.settings.watches[this.cluster] = append(this.settings.watches[this.cluster], &watchdef{rescdef{key, sel}, reconciler, this.pool})
 	}

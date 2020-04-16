@@ -182,9 +182,9 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 		cur = this.deleting[pname]
 	}
 	if cur != nil {
-		logger.Infof("deleting PROVIDER")
 		entries := Entries{}
 		zones := this.providerzones[obj.ObjectName()]
+		logger.Infof("deleting PROVIDER with %d zones", len(zones))
 		for n, z := range zones {
 			if this.isProviderForZone(n, pname) {
 				this.addEntriesForZone(logger, entries, nil, z)
@@ -216,20 +216,26 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 				} else {
 					// delete entries in hosted zone exclusively covered by this provider using
 					// other provider for this zone
-					logger.Infof("delegate zone cleanup to other provider")
+					logger.Infof("delegate zone cleanup of %q to other provider", n)
 					this.triggerHostedZone(n)
 				}
 				this.removeProviderForZone(n, pname)
+			} else {
+				logger.Infof("not reponsible for zone %q", n)
 			}
 		}
+		logger.Infof("zone cleanup done -> trigger entries")
 		this.TriggerEntries(logger, this.entries)
+		logger.Infof("releasing provider secret")
 		_, err := this.registerSecret(logger, nil, cur)
 		if err != nil {
 			return reconcile.Delay(logger, err)
 		}
+		logger.Infof("releasing account cache")
 		this.accountCache.Release(logger, cur.account, cur.ObjectName())
 		delete(this.deleting, obj.ObjectName())
 		delete(this.providerzones, obj.ObjectName())
+		logger.Infof("finally remove finalizer")
 		return reconcile.DelayOnError(logger, this.RemoveFinalizer(cur.Object()))
 	}
 	return reconcile.Succeeded(logger)

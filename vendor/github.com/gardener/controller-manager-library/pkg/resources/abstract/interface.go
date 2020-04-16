@@ -23,6 +23,7 @@ import (
 	"reflect"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -88,6 +89,10 @@ type Resource interface {
 
 	ObjectType() reflect.Type
 	ListType() reflect.Type
+}
+
+func Everything() labels.Selector {
+	return labels.Everything()
 }
 
 type Object interface {

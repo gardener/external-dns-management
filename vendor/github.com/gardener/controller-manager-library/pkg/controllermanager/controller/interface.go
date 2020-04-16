@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	areacfg "github.com/gardener/controller-manager-library/pkg/controllermanager/controller/config"
@@ -105,6 +106,10 @@ type ResourceKey = extension.ResourceKey
 
 func NewResourceKey(group, kind string) ResourceKey {
 	return extension.NewResourceKey(group, kind)
+}
+
+func NewResourceKeyByGK(gk schema.GroupKind) ResourceKey {
+	return extension.NewResourceKey(gk.Group, gk.Kind)
 }
 
 func GetResourceKey(objspec interface{}) ResourceKey {
