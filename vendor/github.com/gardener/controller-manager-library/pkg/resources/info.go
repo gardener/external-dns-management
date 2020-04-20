@@ -145,8 +145,13 @@ func (this *ResourceInfos) update() error {
 	if err == nil {
 		this.version, err = semver.NewVersion(v.GitVersion)
 	}
+	if err != nil {
+		logger.Warnf("failed to get server version for cluster %s (this might be an unexpected response from the kube-apiserver): %s", this.cluster.GetName(), err)
+		return err
+	}
+
 	//list, err := discovery.ServerResources(dc)
-	list, err := dc.ServerResources()
+	_, list, err := dc.ServerGroupsAndResources()
 	if err != nil {
 		logger.Warnf("failed to get all server resources for cluster %s: %s", this.cluster.GetName(), err)
 		if len(list) == 0 {

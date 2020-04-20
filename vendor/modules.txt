@@ -92,7 +92,7 @@ github.com/emicklei/go-restful
 github.com/emicklei/go-restful/log
 # github.com/evanphx/json-patch v4.5.0+incompatible
 github.com/evanphx/json-patch
-# github.com/gardener/controller-manager-library v0.1.1-0.20200204110458-c263b9bb97ad
+# github.com/gardener/controller-manager-library v0.1.1-0.20200402075246-46a23d87218c
 github.com/gardener/controller-manager-library/pkg/controllermanager
 github.com/gardener/controller-manager-library/pkg/controllermanager/cluster
 github.com/gardener/controller-manager-library/pkg/controllermanager/config
