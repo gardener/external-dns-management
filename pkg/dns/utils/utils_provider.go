@@ -26,6 +26,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
 var DNSProviderType = (*api.DNSProvider)(nil)
@@ -60,11 +61,26 @@ func (this *DNSProviderObject) SetStateWithError(state string, err error) bool {
 	}
 
 	message := err.Error()
-	if cause, ok := err.(causer); ok {
-		suffix := cause.Error()
+	handlerErrorMsg := ""
+	for {
+		if cerr, ok := err.(causer); ok {
+			cause := cerr.Cause()
+			if cause == nil || cause == err {
+				break
+			}
+			if errors.IsHandlerError(cause) {
+				handlerErrorMsg = cause.Error()
+				break
+			}
+			err = cause
+		} else {
+			break
+		}
+	}
+	if handlerErrorMsg != "" {
 		prefix := message
-		if strings.HasSuffix(message, suffix) {
-			prefix = message[:len(message)-len(suffix)]
+		if len(message) > len(handlerErrorMsg) && strings.HasSuffix(message, handlerErrorMsg) {
+			prefix = message[:len(message)-len(handlerErrorMsg)]
 		}
 		return this.SetState(api.STATE_ERROR, message, prefix)
 	}

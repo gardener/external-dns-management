@@ -25,6 +25,9 @@ import (
 	"sync"
 	"time"
 
+	pkgerrors "github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
@@ -36,9 +39,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 const ZoneCachePrefix = "zc-"
@@ -323,7 +323,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	zones, err := this.account.GetZones()
 	if err != nil {
 		this.zones = nil
-		return this, this.failed(logger, false, fmt.Errorf("cannot get zones: %s", err), true)
+		return this, this.failed(logger, false, pkgerrors.Wrap(err, "cannot get zones"), true)
 	}
 
 	zinc, zexc := prepareSelection(provider.DNSProvider().Spec.Zones)

@@ -24,13 +24,13 @@ import (
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/pkg/errors"
 
 	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
 type Handler struct {
@@ -72,7 +72,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	authorizer, err := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID).Authorizer()
 	if err != nil {
-		return nil, errors.Wrap(err, "Creating Azure authorizer with client credentials failed")
+		return nil, perrs.WrapAsHandlerError(err, "Creating Azure authorizer with client credentials failed")
 	}
 
 	zonesClient := azure.NewZonesClient(subscriptionID)
@@ -86,7 +86,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	ctx := context.TODO()
 	_, err = zonesClient.List(ctx, &one)
 	if err != nil {
-		return nil, errors.Wrap(err, "Authentication test to Azure with client credentials failed. Please check secret for DNSProvider.")
+		return nil, perrs.WrapAsHandlerError(err, "Authentication test to Azure with client credentials failed. Please check secret for DNSProvider.")
 	}
 
 	h.zonesClient = &zonesClient
@@ -115,7 +115,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
 	h.config.Metrics.AddRequests("ZonesClient_ListComplete", 1)
 	if err != nil {
-		return nil, errors.Wrap(err, "Listing DNS zones failed")
+		return nil, perrs.WrapAsHandlerError(err, "Listing DNS zones failed")
 	}
 
 	for ; results.NotDone(); results.Next() {
@@ -179,7 +179,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	results, err := h.recordsClient.ListAllByDNSZoneComplete(h.ctx, resourceGroup, zoneName, nil, "")
 	h.config.Metrics.AddRequests("RecordSetsClient_ListAllByDNSZoneComplete", 1)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Listing DNS zone state for zone %s failed", zoneName)
+		return nil, perrs.WrapfAsHandlerError(err, "Listing DNS zone state for zone %s failed", zoneName)
 	}
 
 	for ; results.NotDone(); results.Next() {
