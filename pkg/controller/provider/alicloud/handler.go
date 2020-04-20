@@ -23,6 +23,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
 )
 
@@ -54,7 +55,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	access, err := NewAccess(accessKeyID, accessKeySecret, c.Metrics)
 	if err != nil {
-		return nil, err
+		return nil, perrs.WrapAsHandlerError(err, "Creating alicloud access with client credentials failed")
 	}
 
 	h.access = access
@@ -84,7 +85,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		}
 		err := h.access.ListDomains(f)
 		if err != nil {
-			return nil, err
+			return nil, perrs.WrapAsHandlerError(err, "list domains failed")
 		}
 	}
 
@@ -108,7 +109,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 					// As a result, h domain should not be appended to the hosted zones
 					continue
 				}
-				return nil, err
+				return nil, perrs.WrapAsHandlerError(err, "list records failed")
 			}
 			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.DomainId, z.DomainName, z.DomainName, forwarded, false)
 			zones = append(zones, hostedZone)
@@ -133,7 +134,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	}
 	err := h.access.ListRecords(zone.Key(), f)
 	if err != nil {
-		return nil, err
+		return nil, perrs.WrapAsHandlerError(err, "list records failed")
 	}
 	state.CalculateDNSSets()
 	return state, nil
