@@ -67,7 +67,7 @@ func (this *state) UpdateOwnerCounts(log logger.LogContext) {
 		return
 	}
 	statistic := statistic.NewEntryStatistic()
-	this.updateStatistics(statistic)
+	this.UpdateStatistic(statistic)
 	types := this.GetHandlerFactory().TypeCodes()
 	metrics.UpdateOwnerStatistic(statistic, types)
 	changes := this.ownerCache.UpdateCountsWith(statistic.Owners, types)

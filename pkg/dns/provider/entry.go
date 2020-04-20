@@ -719,11 +719,26 @@ func (this *Entry) Before(e *Entry) bool {
 	return this.Object().GetCreationTimestamp().Time.Before(e.Object().GetCreationTimestamp().Time)
 }
 
+func (this *Entry) updateStatistic(statistic *statistic.EntryStatistic) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	statistic.Owners.Inc(this.OwnerId(), this.ProviderType(), this.ProviderName())
+	statistic.Providers.Inc(this.ProviderType(), this.ProviderName())
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Entries
 ////////////////////////////////////////////////////////////////////////////////
 
 type Entries map[resources.ObjectName]*Entry
+
+func (this Entries) AddResponsibleTo(list *EntryList) {
+	for _, e := range this {
+		if e.IsResponsible() {
+			*list = append(*list, e)
+		}
+	}
+}
 
 func (this Entries) AddEntry(entry *Entry) *Entry {
 	old := this[entry.ObjectName()]
@@ -737,28 +752,6 @@ func (this Entries) AddEntry(entry *Entry) *Entry {
 func (this Entries) Delete(e *Entry) {
 	if this[e.ObjectName()] == e {
 		delete(this, e.ObjectName())
-	}
-}
-
-func (this Entries) UpdateStatistic(statistic *statistic.EntryStatistic) {
-	for _, e := range this {
-		if e.IsResponsible() {
-			statistic.Owners.Inc(e.OwnerId(), e.ProviderType(), e.ProviderName())
-			statistic.Providers.Inc(e.ProviderType(), e.ProviderName())
-		}
-	}
-}
-
-func (this Entries) UpdateOwnerInfo(counts OwnerCounts) {
-	for _, e := range this {
-		if e.IsResponsible() {
-			p := counts[e.OwnerId()]
-			if p == nil {
-				p = ProviderTypeCounts{}
-				counts[e.OwnerId()] = p
-			}
-			p[e.ProviderType()]++
-		}
 	}
 }
 
@@ -801,6 +794,12 @@ func (this EntryList) Lock() {
 func (this EntryList) Unlock() {
 	for _, e := range this {
 		e.lock.Unlock()
+	}
+}
+
+func (this EntryList) UpdateStatistic(statistic *statistic.EntryStatistic) {
+	for _, e := range this {
+		e.updateStatistic(statistic)
 	}
 }
 

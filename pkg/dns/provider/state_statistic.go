@@ -25,9 +25,16 @@ import (
 // statistic for state
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *state) updateStatistics(statistic *statistic.EntryStatistic) {
+func (this *state) UpdateStatistic(statistic *statistic.EntryStatistic) {
+	list := this.GetStatisticEntries()
+	list.UpdateStatistic(statistic)
+}
+
+func (this *state) GetStatisticEntries() EntryList {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	this.entries.UpdateStatistic(statistic)
-	this.outdated.UpdateStatistic(statistic)
+	list := EntryList{}
+	this.entries.AddResponsibleTo(&list)
+	this.outdated.AddResponsibleTo(&list)
+	return list
 }
