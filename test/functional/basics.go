@@ -17,10 +17,11 @@
 package functional
 
 import (
-	"github.com/gardener/external-dns-management/test/functional/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+
+	"github.com/gardener/external-dns-management/test/functional/config"
 
 	"os"
 	"text/template"
@@ -177,7 +178,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 			Ω(itemMap).Should(MatchKeys(IgnoreExtras, Keys{
 				entryName(p, "a"): MatchKeys(IgnoreExtras, Keys{
 					"metadata": MatchKeys(IgnoreExtras, Keys{
-						"finalizers": And(HaveLen(1), ContainElement("dns.gardener.cloud/"+p.Type)),
+						"finalizers": And(HaveLen(1), ContainElement("dns.gardener.cloud/"+p.FinalizerType)),
 					}),
 					"spec": MatchKeys(IgnoreExtras, Keys{
 						"dnsName": Equal(dnsName(p, "a")),
@@ -241,7 +242,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 					Ω(itemMap).Should(MatchKeys(IgnoreExtras, Keys{
 						entryName(p, "alias"): MatchKeys(IgnoreExtras, Keys{
 							"metadata": MatchKeys(IgnoreExtras, Keys{
-								"finalizers": And(HaveLen(1), ContainElement("dns.gardener.cloud/"+p.Type)),
+								"finalizers": And(HaveLen(1), ContainElement("dns.gardener.cloud/"+p.FinalizerType)),
 							}),
 							"spec": MatchKeys(IgnoreExtras, Keys{
 								"dnsName": Equal(dnsName(p, "alias")),
