@@ -462,7 +462,12 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 			zone.update(z)
 
 			if this.isProviderForZone(z.Id(), name) {
-				keeping = append(keeping, fmt.Sprintf("keeping provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain()))
+				if last != nil && (!new.included.Equals(last.included) || !new.excluded.Equals(last.excluded)) {
+					modified = true
+					logger.Infof("keeping provider %q for hosted zone %q (%s) with modified domain selection", name, z.Id(), z.Domain())
+				} else {
+					keeping = append(keeping, fmt.Sprintf("keeping provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain()))
+				}
 			} else {
 				modified = true
 				logger.Infof("adding provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain())
@@ -489,10 +494,10 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 				}
 			}
 		}
-		if modified {
-			for _, m := range keeping {
-				logger.Info(m)
-			}
+	}
+	if modified {
+		for _, m := range keeping {
+			logger.Info(m)
 		}
 	}
 	this.providerzones[name] = result
