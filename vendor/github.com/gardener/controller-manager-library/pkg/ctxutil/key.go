@@ -15,26 +15,16 @@
  *
  */
 
-package provider
+package ctxutil
 
-import (
-	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
-)
-
-////////////////////////////////////////////////////////////////////////////////
-// statistic for state
-////////////////////////////////////////////////////////////////////////////////
-
-func (this *state) UpdateStatistic(statistic *statistic.EntryStatistic) {
-	list := this.GetStatisticEntries()
-	list.UpdateStatistic(statistic)
+// contextKey is a value for use with context.WithValue. It's used as
+// a pointer so it fits in an interface{} without allocation.
+type contextKey struct {
+	name string
 }
 
-func (this *state) GetStatisticEntries() EntryList {
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-	list := EntryList{}
-	this.entries.AddResponsibleTo(&list)
-	this.outdated.AddResponsibleTo(&list)
-	return list
+func (k *contextKey) String() string { return k.name }
+
+func SimpleKey(name string) interface{} {
+	return &contextKey{name}
 }
