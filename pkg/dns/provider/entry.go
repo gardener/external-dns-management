@@ -625,6 +625,10 @@ func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
 	}
 	this.EntryVersion = new
 
+	if new.valid && this.status.State == api.STATE_STALE {
+		this.modified = true
+	}
+
 	return this
 }
 
