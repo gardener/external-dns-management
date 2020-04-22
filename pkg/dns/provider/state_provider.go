@@ -82,10 +82,13 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 	if !status.IsSucceeded() {
 		logger.Infof("errorneous provider: %s", status.Error)
 		if last != nil {
-			logger.Infof("trigger old zones")
+			logger.Infof("trigger entries for old zones")
+			entries := Entries{}
 			for _, z := range last.zones {
-				this.triggerHostedZone(z.Id())
+				zone := this.zones[z.Id()]
+				this.addEntriesForZone(logger, entries, nil, zone)
 			}
+			this.TriggerEntries(logger, entries)
 		}
 		if regmod {
 			return reconcile.Repeat(logger, regerr)
