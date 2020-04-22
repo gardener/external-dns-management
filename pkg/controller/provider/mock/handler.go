@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -27,14 +28,16 @@ import (
 
 type Handler struct {
 	provider.DefaultDNSHandler
-	config provider.DNSHandlerConfig
-	cache  provider.ZoneCache
-	ctx    context.Context
-	mock   *provider.InMemory
+	config     provider.DNSHandlerConfig
+	cache      provider.ZoneCache
+	ctx        context.Context
+	mock       *provider.InMemory
+	mockConfig MockConfig
 }
 
 type MockConfig struct {
-	Zones []string `json:"zones"`
+	Zones        []string `json:"zones"`
+	FailGetZones bool     `json:"failGetZones"`
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -48,13 +51,12 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		mock:              mock,
 	}
 
-	mockConfig := MockConfig{}
-	err := json.Unmarshal(config.Config.Raw, &mockConfig)
+	err := json.Unmarshal(config.Config.Raw, &h.mockConfig)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal mock providerConfig failed with: %s", err)
 	}
 
-	for _, dnsName := range mockConfig.Zones {
+	for _, dnsName := range h.mockConfig.Zones {
 		if dnsName != "" {
 			logger.Infof("Providing mock DNSZone %s", dnsName)
 			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), dnsName, dnsName, "", []string{}, false)
@@ -79,6 +81,9 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+	if h.mockConfig.FailGetZones {
+		return nil, fmt.Errorf("forced error by mockConfig.FailGetZones")
+	}
 	zones := h.mock.GetZones()
 	return zones, nil
 }

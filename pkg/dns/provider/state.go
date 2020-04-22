@@ -25,12 +25,14 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
@@ -406,7 +408,7 @@ func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid string) (E
 	return entries, nil, false
 }
 
-func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale DNSNames, zone *dnsHostedZone) (Entries, DNSNames, bool) {
+func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale DNSNames, zone DNSHostedZone) (Entries, DNSNames, bool) {
 	if entries == nil {
 		entries = Entries{}
 	}
@@ -546,7 +548,12 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 			zone.update(z)
 
 			if this.isProviderForZone(z.Id(), name) {
-				keeping = append(keeping, fmt.Sprintf("keeping provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain()))
+				if last != nil && (!new.included.Equals(last.included) || !new.excluded.Equals(last.excluded)) {
+					modified = true
+					logger.Infof("keeping provider %q for hosted zone %q (%s) with modified domain selection", name, z.Id(), z.Domain())
+				} else {
+					keeping = append(keeping, fmt.Sprintf("keeping provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain()))
+				}
 			} else {
 				modified = true
 				logger.Infof("adding provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain())
@@ -573,10 +580,10 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 				}
 			}
 		}
-		if modified {
-			for _, m := range keeping {
-				logger.Info(m)
-			}
+	}
+	if modified {
+		for _, m := range keeping {
+			logger.Info(m)
 		}
 	}
 	this.providerzones[name] = result
@@ -631,10 +638,17 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 	if !status.IsSucceeded() {
 		logger.Infof("erroneous provider: %s", status.Error)
 		if last != nil {
-			logger.Infof("trigger old zones")
+			logger.Infof("trigger entries for old zones")
+			entries := Entries{}
+			stale := DNSNames{}
 			for _, z := range last.zones {
 				this.triggerHostedZone(z.Id())
+				this.addEntriesForZone(logger, entries, stale, z)
 			}
+			for _, s := range stale {
+				entries.AddEntry(s)
+			}
+			this.TriggerEntries(logger, entries)
 		}
 		if regmod {
 			return reconcile.Repeat(logger, regerr)

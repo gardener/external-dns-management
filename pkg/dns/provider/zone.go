@@ -103,6 +103,14 @@ func (this *dnsHostedZone) ForwardedDomains() []string {
 	return this.getZone().ForwardedDomains()
 }
 
+func (this *dnsHostedZone) Key() string {
+	return this.getZone().Key()
+}
+
+func (this *dnsHostedZone) IsPrivate() bool {
+	return this.getZone().IsPrivate()
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *dnsHostedZone) update(zone DNSHostedZone) {
