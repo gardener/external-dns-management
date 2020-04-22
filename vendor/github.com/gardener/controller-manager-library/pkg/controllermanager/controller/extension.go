@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/sync"
 
 	parentcfg "github.com/gardener/controller-manager-library/pkg/controllermanager/config"
@@ -124,6 +125,10 @@ type Extension struct {
 
 var _ Environment = &Extension{}
 
+type prepare interface {
+	Prepare() error
+}
+
 func NewExtension(defs Definitions, cm extension.ControllerManager) (*Extension, error) {
 	ctx := ctxutil.WaitGroupContext(cm.GetContext())
 	ext := extension.NewDefaultEnvironment(ctx, TYPE, cm)
@@ -161,6 +166,24 @@ func NewExtension(defs Definitions, cm extension.ControllerManager) (*Extension,
 	registrations, err := defs.Registrations(active.AsArray()...)
 	if err != nil {
 		return nil, err
+	}
+
+	for n := range registrations {
+		var cerr error
+		options := cfg.GetSource(n).(*ControllerConfig)
+		options.PrefixedShared().VisitSources(func(n string, s config.OptionSource) bool {
+			if p, ok := s.(prepare); ok {
+				err := p.Prepare()
+				if err != nil {
+					cerr = err
+					return false
+				}
+			}
+			return true
+		})
+		if cerr != nil {
+			return nil, fmt.Errorf("invalid config for controller %q: %s", n, cerr)
+		}
 	}
 
 	_, after, err := extension.Order(registrations)

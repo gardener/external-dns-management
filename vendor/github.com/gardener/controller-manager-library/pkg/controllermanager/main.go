@@ -37,6 +37,8 @@ import (
 
 const DeletionActivity = "DeletionActivity"
 
+var Version = "dev-version"
+
 func Start(use, short, long string) {
 	args := strings.Split(use, " ")
 	Configure(args[0], long, nil).ByDefault().Start(use, short)
@@ -109,9 +111,10 @@ func NewCommand(ctx context.Context, use, short, long string, def *Definition) *
 	def.ExtendConfig(cfg)
 
 	cmd := &cobra.Command{
-		Use:   use,
-		Short: short,
-		Long:  long,
+		Use:     use,
+		Short:   short,
+		Long:    long,
+		Version: Version,
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := runCM(ctx, def); err != nil {
 				fmt.Fprintf(os.Stderr, "%s\n", err)
