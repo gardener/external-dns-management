@@ -40,7 +40,7 @@ import (
 	extensions "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/source/service"
 
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
