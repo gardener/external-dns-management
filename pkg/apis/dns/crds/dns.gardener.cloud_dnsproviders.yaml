@@ -22,7 +22,7 @@ spec:
     - jsonPath: .spec.type
       name: TYPE
       type: string
-    - jsonPath: ..status.state
+    - jsonPath: .status.state
       name: STATUS
       type: string
     name: v1alpha1
@@ -44,21 +44,27 @@ spec:
           spec:
             properties:
               domains:
+                description: desired selection of usable domains (by default all zones
+                  and domains in those zones will be served)
                 properties:
                   exclude:
+                    description: values that should be ignored (domains or zones)
                     items:
                       type: string
                     type: array
                   include:
+                    description: values that should be observed (domains or zones)
                     items:
                       type: string
                     type: array
                 type: object
               providerConfig:
+                description: optional additional provider specific configuration values
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               secretRef:
-                description: SecretReference represents a Secret Reference. It has
-                  enough information to retrieve secret in any namespace
+                description: access credential for the external DNS system of the
+                  given type
                 properties:
                   name:
                     description: Name is unique within a namespace to reference a
@@ -70,14 +76,20 @@ spec:
                     type: string
                 type: object
               type:
+                description: type of the provider (selecting the responsible type
+                  of DNS controller)
                 type: string
               zones:
+                description: desired selection of usable domains the domain selection
+                  is used for served zones, only (by default all zones will be served)
                 properties:
                   exclude:
+                    description: values that should be ignored (domains or zones)
                     items:
                       type: string
                     type: array
                   include:
+                    description: values that should be observed (domains or zones)
                     items:
                       type: string
                     type: array
@@ -86,30 +98,39 @@ spec:
           status:
             properties:
               domains:
+                description: actually served domain selection
                 properties:
                   excluded:
+                    description: Excluded values (domains or zones)
                     items:
                       type: string
                     type: array
                   included:
+                    description: included values (domains or zones)
                     items:
                       type: string
                     type: array
                 type: object
               message:
+                description: message describing the reason for the actual state of
+                  the provider
                 type: string
               observedGeneration:
                 format: int64
                 type: integer
               state:
+                description: state of the provider
                 type: string
               zones:
+                description: actually served zones
                 properties:
                   excluded:
+                    description: Excluded values (domains or zones)
                     items:
                       type: string
                     type: array
                   included:
+                    description: included values (domains or zones)
                     items:
                       type: string
                     type: array

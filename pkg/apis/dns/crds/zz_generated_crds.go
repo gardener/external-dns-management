@@ -171,7 +171,7 @@ spec:
     - jsonPath: .status.provider
       name: PROVIDER
       type: string
-    - jsonPath: ..status.state
+    - jsonPath: .status.state
       name: STATUS
       type: string
     name: v1alpha1
@@ -193,30 +193,41 @@ spec:
           spec:
             properties:
               cnameLookupInterval:
+                description: lookup interval for CNAMEs that must be resolved to IP
+                  addresses
                 format: int64
                 type: integer
               dnsName:
+                description: full qualified domain name
                 type: string
               ownerId:
+                description: owner id used to tag entries in external DNS system
                 type: string
               reference:
+                description: reference to base entry used to inherit attributes from
                 properties:
                   name:
+                    description: name of the referenced DNSEntry object
                     type: string
                   namespace:
+                    description: namespace of the referenced DNSEntry object
                     type: string
                 required:
                 - name
                 type: object
               targets:
+                description: target records (CNAME or A records), either text or targets
+                  must be specified
                 items:
                   type: string
                 type: array
               text:
+                description: text records, either text or targets must be specified
                 items:
                   type: string
                 type: array
               ttl:
+                description: time to live for records in external DNS system
                 format: int64
                 type: integer
             required:
@@ -225,24 +236,31 @@ spec:
           status:
             properties:
               message:
+                description: message describing the reason for the state
                 type: string
               observedGeneration:
                 format: int64
                 type: integer
               provider:
+                description: assigned provider
                 type: string
               providerType:
+                description: provider type used for the entry
                 type: string
               state:
+                description: entry state
                 type: string
               targets:
+                description: effective targets generated for the entry
                 items:
                   type: string
                 type: array
               ttl:
+                description: time to live used for the entry
                 format: int64
                 type: integer
               zone:
+                description: zone used for the entry
                 type: string
             type: object
         required:
@@ -310,8 +328,11 @@ spec:
           spec:
             properties:
               active:
+                description: state of the ownerid for the DNS controller observing
+                  entry using this owner id (default:true)
                 type: boolean
               ownerId:
+                description: owner id used to tag entries in external DNS system
                 type: string
             required:
             - ownerId
@@ -319,12 +340,15 @@ spec:
           status:
             properties:
               entries:
+                description: Entry statistic for this owner id
                 properties:
                   amount:
+                    description: number of entries using this owner id
                     type: integer
                   types:
                     additionalProperties:
                       type: integer
+                    description: number of entries per provider type
                     type: object
                 type: object
             type: object
@@ -368,7 +392,7 @@ spec:
     - jsonPath: .spec.type
       name: TYPE
       type: string
-    - jsonPath: ..status.state
+    - jsonPath: .status.state
       name: STATUS
       type: string
     name: v1alpha1
@@ -390,21 +414,27 @@ spec:
           spec:
             properties:
               domains:
+                description: desired selection of usable domains (by default all zones
+                  and domains in those zones will be served)
                 properties:
                   exclude:
+                    description: values that should be ignored (domains or zones)
                     items:
                       type: string
                     type: array
                   include:
+                    description: values that should be observed (domains or zones)
                     items:
                       type: string
                     type: array
                 type: object
               providerConfig:
+                description: optional additional provider specific configuration values
                 type: object
+                x-kubernetes-preserve-unknown-fields: true
               secretRef:
-                description: SecretReference represents a Secret Reference. It has
-                  enough information to retrieve secret in any namespace
+                description: access credential for the external DNS system of the
+                  given type
                 properties:
                   name:
                     description: Name is unique within a namespace to reference a
@@ -416,14 +446,20 @@ spec:
                     type: string
                 type: object
               type:
+                description: type of the provider (selecting the responsible type
+                  of DNS controller)
                 type: string
               zones:
+                description: desired selection of usable domains the domain selection
+                  is used for served zones, only (by default all zones will be served)
                 properties:
                   exclude:
+                    description: values that should be ignored (domains or zones)
                     items:
                       type: string
                     type: array
                   include:
+                    description: values that should be observed (domains or zones)
                     items:
                       type: string
                     type: array
@@ -432,30 +468,39 @@ spec:
           status:
             properties:
               domains:
+                description: actually served domain selection
                 properties:
                   excluded:
+                    description: Excluded values (domains or zones)
                     items:
                       type: string
                     type: array
                   included:
+                    description: included values (domains or zones)
                     items:
                       type: string
                     type: array
                 type: object
               message:
+                description: message describing the reason for the actual state of
+                  the provider
                 type: string
               observedGeneration:
                 format: int64
                 type: integer
               state:
+                description: state of the provider
                 type: string
               zones:
+                description: actually served zones
                 properties:
                   excluded:
+                    description: Excluded values (domains or zones)
                     items:
                       type: string
                     type: array
                   included:
+                    description: included values (domains or zones)
                     items:
                       type: string
                     type: array

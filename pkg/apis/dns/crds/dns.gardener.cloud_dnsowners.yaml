@@ -47,8 +47,11 @@ spec:
           spec:
             properties:
               active:
+                description: state of the ownerid for the DNS controller observing
+                  entry using this owner id (default:true)
                 type: boolean
               ownerId:
+                description: owner id used to tag entries in external DNS system
                 type: string
             required:
             - ownerId
@@ -56,12 +59,15 @@ spec:
           status:
             properties:
               entries:
+                description: Entry statistic for this owner id
                 properties:
                   amount:
+                    description: number of entries using this owner id
                     type: integer
                   types:
                     additionalProperties:
                       type: integer
+                    description: number of entries per provider type
                     type: object
                 type: object
             type: object

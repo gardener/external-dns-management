@@ -32,7 +32,7 @@ spec:
     - jsonPath: .status.provider
       name: PROVIDER
       type: string
-    - jsonPath: ..status.state
+    - jsonPath: .status.state
       name: STATUS
       type: string
     name: v1alpha1
@@ -54,30 +54,41 @@ spec:
           spec:
             properties:
               cnameLookupInterval:
+                description: lookup interval for CNAMEs that must be resolved to IP
+                  addresses
                 format: int64
                 type: integer
               dnsName:
+                description: full qualified domain name
                 type: string
               ownerId:
+                description: owner id used to tag entries in external DNS system
                 type: string
               reference:
+                description: reference to base entry used to inherit attributes from
                 properties:
                   name:
+                    description: name of the referenced DNSEntry object
                     type: string
                   namespace:
+                    description: namespace of the referenced DNSEntry object
                     type: string
                 required:
                 - name
                 type: object
               targets:
+                description: target records (CNAME or A records), either text or targets
+                  must be specified
                 items:
                   type: string
                 type: array
               text:
+                description: text records, either text or targets must be specified
                 items:
                   type: string
                 type: array
               ttl:
+                description: time to live for records in external DNS system
                 format: int64
                 type: integer
             required:
@@ -86,24 +97,31 @@ spec:
           status:
             properties:
               message:
+                description: message describing the reason for the state
                 type: string
               observedGeneration:
                 format: int64
                 type: integer
               provider:
+                description: assigned provider
                 type: string
               providerType:
+                description: provider type used for the entry
                 type: string
               state:
+                description: entry state
                 type: string
               targets:
+                description: effective targets generated for the entry
                 items:
                   type: string
                 type: array
               ttl:
+                description: time to live used for the entry
                 format: int64
                 type: integer
               zone:
+                description: zone used for the entry
                 type: string
             type: object
         required:

@@ -49,19 +49,25 @@ type DNSOwner struct {
 }
 
 type DNSOwnerSpec struct {
+	// owner id used to tag entries in external DNS system
 	OwnerId string `json:"ownerId"`
+	// state of the ownerid for the DNS controller observing entry using this owner id
+	// (default:true)
 	// +optional
 	Active *bool `json:"active,omitempty"`
 }
 
 type DNSOwnerStatus struct {
+	// Entry statistic for this owner id
 	// +optional
 	Entries DNSOwnerStatusEntries `json:"entries,omitempty"`
 }
 
 type DNSOwnerStatusEntries struct {
+	// number of entries using this owner id
 	// +optional
 	Amount int `json:"amount"`
+	// number of entries per provider type
 	// +optional
 	ByType map[string]int `json:"types,omitempty"`
 }
