@@ -454,7 +454,7 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 			zone := this.zones[z.Id()]
 			if zone == nil {
 				modified = true
-				zone = newDNSHostedZone(z)
+				zone = newDNSHostedZone(this.config.Delay, z)
 				this.zones[z.Id()] = zone
 				logger.Infof("adding hosted zone %q (%s)", z.Id(), z.Domain())
 				this.triggerHostedZone(zone.Id())
@@ -506,7 +506,7 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 
 func (this *state) RefineLogger(logger logger.LogContext, ptype string) logger.LogContext {
 	if len(this.config.Enabled) > 1 && ptype != "" {
-		logger = logger.NewContext("provider", ptype)
+		logger = logger.NewContext("type", ptype)
 	}
 	return logger
 }

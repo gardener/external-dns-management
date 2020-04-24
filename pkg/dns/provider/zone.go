@@ -20,42 +20,24 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
 type dnsHostedZones map[string]*dnsHostedZone
 
 type dnsHostedZone struct {
+	*dnsutils.RateLimiter
 	lock sync.Mutex
 	busy bool
 	zone DNSHostedZone
 	next time.Time
-	rate time.Duration
 }
 
-func newDNSHostedZone(zone DNSHostedZone) *dnsHostedZone {
+func newDNSHostedZone(min time.Duration, zone DNSHostedZone) *dnsHostedZone {
 	return &dnsHostedZone{
-		zone: zone,
-	}
-}
-
-func (this *dnsHostedZone) RateLimit() time.Duration {
-	return this.rate
-}
-
-func (this *dnsHostedZone) Succeeded() {
-	this.rate = 0
-}
-
-func (this *dnsHostedZone) Failed(min time.Duration) {
-	if this.rate == 0 {
-		this.rate = min
-		if this.rate == 0 {
-			this.rate = 10 * time.Second
-		}
-	} else {
-		if this.rate < 10*time.Minute {
-			this.rate = time.Duration(1.1*float64(this.rate)) + time.Second
-		}
+		zone:        zone,
+		RateLimiter: dnsutils.NewRateLimiter(min, 10*time.Minute, min/2),
 	}
 }
 
