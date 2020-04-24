@@ -35,12 +35,13 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/controller/source/service"
 	api "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/controller/source/service"
 
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
@@ -148,13 +149,22 @@ func (te *TestEnv) CreateSecret(index int) (resources.Object, error) {
 	return obj, err
 }
 
+func BuildProviderConfig(domain, baseDomain string, failGetZones bool) *runtime.RawExtension {
+	zones := fmt.Sprintf(`"zones": ["%s","x.%s"]`, domain, baseDomain)
+	fail := ""
+	if failGetZones {
+		fail = `,"failGetZones": true`
+	}
+	return &runtime.RawExtension{Raw: []byte(fmt.Sprintf("{%s%s}", zones, fail))}
+}
+
 func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretName string) (resources.Object, string, error) {
 	domain := fmt.Sprintf("pr-%d.%s", providerIndex, baseDomain)
 
 	setSpec := func(spec *v1alpha1.DNSProviderSpec) {
 		spec.Domains = &v1alpha1.DNSSelection{Include: []string{domain}}
 		spec.Type = "mock-inmemory"
-		spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(fmt.Sprintf("{\"zones\": [\"%s\"]}", domain))}
+		spec.ProviderConfig = BuildProviderConfig(domain, baseDomain, false)
 		spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: te.Namespace}
 	}
 	obj, err := te.CreateProviderEx(providerIndex, secretName, setSpec)
@@ -190,7 +200,7 @@ func (te *TestEnv) CreateSecretAndProvider(baseDomain string, index int) (resour
 }
 
 func (te *TestEnv) DeleteProviderAndSecret(pr resources.Object) error {
-	provider := pr.Data().(*v1alpha1.DNSProvider)
+	provider := UnwrapProvider(pr)
 
 	err := pr.Delete()
 	if err != nil {
@@ -449,7 +459,24 @@ func (te *TestEnv) GetProvider(name string) (resources.Object, *v1alpha1.DNSProv
 	if err != nil {
 		return nil, nil, err
 	}
-	return obj, obj.Data().(*v1alpha1.DNSProvider), nil
+	return obj, UnwrapProvider(obj), nil
+}
+
+func UnwrapProvider(obj resources.Object) *v1alpha1.DNSProvider {
+	return obj.Data().(*v1alpha1.DNSProvider)
+}
+
+func (te *TestEnv) UpdateProviderSpec(obj resources.Object, f func(spec *v1alpha1.DNSProviderSpec) error) (resources.Object, error) {
+	obj, pr, err := te.GetProvider(obj.GetName())
+	if err != nil {
+		return nil, err
+	}
+	err = f(&pr.Spec)
+	if err != nil {
+		return nil, err
+	}
+	err = obj.Update()
+	return obj, err
 }
 
 func (te *TestEnv) GetSecret(name string) (resources.Object, error) {
@@ -478,6 +505,14 @@ func (te *TestEnv) HasProviderState(name string, states ...string) (bool, error)
 
 func (te *TestEnv) AwaitEntryReady(name string) error {
 	return te.AwaitEntryState(name, "Ready")
+}
+
+func (te *TestEnv) AwaitEntryStale(name string) error {
+	return te.AwaitEntryState(name, "Stale")
+}
+
+func (te *TestEnv) AwaitEntryError(name string) error {
+	return te.AwaitEntryState(name, "Error")
 }
 
 func (te *TestEnv) AwaitEntryState(name string, states ...string) error {
