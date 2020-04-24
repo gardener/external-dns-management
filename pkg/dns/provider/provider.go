@@ -25,9 +25,6 @@ import (
 	"sync"
 	"time"
 
-	pkgerrors "github.com/pkg/errors"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
@@ -512,7 +509,6 @@ func (this *dnsProviderVersion) failed(logger logger.LogContext, modified bool, 
 	}
 	if !temp {
 		if this.account != nil {
-			// reset rate limiter for persistent errors
 			this.account.Succeeded()
 		}
 		return reconcile.Failed(logger, err)
