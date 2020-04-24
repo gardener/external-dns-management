@@ -61,6 +61,7 @@ func (this DNSProviders) LookupFor(dns string) DNSProvider {
 ///////////////////////////////////////////////////////////////////////////////
 
 type DNSAccount struct {
+	*dnsutils.RateLimiter
 	handler DNSHandler
 	config  utils.Properties
 
@@ -70,6 +71,16 @@ type DNSAccount struct {
 
 var _ DNSHandler = &DNSAccount{}
 var _ Metrics = &DNSAccount{}
+
+func NewDNSAccount(config utils.Properties, handler DNSHandler, hash string) *DNSAccount {
+	return &DNSAccount{
+		RateLimiter: dnsutils.NewRateLimiter(3*time.Second, 10*time.Minute, 3*time.Second),
+		config:      config,
+		handler:     handler,
+		hash:        hash,
+		clients:     resources.ObjectNameSet{},
+	}
+}
 
 func (this *DNSAccount) AddRequests(requestType string, n int) {
 	metrics.AddRequests(this.handler.ProviderType(), this.hash, requestType, n)
@@ -84,11 +95,23 @@ func (this *DNSAccount) Hash() string {
 }
 
 func (this *DNSAccount) GetZones() (DNSHostedZones, error) {
-	return this.handler.GetZones()
+	zones, err := this.handler.GetZones()
+	if err == nil {
+		this.Succeeded()
+	} else {
+		this.Failed()
+	}
+	return zones, err
 }
 
 func (this *DNSAccount) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
-	return this.handler.GetZoneState(zone)
+	state, err := this.handler.GetZoneState(zone)
+	if err == nil {
+		this.Succeeded()
+	} else {
+		this.Failed()
+	}
+	return state, err
 }
 
 func (this *DNSAccount) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
@@ -115,7 +138,11 @@ type AccountCache struct {
 }
 
 func NewAccountCache(ttl time.Duration, dir string) *AccountCache {
-	return &AccountCache{ttl: ttl, dir: dir, cache: map[string]*DNSAccount{}}
+	return &AccountCache{
+		ttl:   ttl,
+		dir:   dir,
+		cache: map[string]*DNSAccount{},
+	}
 }
 
 func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSProviderObject, props utils.Properties, state *state) (*DNSAccount, error) {
@@ -127,7 +154,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 	defer this.lock.Unlock()
 	a := this.cache[hash]
 	if a == nil {
-		a = &DNSAccount{config: props, hash: hash, clients: resources.ObjectNameSet{}}
+		a = NewDNSAccount(props, nil, hash)
 		syncPeriod := state.GetContext().GetPoolPeriod("dns")
 		if syncPeriod == nil {
 			return nil, fmt.Errorf("Pool dns not found")
@@ -481,10 +508,17 @@ func (this *dnsProviderVersion) failed(logger logger.LogContext, modified bool, 
 		if errors.IsConflict(uerr) {
 			return reconcile.Repeat(logger, fmt.Errorf("cannot update provider %q: %s", this.ObjectName(), uerr))
 		}
-		return reconcile.Failed(logger, uerr)
+		return reconcile.Delay(logger, uerr)
 	}
 	if !temp {
+		if this.account != nil {
+			// reset rate limiter for persistent errors
+			this.account.Succeeded()
+		}
 		return reconcile.Failed(logger, err)
+	}
+	if this.account != nil {
+		return reconcile.Recheck(logger, err, this.account.RateLimit())
 	}
 	return reconcile.Delay(logger, err)
 }

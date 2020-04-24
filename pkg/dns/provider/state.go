@@ -540,7 +540,7 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 			zone := this.zones[z.Id()]
 			if zone == nil {
 				modified = true
-				zone = newDNSHostedZone(z)
+				zone = newDNSHostedZone(this.config.Delay, z)
 				this.zones[z.Id()] = zone
 				logger.Infof("adding hosted zone %q (%s)", z.Id(), z.Domain())
 				this.triggerHostedZone(zone.Id())
@@ -592,7 +592,7 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 
 func (this *state) RefineLogger(logger logger.LogContext, ptype string) logger.LogContext {
 	if len(this.config.Enabled) > 1 && ptype != "" {
-		logger = logger.NewContext("provider", ptype)
+		logger = logger.NewContext("type", ptype)
 	}
 	return logger
 }
@@ -1187,6 +1187,9 @@ func (this *state) reconcileZoneBlockingEntries(logger logger.LogContext) int {
 }
 
 func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconcile.Status {
+	logger.Infof("Initiate reconcilation of zone %s", zoneid)
+	defer logger.Infof("zone %s done", zoneid)
+
 	blockingCount := this.reconcileZoneBlockingEntries(logger)
 	if blockingCount > 0 {
 		logger.Infof("reconciliation of zone %s is blocked due to %d pending entry reconciliations", zoneid, blockingCount)
@@ -1205,6 +1208,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 		logger.Infof("too early (required delay between two reconciliations: %s) -> skip and reschedule", this.config.Delay)
 		return reconcile.Succeeded(logger).RescheduleAfter(delay)
 	}
+	logger.Infof("precondition fulfilled for zone %s", zoneid)
 	if done, err := this.StartZoneReconciliation(logger, req); done {
 		if err != nil {
 			if _, ok := err.(*perrs.NoSuchHostedZone); ok {
@@ -1301,7 +1305,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		req.zone.Succeeded()
 		err = conflictErr
 	} else {
-		req.zone.Failed(this.config.Delay)
+		req.zone.Failed()
 	}
 	return err
 }
