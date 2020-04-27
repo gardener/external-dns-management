@@ -20,14 +20,20 @@ import (
 	"fmt"
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
+	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
-
+	"k8s.io/client-go/util/flowcontrol"
+	"os"
+	"strconv"
 	"strings"
 )
 
 var nullHost = "@"
-var defaultPageSize = 2
+var defaultPageSize = 20
+
+var alicloudDNSApiQPSEnv = "ALICLOUD_DNS_API_QPS"
+var defaultAlicloudDNSApiQPS = 25.0
 
 func GetDNSName(r alidns.Record) string {
 	if r.RR == nullHost {
@@ -55,8 +61,9 @@ type Access interface {
 }
 
 type access struct {
-	*alidns.Client
-	metrics provider.Metrics
+	client      *alidns.Client
+	metrics     provider.Metrics
+	rateLimiter flowcontrol.RateLimiter
 }
 
 func NewAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics) (Access, error) {
@@ -64,7 +71,20 @@ func NewAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics) (A
 	if err != nil {
 		return nil, err
 	}
-	return &access{client, metrics}, nil
+
+	qps := defaultAlicloudDNSApiQPS
+	qpsEnv := os.Getenv(alicloudDNSApiQPSEnv)
+	if qpsEnv != "" {
+		q, err := strconv.ParseFloat(qpsEnv, 32)
+		if err == nil {
+			logger.Warnf("Set QPS for Alicloud failed. Environment %s is invalid.", alicloudDNSApiQPSEnv)
+		}
+		qps = q
+	}
+
+	// To be conservative, let burst to be 1
+	r := flowcontrol.NewTokenBucketRateLimiter(float32(qps), 1)
+	return &access{client, metrics, r}, nil
 }
 
 func (this *access) nextPageNumber(pageNumber, pageSize, totalCount int) int {
@@ -83,7 +103,8 @@ func (this *access) ListDomains(consume func(domain alidns.Domain) (bool, error)
 		this.metrics.AddRequests(rt, 1)
 		rt = provider.M_PLISTZONES
 		request.PageNumber = requests.NewInteger(nextPage)
-		resp, err := this.DescribeDomains(request)
+		this.rateLimiter.Accept()
+		resp, err := this.client.DescribeDomains(request)
 		if err != nil {
 			return err
 		}
@@ -108,7 +129,8 @@ func (this *access) ListRecords(domain string, consume func(record alidns.Record
 		this.metrics.AddRequests(rt, 1)
 		rt = provider.M_PLISTRECORDS
 		request.PageNumber = requests.NewInteger(nextPage)
-		resp, err := this.DescribeDomainRecords(request)
+		this.rateLimiter.Accept()
+		resp, err := this.client.DescribeDomainRecords(request)
 		if err != nil {
 			return err
 		}
@@ -132,7 +154,8 @@ func (this *access) CreateRecord(r raw.Record) error {
 	req.TTL = requests.NewInteger(a.TTL)
 	req.Value = a.Value
 	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
-	_, err := this.AddDomainRecord(req)
+	this.rateLimiter.Accept()
+	_, err := this.client.AddDomainRecord(req)
 	return err
 }
 
@@ -145,7 +168,8 @@ func (this *access) UpdateRecord(r raw.Record) error {
 	req.TTL = requests.NewInteger(a.TTL)
 	req.Value = a.Value
 	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
-	_, err := this.UpdateDomainRecord(req)
+	this.rateLimiter.Accept()
+	_, err := this.client.UpdateDomainRecord(req)
 	return err
 }
 
@@ -153,7 +177,8 @@ func (this *access) DeleteRecord(r raw.Record) error {
 	req := alidns.CreateDeleteDomainRecordRequest()
 	req.RecordId = r.GetId()
 	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
-	_, err := this.DeleteDomainRecord(req)
+	this.rateLimiter.Accept()
+	_, err := this.client.DeleteDomainRecord(req)
 	return err
 }
 
