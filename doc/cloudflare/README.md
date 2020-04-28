@@ -20,7 +20,18 @@ all zones. Optionally you can exclude certain zones.
 
 Generate the token and keep this key safe as it won't be shown again.
 
+Then base64 encode the token. For eg. if the generated token in `1234567890123456`, use
+
+```bash
+$ echo -n '1234567890123456789' | base64
+```
+
+to get the base64 encoded token. In this eg. this would be `MTIzNDU2Nzg5MDEyMzQ1Njc4OQ==`.
+
 ## Using the API Token
+
+Use the base64 encoded token in a `Secret` resource with the `metadata.name` to be 
+`cloudflare-credentials` and `data.CLOUDFLARE_API_TOKEN` to be the base64 encoded token.
 
 ```yaml
 apiVersion: v1
@@ -30,5 +41,5 @@ metadata:
   namespace: default
 type: Opaque
 data:
-  CLOUDFLARE_API_TOKEN: 1234567890123456789
+  CLOUDFLARE_API_TOKEN: MTIzNDU2Nzg5MDEyMzQ1Njc4OQ==
 ``` 
