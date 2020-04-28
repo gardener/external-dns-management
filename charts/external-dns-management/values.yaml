@@ -202,7 +202,10 @@ configuration:
   # targetDisableDeployCrds: false
   # targetId: ""
   ttl: 120
-
+  # dnsPoolResyncPeriod: 30s
+  # dnsPoolSize: 1
+  # providersPoolResyncPeriod: 30s
+  # providersPoolSize: 1
 additionalConfiguration: []
 
 gardener:

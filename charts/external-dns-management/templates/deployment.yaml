@@ -484,6 +484,18 @@ spec:
         {{- if .Values.configuration.pluginDir }}
         - --plugin-dir={{ .Values.configuration.pluginDir }}
         {{- end }}
+        {{- if .Values.configuration.dnsPoolResyncPeriod }}
+        - --dns.pool.resync-period={{ .Values.configuration.dnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.providersPoolResyncPeriod }}
+        - --providers.pool.resync-period={{ .Values.configuration.providersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.dnsPoolSize }}
+        - --dns.pool.size={{ .Values.configuration.dnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.providersPoolSize }}
+        - --providers.pool.size={{ .Values.configuration.providersPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.poolResyncPeriod }}
         - --pool.resync-period={{ .Values.configuration.poolResyncPeriod }}
         {{- end }}
