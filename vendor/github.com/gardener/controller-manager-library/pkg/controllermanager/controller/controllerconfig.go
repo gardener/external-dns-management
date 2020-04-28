@@ -49,8 +49,9 @@ func (this *_Definitions) ExtendConfig(cfg *areacfg.Config) {
 		set := ccfg.PrefixedShared()
 
 		for pname, p := range def.Pools() {
+			localpname := pname
 			pcfg := config.NewSharedOptionSet(pname, pname, func(s string) string {
-				return s + " for pool " + pname
+				return s + " for pool " + localpname
 			})
 			set.AddSource(pname, pcfg)
 			pcfg.AddIntOption(nil, POOL_SIZE_OPTION, "", p.Size(), "Worker pool size")

@@ -19,6 +19,8 @@ package resources
 import (
 	"reflect"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 	"github.com/gardener/controller-manager-library/pkg/resources/errors"
@@ -147,8 +149,16 @@ func (this *_resources) GetUnstructuredByGVK(gvk schema.GroupVersionKind) (Inter
 	return adapt(this.AbstractResources.GetUnstructuredByGVK(gvk))
 }
 
+func (this *_resources) _get(obj ObjectData) (Interface, error) {
+	if u, ok := obj.(*unstructured.Unstructured); ok {
+		return this.GetUnstructured(u)
+	} else {
+		return this.GetByExample(obj)
+	}
+}
+
 func (this *_resources) Wrap(obj ObjectData) (Object, error) {
-	h, err := this.GetByExample(obj)
+	h, err := this._get(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -156,14 +166,15 @@ func (this *_resources) Wrap(obj ObjectData) (Object, error) {
 }
 
 func (this *_resources) CreateObject(obj ObjectData) (Object, error) {
-	r, err := this.GetByExample(obj)
+	r, err := this._get(obj)
 	if err != nil {
 		return nil, err
 	}
 	return r.Create(obj)
 }
+
 func (this *_resources) CreateOrUpdateObject(obj ObjectData) (Object, error) {
-	r, err := this.GetByExample(obj)
+	r, err := this._get(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +182,7 @@ func (this *_resources) CreateOrUpdateObject(obj ObjectData) (Object, error) {
 }
 
 func (this *_resources) DeleteObject(obj ObjectData) error {
-	r, err := this.GetByExample(obj)
+	r, err := this._get(obj)
 	if err != nil {
 		return err
 	}

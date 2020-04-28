@@ -49,6 +49,10 @@ type GroupKindProvider interface {
 	GroupKind() schema.GroupKind
 }
 
+type GroupVersionKindProvider interface {
+	GroupVersionKind() schema.GroupVersionKind
+}
+
 // objectKey is just used to allow a method ObjectKey for ClusterObjectKey
 type objectKey struct {
 	ObjectKey

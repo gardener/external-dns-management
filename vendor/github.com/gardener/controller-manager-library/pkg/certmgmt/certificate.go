@@ -113,24 +113,21 @@ func UpdateCertificate(old CertificateInfo, cfg *Config) (CertificateInfo, error
 	var err error
 	var ok bool
 
-	// var test string
-	// names:=cfg.Hosts.GetDNSNames()
-	// if len(names)>0 {
-	//	test=names[0]
-	// } else {
-	//	ips:=cfg.Hosts.GetIPs()
-	//	if len(ips)>0 {
-	//		test="["+ips[0].String()+"]"
-	//	}
-	// }
+	if cfg == nil || cfg.ExternallyManaged {
+		valid, err := CheckInfo(new, 0, "")
+		if !valid {
+			return new, err
+		}
+		return new, nil
+	}
 
-	valid := IsValid(new, cfg.Rest, "")
+	valid := IsValidInfo(new, cfg.Rest, "")
 	if valid {
 		names := cfg.Hosts.GetDNSNames()
 		for _, ip := range cfg.Hosts.GetIPs() {
 			names = append(names, ip.String())
 		}
-		valid = IsValid(new, cfg.Rest, names...)
+		valid = IsValidInfo(new, cfg.Rest, names...)
 		if !valid {
 			fmt.Printf("not valid for requested names: %v\n", names)
 		}
@@ -141,7 +138,7 @@ func UpdateCertificate(old CertificateInfo, cfg *Config) (CertificateInfo, error
 		fmt.Printf("renew/create cert\n")
 		if new.cacert != nil {
 			fmt.Printf("cacert found\n")
-			ok = Valid(new.cakey, new.cacert, new.cacert, 5*time.Hour*24, "")
+			ok = IsValid(new.cakey, new.cacert, new.cacert, 5*time.Hour*24, "")
 			if ok {
 				fmt.Printf("cacert valid\n")
 				k, err := keyutil.ParsePrivateKeyPEM(new.cakey)
@@ -200,46 +197,70 @@ func UpdateCertificate(old CertificateInfo, cfg *Config) (CertificateInfo, error
 	return old, nil
 }
 
-func IsValid(info CertificateInfo, duration time.Duration, name ...string) bool {
-	if info.Cert() == nil || info.Key() == nil {
-		fmt.Printf("cert or key not set\n")
-		return false
-	}
-	if info.CACert() == nil {
-		fmt.Printf("cacert not set\n")
-		return false
-	}
-	return Valid(info.Key(), info.Cert(), info.CACert(), duration, name...)
+func IsValidInfo(info CertificateInfo, duration time.Duration, name ...string) bool {
+	ok, _ := CheckInfo(info, duration, name...)
+	return ok
 }
 
-func Valid(key []byte, cert []byte, cacert []byte, duration time.Duration, name ...string) bool {
+func CheckInfo(info CertificateInfo, duration time.Duration, name ...string) (bool, error) {
+	return Check(info.Key(), info.Cert(), info.CACert(), duration, name...)
+}
 
-	if len(cert) == 0 || len(key) == 0 || len(cacert) == 0 {
-		// fmt.Printf("something empty\n")
-		return false
+func IsValid(key []byte, cert []byte, cacert []byte, duration time.Duration, name ...string) bool {
+	ok, _ := Check(key, cert, cacert, duration, name...)
+	return ok
+}
+
+func AppendCertsFromPEM(s *x509.CertPool, pemCerts []byte) error {
+	for len(pemCerts) > 0 {
+		var block *pem.Block
+		block, pemCerts = pem.Decode(pemCerts)
+		if block == nil {
+			break
+		}
+		if block.Type != "CERTIFICATE" || len(block.Headers) != 0 {
+			continue
+		}
+
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return err
+		}
+
+		s.AddCert(cert)
 	}
+	return nil
+}
 
-	// fmt.Printf("val for: %s\n", dnsname)
+func Check(key []byte, cert []byte, cacert []byte, duration time.Duration, name ...string) (bool, error) {
+
+	if len(cert) == 0 {
+		return false, fmt.Errorf("certificate not set")
+	}
+	if len(key) == 0 {
+		return false, fmt.Errorf("key not set")
+	}
+	if len(cacert) == 0 {
+		return false, fmt.Errorf("ca not set")
+	}
 	_, err := tls.X509KeyPair(cert, key)
 	if err != nil {
-		// fmt.Printf("key does not match certmgmt\n")
-		return false
+		return false, err
 	}
 
 	pool := x509.NewCertPool()
-	if !pool.AppendCertsFromPEM(cacert) {
-		// fmt.Printf("cannot create pool\n")
-		return false
+	err = AppendCertsFromPEM(pool, cacert)
+	if err != nil {
+		return false, err
 	}
+
 	block, _ := pem.Decode([]byte(cert))
 	if block == nil {
-		// fmt.Printf("cannot decode certmgmt\n")
-		return false
+		return false, fmt.Errorf("cannot decode certmgmt")
 	}
 	c, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
-		// fmt.Printf("cannot parse certmgmt\n")
-		return false
+		return false, err
 	}
 	ops := x509.VerifyOptions{
 		Roots:       pool,
@@ -249,10 +270,10 @@ func Valid(key []byte, cert []byte, cacert []byte, duration time.Duration, name 
 		ops.DNSName = n
 		_, err = c.Verify(ops)
 		if err != nil {
-			return false
+			return false, nil
 		}
 	}
-	return true
+	return true, nil
 }
 
 // NewSignedCert creates a signed certificate using the given CA certificate and key with the given validity duration

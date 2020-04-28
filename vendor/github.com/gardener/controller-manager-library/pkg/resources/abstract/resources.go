@@ -200,6 +200,8 @@ func (this *AbstractResources) getResource(gvk schema.GroupVersionKind) (Resourc
 
 func (this *AbstractResources) GetUnstructured(spec interface{}) (Resource, error) {
 	switch o := spec.(type) {
+	case GroupVersionKindProvider:
+		return this.GetUnstructuredByGVK(o.GroupVersionKind())
 	case GroupKindProvider:
 		return this.GetUnstructuredByGK(o.GroupKind())
 	case schema.GroupVersionKind:

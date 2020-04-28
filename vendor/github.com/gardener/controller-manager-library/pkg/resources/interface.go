@@ -177,6 +177,7 @@ type Resources interface {
 	GetByGK(gk schema.GroupKind) (Interface, error)
 	GetByGVK(gvk schema.GroupVersionKind) (Interface, error)
 
+	GetUnstructured(spec interface{}) (Interface, error)
 	GetUnstructuredByGK(gk schema.GroupKind) (Interface, error)
 	GetUnstructuredByGVK(gvk schema.GroupVersionKind) (Interface, error)
 
