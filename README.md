@@ -9,7 +9,7 @@ It contains provisioning controllers for creating DNS records in one of the DNS 
   - _AliCloud DNS_,
   - _Azure DNS_,
   - _OpenStack Designate_,
-  - _Cloudflare DNS_
+  - [_Cloudflare DNS_](/doc/cloudflare/README.md)
 
 and source controllers for services and ingresses to create DNS entries by annotations.
 
