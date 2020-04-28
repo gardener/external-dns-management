@@ -2,13 +2,13 @@
 
 This DNS provider allows you to create and manage DNS entries in Cloudlfare. 
 
-## Generate API Keys
+## Generate API Tokens
 
-To use this provider you need to generate an API key from the Cloudflare dashboard.
-A detailed documentation to generate an API key is available at 
+To use this provider you need to generate an API token from the Cloudflare dashboard.
+A detailed documentation to generate an API token is available at 
 https://support.cloudflare.com/hc/en-us/articles/200167836-Managing-API-Tokens-and-Keys.
 
-**Note: You need to generate an API key and not a API token.**
+**Note: You need to generate an API token and not an API key.**
 
 To generate the token make sure the token has permission of Zone:Read and DNS:Edit for 
 all zones. Optionally you can exclude certain zones.
@@ -18,9 +18,9 @@ all zones. Optionally you can exclude certain zones.
 
 ![API token creation](api-token-creation.png)
 
-Generate the key and keep this key safe as it won't be shown again.
+Generate the token and keep this key safe as it won't be shown again.
 
-## Using the API Key
+## Using the API Token
 
 ```yaml
 apiVersion: v1
