@@ -52,7 +52,7 @@ func (this Configuration) Start(use, short string) {
 	def := this.Definition()
 	long := def.GetDescription()
 	var (
-		cctx = ctxutil.CancelContext(ctxutil.WaitGroupContext(context.Background()))
+		cctx = ctxutil.CancelContext(ctxutil.WaitGroupContext(context.Background(), "main"))
 		ctx  = ctxutil.TickContext(cctx, DeletionActivity)
 		c    = make(chan os.Signal, 2)
 		t    = make(chan os.Signal, 2)
@@ -102,7 +102,7 @@ func (this Configuration) Start(use, short string) {
 
 	var gracePeriod = 120 * time.Second
 	logger.Infof("waiting for everything to shutdown (max. %d seconds)", gracePeriod/time.Second)
-	ctxutil.WaitGroupWait(ctx, gracePeriod)
+	ctxutil.WaitGroupWait(ctx, gracePeriod, "main")
 	logger.Infof("%s exits.", use)
 }
 

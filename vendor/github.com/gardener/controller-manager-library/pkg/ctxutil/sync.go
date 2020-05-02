@@ -18,6 +18,8 @@ package ctxutil
 
 import (
 	"context"
+	"fmt"
+	"runtime"
 	"sync"
 	"time"
 
@@ -26,13 +28,63 @@ import (
 
 var synckey = ""
 
-func WaitGroupContext(ctx context.Context) context.Context {
-	var wg sync.WaitGroup
-	return context.WithValue(ctx, &synckey, &wg)
+type WaitGroup struct {
+	name string
+	sync.WaitGroup
 }
 
-func get_wg(ctx context.Context) *sync.WaitGroup {
-	return ctx.Value(&synckey).(*sync.WaitGroup)
+func (this *WaitGroup) WaitWithTimeout(duration time.Duration, desc ...string) {
+	if duration <= 0 {
+		this.Wait()
+	} else {
+		shutdown, cancel := context.WithCancel(context.Background())
+		timer := time.NewTimer(duration)
+
+		go func() {
+			this.Wait()
+			cancel()
+		}()
+		select {
+		case <-shutdown.Done():
+		case <-timer.C:
+			msg := ""
+			if this.name != "" {
+				msg = this.name + ": "
+			}
+			if len(desc) > 0 {
+				for _, d := range desc {
+					msg += d
+				}
+				msg += ": "
+			}
+
+			fmt.Printf("*** %swait timed out -> generating stack traces\n", msg)
+			buf := make([]byte, 1<<16)
+			stackSize := runtime.Stack(buf, true)
+			fmt.Printf("%s\n", string(buf[0:stackSize]))
+			cancel()
+		}
+	}
+}
+
+func NewWaitGroup(name string) *WaitGroup {
+	return &WaitGroup{name: name}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func WaitGroupContext(ctx context.Context, desc ...string) context.Context {
+	name := ""
+	if len(desc) > 0 {
+		for _, d := range desc {
+			name += d
+		}
+	}
+	return context.WithValue(ctx, &synckey, NewWaitGroup(name))
+}
+
+func get_wg(ctx context.Context) *WaitGroup {
+	return ctx.Value(&synckey).(*WaitGroup)
 }
 
 func WaitGroupAdd(ctx context.Context) {
@@ -43,23 +95,8 @@ func WaitGroupDone(ctx context.Context) {
 	get_wg(ctx).Done()
 }
 
-func WaitGroupWait(ctx context.Context, duration time.Duration) {
-	if duration <= 0 {
-		get_wg(ctx).Wait()
-	} else {
-		shutdown, cancel := context.WithCancel(context.Background())
-		timer := time.NewTimer(duration)
-
-		go func() {
-			get_wg(ctx).Wait()
-			cancel()
-		}()
-		select {
-		case <-shutdown.Done():
-		case <-timer.C:
-			cancel()
-		}
-	}
+func WaitGroupWait(ctx context.Context, duration time.Duration, desc ...string) {
+	get_wg(ctx).WaitWithTimeout(duration, desc...)
 }
 
 func WaitGroupRun(ctx context.Context, f func()) {

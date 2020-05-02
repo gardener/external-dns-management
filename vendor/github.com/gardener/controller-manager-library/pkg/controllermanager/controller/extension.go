@@ -130,7 +130,7 @@ type prepare interface {
 }
 
 func NewExtension(defs Definitions, cm extension.ControllerManager) (*Extension, error) {
-	ctx := ctxutil.WaitGroupContext(cm.GetContext())
+	ctx := ctxutil.WaitGroupContext(cm.GetContext(), "controller extension")
 	ext := extension.NewDefaultEnvironment(ctx, TYPE, cm)
 
 	cfg := areacfg.GetConfig(cm.GetConfig())

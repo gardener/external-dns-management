@@ -239,7 +239,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		}
 	}
 
-	defer this.UpdateOwnerCounts(logger)
+	defer this.triggerStatistic()
 	defer this.references.NotifyHolder(this.context, object.ClusterKey())
 
 	logger = this.RefineLogger(logger, p.ptype)

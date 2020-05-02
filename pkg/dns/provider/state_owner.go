@@ -66,6 +66,7 @@ func (this *state) UpdateOwnerCounts(log logger.LogContext) {
 	if !this.initialized {
 		return
 	}
+	log.Infof("update owner statistic")
 	statistic := statistic.NewEntryStatistic()
 	this.UpdateStatistic(statistic)
 	types := this.GetHandlerFactory().TypeCodes()

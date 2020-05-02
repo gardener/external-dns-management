@@ -154,8 +154,8 @@ func (this *state) Setup() {
 		this.UpdateEntry(this.context.NewContext("entry", p.ObjectName().String()), p)
 	}, processors)
 
+	this.triggerStatistic()
 	this.initialized = true
-	this.UpdateOwnerCounts(this.context)
 	this.context.Infof("setup done - starting reconciliation")
 }
 
@@ -421,8 +421,16 @@ loop:
 	return "", "", length
 }
 
+func (this *state) triggerStatistic() {
+	if this.context.IsReady() {
+		this.context.EnqueueCommand(CMD_STATISTIC)
+	} else {
+		this.pending.Add(CMD_STATISTIC)
+	}
+}
+
 func (this *state) triggerHostedZone(name string) {
-	cmd := HOSTEDZONE_PREFIX + name
+	cmd := CMD_HOSTEDZONE_PREFIX + name
 	if this.context.IsReady() {
 		this.context.EnqueueCommand(cmd)
 	} else {
@@ -439,8 +447,8 @@ func (this *state) triggerKey(key resources.ClusterObjectKey) {
 }
 
 func (this *state) DecodeZoneCommand(name string) string {
-	if strings.HasPrefix(name, HOSTEDZONE_PREFIX) {
-		return name[len(HOSTEDZONE_PREFIX):]
+	if strings.HasPrefix(name, CMD_HOSTEDZONE_PREFIX) {
+		return name[len(CMD_HOSTEDZONE_PREFIX):]
 	}
 	return ""
 }

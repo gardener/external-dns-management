@@ -145,7 +145,7 @@ func NewController(env Environment, def Definition, cmp mappings.Definition) (*c
 
 	this.syncRequests = NewSyncRequests(this)
 
-	ctx := ctxutil.WaitGroupContext(env.GetContext())
+	ctx := ctxutil.WaitGroupContext(env.GetContext(), "controller ", def.Name())
 	this.ElementBase = extension.NewElementBase(ctx, ctx_controller, this, def.Name(), options)
 	this.sharedAttributes.LogContext = this.ElementBase
 	this.ready.start()

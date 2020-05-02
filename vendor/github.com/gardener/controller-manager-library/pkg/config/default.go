@@ -111,6 +111,9 @@ func (this *DefaultOptionSet) checkMod() {
 }
 
 func (this *DefaultOptionSet) AddSource(key string, src OptionSource) {
+	if src == nil {
+		return
+	}
 	this.checkMod()
 	this.nested.Lock()
 	defer this.nested.Unlock()

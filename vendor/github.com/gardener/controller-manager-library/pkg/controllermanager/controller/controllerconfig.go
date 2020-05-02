@@ -65,7 +65,9 @@ func (this *_Definitions) ExtendConfig(cfg *areacfg.Config) {
 			set.AddOption(o.Type(), nil, oname, "", o.Default(), o.Description())
 		}
 		for oname, o := range def.ConfigOptionSources() {
-			set.AddSource(CONTROLLER_SET_PREFIX+oname, o.Create())
+			if src := o.Create(); src != nil {
+				set.AddSource(CONTROLLER_SET_PREFIX+oname, src)
+			}
 		}
 	}
 }

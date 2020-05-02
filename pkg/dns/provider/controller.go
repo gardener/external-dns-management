@@ -91,7 +91,8 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		Watches(
 			controller.NewResourceKey("core", "Secret"),
 		).
-		WorkerPool("dns", 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(HOSTEDZONE_PREFIX + "*"))
+		WorkerPool("dns", 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
+		WorkerPool("statistic", 1, 0).Commands(CMD_STATISTIC)
 }
 
 type reconciler struct {
@@ -155,11 +156,15 @@ func (this *reconciler) Start() {
 }
 
 func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.Status {
-	zoneid := this.state.DecodeZoneCommand(cmd)
-	if zoneid != "" {
-		return this.state.ReconcileZone(logger, zoneid)
+	if cmd == CMD_STATISTIC {
+		this.state.UpdateOwnerCounts(logger)
+	} else {
+		zoneid := this.state.DecodeZoneCommand(cmd)
+		if zoneid != "" {
+			return this.state.ReconcileZone(logger, zoneid)
+		}
+		logger.Infof("got unhandled command %q", cmd)
 	}
-	logger.Infof("got unhandled command %q", cmd)
 	return reconcile.Succeeded(logger)
 }
 

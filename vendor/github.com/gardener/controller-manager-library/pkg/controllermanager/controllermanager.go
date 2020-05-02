@@ -62,7 +62,7 @@ func NewControllerManager(ctx context.Context, def *Definition) (*ControllerMana
 	logger.Info("using option settings:")
 	config.Print(logger.Infof, "", cfg.OptionSet)
 	logger.Info("-----------------------")
-	ctx = logger.Set(ctxutil.WaitGroupContext(ctx), lgr)
+	ctx = logger.Set(ctxutil.WaitGroupContext(ctx, "controllermanager"), lgr)
 	ctx = context.WithValue(ctx, resources.ATTR_EVENTSOURCE, def.GetName())
 
 	for _, e := range def.extensions {
@@ -228,7 +228,7 @@ func (this *ControllerManager) Run() error {
 
 	<-this.context.Done()
 	this.Info("waiting for extensions to shutdown")
-	ctxutil.WaitGroupWait(this.context, 120*time.Second)
+	ctxutil.WaitGroupWait(this.context, 120*time.Second, "extension shutdown")
 	this.Info("all extensions down -> exit controller manager")
 	return nil
 }

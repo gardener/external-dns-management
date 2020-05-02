@@ -39,5 +39,6 @@ const (
 
 	OPT_PROVIDERTYPES = "provider-types"
 
-	HOSTEDZONE_PREFIX = "hostedzone:"
+	CMD_HOSTEDZONE_PREFIX = "hostedzone:"
+	CMD_STATISTIC         = "statistic"
 )

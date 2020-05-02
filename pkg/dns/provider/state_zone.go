@@ -162,7 +162,7 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 		defer func() {
 			logger.Infof("unlocking %d entries", len(list))
 			list.Unlock()
-			go this.UpdateOwnerCounts(logger)
+			this.triggerStatistic()
 		}()
 		return true, this.reconcileZone(logger, req)
 	}
