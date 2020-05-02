@@ -111,7 +111,10 @@ github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5Kwzbycv
 github.com/fsnotify/fsnotify v1.4.7/go.mod h1:jwhsz4b93w/PPRr/qN1Yymfu8t87LnFCMoQvtojpjFo=
 github.com/gardener/controller-manager-library v0.1.1-0.20200502085951-10a99bf60a45 h1:7tTBZV1LVldBbh55fS/raHbo0pxdOZIyblN5UB1BFbQ=
 github.com/gardener/controller-manager-library v0.1.1-0.20200502085951-10a99bf60a45/go.mod h1:na/VUlfk9pGOkMqyUiOMxUuzW5sLdE8oZalGFUbaW9Y=
+github.com/gardener/controller-manager-library v0.1.1-0.20200502200758-d2ba26eef478 h1:99PqhxjGQJmJJZq78ToSYacmiNcD6nSU0rfEl/LCnvA=
+github.com/gardener/controller-manager-library v0.1.1-0.20200502200758-d2ba26eef478/go.mod h1:oCK7fW2VpsMhmUh5c6cOhsN8p9Tth1OM3rRtogDF11k=
 github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
+github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/globalsign/mgo v0.0.0-20180905125535-1ca0a4f7cbcb/go.mod h1:xkRDCp4j0OGD1HRkm4kmhM+pmpv3AKq5SU7GMg4oO/Q=
 github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8/go.mod h1:xkRDCp4j0OGD1HRkm4kmhM+pmpv3AKq5SU7GMg4oO/Q=

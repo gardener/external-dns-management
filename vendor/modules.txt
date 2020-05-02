@@ -94,7 +94,7 @@ github.com/emicklei/go-restful/log
 github.com/evanphx/json-patch
 # github.com/fatih/color v1.7.0
 github.com/fatih/color
-# github.com/gardener/controller-manager-library v0.1.1-0.20200502085951-10a99bf60a45
+# github.com/gardener/controller-manager-library v0.1.1-0.20200502200758-d2ba26eef478
 github.com/gardener/controller-manager-library/hack
 github.com/gardener/controller-manager-library/pkg/certmgmt
 github.com/gardener/controller-manager-library/pkg/certs
@@ -131,6 +131,8 @@ github.com/gardener/controller-manager-library/pkg/server/healthz
 github.com/gardener/controller-manager-library/pkg/sync
 github.com/gardener/controller-manager-library/pkg/utils
 github.com/gardener/controller-manager-library/pkg/utils/pkiutil
+# github.com/ghodss/yaml v1.0.0
+github.com/ghodss/yaml
 # github.com/go-openapi/jsonpointer v0.19.2
 github.com/go-openapi/jsonpointer
 # github.com/go-openapi/jsonreference v0.19.2
