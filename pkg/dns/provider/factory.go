@@ -18,7 +18,10 @@ package provider
 
 import (
 	"fmt"
+
+	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -29,18 +32,31 @@ type DNSHandlerCreatorFunction func(config *DNSHandlerConfig) (DNSHandler, error
 type Factory struct {
 	typecode              string
 	create                DNSHandlerCreatorFunction
+	optionCreator         extension.OptionSourceCreator
 	supportZoneStateCache bool
 }
 
 var _ DNSHandlerFactory = &Factory{}
 
-func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction, disableZoneStateCache ...bool) DNSHandlerFactory {
+func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction, disableZoneStateCache ...bool) *Factory {
 	disable := false
 	for _, b := range disableZoneStateCache {
 		disable = disable || b
 	}
-	return &Factory{typecode, create, !disable}
+	return &Factory{typecode, create, nil, !disable}
 }
+
+func (this *Factory) SetOptionSourceCreator(creator extension.OptionSourceCreator) *Factory {
+	this.optionCreator = creator
+	return this
+}
+
+func (this *Factory) SetOptionSourceByExample(proto config.OptionSource) *Factory {
+	this.optionCreator = controller.OptionSourceCreator(proto)
+	return this
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 func (this *Factory) IsResponsibleFor(object *dnsutils.DNSProviderObject) bool {
 	return object.DNSProvider().Spec.Type == this.typecode
@@ -59,6 +75,13 @@ func (this *Factory) Create(typecode string, config *DNSHandlerConfig) (DNSHandl
 		return this.create(config)
 	}
 	return nil, fmt.Errorf("not responsible for %q", typecode)
+}
+
+func (this *Factory) CreateOptionSource() config.OptionSource {
+	if this.optionCreator != nil {
+		return this.optionCreator()
+	}
+	return nil
 }
 
 func (this *Factory) SupportZoneStateCache(typecode string) (bool, error) {
@@ -118,12 +141,40 @@ func (this *CompoundFactory) Finalizers() utils.StringSet {
 	return this.finalizers.Copy()
 }
 
-func (this *CompoundFactory) Create(typecode string, config *DNSHandlerConfig) (DNSHandler, error) {
+func (this *CompoundFactory) Create(typecode string, cfg *DNSHandlerConfig) (DNSHandler, error) {
 	f := this.factories[typecode]
 	if f != nil {
-		return f.Create(typecode, config)
+		if cfg.Options != nil {
+			compound := cfg.Options.(*config.DefaultOptionSet)
+			src := compound.GetSource(f.Name())
+			if src != nil {
+				local := *cfg
+				local.Options = src.(*config.DefaultOptionSet).GetSource(f.Name())
+				cfg = &local
+			}
+		}
+		return f.Create(typecode, cfg)
 	}
 	return nil, fmt.Errorf("not responsible for %q", typecode)
+}
+
+func (this *CompoundFactory) CreateOptionSource() config.OptionSource {
+	found := false
+	compound := config.NewDefaultOptionSet("compound", "")
+	for n, f := range this.factories {
+		if s, ok := f.(DNSHandlerOptionSource); ok {
+			if os := s.CreateOptionSource(); os != nil {
+				set := config.NewDefaultOptionSet(n, n)
+				set.AddSource(n, os)
+				compound.AddSource(n, set)
+				found = true
+			}
+		}
+	}
+	if found {
+		return compound
+	}
+	return nil
 }
 
 func (this *CompoundFactory) SupportZoneStateCache(typecode string) (bool, error) {

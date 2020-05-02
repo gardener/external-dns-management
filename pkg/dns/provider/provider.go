@@ -25,6 +25,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/config"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
@@ -128,17 +129,19 @@ func (this *DNSAccount) Release() {
 }
 
 type AccountCache struct {
-	lock  sync.Mutex
-	ttl   time.Duration
-	dir   string
-	cache map[string]*DNSAccount
+	lock    sync.Mutex
+	ttl     time.Duration
+	dir     string
+	cache   map[string]*DNSAccount
+	options config.OptionSource
 }
 
-func NewAccountCache(ttl time.Duration, dir string) *AccountCache {
+func NewAccountCache(ttl time.Duration, dir string, opts config.OptionSource) *AccountCache {
 	return &AccountCache{
-		ttl:   ttl,
-		dir:   dir,
-		cache: map[string]*DNSAccount{},
+		ttl:     ttl,
+		dir:     dir,
+		cache:   map[string]*DNSAccount{},
+		options: opts,
 	}
 }
 
@@ -175,6 +178,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			Config:      provider.Spec().ProviderConfig,
 			DryRun:      state.GetConfig().Dryrun,
 			CacheConfig: cacheConfig,
+			Options:     this.options,
 			Metrics:     a,
 		}
 		a.handler, err = state.GetHandlerFactory().Create(provider.TypeCode(), &cfg)

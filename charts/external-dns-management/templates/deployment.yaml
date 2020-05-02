@@ -85,6 +85,12 @@ spec:
         {{- if .Values.configuration.alicloudDNSOwneridsPoolSize }}
         - --alicloud-dns.ownerids.pool.size={{ .Values.configuration.alicloudDNSOwneridsPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.alicloudDNSPoolResyncPeriod }}
+        - --alicloud-dns.pool.resync-period={{ .Values.configuration.alicloudDNSPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSPoolSize }}
+        - --alicloud-dns.pool.size={{ .Values.configuration.alicloudDNSPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.alicloudDNSProvidersPoolResyncPeriod }}
         - --alicloud-dns.providers.pool.resync-period={{ .Values.configuration.alicloudDNSProvidersPoolResyncPeriod }}
         {{- end }}
@@ -102,6 +108,15 @@ spec:
         {{- end }}
         {{- if .Values.configuration.alicloudDNSTtl }}
         - --alicloud-dns.ttl={{ .Values.configuration.alicloudDNSTtl }}
+        {{- end }}
+        {{- if .Values.configuration.annotationDefaultPoolSize }}
+        - --annotation.default.pool.size={{ .Values.configuration.annotationDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.annotationPoolSize }}
+        - --annotation.pool.size={{ .Values.configuration.annotationPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.annotationSetup }}
+        - --annotation.setup={{ .Values.configuration.annotationSetup }}
         {{- end }}
         {{- if .Values.configuration.awsRoute53CacheTtl }}
         - --aws-route53.cache-ttl={{ .Values.configuration.awsRoute53CacheTtl }}
@@ -132,6 +147,12 @@ spec:
         {{- end }}
         {{- if .Values.configuration.awsRoute53OwneridsPoolSize }}
         - --aws-route53.ownerids.pool.size={{ .Values.configuration.awsRoute53OwneridsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53PoolResyncPeriod }}
+        - --aws-route53.pool.resync-period={{ .Values.configuration.awsRoute53PoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53PoolSize }}
+        - --aws-route53.pool.size={{ .Values.configuration.awsRoute53PoolSize }}
         {{- end }}
         {{- if .Values.configuration.awsRoute53ProvidersPoolResyncPeriod }}
         - --aws-route53.providers.pool.resync-period={{ .Values.configuration.awsRoute53ProvidersPoolResyncPeriod }}
@@ -181,6 +202,12 @@ spec:
         {{- if .Values.configuration.azureDNSOwneridsPoolSize }}
         - --azure-dns.ownerids.pool.size={{ .Values.configuration.azureDNSOwneridsPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.azureDNSPoolResyncPeriod }}
+        - --azure-dns.pool.resync-period={{ .Values.configuration.azureDNSPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSPoolSize }}
+        - --azure-dns.pool.size={{ .Values.configuration.azureDNSPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.azureDNSProvidersPoolResyncPeriod }}
         - --azure-dns.providers.pool.resync-period={{ .Values.configuration.azureDNSProvidersPoolResyncPeriod }}
         {{- end }}
@@ -198,6 +225,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.azureDNSTtl }}
         - --azure-dns.ttl={{ .Values.configuration.azureDNSTtl }}
+        {{- end }}
+        {{- if .Values.configuration.bindAddressHttp }}
+        - --bind-address-http={{ .Values.configuration.bindAddressHttp }}
         {{- end }}
         {{- if .Values.configuration.cacheTtl }}
         - --cache-ttl={{ .Values.configuration.cacheTtl }}
@@ -232,6 +262,12 @@ spec:
         {{- if .Values.configuration.cloudflareDNSOwneridsPoolSize }}
         - --cloudflare-dns.ownerids.pool.size={{ .Values.configuration.cloudflareDNSOwneridsPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.cloudflareDNSPoolResyncPeriod }}
+        - --cloudflare-dns.pool.resync-period={{ .Values.configuration.cloudflareDNSPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSPoolSize }}
+        - --cloudflare-dns.pool.size={{ .Values.configuration.cloudflareDNSPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.cloudflareDNSProvidersPoolResyncPeriod }}
         - --cloudflare-dns.providers.pool.resync-period={{ .Values.configuration.cloudflareDNSProvidersPoolResyncPeriod }}
         {{- end }}
@@ -256,6 +292,12 @@ spec:
         {{- if .Values.configuration.cpuprofile }}
         - --cpuprofile={{ .Values.configuration.cpuprofile }}
         {{- end }}
+        {{- if .Values.configuration.defaultPoolResyncPeriod }}
+        - --default.pool.resync-period={{ .Values.configuration.defaultPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.defaultPoolSize }}
+        - --default.pool.size={{ .Values.configuration.defaultPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.disableNamespaceRestriction }}
         - --disable-namespace-restriction={{ .Values.configuration.disableNamespaceRestriction }}
         {{- end }}
@@ -270,6 +312,12 @@ spec:
         {{- end }}
         {{- if .Values.configuration.dnsTargetClass }}
         - --dns-target-class={{ .Values.configuration.dnsTargetClass }}
+        {{- end }}
+        {{- if .Values.configuration.dnsPoolResyncPeriod }}
+        - --dns.pool.resync-period={{ .Values.configuration.dnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.dnsPoolSize }}
+        - --dns.pool.size={{ .Values.configuration.dnsPoolSize }}
         {{- end }}
         {{- if .Values.configuration.dnsentrySourceDefaultPoolResyncPeriod }}
         - --dnsentry-source.default.pool.resync-period={{ .Values.configuration.dnsentrySourceDefaultPoolResyncPeriod }}
@@ -288,6 +336,12 @@ spec:
         {{- end }}
         {{- if .Values.configuration.dnsentrySourceKey }}
         - --dnsentry-source.key={{ .Values.configuration.dnsentrySourceKey }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourcePoolResyncPeriod }}
+        - --dnsentry-source.pool.resync-period={{ .Values.configuration.dnsentrySourcePoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourcePoolSize }}
+        - --dnsentry-source.pool.size={{ .Values.configuration.dnsentrySourcePoolSize }}
         {{- end }}
         {{- if .Values.configuration.dnsentrySourceTargetCreatorLabelName }}
         - --dnsentry-source.target-creator-label-name={{ .Values.configuration.dnsentrySourceTargetCreatorLabelName }}
@@ -346,6 +400,12 @@ spec:
         {{- if .Values.configuration.googleCloudDNSOwneridsPoolSize }}
         - --google-clouddns.ownerids.pool.size={{ .Values.configuration.googleCloudDNSOwneridsPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.googleCloudDNSPoolResyncPeriod }}
+        - --google-clouddns.pool.resync-period={{ .Values.configuration.googleCloudDNSPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSPoolSize }}
+        - --google-clouddns.pool.size={{ .Values.configuration.googleCloudDNSPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.googleCloudDNSProvidersPoolResyncPeriod }}
         - --google-clouddns.providers.pool.resync-period={{ .Values.configuration.googleCloudDNSProvidersPoolResyncPeriod }}
         {{- end }}
@@ -385,6 +445,12 @@ spec:
         {{- if .Values.configuration.ingressDNSKey }}
         - --ingress-dns.key={{ .Values.configuration.ingressDNSKey }}
         {{- end }}
+        {{- if .Values.configuration.ingressDNSPoolResyncPeriod }}
+        - --ingress-dns.pool.resync-period={{ .Values.configuration.ingressDNSPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSPoolSize }}
+        - --ingress-dns.pool.size={{ .Values.configuration.ingressDNSPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.ingressDNSTargetCreatorLabelName }}
         - --ingress-dns.target-creator-label-name={{ .Values.configuration.ingressDNSTargetCreatorLabelName }}
         {{- end }}
@@ -421,8 +487,14 @@ spec:
         {{- if .Values.configuration.kubeconfigId }}
         - --kubeconfig.id={{ .Values.configuration.kubeconfigId }}
         {{- end }}
+        {{- if .Values.configuration.leaseName }}
+        - --lease-name={{ .Values.configuration.leaseName }}
+        {{- end }}
         {{- if .Values.configuration.logLevel }}
         - --log-level={{ .Values.configuration.logLevel }}
+        {{- end }}
+        {{- if .Values.configuration.maintainer }}
+        - --maintainer={{ .Values.configuration.maintainer }}
         {{- end }}
         {{- if .Values.configuration.namespace }}
         - --namespace={{ .Values.configuration.namespace }}
@@ -463,6 +535,12 @@ spec:
         {{- if .Values.configuration.openstackDesignateOwneridsPoolSize }}
         - --openstack-designate.ownerids.pool.size={{ .Values.configuration.openstackDesignateOwneridsPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.openstackDesignatePoolResyncPeriod }}
+        - --openstack-designate.pool.resync-period={{ .Values.configuration.openstackDesignatePoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignatePoolSize }}
+        - --openstack-designate.pool.size={{ .Values.configuration.openstackDesignatePoolSize }}
+        {{- end }}
         {{- if .Values.configuration.openstackDesignateProvidersPoolResyncPeriod }}
         - --openstack-designate.providers.pool.resync-period={{ .Values.configuration.openstackDesignateProvidersPoolResyncPeriod }}
         {{- end }}
@@ -481,20 +559,11 @@ spec:
         {{- if .Values.configuration.openstackDesignateTtl }}
         - --openstack-designate.ttl={{ .Values.configuration.openstackDesignateTtl }}
         {{- end }}
-        {{- if .Values.configuration.pluginDir }}
-        - --plugin-dir={{ .Values.configuration.pluginDir }}
+        {{- if .Values.configuration.owneridsPoolSize }}
+        - --ownerids.pool.size={{ .Values.configuration.owneridsPoolSize }}
         {{- end }}
-        {{- if .Values.configuration.dnsPoolResyncPeriod }}
-        - --dns.pool.resync-period={{ .Values.configuration.dnsPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.providersPoolResyncPeriod }}
-        - --providers.pool.resync-period={{ .Values.configuration.providersPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.dnsPoolSize }}
-        - --dns.pool.size={{ .Values.configuration.dnsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.providersPoolSize }}
-        - --providers.pool.size={{ .Values.configuration.providersPoolSize }}
+        {{- if .Values.configuration.pluginFile }}
+        - --plugin-file={{ .Values.configuration.pluginFile }}
         {{- end }}
         {{- if .Values.configuration.poolResyncPeriod }}
         - --pool.resync-period={{ .Values.configuration.poolResyncPeriod }}
@@ -511,8 +580,17 @@ spec:
         {{- if .Values.configuration.providersId }}
         - --providers.id={{ .Values.configuration.providersId }}
         {{- end }}
+        {{- if .Values.configuration.providersPoolResyncPeriod }}
+        - --providers.pool.resync-period={{ .Values.configuration.providersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.providersPoolSize }}
+        - --providers.pool.size={{ .Values.configuration.providersPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.rescheduleDelay }}
         - --reschedule-delay={{ .Values.configuration.rescheduleDelay }}
+        {{- end }}
+        {{- if .Values.configuration.secretsPoolSize }}
+        - --secrets.pool.size={{ .Values.configuration.secretsPoolSize }}
         {{- end }}
         {{- if .Values.configuration.serverPortHttp }}
         - --server-port-http={{ .Values.configuration.serverPortHttp }}
@@ -534,6 +612,12 @@ spec:
         {{- end }}
         {{- if .Values.configuration.serviceDNSKey }}
         - --service-dns.key={{ .Values.configuration.serviceDNSKey }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSPoolResyncPeriod }}
+        - --service-dns.pool.resync-period={{ .Values.configuration.serviceDNSPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.serviceDNSPoolSize }}
+        - --service-dns.pool.size={{ .Values.configuration.serviceDNSPoolSize }}
         {{- end }}
         {{- if .Values.configuration.serviceDNSTargetCreatorLabelName }}
         - --service-dns.target-creator-label-name={{ .Values.configuration.serviceDNSTargetCreatorLabelName }}
@@ -592,8 +676,14 @@ spec:
         {{- if .Values.configuration.targetId }}
         - --target.id={{ .Values.configuration.targetId }}
         {{- end }}
+        {{- if .Values.configuration.targetsPoolSize }}
+        - --targets.pool.size={{ .Values.configuration.targetsPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.ttl }}
         - --ttl={{ .Values.configuration.ttl }}
+        {{- end }}
+        {{- if .Values.configuration.version }}
+        - --version={{ .Values.configuration.version }}
         {{- end }}
         ### end generated configuration
         {{- range $idx, $flag := .Values.additionalConfiguration }}

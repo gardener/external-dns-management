@@ -19,17 +19,21 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws/awserr"
+
+	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
 

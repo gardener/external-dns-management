@@ -46,6 +46,8 @@ const PROVIDER_CLUSTER = "provider"
 
 const SYNC_ENTRIES = "entries"
 
+const FACTORY_OPTIONS = "factory"
+
 var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
@@ -58,7 +60,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 	if name == "" {
 		name = factory.Name()
 	}
-	return controller.Configure(name).
+	cfg := controller.Configure(name).
 		RequireLease().
 		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "Class identifier used to differentiate responsible controllers for entry resources").
 		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries in DNS system").
@@ -93,6 +95,11 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		).
 		WorkerPool("dns", 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
 		WorkerPool("statistic", 1, 0).Commands(CMD_STATISTIC)
+
+	if s, ok := factory.(DNSHandlerOptionSource); ok {
+		cfg.OptionSource(FACTORY_OPTIONS, s.CreateOptionSource)
+	}
+	return cfg
 }
 
 type reconciler struct {

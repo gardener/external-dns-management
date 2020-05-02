@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -41,6 +42,7 @@ type Config struct {
 	ZoneStateCaching bool
 	Delay            time.Duration
 	Enabled          utils.StringSet
+	HandlerOptions   config.OptionSource
 	Factory          DNSHandlerFactory
 }
 
@@ -90,6 +92,8 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		}
 	}
 
+	opts, _ := c.GetOptionSource(FACTORY_OPTIONS)
+
 	return &Config{
 		Ident:            ident,
 		TTL:              int64(ttl),
@@ -100,6 +104,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		ZoneStateCaching: !disableZoneStateCaching,
 		Delay:            delay,
 		Enabled:          enabled,
+		HandlerOptions:   opts,
 		Factory:          factory,
 	}, nil
 }
@@ -138,6 +143,7 @@ type DNSHandlerConfig struct {
 	DryRun      bool
 	Context     context.Context
 	CacheConfig ZoneCacheConfig
+	Options     config.OptionSource
 	Metrics     Metrics
 }
 
@@ -197,6 +203,10 @@ func (this *DefaultDNSHandler) MapTarget(t Target) Target {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+type DNSHandlerOptionSource interface {
+	CreateOptionSource() config.OptionSource
+}
 
 type DNSHandlerFactory interface {
 	Name() string

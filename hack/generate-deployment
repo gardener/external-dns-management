@@ -26,12 +26,24 @@ Camel() {
   }
 }
 
+Options() {
 (
   cd "$ROOT"
-  $HELP | grep -- -- | while IFS= read -r line; do
+  $HELP 2>/dev/null | grep -- -- | while IFS= read -r line; do
     opt="$(sed -e "s/ *\(--[^ ]*\) [^ ]* .*/\1/" <<<"$line")"
     arg="$(sed -e "s/ *--[^ ]* \([^ ]*\) .*/\1/" <<<"$line")"
-    echo opt=${opt#--} arg=$arg
-    Camel "$opt"
+    echo ${opt#--} $arg
   done
 )
+}
+
+Template() {
+  Options | while read opt arg; do
+    camel="$(Camel "$opt")"
+    echo "$1{{- if .Values.configuration.$camel }}"
+    echo "$1- --$opt={{ .Values.configuration.$camel }}"
+    echo "$1{{- end }}"
+  done
+}
+
+Template "      "
