@@ -23,7 +23,8 @@ import (
 
 const TYPE_CODE = "alicloud-dns"
 
-var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler, true)
+var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler, true).
+	SetOptionSourceByExample(&Config{})
 
 func init() {
 	compound.MustRegister(Factory)
