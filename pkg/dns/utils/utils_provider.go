@@ -20,11 +20,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gardener/controller-manager-library/pkg/utils"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"

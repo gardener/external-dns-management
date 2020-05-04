@@ -95,7 +95,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 	}
 
 	metrics.AddRequests(provider.M_UPDATERECORDS, 1)
-	this.handler.rateLimiter.Accept()
+	this.handler.config.RateLimiter.Accept()
 	if _, err := this.handler.service.Changes.Create(this.handler.credentials.ProjectID, this.zone.Id(), this.change).Do(); err != nil {
 		this.Error(err)
 		for _, d := range this.done {

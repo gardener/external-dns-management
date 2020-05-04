@@ -199,8 +199,10 @@ func newMockHandler(mockZones ...*zones.Zone) *Handler {
 	rateLimiter, _ := rateLimiterConfig.NewRateLimiter()
 
 	h := &Handler{
-		client:      &c,
-		rateLimiter: rateLimiter,
+		client: &c,
+		config: provider.DNSHandlerConfig{
+			RateLimiter: rateLimiter,
+		},
 	}
 
 	cache, _ := provider.NewZoneCache(provider.ZoneCacheConfig{}, mockMetrics, nil, h.getZones, h.getZoneState)

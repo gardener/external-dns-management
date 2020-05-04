@@ -114,7 +114,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		return nil
 	}
 
-	h.rateLimiter.Accept()
+	h.config.RateLimiter.Accept()
 	if err := h.service.ManagedZones.List(h.credentials.ProjectID).Pages(h.ctx, f); err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *google
 		rt = provider.M_PLISTRECORDS
 		return nil
 	}
-	h.rateLimiter.Accept()
+	h.config.RateLimiter.Accept()
 	err := h.service.ResourceRecordSets.List(h.credentials.ProjectID, zone.Id()).Pages(h.ctx, aggr)
 	return forwarded, err
 }

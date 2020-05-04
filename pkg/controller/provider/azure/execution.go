@@ -134,7 +134,7 @@ func (exec *Execution) apply(action string, recordType azure.RecordType, rset *a
 }
 
 func (exec *Execution) update(recordType azure.RecordType, rset *azure.RecordSet, metrics provider.Metrics) error {
-	exec.handler.rateLimiter.Accept()
+	exec.handler.config.RateLimiter.Accept()
 	_, err := exec.handler.recordsClient.CreateOrUpdate(exec.handler.ctx, exec.resourceGroup, exec.zoneName, *rset.Name,
 		recordType, *rset, "", "")
 	metrics.AddRequests("RecordSetsClient_CreateOrUpdate", 1)
@@ -142,7 +142,7 @@ func (exec *Execution) update(recordType azure.RecordType, rset *azure.RecordSet
 }
 
 func (exec *Execution) delete(recordType azure.RecordType, rset *azure.RecordSet, metrics provider.Metrics) error {
-	exec.handler.rateLimiter.Accept()
+	exec.handler.config.RateLimiter.Accept()
 	_, err := exec.handler.recordsClient.Delete(exec.handler.ctx, exec.resourceGroup, exec.zoneName, *rset.Name, recordType, "")
 	metrics.AddRequests("RecordSetsClient_Delete", 1)
 	return err

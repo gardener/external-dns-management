@@ -25,7 +25,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets"
 	"github.com/gophercloud/gophercloud/openstack/dns/v2/zones"
 	"github.com/gophercloud/utils/openstack/clientconfig"
-	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -38,8 +37,7 @@ type Handler struct {
 	cache  provider.ZoneCache
 	ctx    context.Context
 
-	client      designateClientInterface
-	rateLimiter flowcontrol.RateLimiter
+	client designateClientInterface
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -61,7 +59,6 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		config:            *config,
 		ctx:               config.Context,
 		client:            designateClient{serviceClient: serviceClient, metrics: config.Metrics},
-		rateLimiter:       config.RateLimiter,
 	}
 
 	h.cache, err = provider.NewZoneCache(config.CacheConfig, config.Metrics, nil, h.getZones, h.getZoneState)
@@ -144,7 +141,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		return nil
 	}
 
-	h.rateLimiter.Accept()
+	h.config.RateLimiter.Accept()
 	if err := h.client.ForEachZone(zoneHandler); err != nil {
 		return nil, fmt.Errorf("listing DNS zones failed. Details: %s", err.Error())
 	}
@@ -163,7 +160,7 @@ func (h *Handler) collectForwardedSubzones(zone *zones.Zone) []string {
 		return nil
 	}
 
-	h.rateLimiter.Accept()
+	h.config.RateLimiter.Accept()
 	if err := h.client.ForEachRecordSetFilterByTypeAndName(zone.ID, "NS", "", recordSetHandler); err != nil {
 		logger.Infof("Failed fetching NS records for %s: %s", zone.Name, err.Error())
 		// just ignoring it
@@ -197,7 +194,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		return nil
 	}
 
-	h.rateLimiter.Accept()
+	h.config.RateLimiter.Accept()
 	if err := h.client.ForEachRecordSet(zone.Id(), recordSetHandler); err != nil {
 		return nil, fmt.Errorf("Listing DNS zones failed for %s. Details: %s", zone.Id(), err.Error())
 	}
