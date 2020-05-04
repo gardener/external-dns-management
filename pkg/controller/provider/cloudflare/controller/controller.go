@@ -24,5 +24,8 @@ import (
 func init() {
 	provider.DNSController("", cloudflare.Factory).
 		FinalizerDomain("dns.gardener.cloud").
+		DefaultedBoolOption(provider.OPT_RATELIMITER_ENABLED, true, "enables rate limiter for Cloudflare requests").
+		DefaultedIntOption(provider.OPT_RATELIMITER_QPS, 50, "maximum requests/queries per second").
+		DefaultedIntOption(provider.OPT_RATELIMITER_BURST, 10, "number of burst requests for rate limiter").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

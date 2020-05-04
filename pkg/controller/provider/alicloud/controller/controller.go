@@ -24,5 +24,8 @@ import (
 func init() {
 	provider.DNSController("", alicloud.Factory).
 		FinalizerDomain("dns.gardener.cloud").
+		DefaultedBoolOption(provider.OPT_RATELIMITER_ENABLED, true, "enables rate limiter for Alicloud DNS requests").
+		DefaultedIntOption(provider.OPT_RATELIMITER_QPS, 25, "maximum requests/queries per second").
+		DefaultedIntOption(provider.OPT_RATELIMITER_BURST, 1, "number of burst requests for rate limiter").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

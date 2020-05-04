@@ -53,7 +53,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		return nil, err
 	}
 
-	access, err := NewAccess(accessKeyID, accessKeySecret, c.Metrics)
+	access, err := NewAccess(accessKeyID, accessKeySecret, c.Metrics, c.RateLimiter)
 	if err != nil {
 		return nil, perrs.WrapAsHandlerError(err, "Creating alicloud access with client credentials failed")
 	}

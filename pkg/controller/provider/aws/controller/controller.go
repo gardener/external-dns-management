@@ -24,5 +24,8 @@ import (
 func init() {
 	provider.DNSController("", aws.Factory).
 		FinalizerDomain("dns.gardener.cloud").
+		DefaultedBoolOption(provider.OPT_RATELIMITER_ENABLED, true, "enables rate limiter for AWS route 53 requests").
+		DefaultedIntOption(provider.OPT_RATELIMITER_QPS, 9, "maximum requests/queries per second").
+		DefaultedIntOption(provider.OPT_RATELIMITER_BURST, 10, "number of burst requests for rate limiter").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

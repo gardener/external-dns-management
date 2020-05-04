@@ -27,6 +27,7 @@ import (
 	"golang.org/x/oauth2/google"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 
 	googledns "google.golang.org/api/dns/v1"
@@ -109,6 +110,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		return nil
 	}
 
+	h.config.RateLimiter.Accept()
 	if err := h.service.ManagedZones.List(h.credentials.ProjectID).Pages(h.ctx, f); err != nil {
 		return nil, err
 	}
@@ -149,6 +151,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *google
 		rt = provider.M_PLISTRECORDS
 		return nil
 	}
+	h.config.RateLimiter.Accept()
 	err := h.service.ResourceRecordSets.List(h.credentials.ProjectID, zone.Id()).Pages(h.ctx, aggr)
 	return forwarded, err
 }

@@ -19,18 +19,19 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"strings"
 
-	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
-
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
+
+	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
 type Handler struct {
@@ -123,6 +124,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		return true
 	}
 
+	h.config.RateLimiter.Accept()
 	err := h.r53.ListHostedZonesPages(&route53.ListHostedZonesInput{}, aggr)
 	if err != nil {
 		return nil, err
@@ -223,6 +225,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route
 
 		return true
 	}
+	h.config.RateLimiter.Accept()
 	err := h.r53.ListResourceRecordSetsPages(inp, aggr)
 	return forwarded, err
 }
@@ -274,6 +277,7 @@ func (h *Handler) AssociateVPCWithHostedZone(vpcId string, vpcRegion string, hos
 		HostedZoneId: &hostedZoneId,
 		VPC:          &route53.VPC{VPCId: &vpcId, VPCRegion: &vpcRegion},
 	}
+	h.config.RateLimiter.Accept()
 	out, err := h.r53.AssociateVPCWithHostedZone(&input)
 	if err != nil {
 		return nil, err
@@ -288,6 +292,7 @@ func (h *Handler) DisassociateVPCFromHostedZone(vpcId string, vpcRegion string, 
 		HostedZoneId: &hostedZoneId,
 		VPC:          &route53.VPC{VPCId: &vpcId, VPCRegion: &vpcRegion},
 	}
+	h.config.RateLimiter.Accept()
 	out, err := h.r53.DisassociateVPCFromHostedZone(&input)
 	if err != nil {
 		return nil, err
@@ -301,6 +306,7 @@ func (h *Handler) GetZoneByName(hostedZoneId string) (*route53.GetHostedZoneOutp
 	input := route53.GetHostedZoneInput{
 		Id: &hostedZoneId,
 	}
+	h.config.RateLimiter.Accept()
 	out, err := h.r53.GetHostedZone(&input)
 	if err != nil {
 		return nil, err
@@ -319,6 +325,7 @@ func (h *Handler) CreateVPCAssociationAuthorization(hostedZoneId string, vpcId s
 			VPCRegion: &vpcRegion,
 		},
 	}
+	h.config.RateLimiter.Accept()
 	out, err := h.r53.CreateVPCAssociationAuthorization(&input)
 	if err != nil {
 		return nil, err
@@ -336,6 +343,7 @@ func (h *Handler) DeleteVPCAssociationAuthorization(hostedZoneId string, vpcId s
 			VPCRegion: &vpcRegion,
 		},
 	}
+	h.config.RateLimiter.Accept()
 	out, err := h.r53.DeleteVPCAssociationAuthorization(&input)
 	if err != nil {
 		return nil, err

@@ -21,10 +21,11 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "google-clouddns"
-
 func init() {
 	provider.DNSController("", google.Factory).
 		FinalizerDomain("dns.gardener.cloud").
+		DefaultedBoolOption(provider.OPT_RATELIMITER_ENABLED, true, "enables rate limiter for Google Cloud DNS requests").
+		DefaultedIntOption(provider.OPT_RATELIMITER_QPS, 100, "maximum requests/queries per second").
+		DefaultedIntOption(provider.OPT_RATELIMITER_BURST, 20, "number of burst requests for rate limiter").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

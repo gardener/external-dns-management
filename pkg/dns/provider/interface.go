@@ -25,6 +25,8 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"k8s.io/client-go/util/flowcontrol"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
@@ -32,16 +34,17 @@ import (
 )
 
 type Config struct {
-	TTL              int64
-	CacheTTL         time.Duration
-	CacheDir         string
-	RescheduleDelay  time.Duration
-	Ident            string
-	Dryrun           bool
-	ZoneStateCaching bool
-	Delay            time.Duration
-	Enabled          utils.StringSet
-	Factory          DNSHandlerFactory
+	TTL               int64
+	CacheTTL          time.Duration
+	CacheDir          string
+	RescheduleDelay   time.Duration
+	Ident             string
+	Dryrun            bool
+	ZoneStateCaching  bool
+	Delay             time.Duration
+	Enabled           utils.StringSet
+	Factory           DNSHandlerFactory
+	RateLimiterConfig *RateLimiterConfig
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
@@ -90,17 +93,20 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		}
 	}
 
+	rateLimiterConfig := NewRateLimiterConfig(c)
+
 	return &Config{
-		Ident:            ident,
-		TTL:              int64(ttl),
-		CacheTTL:         time.Duration(cttl) * time.Second,
-		CacheDir:         cdir,
-		RescheduleDelay:  rescheduleDelay,
-		Dryrun:           dryrun,
-		ZoneStateCaching: !disableZoneStateCaching,
-		Delay:            delay,
-		Enabled:          enabled,
-		Factory:          factory,
+		Ident:             ident,
+		TTL:               int64(ttl),
+		CacheTTL:          time.Duration(cttl) * time.Second,
+		CacheDir:          cdir,
+		RescheduleDelay:   rescheduleDelay,
+		Dryrun:            dryrun,
+		ZoneStateCaching:  !disableZoneStateCaching,
+		Delay:             delay,
+		Enabled:           enabled,
+		Factory:           factory,
+		RateLimiterConfig: rateLimiterConfig,
 	}, nil
 }
 
@@ -139,6 +145,7 @@ type DNSHandlerConfig struct {
 	Context     context.Context
 	CacheConfig ZoneCacheConfig
 	Metrics     Metrics
+	RateLimiter flowcontrol.RateLimiter
 }
 
 type DNSZoneState interface {
@@ -164,6 +171,11 @@ const (
 
 type Metrics interface {
 	AddRequests(request_type string, n int)
+}
+
+type RateLimiterConfig struct {
+	QPS   float32
+	Burst int
 }
 
 type DNSHandler interface {

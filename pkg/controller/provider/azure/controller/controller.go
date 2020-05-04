@@ -21,10 +21,11 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "azure-dns"
-
 func init() {
 	provider.DNSController("", azure.Factory).
 		FinalizerDomain("dns.gardener.cloud").
+		DefaultedBoolOption(provider.OPT_RATELIMITER_ENABLED, true, "enables rate limiter for Azure DNS requests").
+		DefaultedIntOption(provider.OPT_RATELIMITER_QPS, 50, "maximum requests/queries per second").
+		DefaultedIntOption(provider.OPT_RATELIMITER_BURST, 10, "number of burst requests for rate limiter").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

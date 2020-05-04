@@ -146,8 +146,6 @@ func NewAccountCache(ttl time.Duration, dir string) *AccountCache {
 }
 
 func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSProviderObject, props utils.Properties, state *state) (*DNSAccount, error) {
-	var err error
-
 	name := provider.ObjectName()
 	hash := this.Hash(props, provider.Spec().Type, provider.Spec().ProviderConfig)
 	this.lock.Lock()
@@ -171,6 +169,12 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			stateTTL:              *syncPeriod,
 			disableZoneStateCache: !state.config.ZoneStateCaching,
 		}
+
+		rateLimiter, err := state.GetConfig().RateLimiterConfig.NewRateLimiter()
+		if err != nil {
+			return nil, pkgerrors.Wrap(err, "invalid rate limiter")
+		}
+
 		cfg := DNSHandlerConfig{
 			Context:     state.GetContext().GetContext(),
 			Logger:      logger,
@@ -179,6 +183,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			DryRun:      state.GetConfig().Dryrun,
 			CacheConfig: cacheConfig,
 			Metrics:     a,
+			RateLimiter: rateLimiter,
 		}
 		a.handler, err = state.GetHandlerFactory().Create(provider.TypeCode(), &cfg)
 		if err != nil {
