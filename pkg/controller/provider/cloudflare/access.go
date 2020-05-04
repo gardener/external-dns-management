@@ -18,6 +18,8 @@ package cloudflare
 
 import (
 	"github.com/cloudflare/cloudflare-go"
+	"k8s.io/client-go/util/flowcontrol"
+
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
 )
@@ -31,19 +33,21 @@ type Access interface {
 
 type access struct {
 	*cloudflare.API
-	metrics provider.Metrics
+	metrics     provider.Metrics
+	rateLimiter flowcontrol.RateLimiter
 }
 
-func NewAccess(apiToken string, metrics provider.Metrics) (Access, error) {
+func NewAccess(apiToken string, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter) (Access, error) {
 	api, err := cloudflare.NewWithAPIToken(apiToken)
 	if err != nil {
 		return nil, err
 	}
-	return &access{api, metrics}, nil
+	return &access{API: api, metrics: metrics, rateLimiter: rateLimiter}, nil
 }
 
 func (this *access) ListZones(consume func(zone cloudflare.Zone) (bool, error)) error {
 	this.metrics.AddRequests(provider.M_LISTZONES, 1)
+	this.rateLimiter.Accept()
 	results, err := this.API.ListZones()
 	if err != nil {
 		return err
@@ -58,6 +62,7 @@ func (this *access) ListZones(consume func(zone cloudflare.Zone) (bool, error)) 
 
 func (this *access) ListRecords(zoneId string, consume func(record cloudflare.DNSRecord) (bool, error)) error {
 	this.metrics.AddRequests(provider.M_LISTRECORDS, 1)
+	this.rateLimiter.Accept()
 	results, err := this.DNSRecords(zoneId, cloudflare.DNSRecord{})
 	if err != nil {
 		return err
@@ -82,6 +87,7 @@ func (this *access) CreateRecord(r raw.Record) error {
 		ZoneID:  a.ZoneID,
 	}
 	this.metrics.AddRequests(provider.M_CREATERECORDS, 1)
+	this.rateLimiter.Accept()
 	_, err := this.CreateDNSRecord(a.ZoneID, dnsRecord)
 	return err
 }
@@ -98,6 +104,7 @@ func (this *access) UpdateRecord(r raw.Record) error {
 		ZoneID:  a.ZoneID,
 	}
 	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
+	this.rateLimiter.Accept()
 	err := this.UpdateDNSRecord(a.ZoneID, r.GetId(), dnsRecord)
 	return err
 }
@@ -105,6 +112,7 @@ func (this *access) UpdateRecord(r raw.Record) error {
 func (this *access) DeleteRecord(r raw.Record) error {
 	a := r.(*Record)
 	this.metrics.AddRequests(provider.M_DELETERECORDS, 1)
+	this.rateLimiter.Accept()
 	err := this.DeleteDNSRecord(a.ZoneID, r.GetId())
 	return err
 }

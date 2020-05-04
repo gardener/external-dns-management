@@ -17,12 +17,14 @@
 package cloudflare
 
 import (
+	"strings"
+
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
-	"strings"
 )
 
 type Handler struct {
@@ -52,7 +54,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	//	return nil, err
 	//}
 
-	access, err := NewAccess(apiToken, c.Metrics)
+	access, err := NewAccess(apiToken, c.Metrics, c.RateLimiter)
 	if err != nil {
 		return nil, err
 	}

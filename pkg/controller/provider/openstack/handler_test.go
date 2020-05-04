@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 
@@ -194,8 +195,12 @@ func newMockHandler(mockZones ...*zones.Zone) *Handler {
 		}
 	}
 
+	var rateLimiterConfig *provider.RateLimiterConfig
+	rateLimiter, _ := rateLimiterConfig.NewRateLimiter()
+
 	h := &Handler{
-		client: &c,
+		client:      &c,
+		rateLimiter: rateLimiter,
 	}
 
 	cache, _ := provider.NewZoneCache(provider.ZoneCacheConfig{}, mockMetrics, nil, h.getZones, h.getZoneState)

@@ -39,6 +39,10 @@ const (
 
 	OPT_PROVIDERTYPES = "provider-types"
 
+	OPT_RATELIMITER_ENABLED = "ratelimiter.enabled"
+	OPT_RATELIMITER_QPS     = "ratelimiter.qps"
+	OPT_RATELIMITER_BURST   = "ratelimiter.burst"
+
 	CMD_HOSTEDZONE_PREFIX = "hostedzone:"
 	CMD_STATISTIC         = "statistic"
 )

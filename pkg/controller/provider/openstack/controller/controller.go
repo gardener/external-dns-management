@@ -21,8 +21,6 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "openstack-designate"
-
 func init() {
 	provider.DNSController("", openstack.Factory).
 		FinalizerDomain("dns.gardener.cloud").

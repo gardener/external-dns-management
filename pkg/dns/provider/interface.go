@@ -26,6 +26,8 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"k8s.io/client-go/util/flowcontrol"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
@@ -145,6 +147,7 @@ type DNSHandlerConfig struct {
 	CacheConfig ZoneCacheConfig
 	Options     config.OptionSource
 	Metrics     Metrics
+	RateLimiter flowcontrol.RateLimiter
 }
 
 type DNSZoneState interface {
@@ -174,6 +177,17 @@ type Metrics interface {
 
 type Finalizers interface {
 	Finalizers() utils.StringSet
+}
+
+type RateLimiterConfig struct {
+	QPS   float32
+	Burst int
+}
+
+type RawRateLimiterConfig struct {
+	Enabled bool
+	QPS     int
+	Burst   int
 }
 
 type DNSHandler interface {

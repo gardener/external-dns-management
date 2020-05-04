@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/config"
+	pkgerrors "github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
@@ -146,8 +147,6 @@ func NewAccountCache(ttl time.Duration, dir string, opts config.OptionSource) *A
 }
 
 func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSProviderObject, props utils.Properties, state *state) (*DNSAccount, error) {
-	var err error
-
 	name := provider.ObjectName()
 	hash := this.Hash(props, provider.Spec().Type, provider.Spec().ProviderConfig)
 	this.lock.Lock()
@@ -171,6 +170,20 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			stateTTL:              *syncPeriod,
 			disableZoneStateCache: !state.config.ZoneStateCaching,
 		}
+
+		var err error
+		rateLimiter := AlwaysRateLimiter()
+		if this.options != nil {
+			if rateLimiterConfigProvider, ok := this.options.(RateLimiterConfigProvider); ok {
+				rateLimiterConfig := rateLimiterConfigProvider.GetRateLimiterConfig()
+				rateLimiter, err = rateLimiterConfig.NewRateLimiter()
+				if err != nil {
+					return nil, pkgerrors.Wrap(err, "invalid rate limiter")
+				}
+				logger.Infof("rate limiter for %s: %v", name, rateLimiterConfig)
+			}
+		}
+
 		cfg := DNSHandlerConfig{
 			Context:     state.GetContext().GetContext(),
 			Logger:      logger,
@@ -180,6 +193,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			CacheConfig: cacheConfig,
 			Options:     this.options,
 			Metrics:     a,
+			RateLimiter: rateLimiter,
 		}
 		a.handler, err = state.GetHandlerFactory().Create(provider.TypeCode(), &cfg)
 		if err != nil {

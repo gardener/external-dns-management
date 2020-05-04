@@ -22,17 +22,19 @@ import (
 	"fmt"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 type Handler struct {
 	provider.DefaultDNSHandler
-	config     provider.DNSHandlerConfig
-	cache      provider.ZoneCache
-	ctx        context.Context
-	mock       *provider.InMemory
-	mockConfig MockConfig
+	config      provider.DNSHandlerConfig
+	cache       provider.ZoneCache
+	ctx         context.Context
+	mock        *provider.InMemory
+	mockConfig  MockConfig
+	rateLimiter flowcontrol.RateLimiter
 }
 
 type MockConfig struct {
@@ -49,6 +51,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *config,
 		mock:              mock,
+		rateLimiter:       config.RateLimiter,
 	}
 
 	err := json.Unmarshal(config.Config.Raw, &h.mockConfig)
@@ -84,6 +87,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	if h.mockConfig.FailGetZones {
 		return nil, fmt.Errorf("forced error by mockConfig.FailGetZones")
 	}
+	h.rateLimiter.Accept()
 	zones := h.mock.GetZones()
 	return zones, nil
 }
@@ -93,6 +97,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 }
 
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+	h.rateLimiter.Accept()
 	return h.mock.CloneZoneState(zone)
 }
 
@@ -109,6 +114,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	var succeeded, failed int
 	for _, r := range reqs {
+		h.rateLimiter.Accept()
 		err := h.mock.Apply(zone.Id(), r, h.config.Metrics)
 		if err != nil {
 			failed++

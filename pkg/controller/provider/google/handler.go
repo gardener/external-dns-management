@@ -21,12 +21,15 @@ import (
 	"fmt"
 	"net/http"
 
+	"k8s.io/client-go/util/flowcontrol"
+
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 
 	googledns "google.golang.org/api/dns/v1"
@@ -40,6 +43,7 @@ type Handler struct {
 	client      *http.Client
 	ctx         context.Context
 	service     *googledns.Service
+	rateLimiter flowcontrol.RateLimiter
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -50,6 +54,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *config,
+		rateLimiter:       config.RateLimiter,
 	}
 	scopes := []string{
 		//	"https://www.googleapis.com/auth/compute",
@@ -109,6 +114,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		return nil
 	}
 
+	h.rateLimiter.Accept()
 	if err := h.service.ManagedZones.List(h.credentials.ProjectID).Pages(h.ctx, f); err != nil {
 		return nil, err
 	}
@@ -149,6 +155,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *google
 		rt = provider.M_PLISTRECORDS
 		return nil
 	}
+	h.rateLimiter.Accept()
 	err := h.service.ResourceRecordSets.List(h.credentials.ProjectID, zone.Id()).Pages(h.ctx, aggr)
 	return forwarded, err
 }

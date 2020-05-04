@@ -18,22 +18,18 @@ package alicloud
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
-	"github.com/gardener/controller-manager-library/pkg/logger"
+	"k8s.io/client-go/util/flowcontrol"
+
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
-	"k8s.io/client-go/util/flowcontrol"
-	"os"
-	"strconv"
-	"strings"
 )
 
 var nullHost = "@"
 var defaultPageSize = 20
-
-var alicloudDNSApiQPSEnv = "ALICLOUD_DNS_API_QPS"
-var defaultAlicloudDNSApiQPS = 25.0
 
 func GetDNSName(r alidns.Record) string {
 	if r.RR == nullHost {
@@ -66,25 +62,12 @@ type access struct {
 	rateLimiter flowcontrol.RateLimiter
 }
 
-func NewAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics) (Access, error) {
+func NewAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter) (Access, error) {
 	client, err := alidns.NewClientWithAccessKey("cn-shanghai", accessKeyId, accessKeySecret)
 	if err != nil {
 		return nil, err
 	}
-
-	qps := defaultAlicloudDNSApiQPS
-	qpsEnv := os.Getenv(alicloudDNSApiQPSEnv)
-	if qpsEnv != "" {
-		q, err := strconv.ParseFloat(qpsEnv, 32)
-		if err == nil {
-			logger.Warnf("Set QPS for Alicloud failed. Environment %s is invalid.", alicloudDNSApiQPSEnv)
-		}
-		qps = q
-	}
-
-	// To be conservative, let burst to be 1
-	r := flowcontrol.NewTokenBucketRateLimiter(float32(qps), 1)
-	return &access{client, metrics, r}, nil
+	return &access{client, metrics, rateLimiter}, nil
 }
 
 func (this *access) nextPageNumber(pageNumber, pageSize, totalCount int) int {

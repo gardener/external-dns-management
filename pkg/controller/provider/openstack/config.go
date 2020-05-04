@@ -15,7 +15,7 @@
  *
  */
 
-package alicloud
+package openstack
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/config"
@@ -34,6 +34,6 @@ func (this *Config) AddOptionsToSet(set config.OptionSet) {
 	provider.AddRawRateLimiterConfigToOptionSet(
 		set,
 		&this.RawRateLimiterConfig,
-		provider.RawRateLimiterConfig{Enabled: true, QPS: 25, Burst: 1},
+		provider.RawRateLimiterConfig{Enabled: true, QPS: 100, Burst: 20},
 	)
 }

@@ -21,29 +21,29 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws/awserr"
-
-	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
-
-	"github.com/gardener/controller-manager-library/pkg/logger"
-
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
 
+	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
 type Handler struct {
 	provider.DefaultDNSHandler
-	config    provider.DNSHandlerConfig
-	awsConfig AWSConfig
-	cache     provider.ZoneCache
-	sess      *session.Session
-	r53       *route53.Route53
+	config      provider.DNSHandlerConfig
+	awsConfig   AWSConfig
+	cache       provider.ZoneCache
+	sess        *session.Session
+	r53         *route53.Route53
+	rateLimiter flowcontrol.RateLimiter
 }
 
 type AWSConfig struct {
@@ -65,6 +65,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *c,
 		awsConfig:         awsConfig,
+		rateLimiter:       c.RateLimiter,
 	}
 	accessKeyID, err := c.GetRequiredProperty("AWS_ACCESS_KEY_ID", "accessKeyID")
 	if err != nil {
@@ -127,6 +128,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		return true
 	}
 
+	h.rateLimiter.Accept()
 	err := h.r53.ListHostedZonesPages(&route53.ListHostedZonesInput{}, aggr)
 	if err != nil {
 		return nil, err
@@ -227,6 +229,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route
 
 		return true
 	}
+	h.rateLimiter.Accept()
 	err := h.r53.ListResourceRecordSetsPages(inp, aggr)
 	return forwarded, err
 }
@@ -278,6 +281,7 @@ func (h *Handler) AssociateVPCWithHostedZone(vpcId string, vpcRegion string, hos
 		HostedZoneId: &hostedZoneId,
 		VPC:          &route53.VPC{VPCId: &vpcId, VPCRegion: &vpcRegion},
 	}
+	h.rateLimiter.Accept()
 	out, err := h.r53.AssociateVPCWithHostedZone(&input)
 	if err != nil {
 		return nil, err
@@ -292,6 +296,7 @@ func (h *Handler) DisassociateVPCFromHostedZone(vpcId string, vpcRegion string, 
 		HostedZoneId: &hostedZoneId,
 		VPC:          &route53.VPC{VPCId: &vpcId, VPCRegion: &vpcRegion},
 	}
+	h.rateLimiter.Accept()
 	out, err := h.r53.DisassociateVPCFromHostedZone(&input)
 	if err != nil {
 		return nil, err
@@ -305,6 +310,7 @@ func (h *Handler) GetZoneByName(hostedZoneId string) (*route53.GetHostedZoneOutp
 	input := route53.GetHostedZoneInput{
 		Id: &hostedZoneId,
 	}
+	h.rateLimiter.Accept()
 	out, err := h.r53.GetHostedZone(&input)
 	if err != nil {
 		return nil, err
@@ -323,6 +329,7 @@ func (h *Handler) CreateVPCAssociationAuthorization(hostedZoneId string, vpcId s
 			VPCRegion: &vpcRegion,
 		},
 	}
+	h.rateLimiter.Accept()
 	out, err := h.r53.CreateVPCAssociationAuthorization(&input)
 	if err != nil {
 		return nil, err
@@ -340,6 +347,7 @@ func (h *Handler) DeleteVPCAssociationAuthorization(hostedZoneId string, vpcId s
 			VPCRegion: &vpcRegion,
 		},
 	}
+	h.rateLimiter.Accept()
 	out, err := h.r53.DeleteVPCAssociationAuthorization(&input)
 	if err != nil {
 		return nil, err

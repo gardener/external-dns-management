@@ -23,7 +23,8 @@ import (
 
 const TYPE_CODE = "azure-dns"
 
-var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)
+var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler).
+	SetOptionSourceByExample(&Config{})
 
 func init() {
 	compound.MustRegister(Factory)
