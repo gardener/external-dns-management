@@ -145,12 +145,14 @@ func (this *CompoundFactory) Create(typecode string, cfg *DNSHandlerConfig) (DNS
 	f := this.factories[typecode]
 	if f != nil {
 		if cfg.Options != nil {
-			compound := cfg.Options.(*config.DefaultOptionSet)
+			compound := cfg.Options.Options.(config.OptionSet)
+			local := *cfg
+			cfg = &local
 			src := compound.GetSource(f.Name())
 			if src != nil {
-				local := *cfg
-				local.Options = src.(*config.DefaultOptionSet).GetSource(f.Name())
-				cfg = &local
+				local.Options = GetFactoryOptions(src)
+			} else {
+				local.Options = nil
 			}
 		}
 		return f.Create(typecode, cfg)
@@ -158,17 +160,20 @@ func (this *CompoundFactory) Create(typecode string, cfg *DNSHandlerConfig) (DNS
 	return nil, fmt.Errorf("not responsible for %q", typecode)
 }
 
+func HandlerStringMapper(name string) func(s string) string {
+	return func(s string) string {
+		return fmt.Sprintf("%s for provider type %q", s, name)
+	}
+}
+
 func (this *CompoundFactory) CreateOptionSource() config.OptionSource {
 	found := false
-	compound := config.NewDefaultOptionSet("compound", "")
+	compound := config.NewSharedOptionSet("compound", "", nil)
 	for n, f := range this.factories {
-		if s, ok := f.(DNSHandlerOptionSource); ok {
-			if os := s.CreateOptionSource(); os != nil {
-				set := config.NewDefaultOptionSet(n, n)
-				set.AddSource(n, os)
-				compound.AddSource(n, set)
-				found = true
-			}
+		src := CreateFactoryOptionSource(f, n)
+		if src != nil {
+			compound.AddSource(n, src)
+			found = true
 		}
 	}
 	if found {

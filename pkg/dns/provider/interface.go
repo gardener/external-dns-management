@@ -26,11 +26,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
+	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -44,7 +44,7 @@ type Config struct {
 	ZoneStateCaching bool
 	Delay            time.Duration
 	Enabled          utils.StringSet
-	HandlerOptions   config.OptionSource
+	Options          *FactoryOptions
 	Factory          DNSHandlerFactory
 }
 
@@ -94,7 +94,8 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		}
 	}
 
-	opts, _ := c.GetOptionSource(FACTORY_OPTIONS)
+	osrc, _ := c.GetOptionSource(FACTORY_OPTIONS)
+	fopts := GetFactoryOptions(osrc)
 
 	return &Config{
 		Ident:            ident,
@@ -106,7 +107,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		ZoneStateCaching: !disableZoneStateCaching,
 		Delay:            delay,
 		Enabled:          enabled,
-		HandlerOptions:   opts,
+		Options:          fopts,
 		Factory:          factory,
 	}, nil
 }
@@ -145,7 +146,7 @@ type DNSHandlerConfig struct {
 	DryRun      bool
 	Context     context.Context
 	CacheConfig ZoneCacheConfig
-	Options     config.OptionSource
+	Options     *FactoryOptions
 	Metrics     Metrics
 	RateLimiter flowcontrol.RateLimiter
 }

@@ -26,6 +26,7 @@ import (
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -34,7 +35,6 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
 
-	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -135,14 +135,15 @@ type AccountCache struct {
 	ttl     time.Duration
 	dir     string
 	cache   map[string]*DNSAccount
-	options config.OptionSource
+	options *FactoryOptions
 }
 
-func NewAccountCache(ttl time.Duration, dir string, opts config.OptionSource) *AccountCache {
+func NewAccountCache(ttl time.Duration, dir string, opts *FactoryOptions) *AccountCache {
 	return &AccountCache{
-		ttl:     ttl,
-		dir:     dir,
-		cache:   map[string]*DNSAccount{},
+		ttl:   ttl,
+		dir:   dir,
+		cache: map[string]*DNSAccount{},
+
 		options: opts,
 	}
 }
@@ -175,7 +176,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 		var err error
 		rateLimiter := AlwaysRateLimiter()
 		if this.options != nil {
-			if rateLimiterConfigProvider, ok := this.options.(RateLimiterConfigProvider); ok {
+			if rateLimiterConfigProvider, ok := this.options.Options.(RateLimiterConfigProvider); ok {
 				rateLimiterConfig := rateLimiterConfigProvider.GetRateLimiterConfig()
 				rateLimiter, err = rateLimiterConfig.NewRateLimiter()
 				if err != nil {

@@ -21,8 +21,49 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
+
+// FactoryOptions is a set of generic options and
+// type specific options related to
+// factories that are provided for all provider types but in a
+// provider specific manner.
+// The provide specif options are defined by an option source
+// optionally offered by the provider factory.
+// It is handled by the compound factory, also, to provide
+// dedicated option sets for hosted sub factories.
+type FactoryOptions struct {
+	// type specific options
+	Options config.OptionSource
+
+	// generic options for all factory types
+	Generic string // demo option
+}
+
+var _ config.OptionSource = &FactoryOptions{}
+
+func (this *FactoryOptions) AddOptionsToSet(set config.OptionSet) {
+	// any generic option
+	set.AddStringOption(&this.Generic, "factory-generic", "", "", "generic factory specific option")
+
+	// specific options for dedicated factory
+	if this.Options != nil {
+		this.Options.AddOptionsToSet(set)
+	}
+}
+
+func (this *FactoryOptions) Evaluate() error {
+	if this.Options != nil {
+		if e, ok := this.Options.(config.OptionEvaluator); ok {
+			fmt.Printf("############## eval factory\n")
+			return e.Evaluate()
+		}
+	}
+	return nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 func (c *DNSHandlerConfig) GetRequiredProperty(key string, altKeys ...string) (string, error) {
 	return c.getProperty(key, true, altKeys...)

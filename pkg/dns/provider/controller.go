@@ -17,8 +17,11 @@
 package provider
 
 import (
+	"reflect"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
@@ -54,6 +57,48 @@ var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
 func init() {
 	crds.AddToRegistry(apiextensions.DefaultRegistry())
+}
+
+func GetFactoryOptions(src config.OptionSource) *FactoryOptions {
+	if src == nil {
+		return &FactoryOptions{}
+	}
+	return src.(config.OptionSet).GetSource(FACTORY_OPTIONS).(*FactoryOptions)
+}
+
+type factoryOptionSet struct {
+	*config.SharedOptionSet
+}
+
+func (this *factoryOptionSet) AddOptionsToSet(set config.OptionSet) {
+	this.SharedOptionSet.AddOptionsToSet(set)
+}
+
+func (this *factoryOptionSet) Evaluate() error {
+	return this.SharedOptionSet.Evaluate()
+}
+
+func CreateFactoryOptionSource(factory DNSHandlerFactory, prefix string) config.OptionSource {
+	v := reflect.ValueOf((*FactoryOptions)(nil))
+	required := v.Type().Elem().NumField() > 1
+	src := &FactoryOptions{}
+	if s, ok := factory.(DNSHandlerOptionSource); ok {
+		src.Options = s.CreateOptionSource()
+		required = required || src.Options != nil
+	}
+	if required {
+		//set := &factoryOptionSet{config.NewSharedOptionSet(FACTORY_OPTIONS, prefix, nil)}
+		set := config.NewSharedOptionSet(FACTORY_OPTIONS, prefix, nil)
+		set.AddSource(FACTORY_OPTIONS, src)
+		return set
+	}
+	return nil
+}
+
+func FactoryOptionSourceCreator(factory DNSHandlerFactory) extension.OptionSourceCreator {
+	return func() config.OptionSource {
+		return CreateFactoryOptionSource(factory, "")
+	}
 }
 
 func DNSController(name string, factory DNSHandlerFactory) controller.Configuration {
@@ -94,11 +139,8 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 			controller.NewResourceKey("core", "Secret"),
 		).
 		WorkerPool("dns", 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
-		WorkerPool("statistic", 1, 0).Commands(CMD_STATISTIC)
-
-	if s, ok := factory.(DNSHandlerOptionSource); ok {
-		cfg.OptionSource(FACTORY_OPTIONS, s.CreateOptionSource)
-	}
+		WorkerPool("statistic", 1, 0).Commands(CMD_STATISTIC).
+		OptionSource(FACTORY_OPTIONS, FactoryOptionSourceCreator(factory))
 	return cfg
 }
 
