@@ -23,21 +23,59 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 )
 
-type RateLimiterConfigProvider interface {
-	GetRateLimiterConfig() *RateLimiterConfig
+type RateLimiterConfig struct {
+	QPS   float32
+	Burst int
 }
 
-func AddRawRateLimiterConfigToOptionSet(set config.OptionSet, raw *RawRateLimiterConfig, defaults RawRateLimiterConfig) {
-	set.AddBoolOption(&raw.Enabled, OPT_RATELIMITER_ENABLED, "", defaults.Enabled, "enables rate limiter for DNS provider requests")
-	set.AddIntOption(&raw.QPS, OPT_RATELIMITER_QPS, "", defaults.QPS, "maximum requests/queries per second")
-	set.AddIntOption(&raw.Burst, OPT_RATELIMITER_BURST, "", defaults.Burst, "number of burst requests for rate limiter")
+////////////////////////////////////////////////////////////////////////////////
+
+type RateLimiterOptions struct {
+	Enabled bool
+	QPS     int
+	Burst   int
 }
 
-func (c *RawRateLimiterConfig) GetRateLimiterConfig() *RateLimiterConfig {
+var RateLimiterOptionDefaults = RateLimiterOptions{
+	Enabled: true,
+	QPS:     10,
+	Burst:   20,
+}
+
+func (this *RateLimiterOptions) AddOptionsToSet(set config.OptionSet) {
+	set.AddBoolOption(&this.Enabled, OPT_RATELIMITER_ENABLED, "", this.Enabled, "enables rate limiter for DNS provider requests")
+	set.AddIntOption(&this.QPS, OPT_RATELIMITER_QPS, "", this.QPS, "maximum requests/queries per second")
+	set.AddIntOption(&this.Burst, OPT_RATELIMITER_BURST, "", this.Burst, "number of burst requests for rate limiter")
+}
+
+func (c *RateLimiterOptions) GetRateLimiterConfig() *RateLimiterConfig {
 	if !c.Enabled {
 		return nil
 	}
 	return &RateLimiterConfig{QPS: float32(c.QPS), Burst: c.Burst}
+}
+
+// configuration helpers
+
+func (c RateLimiterOptions) SetQPS(qps int) RateLimiterOptions {
+	c.QPS = qps
+	return c
+}
+
+func (c RateLimiterOptions) SetBurst(burst int) RateLimiterOptions {
+	c.Burst = burst
+	return c
+}
+
+func (c RateLimiterOptions) SetEnabled(enabled bool) RateLimiterOptions {
+	c.Enabled = enabled
+	return c
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+func (c *RateLimiterConfig) String() string {
+	return fmt.Sprintf("QPS: %f, Burst: %d", c.QPS, c.Burst)
 }
 
 func (c *RateLimiterConfig) NewRateLimiter() (flowcontrol.RateLimiter, error) {

@@ -23,8 +23,14 @@ import (
 
 const TYPE_CODE = "openstack-designate"
 
+var rateLimiterDefaults = provider.RateLimiterOptions{
+	Enabled: true,
+	QPS:     100,
+	Burst:   20,
+}
+
 var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler).
-	SetOptionSourceByExample(&Config{})
+	SetGenericFactoryOptionDefaults(provider.GenericFactoryOptionDefaults.SetRateLimiterOptions(rateLimiterDefaults))
 
 func init() {
 	compound.MustRegister(Factory)

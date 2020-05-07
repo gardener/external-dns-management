@@ -176,14 +176,12 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 		var err error
 		rateLimiter := AlwaysRateLimiter()
 		if this.options != nil {
-			if rateLimiterConfigProvider, ok := this.options.Options.(RateLimiterConfigProvider); ok {
-				rateLimiterConfig := rateLimiterConfigProvider.GetRateLimiterConfig()
-				rateLimiter, err = rateLimiterConfig.NewRateLimiter()
-				if err != nil {
-					return nil, pkgerrors.Wrap(err, "invalid rate limiter")
-				}
-				logger.Infof("rate limiter for %s: %v", name, rateLimiterConfig)
+			rateLimiterConfig := this.options.GetRateLimiterConfig()
+			rateLimiter, err = rateLimiterConfig.NewRateLimiter()
+			if err != nil {
+				return nil, pkgerrors.Wrap(err, "invalid rate limiter")
 			}
+			logger.Infof("rate limiter for %s: %v", name, rateLimiterConfig)
 		}
 
 		cfg := DNSHandlerConfig{

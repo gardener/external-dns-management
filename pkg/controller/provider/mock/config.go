@@ -24,7 +24,7 @@ import (
 )
 
 type Config struct {
-	provider.RawRateLimiterConfig
+	provider.RateLimiterOptions
 }
 
 var _ config.OptionSource = &Config{}
@@ -33,7 +33,7 @@ var _ provider.RateLimiterConfigProvider = &Config{}
 func (this *Config) AddOptionsToSet(set config.OptionSet) {
 	provider.AddRawRateLimiterConfigToOptionSet(
 		set,
-		&this.RawRateLimiterConfig,
-		provider.RawRateLimiterConfig{Enabled: true, QPS: 100, Burst: 20},
+		&this.RateLimiterOptions,
+		provider.RateLimiterOptions{Enabled: true, QPS: 100, Burst: 20},
 	)
 }

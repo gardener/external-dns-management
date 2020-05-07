@@ -42,14 +42,6 @@ type FactoryOptions struct {
 
 var _ config.OptionSource = &FactoryOptions{}
 
-type GenericFactoryOptions struct {
-	Generic string // demo option
-}
-
-var GenericFactoryOptionDefaults = GenericFactoryOptions{
-	Generic: "generic-default",
-}
-
 func (this *FactoryOptions) AddOptionsToSet(set config.OptionSet) {
 	// any generic option
 	this.GenericFactoryOptions.AddOptionsToSet(set)
@@ -70,8 +62,23 @@ func (this *FactoryOptions) Evaluate() error {
 	return nil
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+type GenericFactoryOptions struct {
+	RateLimiterOptions
+}
+
+var GenericFactoryOptionDefaults = GenericFactoryOptions{
+	RateLimiterOptionDefaults,
+}
+
 func (this *GenericFactoryOptions) AddOptionsToSet(set config.OptionSet) {
-	set.AddStringOption(&this.Generic, "factory-generic", "", this.Generic, "generic factory specific option")
+	this.RateLimiterOptions.AddOptionsToSet(set)
+}
+
+func (this GenericFactoryOptions) SetRateLimiterOptions(o RateLimiterOptions) GenericFactoryOptions {
+	this.RateLimiterOptions = o
+	return this
 }
 
 ////////////////////////////////////////////////////////////////////////////////

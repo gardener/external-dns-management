@@ -30,8 +30,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
-	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/flowcontrol"
 )
 
 type Config struct {
@@ -178,17 +178,6 @@ type Metrics interface {
 
 type Finalizers interface {
 	Finalizers() utils.StringSet
-}
-
-type RateLimiterConfig struct {
-	QPS   float32
-	Burst int
-}
-
-type RawRateLimiterConfig struct {
-	Enabled bool
-	QPS     int
-	Burst   int
 }
 
 type DNSHandler interface {

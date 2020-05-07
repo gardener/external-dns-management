@@ -23,8 +23,14 @@ import (
 
 const TYPE_CODE = "alicloud-dns"
 
+var rateLimiterDefaults = provider.RateLimiterOptions{
+	Enabled: true,
+	QPS:     25,
+	Burst:   1,
+}
+
 var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler, true).
-	SetOptionSourceByExample(&Config{})
+	SetGenericFactoryOptionDefaults(provider.GenericFactoryOptionDefaults.SetRateLimiterOptions(rateLimiterDefaults))
 
 func init() {
 	compound.MustRegister(Factory)
