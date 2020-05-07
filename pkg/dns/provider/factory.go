@@ -33,6 +33,7 @@ type Factory struct {
 	typecode              string
 	create                DNSHandlerCreatorFunction
 	optionCreator         extension.OptionSourceCreator
+	genericDefaults       *GenericFactoryOptions
 	supportZoneStateCache bool
 }
 
@@ -43,17 +44,31 @@ func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction, dis
 	for _, b := range disableZoneStateCache {
 		disable = disable || b
 	}
-	return &Factory{typecode, create, nil, !disable}
+	return &Factory{
+		typecode:              typecode,
+		create:                create,
+		supportZoneStateCache: !disable,
+	}
 }
 
-func (this *Factory) SetOptionSourceCreator(creator extension.OptionSourceCreator) *Factory {
+func (this *Factory) SetOptionSourceCreator(creator extension.OptionSourceCreator, defaults ...GenericFactoryOptions) *Factory {
 	this.optionCreator = creator
+	return this.SetGenericFactoryOptionDefaults(defaults...)
+}
+
+func (this *Factory) SetGenericFactoryOptionDefaults(defaults ...GenericFactoryOptions) *Factory {
+	if len(defaults) == 1 {
+		this.genericDefaults = &defaults[0]
+	}
+	if len(defaults) > 1 {
+		panic("invalid call to SetGenericFactoryOptionDefaults: only one default possible")
+	}
 	return this
 }
 
-func (this *Factory) SetOptionSourceByExample(proto config.OptionSource) *Factory {
+func (this *Factory) SetOptionSourceByExample(proto config.OptionSource, defaults ...GenericFactoryOptions) *Factory {
 	this.optionCreator = controller.OptionSourceCreator(proto)
-	return this
+	return this.SetGenericFactoryOptionDefaults(defaults...)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,11 +92,11 @@ func (this *Factory) Create(typecode string, config *DNSHandlerConfig) (DNSHandl
 	return nil, fmt.Errorf("not responsible for %q", typecode)
 }
 
-func (this *Factory) CreateOptionSource() config.OptionSource {
+func (this *Factory) CreateOptionSource() (config.OptionSource, *GenericFactoryOptions) {
 	if this.optionCreator != nil {
-		return this.optionCreator()
+		return this.optionCreator(), this.genericDefaults
 	}
-	return nil
+	return nil, this.genericDefaults
 }
 
 func (this *Factory) SupportZoneStateCache(typecode string) (bool, error) {
@@ -166,7 +181,7 @@ func HandlerStringMapper(name string) func(s string) string {
 	}
 }
 
-func (this *CompoundFactory) CreateOptionSource() config.OptionSource {
+func (this *CompoundFactory) CreateOptionSource() (config.OptionSource, *GenericFactoryOptions) {
 	found := false
 	compound := config.NewSharedOptionSet("compound", "", nil)
 	for n, f := range this.factories {
@@ -177,9 +192,9 @@ func (this *CompoundFactory) CreateOptionSource() config.OptionSource {
 		}
 	}
 	if found {
-		return compound
+		return compound, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (this *CompoundFactory) SupportZoneStateCache(typecode string) (bool, error) {

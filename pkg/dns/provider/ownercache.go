@@ -110,22 +110,22 @@ func (this *OwnerCache) checkCount(e *OwnerIdInfo, ptype string, count int) bool
 }
 
 func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changeset utils.StringSet, activeset utils.StringSet) {
-	return this.UpdateOwnerData(owner.ObjectName().Name(), owner.GetOwnerId(), owner.IsActive(), owner.GetCounts())
+	return this.updateOwnerData(owner.ObjectName().String(), owner.GetOwnerId(), owner.IsActive(), owner.GetCounts())
 }
 
-func (this *OwnerCache) UpdateOwnerData(name, id string, active bool, counts ProviderTypeCounts) (changeset utils.StringSet, activeset utils.StringSet) {
+func (this *OwnerCache) updateOwnerData(cachekey, id string, active bool, counts ProviderTypeCounts) (changeset utils.StringSet, activeset utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
 	changeset = utils.StringSet{}
-	old, ok := this.owners[name]
+	old, ok := this.owners[cachekey]
 	if ok {
 		if old.id == id && old.active == active {
 			return changeset, this.ownerids.KeySet()
 		}
-		this.deactivate(name, old, changeset)
+		this.deactivate(cachekey, old, changeset)
 	}
-	this.activate(name, id, active, changeset, counts)
+	this.activate(cachekey, id, active, changeset, counts)
 	return changeset, this.ownerids.KeySet()
 }
 
@@ -133,15 +133,15 @@ func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changeset utils.St
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	changeset = utils.StringSet{}
-	name := key.ObjectName().Name()
-	old, ok := this.owners[name]
+	cachekey := key.ObjectName().String()
+	old, ok := this.owners[cachekey]
 	if ok {
-		this.deactivate(name, old, changeset)
+		this.deactivate(cachekey, old, changeset)
 	}
 	return changeset, this.ownerids.KeySet()
 }
 
-func (this *OwnerCache) deactivate(name string, old OwnerObjectInfo, changeset utils.StringSet) {
+func (this *OwnerCache) deactivate(cachekey string, old OwnerObjectInfo, changeset utils.StringSet) {
 	if old.active {
 		e := this.ownerids[old.id]
 		e.refcount--
@@ -151,10 +151,10 @@ func (this *OwnerCache) deactivate(name string, old OwnerObjectInfo, changeset u
 			changeset.Add(old.id)
 		}
 	}
-	delete(this.owners, name)
+	delete(this.owners, cachekey)
 }
 
-func (this *OwnerCache) activate(name string, id string, active bool, changeset utils.StringSet, counts ProviderTypeCounts) {
+func (this *OwnerCache) activate(cachekey string, id string, active bool, changeset utils.StringSet, counts ProviderTypeCounts) {
 	if active {
 		e, ok := this.ownerids[id]
 		if !ok {
@@ -169,5 +169,5 @@ func (this *OwnerCache) activate(name string, id string, active bool, changeset 
 			changeset.Add(id)
 		}
 	}
-	this.owners[name] = OwnerObjectInfo{id: id, active: active}
+	this.owners[cachekey] = OwnerObjectInfo{id: id, active: active}
 }

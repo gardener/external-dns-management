@@ -220,7 +220,7 @@ func (this *DefaultDNSHandler) MapTarget(t Target) Target {
 ////////////////////////////////////////////////////////////////////////////////
 
 type DNSHandlerOptionSource interface {
-	CreateOptionSource() config.OptionSource
+	CreateOptionSource() (local config.OptionSource, defaults *GenericFactoryOptions)
 }
 
 type DNSHandlerFactory interface {

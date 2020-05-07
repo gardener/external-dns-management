@@ -36,16 +36,23 @@ import (
 type FactoryOptions struct {
 	// type specific options
 	Options config.OptionSource
-
 	// generic options for all factory types
-	Generic string // demo option
+	GenericFactoryOptions
 }
 
 var _ config.OptionSource = &FactoryOptions{}
 
+type GenericFactoryOptions struct {
+	Generic string // demo option
+}
+
+var GenericFactoryOptionDefaults = GenericFactoryOptions{
+	Generic: "generic-default",
+}
+
 func (this *FactoryOptions) AddOptionsToSet(set config.OptionSet) {
 	// any generic option
-	set.AddStringOption(&this.Generic, "factory-generic", "", "", "generic factory specific option")
+	this.GenericFactoryOptions.AddOptionsToSet(set)
 
 	// specific options for dedicated factory
 	if this.Options != nil {
@@ -61,6 +68,10 @@ func (this *FactoryOptions) Evaluate() error {
 		}
 	}
 	return nil
+}
+
+func (this *GenericFactoryOptions) AddOptionsToSet(set config.OptionSet) {
+	set.AddStringOption(&this.Generic, "factory-generic", "", this.Generic, "generic factory specific option")
 }
 
 ////////////////////////////////////////////////////////////////////////////////

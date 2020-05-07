@@ -81,9 +81,13 @@ func (this *factoryOptionSet) Evaluate() error {
 func CreateFactoryOptionSource(factory DNSHandlerFactory, prefix string) config.OptionSource {
 	v := reflect.ValueOf((*FactoryOptions)(nil))
 	required := v.Type().Elem().NumField() > 1
-	src := &FactoryOptions{}
+	src := &FactoryOptions{GenericFactoryOptions: GenericFactoryOptionDefaults}
 	if s, ok := factory.(DNSHandlerOptionSource); ok {
-		src.Options = s.CreateOptionSource()
+		opts, def := s.CreateOptionSource()
+		src.Options = opts
+		if def != nil {
+			src.GenericFactoryOptions = *def
+		}
 		required = required || src.Options != nil
 	}
 	if required {
