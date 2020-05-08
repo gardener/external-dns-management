@@ -49,8 +49,53 @@ type zoneReconciliation struct {
 	deleting  bool
 }
 
+type setup struct {
+	lock        sync.Mutex
+	pending     utils.StringSet
+	pendingKeys resources.ClusterObjectKeySet
+}
+
+func newSetup() *setup {
+	return &setup{
+		pending:     utils.StringSet{},
+		pendingKeys: resources.ClusterObjectKeySet{},
+	}
+}
+
+func (this *setup) AddCommand(cmd ...string) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.pending.Add(cmd...)
+}
+
+func (this *setup) AddKey(key ...resources.ClusterObjectKey) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.pendingKeys.Add(key...)
+}
+
+func (this *setup) Start(context Context) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	for c := range this.pending {
+		context.Infof("trigger %s", c)
+		context.EnqueueCommand(c)
+	}
+
+	for key := range this.pendingKeys {
+		context.Infof("trigger key %s/%s", key.Namespace(), key.Name())
+		context.EnqueueKey(key)
+	}
+	this.pending = nil
+	this.pendingKeys = nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 type state struct {
 	lock sync.RWMutex
+
+	setup *setup
 
 	context   Context
 	ownerresc resources.Interface
@@ -58,9 +103,6 @@ type state struct {
 
 	classes *controller.Classes
 	config  Config
-
-	pending     utils.StringSet
-	pendingKeys resources.ClusterObjectKeySet
 
 	realms access.RealmTypes
 
@@ -101,6 +143,7 @@ func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller
 	realms := access.RealmTypes{"use": access.NewRealmType(dns.REALM_ANNOTATION)}
 
 	return &state{
+		setup:           newSetup(),
 		classes:         classes,
 		context:         ctx,
 		ownerresc:       ownerresc,
@@ -108,8 +151,6 @@ func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller
 		realms:          realms,
 		accountCache:    NewAccountCache(config.CacheTTL, config.CacheDir, config.Options),
 		ownerCache:      NewOwnerCache(&config),
-		pending:         utils.StringSet{},
-		pendingKeys:     resources.ClusterObjectKeySet{},
 		foreign:         map[resources.ObjectName]*foreignProvider{},
 		providers:       map[resources.ObjectName]*dnsProviderVersion{},
 		deleting:        map[resources.ObjectName]*dnsProviderVersion{},
@@ -169,16 +210,8 @@ func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.
 }
 
 func (this *state) Start() {
-	for c := range this.pending {
-		this.context.Infof("trigger %s", c)
-		this.context.EnqueueCommand(c)
-	}
-
-	for key := range this.pendingKeys {
-		this.context.Infof("trigger key %s/%s", key.Namespace(), key.Name())
-		this.context.EnqueueKey(key)
-		delete(this.pendingKeys, key)
-	}
+	this.setup.Start(this.context)
+	this.setup = nil
 }
 
 func (this *state) HasFinalizer(obj resources.Object) bool {
@@ -423,7 +456,7 @@ func (this *state) triggerStatistic() {
 	if this.context.IsReady() {
 		this.context.EnqueueCommand(CMD_STATISTIC)
 	} else {
-		this.pending.Add(CMD_STATISTIC)
+		this.setup.AddCommand(CMD_STATISTIC)
 	}
 }
 
@@ -432,7 +465,7 @@ func (this *state) triggerHostedZone(name string) {
 	if this.context.IsReady() {
 		this.context.EnqueueCommand(cmd)
 	} else {
-		this.pending.Add(cmd)
+		this.setup.AddCommand(cmd)
 	}
 }
 
@@ -440,7 +473,7 @@ func (this *state) triggerKey(key resources.ClusterObjectKey) {
 	if this.context.IsReady() {
 		this.context.EnqueueKey(key)
 	} else {
-		this.pendingKeys.Add(key)
+		this.setup.AddKey(key)
 	}
 }
 
