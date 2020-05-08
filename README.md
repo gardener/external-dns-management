@@ -4,7 +4,7 @@ The main artefact of this project is the <b>DNS controller manager</b> for manag
 nicknamed as the Gardener "DNS Controller".
 
 It contains provisioning controllers for creating DNS records in one of the DNS cloud services
-  - _Amazon Route53_,
+  - [_Amazon Route53_](/doc/aws-route53/README.md),
   - _Google CloudDNS_,
   - _AliCloud DNS_,
   - _Azure DNS_,
