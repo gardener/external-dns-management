@@ -365,7 +365,10 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	zones, err := this.account.GetZones()
 	if err != nil {
 		this.zones = nil
-		return this, this.failed(logger, false, pkgerrors.Wrap(err, "cannot get zones"), true)
+		return this, this.failed(logger, false, pkgerrors.Wrap(err, "cannot get hosted zones"), true)
+	}
+	if len(zones) == 0 {
+		return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zones available in account"))
 	}
 
 	zinc, zexc := prepareSelection(provider.DNSProvider().Spec.Zones)
@@ -397,8 +400,8 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		}
 	}
 
-	if len(zones) > 0 && len(this.zones) == 0 {
-		return this, this.failedButRecheck(logger, fmt.Errorf("no zone available in account matches zone filter"))
+	if len(this.zones) == 0 {
+		return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zone available in account matches zone filter"))
 	}
 
 	included, err := filterByZones(this.def_include, this.zones)
@@ -411,9 +414,6 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	}
 
 	if len(this.def_include) == 0 {
-		if len(this.zones) == 0 {
-			return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zones found"))
-		}
 		for _, z := range this.zones {
 			included.Add(z.Domain())
 		}
