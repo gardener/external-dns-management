@@ -24,6 +24,10 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 )
 
+func EqualsObjectName(a, b ObjectName) bool {
+	return abstract.EqualsObjectName(a, b)
+}
+
 func NewKey(groupKind schema.GroupKind, namespace, name string) ObjectKey {
 	return abstract.NewKey(groupKind, namespace, name)
 }

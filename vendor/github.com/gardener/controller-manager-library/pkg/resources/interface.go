@@ -147,6 +147,7 @@ type Interface interface {
 	Update(ObjectData) (Object, error)
 	Modify(obj ObjectData, modifier Modifier) (ObjectData, bool, error)
 	ModifyByName(obj ObjectDataName, modifier Modifier) (Object, bool, error)
+	CreateOrModifyByName(obj ObjectDataName, modifier Modifier) (Object, bool, error)
 	ModifyStatus(obj ObjectData, modifier Modifier) (ObjectData, bool, error)
 	ModifyStatusByName(obj ObjectDataName, modifier Modifier) (Object, bool, error)
 	Delete(ObjectData) error

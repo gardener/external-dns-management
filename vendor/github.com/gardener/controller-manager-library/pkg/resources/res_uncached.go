@@ -97,7 +97,11 @@ func (this *AbstractResource) Modify(obj ObjectData, modifier Modifier) (ObjectD
 }
 
 func (this *AbstractResource) ModifyByName(obj ObjectDataName, modifier Modifier) (Object, bool, error) {
-	return this.helper.Internal.I_modifyByName(obj, true, false, modifier)
+	return this.helper.Internal.I_modifyByName(obj, false, false, modifier)
+}
+
+func (this *AbstractResource) CreateOrModifyByName(obj ObjectDataName, modifier Modifier) (Object, bool, error) {
+	return this.helper.Internal.I_modifyByName(obj, false, true, modifier)
 }
 
 func (this *AbstractResource) ModifyStatus(obj ObjectData, modifier Modifier) (ObjectData, bool, error) {
@@ -107,7 +111,7 @@ func (this *AbstractResource) ModifyStatus(obj ObjectData, modifier Modifier) (O
 	if err := this.CheckOType(obj); err != nil {
 		return nil, false, err
 	}
-	return this.helper.Internal.I_modify(obj, false, false, false, modifier)
+	return this.helper.Internal.I_modify(obj, true, false, false, modifier)
 }
 
 func (this *AbstractResource) ModifyStatusByName(obj ObjectDataName, modifier Modifier) (Object, bool, error) {
