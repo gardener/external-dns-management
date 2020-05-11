@@ -655,6 +655,10 @@ func NewEntry(v *EntryVersion, state *state) *Entry {
 	}
 }
 
+func (this *Entry) RemoveFinalizer() error {
+	return this.state.RemoveFinalizer(this.object.DeepCopy())
+}
+
 func (this *Entry) Trigger(logger logger.LogContext) {
 	this.state.TriggerEntry(logger, this)
 }

@@ -32,7 +32,6 @@ var rateLimiterDefaults = provider.RateLimiterOptions{
 var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler).
 	SetGenericFactoryOptionDefaults(provider.GenericFactoryOptionDefaults.SetRateLimiterOptions(rateLimiterDefaults))
 
-
 func init() {
 	compound.MustRegister(Factory)
 }

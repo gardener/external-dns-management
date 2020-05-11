@@ -208,7 +208,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	for k, e := range this.outdated {
 		if e.activezone == zoneid {
 			logger.Infof("cleanup outdated entry %q", k)
-			err := this.RemoveFinalizer(e.object)
+			err := e.RemoveFinalizer()
 			if err == nil || errors.IsNotFound(err) {
 				delete(this.outdated, k)
 			}

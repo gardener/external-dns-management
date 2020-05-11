@@ -133,6 +133,15 @@ func (this *CustomResourceDefinition) DataFor(cluster resources.Cluster, cp Webh
 	if cluster.GetServerVersion().LessThan(v116) || len(crd.Spec.Versions) == 0 || crd.Spec.Versions[0].Schema == nil {
 		o, err := crd.ConvertTo(string(CRD_V1BETA1))
 		utils.Must(err)
+		// fix conversion problem for versions below 1.12
+		if cluster.GetServerVersion().LessThan(v112) {
+			spec := o.(*v1beta1.CustomResourceDefinition)
+			if spec.Spec.Validation != nil && spec.Spec.Validation.OpenAPIV3Schema != nil {
+				if spec.Spec.Subresources != nil && spec.Spec.Subresources.Status != nil {
+					spec.Spec.Validation.OpenAPIV3Schema.Type = ""
+				}
+			}
+		}
 		return o
 	}
 	o, err := crd.ConvertTo(string(CRD_V1))
