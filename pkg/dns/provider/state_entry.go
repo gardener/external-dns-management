@@ -215,14 +215,18 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 	defer this.lock.RUnlock()
 
 	provider, err := this.lookupProvider(e)
-	zoneid, ptype, _ := this.getZoneForName(e.GetDNSName())
+	zone := this.getZoneForName(e.GetDNSName())
 
-	return &EntryPremise{
-		this.config.Enabled,
-		ptype,
-		provider,
-		zoneid,
-	}, err
+	p := &EntryPremise{
+		ptypes:   this.config.Enabled,
+		provider: provider,
+	}
+	if zone != nil {
+		p.ptype = zone.ProviderType()
+		p.zoneid = zone.Id()
+		p.zonedomain = zone.Domain()
+	}
+	return p, err
 }
 
 func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object *dnsutils.DNSEntryObject) reconcile.Status {
@@ -263,7 +267,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 
 	if !object.IsDeleting() {
 		check, _ := this.EntryPremise(object)
-		if !check.Equals(p) {
+		if !check.Match(p) {
 			logger.Infof("%s -> repeat reconcilation", p.NotifyChange(check))
 			return reconcile.Repeat(logger)
 		}
@@ -283,10 +287,10 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 
 	old := this.entries[key.ObjectName()]
 	if old != nil {
-		zoneid, _, _ := this.getZoneForName(old.DNSName())
-		if zoneid != "" {
-			logger.Infof("removing entry %q (%s[%s])", key.ObjectName(), old.DNSName(), zoneid)
-			this.triggerHostedZone(zoneid)
+		zone := this.getZoneForName(old.DNSName())
+		if zone != nil {
+			logger.Infof("removing entry %q (%s[%s])", key.ObjectName(), old.DNSName(), zone.Id())
+			this.triggerHostedZone(zone.Id())
 		} else {
 			this.smartInfof(logger, "removing foreign entry %q (%s)", key.ObjectName(), old.DNSName())
 		}

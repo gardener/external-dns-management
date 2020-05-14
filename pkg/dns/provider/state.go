@@ -425,10 +425,14 @@ func (this *state) GetZoneForName(name string) (string, string, int) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
-	return this.getZoneForName(name)
+	found := this.getZoneForName(name)
+	if found != nil {
+		return found.Id(), found.ProviderType(), len(found.Domain())
+	}
+	return "", "", 0
 }
 
-func (this *state) getZoneForName(hostname string) (string, string, int) {
+func (this *state) getZoneForName(hostname string) *dnsHostedZone {
 	var found *dnsHostedZone
 	length := 0
 loop:
@@ -446,10 +450,7 @@ loop:
 			}
 		}
 	}
-	if found != nil {
-		return found.Id(), found.ProviderType(), length
-	}
-	return "", "", length
+	return found
 }
 
 func (this *state) triggerStatistic() {

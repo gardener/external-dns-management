@@ -50,9 +50,12 @@ type EntryPremise struct {
 	ptype    string
 	provider DNSProvider
 	zoneid   string
+
+	// non-identifying fields
+	zonedomain string
 }
 
-func (this *EntryPremise) Equals(p *EntryPremise) bool {
+func (this *EntryPremise) Match(p *EntryPremise) bool {
 	return this.ptype == p.ptype && this.provider == p.provider && this.zoneid == p.zoneid
 }
 
@@ -258,7 +261,7 @@ func complete(logger logger.LogContext, state *state, spec *api.DNSEntrySpec, ob
 	return nil
 }
 
-func validate(logger logger.LogContext, state *state, entry *EntryVersion) (effspec api.DNSEntrySpec, targets Targets, warnings []string, err error) {
+func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *EntryPremise) (effspec api.DNSEntrySpec, targets Targets, warnings []string, err error) {
 	effspec = entry.object.DNSEntry().Spec
 
 	targets = Targets{}
@@ -283,6 +286,11 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion) (effs
 		return
 	}
 
+	if p.zonedomain == entry.dnsname {
+		err = fmt.Errorf("usage of dns name (%s) identical to domain of hosted zone (%s) is not supported",
+			p.zonedomain, p.zoneid)
+		return
+	}
 	if len(effspec.Targets) > 0 && len(effspec.Text) > 0 {
 		err = fmt.Errorf("only Text or Targets possible: %s", err)
 		return
@@ -415,7 +423,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	///////////// validate
 
-	spec, targets, warnings, verr := validate(logger, state, this)
+	spec, targets, warnings, verr := validate(logger, state, this, p)
 	if p.provider != nil && spec.TTL != nil {
 		this.status.TTL = spec.TTL
 
