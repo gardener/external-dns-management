@@ -19,6 +19,8 @@ package utils
 
 import (
 	"time"
+
+	"go.uber.org/atomic"
 )
 
 type RateLimiter struct {
@@ -26,7 +28,7 @@ type RateLimiter struct {
 	max     time.Duration
 	minincr time.Duration
 
-	rate time.Duration
+	rate atomic.Duration
 }
 
 func NewRateLimiter(min, max, minincr time.Duration) *RateLimiter {
@@ -46,19 +48,21 @@ func NewRateLimiter(min, max, minincr time.Duration) *RateLimiter {
 }
 
 func (this *RateLimiter) RateLimit() time.Duration {
-	return this.rate
+	return this.rate.Load()
 }
 
 func (this *RateLimiter) Succeeded() {
-	this.rate = 0
+	this.rate.Store(0)
 }
 
 func (this *RateLimiter) Failed() {
-	if this.rate == 0 {
-		this.rate = this.min
-	} else {
-		if this.rate < this.max {
-			this.rate = time.Duration(1.1*float64(this.rate)) + time.Second
+	newRate := this.min
+	rate := this.rate.Load()
+	if rate > 0 {
+		newRate = time.Duration(1.1*float64(rate)) + time.Second
+		if rate > this.max {
+			newRate = this.max
 		}
 	}
+	this.rate.Store(newRate)
 }
