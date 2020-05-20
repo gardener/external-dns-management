@@ -59,7 +59,7 @@ func MapToProvider(rtype string, dnsset *DNSSet, base string) (string, *RecordSe
 			add = "*."
 			name = name[2:]
 			if name == base {
-				prefix += "."
+				prefix += "-base."
 			}
 		}
 		return add + prefix + name, &new
@@ -80,7 +80,10 @@ func MapFromProvider(dns string, rs *RecordSet) (string, *RecordSet) {
 				new := *rs
 				new.Type = RS_META
 				dns = dns[len(prefix):]
-				if strings.HasPrefix(dns, ".") {
+				if strings.HasPrefix(dns, "-base.") {
+					dns = dns[6:]
+				} else if strings.HasPrefix(dns, ".") {
+					// for backwards compatibility of form *.comment-.basedomain
 					dns = dns[1:]
 				}
 				return add + dns, &new
