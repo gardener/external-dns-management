@@ -1187,7 +1187,7 @@ func (this *state) reconcileZoneBlockingEntries(logger logger.LogContext) int {
 }
 
 func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconcile.Status {
-	logger.Infof("Initiate reconcilation of zone %s", zoneid)
+	logger.Infof("Initiate reconciliation of zone %s", zoneid)
 	defer logger.Infof("zone %s done", zoneid)
 
 	blockingCount := this.reconcileZoneBlockingEntries(logger)
@@ -1218,7 +1218,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 				}
 				return reconcile.Succeeded(logger)
 			}
-			logger.Infof("zone reconcilation failed for %s: %s", req.zone.Id(), err)
+			logger.Infof("zone reconciliation failed for %s: %s", req.zone.Id(), err)
 			return reconcile.Succeeded(logger).RescheduleAfter(req.zone.RateLimit())
 		}
 		return reconcile.Succeeded(logger)

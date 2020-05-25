@@ -69,7 +69,7 @@ mkdir -p "$(dirname "$DEST")"
 
 cat <<EOM > "$DEST"
 ---
-apiVersion: core.gardener.cloud/v1alpha1
+apiVersion: core.gardener.cloud/v1beta1
 kind: ControllerRegistration
 metadata:
   name: $NAME
