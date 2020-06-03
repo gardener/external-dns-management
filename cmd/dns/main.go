@@ -24,7 +24,9 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
+	"github.com/gardener/controller-manager-library/pkg/resources"
 
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
 
@@ -55,6 +57,7 @@ func init() {
 	mappings.ForControllerGroup(dnsprovider.CONTROLLER_GROUP_DNS_CONTROLLERS).
 		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
 
+	resources.Register(v1alpha1.SchemeBuilder)
 }
 
 func main() {
