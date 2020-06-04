@@ -53,3 +53,11 @@ rules:
   - list
   - update
   - create
+- apiGroups:
+  - policy
+  resources:
+  - podsecuritypolicies
+  resourceNames:
+  - {{ include "external-dns-management.fullname" . }}
+  verbs:
+  - use

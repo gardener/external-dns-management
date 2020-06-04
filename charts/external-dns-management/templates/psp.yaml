@@ -1,0 +1,53 @@
+apiVersion: policy/v1beta1
+kind: PodSecurityPolicy
+metadata:
+  name: {{ include "external-dns-management.fullname" . }}
+  labels:
+    helm.sh/chart: {{ include "external-dns-management.chart" . }}
+    app.kubernetes.io/name: {{ include "external-dns-management.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if or .Values.security.apparmorEnabled .Values.security.seccompEnabled }}
+  annotations:
+{{- if .Values.security.apparmorEnabled }}
+    apparmor.security.beta.kubernetes.io/allowedProfileNames: 'runtime/default'
+    apparmor.security.beta.kubernetes.io/defaultProfileName:  'runtime/default'
+{{- end }}
+{{- if .Values.security.seccompEnabled }}
+    seccomp.security.alpha.kubernetes.io/allowedProfileNames: 'docker/default,runtime/default'
+    seccomp.security.alpha.kubernetes.io/defaultProfileName:  'runtime/default'
+{{- end }}
+{{- end }}
+spec:
+  allowedCapabilities: []
+  defaultAddCapabilities: []
+  privileged: false
+  allowPrivilegeEscalation: false
+  requiredDropCapabilities:
+  - ALL
+  volumes:
+  - secret
+{{- if .Values.configuration.persistentCache }}
+  - persistentVolumeClaim
+{{- end }}
+  hostNetwork: false
+  hostIPC: false
+  hostPID: false
+  runAsUser:
+    rule: MustRunAs
+    ranges:
+    - min: 65534
+      max: 65534
+  seLinux:
+    rule: RunAsAny
+  supplementalGroups:
+    rule: MustRunAs
+    ranges:
+    - min: 65534
+      max: 65534
+  fsGroup:
+    rule: MustRunAs
+    ranges:
+    - min: 65534
+      max: 65534
+  readOnlyRootFilesystem: true
