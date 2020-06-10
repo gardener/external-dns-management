@@ -31,7 +31,7 @@ type DnsV1alpha1Interface interface {
 	DNSProvidersGetter
 }
 
-// DnsV1alpha1Client is used to interact with features provided by the dns group.
+// DnsV1alpha1Client is used to interact with features provided by the dns.gardener.cloud group.
 type DnsV1alpha1Client struct {
 	restClient rest.Interface
 }

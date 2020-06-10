@@ -23,6 +23,7 @@ import (
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 type DNSProviderList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -34,12 +35,18 @@ type DNSProviderList struct {
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:shortName=dnspr
+// +kubebuilder:printcolumn:name="TYPE",type=string,JSONPath=`.spec.type`,description="Provider type"
+// +kubebuilder:printcolumn:name="STATUS",type=string,JSONPath=`.status.state`,description="Status of DNS provider"
+// +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`,description="CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.\nPopulated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata"
 
 type DNSProvider struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              DNSProviderSpec   `json:"spec"`
-	Status            DNSProviderStatus `json:"status"`
+	Status            DNSProviderStatus `json:"status,omitempty"`
 }
 
 type DNSProviderSpec struct {

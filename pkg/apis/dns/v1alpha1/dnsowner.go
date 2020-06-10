@@ -21,6 +21,7 @@ import (
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 type DNSOwnerList struct {
 	metav1.TypeMeta `json:",inline"`
@@ -32,6 +33,11 @@ type DNSOwnerList struct {
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
+// +kubebuilder:resource:shortName=dnso
+// +kubebuilder:resource:scope=Cluster
+// +kubebuilder:printcolumn:name="OWNER",type=string,JSONPath=`.spec.ownerId`,description="Owner Id"
+// +kubebuilder:printcolumn:name="AGE",type=date,JSONPath=`.metadata.creationTimestamp`,description="CreationTimestamp is a timestamp representing the server time when this object was created. It is not guaranteed to be set in happens-before order across separate operations. Clients may not set this value. It is represented in RFC3339 form and is in UTC.\nPopulated by the system. Read-only. Null for lists. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata"
 
 type DNSOwner struct {
 	metav1.TypeMeta   `json:",inline"`
