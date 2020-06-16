@@ -39,6 +39,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
+	// register 1.12
 	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.12"
 )
 

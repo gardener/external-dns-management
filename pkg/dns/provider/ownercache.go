@@ -35,17 +35,17 @@ type OwnerObjectInfo struct {
 }
 type OwnerObjectInfos map[string]OwnerObjectInfo
 
-type OwnerIdInfo struct {
+type OwnerIDInfo struct {
 	refcount    int
 	entrycounts map[string]int
 }
-type OwnerIdInfos map[string]OwnerIdInfo
+type OwnerIDInfos map[string]OwnerIDInfo
 
-func (this OwnerIdInfos) Contains(id string) bool {
+func (this OwnerIDInfos) Contains(id string) bool {
 	_, ok := this[id]
 	return ok
 }
-func (this OwnerIdInfos) KeySet() utils.StringSet {
+func (this OwnerIDInfos) KeySet() utils.StringSet {
 	return utils.StringKeySet(this)
 }
 
@@ -53,13 +53,13 @@ type OwnerCache struct {
 	lock sync.RWMutex
 
 	owners   OwnerObjectInfos
-	ownerids OwnerIdInfos
+	ownerids OwnerIDInfos
 }
 
 func NewOwnerCache(config *Config) *OwnerCache {
 	return &OwnerCache{
 		owners:   OwnerObjectInfos{},
-		ownerids: OwnerIdInfos{config.Ident: {refcount: 1, entrycounts: ProviderTypeCounts{}}},
+		ownerids: OwnerIDInfos{config.Ident: {refcount: 1, entrycounts: ProviderTypeCounts{}}},
 	}
 }
 
@@ -101,7 +101,7 @@ func (this *OwnerCache) UpdateCountsWith(statistic statistic.OwnerStatistic, typ
 	return changed
 }
 
-func (this *OwnerCache) checkCount(e *OwnerIdInfo, ptype string, count int) bool {
+func (this *OwnerCache) checkCount(e *OwnerIDInfo, ptype string, count int) bool {
 	if e.entrycounts[ptype] != count {
 		e.entrycounts[ptype] = count
 		return true
