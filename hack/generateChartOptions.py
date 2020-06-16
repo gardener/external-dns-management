@@ -21,9 +21,13 @@ options = """
       --alicloud-dns.pool.size int                                  Worker pool size of controller alicloud-dns
       --alicloud-dns.providers.pool.resync-period duration          Period for resynchronization for pool providers of controller alicloud-dns (default 10m0s)
       --alicloud-dns.providers.pool.size int                        Worker pool size for pool providers of controller alicloud-dns (default 2)
+      --alicloud-dns.ratelimiter.burst int                          number of burst requests for rate limiter of controller alicloud-dns
+      --alicloud-dns.ratelimiter.enabled                            enables rate limiter for DNS provider requests of controller alicloud-dns
+      --alicloud-dns.ratelimiter.qps int                            maximum requests/queries per second of controller alicloud-dns
       --alicloud-dns.reschedule-delay duration                      reschedule delay after losing provider of controller alicloud-dns (default 2m0s)
       --alicloud-dns.secrets.pool.size int                          Worker pool size for pool secrets of controller alicloud-dns (default 2)
       --alicloud-dns.setup int                                      number of processors for controller setup of controller alicloud-dns (default 10)
+      --alicloud-dns.statistic.pool.size int                        Worker pool size for pool statistic of controller alicloud-dns (default 1)
       --alicloud-dns.ttl int                                        Default time-to-live for DNS entries of controller alicloud-dns (default 300)
       --annotation.default.pool.size int                            Worker pool size for pool default of controller annotation (default 5)
       --annotation.pool.size int                                    Worker pool size of controller annotation
@@ -43,9 +47,13 @@ options = """
       --aws-route53.pool.size int                                   Worker pool size of controller aws-route53
       --aws-route53.providers.pool.resync-period duration           Period for resynchronization for pool providers of controller aws-route53 (default 10m0s)
       --aws-route53.providers.pool.size int                         Worker pool size for pool providers of controller aws-route53 (default 2)
+      --aws-route53.ratelimiter.burst int                           number of burst requests for rate limiter of controller aws-route53
+      --aws-route53.ratelimiter.enabled                             enables rate limiter for DNS provider requests of controller aws-route53
+      --aws-route53.ratelimiter.qps int                             maximum requests/queries per second of controller aws-route53
       --aws-route53.reschedule-delay duration                       reschedule delay after losing provider of controller aws-route53 (default 2m0s)
       --aws-route53.secrets.pool.size int                           Worker pool size for pool secrets of controller aws-route53 (default 2)
       --aws-route53.setup int                                       number of processors for controller setup of controller aws-route53 (default 10)
+      --aws-route53.statistic.pool.size int                         Worker pool size for pool statistic of controller aws-route53 (default 1)
       --aws-route53.ttl int                                         Default time-to-live for DNS entries of controller aws-route53 (default 300)
       --azure-dns.cache-dir string                                  Directory to store zone caches (for reload after restart) of controller azure-dns
       --azure-dns.cache-ttl int                                     Time-to-live for provider hosted zone cache of controller azure-dns (default 120)
@@ -62,9 +70,13 @@ options = """
       --azure-dns.pool.size int                                     Worker pool size of controller azure-dns
       --azure-dns.providers.pool.resync-period duration             Period for resynchronization for pool providers of controller azure-dns (default 10m0s)
       --azure-dns.providers.pool.size int                           Worker pool size for pool providers of controller azure-dns (default 2)
+      --azure-dns.ratelimiter.burst int                             number of burst requests for rate limiter of controller azure-dns
+      --azure-dns.ratelimiter.enabled                               enables rate limiter for DNS provider requests of controller azure-dns
+      --azure-dns.ratelimiter.qps int                               maximum requests/queries per second of controller azure-dns
       --azure-dns.reschedule-delay duration                         reschedule delay after losing provider of controller azure-dns (default 2m0s)
       --azure-dns.secrets.pool.size int                             Worker pool size for pool secrets of controller azure-dns (default 2)
       --azure-dns.setup int                                         number of processors for controller setup of controller azure-dns (default 10)
+      --azure-dns.statistic.pool.size int                           Worker pool size for pool statistic of controller azure-dns (default 1)
       --azure-dns.ttl int                                           Default time-to-live for DNS entries of controller azure-dns (default 300)
       --bind-address-http string                                    HTTP server bind address
       --cache-dir string                                            Directory to store zone caches (for reload after restart)
@@ -84,17 +96,22 @@ options = """
       --cloudflare-dns.pool.size int                                Worker pool size of controller cloudflare-dns
       --cloudflare-dns.providers.pool.resync-period duration        Period for resynchronization for pool providers of controller cloudflare-dns (default 10m0s)
       --cloudflare-dns.providers.pool.size int                      Worker pool size for pool providers of controller cloudflare-dns (default 2)
+      --cloudflare-dns.ratelimiter.burst int                        number of burst requests for rate limiter of controller cloudflare-dns
+      --cloudflare-dns.ratelimiter.enabled                          enables rate limiter for DNS provider requests of controller cloudflare-dns
+      --cloudflare-dns.ratelimiter.qps int                          maximum requests/queries per second of controller cloudflare-dns
       --cloudflare-dns.reschedule-delay duration                    reschedule delay after losing provider of controller cloudflare-dns (default 2m0s)
       --cloudflare-dns.secrets.pool.size int                        Worker pool size for pool secrets of controller cloudflare-dns (default 2)
       --cloudflare-dns.setup int                                    number of processors for controller setup of controller cloudflare-dns (default 10)
+      --cloudflare-dns.statistic.pool.size int                      Worker pool size for pool statistic of controller cloudflare-dns (default 1)
       --cloudflare-dns.ttl int                                      Default time-to-live for DNS entries of controller cloudflare-dns (default 300)
+      --config string                                               config file
   -c, --controllers string                                          comma separated list of controllers to start (<name>,<group>,all) (default "all")
       --cpuprofile string                                           set file for cpu profiling
       --default.pool.resync-period duration                         Period for resynchronization for pool default
       --default.pool.size int                                       Worker pool size for pool default
       --disable-namespace-restriction                               disable access restriction for namespace local access only
       --disable-zone-state-caching                                  disable use of cached dns zone state on changes
-      --dns-class string                                            identifier used to differentiate responsible controllers for entries
+      --dns-class string                                            Class identifier used to differentiate responsible controllers for entry resources
       --dns-delay duration                                          delay between two dns reconciliations
       --dns-target-class string                                     identifier used to differentiate responsible dns controllers for target entries
       --dns.pool.resync-period duration                             Period for resynchronization for pool dns
@@ -132,9 +149,13 @@ options = """
       --google-clouddns.pool.size int                               Worker pool size of controller google-clouddns
       --google-clouddns.providers.pool.resync-period duration       Period for resynchronization for pool providers of controller google-clouddns (default 10m0s)
       --google-clouddns.providers.pool.size int                     Worker pool size for pool providers of controller google-clouddns (default 2)
+      --google-clouddns.ratelimiter.burst int                       number of burst requests for rate limiter of controller google-clouddns
+      --google-clouddns.ratelimiter.enabled                         enables rate limiter for DNS provider requests of controller google-clouddns
+      --google-clouddns.ratelimiter.qps int                         maximum requests/queries per second of controller google-clouddns
       --google-clouddns.reschedule-delay duration                   reschedule delay after losing provider of controller google-clouddns (default 2m0s)
       --google-clouddns.secrets.pool.size int                       Worker pool size for pool secrets of controller google-clouddns (default 2)
       --google-clouddns.setup int                                   number of processors for controller setup of controller google-clouddns (default 10)
+      --google-clouddns.statistic.pool.size int                     Worker pool size for pool statistic of controller google-clouddns (default 1)
       --google-clouddns.ttl int                                     Default time-to-live for DNS entries of controller google-clouddns (default 300)
       --grace-period duration                                       inactivity grace period for detecting end of cleanup for shutdown
   -h, --help                                                        help for dns-controller-manager
@@ -181,9 +202,13 @@ options = """
       --openstack-designate.pool.size int                           Worker pool size of controller openstack-designate
       --openstack-designate.providers.pool.resync-period duration   Period for resynchronization for pool providers of controller openstack-designate (default 10m0s)
       --openstack-designate.providers.pool.size int                 Worker pool size for pool providers of controller openstack-designate (default 2)
+      --openstack-designate.ratelimiter.burst int                   number of burst requests for rate limiter of controller openstack-designate
+      --openstack-designate.ratelimiter.enabled                     enables rate limiter for DNS provider requests of controller openstack-designate
+      --openstack-designate.ratelimiter.qps int                     maximum requests/queries per second of controller openstack-designate
       --openstack-designate.reschedule-delay duration               reschedule delay after losing provider of controller openstack-designate (default 2m0s)
       --openstack-designate.secrets.pool.size int                   Worker pool size for pool secrets of controller openstack-designate (default 2)
       --openstack-designate.setup int                               number of processors for controller setup of controller openstack-designate (default 10)
+      --openstack-designate.statistic.pool.size int                 Worker pool size for pool statistic of controller openstack-designate (default 1)
       --openstack-designate.ttl int                                 Default time-to-live for DNS entries of controller openstack-designate (default 300)
       --ownerids.pool.size int                                      Worker pool size for pool ownerids
       --plugin-file string                                          directory containing go plugins
@@ -194,6 +219,9 @@ options = """
       --providers.id string                                         id for cluster provider
       --providers.pool.resync-period duration                       Period for resynchronization for pool providers
       --providers.pool.size int                                     Worker pool size for pool providers
+      --ratelimiter.burst int                                       number of burst requests for rate limiter
+      --ratelimiter.enabled                                         enables rate limiter for DNS provider requests
+      --ratelimiter.qps int                                         maximum requests/queries per second
       --reschedule-delay duration                                   reschedule delay after losing provider
       --secrets.pool.size int                                       Worker pool size for pool secrets
       --server-port-http int                                        HTTP server port (serving /healthz, /metrics, ...)
@@ -214,6 +242,7 @@ options = """
       --service-dns.target-set-ignore-owners                        mark generated DNS entries to omit owner based access control of controller service-dns
       --service-dns.targets.pool.size int                           Worker pool size for pool targets of controller service-dns (default 2)
       --setup int                                                   number of processors for controller setup
+      --statistic.pool.size int                                     Worker pool size for pool statistic
       --target string                                               target cluster for dns requests
       --target-creator-label-name string                            label name to store the creator for generated DNS entries
       --target-creator-label-value string                           label value for creator label

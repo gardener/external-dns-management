@@ -34,12 +34,21 @@ configuration:
   # alicloudDNSDryRun: false
   # alicloudDNSIdentifier: ""
   # alicloudDNSOwneridsPoolSize: 1
+  # alicloudDNSPoolResyncPeriod: 
+  # alicloudDNSPoolSize:
   # alicloudDNSProvidersPoolResyncPeriod: 30s
   # alicloudDNSProvidersPoolSize: 2
+  # alicloudDNSRatelimiterBurst:
+  # alicloudDNSRatelimiterEnabled:
+  # alicloudDNSRatelimiterQps:
   # alicloudDNSRescheduleDelay: 120s
   # alicloudDNSSecretsPoolSize: 2
   # alicloudDNSSetup: 10
+  # alicloudDNSStatisticPoolSize:
   # alicloudDNSTtl: 120
+  # annotationDefaultPoolSize:
+  # annotationPoolSize:
+  # annotationSetup:
   # awsRoute53CacheTtl: 120
   # awsRoute53DefaultPoolSize: 2
   # awsRoute53DisableZoneStateCaching: false
@@ -50,11 +59,17 @@ configuration:
   # awsRoute53DryRun: false
   # awsRoute53Identifier: ""
   # awsRoute53OwneridsPoolSize: 1
+  # awsRoute53PoolResyncPeriod:
+  # awsRoute53PoolSize:
   # awsRoute53ProvidersPoolResyncPeriod: 30s
   # awsRoute53ProvidersPoolSize: 2
+  # awsRoute53RatelimiterBurst:
+  # awsRoute53RatelimiterEnabled:
+  # awsRoute53RatelimiterQps:
   # awsRoute53RescheduleDelay: 120s
   # awsRoute53SecretsPoolSize: 2
   # awsRoute53Setup: 10
+  # awsRoute53StatisticPoolSize:
   # awsRoute53Ttl: 120
   # azureDNSCacheTtl: 120
   # azureDNSDefaultPoolSize: 2
@@ -66,12 +81,19 @@ configuration:
   # azureDNSDryRun: false
   # azureDNSIdentifier: ""
   # azureDNSOwneridsPoolSize: 1
+  # azureDNSPoolResyncPeriod:
+  # azureDNSPoolSize:
   # azureDNSProvidersPoolResyncPeriod: 30s
   # azureDNSProvidersPoolSize: 2
+  # azureDNSRatelimiterBurst:
+  # azureDNSRatelimiterEnabled:
+  # azureDNSRatelimiterQps:
   # azureDNSRescheduleDelay: 120s
   # azureDNSSecretsPoolSize: 2
   # azureDNSSetup: 10
+  # azureDNSStatisticPoolSize:
   # azureDNSTtl: 120
+  # bindAddressHttp:
   # cacheTtl: 120
   # cloudflareDNSCacheTtl: 120
   # cloudflareDNSDefaultPoolSize: 2
@@ -83,25 +105,38 @@ configuration:
   # cloudflareDNSDryRun: false
   # cloudflareDNSIdentifier: ""
   # cloudflareDNSOwneridsPoolSize: 1
+  # cloudflareDNSPoolResyncPeriod:
+  # cloudflareDNSPoolSize:
   # cloudflareDNSProvidersPoolResyncPeriod: 30s
   # cloudflareDNSProvidersPoolSize: 2
+  # cloudflareDNSRatelimiterBurst:
+  # cloudflareDNSRatelimiterEnabled:
+  # cloudflareDNSRatelimiterQps:
   # cloudflareDNSRescheduleDelay: 120s
   # cloudflareDNSSecretsPoolSize: 2
   # cloudflareDNSSetup: 10
+  # cloudflareDNSStatisticPoolSize:
   # cloudflareDNSTtl: 120
+  # config:
   controllers: all
   # cpuprofile: ""
+  # defaultPoolResyncPeriod:
+  # defaultPoolSize:
   # disableNamespaceRestriction: false
   # disableZoneStateCaching: false
   # dnsClass: "gardendns"
   # dnsDelay: 10s
   # dnsTargetClass: ""
+  # dnsPoolResyncPeriod: 30s
+  # dnsPoolSize: 1
   # dnsentrySourceDefaultPoolResyncPeriod: 30s
   # dnsentrySourceDefaultPoolSize: 2
   # dnsentrySourceDnsClass: "gardendns"
   # dnsentrySourceDnsTargetClass: ""
   # dnsentrySourceExcludeDomains: google.com
   # dnsentrySourceKey: ""
+  # dnsentrySourcePoolResyncPeriod:
+  # dnsentrySourcePoolSize:
   # dnsentrySourceTargetCreatorLabelName: ""
   # dnsentrySourceTargetCreatorLabelValue: ""
   # dnsentrySourceTargetNamePrefix: ""
@@ -121,11 +156,17 @@ configuration:
   # googleCloudDNSDryRun: false
   # googleCloudDNSIdentifier: ""
   # googleCloudDNSOwneridsPoolSize: 1
+  # googleCloudDNSPoolResyncPeriod:
+  # googleCloudDNSPoolSize:
   # googleCloudDNSProvidersPoolResyncPeriod: 30s
   # googleCloudDNSProvidersPoolSize: 2
+  # googleCloudDNSRatelimiterBurst:
+  # googleCloudDNSRatelimiterEnabled:
+  # googleCloudDNSRatelimiterQps:
   # googleCloudDNSRescheduleDelay: 120s
   # googleCloudDNSSecretsPoolSize: 2
   # googleCloudDNSSetup: 10
+  # googleCloudDNSStatisticPoolSize:
   # googleCloudDNSTtl: 120
   # gracePeriod: 0
   # ingressDNSDefaultPoolResyncPeriod: 30s
@@ -134,6 +175,8 @@ configuration:
   # ingressDNSDnsTargetClass: ""
   # ingressDNSExcludeDomains: google.com
   # ingressDNSKey: ""
+  # ingressDNSPoolResyncPeriod:
+  # ingressDNSPoolSize:
   # ingressDNSTargetCreatorLabelName: ""
   # ingressDNSTargetCreatorLabelValue: ""
   # ingressDNSTargetNamePrefix: ""
@@ -146,7 +189,9 @@ configuration:
   # kubeconfig: ""
   # kubeconfigDisableDeployCrds: false
   # kubeconfigId: ""
+  # leaseName:
   # logLevel: info
+  # maintainer:
   # namespace: default
   # namespaceLocalAccessOnly: false
   # omitLease: false
@@ -160,21 +205,35 @@ configuration:
   # openstackDesignateDryRun: false
   # openstackDesignateIdentifier: ""
   # openstackDesignateOwneridsPoolSize: 1
+  # openstackDesignatePoolResyncPeriod:
+  # openstackDesignatePoolSize:
   # openstackDesignateProvidersPoolResyncPeriod: 30s
   # openstackDesignateProvidersPoolSize: 2
+  # openstackDesignateRatelimiterBurst:
+  # openstackDesignateRatelimiterEnabled:
+  # openstackDesignateRatelimiterQps:
+  # openstackDesignateRescheduleDelay:
   # openstackDesignateSecretsPoolSize: 2
   # openstackDesignateSetup: 10
+  # openstackDesignateStatisticPoolSize:
   # openstackDesignateTtl: 120
+  # owneridsPoolSize:
   persistentCache: false
   persistentCacheStorageSize: 1Gi
   persistentCacheStorageSizeAlicloud: 20Gi
-  # pluginDir: ""
+  # pluginFile:
   # poolResyncPeriod: 30s
   # poolSize: 2
   # providers: ""
   # providersDisableDeployCrds: false
   # providersId: ""
+  # providersPoolResyncPeriod: 30s
+  # providersPoolSize: 1
+  # ratelimiterBurst:
+  # ratelimiterEnabled:
+  # ratelimiterQps:
   # rescheduleDelay: 120s
+  # secretsPoolSize:
   serverPortHttp: 8080
   # serviceDNSDefaultPoolResyncPeriod: 30s
   # serviceDNSDefaultPoolSize: 2
@@ -182,6 +241,8 @@ configuration:
   # serviceDNSDnsTargetClass: ""
   # serviceDNSExcludeDomains: google.com
   # serviceDNSKey: ""
+  # serviceDNSPoolResyncPeriod:
+  # serviceDNSPoolSize:
   # serviceDNSTargetCreatorLabelName: ""
   # serviceDNSTargetCreatorLabelValue: ""
   # serviceDNSTargetNamePrefix: ""
@@ -191,6 +252,7 @@ configuration:
   # serviceDNSTargetSetIgnoreOwners: false
   # serviceDNSTargetsPoolSize: 2
   # setup: 10
+  # statisticPoolSize:
   # target: ""
   # targetCreatorLabelName: ""
   # targetCreatorLabelValue: ""
@@ -201,11 +263,9 @@ configuration:
   # targetSetIgnoreOwners: false
   # targetDisableDeployCrds: false
   # targetId: ""
+  # targetsPoolSize:
   ttl: 120
-  # dnsPoolResyncPeriod: 30s
-  # dnsPoolSize: 1
-  # providersPoolResyncPeriod: 30s
-  # providersPoolSize: 1
+  # version:
 additionalConfiguration: []
 
 gardener:
