@@ -21,4 +21,6 @@ ADD bin/rel/dns-controller-manager /dns-controller-manager
 
 WORKDIR /
 
+USER 65534:65534
+
 ENTRYPOINT ["/dns-controller-manager"]

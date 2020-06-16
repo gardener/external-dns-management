@@ -211,3 +211,7 @@ gardener:
   seed:
     identity: ""
     provider: ""
+
+security:
+  apparmorEnabled: false
+  seccompEnabled: false
