@@ -67,6 +67,27 @@ func (this *AbstractObject) Data() ObjectData {
 	return this.ObjectData
 }
 
+func (this *AbstractObject) Status() interface{} {
+	if this.ObjectData == nil {
+		return nil
+	}
+	v := reflect.ValueOf(this.ObjectData).Elem()
+	if v.Kind() != reflect.Struct {
+		return nil
+	}
+	f := v.FieldByName("Status")
+	if !f.IsValid() {
+		return nil
+	}
+	if f.Kind() == reflect.Ptr {
+		return f.Interface()
+	}
+	if !f.CanAddr() {
+		return nil
+	}
+	return f.Addr().Interface()
+}
+
 func (this *AbstractObject) ObjectName() ObjectName {
 	return NewObjectName(this.GetNamespace(), this.GetName())
 }

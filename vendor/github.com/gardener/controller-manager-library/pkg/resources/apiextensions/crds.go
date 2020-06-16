@@ -167,7 +167,7 @@ func CreateCRDFromObject(log logger.LogContext, cluster resources.Cluster, crd r
 		if found.GetAnnotation(A_MAINTAINER) == maintainer {
 			msg.ResetWith("uptodate %s", crd.GetName())
 			new, _ := resources.GetObjectSpec(crd)
-			found.Modify(func(data resources.ObjectData) (bool, error) {
+			_, err := found.Modify(func(data resources.ObjectData) (bool, error) {
 				spec, _ := resources.GetObjectSpec(data)
 				if !reflect.DeepEqual(spec, new) {
 					msg.Default("updating %s", crd.GetName())
@@ -176,6 +176,9 @@ func CreateCRDFromObject(log logger.LogContext, cluster resources.Cluster, crd r
 				}
 				return false, nil
 			})
+			if err != nil {
+				log.Errorf("cannot update crd: %s", err)
+			}
 		}
 	} else {
 		if errors.IsKind(errors.ERR_UNKNOWN_RESOURCE, err) {

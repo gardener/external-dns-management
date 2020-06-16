@@ -107,6 +107,7 @@ type Object interface {
 	GroupVersionKind() schema.GroupVersionKind
 	ObjectName() ObjectName
 	Data() ObjectData
+	Status() interface{}
 	Key() ObjectKey
 
 	IsA(spec interface{}) bool

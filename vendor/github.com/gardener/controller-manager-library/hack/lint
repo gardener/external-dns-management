@@ -35,7 +35,7 @@ options:
 By adding the line
 // golint: ignore
 into the source file just before the line with a lint mesaage
-this message will be suppressed.
+this message will be suppressed. Alternatively add '// golint: ignore' at the end of the line
 EOF
 }
 
@@ -79,6 +79,7 @@ line()
 
 COMM='^comment on exported function SyncPointWait should be of the form.*$'
 TAG='^// golint: ignore.*$'
+TAG2='// golint: ignore$'
 
 handle() {
    #grep -vE "$(join_by "|" "${ignore[@]}")" | sed "s/\(\(.*\.go\):\([^:]*\).*\)/\3 \2 \1/"
@@ -88,10 +89,12 @@ handle() {
    while read l a f m; do
       if [[ "$m" =~ $COMM ]]; then
         b="$(line $l "$f")"
+        b2=''
       else
         b="$(line $(( l - 1 )) "$f")"
+        b2="$(line $l "$f")"
       fi
-      if [[ ! "$b" =~ $TAG ]]; then
+      if [[ ! "$b" =~ $TAG  && ! "$b2" =~ $TAG2 ]]; then
          echo "$f:$l:$a: $m"
          err=1
       fi

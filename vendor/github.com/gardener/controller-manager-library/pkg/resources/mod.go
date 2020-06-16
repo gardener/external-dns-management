@@ -82,6 +82,19 @@ func (this *ModificationState) AddOwners(objs ...Object) *ModificationState {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+func ModifyStatus(obj Object, f func(*ModificationState) error) (bool, error) {
+	m := func(data ObjectData) (bool, error) {
+		o, err := obj.Resources().Wrap(data)
+		if err != nil {
+			return false, err
+		}
+		mod := NewModificationState(o)
+		err = f(mod)
+		return mod.Modified, err
+	}
+	return obj.ModifyStatus(m)
+}
+
 func Modify(obj Object, f func(*ModificationState) error) (bool, error) {
 	m := func(data ObjectData) (bool, error) {
 		o, err := obj.Resources().Wrap(data)

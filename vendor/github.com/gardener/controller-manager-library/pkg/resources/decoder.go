@@ -51,7 +51,7 @@ func (d *Decoder) Decode(content []byte) (runtime.Object, *schema.GroupVersionKi
 	return d.decoder.Decode(content, nil, nil)
 }
 
-// Decode decodes on object given as byte stream into a runtimeObject or
+// DecodeInto decodes on object given as byte stream into a runtimeObject or
 // similar Object
 func (d *Decoder) DecodeInto(data []byte, into interface{}) error {
 	switch target := into.(type) {

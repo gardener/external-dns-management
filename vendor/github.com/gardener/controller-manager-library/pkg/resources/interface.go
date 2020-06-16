@@ -193,5 +193,8 @@ type Resources interface {
 	CreateObject(ObjectData) (Object, error)
 	CreateOrUpdateObject(obj ObjectData) (Object, error)
 
+	UpdateObject(obj ObjectData) (Object, error)
+	ModifyObject(obj ObjectData, modifier func(data ObjectData) (bool, error)) (ObjectData, bool, error)
+	ModifyObjectStatus(obj ObjectData, modifier func(data ObjectData) (bool, error)) (ObjectData, bool, error)
 	DeleteObject(obj ObjectData) error
 }

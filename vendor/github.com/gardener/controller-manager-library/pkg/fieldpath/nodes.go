@@ -33,9 +33,11 @@ type Node interface {
 	Get(interface{}) (interface{}, error)
 	Set(interface{}, interface{}) error
 
-	_value(src reflect.Value, addMissing bool) (reflect.Value, error)
-	value(src reflect.Value, addMissing bool) (reflect.Value, error)
+	_value(src value, addMissing bool, prev *node) (value, error)
+	value(src value, addMissing bool, prev *node) (value, error)
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 type new interface {
 	new(self, next Node) Node
@@ -76,7 +78,7 @@ func (this *node) Type(src interface{}) (reflect.Type, error) {
 }
 
 func (this *node) _type(v reflect.Value) (reflect.Type, error) {
-	field, err := this._value(v, true)
+	field, err := this._value(reflectValue(v), true, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -119,28 +121,28 @@ func (this *node) Set(src interface{}, val interface{}) error {
 	return this._set(reflect.ValueOf(src), val)
 }
 
-func (this *node) _value(v reflect.Value, addMissing bool) (reflect.Value, error) {
+func (this *node) _value(v value, addMissing bool, prev *node) (value, error) {
 	var err error
 
 	// fmt.Printf("value: %s\n", this.self.String())
 	if this.next != nil {
-		v, err = this.next._value(v, addMissing)
+		v, err = this.next._value(v, addMissing, this)
 		if err != nil {
 			return v, err
 		}
 	}
-	return this.self.value(v, addMissing)
+	return this.self.value(v, addMissing, prev)
 }
 
 func (this *node) _validate(v reflect.Value) error {
 
-	_, err := this._value(v, false)
+	_, err := this._value(reflectValue(v), false, nil)
 	return err
 }
 
 func (this *node) _validateType(v reflect.Value, vtype reflect.Type) error {
 
-	field, err := this._value(v, false)
+	field, err := this._value(reflectValue(v), false, nil)
 	if err != nil {
 		return err
 	}
@@ -160,7 +162,7 @@ func (this *node) _validateType(v reflect.Value, vtype reflect.Type) error {
 
 func (this *node) _get(v reflect.Value) (interface{}, error) {
 
-	field, err := this._value(v, false)
+	field, err := this._value(reflectValue(v), false, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +171,7 @@ func (this *node) _get(v reflect.Value) (interface{}, error) {
 
 func (this *node) _set(v reflect.Value, val interface{}) error {
 
-	field, err := this._value(v, true)
+	field, err := this._value(reflectValue(v), true, nil)
 	if err != nil {
 		return err
 	}
@@ -203,6 +205,59 @@ func (this *node) _set(v reflect.Value, val interface{}) error {
 	return nil
 }
 
+func (this *node) toValue(v value, addMissing bool, prev *node) value {
+	if v.Kind() == reflect.Interface {
+		if !v.IsValid() || v.IsNil() {
+			if addMissing {
+				// OOPS: some element should be created here, but nobody knows
+				// which type to use.
+				// try to guess generic intermediate elements by next element
+				// in path expression
+				switch this.self.(type) {
+				case *FieldNode:
+					// fmt.Printf("CREATE generic map\n")
+					return v.Set(reflect.ValueOf(map[string]interface{}{}))
+				case *SliceEntryNode:
+					// fmt.Printf("CREATE generic slice\n")
+					// keep map entry, but with modified effective type
+					return v.Set(reflect.ValueOf([]interface{}{}))
+				default:
+					return none
+				}
+			} else {
+				// fmt.Print("NIL\n")
+				return none
+			}
+		}
+		v = v.Elem()
+	}
+	if isPtr(v) {
+		if v.IsNil() {
+			if addMissing {
+				// fmt.Printf("CREATE %s\n", v.Type().Elem())
+				v.Set(reflect.New(v.Type().Elem()))
+			} else {
+				// fmt.Print("NIL\n")
+				return none
+			}
+		}
+		return v.Elem()
+	}
+	if v.Kind() == reflect.Map {
+		if v.IsNil() {
+			if addMissing {
+				// fmt.Printf("CREATE %s\n", v.Type().Elem())
+				v.Set(reflect.New(v.Type().Elem()))
+			} else {
+				// fmt.Print("NIL\n")
+				return none
+			}
+		}
+		return reflectValue(v.Value())
+	}
+	return v
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 type FieldNode struct {
@@ -222,20 +277,38 @@ func (this *FieldNode) String() string {
 	return fmt.Sprintf("%s.%s", this.node.String(), this.name)
 }
 
-func (this *FieldNode) value(v reflect.Value, addMissing bool) (reflect.Value, error) {
-	v = toValue(v, addMissing)
+func (this *FieldNode) value(v value, addMissing bool, prev *node) (value, error) {
+	v = this.toValue(v, addMissing, prev)
 	if !v.IsValid() {
-		return reflect.Value{}, fmt.Errorf("%s is <nil>", this.node.String())
+		return none, fmt.Errorf("%s is <nil>", this.node.String())
 	}
-	if v.Kind() != reflect.Struct {
-		return reflect.Value{}, fmt.Errorf("%s is no struct", this.node.String())
+	if v.Kind() == reflect.Struct {
+		// fmt.Printf("TYPE %s: %s lookup %s\n", this.String(), v.Type(), this.name)
+		field := v.Value().FieldByName(this.name)
+		if !field.IsValid() {
+			return none, fmt.Errorf("%s has no field %q", this.node.String(), this.name)
+		}
+		return reflectValue(field), nil
 	}
-	// fmt.Printf("TYPE %s: %s lookup %s\n", this.node.String(), v.Type(), this.name)
-	field := v.FieldByName(this.name)
-	if !field.IsValid() {
-		return reflect.Value{}, fmt.Errorf("%s has no field %q", this.node.String(), this.name)
+
+	if v.Kind() == reflect.Map {
+		if v.Type().Key().Kind() == reflect.String {
+			key := reflect.ValueOf(this.name)
+			e := v.Value().MapIndex(key)
+			if !e.IsValid() {
+				if v.Type().Elem().Kind() == reflect.Interface {
+					return &mapEntry{v.Value(), key, nil, this.name}, nil
+				} else {
+					if isSimpleType(v.Type().Elem()) {
+						return &mapEntry{v.Value(), key, nil, this.name}, nil
+					}
+				}
+			} else {
+				return &mapEntry{v.Value(), key, &e, this.name}, nil
+			}
+		}
 	}
-	return field, nil
+	return none, fmt.Errorf("%s is no struct or string map", this.node.String())
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,22 +329,22 @@ func (this *SliceEntryNode) String() string {
 	return fmt.Sprintf("%s[%d]", this.node.String(), this.index)
 }
 
-func (this *SliceEntryNode) value(v reflect.Value, addMissing bool) (reflect.Value, error) {
-	v = toValue(v, addMissing)
+func (this *SliceEntryNode) value(v value, addMissing bool, prev *node) (value, error) {
+	v = this.toValue(v, addMissing, prev)
 	if v.Kind() != reflect.Array && v.Kind() != reflect.Slice {
-		return reflect.Value{}, fmt.Errorf("%s is no slice or array(%s) ", this.node.String(), v.Type())
+		return none, fmt.Errorf("%s is no slice or array(%s) ", this.node.String(), v.Type())
 	}
 	if v.Len() <= this.index {
 		if !addMissing || v.Kind() == reflect.Array {
-			return reflect.Value{}, fmt.Errorf("%s has size %d, but expected at least %d", this.node.String(), v.Len(), this.index+1)
+			return none, fmt.Errorf("%s has size %d, but expected at least %d", this.node.String(), v.Len(), this.index+1)
 		}
 		e := reflect.New(v.Type().Elem())
 		for v.Len() <= this.index {
 			// fmt.Printf("APPEND %d\n", v.Len())
-			v.Set(reflect.Append(v, e.Elem()))
+			v = v.Set(reflect.Append(v.Value(), e.Elem()))
 		}
 	}
-	return v.Index(this.index), nil
+	return reflectValue(v.Value().Index(this.index)), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,10 +374,10 @@ func (this *SliceNode) String() string {
 	return fmt.Sprintf("%s[%s:%s]", this.node.String(), start, end)
 }
 
-func (this *SliceNode) value(v reflect.Value, addMissing bool) (reflect.Value, error) {
-	v = toValue(v, addMissing)
+func (this *SliceNode) value(v value, addMissing bool, prev *node) (value, error) {
+	v = this.toValue(v, addMissing, prev)
 	if v.Kind() != reflect.Array && v.Kind() != reflect.Slice {
-		return reflect.Value{}, fmt.Errorf("%s is no slice or array(%s) ", this.node.String(), v.Type())
+		return none, fmt.Errorf("%s is no slice or array(%s) ", this.node.String(), v.Type())
 	}
 	end := this.end
 	if end < 0 {
@@ -313,20 +386,20 @@ func (this *SliceNode) value(v reflect.Value, addMissing bool) (reflect.Value, e
 			if addMissing {
 				end = this.start
 			} else {
-				return reflect.Value{}, fmt.Errorf("%s has size %d, but expected at least %d", this.node.String(), v.Len(), this.start)
+				return none, fmt.Errorf("%s has size %d, but expected at least %d", this.node.String(), v.Len(), this.start)
 			}
 		}
 	}
 	if v.Len() < end {
 		if !addMissing || v.Kind() == reflect.Array {
-			return reflect.Value{}, fmt.Errorf("%s has size %d, but expected at least %d", this.node.String(), v.Len(), end)
+			return none, fmt.Errorf("%s has size %d, but expected at least %d", this.node.String(), v.Len(), end)
 		}
 		e := reflect.New(v.Type().Elem())
 		for v.Len() < end {
-			v.Set(reflect.Append(v, e.Elem()))
+			v.Set(reflect.Append(v.Value(), e.Elem()))
 		}
 	}
-	return v.Slice(this.start, end), nil
+	return reflectValue(v.Value().Slice(this.start, end)), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -355,19 +428,19 @@ func (this *SelectionNode) String() string {
 	return fmt.Sprintf("%s[%s=%s]", this.node.String(), this.path, vs)
 }
 
-func (this *SelectionNode) value(v reflect.Value, addMissing bool) (reflect.Value, error) {
-	v = toValue(v, addMissing)
+func (this *SelectionNode) value(v value, addMissing bool, prev *node) (value, error) {
+	v = this.toValue(v, addMissing, prev)
 	if v.Kind() != reflect.Array && v.Kind() != reflect.Slice {
-		return reflect.Value{}, fmt.Errorf("%s is no slice or array(%s) ", this.node.String(), v.Type())
+		return none, fmt.Errorf("%s is no slice or array(%s) ", this.node.String(), v.Type())
 	}
 	index := -1
 	for i := 0; i < v.Len(); i++ {
-		v.Index(i)
-		e := toValue(v.Index(i), true)
+		v.Value().Index(i)
+		e := this.toValue(reflectValue(v.Value().Index(i)), true, prev)
 
 		match, err := this.path.Get(e)
 		if err != nil {
-			return reflect.Value{}, err
+			return none, err
 		}
 		if match == this.match {
 			index = i
@@ -375,19 +448,19 @@ func (this *SelectionNode) value(v reflect.Value, addMissing bool) (reflect.Valu
 	}
 	if index < 0 {
 		if !addMissing || v.Kind() == reflect.Array {
-			return reflect.Value{}, fmt.Errorf("no matching element found (%s=%s)", this.path, this.match)
+			return none, fmt.Errorf("no matching element found (%s=%s)", this.path, this.match)
 		} else {
 			e := reflect.New(v.Type().Elem()).Elem()
-			new := toValue(e, true)
+			new := this.toValue(reflectValue(e), true, prev)
 			err := this.path.Set(new, this.match)
 			if err != nil {
-				return reflect.Value{}, err
+				return none, err
 			}
 			index = v.Len()
-			v.Set(reflect.Append(v, e))
+			v.Set(reflect.Append(v.Value(), e))
 		}
 	}
-	return v.Index(index), nil
+	return reflectValue(v.Value().Index(index)), nil
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -408,27 +481,27 @@ func (this *ProjectionNode) String() string {
 	return fmt.Sprintf("%s[]%s", this.node.String(), this.path)
 }
 
-func (this *ProjectionNode) value(v reflect.Value, addMissing bool) (reflect.Value, error) {
-	v = toValue(v, addMissing)
+func (this *ProjectionNode) value(v value, addMissing bool, prev *node) (value, error) {
+	v = this.toValue(v, addMissing, prev)
 	if v.Kind() != reflect.Array && v.Kind() != reflect.Slice {
-		return reflect.Value{}, fmt.Errorf("%s is no slice or array(%s) ", this.node.String(), v.Type())
+		return none, fmt.Errorf("%s is no slice or array(%s) ", this.node.String(), v.Type())
 	}
 	et, err := this.path.Type(v.Type().Elem())
 	if err != nil {
-		return reflect.Value{}, err
+		return none, err
 	}
 	a := reflect.New(reflect.SliceOf(et)).Elem()
 	for i := 0; i < v.Len(); i++ {
-		e := toValue(v.Index(i), false)
+		e := this.toValue(reflectValue(v.Value().Index(i)), false, prev)
 
 		if e.Kind() != reflect.Invalid {
-			sub, err := this.path._value(e, false)
+			sub, err := this.path._value(e, false, prev)
 			if err != nil {
-				return reflect.Value{}, err
+				return none, err
 			}
-			a = reflect.Append(a, sub)
+			a = reflect.Append(a, sub.Value())
 		}
 
 	}
-	return a, nil
+	return reflectValue(a), nil
 }

@@ -49,27 +49,25 @@ func (this *NoHost) GetDNSNames() []string {
 ////////////////////////////////////////////////////////////////////////////////
 // CompoundHosts
 
-type CompoundHosts struct {
-	hosts []CertificateHosts
-}
+type CompoundHosts []CertificateHosts
 
 var _ CertificateHosts = &CompoundHosts{}
 
-func NewCompoundHosts(hosts ...CertificateHosts) *CompoundHosts {
-	return &CompoundHosts{hosts}
+func NewCompoundHosts(hosts ...CertificateHosts) CompoundHosts {
+	return CompoundHosts(hosts)
 }
 
-func (this *CompoundHosts) GetDNSNames() []string {
+func (this CompoundHosts) GetDNSNames() []string {
 	hosts := []string{}
-	for _, h := range this.hosts {
+	for _, h := range this {
 		hosts = append(hosts, h.GetDNSNames()...)
 	}
 	return hosts
 }
 
-func (this *CompoundHosts) GetIPs() []net.IP {
+func (this CompoundHosts) GetIPs() []net.IP {
 	hosts := []net.IP{}
-	for _, h := range this.hosts {
+	for _, h := range this {
 		hosts = append(hosts, h.GetIPs()...)
 	}
 	return hosts
@@ -77,13 +75,12 @@ func (this *CompoundHosts) GetIPs() []net.IP {
 }
 
 func (this *CompoundHosts) Add(hosts ...CertificateHosts) *CompoundHosts {
-	this.hosts = append(this.hosts, hosts...)
+	*this = append(*this, hosts...)
 	return this
 }
 
-func (this *CompoundHosts) With(hosts ...CertificateHosts) *CompoundHosts {
-	result := append(this.hosts, hosts...)
-	return NewCompoundHosts(result...)
+func (this CompoundHosts) With(hosts ...CertificateHosts) CompoundHosts {
+	return append(this, hosts...)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

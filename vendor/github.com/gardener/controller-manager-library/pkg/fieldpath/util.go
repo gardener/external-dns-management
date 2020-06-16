@@ -21,12 +21,25 @@ import (
 	"unicode"
 )
 
+var none = reflectValue(reflect.Value{})
+
 func IsIdentifierStart(r rune) bool {
 	return r == '_' || unicode.IsLetter(r)
 }
 
 func IsIdentifierPart(r rune) bool {
 	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
+}
+
+func isSimpleType(t reflect.Type) bool {
+	switch t.Kind() {
+	case reflect.Map, reflect.Slice, reflect.Struct, reflect.Array, reflect.Func, reflect.Chan:
+		return false
+	case reflect.Ptr, reflect.Uintptr, reflect.UnsafePointer:
+		return false
+	default:
+		return true
+	}
 }
 
 func Value(val interface{}) interface{} {
@@ -52,23 +65,7 @@ func valueType(t reflect.Type) reflect.Type {
 	return t
 }
 
-func toValue(v reflect.Value, addMissing bool) reflect.Value {
-	if isPtr(v) {
-		if v.IsNil() {
-			if addMissing {
-				// fmt.Printf("CREATE %s\n", v.Type().Elem())
-				v.Set(reflect.New(v.Type().Elem()))
-			} else {
-				// fmt.Print("NIL\n")
-				return reflect.Value{}
-			}
-		}
-		return v.Elem()
-	}
-	return v
-}
-
-func isPtr(v reflect.Value) bool {
+func isPtr(v value) bool {
 	if !v.IsValid() {
 		return false
 	}

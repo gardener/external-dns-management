@@ -40,6 +40,8 @@ type Environment interface {
 	SharedAttributes
 
 	GetConfig() *areacfg.Config
+	Enqueue(obj resources.Object)
+	EnqueueKey(key resources.ClusterObjectKey)
 }
 
 type Pool interface {

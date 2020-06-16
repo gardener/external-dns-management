@@ -456,8 +456,8 @@ outer:
 	this.excluded_zones = excluded_zones
 
 	this.valid = true
-	mod := this.object.SetSelection(included, excluded, &this.object.Status().Domains)
-	mod = this.object.SetSelection(included_zones, excluded_zones, &this.object.Status().Zones) || mod
+	mod := this.object.SetSelection(included, excluded, &this.object.DNSProviderStatus().Domains)
+	mod = this.object.SetSelection(included_zones, excluded_zones, &this.object.DNSProviderStatus().Zones) || mod
 	return this, this.succeeded(logger, mod)
 }
 
@@ -503,8 +503,8 @@ func (this *dnsProviderVersion) MapTarget(t Target) Target {
 }
 
 func (this *dnsProviderVersion) setError(modified bool, err error) error {
-	modified = this.object.SetSelection(utils.StringSet{}, utils.StringSet{}, &this.object.Status().Domains) || modified
-	modified = this.object.SetSelection(utils.StringSet{}, utils.StringSet{}, &this.object.Status().Zones) || modified
+	modified = this.object.SetSelection(utils.StringSet{}, utils.StringSet{}, &this.object.DNSProviderStatus().Domains) || modified
+	modified = this.object.SetSelection(utils.StringSet{}, utils.StringSet{}, &this.object.DNSProviderStatus().Zones) || modified
 	modified = this.object.SetStateWithError(api.STATE_ERROR, err) || modified
 	if modified {
 		return this.object.UpdateStatus()

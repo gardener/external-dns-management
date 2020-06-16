@@ -79,7 +79,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 			o, err := this.controller.GetObject(k)
 			if err == nil {
 				fb := this.state.GetFeedbackForObject(o)
-				s := entry.Status()
+				s := entry.DNSEntryStatus()
 				n := entry.Spec().DNSName
 
 				stateCopy := DNSState{DNSEntryStatus: *s, CreationTimestamp: entry.GetCreationTimestamp()}

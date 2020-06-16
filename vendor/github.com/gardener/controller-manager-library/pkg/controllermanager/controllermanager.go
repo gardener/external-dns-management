@@ -63,7 +63,7 @@ func NewControllerManager(ctx context.Context, def *Definition) (*ControllerMana
 	config.Print(logger.Infof, "", cfg.OptionSet)
 	logger.Info("-----------------------")
 	ctx = logger.Set(ctxutil.WaitGroupContext(ctx, "controllermanager"), lgr)
-	ctx = context.WithValue(ctx, resources.ATTR_EVENTSOURCE, def.GetName())
+	ctx = context.WithValue(ctx, resources.ATTR_EVENTSOURCE, def.GetName()) // golint: ignore
 
 	for _, e := range def.extensions {
 		err := e.Validate()

@@ -23,6 +23,7 @@ import (
 
 type Matcher interface {
 	Match(s string) bool
+	String() string
 }
 
 type glob struct {
@@ -34,13 +35,17 @@ func NewStringGlobMatcher(pattern string) Matcher {
 	return &glob{pattern, Runes(pattern)}
 }
 func NewStringMatcher(s string) Matcher {
-	return simplestring(s)
+	return StringMatcher(s)
 }
 
-type simplestring string
+type StringMatcher string
 
-func (this simplestring) Match(s string) bool {
+func (this StringMatcher) Match(s string) bool {
 	return string(this) == s
+}
+
+func (this StringMatcher) String() string {
+	return string(this)
 }
 
 func (g *glob) String() string {

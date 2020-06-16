@@ -179,7 +179,7 @@ func (w *worker) processNextWorkItem() bool {
 
 	}
 	if err != nil {
-		if ok {
+		if ok && reschedule < 0 {
 			w.Warnf("add rate limited because of problem: %s", err)
 			// valid resources, but resources not ready yet (required state for reconciliation/deletion not yet) reached, re-add to the queue rate-limited
 			w.workqueue.AddRateLimited(obj)

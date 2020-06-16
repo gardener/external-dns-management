@@ -125,11 +125,9 @@ func (c *ClusterHandler) EnqueueKey(key resources.ClusterObjectKey) error {
 	rk := NewResourceKey(gk.Group, gk.Kind)
 	i := c.resources[rk]
 	if i == nil {
-		c.Warnf("no resource info for type %s", rk)
 		return fmt.Errorf("cluster %q: no resource info for %s", c, rk)
 	}
 	if i.pools == nil || len(i.pools) == 0 {
-		c.Warnf("no worker pool for type %s", rk)
 		return fmt.Errorf("cluster %q: no worker pool for type %s", c, rk)
 	}
 	for _, p := range i.pools {
@@ -143,7 +141,6 @@ func (c *ClusterHandler) enqueue(obj resources.Object, e func(p *pool, r resourc
 	// c.Infof("enqueue %s", obj.Description())
 	i := c.resources[GetResourceKey(obj)]
 	if i.pools == nil || len(i.pools) == 0 {
-		c.Warnf("no worker pool for type %s", obj.GroupKind())
 		return fmt.Errorf("no worker pool for type %s", obj.GroupKind())
 	}
 	for _, p := range i.pools {

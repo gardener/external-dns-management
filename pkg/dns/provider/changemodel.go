@@ -73,7 +73,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 		if !ok {
 			if s.IsOwnedBy(model.owners) {
 				if e := model.IsStale(s.Name); e != nil {
-					status := e.Object().Status()
+					status := e.Object().DNSEntryStatus()
 					msg := MSG_PRESERVED
 					trigger := false
 					if status.State == v1alpha1.STATE_ERROR || status.State == v1alpha1.STATE_INVALID {

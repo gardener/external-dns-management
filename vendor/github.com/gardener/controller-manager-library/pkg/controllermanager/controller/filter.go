@@ -38,7 +38,7 @@ func Or(filters ...ResourceFilter) ResourceFilter {
 	}
 }
 
-// ANd can be used to generate a filter that reqports true if all of the
+// And can be used to generate a filter that reqports true if all of the
 // given filters report true, If no filter is given always false is reported.
 func And(filters ...ResourceFilter) ResourceFilter {
 	return func(owning ResourceKey, resc resources.Object) bool {

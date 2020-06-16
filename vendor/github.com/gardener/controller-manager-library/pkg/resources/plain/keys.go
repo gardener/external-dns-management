@@ -24,21 +24,13 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 )
 
-func EqualsObjectName(a, b ObjectName) bool {
-	return abstract.EqualsObjectName(a, b)
-}
-
-func NewKey(groupKind schema.GroupKind, namespace, name string) ObjectKey {
-	return abstract.NewKey(groupKind, namespace, name)
-}
-
-func NewGroupKind(group, kind string) schema.GroupKind {
-	return abstract.NewGroupKind(group, kind)
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // ClusterObjectKey
 ////////////////////////////////////////////////////////////////////////////////
+
+func EqualsClusterObjectKey(a, b ClusterObjectKey) bool {
+	return abstract.EqualsClusterObjectKey(a, b)
+}
 
 func NewClusterKeyForObject(cluster string, key ObjectKey) ClusterObjectKey {
 	return abstract.NewClusterKeyForObject(cluster, key)
@@ -71,6 +63,30 @@ func NewClusterObjectKeSetBySets(sets ...ClusterObjectKeySet) ClusterObjectKeySe
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Object Key
+////////////////////////////////////////////////////////////////////////////////
+
+func EqualsObjectKey(a, b ObjectKey) bool {
+	return abstract.EqualsObjectKey(a, b)
+}
+
+func NewKey(groupKind schema.GroupKind, namespace, name string) ObjectKey {
+	return abstract.NewKey(groupKind, namespace, name)
+}
+
+func NewKeyForData(data ObjectData) ObjectKey {
+	return abstract.NewKeyForData(data)
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Group Kind
+////////////////////////////////////////////////////////////////////////////////
+
+func NewGroupKind(group, kind string) schema.GroupKind {
+	return abstract.NewGroupKind(group, kind)
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Group Kind Set
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -92,8 +108,16 @@ func NewGroupKindSetBySets(sets ...GroupKindSet) GroupKindSet {
 // Object Name
 ////////////////////////////////////////////////////////////////////////////////
 
+func EqualsObjectName(a, b ObjectName) bool {
+	return abstract.EqualsObjectName(a, b)
+}
+
 func NewObjectNameFor(p ObjectNameProvider) abstract.GenericObjectName {
 	return abstract.NewObjectNameFor(p)
+}
+
+func NewObjectNameForData(data ObjectData) ObjectName {
+	return abstract.NewObjectNameForData(data)
 }
 
 func NewObjectName(names ...string) abstract.GenericObjectName {

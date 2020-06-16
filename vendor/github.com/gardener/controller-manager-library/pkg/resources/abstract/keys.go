@@ -31,10 +31,19 @@ import (
 // ObjectKey
 ////////////////////////////////////////////////////////////////////////////////
 
+func EqualsObjectKey(a, b ObjectKey) bool {
+	return EqualsObjectName(a.name, b.name) &&
+		a.groupKind == b.groupKind
+}
+
 var _ GroupKindProvider = ObjectKey{}
 
 func NewKey(groupKind schema.GroupKind, namespace, name string) ObjectKey {
 	return ObjectKey{groupKind, NewObjectName(namespace, name)}
+}
+
+func NewKeyForData(data ObjectData) ObjectKey {
+	return ObjectKey{data.GetObjectKind().GroupVersionKind().GroupKind(), NewObjectNameForData(data)}
 }
 
 func (this ObjectKey) GroupKind() schema.GroupKind {
@@ -79,6 +88,12 @@ func NewGroupKind(group, kind string) schema.GroupKind {
 ////////////////////////////////////////////////////////////////////////////////
 // ClusterObjectKey
 ////////////////////////////////////////////////////////////////////////////////
+
+func EqualsClusterObjectKey(a, b ClusterObjectKey) bool {
+	return EqualsObjectName(a.name, b.name) &&
+		a.groupKind == b.groupKind &&
+		a.cluster == b.cluster
+}
 
 func NewClusterKeyForObject(cluster string, key ObjectKey) ClusterObjectKey {
 	return ClusterObjectKey{cluster, objectKey{key}}
@@ -492,6 +507,13 @@ func NewObjectNameFor(p ObjectNameProvider) GenericObjectName {
 		return nil
 	}
 	return NewObjectName(p.Namespace(), p.Name())
+}
+
+func NewObjectNameForData(p ObjectDataName) GenericObjectName {
+	if p == nil {
+		return nil
+	}
+	return NewObjectName(p.GetNamespace(), p.GetName())
 }
 
 func NewObjectName(names ...string) GenericObjectName {

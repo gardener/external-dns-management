@@ -81,8 +81,10 @@ func (this *reconcilerMapping) getReconcilers(key interface{}) reconcilers {
 	return i
 }
 
-func (this *reconcilerMapping) addReconciler(key interface{}, reconciler reconcile.Interface) {
+func (this *reconcilerMapping) addReconciler(key ReconcilationElementSpec, reconciler reconcile.Interface) {
 	switch k := key.(type) {
+	case utils.StringMatcher:
+		this.values[string(k)] = this.values[string(k)].add(reconciler)
 	case utils.Matcher:
 		this.matchers[k] = this.matchers[k].add(reconciler)
 	default:
@@ -130,7 +132,7 @@ func (p *pool) whenReady() {
 	p.controller.whenReady()
 }
 
-func (p *pool) addReconciler(key interface{}, reconciler reconcile.Interface) {
+func (p *pool) addReconciler(key ReconcilationElementSpec, reconciler reconcile.Interface) {
 	p.Infof("adding reconciler %T for key %q", reconciler, key)
 	p.reconcilers.addReconciler(key, reconciler)
 }

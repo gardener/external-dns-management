@@ -189,6 +189,30 @@ func (this *_resources) DeleteObject(obj ObjectData) error {
 	return r.Delete(obj)
 }
 
+func (this *_resources) UpdateObject(obj ObjectData) (Object, error) {
+	r, err := this._get(obj)
+	if err != nil {
+		return nil, err
+	}
+	return r.Update(obj)
+}
+
+func (this *_resources) ModifyObject(obj ObjectData, modifier func(data ObjectData) (bool, error)) (ObjectData, bool, error) {
+	r, err := this._get(obj)
+	if err != nil {
+		return nil, false, err
+	}
+	return r.Modify(obj, modifier)
+}
+
+func (this *_resources) ModifyObjectStatus(obj ObjectData, modifier func(data ObjectData) (bool, error)) (ObjectData, bool, error) {
+	r, err := this._get(obj)
+	if err != nil {
+		return nil, false, err
+	}
+	return r.ModifyStatus(obj, modifier)
+}
+
 func (this *_resources) GetObject(spec interface{}) (Object, error) {
 	h, err := this.Get(spec)
 	if err != nil {

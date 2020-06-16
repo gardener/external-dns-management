@@ -67,7 +67,7 @@ func (this *OptionalSingletonMessage) ResetWith(msg string, args ...interface{})
 	this.Reset()
 }
 
-// Restart restarts the object (
+// Reset resets the done flag (
 func (this *OptionalSingletonMessage) Reset() {
 	this.done = false
 }

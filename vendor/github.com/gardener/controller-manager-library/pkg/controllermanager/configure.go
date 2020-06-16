@@ -23,11 +23,23 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
+type ConfigurationModifier func(c Configuration) Configuration
+
 type Configuration struct {
 	name          string
 	description   string
 	extension_reg extension.ExtensionRegistry
 	cluster_reg   cluster.Registry
+	configState
+}
+
+type configState struct {
+	previous *configState
+}
+
+func (this *configState) pushState() {
+	save := *this
+	this.previous = &save
 }
 
 var _ cluster.RegistrationInterface = &Configuration{}
@@ -38,7 +50,25 @@ func Configure(name, desc string, scheme *runtime.Scheme) Configuration {
 		description:   desc,
 		extension_reg: extension.NewExtensionRegistry(),
 		cluster_reg:   cluster.NewRegistry(scheme),
+		configState:   configState{},
 	}
+}
+
+func (this Configuration) With(modifier ...ConfigurationModifier) Configuration {
+	save := this.configState
+	result := this
+	for _, m := range modifier {
+		result = m(result)
+	}
+	result.configState = save
+	return result
+}
+
+func (this Configuration) Restore() Configuration {
+	if &this.configState != nil {
+		this.configState = *this.configState.previous
+	}
+	return this
 }
 
 func (this Configuration) ByDefault() Configuration {

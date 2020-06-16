@@ -35,7 +35,7 @@ type VersionedObjects struct {
 	Objects []runtime.Object
 }
 
-// DeepCopyObjects returns a deep copy
+// DeepCopyObject returns a deep copy
 func (obj *VersionedObjects) DeepCopyObject() runtime.Object {
 	if obj == nil {
 		return obj

@@ -24,6 +24,7 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 func Succeeded(logger logger.LogContext, msg ...interface{}) Status {
@@ -56,11 +57,23 @@ func Delay(logger logger.LogContext, err error) Status {
 	return Status{true, err, -1}
 }
 
-func DelayOnError(logger logger.LogContext, err error) Status {
+func DelayOnError(logger logger.LogContext, err error, ratelimiter ...utils.RateLimiter) Status {
 	if err == nil {
+		for _, r := range ratelimiter {
+			r.Succeeded()
+		}
 		return Succeeded(logger)
 	}
-	return Delay(logger, err)
+	delay := time.Duration(-1)
+	for _, r := range ratelimiter {
+		r.Failed()
+		l := r.RateLimit()
+		if delay < 0 || l < delay {
+			delay = l
+		}
+	}
+	logger.Warn(err)
+	return Status{true, err, delay}
 }
 
 func DelayOnErrorOrReschedule(logger logger.LogContext, err error, d time.Duration) Status {

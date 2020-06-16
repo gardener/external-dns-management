@@ -102,7 +102,7 @@ func NewEntryVersion(object *dnsutils.DNSEntryObject, old *Entry) *EntryVersion 
 	if old != nil {
 		v.status = old.status
 	} else {
-		v.status = *object.Status()
+		v.status = *object.DNSEntryStatus()
 	}
 	return v
 }
@@ -347,7 +347,7 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 }
 
 func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config, old *Entry) reconcile.Status {
-	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s, ref %+v", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider), this.Object().Spec().Reference)
+	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s, ref %+v", op, this.Object().DNSEntryStatus().State, p.zoneid, p.ptype, Provider(p.provider), this.Object().Spec().Reference)
 
 	this.valid = false
 	this.responsible = false
@@ -355,9 +355,9 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	///////////// handle type responsibility
 
-	if !utils.IsEmptyString(this.object.Status().ProviderType) && p.ptype == "" {
+	if !utils.IsEmptyString(this.object.DNSEntryStatus().ProviderType) && p.ptype == "" {
 		// other controller claimed responsibility?
-		this.status.ProviderType = this.object.Status().ProviderType
+		this.status.ProviderType = this.object.DNSEntryStatus().ProviderType
 	}
 
 	if utils.IsEmptyString(this.status.ProviderType) || (p.zoneid != "" && *this.status.ProviderType != p.ptype) {
