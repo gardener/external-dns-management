@@ -42,10 +42,12 @@ func DNSEntry(o resources.Object) *DNSEntryObject {
 func (this *DNSEntryObject) Spec() *api.DNSEntrySpec {
 	return &this.DNSEntry().Spec
 }
-func (this *DNSEntryObject) Status() interface{} {
-	return this.DNSEntryStatus()
+
+func (this *DNSEntryObject) StatusField() interface{} {
+	return this.Status()
 }
-func (this *DNSEntryObject) DNSEntryStatus() *api.DNSEntryStatus {
+
+func (this *DNSEntryObject) Status() *api.DNSEntryStatus {
 	return &this.DNSEntry().Status
 }
 

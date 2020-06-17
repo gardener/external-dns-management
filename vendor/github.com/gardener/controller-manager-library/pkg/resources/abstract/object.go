@@ -67,7 +67,7 @@ func (this *AbstractObject) Data() ObjectData {
 	return this.ObjectData
 }
 
-func (this *AbstractObject) Status() interface{} {
+func (this *AbstractObject) StatusField() interface{} {
 	if this.ObjectData == nil {
 		return nil
 	}

@@ -403,7 +403,7 @@ loop:
 			}
 		} else {
 			if !e.IsDeleting() {
-				if utils.StringValue(e.object.DNSEntryStatus().Provider) != "" {
+				if utils.StringValue(e.object.Status().Provider) != "" {
 					logger.Infof("invalid entry %q (%s): %s (%s)", e.ObjectName(), e.DNSName(), e.State(), e.Message())
 				}
 				stale[e.DNSName()] = e
