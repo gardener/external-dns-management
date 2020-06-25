@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/gardener/external-dns-management/pkg/dns/provider/selection"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
@@ -305,17 +306,6 @@ func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
 	return true
 }
 
-func prepareSelection(sel *api.DNSSelection) (includes, excludes utils.StringSet) {
-	if sel != nil {
-		includes = utils.NewStringSetByArray(sel.Include)
-		excludes = utils.NewStringSetByArray(sel.Exclude)
-	} else {
-		includes = utils.StringSet{}
-		excludes = utils.StringSet{}
-	}
-	return
-}
-
 func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutils.DNSProviderObject, last *dnsProviderVersion) (*dnsProviderVersion, reconcile.Status) {
 	this := &dnsProviderVersion{
 		state:  state,
@@ -361,7 +351,6 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		return this, this.failed(logger, false, err, true)
 	}
 
-	this.def_include, this.def_exclude = prepareSelection(provider.DNSProvider().Spec.Domains)
 	zones, err := this.account.GetZones()
 	if err != nil {
 		this.zones = nil
@@ -371,94 +360,59 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zones available in account"))
 	}
 
-	zinc, zexc := prepareSelection(provider.DNSProvider().Spec.Zones)
-	included_zones := utils.StringSet{}
-	excluded_zones := utils.StringSet{}
-	this.zones = DNSHostedZones{}
-	if len(zinc) > 0 {
-		for _, z := range zones {
-			if zinc.Contains(z.Id()) {
-				included_zones.Add(z.Id())
-				this.zones = append(this.zones, z)
-			} else {
-				excluded_zones.Add(z.Id())
-			}
-		}
-	} else {
-		for _, z := range zones {
-			included_zones.Add(z.Id())
-			this.zones = append(this.zones, z)
-		}
+	results := selection.CalcZoneAndDomainSelection(provider.DNSProvider().Spec, toLightZones(zones))
+	this.zones = fromLightZones(results.Zones)
+	this.def_include = results.SpecDomainSel.Include
+	this.def_exclude = results.SpecDomainSel.Exclude
+	this.included = results.DomainSel.Include
+	this.excluded = results.DomainSel.Exclude
+	this.included_zones = results.ZoneSel.Include
+	this.excluded_zones = results.ZoneSel.Exclude
+	for _, warning := range results.Warnings {
+		this.object.Eventf(corev1.EventTypeWarning, "reconcile", "%s", warning)
 	}
-	if len(zexc) > 0 {
-		for i, z := range this.zones {
-			if zexc.Contains(z.Id()) {
-				this.zones = append(this.zones[:i], this.zones[i+1:]...)
-				included_zones.Remove(z.Id())
-				excluded_zones.Add(z.Id())
-			}
+	if results.Error != "" {
+		return this, this.failedButRecheck(logger, fmt.Errorf(results.Error))
+	}
+
+	if last == nil || !this.included.Equals(last.included) || !this.excluded.Equals(last.excluded) {
+		if len(this.included) > 0 {
+			logger.Infof("  included domains: %s", this.included)
+		}
+		if len(this.excluded) > 0 {
+			logger.Infof("  excluded domains: %s", this.excluded)
 		}
 	}
 
-	if len(this.zones) == 0 {
-		return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zone available in account matches zone filter"))
-	}
-
-	included, err := filterByZones(this.def_include, this.zones)
-	if err != nil {
-		this.object.Eventf(corev1.EventTypeWarning, "reconcile", "%s", err)
-	}
-	excluded, err := filterByZones(this.def_exclude, this.zones)
-	if err != nil {
-		this.object.Eventf(corev1.EventTypeWarning, "reconcile", "%s", err)
-	}
-
-	if len(this.def_include) == 0 {
-		for _, z := range this.zones {
-			included.Add(z.Domain())
+	if last == nil || !this.included_zones.Equals(last.included_zones) || !this.excluded_zones.Equals(last.excluded_zones) {
+		if len(this.included_zones) > 0 {
+			logger.Infof("  included zones: %s", this.included_zones)
 		}
-	} else {
-		if len(included) == 0 {
-			return this, this.failedButRecheck(logger, fmt.Errorf("no domain matching hosting zones"))
+		if len(this.excluded_zones) > 0 {
+			logger.Infof("  excluded zones: %s", this.excluded_zones)
 		}
 	}
-
-	if last == nil || !included.Equals(last.included) || !excluded.Equals(last.excluded) {
-		if len(included) > 0 {
-			logger.Infof("  included domains: %s", included)
-		}
-		if len(excluded) > 0 {
-			logger.Infof("  excluded domains: %s", excluded)
-		}
-	}
-	this.included = included
-	this.excluded = excluded
-
-outer:
-	for _, zone := range this.zones {
-		for i := range included {
-			if dnsutils.Match(i, zone.Domain()) {
-				continue outer
-			}
-		}
-		included_zones.Remove(zone.Id())
-		excluded_zones.Add(zone.Id())
-	}
-	if last == nil || !included_zones.Equals(last.included_zones) || !excluded_zones.Equals(last.excluded_zones) {
-		if len(included_zones) > 0 {
-			logger.Infof("  included zones: %s", included_zones)
-		}
-		if len(excluded_zones) > 0 {
-			logger.Infof("  excluded zones: %s", excluded_zones)
-		}
-	}
-	this.included_zones = included_zones
-	this.excluded_zones = excluded_zones
 
 	this.valid = true
-	mod := this.object.SetSelection(included, excluded, &this.object.Status().Domains)
-	mod = this.object.SetSelection(included_zones, excluded_zones, &this.object.Status().Zones) || mod
+	mod := this.object.SetSelection(this.included, this.excluded, &this.object.Status().Domains)
+	mod = this.object.SetSelection(this.included_zones, this.excluded_zones, &this.object.Status().Zones) || mod
 	return this, this.succeeded(logger, mod)
+}
+
+func toLightZones(zones DNSHostedZones) []selection.LightDNSHostedZone {
+	lzones := make([]selection.LightDNSHostedZone, len(zones), len(zones))
+	for i, z := range zones {
+		lzones[i] = z
+	}
+	return lzones
+}
+
+func fromLightZones(lzones []selection.LightDNSHostedZone) DNSHostedZones {
+	zones := make(DNSHostedZones, len(lzones), len(lzones))
+	for i, lz := range lzones {
+		zones[i] = lz.(DNSHostedZone)
+	}
+	return zones
 }
 
 func (this *dnsProviderVersion) AccountHash() string {

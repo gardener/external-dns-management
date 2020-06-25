@@ -44,7 +44,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		})
 		Ω(err).Should(BeNil())
 
-		err = testEnv.AwaitEntryStale(e.GetName())
+		err = testEnv.AwaitEntryError(e.GetName())
 		Ω(err).Should(BeNil())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {

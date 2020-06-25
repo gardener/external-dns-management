@@ -18,10 +18,6 @@ package provider
 
 import (
 	"fmt"
-
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-
-	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 type NullMetrics struct{}
@@ -29,28 +25,6 @@ type NullMetrics struct{}
 var _ Metrics = &NullMetrics{}
 
 func (m *NullMetrics) AddRequests(request_type string, n int) {
-}
-
-func filterByZones(domains utils.StringSet, zones DNSHostedZones) (result utils.StringSet, err error) {
-	result = utils.StringSet{}
-	for d := range domains {
-	_zones:
-		for _, z := range zones {
-			if dnsutils.Match(d, z.Domain()) {
-				for _, sub := range z.ForwardedDomains() {
-					if dnsutils.Match(d, sub) {
-						continue _zones
-					}
-				}
-				result.Add(d)
-				break
-			}
-		}
-		if !result.Contains(d) {
-			err = fmt.Errorf("domain %q not in hosted domains", d)
-		}
-	}
-	return result, err
 }
 
 func copyZones(src map[string]*dnsHostedZone) dnsHostedZones {
