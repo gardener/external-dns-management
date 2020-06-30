@@ -18,6 +18,7 @@ package resources
 
 import (
 	"fmt"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
@@ -39,12 +40,12 @@ func NewLister(indexer cache.Indexer, resource *Info) Lister {
 	return &lister{indexer: indexer, resource: resource}
 }
 
-//func (s *lister) List(selector labels.Selector) (ret []ObjectData, err error) {
+// func (s *lister) List(selector labels.Selector) (ret []ObjectData, err error) {
 //	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
 //		ret = append(ret, m.(ObjectData))
 //	})
 //	return ret, err
-//}
+// }
 
 func (s *lister) List(selector labels.Selector, consumer func(o interface{})) error {
 	return cache.ListAll(s.indexer, selector, consumer)

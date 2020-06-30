@@ -33,6 +33,7 @@ var (
 	namespace      = "default"
 	dnsServer      = ""
 	dnsLookup      = true
+	compound       = false
 )
 
 func init() {
@@ -44,6 +45,11 @@ func init() {
 	value := os.Getenv("DNS_LOOKUP")
 	if value != "" {
 		dnsLookup = strings.ToLower(value) == "true"
+	}
+
+	value = os.Getenv("DNS_COMPOUND")
+	if value != "" {
+		compound = strings.ToLower(value) == "true"
 	}
 
 	value = os.Getenv("DNS_SERVER")
@@ -73,6 +79,7 @@ func PrintConfigEnv() {
 type ProviderConfig struct {
 	Name          string `json:"name"`
 	Type          string `json:"type"`
+	FinalizerType string `json:"finalizerType,omitempty"`
 	Domain        string `json:"domain"`
 	ForeignDomain string `json:"foreignDomain,omitempty"`
 	SecretData    string `json:"secretData"`
@@ -142,6 +149,13 @@ func (c *Config) postProcess(namespace string) error {
 		}
 		names[provider.Name] = provider
 		provider.Namespace = namespace
+		if provider.FinalizerType == "" {
+			if compound {
+				provider.FinalizerType = "compound"
+			} else {
+				provider.FinalizerType = provider.Type
+			}
+		}
 		if provider.ForeignDomain == "" {
 			parts := strings.SplitN(provider.Domain, ".", 2)
 			if len(parts) == 2 {

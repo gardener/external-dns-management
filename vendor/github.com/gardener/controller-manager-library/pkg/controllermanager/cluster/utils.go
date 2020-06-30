@@ -18,13 +18,14 @@ package cluster
 
 import (
 	"context"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
+
+	areacfg "github.com/gardener/controller-manager-library/pkg/controllermanager/config"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func CreateClustersFromDefaults(ctx context.Context, logger logger.LogContext, cfg *config.Config, names utils.StringSet) (Clusters, error) {
-	return registry.GetDefinitions().CreateClusters(ctx, logger, cfg, names)
+func CreateClustersFromDefaults(ctx context.Context, logger logger.LogContext, cfg *areacfg.Config, names utils.StringSet) (Clusters, error) {
+	return registry.GetDefinitions().CreateClusters(ctx, logger, cfg, NewSchemeCache(), names)
 }

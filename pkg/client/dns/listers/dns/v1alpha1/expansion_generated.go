@@ -18,6 +18,14 @@ limitations under the License.
 
 package v1alpha1
 
+// DNSAnnotationListerExpansion allows custom methods to be added to
+// DNSAnnotationLister.
+type DNSAnnotationListerExpansion interface{}
+
+// DNSAnnotationNamespaceListerExpansion allows custom methods to be added to
+// DNSAnnotationNamespaceLister.
+type DNSAnnotationNamespaceListerExpansion interface{}
+
 // DNSEntryListerExpansion allows custom methods to be added to
 // DNSEntryLister.
 type DNSEntryListerExpansion interface{}

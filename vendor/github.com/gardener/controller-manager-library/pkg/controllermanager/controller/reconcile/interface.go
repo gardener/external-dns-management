@@ -17,9 +17,13 @@
 package reconcile
 
 import (
+	"time"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"time"
 )
 
 /*
@@ -63,4 +67,12 @@ type Interface interface {
 	Delete(logger.LogContext, resources.Object) Status
 	Deleted(logger.LogContext, resources.ClusterObjectKey) Status
 	Command(logger logger.LogContext, cmd string) Status
+}
+
+// ReconcilationRejection is an optional interface that can be
+// implemented by a recociler to decide to omit the reconcilation
+// of a dedicated resource the it is registered for by the controller
+// definition
+type ReconcilationRejection interface {
+	RejectResourceReconcilation(cluster cluster.Interface, gk schema.GroupKind) bool
 }

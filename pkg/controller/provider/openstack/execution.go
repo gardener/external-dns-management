@@ -20,9 +20,10 @@ import (
 	"fmt"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
-	"github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets"
 )
 
 type Change struct {
@@ -107,6 +108,7 @@ func (exec *Execution) create(rset *recordsets.RecordSet) error {
 		TTL:     rset.TTL,
 		Records: rset.Records,
 	}
+	exec.handler.config.RateLimiter.Accept()
 	_, err := exec.handler.client.CreateRecordSet(exec.zone.Id(), opts)
 	return err
 }
@@ -117,6 +119,7 @@ func (exec *Execution) lookupRecordSetID(rset *recordsets.RecordSet) (string, er
 		recordSetID = recordSet.ID
 		return nil
 	}
+	exec.handler.config.RateLimiter.Accept()
 	err := exec.handler.client.ForEachRecordSetFilterByTypeAndName(exec.zone.Id(), rset.Type, dns.AlignHostname(rset.Name), handler)
 	if err != nil {
 		return "", fmt.Errorf("RecordSet lookup for %s %s failed with: %s", rset.Type, rset.Name, err)
@@ -137,6 +140,7 @@ func (exec *Execution) update(rset *recordsets.RecordSet) error {
 		TTL:     &rset.TTL,
 		Records: rset.Records,
 	}
+	exec.handler.config.RateLimiter.Accept()
 	err = exec.handler.client.UpdateRecordSet(exec.zone.Id(), recordSetID, opts)
 	return err
 }
@@ -146,6 +150,7 @@ func (exec *Execution) delete(rset *recordsets.RecordSet) error {
 	if err != nil {
 		return err
 	}
+	exec.handler.config.RateLimiter.Accept()
 	err = exec.handler.client.DeleteRecordSet(exec.zone.Id(), recordSetID)
 	return err
 }

@@ -17,11 +17,13 @@
 package resources
 
 import (
-	"fmt"
 	"reflect"
 
-	"github.com/gardener/controller-manager-library/pkg/kutil"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,85 +34,147 @@ import (
 
 const ATTR_EVENTSOURCE = "event-source"
 
+type factory struct {
+}
+
+var _ abstract.Factory = factory{}
+
+func (this factory) NewResources(ctx abstract.ResourceContext, factory abstract.Factory) abstract.Resources {
+	return newResources(ctx.(*resourceContext))
+}
+
+func (this factory) NewResource(resources abstract.Resources, gvk schema.GroupVersionKind, otype, ltype reflect.Type) (abstract.Resource, error) {
+	return resources.(*_resources).newResource(gvk, otype, ltype)
+}
+
+func (this factory) ResolveGVK(ctx abstract.ResourceContext, gk schema.GroupKind, gvks []schema.GroupVersionKind) (schema.GroupVersionKind, error) {
+	switch len(gvks) {
+	case 0:
+		return schema.GroupVersionKind{}, errors.ErrUnknownResource.New("group kind", gk)
+	case 1:
+		return gvks[0], nil
+	default:
+		for _, gvk := range gvks {
+			def, err := ctx.(ResourceContext).GetPreferred(gvk.GroupKind())
+			if err != nil {
+				return schema.GroupVersionKind{}, err
+			}
+			if def.Version() == gvk.Version {
+				return gvk, nil
+			}
+		}
+		return schema.GroupVersionKind{}, errors.New(errors.ERR_NON_UNIQUE_MAPPING, "non unique version mapping for %s", gk)
+	}
+}
+
 type _resources struct {
-	ctx                        *resourceContext
-	informers                  *sharedInformerFactory
-	handlersByObjType          map[reflect.Type]Interface
-	handlersByGroupKind        map[schema.GroupKind]Interface
-	handlersByGroupVersionKind map[schema.GroupVersionKind]Interface
-
-	unstructuredHandlersByGroupKind        map[schema.GroupKind]Interface
-	unstructuredHandlersByGroupVersionKind map[schema.GroupVersionKind]Interface
-
+	*abstract.AbstractResources
 	record.EventRecorder
+
+	informers *sharedInformerFactory
 }
 
 var _ Resources = &_resources{}
 
-func newResources(c *resourceContext, source string) *_resources {
-	res := _resources{}
-	res.ctx = c
-	res.informers = c.sharedInformerFactory
-	res.handlersByObjType = map[reflect.Type]Interface{}
-	res.handlersByGroupKind = map[schema.GroupKind]Interface{}
-	res.handlersByGroupVersionKind = map[schema.GroupVersionKind]Interface{}
+func adapt(r abstract.Resource, err error) (Interface, error) {
+	if r == nil {
+		return nil, err
+	}
+	return r.(Interface), err
+}
 
-	res.unstructuredHandlersByGroupKind = map[schema.GroupKind]Interface{}
-	res.unstructuredHandlersByGroupVersionKind = map[schema.GroupVersionKind]Interface{}
+func newResources(ctx *resourceContext) *_resources {
+	source := "controller"
+	src := ctx.Value(ATTR_EVENTSOURCE)
+	if src != nil {
+		source = src.(string)
+	}
 
-	client, _ := c.GetClient(schema.GroupVersion{"", "v1"})
+	res := &_resources{}
+	res.AbstractResources = abstract.NewAbstractResources(ctx, res, factory{})
+
+	res.informers = ctx.sharedInformerFactory
+
+	client, _ := ctx.GetClient(schema.GroupVersion{"", "v1"})
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(logger.Debugf)
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: typedcorev1.New(client).Events("")})
-	res.EventRecorder = eventBroadcaster.NewRecorder(c.scheme, corev1.EventSource{Component: source})
+	res.EventRecorder = eventBroadcaster.NewRecorder(ctx.scheme, corev1.EventSource{Component: source})
 
-	return &res
+	return res
 }
 
 func (this *_resources) Resources() Resources {
 	return this
 }
 
+func (this *_resources) ResourceContext() ResourceContext {
+	return this.AbstractResources.ResourceContext().(ResourceContext)
+}
+
+func (this *_resources) Decode(bytes []byte) (Object, error) {
+	data, err := this.AbstractResources.Decode(bytes)
+	if err != nil {
+		return nil, err
+	}
+	return this.Wrap(data)
+}
+
 func (this *_resources) Get(spec interface{}) (Interface, error) {
-	switch o := spec.(type) {
-	case GroupKindProvider:
-		return this.GetByGK(o.GroupKind())
-	case runtime.Object:
-		return this.GetByExample(o)
-	case schema.GroupVersionKind:
-		return this.GetByGVK(o)
-	case *schema.GroupVersionKind:
-		return this.GetByGVK(*o)
-	case schema.GroupKind:
-		return this.GetByGK(o)
-	case *schema.GroupKind:
-		return this.GetByGK(*o)
+	return adapt(this.AbstractResources.Get(spec))
+}
 
-	case ObjectKey:
-		return this.GetByGK(o.GroupKind())
-	case *ObjectKey:
-		return this.GetByGK(o.GroupKind())
+func (this *_resources) GetByExample(obj runtime.Object) (Interface, error) {
+	return adapt(this.AbstractResources.GetByExample(obj))
+}
 
-	case ClusterObjectKey:
-		return this.GetByGK(o.GroupKind())
-	case *ClusterObjectKey:
-		return this.GetByGK(o.GroupKind())
+func (this *_resources) GetByGK(gk schema.GroupKind) (Interface, error) {
+	return adapt(this.AbstractResources.GetByGK(gk))
+}
 
-	default:
-		return nil, fmt.Errorf("invalid spec type %T", spec)
+func (this *_resources) GetByGVK(gvk schema.GroupVersionKind) (Interface, error) {
+	return adapt(this.AbstractResources.GetByGVK(gvk))
+}
+
+func (this *_resources) GetUnstructured(spec interface{}) (Interface, error) {
+	return adapt(this.AbstractResources.GetUnstructured(spec))
+}
+
+func (this *_resources) GetUnstructuredByGK(gk schema.GroupKind) (Interface, error) {
+	return adapt(this.AbstractResources.GetUnstructuredByGK(gk))
+}
+
+func (this *_resources) GetUnstructuredByGVK(gvk schema.GroupVersionKind) (Interface, error) {
+	return adapt(this.AbstractResources.GetUnstructuredByGVK(gvk))
+}
+
+func (this *_resources) _get(obj ObjectData) (Interface, error) {
+	if u, ok := obj.(*unstructured.Unstructured); ok {
+		return this.GetUnstructured(u)
+	} else {
+		return this.GetByExample(obj)
 	}
 }
 
+func (this *_resources) Wrap(obj ObjectData) (Object, error) {
+	h, err := this._get(obj)
+	if err != nil {
+		return nil, err
+	}
+	return h.Wrap(obj)
+}
+
 func (this *_resources) CreateObject(obj ObjectData) (Object, error) {
-	r, err := this.GetByExample(obj)
+	r, err := this._get(obj)
 	if err != nil {
 		return nil, err
 	}
 	return r.Create(obj)
 }
+
 func (this *_resources) CreateOrUpdateObject(obj ObjectData) (Object, error) {
-	r, err := this.GetByExample(obj)
+	r, err := this._get(obj)
 	if err != nil {
 		return nil, err
 	}
@@ -118,155 +182,35 @@ func (this *_resources) CreateOrUpdateObject(obj ObjectData) (Object, error) {
 }
 
 func (this *_resources) DeleteObject(obj ObjectData) error {
-	r, err := this.GetByExample(obj)
+	r, err := this._get(obj)
 	if err != nil {
 		return err
 	}
 	return r.Delete(obj)
 }
 
-func (this *_resources) GetByExample(obj runtime.Object) (Interface, error) {
-
-	t := reflect.TypeOf(obj)
-	for t.Kind() == reflect.Ptr {
-		t = t.Elem()
-	}
-
-	lock.Lock()
-	defer lock.Unlock()
-	if handler, ok := this.handlersByObjType[t]; ok {
-		return handler, nil
-	}
-
-	gvk, err := this.ctx.GetGVK(obj)
+func (this *_resources) UpdateObject(obj ObjectData) (Object, error) {
+	r, err := this._get(obj)
 	if err != nil {
 		return nil, err
 	}
-
-	info, err := this.ctx.Get(gvk)
-	if err != nil {
-		return nil, err
-	}
-	return this.newResource(gvk, t, info)
-
+	return r.Update(obj)
 }
 
-func (this *_resources) GetByGK(gk schema.GroupKind) (Interface, error) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	if handler, ok := this.handlersByGroupKind[gk]; ok {
-		return handler, nil
-	}
-
-	info, err := this.informers.context.GetPreferred(gk)
+func (this *_resources) ModifyObject(obj ObjectData, modifier func(data ObjectData) (bool, error)) (ObjectData, bool, error) {
+	r, err := this._get(obj)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	if handler, ok := this.handlersByGroupVersionKind[info.GroupVersionKind()]; ok {
-		this.handlersByGroupKind[gk] = handler
-		return handler, nil
-	}
-
-	h, err := this.getResource(info)
-	if err != nil {
-		return nil, err
-	}
-	this.handlersByGroupKind[gk] = h
-	this.handlersByGroupVersionKind[info.GroupVersionKind()] = h
-	return h, nil
+	return r.Modify(obj, modifier)
 }
 
-func (this *_resources) GetByGVK(gvk schema.GroupVersionKind) (Interface, error) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	if handler, ok := this.handlersByGroupVersionKind[gvk]; ok {
-		return handler, nil
-	}
-
-	info, err := this.ctx.Get(gvk)
+func (this *_resources) ModifyObjectStatus(obj ObjectData, modifier func(data ObjectData) (bool, error)) (ObjectData, bool, error) {
+	r, err := this._get(obj)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-
-	h, err := this.getResource(info)
-	if err != nil {
-		return nil, err
-	}
-	this.handlersByGroupVersionKind[gvk] = h
-	return h, nil
-}
-
-func (this *_resources) getResource(info *Info) (Interface, error) {
-	gvk := info.GroupVersionKind()
-	informerType := this.ctx.KnownTypes(gvk.GroupVersion())[gvk.Kind]
-	if informerType == nil {
-		return nil, fmt.Errorf("%s unknown", gvk)
-	}
-
-	return this.newResource(gvk, informerType, info)
-}
-
-func (this *_resources) GetUnstructuredByGK(gk schema.GroupKind) (Interface, error) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	if handler, ok := this.unstructuredHandlersByGroupKind[gk]; ok {
-		return handler, nil
-	}
-
-	info, err := this.informers.context.GetPreferred(gk)
-	if err != nil {
-		return nil, err
-	}
-	if handler, ok := this.unstructuredHandlersByGroupVersionKind[info.GroupVersionKind()]; ok {
-		this.unstructuredHandlersByGroupKind[gk] = handler
-		return handler, nil
-	}
-
-	h, err := this.getUnstructuredResource(info)
-	if err != nil {
-		return nil, err
-	}
-	this.unstructuredHandlersByGroupKind[gk] = h
-	this.unstructuredHandlersByGroupVersionKind[info.GroupVersionKind()] = h
-	return h, nil
-}
-
-func (this *_resources) GetUnstructuredByGVK(gvk schema.GroupVersionKind) (Interface, error) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	if handler, ok := this.unstructuredHandlersByGroupVersionKind[gvk]; ok {
-		return handler, nil
-	}
-
-	info, err := this.ctx.Get(gvk)
-	if err != nil {
-		return nil, err
-	}
-
-	h, err := this.getUnstructuredResource(info)
-	if err != nil {
-		return nil, err
-	}
-	this.unstructuredHandlersByGroupVersionKind[gvk] = h
-	return h, err
-}
-
-func (this *_resources) getUnstructuredResource(info *Info) (Interface, error) {
-	gvk := info.GroupVersionKind()
-	return this.newResource(gvk, nil, info)
-}
-
-func (this *_resources) Wrap(obj ObjectData) (Object, error) {
-	h, err := this.GetByExample(obj)
-	if err != nil {
-		return nil, err
-	}
-
-	return h.Wrap(obj)
+	return r.ModifyStatus(obj, modifier)
 }
 
 func (this *_resources) GetObject(spec interface{}) (Object, error) {
@@ -275,7 +219,7 @@ func (this *_resources) GetObject(spec interface{}) (Object, error) {
 		return nil, err
 	}
 
-	return h.Get_(spec)
+	return h.Get(spec)
 }
 
 func (this *_resources) GetObjectInto(name ObjectName, obj ObjectData) (Object, error) {
@@ -296,21 +240,6 @@ func (this *_resources) GetCachedObject(spec interface{}) (Object, error) {
 	return h.GetCached(spec)
 }
 
-func (r *_resources) newResource(gvk schema.GroupVersionKind, otype reflect.Type, info *Info) (Interface, error) {
-
-	client, err := r.ctx.GetClient(gvk.GroupVersion())
-	if err != nil {
-		return nil, err
-	}
-
-	if otype == nil {
-		otype = unstructuredType
-	}
-	ltype := kutil.DetermineListType(r.ctx.scheme, gvk.GroupVersion(), otype)
-	if ltype == nil {
-		return nil, fmt.Errorf("cannot determine list type for %s", otype)
-	}
-
-	handler := newResource(r.ctx, otype, ltype, info, client)
-	return handler, nil
+func (this *_resources) newResource(gvk schema.GroupVersionKind, otype, ltype reflect.Type) (Interface, error) {
+	return newResource(this.ResourceContext(), otype, ltype, gvk)
 }

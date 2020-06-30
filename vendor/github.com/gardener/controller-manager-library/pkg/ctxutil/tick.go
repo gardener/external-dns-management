@@ -18,10 +18,11 @@ package ctxutil
 
 import (
 	"context"
-	"github.com/gardener/controller-manager-library/pkg/logger"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/gardener/controller-manager-library/pkg/logger"
 )
 
 var tickkeys = map[string]*string{}

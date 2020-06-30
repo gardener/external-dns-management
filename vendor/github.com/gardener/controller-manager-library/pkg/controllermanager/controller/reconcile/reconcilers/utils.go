@@ -18,9 +18,11 @@ package reconcilers
 
 import (
 	"fmt"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func ClusterResources(cluster string, gks ...schema.GroupKind) Resources {

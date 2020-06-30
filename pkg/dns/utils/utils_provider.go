@@ -46,6 +46,11 @@ func DNSProviderKey(namespace, name string) resources.ObjectKey {
 func (this *DNSProviderObject) Spec() *api.DNSProviderSpec {
 	return &this.DNSProvider().Spec
 }
+
+func (this *DNSProviderObject) StatusField() interface{} {
+	return &this.DNSProvider().Status
+}
+
 func (this *DNSProviderObject) Status() *api.DNSProviderStatus {
 	return &this.DNSProvider().Status
 }

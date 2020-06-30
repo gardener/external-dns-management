@@ -18,6 +18,7 @@ package mappings
 
 import (
 	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/groups"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
@@ -165,7 +166,11 @@ func (this *_Definitions) GetEffective(controller string, grps groups.Definition
 	}
 
 	for g, m := range this.getForType(TYPE_GROUP) {
-		if grps.Get(g).Controllers().Contains(controller) {
+		grp := grps.Get(g)
+		if grp == nil {
+			return nil, fmt.Errorf("unknown controller group %q", g)
+		}
+		if grp.Members().Contains(controller) {
 			for cluster := range m.MappedClusters() {
 				new := m.MapCluster(cluster)
 				if old := aggr.MapCluster(cluster); old != cluster && old != new {

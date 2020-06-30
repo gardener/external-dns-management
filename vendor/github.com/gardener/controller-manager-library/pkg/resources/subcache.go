@@ -17,10 +17,11 @@
 package resources
 
 import (
-	"fmt"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 )
 
 type OwnerDetector func(sub Object) ClusterObjectKeySet
@@ -231,7 +232,7 @@ func (this *SubObjectCache) GetByOwnerKey(key ClusterObjectKey) []Object {
 
 func (this *SubObjectCache) CreateSubObject(sub Object) error {
 	if !this.filterSubObject(sub) {
-		return fmt.Errorf("sub object %s is rejected from sub object cache", sub.ClusterKey())
+		return errors.New(errors.ERR_OBJECT_REJECTED, "sub object %s is rejected from sub object cache", sub.ClusterKey())
 	}
 	this.lock.Lock()
 	defer this.lock.Unlock()
@@ -240,6 +241,19 @@ func (this *SubObjectCache) CreateSubObject(sub Object) error {
 		this.renewSubObject(sub)
 	}
 	return err
+}
+
+func (this *SubObjectCache) CreateOrModifySubObject(sub Object, mod Modifier) (bool, error) {
+	if !this.filterSubObject(sub) {
+		return false, errors.New(errors.ERR_OBJECT_REJECTED, "sub object %s is rejected from sub object cache", sub.ClusterKey())
+	}
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	b, err := sub.CreateOrModify(mod)
+	if err == nil {
+		this.renewSubObject(sub)
+	}
+	return b, err
 }
 
 func (this *SubObjectCache) add(owner ClusterObjectKey, sub Object) {

@@ -18,6 +18,7 @@ package utils
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
+
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
@@ -41,6 +42,11 @@ func DNSEntry(o resources.Object) *DNSEntryObject {
 func (this *DNSEntryObject) Spec() *api.DNSEntrySpec {
 	return &this.DNSEntry().Spec
 }
+
+func (this *DNSEntryObject) StatusField() interface{} {
+	return this.Status()
+}
+
 func (this *DNSEntryObject) Status() *api.DNSEntryStatus {
 	return &this.DNSEntry().Status
 }

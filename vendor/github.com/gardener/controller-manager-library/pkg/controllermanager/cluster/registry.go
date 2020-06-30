@@ -18,10 +18,12 @@ package cluster
 
 import (
 	"fmt"
+	"sync"
+
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"k8s.io/apimachinery/pkg/runtime"
-	"sync"
 )
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -124,17 +126,16 @@ func (this *_Registry) GetDefinitions() Definitions {
 func (this *_Definitions) Get(name string) Definition {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
-	return this.definitions[name]
+	if c, ok := this.definitions[name]; ok {
+		return c
+	}
+	return nil
 }
 
 func (this *_Definitions) GetScheme() *runtime.Scheme {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 	return this.scheme
-}
-
-func (this *_Definition) Definition() Definition {
-	return this
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -148,11 +149,16 @@ type Configuration struct {
 var _ Registerable = Configuration{}
 
 func Configure(name string, option string, short string) Configuration {
-	return Configuration{_Definition{name, "", option, short}}
+	return Configuration{_Definition{name, "", option, short, nil}}
 }
 
 func (this Configuration) Fallback(name string) Configuration {
 	this.definition.fallback = name
+	return this
+}
+
+func (this Configuration) Scheme(scheme *runtime.Scheme) Configuration {
+	this.definition.scheme = scheme
 	return this
 }
 

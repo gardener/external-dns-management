@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/route53"
+	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
@@ -34,15 +35,23 @@ type Change struct {
 
 type Execution struct {
 	logger.LogContext
-	r53  *route53.Route53
-	zone provider.DNSHostedZone
+	r53         *route53.Route53
+	rateLimiter flowcontrol.RateLimiter
+	zone        provider.DNSHostedZone
 
 	changes   map[string][]*Change
 	batchSize int
 }
 
 func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZone) *Execution {
-	return &Execution{LogContext: logger, r53: h.r53, zone: zone, changes: map[string][]*Change{}, batchSize: h.awsConfig.BatchSize}
+	return &Execution{
+		LogContext:  logger,
+		r53:         h.r53,
+		rateLimiter: h.config.RateLimiter,
+		zone:        zone,
+		changes:     map[string][]*Change{},
+		batchSize:   h.awsConfig.BatchSize,
+	}
 }
 
 func buildResourceRecordSet(name string, rset *dns.RecordSet) *route53.ResourceRecordSet {
@@ -112,6 +121,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		}
 
 		metrics.AddRequests(provider.M_UPDATERECORDS, 1)
+		this.rateLimiter.Accept()
 		if _, err := this.r53.ChangeResourceRecordSets(params); err != nil {
 			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)
 			for _, c := range changes {

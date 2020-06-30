@@ -17,9 +17,10 @@
 package healthz
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/server"
 	"io"
 	"net/http"
+
+	"github.com/gardener/controller-manager-library/pkg/server"
 )
 
 func init() {

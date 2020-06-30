@@ -47,6 +47,10 @@ func (this *Versioned) SetDefault(obj interface{}) error {
 	return nil
 }
 
+func (this *Versioned) GetDefault() interface{} {
+	return this.def
+}
+
 func (this *Versioned) RegisterVersion(v *semver.Version, obj interface{}) error {
 	if reflect.TypeOf(obj) != this.etype {
 		return fmt.Errorf("invalid element type, found %s, but expected %s", reflect.TypeOf(obj), this.etype)
@@ -75,4 +79,16 @@ func (this *Versioned) GetFor(req *semver.Version) interface{} {
 		}
 	}
 	return obj
+}
+
+func (this *Versioned) GetVersions() map[*semver.Version]interface{} {
+	result := map[*semver.Version]interface{}{}
+	for v, o := range this.versions {
+		vers, _ := semver.NewVersion(v)
+		result[vers] = o
+	}
+	if this.def != nil {
+		result[nil] = this.def
+	}
+	return result
 }

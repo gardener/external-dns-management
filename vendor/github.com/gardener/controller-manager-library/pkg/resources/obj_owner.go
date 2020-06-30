@@ -17,9 +17,10 @@
 package resources
 
 import (
+	"strings"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"strings"
 )
 
 const owner_annotation = "resources.gardener.cloud/owners"

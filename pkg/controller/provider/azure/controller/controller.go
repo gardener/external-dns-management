@@ -21,8 +21,6 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "azure-dns"
-
 func init() {
 	provider.DNSController("", azure.Factory).
 		FinalizerDomain("dns.gardener.cloud").

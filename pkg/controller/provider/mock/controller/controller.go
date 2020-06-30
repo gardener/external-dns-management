@@ -21,8 +21,6 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "mock-inmemory"
-
 func init() {
 	provider.DNSController("", mock.Factory).
 		FinalizerDomain("dns.gardener.cloud").

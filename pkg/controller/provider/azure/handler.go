@@ -23,10 +23,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gardener/controller-manager-library/pkg/logger"
-
 	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+
+	"github.com/gardener/controller-manager-library/pkg/logger"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -84,6 +84,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	// dummy call to check authentication
 	var one int32 = 1
 	ctx := context.TODO()
+	h.config.RateLimiter.Accept()
 	_, err = zonesClient.List(ctx, &one)
 	if err != nil {
 		return nil, perrs.WrapAsHandlerError(err, "Authentication test to Azure with client credentials failed. Please check secret for DNSProvider.")
@@ -112,6 +113,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 
 func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
 	zones := provider.DNSHostedZones{}
+	h.config.RateLimiter.Accept()
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
 	h.config.Metrics.AddRequests("ZonesClient_ListComplete", 1)
 	if err != nil {
@@ -143,6 +145,7 @@ func (h *Handler) collectForwardedSubzones(resourceGroup, zoneName string) []str
 	forwarded := []string{}
 	// There should only few NS entries. Therefore no paging is performed for simplicity.
 	var top int32 = 1000
+	h.config.RateLimiter.Accept()
 	result, err := h.recordsClient.ListByType(h.ctx, resourceGroup, zoneName, azure.NS, &top, "")
 	h.config.Metrics.AddRequests("RecordSetsClient_ListByType_NS", 1)
 	if err != nil {
@@ -176,6 +179,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	dnssets := dns.DNSSets{}
 
 	resourceGroup, zoneName := splitZoneid(zone.Id())
+	h.config.RateLimiter.Accept()
 	results, err := h.recordsClient.ListAllByDNSZoneComplete(h.ctx, resourceGroup, zoneName, nil, "")
 	h.config.Metrics.AddRequests("RecordSetsClient_ListAllByDNSZoneComplete", 1)
 	if err != nil {

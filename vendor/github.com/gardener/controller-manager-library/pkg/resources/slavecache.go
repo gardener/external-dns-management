@@ -123,6 +123,11 @@ func (this *SlaveCache) CreateSlave(obj Object, slave Object) error {
 	return this.cache.CreateSubObject(slave)
 }
 
+func (this *SlaveCache) CreateOrModifySlave(obj Object, slave Object, mod Modifier) (bool, error) {
+	slave.AddOwner(obj)
+	return this.cache.CreateOrModifySubObject(slave, mod)
+}
+
 func (this *SlaveCache) Remove(obj Object, slave Object) bool {
 	mod := slave.RemoveOwner(obj)
 	if mod {

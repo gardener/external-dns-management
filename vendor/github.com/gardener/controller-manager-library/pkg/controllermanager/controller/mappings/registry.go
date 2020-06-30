@@ -216,12 +216,6 @@ func (this *Configuration) copy() {
 	this.definition.mappings = new
 }
 
-func (this Configuration) ForController(name string) Configuration {
-	this.definition.name = name
-	this.copy()
-	return this
-}
-
 func (this Configuration) Map(cluster, to string) Configuration {
 	this.copy()
 	this.definition.mappings[cluster] = to

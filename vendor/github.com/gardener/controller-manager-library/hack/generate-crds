@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+# Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+loop()
+{
+  cd crds
+  for f in *.yaml; do
+    if [ -f "$f" ]; then
+      cat <<EOF
+${TAB}data = \`
+$(cat "$f")
+  \`
+${TAB}utils.Must(registry.RegisterCRD(data))
+EOF
+    fi
+  done
+}
+
+PROJECT_ROOT=$(dirname $0)/..
+
+#echo "ROOT=$PROJECT_ROOT"
+#echo "DIR=$(pwd)"
+
+TAB="$(echo -e "\t")"
+paths=
+sep=
+if [ -n "$*" ]; then
+  for d; do
+     paths="$paths${sep}./$d/."
+     sep=";"
+  done
+else
+  paths=.
+  for d in *; do
+    if [ "$d" != "install" -a "$d" != "crds" -a -d "$d" ]; then
+       paths="$paths;./$d/."
+    fi
+  done
+fi
+mkdir -p crds
+rm -f crds/{*.yaml,zz_generated_crds.go}
+bash "${PROJECT_ROOT}/hack/controller-gen.sh"  \
+   "crd:crdVersions=v1,trivialVersions=false" \
+    paths="$paths" \
+    output:crd:artifacts:config=crds
+
+cat >"crds/zz_generated_crds.go" <<EOF
+$(cat "$PROJECT_ROOT"/hack/LICENSE_BOILERPLATE.txt)
+
+package crds
+
+import (
+${TAB}"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
+${TAB}"github.com/gardener/controller-manager-library/pkg/utils"
+)
+
+var registry = apiextensions.NewRegistry()
+
+func init() {
+${TAB}var data string
+$(loop)
+}
+
+func AddToRegistry(r apiextensions.Registry) {
+${TAB}registry.AddToRegistry(r)
+}
+EOF

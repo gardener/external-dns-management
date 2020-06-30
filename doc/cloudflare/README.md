@@ -1,6 +1,6 @@
 # Cloudflare DNS Provider
 
-This DNS provider allows you to create and manage DNS entries in Cloudflare. 
+This DNS provider allows you to create and manage DNS entries in Cloudlfare. 
 
 ## Generate API Tokens
 

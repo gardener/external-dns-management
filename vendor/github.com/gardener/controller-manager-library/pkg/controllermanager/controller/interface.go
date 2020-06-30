@@ -17,26 +17,32 @@
 package controller
 
 import (
-	"context"
-	"fmt"
-	"github.com/Masterminds/semver"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
-	"reflect"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
-	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
+	areacfg "github.com/gardener/controller-manager-library/pkg/controllermanager/controller/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 type ReconcilerType func(Interface) (reconcile.Interface, error)
+
+type Environment interface {
+	extension.Environment
+	SharedAttributes
+
+	GetConfig() *areacfg.Config
+	Enqueue(obj resources.Object)
+	EnqueueKey(key resources.ClusterObjectKey)
+}
 
 type Pool interface {
 	StartTicker()
@@ -47,11 +53,12 @@ type Pool interface {
 }
 
 type Interface interface {
-	GetName() string
+	extension.ElementBase
+	SharedAttributes
+
 	IsReady() bool
 	Owning() ResourceKey
 	GetMainWatchResource() WatchResource
-	GetContext() context.Context
 	GetEnvironment() Environment
 	GetPool(name string) Pool
 	GetMainCluster() cluster.Interface
@@ -60,29 +67,19 @@ type Interface interface {
 	GetClusterAliases(eff string) utils.StringSet
 	GetDefinition() Definition
 
-	GetOption(name string) (*config.ArbitraryOption, error)
-	GetStringOption(name string) (string, error)
-	GetIntOption(name string) (int, error)
-	GetDurationOption(name string) (time.Duration, error)
-	GetBoolOption(name string) (bool, error)
-	GetStringArrayOption(name string) ([]string, error)
-
-	GetSharedValue(key interface{}) interface{}
-	GetOrCreateSharedValue(key interface{}, create func() interface{}) interface{}
-
 	HasFinalizer(obj resources.Object) bool
 	SetFinalizer(obj resources.Object) error
 	RemoveFinalizer(obj resources.Object) error
 	FinalizerHandler() Finalizer
 	SetFinalizerHandler(Finalizer)
 
+	Synchronize(log logger.LogContext, name string, initiator resources.Object) (bool, error)
+
 	EnqueueKey(key resources.ClusterObjectKey) error
 	Enqueue(object resources.Object) error
 	EnqueueRateLimited(object resources.Object) error
 	EnqueueAfter(object resources.Object, duration time.Duration) error
 	EnqueueCommand(cmd string) error
-
-	logger.LogContext
 
 	GetObject(key resources.ClusterObjectKey) (resources.Object, error)
 	GetCachedObject(key resources.ClusterObjectKey) (resources.Object, error)
@@ -107,34 +104,29 @@ type Command interface {
 }
 
 // ResourceKey implementations are used as key and MUST therefore be value types
-type ResourceKey interface {
-	GroupKind() schema.GroupKind
-	String() string
-}
-
-type resourceKey struct {
-	key schema.GroupKind
-}
+type ResourceKey = extension.ResourceKey
 
 func NewResourceKey(group, kind string) ResourceKey {
-	if group == "core" {
-		group = corev1.GroupName
-	}
-	return resourceKey{schema.GroupKind{Group: group, Kind: kind}}
-}
-func (k resourceKey) GroupKind() schema.GroupKind {
-	return k.key
-}
-func (k resourceKey) String() string {
-	if k.key.Group == corev1.GroupName {
-		return fmt.Sprintf("%s/%s", "core", k.key.Kind)
-
-	}
-	return fmt.Sprintf("%s/%s", k.key.Group, k.key.Kind)
+	return extension.NewResourceKey(group, kind)
 }
 
-func GetResourceKey(obj resources.Object) ResourceKey {
-	return NewResourceKey(obj.GroupKind().Group, obj.GroupKind().Kind)
+func NewResourceKeyByGK(gk schema.GroupKind) ResourceKey {
+	return extension.NewResourceKey(gk.Group, gk.Kind)
+}
+
+func GetResourceKey(objspec interface{}) ResourceKey {
+	return extension.GetResourceKey(objspec)
+}
+
+// ClusterResourceKey implementations are used as key and MUST therefore be value types
+type ClusterResourceKey extension.ResourceKey
+
+func NewClusterResourceKey(clusterid, group, kind string) ResourceKey {
+	return extension.NewClusterResourceKey(clusterid, group, kind)
+}
+
+func GetClusterResourceKey(objspec interface{}) ClusterResourceKey {
+	return extension.GetClusterResourceKey(objspec)
 }
 
 type Watches map[string][]Watch
@@ -144,23 +136,26 @@ const CLUSTER_MAIN = mappings.CLUSTER_MAIN
 const DEFAULT_POOL = "default"
 const DEFAULT_RECONCILER = "default"
 
+type SyncerDefinition interface {
+	GetName() string
+	GetCluster() string
+	GetResource() ResourceKey
+}
+
 type PoolDefinition interface {
 	GetName() string
 	Size() int
 	Period() time.Duration
 }
 
-type OptionDefinition interface {
-	GetName() string
-	Type() reflect.Type
-	Default() interface{}
-	Description() string
-}
+type OptionDefinition extension.OptionDefinition
 
 type Definition interface {
-	GetName() string
-	//Create(Object) (Reconciler, error)
+	extension.OrderedElem
+
+	// Create(Object) (Reconciler, error)
 	Reconcilers() map[string]ReconcilerType
+	Syncers() map[string]SyncerDefinition
 	MainResource() ResourceKey
 	MainWatchResource() WatchResource
 	Watches() Watches
@@ -169,41 +164,16 @@ type Definition interface {
 	ResourceFilters() []ResourceFilter
 	RequiredClusters() []string
 	RequiredControllers() []string
-	CustomResourceDefinitions() map[string][]*CustomResourceDefinition
+	CustomResourceDefinitions() map[string][]*apiextensions.CustomResourceDefinitionVersions
 	RequireLease() bool
 	FinalizerName() string
 	ActivateExplicitly() bool
 	ConfigOptions() map[string]OptionDefinition
+	ConfigOptionSources() extension.OptionSourceDefinitions
+
+	Scheme() *runtime.Scheme
 
 	Definition() Definition
 
 	String() string
-}
-
-type CustomResourceDefinition struct {
-	versioned *utils.Versioned
-}
-
-func NewCustomResourceDefinition(crd ...*v1beta1.CustomResourceDefinition) *CustomResourceDefinition {
-	if len(crd) > 1 {
-		return nil
-	}
-	def := &CustomResourceDefinition{utils.NewVersioned(&v1beta1.CustomResourceDefinition{})}
-	if len(crd) > 0 {
-		def.versioned.SetDefault(crd[0])
-	}
-	return def
-}
-
-func (this *CustomResourceDefinition) GetFor(c cluster.Interface) *v1beta1.CustomResourceDefinition {
-	f := this.versioned.GetFor(c.GetServerVersion())
-	if f != nil {
-		return f.(*v1beta1.CustomResourceDefinition)
-	}
-	return nil
-}
-
-func (this *CustomResourceDefinition) RegisterVersion(v *semver.Version, crd v1beta1.CustomResourceDefinition) *CustomResourceDefinition {
-	this.versioned.MustRegisterVersion(v, crd)
-	return this
 }

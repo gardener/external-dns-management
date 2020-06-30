@@ -1,0 +1,49 @@
+#!/bin/bash -e
+
+ROOT="$(dirname "$0")/.."
+
+HELP="go run ./cmd/dns --help"
+HELP="cmd/dns/dns-controller-manager --help"
+
+Camel() {
+  echo "$1" | sed -e 's/-/\n/g' -e 's/\./\n/g' | { 
+    first=X
+    while read a ; do
+      if [ -n "$a" ]; then
+        if [ -n "$first" ]; then
+          echo -n "$a"
+          first=
+        else
+          if [ "$a"  == dns ]; then
+            echo -n DNS
+          else
+            echo -n "$(tr a-z A-Z <<<"${a:0:1}")${a#?}"
+          fi
+        fi
+      fi
+    done
+    echo
+  }
+}
+
+Options() {
+(
+  cd "$ROOT"
+  $HELP 2>/dev/null | grep -- -- | while IFS= read -r line; do
+    opt="$(sed -e "s/ *\(--[^ ]*\) [^ ]* .*/\1/" <<<"$line")"
+    arg="$(sed -e "s/ *--[^ ]* \([^ ]*\) .*/\1/" <<<"$line")"
+    echo ${opt#--} $arg
+  done
+)
+}
+
+Template() {
+  Options | while read opt arg; do
+    camel="$(Camel "$opt")"
+    echo "$1{{- if .Values.configuration.$camel }}"
+    echo "$1- --$opt={{ .Values.configuration.$camel }}"
+    echo "$1{{- end }}"
+  done
+}
+
+Template "      "

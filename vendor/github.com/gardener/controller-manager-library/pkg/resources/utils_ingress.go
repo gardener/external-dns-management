@@ -17,9 +17,10 @@
 package resources
 
 import (
-	"fmt"
 	api "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 )
 
 type IngressObject struct {
@@ -50,7 +51,7 @@ func GetIngress(src ResourcesSource, namespace, name string) (*IngressObject, er
 
 	s := Ingress(o)
 	if s == nil {
-		return nil, fmt.Errorf("oops, unexpected typo for secret: %T", o.Data())
+		return nil, errors.ErrUnexpectedType.New("ingress", o.Data())
 	}
 	return s, nil
 }
@@ -67,7 +68,7 @@ func GetCachedIngress(src ResourcesSource, namespace, name string) (*IngressObje
 
 	s := Ingress(o)
 	if s == nil {
-		return nil, fmt.Errorf("oops, unexpected type for ingress: %T", o.Data())
+		return nil, errors.ErrUnexpectedType.New("ingress", o.Data())
 	}
 	return s, nil
 }

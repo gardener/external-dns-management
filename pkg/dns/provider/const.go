@@ -17,6 +17,7 @@
 package provider
 
 import (
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
@@ -31,12 +32,17 @@ const (
 	OPT_TTL                        = "ttl"
 	OPT_CACHE_TTL                  = "cache-ttl"
 	OPT_CACHE_DIR                  = "cache-dir"
-	OPT_SETUP                      = "setup"
+	OPT_SETUP                      = dns.OPT_SETUP
 	OPT_DNSDELAY                   = "dns-delay"
 	OPT_RESCHEDULEDELAY            = "reschedule-delay"
 	OPT_DISABLE_ZONE_STATE_CACHING = "disable-zone-state-caching"
 
 	OPT_PROVIDERTYPES = "provider-types"
 
-	HOSTEDZONE_PREFIX = "hostedzone:"
+	OPT_RATELIMITER_ENABLED = "ratelimiter.enabled"
+	OPT_RATELIMITER_QPS     = "ratelimiter.qps"
+	OPT_RATELIMITER_BURST   = "ratelimiter.burst"
+
+	CMD_HOSTEDZONE_PREFIX = "hostedzone:"
+	CMD_STATISTIC         = "statistic"
 )

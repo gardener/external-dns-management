@@ -253,6 +253,65 @@ DNS ecosytems assigns this object to such a dedicated set of DNS controllers.
 This way it is possible to maintain clearly separated set of DNS objects in a
 single kubernetes cluster.
 
+### DNSAnnotation objects
+
+DNS source controllers support the creation of DNS entries for potentiialy
+any kind of resource originally not equipped to describe the generation of
+DNS entries. This is done by additionally annotations. Nevertheless it
+might be the case, that those objects are again the result of a generation
+process, ether by predefined helm starts or by other higher level controllers.
+It is not necessarily possible to influence those generation steps to
+additionally generate the deired DNS annotations. 
+
+The typical mechanis in Kubernetes to handle this is to provide mutating
+webhooks that enrich the generated objects accordingly. But this mechanism
+is basically not intended to support dedicated settings for dedicated instances.
+At least it is very strenous to provide web hooks for every such usecase.
+
+Therefore the DNS ecosystem provided by this project supports an additional
+extension mechanism to annotate any kind of object with additional annotations
+by supported a dedicated resource, the `DNSAnnotation`. 
+
+The handling of this resource is done by a dedicated controller, the `annotation`
+controller. It caches the annotation settings declared by those objects and
+makes them accessible for the DNS source controllers.
+
+The DNS source controller responsible for a dedicated kind of resource
+(for example Service reads the object analyses the annotations and then decides
+what to do with it. Most of the flow is handled by a central library, only
+some dedicated resource dependent steps are implemented separately by a
+dedicated source controller. The `DNSAnnotation`resource slightly extends this
+flow: After reading the object the library additionally checks for the existence
+of a `DNSAnnotation` setting for this object by querying the `annotation`
+controller's cache. If found, it adds annotations declared there to the original
+object prior to the next processing steps.
+This way, for example whenver a `Service` without
+any DNS related annotation is handled by the controller and it finds a matching
+`DNSAnnotation` setting, the set of actual annotations is enriched accordingly
+before the actual processing of the service object is done by the controller.
+
+This `DNSAnnotation` object can be created before or even after the object to
+be annotated and will implicity cause a reprocessing of the original object by
+its DNS source controller.
+
+For example, the following object enforces a DNS related annotation for the
+processing of the service object `testapp/default` by the service DNS source 
+controller:
+
+```yaml
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSAnnotation
+metadata:
+  name: testapp
+spec:
+  resourceRef:
+    kind: Service
+    apiVersion: v1
+    name: testapp
+  annotations:
+    dns.gardener.cloud/dnsnames: testapp.dns.gardener.cloud
+    dns.gardener.cloud/ttl: "500"
+```
 
 ## Using the DNS controller manager
 

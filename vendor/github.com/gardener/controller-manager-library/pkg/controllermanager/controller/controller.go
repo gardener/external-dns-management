@@ -17,54 +17,66 @@
 package controller
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/tools/record"
+
+	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"k8s.io/client-go/tools/record"
 )
 
-type ResourceFilter func(owning ResourceKey, resc resources.Object) bool
+const A_MAINTAINER = "crds.gardener.cloud/maintainer"
 
 type EventRecorder interface {
 	// The resulting event will be created in the same namespace as the reference object.
-	//Event(object runtime.ObjectData, eventtype, reason, message string)
+	// Event(object runtime.ObjectData, eventtype, reason, message string)
 
 	// Eventf is just like Event, but with Sprintf for the message field.
-	//Eventf(object runtime.ObjectData, eventtype, reason, messageFmt string, args ...interface{})
+	// Eventf(object runtime.ObjectData, eventtype, reason, messageFmt string, args ...interface{})
 
 	// PastEventf is just like Eventf, but with an option to specify the event's 'timestamp' field.
-	//PastEventf(object runtime.ObjectData, timestamp metav1.Time, eventtype, reason, messageFmt string, args ...interface{})
+	// PastEventf(object runtime.ObjectData, timestamp metav1.Time, eventtype, reason, messageFmt string, args ...interface{})
 
 	// AnnotatedEventf is just like eventf, but with annotations attached
-	//AnnotatedEventf(object runtime.ObjectData, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{})
+	// AnnotatedEventf(object runtime.ObjectData, annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{})
 }
 
-type Environment interface {
-	GetContext() context.Context
-	GetClusters() cluster.Clusters
-	GetCluster(name string) cluster.Interface
-	GetConfig() *config.Config
-	GetSharedValue(key interface{}) interface{}
-	GetOrCreateSharedValue(key interface{}, create func() interface{}) interface{}
-	//GetSharedOption(name string) *config.ArbitraryOption
+type ReconcilationElementSpec interface {
+	String() string
 }
 
-type _ReconcilerMapping struct {
-	key        interface{}
+var _ ReconcilationElementSpec = schema.GroupKind{}
+var _ ReconcilationElementSpec = utils.Matcher(nil)
+
+type _ReconcilationKey struct {
+	key        ReconcilationElementSpec
 	cluster    string
 	reconciler string
+}
+
+type _Reconcilations map[_ReconcilationKey]string
+
+func (this _Reconcilations) Get(cluster resources.Cluster, gk schema.GroupKind) utils.StringSet {
+	reconcilers := utils.StringSet{}
+	cluster_name := cluster.GetName()
+	for k := range this {
+		if k.cluster == cluster_name && k.key == gk {
+			reconcilers.Add(k.reconciler)
+		}
+	}
+	return reconcilers
 }
 
 type ReadyFlag struct {
@@ -91,21 +103,26 @@ func (this *ReadyFlag) start() {
 }
 
 type controller struct {
+	extension.ElementBase
 	record.EventRecorder
-	SharedAttributes
 
-	ready       ReadyFlag
-	definition  Definition
-	env         Environment
-	ctx         context.Context
-	cluster     cluster.Interface
-	clusters    cluster.Clusters
-	filters     []ResourceFilter
-	owning      WatchResource
-	reconcilers map[string]reconcile.Interface
-	mappings    map[_ReconcilerMapping]string
-	finalizer   Finalizer
+	sharedAttributes
 
+	ready           ReadyFlag
+	definition      Definition
+	env             Environment
+	cluster         cluster.Interface
+	clusters        cluster.Clusters
+	filters         []ResourceFilter
+	owning          WatchResource
+	watches         map[string][]Watch
+	reconcilers     map[string]reconcile.Interface
+	reconcilerNames map[reconcile.Interface]string
+	mappings        _Reconcilations
+	syncRequests    *SyncRequests
+	finalizer       Finalizer
+
+	options  *ControllerConfig
 	handlers map[string]*ClusterHandler
 
 	pools map[string]*pool
@@ -116,39 +133,50 @@ func Filter(owning ResourceKey, resc resources.Object) bool {
 }
 
 func NewController(env Environment, def Definition, cmp mappings.Definition) (*controller, error) {
+	options := env.GetConfig().GetSource(def.Name()).(*ControllerConfig)
+
+	this := &controller{
+		definition: def,
+		options:    options,
+		env:        env,
+
+		owning:  def.MainWatchResource(),
+		filters: def.ResourceFilters(),
+
+		handlers:        map[string]*ClusterHandler{},
+		watches:         map[string][]Watch{},
+		pools:           map[string]*pool{},
+		reconcilers:     map[string]reconcile.Interface{},
+		reconcilerNames: map[reconcile.Interface]string{},
+		mappings:        _Reconcilations{},
+		finalizer:       NewDefaultFinalizer(def.FinalizerName()),
+	}
+
+	this.syncRequests = NewSyncRequests(this)
+
+	ctx := ctxutil.WaitGroupContext(env.GetContext(), "controller ", def.Name())
+	this.ElementBase = extension.NewElementBase(ctx, ctx_controller, this, def.Name(), options)
+	this.sharedAttributes.LogContext = this.ElementBase
+	this.ready.start()
 
 	required := cluster.Canonical(def.RequiredClusters())
 	clusters, err := mappings.MapClusters(env.GetClusters(), cmp, required...)
 	if err != nil {
 		return nil, err
 	}
-	cluster := clusters.GetCluster(required[0])
-
-	this := &controller{
-		EventRecorder: cluster.Resources(),
-
-		definition: def,
-		env:        env,
-		cluster:    cluster,
-		clusters:   clusters,
-
-		owning:  def.MainWatchResource(),
-		filters: def.ResourceFilters(),
-
-		handlers:    map[string]*ClusterHandler{},
-		pools:       map[string]*pool{},
-		reconcilers: map[string]reconcile.Interface{},
-		mappings:    map[_ReconcilerMapping]string{},
-		finalizer:   NewDefaultFinalizer(def.FinalizerName()),
-	}
-
-	this.ready.start()
-
-	this.ctx, this.LogContext = logger.WithLogger(
-		ctxutil.SyncContext(
-			context.WithValue(env.GetContext(), typekey, this)),
-		"this", def.GetName())
 	this.Infof("  using clusters %+v: %s (selected from %s)", required, clusters, env.GetClusters())
+	if def.Scheme() != nil {
+		if def.Scheme() != resources.DefaultScheme() {
+			this.Infof("  using dedicated scheme for clusters")
+		}
+		clusters, err = clusters.WithScheme(def.Scheme())
+		if err != nil {
+			return nil, err
+		}
+	}
+	this.clusters = clusters
+	this.cluster = clusters.GetCluster(required[0])
+	this.EventRecorder = this.cluster.Resources()
 
 	for n, crds := range def.CustomResourceDefinitions() {
 		cluster := clusters.GetCluster(n)
@@ -159,14 +187,14 @@ func NewController(env Environment, def Definition, cmp mappings.Definition) (*c
 			this.Infof("deployment of required crds is disabled for cluster %q (used for %q)", cluster.GetName(), n)
 			continue
 		}
-		this.Infof("create required crds for cluster %q (used for %q)", cluster.GetName(), n)
+		this.Infof("ensure required crds for cluster %q (used for %q)", cluster.GetName(), n)
+		log := this.AddIndent("  ")
 		for _, v := range crds {
-			crd := v.GetFor(cluster)
+			crd := v.GetFor(cluster.GetServerVersion())
 			if crd != nil {
-				this.Infof("   %s", crd.Name)
-				err := apiextensions.CreateCRDFromObject(cluster, crd)
+				err = apiextensions.CreateCRDFromObject(log, cluster, crd.DataFor(cluster, nil), env.ControllerManager().GetMaintainer())
 				if err != nil {
-					return nil, fmt.Errorf("creating CRD for %s failed: %s", crd.Name, err)
+					return nil, err
 				}
 			}
 		}
@@ -178,29 +206,42 @@ func NewController(env Environment, def Definition, cmp mappings.Definition) (*c
 			return nil, fmt.Errorf("creating reconciler %s failed: %s", n, err)
 		}
 		this.reconcilers[n] = reconciler
+		this.reconcilerNames[reconciler] = n
 	}
 
 	for cname, watches := range this.definition.Watches() {
 		for _, w := range watches {
-			err := this.addReconciler(cname, w.ResourceType().GroupKind(), w.PoolName(), w.Reconciler())
+			ok, err := this.addReconciler(cname, w.ResourceType().GroupKind(), w.PoolName(), w.Reconciler())
 			if err != nil {
 				this.Errorf("GOT error: %s", err)
 				return nil, err
 			}
+			if ok {
+				this.watches[cname] = append(this.watches[cname], w)
+			}
 		}
 	}
-	err = this.addReconciler(required[0], this.Owning().GroupKind(), DEFAULT_POOL, DEFAULT_RECONCILER)
+	_, err = this.addReconciler(required[0], this.Owning().GroupKind(), DEFAULT_POOL, DEFAULT_RECONCILER)
 	if err != nil {
 		return nil, err
 	}
 
 	for _, cmds := range this.GetDefinition().Commands() {
 		for _, cmd := range cmds {
-			err := this.addReconciler("", cmd.Key(), cmd.PoolName(), cmd.Reconciler())
+			_, err := this.addReconciler("", cmd.Key(), cmd.PoolName(), cmd.Reconciler())
 			if err != nil {
 				return nil, fmt.Errorf("Add matcher for reconciler %s failed: %s", cmd.Reconciler(), err)
 			}
 		}
+	}
+	for _, s := range this.GetDefinition().Syncers() {
+		cluster := clusters.GetCluster(s.GetCluster())
+		reconcilers := this.mappings.Get(cluster, s.GetResource().GroupKind())
+		if len(reconcilers) == 0 {
+			return nil, fmt.Errorf("resource %q not watched for cluster %s", s.GetResource(), s.GetCluster())
+		}
+		this.syncRequests.AddSyncer(NewSyncer(s.GetName(), s.GetResource(), cluster))
+		this.Infof("adding syncer %s for resource %s on cluster %s", s.GetName(), s.GetResource(), cluster)
 	}
 
 	return this, nil
@@ -222,75 +263,69 @@ func (this *controller) GetReconciler(name string) reconcile.Interface {
 	return this.reconcilers[name]
 }
 
-func (this *controller) addReconciler(cname string, key interface{}, pool string, reconciler string) error {
+func (this *controller) addReconciler(cname string, spec ReconcilationElementSpec, pool string, reconciler string) (bool, error) {
 	r := this.reconcilers[reconciler]
 	if r == nil {
-		return fmt.Errorf("reconciler %q not found for %q", reconciler, key)
+		return false, fmt.Errorf("reconciler %q not found for %q", reconciler, spec)
 	}
+
+	cluster := this.cluster
 	cluster_name := ""
 	aliases := utils.StringSet{}
 	if cname != "" {
-		cluster := this.clusters.GetCluster(cname)
+		cluster = this.clusters.GetCluster(cname)
 		if cluster == nil {
-			return fmt.Errorf("cluster %q not found for %q", mappings.ClusterName(cname), key)
+			return false, fmt.Errorf("cluster %q not found for %q", mappings.ClusterName(cname), spec)
 		}
 		cluster_name = cluster.GetName()
 		aliases = this.clusters.GetAliases(cluster.GetName())
 	}
-	src := _ReconcilerMapping{key: key, cluster: cluster_name, reconciler: reconciler}
+	if gk, ok := spec.(schema.GroupKind); ok {
+		if reject, ok := r.(reconcile.ReconcilationRejection); ok {
+			if reject.RejectResourceReconcilation(cluster, gk) {
+				this.Infof("reconciler %s rejects resource reconcilation resource %s for cluster %s",
+					reconciler, gk, cluster.GetName())
+				return false, nil
+			}
+			this.Infof("reconciler %s supports reconcilation rejection and accepts resource %s for cluster %s",
+				reconciler, gk, cluster.GetName())
+		}
+	}
+
+	src := _ReconcilationKey{key: spec, cluster: cluster_name, reconciler: reconciler}
 	mapping, ok := this.mappings[src]
 	if ok {
 		if mapping != pool {
-			return fmt.Errorf("a key (%s) for the same cluster %q (used for %s) and reconciler (%s) can only be handled by one pool (found %q and %q)", key, cluster_name, aliases, reconciler, pool, mapping)
+			return false, fmt.Errorf("a key (%s) for the same cluster %q (used for %s) and reconciler (%s) can only be handled by one pool (found %q and %q)", spec, cluster_name, aliases, reconciler, pool, mapping)
 		}
 	} else {
 		this.mappings[src] = pool
 	}
 
 	if cname == "" {
-		this.Infof("*** adding reconciler %q for %q using pool %q", reconciler, key, pool)
+		this.Infof("*** adding reconciler %q for %q using pool %q", reconciler, spec, pool)
 	} else {
-		this.Infof("*** adding reconciler %q for %q in cluster %q (used for %q) using pool %q", reconciler, key, cluster_name, mappings.ClusterName(cname), pool)
+		this.Infof("*** adding reconciler %q for %q in cluster %q (used for %q) using pool %q", reconciler, spec, cluster_name, mappings.ClusterName(cname), pool)
 	}
-	this.getPool(pool).addReconciler(key, r)
-	return nil
+	this.getPool(pool).addReconciler(spec, r)
+	return true, nil
 }
 
 func (this *controller) getPool(name string) *pool {
 	pool := this.pools[name]
 	if pool == nil {
 		def := this.definition.Pools()[name]
+
 		if def == nil {
-			def = &pooldef{name: name, size: 5, period: 30 * time.Second}
+			panic(fmt.Sprintf("unknown pool %q for controller %q", name, this.GetName()))
 		}
-		size := def.Size()
-		{
-			opt := this.env.GetConfig().GetOption(PoolSizeOptionName(this.GetName(), name))
-
-			if shared := this.env.GetConfig().GetOption(POOL_SIZE_OPTION); shared != nil && shared.Changed() && (opt == nil || !opt.Changed()) {
-				if shared != nil && shared.Changed() {
-					opt = shared
-				}
-			}
-			if opt != nil {
-				size = opt.IntValue()
-			}
-		}
-
+		this.Infof("get pool config %q", def.GetName())
+		options := this.options.PrefixedShared().GetSource(def.GetName()).(config.OptionSet)
+		size := options.GetOption(POOL_SIZE_OPTION).IntValue()
 		period := def.Period()
-		{
-			opt := this.env.GetConfig().GetOption(PoolResyncPeriodOptionName(this.GetName(), name))
-
-			if shared := this.env.GetConfig().GetOption(POOL_RESYNC_PERIOD_OPTION); shared != nil && shared.Changed() && (opt == nil || !opt.Changed()) {
-				if shared != nil && shared.Changed() {
-					opt = shared
-				}
-			}
-			if opt != nil {
-				period = opt.DurationValue()
-			}
+		if period != 0 {
+			period = options.GetOption(POOL_RESYNC_PERIOD_OPTION).DurationValue()
 		}
-
 		pool = NewPool(this, name, size, period)
 		this.pools[name] = pool
 	}
@@ -305,16 +340,20 @@ func (this *controller) GetPool(name string) Pool {
 	return pool
 }
 
-func (this *controller) GetName() string {
-	return this.definition.GetName()
-}
-
 func (this *controller) GetEnvironment() Environment {
 	return this.env
 }
 
 func (this *controller) GetDefinition() Definition {
 	return this.definition
+}
+
+func (this *controller) GetOptionSource(name string) (config.OptionSource, error) {
+	src := this.options.PrefixedShared().GetSource(CONTROLLER_SET_PREFIX + name)
+	if src == nil {
+		return nil, fmt.Errorf("option source %s not found for controller %s", name, this.GetName())
+	}
+	return src, nil
 }
 
 func (this *controller) GetClusterHandler(name string) (*ClusterHandler, error) {
@@ -336,7 +375,7 @@ func (this *controller) GetClusterById(id string) cluster.Interface {
 }
 
 func (this *controller) GetCluster(name string) cluster.Interface {
-	if name == CLUSTER_MAIN {
+	if name == CLUSTER_MAIN || name == "" {
 		return this.GetMainCluster()
 	}
 	return this.clusters.GetCluster(name)
@@ -406,71 +445,12 @@ func (this *controller) GetMainWatchResource() WatchResource {
 	return this.owning
 }
 
-func (this *controller) GetContext() context.Context {
-	return this.ctx
-}
-
-func (this *controller) GetOption(name string) (*config.ArbitraryOption, error) {
-	n := ControllerOption(this.GetName(), name)
-	opt := this.env.GetConfig().GetOption(n)
-	if opt == nil {
-		return nil, fmt.Errorf("unknown option %q for controller %q", name, this.GetName())
-	}
-	shared := this.env.GetConfig().GetOption(name)
-	/*
-		this.Infof("getting option %q(%q) for controller %q [changed %t]", name, n, this.GetName(), opt.Changed())
-		if shared != nil {
-			this.Infof("   shared option %q [changed %t]", shared.Name, shared.Changed())
-		}
-	*/
-	if !opt.Changed() && shared != nil && shared.Changed() {
-		opt = shared
-	}
-	return opt, nil
-}
-
-func (this *controller) GetBoolOption(name string) (bool, error) {
-	opt, err := this.GetOption(name)
-	if err != nil {
-		return false, err
-	}
-	return opt.BoolValue(), nil
-}
-func (this *controller) GetStringOption(name string) (string, error) {
-	opt, err := this.GetOption(name)
-	if err != nil {
-		return "", err
-	}
-	return opt.StringValue(), nil
-}
-func (this *controller) GetStringArrayOption(name string) ([]string, error) {
-	opt, err := this.GetOption(name)
-	if err != nil {
-		return []string{}, err
-	}
-	return opt.StringArray(), nil
-}
-func (this *controller) GetIntOption(name string) (int, error) {
-	opt, err := this.GetOption(name)
-	if err != nil {
-		return 0, err
-	}
-	return opt.IntValue(), nil
-}
-func (this *controller) GetDurationOption(name string) (time.Duration, error) {
-	opt, err := this.GetOption(name)
-	if err != nil {
-		return 0, err
-	}
-	return opt.DurationValue(), nil
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // controller start up
 
 // Check does all the checks that might cause Prepare to fail
 // after a successful check Prepare can execute without error
-func (this *controller) Check() error {
+func (this *controller) check() error {
 	h, err := this.GetClusterHandler(CLUSTER_MAIN)
 	if err != nil {
 		return err
@@ -515,7 +495,7 @@ func (this *controller) registerWatch(h *ClusterHandler, r WatchResource, p stri
 // all error conditions MUST also be checked
 // in Check, so after a successful checkController
 // startController MUST not return an error.
-func (this *controller) Prepare() error {
+func (this *controller) prepare() error {
 	h, err := this.GetClusterHandler(CLUSTER_MAIN)
 	if err != nil {
 		return err
@@ -533,7 +513,7 @@ func (this *controller) Prepare() error {
 	if err != nil {
 		return err
 	}
-	for cname, watches := range this.GetDefinition().Watches() {
+	for cname, watches := range this.watches {
 		h, err := this.GetClusterHandler(cname)
 		if err != nil {
 			return err
@@ -554,7 +534,7 @@ func (this *controller) Run() {
 	this.ready.ready()
 	this.Infof("starting pools...")
 	for _, p := range this.pools {
-		ctxutil.SyncPointRunAndCancelOnExit(this.ctx, p.Run)
+		ctxutil.WaitGroupRunAndCancelOnExit(this.GetContext(), p.Run)
 	}
 
 	this.Infof("starting reconcilers...")
@@ -562,16 +542,16 @@ func (this *controller) Run() {
 		r.Start()
 	}
 	this.Infof("controller started")
-	<-this.ctx.Done()
+	<-this.GetContext().Done()
 	this.Info("waiting for worker pools to shutdown")
-	ctxutil.SyncPointWait(this.ctx, 120*time.Second)
+	ctxutil.WaitGroupWait(this.GetContext(), 120*time.Second)
 	this.Info("exit controller")
 }
 
 func (this *controller) mustHandle(r resources.Object) bool {
 	for _, f := range this.filters {
 		if !f(this.owning.ResourceType(), r) {
-			this.Infof("%s rejected by filter %v", r.Description(), f)
+			this.Debugf("%s rejected by filter", r.Description())
 			return false
 		}
 	}
@@ -609,4 +589,12 @@ func (this *controller) DecodeKey(key string) (string, *resources.ClusterObjectK
 
 	r, err := cluster.GetCachedObject(objKey)
 	return "", &objKey, r, err
+}
+
+func (this *controller) Synchronize(log logger.LogContext, name string, initiator resources.Object) (bool, error) {
+	return this.syncRequests.Synchronize(log, name, initiator)
+}
+
+func (this *controller) requestHandled(log logger.LogContext, reconciler reconcile.Interface, key resources.ClusterObjectKey) {
+	this.syncRequests.requestHandled(log, this.reconcilerNames[reconciler], key)
 }

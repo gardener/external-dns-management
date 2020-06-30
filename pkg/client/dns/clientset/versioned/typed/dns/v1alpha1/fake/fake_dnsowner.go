@@ -34,9 +34,9 @@ type FakeDNSOwners struct {
 	ns   string
 }
 
-var dnsownersResource = schema.GroupVersionResource{Group: "dns", Version: "v1alpha1", Resource: "dnsowners"}
+var dnsownersResource = schema.GroupVersionResource{Group: "dns.gardener.cloud", Version: "v1alpha1", Resource: "dnsowners"}
 
-var dnsownersKind = schema.GroupVersionKind{Group: "dns", Version: "v1alpha1", Kind: "DNSOwner"}
+var dnsownersKind = schema.GroupVersionKind{Group: "dns.gardener.cloud", Version: "v1alpha1", Kind: "DNSOwner"}
 
 // Get takes name of the dNSOwner, and returns the corresponding dNSOwner object, and an error if there is any.
 func (c *FakeDNSOwners) Get(name string, options v1.GetOptions) (result *v1alpha1.DNSOwner, err error) {
@@ -93,6 +93,18 @@ func (c *FakeDNSOwners) Create(dNSOwner *v1alpha1.DNSOwner) (result *v1alpha1.DN
 func (c *FakeDNSOwners) Update(dNSOwner *v1alpha1.DNSOwner) (result *v1alpha1.DNSOwner, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(dnsownersResource, c.ns, dNSOwner), &v1alpha1.DNSOwner{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v1alpha1.DNSOwner), err
+}
+
+// UpdateStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+func (c *FakeDNSOwners) UpdateStatus(dNSOwner *v1alpha1.DNSOwner) (*v1alpha1.DNSOwner, error) {
+	obj, err := c.Fake.
+		Invokes(testing.NewUpdateSubresourceAction(dnsownersResource, "status", c.ns, dNSOwner), &v1alpha1.DNSOwner{})
 
 	if obj == nil {
 		return nil, err

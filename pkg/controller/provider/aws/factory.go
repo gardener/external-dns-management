@@ -23,7 +23,14 @@ import (
 
 const TYPE_CODE = "aws-route53"
 
-var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler)
+var rateLimiterDefaults = provider.RateLimiterOptions{
+	Enabled: true,
+	QPS:     9,
+	Burst:   10,
+}
+
+var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler).
+	SetGenericFactoryOptionDefaults(provider.GenericFactoryOptionDefaults.SetRateLimiterOptions(rateLimiterDefaults))
 
 func init() {
 	compound.MustRegister(Factory)

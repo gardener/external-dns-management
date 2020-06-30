@@ -25,9 +25,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/resources/access"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -47,9 +50,12 @@ type EntryPremise struct {
 	ptype    string
 	provider DNSProvider
 	zoneid   string
+
+	// non-identifying fields
+	zonedomain string
 }
 
-func (this *EntryPremise) Equals(p *EntryPremise) bool {
+func (this *EntryPremise) Match(p *EntryPremise) bool {
 	return this.ptype == p.ptype && this.provider == p.provider && this.zoneid == p.zoneid
 }
 
@@ -71,11 +77,12 @@ func (this *EntryPremise) NotifyChange(p *EntryPremise) string {
 }
 
 type EntryVersion struct {
-	object   *dnsutils.DNSEntryObject
-	dnsname  string
-	targets  Targets
-	mappings map[string][]string
-	warnings []string
+	object       *dnsutils.DNSEntryObject
+	providername resources.ObjectName
+	dnsname      string
+	targets      Targets
+	mappings     map[string][]string
+	warnings     []string
 
 	status api.DNSEntryStatus
 
@@ -187,6 +194,10 @@ func (this *EntryVersion) ProviderType() string {
 	return utils.StringValue(this.status.ProviderType)
 }
 
+func (this *EntryVersion) ProviderName() resources.ObjectName {
+	return this.providername
+}
+
 func (this *EntryVersion) OwnerId() string {
 	if this.object.GetOwnerId() != nil {
 		return *this.object.GetOwnerId()
@@ -194,8 +205,64 @@ func (this *EntryVersion) OwnerId() string {
 	return ""
 }
 
-func validate(state *state, entry *EntryVersion) (targets Targets, warnings []string, err error) {
-	spec := &entry.object.DNSEntry().Spec
+func complete(logger logger.LogContext, state *state, spec *api.DNSEntrySpec, object resources.Object, prefix string) error {
+	if spec.Reference != nil && spec.Reference.Name != "" {
+		ns := spec.Reference.Namespace
+		if ns == "" {
+			ns = object.GetNamespace()
+		}
+		dnsref := resources.NewObjectName(ns, spec.Reference.Name)
+		logger.Infof("completeing spec by reference: %s%s", prefix, dnsref)
+
+		cur := object.ClusterKey()
+		key := resources.NewClusterKey(cur.Cluster(), cur.GroupKind(), dnsref.Namespace(), dnsref.Name())
+		state.references.AddRef(cur, key)
+
+		ref, err := object.GetResource().GetCached(dnsref)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				err = fmt.Errorf("entry reference %s%q not found", prefix, dnsref)
+			}
+			logger.Warn(err)
+			return err
+		}
+		err = access.CheckAccessWithRealms(object, "use", ref, state.realms)
+		if err != nil {
+			return fmt.Errorf("%s%s", prefix, err)
+		}
+		rspec := *dnsutils.DNSEntry(ref).Spec()
+		err = complete(logger, state, &rspec, ref, fmt.Sprintf("%s%s->", prefix, dnsref))
+		if err != nil {
+			return err
+		}
+
+		if spec.Targets != nil {
+			return fmt.Errorf("%stargets specified together with entry reference", prefix)
+		}
+		if spec.Text != nil {
+			err = fmt.Errorf("%stext specified together with entry reference", prefix)
+			return err
+		}
+		spec.Targets = rspec.Targets
+		spec.Text = rspec.Text
+
+		if spec.TTL == nil {
+			spec.TTL = rspec.TTL
+		}
+		if spec.OwnerId == nil {
+			spec.OwnerId = rspec.OwnerId
+		}
+		if spec.CNameLookupInterval == nil {
+			spec.CNameLookupInterval = rspec.CNameLookupInterval
+		}
+	} else {
+		state.references.DelRef(object.ClusterKey())
+	}
+	return nil
+}
+
+func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *EntryPremise) (effspec api.DNSEntrySpec, targets Targets, warnings []string, err error) {
+	effspec = entry.object.DNSEntry().Spec
 
 	targets = Targets{}
 	warnings = []string{}
@@ -213,16 +280,27 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 			return
 		}
 	}
-	if len(spec.Targets) > 0 && len(spec.Text) > 0 {
+
+	err = complete(logger, state, &effspec, entry.object, "")
+	if err != nil {
+		return
+	}
+
+	if p.zonedomain == entry.dnsname {
+		err = fmt.Errorf("usage of dns name (%s) identical to domain of hosted zone (%s) is not supported",
+			p.zonedomain, p.zoneid)
+		return
+	}
+	if len(effspec.Targets) > 0 && len(effspec.Text) > 0 {
 		err = fmt.Errorf("only Text or Targets possible: %s", err)
 		return
 	}
-	if spec.TTL != nil && (*spec.TTL == 0 || *spec.TTL < 0) {
+	if effspec.TTL != nil && (*effspec.TTL == 0 || *effspec.TTL < 0) {
 		err = fmt.Errorf("TTL must be greater than zero: %s", err)
 		return
 	}
 
-	for i, t := range spec.Targets {
+	for i, t := range effspec.Targets {
 		if strings.TrimSpace(t) == "" {
 			err = fmt.Errorf("target %d must not be empty", i+1)
 			return
@@ -238,7 +316,8 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 			targets = append(targets, new)
 		}
 	}
-	for _, t := range spec.Text {
+	tcnt := 0
+	for _, t := range effspec.Text {
 		if t == "" {
 			warnings = append(warnings, fmt.Sprintf("dns entry %q has empty text", entry.ObjectName()))
 			continue
@@ -248,16 +327,17 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate text %q", entry.ObjectName(), new))
 		} else {
 			targets = append(targets, new)
+			tcnt++
 		}
 	}
-	if len(targets) == 0 {
+	if len(effspec.Text) > 0 && tcnt == 0 {
 		err = fmt.Errorf("dns entry has only empty text")
 		return
 	}
 
-	if utils.StringValue(spec.OwnerId) != "" {
-		if !state.ownerCache.IsResponsibleFor(*spec.OwnerId) {
-			err = fmt.Errorf("unknown owner id '%s'", *spec.OwnerId)
+	if utils.StringValue(effspec.OwnerId) != "" {
+		if !state.ownerCache.IsResponsibleFor(*effspec.OwnerId) {
+			err = fmt.Errorf("unknown owner id '%s'", *effspec.OwnerId)
 		}
 	}
 	if len(targets) == 0 {
@@ -267,11 +347,11 @@ func validate(state *state, entry *EntryVersion) (targets Targets, warnings []st
 }
 
 func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config, old *Entry) reconcile.Status {
-	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider))
+	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s, ref %+v", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider), this.Object().Spec().Reference)
 
 	this.valid = false
 	this.responsible = false
-	spec := &this.object.DNSEntry().Spec
+	spec := this.object.DNSEntry().Spec
 
 	///////////// handle type responsibility
 
@@ -327,6 +407,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	this.status.ProviderType = &p.ptype
 	this.responsible = true
 	if p.provider != nil {
+		this.providername = p.provider.ObjectName()
 		provider = p.provider.ObjectName().String()
 		this.status.Provider = &provider
 		defaultTTL := config.TTL
@@ -335,15 +416,18 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			this.status.TTL = spec.TTL
 		}
 	} else {
+		this.providername = nil
 		this.status.Provider = nil
 		this.status.TTL = nil
 	}
 
-	spec = &this.object.DNSEntry().Spec
-
 	///////////// validate
 
-	targets, warnings, verr := validate(state, this)
+	spec, targets, warnings, verr := validate(logger, state, this, p)
+	if p.provider != nil && spec.TTL != nil {
+		this.status.TTL = spec.TTL
+
+	}
 
 	if verr != nil {
 		hello.Infof(logger, "validation failed: %s", verr)
@@ -579,6 +663,10 @@ func NewEntry(v *EntryVersion, state *state) *Entry {
 	}
 }
 
+func (this *Entry) RemoveFinalizer() error {
+	return this.state.RemoveFinalizer(this.object.DeepCopy())
+}
+
 func (this *Entry) Trigger(logger logger.LogContext) {
 	this.state.TriggerEntry(logger, this)
 }
@@ -643,11 +731,26 @@ func (this *Entry) Before(e *Entry) bool {
 	return this.Object().GetCreationTimestamp().Time.Before(e.Object().GetCreationTimestamp().Time)
 }
 
+func (this *Entry) updateStatistic(statistic *statistic.EntryStatistic) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	statistic.Owners.Inc(this.OwnerId(), this.ProviderType(), this.ProviderName())
+	statistic.Providers.Inc(this.ProviderType(), this.ProviderName())
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Entries
 ////////////////////////////////////////////////////////////////////////////////
 
 type Entries map[resources.ObjectName]*Entry
+
+func (this Entries) AddResponsibleTo(list *EntryList) {
+	for _, e := range this {
+		if e.IsResponsible() {
+			*list = append(*list, e)
+		}
+	}
+}
 
 func (this Entries) AddEntry(entry *Entry) *Entry {
 	old := this[entry.ObjectName()]
@@ -703,6 +806,12 @@ func (this EntryList) Lock() {
 func (this EntryList) Unlock() {
 	for _, e := range this {
 		e.lock.Unlock()
+	}
+}
+
+func (this EntryList) UpdateStatistic(statistic *statistic.EntryStatistic) {
+	for _, e := range this {
+		e.updateStatistic(statistic)
 	}
 }
 

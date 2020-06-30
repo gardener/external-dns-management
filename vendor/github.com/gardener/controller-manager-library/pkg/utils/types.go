@@ -28,7 +28,11 @@ func IsNil(o interface{}) bool {
 		return true
 	}
 	v := reflect.ValueOf(o)
-	return v.Kind() == reflect.Ptr && v.IsNil()
+	switch v.Kind() {
+	case reflect.Chan, reflect.Func, reflect.Map, reflect.Slice, reflect.Interface, reflect.Ptr, reflect.UnsafePointer:
+		return v.IsNil()
+	}
+	return false
 }
 
 func SetValue(f reflect.Value, v interface{}) error {
@@ -41,10 +45,19 @@ func SetValue(f reflect.Value, v interface{}) error {
 		}
 	}
 	if !f.CanSet() {
-		f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem() // yepp, access unexported fields
+		if !f.CanInterface() && f.CanAddr() {
+			f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem() // yepp, access unexported fields
+		}
 	}
 	f.Set(vv)
 	return nil
+}
+
+func GetValue(f reflect.Value) interface{} {
+	if !f.CanInterface() && f.CanAddr() {
+		f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem() // yepp, access unexported fields
+	}
+	return f.Interface()
 }
 
 func IsEmptyString(s *string) bool {
@@ -76,4 +89,17 @@ func Int64Equal(a, b *int64) bool {
 
 func Strings(s ...string) string {
 	return "[" + strings.Join(s, ", ") + "]"
+}
+
+func StringArrayAddUnique(array *[]string, values ...string) []string {
+values:
+	for _, v := range values {
+		for _, o := range *array {
+			if v == o {
+				continue values
+			}
+		}
+		*array = append(*array, v)
+	}
+	return *array
 }

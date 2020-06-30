@@ -17,8 +17,9 @@
 package resources
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/logger"
 	"k8s.io/client-go/tools/cache"
+
+	"github.com/gardener/controller-manager-library/pkg/logger"
 )
 
 func convert(resource Interface, funcs *ResourceEventHandlerFuncs) *cache.ResourceEventHandlerFuncs {

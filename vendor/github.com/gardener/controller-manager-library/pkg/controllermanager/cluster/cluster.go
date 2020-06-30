@@ -22,9 +22,10 @@ import (
 	"os"
 	"time"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/Masterminds/semver"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/config"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -35,9 +36,6 @@ import (
 )
 
 const DEFAULT = "default"
-
-const SUBOPTION_ID = ".id"
-const SUBOPTION_DISABLE_DEPLOY_CRDS = ".disable-deploy-crds"
 
 func Canonical(names []string) []string {
 	if names == nil {
@@ -71,24 +69,24 @@ type Interface interface {
 	Config() restclient.Config
 	Resources() resources.Resources
 	ResourceContext() resources.ResourceContext
-	IsLocal() bool
 	Definition() Definition
 
+	WithScheme(scheme *runtime.Scheme) (Interface, error)
 	resources.ClusterSource
 }
 
 type Extension interface {
-	ExtendConfig(def Definition, cfg *config.Config)
-	Extend(cluster Interface, config *config.Config) error
+	ExtendConfig(def Definition, cfg *Config)
+	Extend(cluster Interface, config *Config) error
 }
 
 type _Cluster struct {
 	name       string
 	id         string
 	definition Definition
-	local      bool
 	kubeConfig *restclient.Config
 	ctx        context.Context
+	logctx     logger.LogContext
 	rctx       resources.ResourceContext
 	resources  resources.Resources
 	attributes map[interface{}]interface{}
@@ -102,10 +100,6 @@ func (this *_Cluster) GetCluster() resources.Cluster {
 
 func (this *_Cluster) GetName() string {
 	return this.name
-}
-
-func (this *_Cluster) IsLocal() bool {
-	return this.local
 }
 
 func (this *_Cluster) Definition() Definition {
@@ -168,7 +162,7 @@ func (this *_Cluster) GetServerVersion() *semver.Version {
 }
 
 func (this *_Cluster) setup(logger logger.LogContext) error {
-	rctx, err := resources.NewResourceContext(this.ctx, this, nil, 0*time.Second)
+	rctx, err := resources.NewResourceContext(this.ctx, this, this.definition.Scheme(), 0*time.Second)
 	if err != nil {
 		return err
 	}
@@ -177,27 +171,43 @@ func (this *_Cluster) setup(logger logger.LogContext) error {
 	return nil
 }
 
-func CreateCluster(ctx context.Context, logger logger.LogContext, req Definition, id string, kubeconfig string) (Interface, error) {
-	name := req.Name()
-	cluster := &_Cluster{name: name, attributes: map[interface{}]interface{}{}}
+func (this *_Cluster) WithScheme(scheme *runtime.Scheme) (Interface, error) {
+	if scheme == nil || this.rctx.Scheme() == scheme {
+		return this, nil
+	}
+	logger.Infof("  clone cluster %q[%s] for new scheme", this.name, this.id)
+	return CreateClusterForScheme(this.ctx, this.logctx, this.definition, this.id, this.kubeConfig, scheme)
+}
 
+func CreateCluster(ctx context.Context, logger logger.LogContext, def Definition, id string, kubeconfig string) (Interface, error) {
 	if kubeconfig == "" {
 		kubeconfig = os.Getenv("KUBECONFIG")
 	}
-
+	name := def.Name()
 	logger.Infof("using %q for cluster %q[%s]", kubeconfig, name, id)
 	kubeConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cluster %q: %s", name, err)
 	}
+	return CreateClusterForScheme(ctx, logger, def, id, kubeConfig, nil)
+}
 
+func CreateClusterForScheme(ctx context.Context, logger logger.LogContext, def Definition, id string, kubeconfig *restclient.Config, scheme *runtime.Scheme) (Interface, error) {
+	cluster := &_Cluster{name: def.Name(), attributes: map[interface{}]interface{}{}}
+
+	if def.Scheme() == nil {
+		scheme = resources.DefaultScheme()
+	}
+	if scheme != nil && def.Scheme() != scheme {
+		def = def.Configure().Scheme(scheme).Definition()
+	}
 	cluster.ctx = ctx
-	cluster.definition = req
+	cluster.logctx = logger
+	cluster.definition = def
 	cluster.id = id
-	cluster.kubeConfig = kubeConfig
-	cluster.local = kubeconfig == ""
+	cluster.kubeConfig = kubeconfig
 
-	err = cluster.setup(logger)
+	err := cluster.setup(logger)
 	if err != nil {
 		return nil, err
 	}
@@ -209,38 +219,103 @@ func CreateCluster(ctx context.Context, logger logger.LogContext, req Definition
 // cluster set
 ///////////////////////////////////////////////////////////////////////////////
 
+type clusters map[string]Interface
+
+func (this clusters) Names() utils.StringSet {
+	set := utils.StringSet{}
+	for n := range this {
+		set.Add(n)
+	}
+	return set
+}
+
 type Clusters interface {
+	Names() utils.StringSet
 	GetCluster(name string) Interface
 	GetById(id string) Interface
 	GetClusters(name ...string) (Clusters, error)
 
+	EffectiveNames() utils.StringSet
 	GetEffective(name string) Interface
 	GetAliases(name string) utils.StringSet
 
 	GetObject(key resources.ClusterObjectKey) (resources.Object, error)
 	GetCachedObject(key resources.ClusterObjectKey) (resources.Object, error)
 
+	Ids() utils.StringSet
+
 	String() string
+
+	WithScheme(scheme *runtime.Scheme) (Clusters, error)
+	Cache() SchemeCache
 }
 
 type _Clusters struct {
+	cache     SchemeCache
 	infos     map[string]string
 	mapped    map[string]utils.StringSet
-	clusters  map[string]Interface
-	effective map[string]Interface
-	byid      map[string]Interface
+	clusters  clusters
+	effective clusters
+	byid      clusters
 }
 
 var _ Clusters = &_Clusters{}
 
-func NewClusters() *_Clusters {
+func NewClusters(cache SchemeCache) *_Clusters {
+	if cache == nil {
+		cache = NewSchemeCache()
+	}
 	return &_Clusters{
+		cache,
 		map[string]string{},
 		map[string]utils.StringSet{},
-		map[string]Interface{},
-		map[string]Interface{},
-		map[string]Interface{},
+		clusters{},
+		clusters{},
+		clusters{},
 	}
+}
+
+func (this *_Clusters) Cache() SchemeCache {
+	return this.cache
+}
+
+func (this *_Clusters) Names() utils.StringSet {
+	return this.clusters.Names()
+}
+
+func (this *_Clusters) EffectiveNames() utils.StringSet {
+	return this.effective.Names()
+}
+
+func (this *_Clusters) Ids() utils.StringSet {
+	return this.byid.Names()
+}
+
+func (this *_Clusters) WithScheme(scheme *runtime.Scheme) (Clusters, error) {
+	var err error
+
+	if scheme == nil {
+		return this, nil
+	}
+	modified := false
+	result := NewClusters(this.cache)
+	for n, c := range this.clusters {
+		mapped := result.GetEffective(c.GetName())
+		if mapped == nil {
+			mapped, err = this.cache.WithScheme(c, scheme)
+			if err != nil {
+				return nil, err
+			}
+			if mapped != c {
+				modified = true
+			}
+		}
+		result.Add(n, mapped, this.infos[n])
+	}
+	if modified {
+		return result, nil
+	}
+	return this, nil
 }
 
 func (this *_Clusters) Add(name string, cluster Interface, info ...interface{}) {
@@ -249,6 +324,7 @@ func (this *_Clusters) Add(name string, cluster Interface, info ...interface{}) 
 	} else {
 		this.infos[name] = name
 	}
+	this.cache.Add(cluster)
 	this.clusters[name] = cluster
 	this.effective[cluster.GetName()] = cluster
 	set := this.mapped[cluster.GetName()]
@@ -273,7 +349,7 @@ func (this *_Clusters) GetById(id string) Interface {
 }
 
 func (this *_Clusters) GetClusters(name ...string) (Clusters, error) {
-	clusters := NewClusters()
+	clusters := NewClusters(this.cache)
 	for _, n := range name {
 		cluster := this.clusters[n]
 		if cluster == nil {
@@ -309,7 +385,7 @@ func (this *_Clusters) String() string {
 func (this *_Clusters) GetObject(key resources.ClusterObjectKey) (resources.Object, error) {
 	cluster := this.GetById(key.Cluster())
 	if cluster == nil {
-		return nil, fmt.Errorf("cluster with id %q not found")
+		return nil, fmt.Errorf("cluster with id %q not found", key.Cluster())
 	}
 	return cluster.GetObject(key.ObjectKey())
 }
@@ -317,7 +393,7 @@ func (this *_Clusters) GetObject(key resources.ClusterObjectKey) (resources.Obje
 func (this *_Clusters) GetCachedObject(key resources.ClusterObjectKey) (resources.Object, error) {
 	cluster := this.GetById(key.Cluster())
 	if cluster == nil {
-		return nil, fmt.Errorf("cluster with id %q not found")
+		return nil, fmt.Errorf("cluster with id %q not found", key.Cluster())
 	}
 	return cluster.GetCachedObject(key.ObjectKey())
 }

@@ -21,8 +21,6 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "google-clouddns"
-
 func init() {
 	provider.DNSController("", google.Factory).
 		FinalizerDomain("dns.gardener.cloud").

@@ -17,57 +17,24 @@
 package resources
 
 import (
-	"fmt"
-	apps "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sync"
+
+	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 )
 
-func init() {
-	Register(corev1.SchemeBuilder)
-	Register(extensions.SchemeBuilder)
-	Register(apps.SchemeBuilder)
-}
-
-var lock sync.Mutex
-
-///////////////////////////////////////////////////////////////////////////////
-// Explcit version mappings for api groups to use for resources
-
-var defaultVersions = map[string]string{}
-
 func DeclareDefaultVersion(gv schema.GroupVersion) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	if old, ok := defaultVersions[gv.Group]; ok {
-		panic(fmt.Sprintf("default version for %s already set to %s", gv, old))
-	}
-	defaultVersions[gv.Group] = gv.Version
+	abstract.DeclareDefaultVersion(gv)
 }
 
 func DefaultVersion(g string) string {
-	lock.Lock()
-	defer lock.Unlock()
-	return defaultVersions[g]
+	return abstract.DefaultVersion(g)
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// registration of default schemes for info management
-
-var scheme = runtime.NewScheme()
-
 func Register(builders ...runtime.SchemeBuilder) {
-	lock.Lock()
-	defer lock.Unlock()
-	for _, b := range builders {
-		b.AddToScheme(scheme)
-	}
+	abstract.Register(builders...)
 }
 
 func DefaultScheme() *runtime.Scheme {
-	return scheme
+	return abstract.DefaultScheme()
 }

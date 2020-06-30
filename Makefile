@@ -21,10 +21,19 @@ build:
 
 .PHONY: build-local
 build-local:
-	@CGO_ENABLED=0 GO111MODULE=on go build -o $(EXECUTABLE) \
+	@CGO_ENABLED=1 GO111MODULE=on go build -o $(EXECUTABLE) \
 	    -mod=vendor \
+	    -race \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
 	    ./cmd/dns
+
+.PHONY: build-local-compound
+build-local-compound:
+	@CGO_ENABLED=1 GO111MODULE=on go build -o $(EXECUTABLE)-compound \
+	    -mod=vendor \
+	    -race \
+	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
+	    ./cmd/compound
 
 .PHONY: release
 release:

@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"time"
 
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -27,7 +29,21 @@ import (
 )
 
 type clusterResourceInfo struct {
-	pools []*pool
+	resource    resources.Interface
+	pools       []*pool
+	namespace   string
+	optionsFunc resources.TweakListOptionsFunc
+}
+
+func (this *clusterResourceInfo) List() ([]resources.Object, error) {
+	opts := v1.ListOptions{}
+	if this.optionsFunc != nil {
+		this.optionsFunc(&opts)
+	}
+	if this.namespace != "" {
+		return this.resource.Namespace(this.namespace).List(opts)
+	}
+	return this.resource.List(opts)
 }
 
 type ClusterHandler struct {
@@ -65,13 +81,18 @@ func (c *ClusterHandler) GetResource(resourceKey ResourceKey) (resources.Interfa
 func (c *ClusterHandler) register(resourceKey ResourceKey, namespace string, optionsFunc resources.TweakListOptionsFunc, usedpool *pool) error {
 	i := c.resources[resourceKey]
 	if i == nil {
-		i = &clusterResourceInfo{[]*pool{usedpool}}
-		c.resources[resourceKey] = i
-
 		resource, err := c.cluster.GetResource(resourceKey.GroupKind())
 		if err != nil {
 			return err
 		}
+
+		i = &clusterResourceInfo{
+			pools:       []*pool{usedpool},
+			namespace:   namespace,
+			optionsFunc: optionsFunc,
+			resource:    resource,
+		}
+		c.resources[resourceKey] = i
 
 		if err := resource.AddSelectedEventHandler(c.GetEventHandlerFuncs(), namespace, optionsFunc); err != nil {
 			return err
@@ -99,16 +120,14 @@ func (c *ClusterHandler) GetEventHandlerFuncs() resources.ResourceEventHandlerFu
 ///////////////////////////////////////////////////////////////////////////////
 
 func (c *ClusterHandler) EnqueueKey(key resources.ClusterObjectKey) error {
-	//c.Infof("enqueue %s", obj.Description())
+	// c.Infof("enqueue %s", obj.Description())
 	gk := key.GroupKind()
 	rk := NewResourceKey(gk.Group, gk.Kind)
 	i := c.resources[rk]
 	if i == nil {
-		c.Warnf("no resource info for type %s", rk)
 		return fmt.Errorf("cluster %q: no resource info for %s", c, rk)
 	}
 	if i.pools == nil || len(i.pools) == 0 {
-		c.Warnf("no worker pool for type %s", rk)
 		return fmt.Errorf("cluster %q: no worker pool for type %s", c, rk)
 	}
 	for _, p := range i.pools {
@@ -119,14 +138,13 @@ func (c *ClusterHandler) EnqueueKey(key resources.ClusterObjectKey) error {
 
 func (c *ClusterHandler) enqueue(obj resources.Object, e func(p *pool, r resources.Object)) error {
 	c.whenReady()
-	//c.Infof("enqueue %s", obj.Description())
+	// c.Infof("enqueue %s", obj.Description())
 	i := c.resources[GetResourceKey(obj)]
 	if i.pools == nil || len(i.pools) == 0 {
-		c.Warnf("no worker pool for type %s", obj.GroupKind())
 		return fmt.Errorf("no worker pool for type %s", obj.GroupKind())
 	}
 	for _, p := range i.pools {
-		//p.Infof("enqueue %s", resources.ObjectrKey(obj))
+		// p.Infof("enqueue %s", resources.ObjectrKey(obj))
 		e(p, obj)
 	}
 	return nil

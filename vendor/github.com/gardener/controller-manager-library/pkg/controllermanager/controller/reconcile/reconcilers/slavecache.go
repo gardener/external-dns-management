@@ -19,14 +19,15 @@ package reconcilers
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type Resources func(c controller.Interface) []resources.Interface
@@ -35,6 +36,10 @@ type Resources func(c controller.Interface) []resources.Interface
 // SlaveAccess to be used as common nested base for all reconcilers
 // requiring slave access
 ////////////////////////////////////////////////////////////////////////////////
+
+type SlaveAccessSink interface {
+	InjectSlaveAccess(*SlaveAccess)
+}
 
 type _resources struct {
 	kinds     []schema.GroupKind
@@ -77,6 +82,10 @@ func newResources(c controller.Interface, f Resources) *_resources {
 	}
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// SlaveAccess used to access a shared slave cache
+////////////////////////////////////////////////////////////////////////////////
+
 type SlaveAccess struct {
 	controller.Interface
 	reconcile.DefaultReconciler
@@ -89,9 +98,10 @@ type SlaveAccess struct {
 }
 
 type SlaveAccessSpec struct {
-	Name    string
-	Slaves  Resources
-	Masters Resources
+	Name            string
+	Slaves          Resources
+	Masters         Resources
+	RequeueDeleting bool
 }
 
 func NewSlaveAccess(c controller.Interface, name string, slave_func Resources, master_func Resources) *SlaveAccess {
@@ -155,6 +165,10 @@ func (this *SlaveAccess) MasterResoures() []resources.Interface {
 
 func (this *SlaveAccess) CreateSlave(obj resources.Object, slave resources.Object) error {
 	return this.slaves.CreateSlave(obj, slave)
+}
+
+func (this *SlaveAccess) CreateOrModifySlave(obj resources.Object, slave resources.Object, mod resources.Modifier) (bool, error) {
+	return this.slaves.CreateOrModifySlave(obj, slave, mod)
 }
 
 func (this *SlaveAccess) UpdateSlave(slave resources.Object) error {
@@ -286,6 +300,9 @@ func NewSlaveReconcilerBySpec(c controller.Interface, reconciler controller.Reco
 	if err != nil {
 		return nil, err
 	}
+	if s, ok := nested.nested.(SlaveAccessSink); ok {
+		s.InjectSlaveAccess(r.SlaveAccess)
+	}
 	r.NestedReconciler = nested
 	return r, nil
 }
@@ -320,7 +337,7 @@ func (this *SlaveReconciler) requeueMasters(logger logger.LogContext, masters re
 	for key := range masters {
 		m, err := this.GetObject(key)
 		if err == nil || errors.IsNotFound(err) {
-			if m.IsDeleting() {
+			if !this.spec.RequeueDeleting && m.IsDeleting() {
 				logger.Infof("skipping requeue of deleting master %s", key)
 				continue
 			}

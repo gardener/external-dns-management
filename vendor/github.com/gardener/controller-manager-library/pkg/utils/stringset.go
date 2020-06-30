@@ -18,6 +18,7 @@ package utils
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -61,13 +62,19 @@ func (this StringSet) Clear() {
 	}
 }
 
+func (this StringSet) IsEmpty() bool {
+	return len(this) == 0
+}
+
 func (this StringSet) Contains(n string) bool {
 	_, ok := this[n]
 	return ok
 }
 
-func (this StringSet) Remove(n string) StringSet {
-	delete(this, n)
+func (this StringSet) Remove(n ...string) StringSet {
+	for _, p := range n {
+		delete(this, p)
+	}
 	return this
 }
 
@@ -86,6 +93,15 @@ func (this StringSet) AddSet(sets ...StringSet) StringSet {
 	for _, s := range sets {
 		for e := range s {
 			this.Add(e)
+		}
+	}
+	return this
+}
+
+func (this StringSet) RemoveSet(sets ...StringSet) StringSet {
+	for _, s := range sets {
+		for e := range s {
+			this.Remove(e)
 		}
 	}
 	return this
@@ -136,10 +152,57 @@ func (this StringSet) Copy() StringSet {
 	return set
 }
 
+func (this StringSet) Intersect(o StringSet) StringSet {
+	set := NewStringSet()
+	for n := range this {
+		if o.Contains(n) {
+			set[n] = struct{}{}
+		}
+	}
+	return set
+}
+
 func (this StringSet) AsArray() []string {
 	a := []string{}
 	for n := range this {
 		a = append(a, n)
 	}
 	return a
+}
+
+func StringKeySet(anystringkeymap interface{}) StringSet {
+	ret := StringSet{}
+	if anystringkeymap == nil {
+		return ret
+	}
+	v := reflect.ValueOf(anystringkeymap)
+
+	for _, keyValue := range v.MapKeys() {
+		ret.Add(keyValue.Interface().(string))
+	}
+	return ret
+}
+
+func StringKeyArray(anystringkeymap interface{}) []string {
+	if anystringkeymap == nil {
+		return nil
+	}
+	v := reflect.ValueOf(anystringkeymap)
+	keys := v.MapKeys()
+	ret := make([]string, len(keys))
+
+	for i, keyValue := range keys {
+		ret[i] = keyValue.Interface().(string)
+	}
+	return ret
+}
+
+func StringValueSet(anystringvaluemap interface{}) StringSet {
+	v := reflect.ValueOf(anystringvaluemap)
+	ret := StringSet{}
+
+	for i := v.MapRange(); i.Next(); {
+		ret.Add(i.Value().Interface().(string))
+	}
+	return ret
 }

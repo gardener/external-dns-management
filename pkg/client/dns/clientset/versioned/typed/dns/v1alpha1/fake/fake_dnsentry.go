@@ -34,9 +34,9 @@ type FakeDNSEntries struct {
 	ns   string
 }
 
-var dnsentriesResource = schema.GroupVersionResource{Group: "dns", Version: "v1alpha1", Resource: "dnsentries"}
+var dnsentriesResource = schema.GroupVersionResource{Group: "dns.gardener.cloud", Version: "v1alpha1", Resource: "dnsentries"}
 
-var dnsentriesKind = schema.GroupVersionKind{Group: "dns", Version: "v1alpha1", Kind: "DNSEntry"}
+var dnsentriesKind = schema.GroupVersionKind{Group: "dns.gardener.cloud", Version: "v1alpha1", Kind: "DNSEntry"}
 
 // Get takes name of the dNSEntry, and returns the corresponding dNSEntry object, and an error if there is any.
 func (c *FakeDNSEntries) Get(name string, options v1.GetOptions) (result *v1alpha1.DNSEntry, err error) {

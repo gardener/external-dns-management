@@ -18,70 +18,60 @@ package resources
 
 import (
 	"fmt"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 )
 
 type AbstractObject struct {
-	ObjectData
+	*abstract.AbstractObject
 	self I_Object
 }
 
-func NewAbstractObject(self I_Object, data ObjectData) AbstractObject {
-	return AbstractObject{data, self}
+func NewAbstractObject(self I_Object, data ObjectData, r Interface) AbstractObject {
+	return AbstractObject{abstract.NewAbstractObject(data, r), self}
 }
 
-func (this *AbstractObject) Data() ObjectData {
-	return this.ObjectData
+func (this *AbstractObject) GetResource() Interface {
+	return this.AbstractObject.GetResource().(Interface)
 }
 
-func (this *AbstractObject) ObjectName() ObjectName {
-	return NewObjectName(this.GetNamespace(), this.GetName())
-}
-
-func (this *AbstractObject) Key() ObjectKey {
-	return NewKey(this.GroupKind(), this.GetNamespace(), this.GetName())
+func (this *AbstractObject) GetCluster() Cluster {
+	return this.GetResource().GetCluster()
 }
 
 func (this *AbstractObject) ClusterKey() ClusterObjectKey {
-	return NewClusterKey(this.self.GetCluster().GetId(), this.GroupKind(), this.GetNamespace(), this.GetName())
+	return NewClusterKey(this.GetResource().GetCluster().GetId(), this.GroupKind(), this.GetNamespace(), this.GetName())
 }
 
 func (this *AbstractObject) Description() string {
-	return fmt.Sprintf("%s:%s", this.self.GetCluster().GetName(), this.Key())
+	return fmt.Sprintf("%s:%s", this.GetCluster().GetId(), this.AbstractObject.Description())
 }
 
 func (this *AbstractObject) IsCoLocatedTo(o Object) bool {
 	if o == nil {
 		return true
 	}
-	return o.GetCluster() == this.self.GetCluster()
+	return o.GetCluster() == this.GetCluster()
 }
 
 func (this *AbstractObject) Resources() Resources {
-	return this.self.GetCluster().Resources()
+	return this.GetResource().Resources()
 }
 
 func (this *AbstractObject) Event(eventtype, reason, message string) {
-	this.self.GetCluster().Resources().Event(this.ObjectData, eventtype, reason, message)
+	this.Resources().Event(this.ObjectData, eventtype, reason, message)
 }
 
 func (this *AbstractObject) Eventf(eventtype, reason, messageFmt string, args ...interface{}) {
-	this.self.GetCluster().Resources().Eventf(this.ObjectData, eventtype, reason, messageFmt, args...)
+	this.Resources().Eventf(this.ObjectData, eventtype, reason, messageFmt, args...)
 }
 
 func (this *AbstractObject) PastEventf(timestamp metav1.Time, eventtype, reason, messageFmt string, args ...interface{}) {
-	this.self.GetCluster().Resources().PastEventf(this.ObjectData, timestamp, eventtype, reason, messageFmt, args...)
+	this.Resources().PastEventf(this.ObjectData, timestamp, eventtype, reason, messageFmt, args...)
 }
 
 func (this *AbstractObject) AnnotatedEventf(annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {
-	this.self.GetCluster().Resources().AnnotatedEventf(this.ObjectData, annotations, eventtype, reason, messageFmt, args...)
-}
-
-func (this *AbstractObject) GroupKind() schema.GroupKind {
-	return this.self.GetResource().GroupKind()
-}
-
-func (this *AbstractObject) GroupVersionKind() schema.GroupVersionKind {
-	return this.self.GetResource().GroupVersionKind()
+	this.Resources().AnnotatedEventf(this.ObjectData, annotations, eventtype, reason, messageFmt, args...)
 }

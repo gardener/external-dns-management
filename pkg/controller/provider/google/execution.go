@@ -19,9 +19,10 @@ package google
 import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	googledns "google.golang.org/api/dns/v1"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
-	googledns "google.golang.org/api/dns/v1"
 )
 
 const (
@@ -94,6 +95,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 	}
 
 	metrics.AddRequests(provider.M_UPDATERECORDS, 1)
+	this.handler.config.RateLimiter.Accept()
 	if _, err := this.handler.service.Changes.Create(this.handler.credentials.ProjectID, this.zone.Id(), this.change).Do(); err != nil {
 		this.Error(err)
 		for _, d := range this.done {

@@ -17,25 +17,27 @@
 package resources
 
 import (
-	"fmt"
-	"k8s.io/apimachinery/pkg/labels"
 	"runtime/debug"
+
+	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 )
 
 func (this *_resource) getCached(namespace, name string) (Object, error) {
 	var obj ObjectData
-	informer, err := this.self.I_lookupInformer(namespace)
+	informer, err := this.helper.Internal.I_lookupInformer(namespace)
 	if err != nil {
 		return nil, err
 	}
 	if this.info.Namespaced() {
 		if namespace == "" {
-			return nil, fmt.Errorf("resourcename %s (%s) is namespaced", this.Name(), this.GroupVersionKind())
+			return nil, errors.ErrNamespaced.New(this.GroupVersionKind())
 		}
 		obj, err = informer.Lister().Namespace(namespace).Get(name)
 	} else {
 		if namespace != "" {
-			return nil, fmt.Errorf("resourcename %s (%s) is not namespaced", this.Name(), this.GroupVersionKind())
+			return nil, errors.ErrNotNamespaced.New(this.GroupVersionKind())
 		}
 		obj, err = informer.Lister().Get(name)
 	}
@@ -50,40 +52,40 @@ func (this *_resource) GetCached(obj interface{}) (Object, error) {
 	case string:
 		return this.getCached("", o)
 	case ObjectData:
-		if err := this.helper.CheckOType(o); err != nil {
+		if err := this.CheckOType(o); err != nil {
 			return nil, err
 		}
 		return this.helper.ObjectAsResource(o), nil
 	case ObjectKey:
 		if o.GroupKind() != this.GroupKind() {
-			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
+			return nil, errors.ErrResourceMismatch.New(this.GroupVersionKind(), o.GroupKind())
 		}
 		return this.getCached(o.Namespace(), o.Name())
 	case *ObjectKey:
 		if o.GroupKind() != this.GroupKind() {
-			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
+			return nil, errors.ErrResourceMismatch.New(this.GroupVersionKind(), o.GroupKind())
 		}
 		return this.getCached(o.Namespace(), o.Name())
 	case ClusterObjectKey:
 		if o.GroupKind() != this.GroupKind() {
-			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
+			return nil, errors.ErrResourceMismatch.New(this.GroupVersionKind(), o.GroupKind())
 		}
 		return this.getCached(o.Namespace(), o.Name())
 	case *ClusterObjectKey:
 		if o.GroupKind() != this.GroupKind() {
-			return nil, fmt.Errorf("%s cannot handle group/kind '%s'", this.gvk, o.GroupKind())
+			return nil, errors.ErrResourceMismatch.New(this.GroupVersionKind(), o.GroupKind())
 		}
 		return this.getCached(o.Namespace(), o.Name())
 	case ObjectName:
 		return this.getCached(o.Namespace(), o.Name())
 	default:
 		debug.PrintStack()
-		return nil, fmt.Errorf("unsupported type '%T' for source object", obj)
+		return nil, errors.ErrUnexpectedType.New("object identifier", obj)
 	}
 }
 
 func (this *_resource) ListCached(selector labels.Selector) (ret []Object, err error) {
-	informer, err := this.self.I_getInformer("", nil)
+	informer, err := this.helper.Internal.I_getInformer("", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +102,7 @@ func (this *_resource) ListCached(selector labels.Selector) (ret []Object, err e
 
 func (this *namespacedResource) getLister() (NamespacedLister, error) {
 	if this.lister == nil {
-		informer, err := this.resource.self.I_lookupInformer(this.namespace)
+		informer, err := this.resource.helper.Internal.I_lookupInformer(this.namespace)
 		if err != nil {
 			return nil, err
 		}

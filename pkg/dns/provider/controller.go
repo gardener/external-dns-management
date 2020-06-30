@@ -17,9 +17,14 @@
 package provider
 
 import (
+	"reflect"
 	"time"
 
-	"github.com/gardener/external-dns-management/pkg/crds"
+	"github.com/gardener/controller-manager-library/pkg/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
+	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 
@@ -33,25 +38,82 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	corev1 "k8s.io/api/core/v1"
+
+	// register 1.12
+	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.12"
 )
 
-const CONTROLLER_GROUP_DNS_CONTROLLERS = "dnscontrollers"
+const CONTROLLER_GROUP_DNS_CONTROLLERS = dns.CONTROLLER_GROUP_DNS_CONTROLLERS
 
 const TARGET_CLUSTER = source.TARGET_CLUSTER
 const PROVIDER_CLUSTER = "provider"
+
+const SYNC_ENTRIES = "entries"
+
+const FACTORY_OPTIONS = "factory"
 
 var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
+func init() {
+	crds.AddToRegistry(apiextensions.DefaultRegistry())
+}
+
+func GetFactoryOptions(src config.OptionSource) *FactoryOptions {
+	if src == nil {
+		return &FactoryOptions{}
+	}
+	return src.(config.OptionSet).GetSource(FACTORY_OPTIONS).(*FactoryOptions)
+}
+
+type factoryOptionSet struct {
+	*config.SharedOptionSet
+}
+
+func (this *factoryOptionSet) AddOptionsToSet(set config.OptionSet) {
+	this.SharedOptionSet.AddOptionsToSet(set)
+}
+
+func (this *factoryOptionSet) Evaluate() error {
+	return this.SharedOptionSet.Evaluate()
+}
+
+func CreateFactoryOptionSource(factory DNSHandlerFactory, prefix string) config.OptionSource {
+	v := reflect.ValueOf((*FactoryOptions)(nil))
+	required := v.Type().Elem().NumField() > 1
+	src := &FactoryOptions{GenericFactoryOptions: GenericFactoryOptionDefaults}
+	if s, ok := factory.(DNSHandlerOptionSource); ok {
+		opts, def := s.CreateOptionSource()
+		src.Options = opts
+		if def != nil {
+			src.GenericFactoryOptions = *def
+		}
+		required = required || src.Options != nil
+	}
+	if required {
+		//set := &factoryOptionSet{config.NewSharedOptionSet(FACTORY_OPTIONS, prefix, nil)}
+		set := config.NewSharedOptionSet(FACTORY_OPTIONS, prefix, nil)
+		set.AddSource(FACTORY_OPTIONS, src)
+		return set
+	}
+	return nil
+}
+
+func FactoryOptionSourceCreator(factory DNSHandlerFactory) extension.OptionSourceCreator {
+	return func() config.OptionSource {
+		return CreateFactoryOptionSource(factory, "")
+	}
+}
+
 func DNSController(name string, factory DNSHandlerFactory) controller.Configuration {
 	if name == "" {
 		name = factory.Name()
 	}
-	return controller.Configure(name).
+	cfg := controller.Configure(name).
 		RequireLease().
-		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "Identifier used to differentiate responsible controllers for entries").
-		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries").
+		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "Class identifier used to differentiate responsible controllers for entry resources").
+		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries in DNS system").
 		DefaultedStringOption(OPT_CACHE_DIR, "", "Directory to store zone caches (for reload after restart)").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
 		DefaultedBoolOption(OPT_DISABLE_ZONE_STATE_CACHING, false, "disable use of cached dns zone state on changes").
@@ -60,9 +122,11 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedIntOption(OPT_SETUP, 10, "number of processors for controller setup").
 		DefaultedDurationOption(OPT_DNSDELAY, 10*time.Second, "delay between two dns reconciliations").
 		DefaultedDurationOption(OPT_RESCHEDULEDELAY, 120*time.Second, "reschedule delay after losing provider").
+		FinalizerDomain("dns.gardener.cloud").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
-		CustomResourceDefinitions(crds.DNSEntryCRD, crds.DNSOwnerCRD).
+		Syncer(SYNC_ENTRIES, controller.NewResourceKey(api.GroupName, api.DNSEntryKind)).
+		CustomResourceDefinitions(ownerGroupKind, entryGroupKind).
 		MainResource(api.GroupName, api.DNSEntryKind).
 		DefaultWorkerPool(2, 0).
 		WorkerPool("ownerids", 1, 0).
@@ -70,7 +134,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 			controller.NewResourceKey(api.GroupName, api.DNSOwnerKind),
 		).
 		Cluster(PROVIDER_CLUSTER).
-		CustomResourceDefinitions(crds.DNSProviderCRD).
+		CustomResourceDefinitions(providerGroupKind).
 		WorkerPool("providers", 2, 10*time.Minute).
 		Watches(
 			controller.NewResourceKey(api.GroupName, api.DNSProviderKind),
@@ -79,7 +143,10 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		Watches(
 			controller.NewResourceKey("core", "Secret"),
 		).
-		WorkerPool("dns", 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(HOSTEDZONE_PREFIX + "*"))
+		WorkerPool("dns", 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
+		WorkerPool("statistic", 1, 0).Commands(CMD_STATISTIC).
+		OptionSource(FACTORY_OPTIONS, FactoryOptionSourceCreator(factory))
+	return cfg
 }
 
 type reconciler struct {
@@ -104,7 +171,13 @@ func DNSReconcilerType(factory DNSHandlerFactory) controller.ReconcilerType {
 
 func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interface, error) {
 	classes := controller.NewClassesByOption(c, OPT_CLASS, source.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
-	c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
+	if f, ok := factory.(Finalizers); ok {
+		g := controller.NewFinalizerGroup(c.GetDefinition().FinalizerName(), f.Finalizers())
+		c.SetFinalizerHandler(controller.NewFinalizerForGroupAndClasses(g, classes))
+	} else {
+		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
+	}
+
 	config, err := NewConfigForController(c, factory)
 	if err != nil {
 		return nil, err
@@ -112,11 +185,16 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 
 	zoneCacheCleanupOutdated(c, config.CacheDir, ZoneCachePrefix)
 
+	ownerresc, err := c.GetCluster(TARGET_CLUSTER).Resources().GetByGK(ownerGroupKind)
+	if err != nil {
+		return nil, err
+	}
+
 	return &reconciler{
 		controller: c,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewDNSState(NewDefaultContext(c), classes, *config)
+				return NewDNSState(NewDefaultContext(c), ownerresc, classes, *config)
 			}).(*state),
 	}, nil
 }
@@ -132,11 +210,15 @@ func (this *reconciler) Start() {
 }
 
 func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.Status {
-	zoneid := this.state.DecodeZoneCommand(cmd)
-	if zoneid != "" {
-		return this.state.ReconcileZone(logger, zoneid)
+	if cmd == CMD_STATISTIC {
+		this.state.UpdateOwnerCounts(logger)
+	} else {
+		zoneid := this.state.DecodeZoneCommand(cmd)
+		if zoneid != "" {
+			return this.state.ReconcileZone(logger, zoneid)
+		}
+		logger.Infof("got unhandled command %q", cmd)
 	}
-	logger.Infof("got unhandled command %q", cmd)
 	return reconcile.Succeeded(logger)
 }
 
@@ -144,7 +226,7 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 	switch {
 	case obj.IsA(&api.DNSOwner{}):
 		if this.state.IsResponsibleFor(logger, obj) {
-			return this.state.UpdateOwner(logger, dnsutils.DNSOwner(obj))
+			return this.state.UpdateOwner(logger, dnsutils.DNSOwner(obj), false)
 		} else {
 			return this.state.OwnerDeleted(logger, obj.Key())
 		}
@@ -158,7 +240,7 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 		if this.state.IsResponsibleFor(logger, obj) {
 			return this.state.UpdateEntry(logger, dnsutils.DNSEntry(obj))
 		} else {
-			return this.state.EntryDeleted(logger, obj.Key())
+			return this.state.EntryDeleted(logger, obj.ClusterKey())
 		}
 	case obj.IsA(&corev1.Secret{}):
 		return this.state.UpdateSecret(logger, obj)
@@ -190,7 +272,7 @@ func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterO
 	case providerGroupKind:
 		return this.state.ProviderDeleted(logger, key.ObjectKey())
 	case entryGroupKind:
-		return this.state.EntryDeleted(logger, key.ObjectKey())
+		return this.state.EntryDeleted(logger, key)
 	}
 	return reconcile.Succeeded(logger)
 }

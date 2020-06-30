@@ -21,14 +21,17 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/flowcontrol"
 )
 
 type Config struct {
@@ -41,6 +44,7 @@ type Config struct {
 	ZoneStateCaching bool
 	Delay            time.Duration
 	Enabled          utils.StringSet
+	Options          *FactoryOptions
 	Factory          DNSHandlerFactory
 }
 
@@ -90,6 +94,9 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		}
 	}
 
+	osrc, _ := c.GetOptionSource(FACTORY_OPTIONS)
+	fopts := GetFactoryOptions(osrc)
+
 	return &Config{
 		Ident:            ident,
 		TTL:              int64(ttl),
@@ -100,6 +107,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		ZoneStateCaching: !disableZoneStateCaching,
 		Delay:            delay,
 		Enabled:          enabled,
+		Options:          fopts,
 		Factory:          factory,
 	}, nil
 }
@@ -138,7 +146,9 @@ type DNSHandlerConfig struct {
 	DryRun      bool
 	Context     context.Context
 	CacheConfig ZoneCacheConfig
+	Options     *FactoryOptions
 	Metrics     Metrics
+	RateLimiter flowcontrol.RateLimiter
 }
 
 type DNSZoneState interface {
@@ -164,6 +174,10 @@ const (
 
 type Metrics interface {
 	AddRequests(request_type string, n int)
+}
+
+type Finalizers interface {
+	Finalizers() utils.StringSet
 }
 
 type DNSHandler interface {
@@ -193,6 +207,10 @@ func (this *DefaultDNSHandler) MapTarget(t Target) Target {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+type DNSHandlerOptionSource interface {
+	CreateOptionSource() (local config.OptionSource, defaults *GenericFactoryOptions)
+}
 
 type DNSHandlerFactory interface {
 	Name() string

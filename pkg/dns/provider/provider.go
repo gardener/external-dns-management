@@ -26,14 +26,14 @@ import (
 	"time"
 
 	pkgerrors "github.com/pkg/errors"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
-
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -131,23 +131,24 @@ func (this *DNSAccount) Release() {
 }
 
 type AccountCache struct {
-	lock  sync.Mutex
-	ttl   time.Duration
-	dir   string
-	cache map[string]*DNSAccount
+	lock    sync.Mutex
+	ttl     time.Duration
+	dir     string
+	cache   map[string]*DNSAccount
+	options *FactoryOptions
 }
 
-func NewAccountCache(ttl time.Duration, dir string) *AccountCache {
+func NewAccountCache(ttl time.Duration, dir string, opts *FactoryOptions) *AccountCache {
 	return &AccountCache{
 		ttl:   ttl,
 		dir:   dir,
 		cache: map[string]*DNSAccount{},
+
+		options: opts,
 	}
 }
 
 func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSProviderObject, props utils.Properties, state *state) (*DNSAccount, error) {
-	var err error
-
 	name := provider.ObjectName()
 	hash := this.Hash(props, provider.Spec().Type, provider.Spec().ProviderConfig)
 	this.lock.Lock()
@@ -171,6 +172,18 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			stateTTL:              *syncPeriod,
 			disableZoneStateCache: !state.config.ZoneStateCaching,
 		}
+
+		var err error
+		rateLimiter := AlwaysRateLimiter()
+		if this.options != nil {
+			rateLimiterConfig := this.options.GetRateLimiterConfig()
+			rateLimiter, err = rateLimiterConfig.NewRateLimiter()
+			if err != nil {
+				return nil, pkgerrors.Wrap(err, "invalid rate limiter")
+			}
+			logger.Infof("rate limiter for %s: %v", name, rateLimiterConfig)
+		}
+
 		cfg := DNSHandlerConfig{
 			Context:     state.GetContext().GetContext(),
 			Logger:      logger,
@@ -178,7 +191,9 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			Config:      provider.Spec().ProviderConfig,
 			DryRun:      state.GetConfig().Dryrun,
 			CacheConfig: cacheConfig,
+			Options:     this.options,
 			Metrics:     a,
+			RateLimiter: rateLimiter,
 		}
 		a.handler, err = state.GetHandlerFactory().Create(provider.TypeCode(), &cfg)
 		if err != nil {
@@ -350,7 +365,10 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	zones, err := this.account.GetZones()
 	if err != nil {
 		this.zones = nil
-		return this, this.failed(logger, false, pkgerrors.Wrap(err, "cannot get zones"), true)
+		return this, this.failed(logger, false, pkgerrors.Wrap(err, "cannot get hosted zones"), true)
+	}
+	if len(zones) == 0 {
+		return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zones available in account"))
 	}
 
 	zinc, zexc := prepareSelection(provider.DNSProvider().Spec.Zones)
@@ -382,8 +400,8 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		}
 	}
 
-	if len(zones) > 0 && len(this.zones) == 0 {
-		return this, this.failedButRecheck(logger, fmt.Errorf("no zone available in account matches zone filter"))
+	if len(this.zones) == 0 {
+		return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zone available in account matches zone filter"))
 	}
 
 	included, err := filterByZones(this.def_include, this.zones)
@@ -396,9 +414,6 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	}
 
 	if len(this.def_include) == 0 {
-		if len(this.zones) == 0 {
-			return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zones found"))
-		}
 		for _, z := range this.zones {
 			included.Add(z.Domain())
 		}
@@ -512,7 +527,6 @@ func (this *dnsProviderVersion) failed(logger logger.LogContext, modified bool, 
 	}
 	if !temp {
 		if this.account != nil {
-			// reset rate limiter for persistent errors
 			this.account.Succeeded()
 		}
 		return reconcile.Failed(logger, err)
@@ -547,7 +561,7 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	mod.AssureStringValue(&status.State, api.STATE_READY)
 	mod.AssureStringPtrValue(&status.Message, "provider operational")
 	mod.AssureInt64Value(&status.ObservedGeneration, this.object.DNSProvider().Generation)
-	return reconcile.UpdateStatus(logger, mod.UpdateStatus())
+	return reconcile.UpdateStatus(logger, mod)
 }
 
 func (this *dnsProviderVersion) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
