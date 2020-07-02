@@ -22,7 +22,7 @@ spec:
       values:
         createCRDs: false
         image:
-          tag: v0.7.6
+          tag: v0.7.6.1
         configuration:
           poolSize: 20
           identifier: ""
