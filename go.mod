@@ -39,4 +39,5 @@ require (
 	sigs.k8s.io/kind v0.7.0
 )
 
-replace gopkg.in/fsnotify.v1 v1.4.7 => github.com/fsnotify/fsnotify v1.4.7
+//replace gopkg.in/fsnotify.v1 v1.4.7 => github.com/fsnotify/fsnotify v1.4.7
+replace golang.org/x/text => golang.org/x/text v0.3.3
