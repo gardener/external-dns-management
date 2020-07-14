@@ -58,7 +58,7 @@ var (
 func setCheck(key string) {
 	c := checks[key]
 	if c == nil {
-		panic(fmt.Sprint("check with key %q not configured", key))
+		panic(fmt.Sprintf("check with key %q not configured", key))
 	}
 	c.last = time.Now()
 }

@@ -60,7 +60,7 @@ func (this *_Definitions) GetRequiredControllers(name string) (utils.StringSet, 
 	missing := utils.StringSet{}
 	this.getRequiredControllers(name, &required, &missing)
 	if len(missing) > 0 {
-		return nil, fmt.Errorf("controller %q required controllers %s, which are missing", missing)
+		return nil, fmt.Errorf("controller %q required controllers %s, which are missing", name, missing)
 	}
 	return required, nil
 }

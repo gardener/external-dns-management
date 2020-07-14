@@ -89,7 +89,7 @@ func (this *_Registry) RegisterCluster(reg Registerable) error {
 	defer this.lock.Unlock()
 
 	if old := this.definitions[def.Name()]; old != nil {
-		msg := fmt.Sprintf("cluster request for %q")
+		msg := fmt.Sprintf("cluster request for %q", def.Name())
 		new := copy(old)
 		err := utils.FillStringValue(msg, &new.configOptionName, def.ConfigOptionName())
 		if err != nil {

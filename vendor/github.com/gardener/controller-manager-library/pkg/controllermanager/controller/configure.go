@@ -178,7 +178,7 @@ var _ Definition = &_Definition{}
 
 func (this *_Definition) String() string {
 	s := fmt.Sprintf("controller %q:\n", this.name)
-	s += fmt.Sprintf("  main rsc:    %s\n", this.main)
+	s += fmt.Sprintf("  main rsc:    %s\n", this.main.String())
 	s += fmt.Sprintf("  clusters:    %s\n", utils.Strings(this.RequiredClusters()...))
 	s += fmt.Sprintf("  required:    %s\n", utils.Strings(this.RequiredControllers()...))
 	s += fmt.Sprintf("  after:       %s\n", utils.Strings(this.After()...))

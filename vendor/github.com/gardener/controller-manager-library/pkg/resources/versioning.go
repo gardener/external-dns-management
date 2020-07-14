@@ -61,6 +61,8 @@ func NewDefaultingCodecForScheme(
 	return NewCodec(encoder, decoder, runtime.UnsafeObjectConvertor(scheme), scheme, scheme, scheme, encodeVersion, decodeVersion, scheme.Name())
 }
 
+const codecIdentifier runtime.Identifier = "controller-manager-library-resources-versioning-codec"
+
 // NewCodec takes objects in their internal versions and converts them to external versions before
 // serializing them. It assumes the serializer provided to it only deals with external versions.
 // This class is also a serializer, but is generally used with a specific version.
@@ -91,6 +93,8 @@ func NewCodec(
 	return internal
 }
 
+var _ runtime.Codec = &codec{}
+
 type codec struct {
 	encoder   runtime.Encoder
 	decoder   runtime.Decoder
@@ -106,6 +110,10 @@ type codec struct {
 	originalSchemeName string
 }
 
+func (c *codec) Identifier() runtime.Identifier {
+	return codecIdentifier
+}
+
 // Decode attempts a decode of the object, then tries to convert it to the internal version. If into is provided and the decoding is
 // successful, the returned runtime.Object will be the value passed as into. Note that this may bypass conversion if you pass an
 // into that matches the serialized version.
@@ -114,10 +122,6 @@ func (c *codec) Decode(data []byte, defaultGVK *schema.GroupVersionKind, into ru
 	var versioned versionedObjects
 	switch v := into.(type) {
 	case *VersionedObjects:
-		into = v.Last()
-		objects = &v.Objects
-		versioned = v
-	case *runtime.VersionedObjects:
 		into = v.Last()
 		objects = &v.Objects
 		versioned = v
