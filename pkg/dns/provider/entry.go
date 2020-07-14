@@ -451,7 +451,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		this.valid = true
 	} else {
 		this.warnings = warnings
-		targets, multiCName := normalizeTargets(logger, this.object, targets...)
+		targets, multiCName, multiOk := normalizeTargets(logger, this.object, targets...)
 		if multiCName {
 			this.interval = int64(600)
 			if spec.CNameLookupInterval != nil && *spec.CNameLookupInterval > 0 {
@@ -459,6 +459,11 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			}
 			if len(targets) == 0 {
 				msg := "targets cannot be resolved to any valid IPv4 address"
+				if !multiOk {
+					msg = "too many targets"
+					this.interval = int64(84600)
+				}
+
 				verr := fmt.Errorf(msg)
 				hello.Infof(logger, msg)
 
@@ -597,28 +602,32 @@ func targetList(targets Targets) ([]string, string) {
 	return list, msg
 }
 
-func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject, targets ...Target) (Targets, bool) {
+func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject, targets ...Target) (Targets, bool, bool) {
+	multiCNAME := len(targets) > 1 && targets[0].GetRecordType() == dns.RS_CNAME
+	if !multiCNAME {
+		return targets, false, false
+	}
+
 	result := make(Targets, 0, len(targets))
-	multiCNAME := false
+	if len(targets) > 11 {
+		w := fmt.Sprintf("too many CNAME targets: %d", len(targets))
+		logger.Warn(w)
+		object.Event(corev1.EventTypeWarning, "dnslookup restriction", w)
+		return result, true, false
+	}
 	for _, t := range targets {
-		ty := t.GetRecordType()
-		if ty == dns.RS_CNAME && len(targets) > 1 {
-			addrs, err := lookupHostIPv4(t.GetHostName())
-			if err == nil {
-				for _, addr := range addrs {
-					result = append(result, NewTarget(dns.RS_A, addr, t.GetEntry()))
-				}
-			} else {
-				w := fmt.Sprintf("cannot lookup '%s': %s", t.GetHostName(), err)
-				logger.Warn(w)
-				object.Event(corev1.EventTypeNormal, "dnslookup", w)
+		addrs, err := lookupHostIPv4(t.GetHostName())
+		if err == nil {
+			for _, addr := range addrs {
+				result = append(result, NewTarget(dns.RS_A, addr, t.GetEntry()))
 			}
-			multiCNAME = true
 		} else {
-			result = append(result, t)
+			w := fmt.Sprintf("cannot lookup '%s': %s", t.GetHostName(), err)
+			logger.Warn(w)
+			object.Event(corev1.EventTypeNormal, "dnslookup", w)
 		}
 	}
-	return result, multiCNAME
+	return result, true, true
 }
 
 func lookupHostIPv4(hostname string) ([]string, error) {
@@ -765,13 +774,6 @@ func (this Entries) Delete(e *Entry) {
 	if this[e.ObjectName()] == e {
 		delete(this, e.ObjectName())
 	}
-}
-
-func testUpdate(msg string, object resources.Object) {
-	err := object.UpdateStatus()
-	logger.Infof("**** %s %s %s: status update: %s", msg, object.ObjectName(), object.GetResourceVersion(), err)
-	err = object.Update()
-	logger.Infof("update: %s", err)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
