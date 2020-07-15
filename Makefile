@@ -52,6 +52,7 @@ test:
 .PHONY: generate
 generate:
 	@./hack/generate-code
+	@GO111MODULE=on go generate ./charts/external-dns-management
 
 alltests:
 	GO111MODULE=on go test -mod=vendor ./pkg/...
