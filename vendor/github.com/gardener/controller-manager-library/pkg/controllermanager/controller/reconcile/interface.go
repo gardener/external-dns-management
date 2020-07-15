@@ -61,6 +61,29 @@ type Status struct {
 }
 
 type Interface interface {
+	Reconcile(logger.LogContext, resources.Object) Status
+	Delete(logger.LogContext, resources.Object) Status
+	Deleted(logger.LogContext, resources.ClusterObjectKey) Status
+	Command(logger logger.LogContext, cmd string) Status
+}
+
+type SetupInterface interface {
+	Setup() error
+}
+
+type LegacySetupInterface interface {
+	Setup()
+}
+
+type StartInterface interface {
+	Start() error
+}
+
+type LegacyStartInterface interface {
+	Start()
+}
+
+type LegacyInterface interface {
 	Setup()
 	Start()
 	Reconcile(logger.LogContext, resources.Object) Status

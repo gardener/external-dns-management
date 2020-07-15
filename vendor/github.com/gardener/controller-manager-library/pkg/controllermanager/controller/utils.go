@@ -17,6 +17,8 @@
 package controller
 
 import (
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"github.com/gardener/controller-manager-library/pkg/resources"
 )
 
@@ -69,4 +71,59 @@ func FinalizerName(domain, controller string) string {
 		return "acme.com" + "/" + controller
 	}
 	return domain + "/" + controller
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type WatchedResources map[string]resources.GroupKindSet
+
+func (this WatchedResources) Add(key string, gks ...schema.GroupKind) WatchedResources {
+	return this.GatheredAdd(key, nil, gks...)
+}
+
+func (this WatchedResources) Remove(key string, gks ...schema.GroupKind) WatchedResources {
+	return this.GatheredRemove(key, nil, gks...)
+}
+
+func (this WatchedResources) Contains(key string, gk schema.GroupKind) bool {
+	return this[key].Contains(gk)
+}
+
+func (this WatchedResources) GatheredAdd(key string, added resources.GroupKindSet, gks ...schema.GroupKind) WatchedResources {
+	set := this[key]
+	if set == nil {
+		set = resources.GroupKindSet{}
+		this[key] = set
+	}
+	for _, gk := range gks {
+		if added != nil {
+			if !set.Contains(gk) {
+				added.Add(gk)
+			} else {
+				continue
+			}
+		}
+		set.Add(gk)
+	}
+	return this
+}
+
+func (this WatchedResources) GatheredRemove(key string, removed resources.GroupKindSet, gks ...schema.GroupKind) WatchedResources {
+	set := this[key]
+	if set != nil {
+		for _, gk := range gks {
+			if removed != nil {
+				if set.Contains(gk) {
+					removed.Add(gk)
+				} else {
+					continue
+				}
+			}
+			set.Remove(gk)
+		}
+		if len(set) == 0 {
+			delete(this, key)
+		}
+	}
+	return this
 }

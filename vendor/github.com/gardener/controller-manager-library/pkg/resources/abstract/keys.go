@@ -89,6 +89,8 @@ func NewGroupKind(group, kind string) schema.GroupKind {
 // ClusterObjectKey
 ////////////////////////////////////////////////////////////////////////////////
 
+type KeyFilter func(ClusterObjectKey) bool
+
 func EqualsClusterObjectKey(a, b ClusterObjectKey) bool {
 	return EqualsObjectName(a.name, b.name) &&
 		a.groupKind == b.groupKind &&
@@ -260,6 +262,22 @@ func (this ClusterObjectKeySet) AsArray() []ClusterObjectKey {
 	return a
 }
 
+func (this ClusterObjectKeySet) Filter(filter KeyFilter) ClusterObjectKeySet {
+	if this == nil {
+		return nil
+	}
+	if filter == nil {
+		return this
+	}
+	set := NewClusterObjectKeySet()
+	for n := range this {
+		if filter(n) {
+			set[n] = struct{}{}
+		}
+	}
+	return set
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Group Kind Set
 ////////////////////////////////////////////////////////////////////////////////
@@ -299,6 +317,9 @@ func (this GroupKindSet) String() string {
 }
 
 func (this GroupKindSet) Contains(n schema.GroupKind) bool {
+	if this == nil {
+		return false
+	}
 	_, ok := this[n]
 	return ok
 }

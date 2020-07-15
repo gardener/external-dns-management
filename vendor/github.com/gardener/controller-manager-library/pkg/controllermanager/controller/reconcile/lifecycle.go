@@ -13,28 +13,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *
  */
 
-package plain
+package reconcile
 
-import (
-	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
-)
-
-type ModificationState struct {
-	*abstract.ModificationState
+func SetupReconciler(r Interface) error {
+	if s, ok := r.(SetupInterface); ok {
+		return s.Setup()
+	}
+	if s, ok := r.(LegacySetupInterface); ok {
+		s.Setup()
+	}
+	return nil
 }
 
-func NewModificationState(object Object, settings ...interface{}) *ModificationState {
-	return &ModificationState{abstract.NewModificationState(object, settings...)}
-}
-
-func (this *ModificationState) Object() Object {
-	return this.ModificationState.Object().(Object)
-}
-
-func (this *ModificationState) AssureLabel(name, value string) *ModificationState {
-	this.ModificationState.AssureLabel(name, value)
-	return this
+func StartReconciler(r Interface) error {
+	if s, ok := r.(StartInterface); ok {
+		return s.Start()
+	}
+	if s, ok := r.(LegacyStartInterface); ok {
+		s.Start()
+	}
+	return nil
 }

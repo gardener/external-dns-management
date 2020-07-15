@@ -118,15 +118,10 @@ func (this *sourceReconciler) ObjectUpdated(key resources.ClusterObjectKey) {
 	this.EnqueueKey(key)
 }
 
-func (this *sourceReconciler) Start() {
-	this.SlaveAccess.Start()
-	this.NestedReconciler.Start()
-}
-
-func (this *sourceReconciler) Setup() {
+func (this *sourceReconciler) Setup() error {
 	this.SlaveAccess.Setup()
 	this.state.source.Setup()
-	this.NestedReconciler.Setup()
+	return this.NestedReconciler.Setup()
 }
 
 func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {

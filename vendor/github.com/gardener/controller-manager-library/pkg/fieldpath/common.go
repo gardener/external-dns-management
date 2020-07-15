@@ -13,28 +13,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  *
- *
  */
 
-package plain
+package fieldpath
 
-import (
-	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
-)
-
-type ModificationState struct {
-	*abstract.ModificationState
-}
-
-func NewModificationState(object Object, settings ...interface{}) *ModificationState {
-	return &ModificationState{abstract.NewModificationState(object, settings...)}
-}
-
-func (this *ModificationState) Object() Object {
-	return this.ModificationState.Object().(Object)
-}
-
-func (this *ModificationState) AssureLabel(name, value string) *ModificationState {
-	this.ModificationState.AssureLabel(name, value)
-	return this
+type Path interface {
+	Get(obj interface{}) (interface{}, error)
+	Set(obj interface{}, value interface{}) error
 }

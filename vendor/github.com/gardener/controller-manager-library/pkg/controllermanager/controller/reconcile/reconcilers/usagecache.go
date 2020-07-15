@@ -194,7 +194,7 @@ func (this *UsageReconciler) Setup() {
 
 func (this *UsageReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	key := obj.ClusterKey()
-	if this.master_resources.Contains(obj.GroupKind()) {
+	if this.master_resources.Contains(key.Cluster(), obj.GroupKind()) {
 		logger.Infof("reconcile owner %s", key)
 		this.usages.RenewOwner(obj)
 	} else {
@@ -208,7 +208,7 @@ func (this *UsageReconciler) Reconcile(logger logger.LogContext, obj resources.O
 }
 
 func (this *UsageReconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
-	if this.master_resources.Contains(key.GroupKind()) {
+	if this.master_resources.Contains(key.Cluster(), key.GroupKind()) {
 		logger.Infof("deleted owner %s", key)
 		this.usages.DeleteOwner(key)
 	} else {

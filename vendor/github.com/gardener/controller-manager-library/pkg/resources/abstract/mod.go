@@ -22,6 +22,7 @@ import (
 	"reflect"
 
 	"github.com/gardener/controller-manager-library/pkg/fieldpath"
+	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources/conditions"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
@@ -30,14 +31,26 @@ type ModificationState struct {
 	utils.ModificationState
 	object  Object
 	handler conditions.ModificationHandler
+	logger.LogContext
 }
 
-func NewModificationState(object Object, mod ...bool) *ModificationState {
+func NewModificationState(object Object, settings ...interface{}) *ModificationState {
+	var log logger.LogContext
 	aggr := false
-	for _, m := range mod {
-		aggr = aggr || m
+	for _, s := range settings {
+		switch v := s.(type) {
+		case bool:
+			aggr = aggr || v
+		case logger.LogContext:
+			log = v
+		default:
+			return nil
+		}
 	}
-	s := &ModificationState{utils.ModificationState{aggr}, object, nil}
+	if log == nil {
+		log = logger.New()
+	}
+	s := &ModificationState{utils.ModificationState{aggr}, object, nil, log}
 	s.handler = &modhandler{s}
 	return s
 }
@@ -87,11 +100,11 @@ func (this *ModificationState) AssureLabel(name, value string) *ModificationStat
 	return this
 }
 
-func (this *ModificationState) Get(field fieldpath.Field) (interface{}, error) {
+func (this *ModificationState) Get(field fieldpath.Path) (interface{}, error) {
 	return field.Get(this.object.Data())
 }
 
-func (this *ModificationState) Set(field fieldpath.Field, value interface{}) error {
+func (this *ModificationState) Set(field fieldpath.Path, value interface{}) error {
 	old, err := field.Get(this.object.Data())
 	if err != nil {
 		return err
