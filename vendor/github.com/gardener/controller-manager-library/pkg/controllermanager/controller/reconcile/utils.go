@@ -145,6 +145,16 @@ func Update(logger logger.LogContext, upd resources.ObjectUpdater, d ...time.Dur
 	return RescheduleAfter(logger, d[0])
 }
 
+func UpdateStandardObjectStatus(logger logger.LogContext, obj resources.Object, state, msg string) Status {
+	_, err := resources.UpdateStandardObjectStatus(logger, obj, state, msg)
+	return DelayOnError(logger, err)
+}
+
+func UpdateStandardObjectStatusf(logger logger.LogContext, obj resources.Object, state, msg string, args ...interface{}) Status {
+	_, err := resources.UpdateStandardObjectStatusf(logger, obj, state, msg, args...)
+	return DelayOnError(logger, err)
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 func StringEqual(field *string, val string) bool {

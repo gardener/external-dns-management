@@ -29,7 +29,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 )
 
-type KeyFilter func(key ClusterObjectKey) bool
+type KeyFilter = abstract.KeyFilter
 type ObjectFilter func(obj Object) bool
 type GroupKindProvider = abstract.GroupKindProvider
 type ClusterGroupKind = abstract.ClusterGroupKind

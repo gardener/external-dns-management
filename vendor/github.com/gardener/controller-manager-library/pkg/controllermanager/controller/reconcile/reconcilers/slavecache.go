@@ -27,7 +27,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 type Resources func(c controller.Interface) []resources.Interface
@@ -41,26 +40,41 @@ type SlaveAccessSink interface {
 	InjectSlaveAccess(*SlaveAccess)
 }
 
+type ClusterGroupKinds map[string]resources.GroupKindSet
+
+func (this ClusterGroupKinds) Add(r resources.Interface) ClusterGroupKinds {
+	set := this[r.GetCluster().GetId()]
+	if set == nil {
+		set = resources.GroupKindSet{}
+		this[r.GetCluster().GetId()] = set
+	}
+	set.Add(r.GroupKind())
+	return this
+}
+
+func (this ClusterGroupKinds) Contains(clusterid string, gk schema.GroupKind) bool {
+	return this[clusterid].Contains(gk)
+}
+
+func (this ClusterGroupKinds) Matches(k resources.ClusterObjectKey) bool {
+	return this[k.Cluster()].Contains(k.GroupKind())
+}
+
 type _resources struct {
 	kinds     []schema.GroupKind
 	resources []resources.Interface
-	clusters  utils.StringSet
+	clusters  ClusterGroupKinds
 }
 
-func (this *_resources) Contains(g schema.GroupKind) bool {
-	for _, e := range this.kinds {
-		if e == g {
-			return true
-		}
-	}
-	return false
+func (this *_resources) Contains(clusterid string, g schema.GroupKind) bool {
+	return this.clusters[clusterid].Contains(g)
 }
 
 func (this *_resources) String() string {
 	str := ""
 	if this != nil {
-		for _, e := range this.kinds {
-			str += "|" + (&e).String()
+		for _, e := range this.resources {
+			str += "|" + e.GroupKind().String()
 		}
 		str += "|"
 	}
@@ -68,16 +82,21 @@ func (this *_resources) String() string {
 }
 
 func newResources(c controller.Interface, f Resources) *_resources {
-	var kinds []schema.GroupKind
-	clusters := utils.StringSet{}
-	resources := f(c)
-	for _, r := range resources {
-		kinds = append(kinds, r.GroupKind())
-		clusters.Add(r.GetCluster().GetId())
+	kinds := resources.GroupKindSet{}
+	clusters := map[string]resources.GroupKindSet{}
+	res := f(c)
+	for _, r := range res {
+		set := clusters[r.GetCluster().GetId()]
+		if set == nil {
+			set = resources.GroupKindSet{}
+			clusters[r.GetCluster().GetId()] = set
+		}
+		kinds.Add(r.GroupKind())
+		set.Add(r.GroupKind())
 	}
 	return &_resources{
-		kinds:     kinds,
-		resources: resources,
+		kinds:     kinds.AsArray(),
+		resources: res,
 		clusters:  clusters,
 	}
 }
@@ -181,13 +200,17 @@ func (this *SlaveAccess) AddSlave(obj resources.Object, slave resources.Object) 
 
 func (this *SlaveAccess) LookupSlaves(key resources.ClusterObjectKey, kinds ...schema.GroupKind) []resources.Object {
 	found := []resources.Object{}
-	if len(kinds) == 0 {
-		kinds = this.slave_resources.kinds
-	}
+
 	for _, o := range this.slaves.GetByOwnerKey(key) {
-		for _, k := range kinds {
-			if o.GroupKind() == k {
+		if len(kinds) == 0 {
+			if this.slave_resources.clusters[o.GetCluster().GetId()].Contains(o.GroupKind()) {
 				found = append(found, o)
+			}
+		} else {
+			for _, k := range kinds {
+				if o.GroupKind() == k {
+					found = append(found, o)
+				}
 			}
 		}
 	}
@@ -247,13 +270,13 @@ func (this *SlaveAccess) GetMasters(all_clusters bool, kinds ...schema.GroupKind
 	return filterKeysByClusters(set, this.master_resources.clusters)
 }
 
-func filterKeysByClusters(set resources.ClusterObjectKeySet, clusters utils.StringSet, kinds ...schema.GroupKind) resources.ClusterObjectKeySet {
+func filterKeysByClusters(set resources.ClusterObjectKeySet, clusters ClusterGroupKinds, kinds ...schema.GroupKind) resources.ClusterObjectKeySet {
 	if clusters == nil {
 		return set
 	}
 	new := resources.ClusterObjectKeySet{}
 	for k := range set {
-		if clusters.Contains(k.Cluster()) {
+		if clusters.Matches(k) {
 			new.Add(k)
 		}
 	}
@@ -314,9 +337,24 @@ type SlaveReconciler struct {
 
 var _ reconcile.Interface = &SlaveReconciler{}
 
-func (this *SlaveReconciler) Setup() {
+func (this *SlaveReconciler) Setup() error {
 	this.SlaveAccess.Setup()
-	this.NestedReconciler.Setup()
+	return this.NestedReconciler.Setup()
+}
+
+func (this *SlaveReconciler) Start() error {
+	this.Infof("determining dangling %s objects...", this.spec.Name)
+	for k := range this.SlaveAccess.GetMasters(false) {
+		if this.master_resources.Contains(k.Cluster(), k.GroupKind()) {
+			if _, err := this.GetClusterById(k.Cluster()).GetCachedObject(k); errors.IsNotFound(err) {
+				this.Infof("trigger vanished origin %s", k.ObjectKey())
+				this.EnqueueKey(k)
+			} else {
+				this.Debugf("found origin %s", k.ObjectKey())
+			}
+		}
+	}
+	return this.NestedReconciler.Start()
 }
 
 func (this *SlaveReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {

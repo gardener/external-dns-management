@@ -178,27 +178,11 @@ func NewController(env Environment, def Definition, cmp mappings.Definition) (*c
 	this.cluster = clusters.GetCluster(required[0])
 	this.EventRecorder = this.cluster.Resources()
 
-	for n, crds := range def.CustomResourceDefinitions() {
-		cluster := clusters.GetCluster(n)
-		if cluster == nil {
-			return nil, fmt.Errorf("cluster %q not found for resource definitions", n)
-		}
-		if isDeployCRDsDisabled(cluster) {
-			this.Infof("deployment of required crds is disabled for cluster %q (used for %q)", cluster.GetName(), n)
-			continue
-		}
-		this.Infof("ensure required crds for cluster %q (used for %q)", cluster.GetName(), n)
-		log := this.AddIndent("  ")
-		for _, v := range crds {
-			crd := v.GetFor(cluster.GetServerVersion())
-			if crd != nil {
-				err = apiextensions.CreateCRDFromObject(log, cluster, crd.DataFor(cluster, nil), env.ControllerManager().GetMaintainer())
-				if err != nil {
-					return nil, err
-				}
-			}
-		}
+	err = this.deployCRDS()
+	if err != nil {
+		return nil, err
 	}
+
 	for n, t := range def.Reconcilers() {
 		this.Infof("creating reconciler %q", n)
 		reconciler, err := t(this)
@@ -245,6 +229,90 @@ func NewController(env Environment, def Definition, cmp mappings.Definition) (*c
 	}
 
 	return this, nil
+}
+
+func (this *controller) deployImplicitCustomResourceDefinitions(log logger.LogContext, eff WatchedResources, gks resources.GroupKindSet, cluster cluster.Interface) error {
+	for gk := range gks {
+		if eff.Contains(cluster.GetId(), gk) {
+			eff.Remove(cluster.GetId(), gk)
+			v, err := apiextensions.NewDefaultedCustomResourceDefinitionVersions(gk)
+			if err == nil {
+				err := v.Deploy(log, cluster, this.env.ControllerManager().GetMaintainer())
+				if err != nil {
+					return err
+				}
+			}
+		} else {
+			log.Infof("crd for %s already handled", gk)
+		}
+	}
+	return nil
+}
+
+func (this *controller) deployCRDS() error {
+	// first gather all intended or required resources
+	// by its effective and logical cluster usage
+	clusterResources := WatchedResources{}.Add(CLUSTER_MAIN, this.Owning().GroupKind())
+	effClusterResources := WatchedResources{}.Add(this.GetMainCluster().GetId(), this.Owning().GroupKind())
+	for cname, watches := range this.definition.Watches() {
+		cluster := this.GetCluster(cname)
+		if cluster == nil {
+			return fmt.Errorf("cluster %q not found for resource definitions", cname)
+		}
+		for _, w := range watches {
+			clusterResources.Add(cname, w.ResourceType().GroupKind())
+			effClusterResources.Add(cluster.GetId(), w.ResourceType().GroupKind())
+		}
+	}
+	for n, crds := range this.definition.CustomResourceDefinitions() {
+		cluster := this.GetCluster(n)
+		if cluster == nil {
+			return fmt.Errorf("cluster %q not found for resource definitions", n)
+		}
+		for _, v := range crds {
+			effClusterResources.Add(cluster.GetId(), v.GroupKind())
+		}
+	}
+
+	// now deploy explicit requested CRDs or implicitly available CRDs for used resources
+	log := this.AddIndent("  ")
+	for n, crds := range this.definition.CustomResourceDefinitions() {
+		cluster := this.GetCluster(n)
+		if isDeployCRDsDisabled(cluster) {
+			this.Infof("deployment of required crds is disabled for cluster %q (used for %q)", cluster.GetName(), n)
+			continue
+		}
+		this.Infof("ensure required crds for cluster %q (used for %q)", cluster.GetName(), n)
+		for _, v := range crds {
+			clusterResources.Remove(n, v.GroupKind())
+			if effClusterResources.Contains(cluster.GetId(), v.GroupKind()) {
+				effClusterResources.Remove(cluster.GetId(), v.GroupKind())
+				err := v.Deploy(log, cluster, this.env.ControllerManager().GetMaintainer())
+				if err != nil {
+					return err
+				}
+			} else {
+				log.Infof("crd for %s already handled", v.GroupKind())
+			}
+		}
+		err := this.deployImplicitCustomResourceDefinitions(log, effClusterResources, clusterResources[n], cluster)
+		if err != nil {
+			return err
+		}
+		delete(clusterResources, cluster.GetId())
+	}
+	for n, gks := range clusterResources {
+		cluster := this.GetCluster(n)
+		if isDeployCRDsDisabled(cluster) || len(gks) == 0 {
+			continue
+		}
+		this.Infof("ensure required crds for cluster %q (used for %q)", cluster.GetName(), n)
+		err := this.deployImplicitCustomResourceDefinitions(log, effClusterResources, gks, cluster)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func isDeployCRDsDisabled(cl cluster.Interface) bool {
@@ -502,12 +570,15 @@ func (this *controller) prepare() error {
 	}
 
 	this.Infof("setup reconcilers...")
-	for _, r := range this.reconcilers {
-		r.Setup()
+	for n, r := range this.reconcilers {
+		err = reconcile.SetupReconciler(r)
+		if err != nil {
+			return fmt.Errorf("setup of reconciler %s of controller %s failed: %s", n, this.GetName(), err)
+		}
 	}
 
 	this.Infof("setup watches....")
-	this.Infof("watching main resources %q at cluster %q", this.Owning(), h)
+	this.Infof("watching main resources %q at cluster %q (reconciler %s)", this.Owning(), h, DEFAULT_RECONCILER)
 
 	err = this.registerWatch(h, this.owning, DEFAULT_POOL)
 	if err != nil {
@@ -520,7 +591,7 @@ func (this *controller) prepare() error {
 		}
 
 		for _, watch := range watches {
-			this.Infof("watching additional resources %q at cluster %q", watch.ResourceType(), h)
+			this.Infof("watching additional resources %q at cluster %q (reconciler %s)", watch.ResourceType(), h, watch.Reconciler())
 			this.registerWatch(h, watch, watch.PoolName())
 		}
 	}
@@ -538,8 +609,12 @@ func (this *controller) Run() {
 	}
 
 	this.Infof("starting reconcilers...")
-	for _, r := range this.reconcilers {
-		r.Start()
+	for n, r := range this.reconcilers {
+		err := reconcile.StartReconciler(r)
+		if err != nil {
+			this.Errorf("exit controller %s because start of reconciler %s failed: %s", this.GetName(), n, err)
+			return
+		}
 	}
 	this.Infof("controller started")
 	<-this.GetContext().Done()

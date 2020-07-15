@@ -26,12 +26,6 @@ import (
 type DefaultReconciler struct {
 }
 
-func (r *DefaultReconciler) Setup() {
-}
-
-func (r *DefaultReconciler) Start() {
-}
-
 func (r *DefaultReconciler) Reconcile(logger logger.LogContext, obj resources.Object) Status {
 	return Succeeded(logger)
 }

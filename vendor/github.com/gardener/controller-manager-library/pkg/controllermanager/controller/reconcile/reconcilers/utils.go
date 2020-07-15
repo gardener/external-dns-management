@@ -39,3 +39,7 @@ func ClusterResources(cluster string, gks ...schema.GroupKind) Resources {
 		return result
 	}
 }
+
+func MainResources(gks ...schema.GroupKind) Resources {
+	return ClusterResources("", gks...)
+}

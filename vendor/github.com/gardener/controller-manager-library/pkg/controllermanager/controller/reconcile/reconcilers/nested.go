@@ -42,16 +42,18 @@ func NewNestedReconciler(reconciler controller.ReconcilerType, c controller.Inte
 	return &NestedReconciler{}, nil
 }
 
-func (this *NestedReconciler) Setup() {
+func (this *NestedReconciler) Setup() error {
 	if this.nested != nil {
-		this.nested.Setup()
+		return reconcile.SetupReconciler(this.nested)
 	}
+	return nil
 }
 
-func (this *NestedReconciler) Start() {
+func (this *NestedReconciler) Start() error {
 	if this.nested != nil {
-		this.nested.Start()
+		return reconcile.StartReconciler(this.nested)
 	}
+	return nil
 }
 
 func (this *NestedReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
