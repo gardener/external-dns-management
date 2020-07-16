@@ -47,6 +47,7 @@ func init() {
 		OptionsByExample("options", &Config{}).
 		CustomResourceDefinitions(resources.NewGroupKind(api.GroupName, api.DNSAnnotationKind)).
 		MainResource(api.GroupName, api.DNSAnnotationKind).
+		ActivateExplicitly().
 		MustRegister()
 }
 
