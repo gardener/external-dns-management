@@ -82,12 +82,12 @@ spec:
       type: date
   group: dns.gardener.cloud
   names:
-    kind: DNSEntry
-    listKind: DNSEntryList
-    plural: dnsentries
+    kind: DNSAnnotation
+    listKind: DNSAnnotationList
+    plural: dnsannotations
     shortNames:
-      - dnse
-    singular: dnsentry
+      - dnsa
+    singular: dnsannotation
   scope: Namespaced
   subresources:
     status: {}
