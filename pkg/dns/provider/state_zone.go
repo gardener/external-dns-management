@@ -183,6 +183,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	changes := NewChangeModel(logger, ownerids, req, this.config)
 	err := changes.Setup()
 	if err != nil {
+		req.zone.Failed()
 		return err
 	}
 	modified := false

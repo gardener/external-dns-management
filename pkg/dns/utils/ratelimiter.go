@@ -48,7 +48,11 @@ func NewRateLimiter(min, max, minincr time.Duration) *RateLimiter {
 }
 
 func (this *RateLimiter) RateLimit() time.Duration {
-	return this.rate.Load()
+	rate := this.rate.Load()
+	if rate == 0 {
+		rate = this.min
+	}
+	return rate
 }
 
 func (this *RateLimiter) Succeeded() {
