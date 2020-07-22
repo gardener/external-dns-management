@@ -132,6 +132,26 @@ func (this ClusterObjectKey) AsRefFor(clusterid string) string {
 	return this.asString()
 }
 
+func (a ClusterObjectKey) Compare(b ClusterObjectKey) int {
+	if a == b {
+		return 0
+	}
+	r := strings.Compare(a.Cluster(), b.Cluster())
+	if r == 0 {
+		r = strings.Compare(a.Group(), b.Group())
+		if r == 0 {
+			r = strings.Compare(a.Kind(), b.Kind())
+			if r == 0 {
+				r = strings.Compare(a.Namespace(), b.Namespace())
+				if r == 0 {
+					r = strings.Compare(a.Name(), b.Name())
+				}
+			}
+		}
+	}
+	return r
+}
+
 func ParseClusterObjectKey(clusterid string, key string) (ClusterObjectKey, error) {
 	id := clusterid
 	i := strings.Index(key, ":")
@@ -147,6 +167,16 @@ func ParseClusterObjectKey(clusterid string, key string) (ClusterObjectKey, erro
 		return ClusterObjectKey{}, errors.NewInvalid("invalid cluster object key format: %s", key)
 	}
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Sortable Cluster Object Key Array
+////////////////////////////////////////////////////////////////////////////////
+
+type ClusterObjectKeys []ClusterObjectKey
+
+func (p ClusterObjectKeys) Len() int           { return len(p) }
+func (p ClusterObjectKeys) Less(i, j int) bool { return p[i].Compare(p[j]) < 0 }
+func (p ClusterObjectKeys) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
 
 ////////////////////////////////////////////////////////////////////////////////
 // Cluster Object Key Set
@@ -254,7 +284,7 @@ func (this ClusterObjectKeySet) Copy() ClusterObjectKeySet {
 	return set
 }
 
-func (this ClusterObjectKeySet) AsArray() []ClusterObjectKey {
+func (this ClusterObjectKeySet) AsArray() ClusterObjectKeys {
 	a := []ClusterObjectKey{}
 	for n := range this {
 		a = append(a, n)

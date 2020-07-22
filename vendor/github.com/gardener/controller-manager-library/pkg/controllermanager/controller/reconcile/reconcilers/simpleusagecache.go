@@ -45,6 +45,7 @@ func GetSharedSimpleUsageCache(controller controller.Interface) *SimpleUsageCach
 }
 
 type SimpleUsageCache struct {
+	resources.ClusterObjectKeyLocks
 	lock        sync.RWMutex
 	users       map[resources.ClusterObjectKey]resources.ClusterObjectKeySet
 	uses        map[resources.ClusterObjectKey]resources.ClusterObjectKeySet

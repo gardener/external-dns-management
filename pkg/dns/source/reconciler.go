@@ -144,6 +144,7 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 		obj.Event(core.EventTypeWarning, "reconcile", err.Error())
 	}
 
+	this.state.SetDep(obj.ClusterKey(), this.usedRef(obj, info))
 	if !responsible {
 		if len(slaves) > 0 {
 			logger.Infof("not responsible anymore, but still found slaves (cleanup required): %v", resources.ObjectArrayToString(slaves...))
@@ -248,6 +249,7 @@ outer:
 		}
 	}
 
+	this.state.EnqueueUsers(obj)
 	if len(notifiedErrors) > 0 {
 		msg := strings.Join(notifiedErrors, ", ")
 		if feedback != nil {
@@ -331,6 +333,7 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 	}
 	status := this.state.source.Delete(logger, obj)
 	if status.IsSucceeded() {
+		this.state.SetDep(obj.ClusterKey(), nil)
 		status = this.NestedReconciler.Delete(logger, obj)
 		if status.IsSucceeded() {
 			err := this.RemoveFinalizer(obj)
@@ -347,6 +350,18 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 
 func ref(r *api.EntryReference) string {
 	return fmt.Sprint("%s/%s", r.Namespace, r.Name)
+}
+
+func (this *sourceReconciler) usedRef(obj resources.Object, info *DNSInfo) *resources.ClusterObjectKey {
+	if info.OrigRef != nil && info.TargetRef == nil {
+		namespace := info.OrigRef.Namespace
+		if this.namespace == "" {
+			namespace = obj.GetNamespace()
+		}
+		ref := resources.NewClusterKey(obj.GetCluster().GetId(), ENTRY, namespace, info.OrigRef.Name)
+		return &ref
+	}
+	return nil
 }
 
 func (this *sourceReconciler) mapRef(obj resources.Object, dnsname string, info *DNSInfo) {

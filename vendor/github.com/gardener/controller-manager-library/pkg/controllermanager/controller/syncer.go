@@ -210,7 +210,7 @@ func (this *SyncRequest) update(log logger.LogContext, initiator resources.Objec
 	if len(reconcilers) == 0 {
 		return false, fmt.Errorf("no reconcilers found for resource %s in %s", this.resource, this.cluster)
 	}
-	list, err := this.controller.handlers[this.cluster.GetName()].resources[this.resource].List()
+	list, err := this.controller.ClusterHandler(this.cluster).resources[this.resource].List()
 	if err != nil {
 		return false, err
 	}

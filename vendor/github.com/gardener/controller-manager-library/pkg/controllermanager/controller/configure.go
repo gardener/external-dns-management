@@ -414,7 +414,9 @@ func (this Configuration) Cluster(name string) Configuration {
 		name = CLUSTER_MAIN
 	}
 	this.cluster = name
-	this.pool = DEFAULT_POOL
+	if this.pool == "" {
+		this.pool = DEFAULT_POOL
+	}
 	if name != CLUSTER_MAIN {
 		for i, n := range this.settings.required_clusters {
 			if n == name {

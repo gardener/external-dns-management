@@ -46,6 +46,7 @@ func ParseClusterObjectKey(clusterid string, key string) (ClusterObjectKey, erro
 // Cluster Object Key Set
 ////////////////////////////////////////////////////////////////////////////////
 
+type ClusterObjectKeys = abstract.ClusterObjectKeys
 type ClusterObjectKeySet = abstract.ClusterObjectKeySet
 
 func NewClusterObjectKeySet(a ...ClusterObjectKey) ClusterObjectKeySet {

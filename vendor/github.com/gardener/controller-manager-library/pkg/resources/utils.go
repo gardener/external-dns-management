@@ -17,8 +17,12 @@
 package resources
 
 import (
+	"context"
 	"fmt"
 	"reflect"
+	"sync"
+
+	"golang.org/x/sync/semaphore"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -246,4 +250,64 @@ func FilterObjectDeletionError(args ...interface{}) error {
 		return err
 	}
 	return nil
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type ClusterObjectKeyLocks struct {
+	lock  sync.Mutex
+	locks map[ClusterObjectKey]*semaphore.Weighted
+}
+
+func (this *ClusterObjectKeyLocks) TryLock(key ClusterObjectKey) bool {
+	var lock *semaphore.Weighted
+	this.lock.Lock()
+
+	if this.locks == nil {
+		this.locks = map[ClusterObjectKey]*semaphore.Weighted{}
+	} else {
+		lock = this.locks[key]
+	}
+	if lock == nil {
+		lock = semaphore.NewWeighted(1)
+		this.locks[key] = lock
+	}
+	this.lock.Unlock()
+	return lock.TryAcquire(1)
+}
+
+func (this *ClusterObjectKeyLocks) Lock(ctx context.Context, key ClusterObjectKey) error {
+	var lock *semaphore.Weighted
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	this.lock.Lock()
+
+	if this.locks == nil {
+		this.locks = map[ClusterObjectKey]*semaphore.Weighted{}
+	} else {
+		lock = this.locks[key]
+	}
+	if lock == nil {
+		lock = semaphore.NewWeighted(1)
+		this.locks[key] = lock
+	}
+	this.lock.Unlock()
+	return lock.Acquire(ctx, 1)
+}
+
+func (this *ClusterObjectKeyLocks) Unlock(key ClusterObjectKey) {
+	var lock *semaphore.Weighted
+	this.lock.Lock()
+
+	if this.locks != nil {
+		lock = this.locks[key]
+		if lock != nil {
+			lock.Release(1)
+			if lock.TryAcquire(1) {
+				delete(this.locks, key)
+			}
+		}
+	}
+	this.lock.Unlock()
 }

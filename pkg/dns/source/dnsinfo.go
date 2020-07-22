@@ -49,24 +49,26 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 		return nil, false, nil
 	}
 	annos := obj.GetAnnotations()
+	current.AnnotatedNames = utils.StringSet{}
+	current.AnnotatedNames.AddAllSplitted(annos[DNS_ANNOTATION])
+
 	addons := this.annotations.GetInfoFor(obj.ClusterKey())
 	if len(addons) > 0 {
 		for k, v := range addons {
-			if _, ok := annos[k]; !ok {
-				annos[k] = v
-				logger.Infof("using annotation injection: %s=%s", k, v)
+			if k == DNS_ANNOTATION {
+				current.AnnotatedNames.AddAllSplitted(v)
+				logger.Infof("adding dns names by annotation injection: %s", v)
+			} else {
+				if _, ok := annos[k]; !ok {
+					annos[k] = v
+					logger.Infof("using annotation injection: %s=%s", k, v)
+				}
 			}
 		}
-		obj.SetAnnotations(annos)
-	}
-
-	a := annos[DNS_ANNOTATION]
-	current.AnnotatedNames = utils.StringSet{}
-	for _, e := range strings.Split(a, ",") {
-		e = strings.TrimSpace(e)
-		if e != "" {
-			current.AnnotatedNames.Add(e)
+		if len(current.AnnotatedNames) > 0 {
+			annos[DNS_ANNOTATION] = strings.Join(current.AnnotatedNames.AsArray(), ",")
 		}
+		obj.SetAnnotations(annos)
 	}
 	info, err := s.GetDNSInfo(logger, obj, current)
 	if info != nil && info.Names != nil {

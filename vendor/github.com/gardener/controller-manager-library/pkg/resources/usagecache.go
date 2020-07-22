@@ -128,12 +128,12 @@ func (this *UsageCache) RenewOwner(obj Object) bool {
 func (this *UsageCache) renewOwner(obj Object) bool {
 	key := obj.ClusterKey()
 	oldused := this.byOwner[key]
-	ńewused := this.used(obj)
-	if len(ńewused) == 0 && len(oldused) == 0 {
+	newused := this.used(obj)
+	if len(newused) == 0 && len(oldused) == 0 {
 		return false
 	}
 	if len(oldused) > 0 {
-		add, del := ńewused.DiffFrom(oldused)
+		add, del := newused.DiffFrom(oldused)
 		for e := range add {
 			this.add(key, e)
 		}
@@ -142,7 +142,7 @@ func (this *UsageCache) renewOwner(obj Object) bool {
 		}
 		return len(add)+len(del) > 0
 	} else {
-		for e := range ńewused {
+		for e := range newused {
 			this.add(key, e)
 		}
 	}

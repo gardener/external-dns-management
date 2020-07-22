@@ -424,18 +424,22 @@ func (this *controller) GetOptionSource(name string) (config.OptionSource, error
 	return src, nil
 }
 
-func (this *controller) GetClusterHandler(name string) (*ClusterHandler, error) {
+func (this *controller) getClusterHandler(name string) (*ClusterHandler, error) {
 	cluster := this.GetCluster(name)
 
 	if cluster == nil {
 		return nil, fmt.Errorf("unknown cluster %q for %q", name, this.GetName())
 	}
-	h := this.handlers[cluster.GetName()]
+	h := this.handlers[cluster.GetId()]
 	if h == nil {
 		h = newClusterHandler(this, cluster)
-		this.handlers[cluster.GetName()] = h
+		this.handlers[cluster.GetId()] = h
 	}
 	return h, nil
+}
+
+func (this *controller) ClusterHandler(cluster resources.Cluster) *ClusterHandler {
+	return this.handlers[cluster.GetId()]
 }
 
 func (this *controller) GetClusterById(id string) cluster.Interface {
@@ -471,22 +475,22 @@ func (this *controller) EnqueueKey(key resources.ClusterObjectKey) error {
 	if cluster == nil {
 		return fmt.Errorf("cluster with id %q not found", key.Cluster())
 	}
-	h := this.handlers[cluster.GetName()]
+	h := this.ClusterHandler(cluster)
 	return h.EnqueueKey(key)
 }
 
 func (this *controller) Enqueue(object resources.Object) error {
-	h := this.handlers[object.GetCluster().GetName()]
+	h := this.ClusterHandler(object.GetCluster())
 	return h.EnqueueObject(object)
 }
 
 func (this *controller) EnqueueAfter(object resources.Object, duration time.Duration) error {
-	h := this.handlers[object.GetCluster().GetName()]
+	h := this.ClusterHandler(object.GetCluster())
 	return h.EnqueueObjectAfter(object, duration)
 }
 
 func (this *controller) EnqueueRateLimited(object resources.Object) error {
-	h := this.handlers[object.GetCluster().GetName()]
+	h := this.ClusterHandler(object.GetCluster())
 	return h.EnqueueObjectRateLimited(object)
 }
 
@@ -519,7 +523,7 @@ func (this *controller) GetMainWatchResource() WatchResource {
 // Check does all the checks that might cause Prepare to fail
 // after a successful check Prepare can execute without error
 func (this *controller) check() error {
-	h, err := this.GetClusterHandler(CLUSTER_MAIN)
+	h, err := this.getClusterHandler(CLUSTER_MAIN)
 	if err != nil {
 		return err
 	}
@@ -531,7 +535,7 @@ func (this *controller) check() error {
 
 	// setup and check cluster handlers for all required cluster
 	for cname, watches := range this.GetDefinition().Watches() {
-		h, err := this.GetClusterHandler(cname)
+		h, err := this.getClusterHandler(cname)
 		if err != nil {
 			return err
 		}
@@ -564,7 +568,7 @@ func (this *controller) registerWatch(h *ClusterHandler, r WatchResource, p stri
 // in Check, so after a successful checkController
 // startController MUST not return an error.
 func (this *controller) prepare() error {
-	h, err := this.GetClusterHandler(CLUSTER_MAIN)
+	h, err := this.getClusterHandler(CLUSTER_MAIN)
 	if err != nil {
 		return err
 	}
@@ -585,7 +589,7 @@ func (this *controller) prepare() error {
 		return err
 	}
 	for cname, watches := range this.watches {
-		h, err := this.GetClusterHandler(cname)
+		h, err := this.getClusterHandler(cname)
 		if err != nil {
 			return err
 		}
@@ -662,7 +666,7 @@ func (this *controller) DecodeKey(key string) (string, *resources.ClusterObjectK
 	}
 	objKey := resources.NewClusterKey(cluster.GetId(), resources.NewGroupKind(apiGroup, kind), namespace, name)
 
-	r, err := cluster.GetCachedObject(objKey)
+	r, err := this.ClusterHandler(cluster).GetObject(objKey)
 	return "", &objKey, r, err
 }
 

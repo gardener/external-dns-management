@@ -18,18 +18,29 @@
 package source
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/resources"
 	"sync"
+
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
+	"github.com/gardener/controller-manager-library/pkg/resources"
 )
 
 type state struct {
 	lock     sync.Mutex
 	source   DNSSource
 	feedback map[resources.ClusterObjectKey]DNSFeedback
+
+	used map[resources.ClusterObjectKey]resources.ClusterObjectKeySet
+	deps map[resources.ClusterObjectKey]resources.ClusterObjectKey
 }
 
 func NewState() interface{} {
-	return &state{source: nil, feedback: map[resources.ClusterObjectKey]DNSFeedback{}}
+	return &state{
+		source:   nil,
+		feedback: map[resources.ClusterObjectKey]DNSFeedback{},
+
+		used: map[resources.ClusterObjectKey]resources.ClusterObjectKeySet{},
+		deps: map[resources.ClusterObjectKey]resources.ClusterObjectKey{},
+	}
 }
 
 func (this *state) GetFeedbackForObject(obj resources.Object) DNSFeedback {
@@ -57,4 +68,45 @@ func (this *state) DeleteFeedback(key resources.ClusterObjectKey) {
 	defer this.lock.Unlock()
 
 	delete(this.feedback, key)
+}
+
+func (this *state) SetDep(obj resources.ClusterObjectKey, dep *resources.ClusterObjectKey) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	old, ok := this.deps[obj]
+
+	if ok && (dep == nil || *dep != old) {
+		delete(this.deps, obj)
+		set := this.used[old]
+		if set != nil {
+			set.Remove(obj)
+			if len(set) == 0 {
+				delete(this.used, old)
+			}
+		}
+	}
+
+	if dep != nil && (!ok || *dep != old) {
+		this.deps[obj] = *dep
+		set := this.used[*dep]
+		if set == nil {
+			set = resources.NewClusterObjectKeySet(obj)
+			this.used[*dep] = set
+		} else {
+			set.Add(obj)
+		}
+	}
+}
+
+func (this *state) EnqueueUsers(obj resources.ClusterObjectKey, c controller.Interface) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	set := this.used[obj]
+	if set != nil {
+		for u := range this.used[obj] {
+			c.EnqueueKey(u)
+		}
+	}
 }

@@ -29,13 +29,13 @@ import (
 )
 
 type DNSInfo struct {
-	Names    utils.StringSet
-	TTL      *int64
-	Interval *int64
-	Targets  utils.StringSet
-	Text     utils.StringSet
-	OrigRef  *v1alpha1.EntryReference
-	TargetRef  *v1alpha1.EntryReference
+	Names     utils.StringSet
+	TTL       *int64
+	Interval  *int64
+	Targets   utils.StringSet
+	Text      utils.StringSet
+	OrigRef   *v1alpha1.EntryReference
+	TargetRef *v1alpha1.EntryReference
 }
 
 type DNSFeedback interface {

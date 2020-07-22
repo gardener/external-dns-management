@@ -18,6 +18,8 @@ package controller
 
 import (
 	"fmt"
+	"reflect"
+	"sync"
 	"time"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,14 +53,15 @@ type ClusterHandler struct {
 	controller *controller
 	cluster    cluster.Interface
 	resources  map[ResourceKey]*clusterResourceInfo
+	cache      sync.Map
 }
 
 func newClusterHandler(controller *controller, cluster cluster.Interface) *ClusterHandler {
 	return &ClusterHandler{
-		controller.NewContext("cluster", cluster.GetName()),
-		controller,
-		cluster,
-		map[ResourceKey]*clusterResourceInfo{},
+		LogContext: controller.NewContext("cluster", cluster.GetName()),
+		controller: controller,
+		cluster:    cluster,
+		resources:  map[ResourceKey]*clusterResourceInfo{},
 	}
 }
 
@@ -98,6 +101,21 @@ func (c *ClusterHandler) register(resourceKey ResourceKey, namespace string, opt
 			return err
 		}
 	} else {
+		if i.namespace != namespace {
+			return fmt.Errorf("watch namespace mismatch for resource %s (%q != %q)", resourceKey, i.namespace, namespace)
+		}
+		if (i.optionsFunc == nil) != (optionsFunc == nil) {
+			return fmt.Errorf("watch options mismatch for resource %s", resourceKey)
+		}
+		if optionsFunc != nil {
+			opts1 := &v1.ListOptions{}
+			opts2 := &v1.ListOptions{}
+			i.optionsFunc(opts1)
+			optionsFunc(opts2)
+			if !reflect.DeepEqual(opts1, opts2) {
+				return fmt.Errorf("watch options mismatch for resource %s (%+v != %+v)", resourceKey, opts1, opts2)
+			}
+		}
 		for _, p := range i.pools {
 			if p == usedpool {
 				return nil
@@ -174,10 +192,19 @@ func (c *ClusterHandler) EnqueueObjectAfter(obj resources.Object, duration time.
 
 ///////////////////////////////////////////////////////////////////////////////
 
+func (c *ClusterHandler) GetObject(key resources.ClusterObjectKey) (resources.Object, error) {
+	o, ok := c.cache.Load(key.ObjectKey())
+	if o == nil || !ok {
+		return nil, nil
+	}
+	return o.(resources.Object), nil
+}
+
 func (c *ClusterHandler) objectAdd(obj resources.Object) {
 	c.Debugf("** GOT add event for %s", obj.Description())
 
 	if c.controller.mustHandle(obj) {
+		c.cache.Store(obj.Key(), obj)
 		c.EnqueueObject(obj)
 	}
 }
@@ -187,7 +214,7 @@ func (c *ClusterHandler) objectUpdate(old, new resources.Object) {
 	if !c.controller.mustHandle(old) && !c.controller.mustHandle(new) {
 		return
 	}
-
+	c.cache.Store(new.Key(), new)
 	c.EnqueueObject(new)
 }
 
@@ -195,6 +222,7 @@ func (c *ClusterHandler) objectDelete(obj resources.Object) {
 	c.Debugf("** GOT delete event for %s: %s", obj.Description(), obj.GetResourceVersion())
 
 	if c.controller.mustHandle(obj) {
+		c.cache.Delete(obj.Key())
 		c.EnqueueObject(obj)
 	}
 }

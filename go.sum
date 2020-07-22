@@ -123,6 +123,8 @@ github.com/fsnotify/fsnotify v1.4.9 h1:hsms1Qyu0jgnwNXIxa+/V/PDsU6CfLf6CNO8H7IWo
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/gardener/controller-manager-library v0.2.1-0.20200715124455-592226798833 h1:INY2G7t/doKgmxsfZDFCdTSpDh40K1YXi9pqIZNAj0A=
 github.com/gardener/controller-manager-library v0.2.1-0.20200715124455-592226798833/go.mod h1:slXJAUx8S+M9gCLkYg7zO8NUeD5KKlVdAV5GL8g3k6g=
+github.com/gardener/controller-manager-library v0.2.1-0.20200722132149-3f082a62a5dc h1:lyYxJ4I9mnLCRZ/ELPZJE/OqSoBUgm4LIFpK18T8ydw=
+github.com/gardener/controller-manager-library v0.2.1-0.20200722132149-3f082a62a5dc/go.mod h1:6R2+75JaFEdUXG5bdqTt+asSHac0Edf4QQl4ORF3onM=
 github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=

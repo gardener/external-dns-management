@@ -107,9 +107,16 @@ func (this StringSet) RemoveSet(sets ...StringSet) StringSet {
 	return this
 }
 
-func (this StringSet) AddAllSplitted(n string) StringSet {
-	for _, p := range strings.Split(n, ",") {
-		this.Add(strings.ToLower(strings.TrimSpace(p)))
+func (this StringSet) AddAllSplitted(n string, seps ...string) StringSet {
+	sep := ","
+	if len(seps) > 0 {
+		sep = seps[0]
+	}
+	for _, p := range strings.Split(n, sep) {
+		e := strings.TrimSpace(p)
+		if e != "" {
+			this.Add(strings.ToLower(e))
+		}
 	}
 	return this
 }
