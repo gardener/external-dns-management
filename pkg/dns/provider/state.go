@@ -496,7 +496,7 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 			zone := this.zones[z.Id()]
 			if zone == nil {
 				modified = true
-				zone = newDNSHostedZone(this.config.Delay, z)
+				zone = newDNSHostedZone(this.config.RescheduleDelay, z)
 				this.zones[z.Id()] = zone
 				logger.Infof("adding hosted zone %q (%s)", z.Id(), z.Domain())
 				this.triggerHostedZone(zone.Id())
