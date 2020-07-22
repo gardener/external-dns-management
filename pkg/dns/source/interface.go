@@ -22,9 +22,10 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
 type DNSInfo struct {
@@ -33,6 +34,8 @@ type DNSInfo struct {
 	Interval *int64
 	Targets  utils.StringSet
 	Text     utils.StringSet
+	OrigRef  *v1alpha1.EntryReference
+	TargetRef  *v1alpha1.EntryReference
 }
 
 type DNSFeedback interface {
