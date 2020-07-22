@@ -34,7 +34,7 @@ configuration:
   # alicloudDNSDryRun: false
   # alicloudDNSIdentifier: ""
   # alicloudDNSOwneridsPoolSize: 1
-  # alicloudDNSPoolResyncPeriod: 
+  # alicloudDNSPoolResyncPeriod:
   # alicloudDNSPoolSize:
   # alicloudDNSProvidersPoolResyncPeriod: 30s
   # alicloudDNSProvidersPoolSize: 2
@@ -169,6 +169,28 @@ configuration:
   # googleCloudDNSStatisticPoolSize:
   # googleCloudDNSTtl: 120
   # gracePeriod: 0
+  # infobloxDNSCacheTtl: 120
+  # infobloxDNSDefaultPoolSize: 2
+  # infobloxDNSDisableZoneStateCaching: false
+  # infobloxDNSDnsClass: "gardendns"
+  # infobloxDNSDnsDelay: 10s
+  # infobloxDNSDnsPoolResyncPeriod: 30s
+  # infobloxDNSDnsPoolSize: 1
+  # infobloxDNSDryRun: false
+  # infobloxDNSIdentifier: ""
+  # infobloxDNSOwneridsPoolSize: 1
+  # infobloxDNSPoolResyncPeriod:
+  # infobloxDNSPoolSize:
+  # infobloxDNSProvidersPoolResyncPeriod: 30s
+  # infobloxDNSProvidersPoolSize: 2
+  # infobloxDNSRatelimiterBurst:
+  # infobloxDNSRatelimiterEnabled:
+  # infobloxDNSRatelimiterQps:
+  # infobloxDNSRescheduleDelay: 120s
+  # infobloxDNSSecretsPoolSize: 2
+  # infobloxDNSSetup: 10
+  # infobloxDNSStatisticPoolSize:
+  # infobloxDNSTtl: 120
   # ingressDNSDefaultPoolResyncPeriod: 30s
   # ingressDNSDefaultPoolSize: 2
   # ingressDNSDnsClass: "gardendns"

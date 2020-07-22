@@ -490,6 +490,72 @@ spec:
         {{- if .Values.configuration.gracePeriod }}
         - --grace-period={{ .Values.configuration.gracePeriod }}
         {{- end }}
+        {{- if .Values.configuration.infobloxDNSCacheTtl }}
+        - --infoblox-dns.cache-ttl={{ .Values.configuration.infobloxDNSCacheTtl }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSDefaultPoolSize }}
+        - --infoblox-dns.default.pool.size={{ .Values.configuration.infobloxDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSDisableZoneStateCaching }}
+        - --infoblox-dns.disable-zone-state-caching={{ .Values.configuration.infobloxDNSDisableZoneStateCaching }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSDnsClass }}
+        - --infoblox-dns.dns-class={{ .Values.configuration.infobloxDNSDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSDnsDelay }}
+        - --infoblox-dns.dns-delay={{ .Values.configuration.infobloxDNSDnsDelay }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSDnsPoolResyncPeriod }}
+        - --infoblox-dns.dns.pool.resync-period={{ .Values.configuration.infobloxDNSDnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSDnsPoolSize }}
+        - --infoblox-dns.dns.pool.size={{ .Values.configuration.infobloxDNSDnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSDryRun }}
+        - --infoblox-dns.dry-run={{ .Values.configuration.infobloxDNSDryRun }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSIdentifier }}
+        - --infoblox-dns.identifier={{ .Values.configuration.infobloxDNSIdentifier }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSOwneridsPoolSize }}
+        - --infoblox-dns.ownerids.pool.size={{ .Values.configuration.infobloxDNSOwneridsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSPoolResyncPeriod }}
+        - --infoblox-dns.pool.resync-period={{ .Values.configuration.infobloxDNSPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSPoolSize }}
+        - --infoblox-dns.pool.size={{ .Values.configuration.infobloxDNSPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSProvidersPoolResyncPeriod }}
+        - --infoblox-dns.providers.pool.resync-period={{ .Values.configuration.infobloxDNSProvidersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSProvidersPoolSize }}
+        - --infoblox-dns.providers.pool.size={{ .Values.configuration.infobloxDNSProvidersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSRatelimiterBurst }}
+        - --infoblox-dns.ratelimiter.burst={{ .Values.configuration.infobloxDNSRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSRatelimiterEnabled }}
+        - --infoblox-dns.ratelimiter.enabled={{ .Values.configuration.infobloxDNSRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSRatelimiterQps }}
+        - --infoblox-dns.ratelimiter.qps={{ .Values.configuration.infobloxDNSRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSRescheduleDelay }}
+        - --infoblox-dns.reschedule-delay={{ .Values.configuration.infobloxDNSRescheduleDelay }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSSecretsPoolSize }}
+        - --infoblox-dns.secrets.pool.size={{ .Values.configuration.infobloxDNSSecretsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSSetup }}
+        - --infoblox-dns.setup={{ .Values.configuration.infobloxDNSSetup }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSStatisticPoolSize }}
+        - --infoblox-dns.statistic.pool.size={{ .Values.configuration.infobloxDNSStatisticPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSTtl }}
+        - --infoblox-dns.ttl={{ .Values.configuration.infobloxDNSTtl }}
+        {{- end }}
         {{- if .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
         - --ingress-dns.default.pool.resync-period={{ .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
         {{- end }}

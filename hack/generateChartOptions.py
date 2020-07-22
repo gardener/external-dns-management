@@ -160,6 +160,29 @@ options = """
       --grace-period duration                                       inactivity grace period for detecting end of cleanup for shutdown
   -h, --help                                                        help for dns-controller-manager
       --identifier string                                           Identifier used to mark DNS entries in DNS system
+      --infoblox-dns.cache-dir string                               Directory to store zone caches (for reload after restart) of controller infoblox-dns
+      --infoblox-dns.cache-ttl int                                  Time-to-live for provider hosted zone cache of controller infoblox-dns (default 120)
+      --infoblox-dns.default.pool.size int                          Worker pool size for pool default of controller infoblox-dns (default 2)
+      --infoblox-dns.disable-zone-state-caching                     disable use of cached dns zone state on changes of controller infoblox-dns
+      --infoblox-dns.dns-class string                               Class identifier used to differentiate responsible controllers for entry resources of controller infoblox-dns (default "gardendns")
+      --infoblox-dns.dns-delay duration                             delay between two dns reconciliations of controller infoblox-dns (default 10s)
+      --infoblox-dns.dns.pool.resync-period duration                Period for resynchronization for pool dns of controller infoblox-dns (default 15m0s)
+      --infoblox-dns.dns.pool.size int                              Worker pool size for pool dns of controller infoblox-dns (default 1)
+      --infoblox-dns.dry-run                                        just check, don't modify of controller infoblox-dns
+      --infoblox-dns.identifier string                              Identifier used to mark DNS entries in DNS system of controller infoblox-dns (default "dnscontroller")
+      --infoblox-dns.ownerids.pool.size int                         Worker pool size for pool ownerids of controller infoblox-dns (default 1)
+      --infoblox-dns.pool.resync-period duration                    Period for resynchronization of controller infoblox-dns
+      --infoblox-dns.pool.size int                                  Worker pool size of controller infoblox-dns
+      --infoblox-dns.providers.pool.resync-period duration          Period for resynchronization for pool providers of controller infoblox-dns (default 10m0s)
+      --infoblox-dns.providers.pool.size int                        Worker pool size for pool providers of controller infoblox-dns (default 2)
+      --infoblox-dns.ratelimiter.burst int                          number of burst requests for rate limiter of controller infoblox-dns
+      --infoblox-dns.ratelimiter.enabled                            enables rate limiter for DNS provider requests of controller infoblox-dns
+      --infoblox-dns.ratelimiter.qps int                            maximum requests/queries per second of controller infoblox-dns
+      --infoblox-dns.reschedule-delay duration                      reschedule delay after losing provider of controller infoblox-dns (default 2m0s)
+      --infoblox-dns.secrets.pool.size int                          Worker pool size for pool secrets of controller infoblox-dns (default 2)
+      --infoblox-dns.setup int                                      number of processors for controller setup of controller infoblox-dns (default 10)
+      --infoblox-dns.statistic.pool.size int                        Worker pool size for pool statistic of controller infoblox-dns (default 1)
+      --infoblox-dns.ttl int                                        Default time-to-live for DNS entries of controller infoblox-dns (default 300)
       --ingress-dns.default.pool.resync-period duration             Period for resynchronization for pool default of controller ingress-dns (default 2m0s)
       --ingress-dns.default.pool.size int                           Worker pool size for pool default of controller ingress-dns (default 2)
       --ingress-dns.dns-class string                                identifier used to differentiate responsible controllers for entries of controller ingress-dns (default "gardendns")
@@ -268,10 +291,12 @@ def toCamelCase(name):
   str = str.replace("serviceDns", "serviceDNS")
   str = str.replace("googleClouddns", "googleCloudDNS")
   str = str.replace("cloudflareDns", "cloudflareDNS")
+  str = str.replace("infobloxDns", "infobloxDNS")
   return str
 
 excluded = {"name", "help", "identifier", "dry-run",
-  "cache-dir", "alicloud-dns.cache-dir", "aws-route53.cache-dir", "azure-dns.cache-dir", "google-clouddns.cache-dir", "openstack-designate.cache-dir", "cloudflare-dns.cache-dir"}
+  "cache-dir", "alicloud-dns.cache-dir", "aws-route53.cache-dir", "azure-dns.cache-dir", "google-clouddns.cache-dir",
+  "openstack-designate.cache-dir", "cloudflare-dns.cache-dir", "infoblox-dns.cache-dir"}
 for line in options.split("\n"):
     m = re.match(r"\s+(?:-[^-]+)?--(\S+)\s", line)
     if m:

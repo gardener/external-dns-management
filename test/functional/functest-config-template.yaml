@@ -1,6 +1,6 @@
 providers:
 
-- name: aws-playground
+- name: aws-route53-playground
   type: aws-route53
   domain: my.aws.dns.zone
   aliasTarget: xyz.eu-west-1.elb.amazonaws.com
@@ -9,7 +9,7 @@ providers:
     AWS_SECRET_ACCESS_KEY: ..
   zoneID: Z...
 
-- name: alicloud-playground
+- name: alicloud-dns-playground
   type: alicloud-dns
   domain: my.alicloud.dns.zone
   secretData: |+
@@ -17,7 +17,7 @@ providers:
     ACCESS_KEY_SECRET: ...
   zoneID: ...
 
-- name: azure-playground
+- name: azure-dns-playground
   type: azure-dns
   domain: my.azure.dns.zone
   secretData: |+
@@ -27,7 +27,7 @@ providers:
     AZURE_CLIENT_SECRET: ...
   zoneID: ...
 
-- name: google-playground
+- name: google-clouddns-playground
   type: google-clouddns
   domain: my.google.clouddns.zone
   secretData: |+
@@ -36,7 +36,7 @@ providers:
       ...
   zoneID: ...
 
-- name: openstack-playground
+- name: openstack-designate-playground
   type: openstack-designate
   domain: my.openstack.designate.dns.zone
   privateDNS: true # domain names are not reachable by public DNS lookup
@@ -49,9 +49,22 @@ providers:
     OS_PROJECT_NAME: ...
   zoneID: ...
 
-- name: cloudflare-playground
+- name: cloudflare-dns-playground
   type: cloudflare-dns
   domain: my.cloudflare.dns.zone
   secretData: |+
     CLOUDFLARE_API_TOKEN: ...
   zoneID: ...
+
+- name: infoblox-dns-playground
+  type: infoblox-dns
+  domain: my.infoblox.dns.zone
+  secretData: |+
+    USERNAME: ...
+    PASSWORD: ...
+  zoneID: ...
+  providerConfig: |+
+    host: my.infoblox.host
+    version: "2.10"
+    sslVerify: false
+    #proxyUrl: http://1.2.3.4:5678

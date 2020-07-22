@@ -34,6 +34,10 @@ func NewDNSZoneState(sets dns.DNSSets) DNSZoneState {
 	return &DefaultDNSZoneState{sets}
 }
 
+func (this *DefaultDNSZoneState) Clone() DNSZoneState {
+	return NewDNSZoneState(this.sets.Clone())
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 //  Default Implementation for DNSHostedZone
 ////////////////////////////////////////////////////////////////////////////////

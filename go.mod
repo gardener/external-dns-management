@@ -15,6 +15,7 @@ require (
 	github.com/gophercloud/gophercloud v0.2.0
 	github.com/gophercloud/utils v0.0.0-20190527093828-25f1b77b8c03
 	github.com/imdario/mergo v0.3.7 // indirect
+	github.com/infobloxopen/infoblox-go-client v1.1.0
 	github.com/mattn/go-isatty v0.0.12 // indirect
 	github.com/miekg/dns v1.1.14
 	github.com/onsi/ginkgo v1.14.0
@@ -35,3 +36,5 @@ require (
 )
 
 //replace github.com/gardener/controller-manager-library => ../controller-manager-library
+
+replace github.com/infobloxopen/infoblox-go-client => github.com/MartinWeindel/infoblox-go-client v1.1.1-0.20200616154106-b2951ec7a129

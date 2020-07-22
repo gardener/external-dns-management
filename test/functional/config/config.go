@@ -77,17 +77,18 @@ func PrintConfigEnv() {
 }
 
 type ProviderConfig struct {
-	Name          string `json:"name"`
-	Type          string `json:"type"`
-	FinalizerType string `json:"finalizerType,omitempty"`
-	Domain        string `json:"domain"`
-	ForeignDomain string `json:"foreignDomain,omitempty"`
-	SecretData    string `json:"secretData"`
-	Prefix        string `json:"prefix"`
-	AliasTarget   string `json:"aliasTarget,omitempty"`
-	ZoneID        string `json:"zoneID"`
-	PrivateDNS    bool   `json:"privateDNS,omitempty"`
-	TTL           string `json:"ttl,omitempty"`
+	Name               string `json:"name"`
+	Type               string `json:"type"`
+	FinalizerType      string `json:"finalizerType,omitempty"`
+	Domain             string `json:"domain"`
+	ForeignDomain      string `json:"foreignDomain,omitempty"`
+	SecretData         string `json:"secretData"`
+	Prefix             string `json:"prefix"`
+	AliasTarget        string `json:"aliasTarget,omitempty"`
+	ZoneID             string `json:"zoneID"`
+	PrivateDNS         bool   `json:"privateDNS,omitempty"`
+	TTL                string `json:"ttl,omitempty"`
+	SpecProviderConfig string `json:"providerConfig,omitempty"`
 
 	Namespace           string
 	TmpManifestFilename string
@@ -171,6 +172,9 @@ func (c *Config) postProcess(namespace string) error {
 		provider.SecretData = indent + reNewline.ReplaceAllString(provider.SecretData, "$1"+indent)
 		if provider.TTL == "" {
 			provider.TTL = "101"
+		}
+		if provider.SpecProviderConfig != "" {
+			provider.SpecProviderConfig = indent + reNewline.ReplaceAllString(provider.SpecProviderConfig, "$1"+indent)
 		}
 	}
 	return nil

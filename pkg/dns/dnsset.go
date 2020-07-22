@@ -80,11 +80,7 @@ func (dnssets DNSSets) RemoveRecordSet(name string, recordSetType string) {
 func (dnssets DNSSets) Clone() DNSSets {
 	clone := DNSSets{}
 	for dk, dv := range dnssets {
-		sets := RecordSets{}
-		for rk, rv := range dv.Sets {
-			sets[rk] = rv.Clone()
-		}
-		clone[dk] = &DNSSet{Name: dv.Name, Sets: sets}
+		clone[dk] = dv.Clone()
 	}
 	return clone
 }
@@ -98,6 +94,10 @@ const (
 type DNSSet struct {
 	Name string
 	Sets RecordSets
+}
+
+func (this *DNSSet) Clone() *DNSSet {
+	return &DNSSet{Name: this.Name, Sets: this.Sets.Clone()}
 }
 
 func (this *DNSSet) GetAttr(name string) string {

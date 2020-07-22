@@ -37,6 +37,14 @@ const RS_NS = "NS"
 type RecordSets map[string]*RecordSet
 type Records []*Record
 
+func (this RecordSets) Clone() RecordSets {
+	clone := RecordSets{}
+	for rk, rv := range this {
+		clone[rk] = rv.Clone()
+	}
+	return clone
+}
+
 type Record struct {
 	Value string
 }

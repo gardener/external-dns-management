@@ -184,12 +184,30 @@ func (c *DNSHandlerConfig) FillDefaultedIntProperty(target **int, def int, prop 
 		value := c.GetProperty(prop, alt...)
 		if value == "" {
 			*target = &def
+			return nil
 		}
 		i, err := strconv.Atoi(value)
 		if err != nil {
 			return fmt.Errorf("property %s must be an int value: %s", prop, err)
 		}
 		*target = &i
+		return nil
+	}
+	return c.checkNotDefinedInConfig(prop, alt...)
+}
+
+func (c *DNSHandlerConfig) FillDefaultedProperty(target **string, def string, prop string, alt ...string) error {
+	if *target == nil || **target == "" {
+		value := c.GetProperty(prop, alt...)
+		if value == "" {
+			if def == "" {
+				*target = nil
+				return nil
+			}
+			*target = &def
+			return nil
+		}
+		*target = &value
 		return nil
 	}
 	return c.checkNotDefinedInConfig(prop, alt...)
