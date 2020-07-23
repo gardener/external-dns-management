@@ -241,7 +241,7 @@ outer:
 	if len(current) > 0 {
 		for _, o := range current {
 			dnsname := dnsutils.DNSEntry(o).DNSEntry().Spec.DNSName
-			mod, err := this.updateEntry(logger, dnsname, info, o)
+			mod, err := this.updateEntryFor(logger, obj, info, o)
 			modified[dnsname] = mod
 			if err != nil {
 				notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot update dns entry object %q(%s): %s", o.ClusterKey(), dnsname, err))
@@ -249,7 +249,9 @@ outer:
 		}
 	}
 
-	this.state.EnqueueUsers(obj)
+	for key := range this.state.GetUsed(obj.ClusterKey()) {
+		this.EnqueueKey(key)
+	}
 	if len(notifiedErrors) > 0 {
 		msg := strings.Join(notifiedErrors, ", ")
 		if feedback != nil {
@@ -349,7 +351,7 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 ////////////////////////////////////////////////////////////////////////////////
 
 func ref(r *api.EntryReference) string {
-	return fmt.Sprint("%s/%s", r.Namespace, r.Name)
+	return fmt.Sprintf("%s/%s", r.Namespace, r.Name)
 }
 
 func (this *sourceReconciler) usedRef(obj resources.Object, info *DNSInfo) *resources.ClusterObjectKey {
@@ -364,28 +366,22 @@ func (this *sourceReconciler) usedRef(obj resources.Object, info *DNSInfo) *reso
 	return nil
 }
 
-func (this *sourceReconciler) mapRef(obj resources.Object, dnsname string, info *DNSInfo) {
+func (this *sourceReconciler) mapRef(obj resources.Object, info *DNSInfo) {
 	if info.OrigRef != nil && info.TargetRef == nil {
 		key := resources.NewClusterKey(obj.GetCluster().GetId(), ENTRY, info.OrigRef.Namespace, info.OrigRef.Name)
 		slaves := this.LookupSlaves(key)
-		var found resources.Object
-		for _, s := range slaves {
-			if s.Data().(*api.DNSEntry).Spec.DNSName == dnsname {
-				found = s
-				break
-			}
-		}
 		info.TargetRef = &api.EntryReference{}
+		if len(slaves) == 1 {
+			// DNSEntry always has exactly one slave
+			info.TargetRef.Name = slaves[0].GetName()
+			info.TargetRef.Namespace = slaves[0].GetNamespace()
+			return
+		}
+		info.TargetRef.Name = info.OrigRef.Name + "-not-found"
 		if this.namespace == "" {
 			info.TargetRef.Namespace = obj.GetNamespace()
 		} else {
 			info.TargetRef.Namespace = this.namespace
-		}
-		if found == nil {
-			info.TargetRef.Name = info.OrigRef.Name + "-not-found"
-		} else {
-			info.TargetRef.Name = found.GetName()
-			info.TargetRef.Namespace = found.GetNamespace()
 		}
 	}
 }
@@ -409,7 +405,7 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 		entry.Spec.OwnerId = &this.ownerid
 	}
 	entry.Spec.DNSName = dnsname
-	this.mapRef(obj, dnsname, info)
+	this.mapRef(obj, info)
 	if info.TargetRef != nil {
 		if info.OrigRef != nil {
 			logger.Infof("mapping entry reference %s to %s", ref(info.OrigRef), ref(info.TargetRef))
@@ -448,7 +444,7 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	return nil
 }
 
-func (this *sourceReconciler) updateEntry(logger logger.LogContext, dnsname string, info *DNSInfo, obj resources.Object) (bool, error) {
+func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resources.Object, info *DNSInfo, slave resources.Object) (bool, error) {
 	f := func(o resources.ObjectData) (bool, error) {
 		spec := &o.(*api.DNSEntry).Spec
 		mod := &utils.ModificationState{}
@@ -492,7 +488,7 @@ func (this *sourceReconciler) updateEntry(logger logger.LogContext, dnsname stri
 		targets := info.Targets
 		text := info.Text
 
-		this.mapRef(obj, dnsname, info)
+		this.mapRef(obj, info)
 		if info.TargetRef != nil {
 			if spec.Reference == nil ||
 				spec.Reference.Name != info.TargetRef.Name || spec.Reference.Namespace != info.TargetRef.Namespace {
@@ -510,11 +506,11 @@ func (this *sourceReconciler) updateEntry(logger logger.LogContext, dnsname stri
 		mod.AssureStringSet(&spec.Targets, targets)
 		mod.AssureStringSet(&spec.Text, text)
 		if mod.IsModified() {
-			logger.Infof("update entry %s", obj.ObjectName())
+			logger.Infof("update entry %s", slave.ObjectName())
 		}
 		return mod.IsModified(), nil
 	}
-	return obj.Modify(f)
+	return slave.Modify(f)
 }
 
 func (this *sourceReconciler) deleteEntry(logger logger.LogContext, obj resources.Object, e resources.Object) error {

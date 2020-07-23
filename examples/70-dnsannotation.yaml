@@ -1,0 +1,16 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSAnnotation
+metadata:
+  name: test-service-annotation
+  namespace: default
+spec:
+  resourceRef:
+    apiVersion: v1
+    kind: Service
+    name: test-service
+    namespace: default
+  annotations:
+    # dnsnames are merged
+    dns.gardener.cloud/dnsnames: echo2.ringtest.dev.k8s.ondemand.com,echo3.ringtest.dev.k8s.ondemand.com
+    # all other annotations are only effective if not set on original object
+    #dns.gardener.cloud/ttl: "1000"
