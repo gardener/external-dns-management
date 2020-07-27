@@ -21,6 +21,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -33,6 +34,7 @@ type DNSEntrySource struct {
 
 type updateOriginalFeedback struct {
 	resources  resources.Resources
+	isDNSEntry bool
 	objectName resources.ObjectName
 	chain      source.DNSFeedback
 }
@@ -45,6 +47,7 @@ func (this *DNSEntrySource) CreateDNSFeedback(obj resources.Object) source.DNSFe
 	eventFeedback := source.NewEventFeedback(obj, this.GetEvents(obj.ClusterKey()))
 	return &updateOriginalFeedback{
 		resources:  this.resources,
+		isDNSEntry: obj.GroupKind().Kind == api.DNSEntryKind,
 		objectName: obj.ClusterKey().ObjectName(),
 		chain:      eventFeedback,
 	}
@@ -93,7 +96,7 @@ func (f *updateOriginalFeedback) Deleted(logger logger.LogContext, dnsname strin
 }
 
 func (f *updateOriginalFeedback) setStatus(logger logger.LogContext, state string, msg string, dnsState *source.DNSState) {
-	if dnsState == nil {
+	if dnsState == nil || !f.isDNSEntry {
 		return
 	}
 	obj, err := f.resources.GetObjectInto(f.objectName, &api.DNSEntry{})
@@ -102,14 +105,7 @@ func (f *updateOriginalFeedback) setStatus(logger logger.LogContext, state strin
 		return
 	}
 	data := obj.Data().(*api.DNSEntry)
-	if dnsState != nil {
-		data.Status = dnsState.DNSEntryStatus
-	} else {
-		data.Status = api.DNSEntryStatus{State: state}
-		if msg != "" {
-			data.Status.Message = &msg
-		}
-	}
+	data.Status = dnsState.DNSEntryStatus
 	data.Status.ObservedGeneration = data.GetGeneration()
 	err = obj.UpdateStatus()
 	if err != nil {

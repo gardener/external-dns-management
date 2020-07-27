@@ -20,7 +20,6 @@ package source
 import (
 	"sync"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 )
 
@@ -99,14 +98,13 @@ func (this *state) SetDep(obj resources.ClusterObjectKey, dep *resources.Cluster
 	}
 }
 
-func (this *state) EnqueueUsers(obj resources.ClusterObjectKey, c controller.Interface) {
+func (this *state) GetUsed(obj resources.ClusterObjectKey) resources.ClusterObjectKeySet {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
 	set := this.used[obj]
 	if set != nil {
-		for u := range this.used[obj] {
-			c.EnqueueKey(u)
-		}
+		return resources.NewClusterObjectKeSetBySets(set)
 	}
+	return nil
 }

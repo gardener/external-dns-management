@@ -19,6 +19,7 @@ package annotations
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
@@ -205,7 +206,9 @@ func (this *State) Add(logger logger.LogContext, annotation resources.Object) er
 		if old := this.annotations[annotation.ClusterKey()]; old != nil {
 			if old.object == key {
 				old.annotations[annotation.ClusterKey()].annotation = annotation
-				return err
+				if reflect.DeepEqual(old.annotations[annotation.ClusterKey()].annotations, Annotations(w.Spec.Annotations)) {
+					return err
+				}
 			}
 			this.removeAnnotations(logger, annotation.ClusterKey(), old.object)
 		}
