@@ -39,5 +39,5 @@ require (
 
 replace github.com/infobloxopen/infoblox-go-client => github.com/MartinWeindel/infoblox-go-client v1.1.1-0.20200616154106-b2951ec7a129
 
-# fix Vulnerability CVE-2020-14040
+// fix Vulnerability CVE-2020-14040
 replace golang.org/x/text => golang.org/x/text v0.3.3
