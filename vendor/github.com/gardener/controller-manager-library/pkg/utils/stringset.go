@@ -108,14 +108,31 @@ func (this StringSet) RemoveSet(sets ...StringSet) StringSet {
 }
 
 func (this StringSet) AddAllSplitted(n string, seps ...string) StringSet {
+	return this.AddAllSplittedSelected(n, StandardStringElement, seps...)
+}
+
+func StandardStringElement(s string) (string, bool) {
+	return strings.ToLower(strings.TrimSpace(s)), true
+}
+
+func StandardNonEmptyStringElement(s string) (string, bool) {
+	s, _ = StandardStringElement(s)
+	return s, s != ""
+}
+
+func NonEmptyStringElement(s string) (string, bool) {
+	s = strings.TrimSpace(s)
+	return s, s != ""
+}
+
+func (this StringSet) AddAllSplittedSelected(n string, sel func(s string) (string, bool), seps ...string) StringSet {
 	sep := ","
 	if len(seps) > 0 {
 		sep = seps[0]
 	}
 	for _, p := range strings.Split(n, sep) {
-		e := strings.TrimSpace(p)
-		if e != "" {
-			this.Add(strings.ToLower(e))
+		if v, ok := sel(p); ok {
+			this.Add(v)
 		}
 	}
 	return this
