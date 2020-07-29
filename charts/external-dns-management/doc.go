@@ -14,7 +14,6 @@
  *
  */
 
-//go:generate ../../hack/generate-controller-registration.sh dns-external ../../charts/external-dns-management/ ../../examples/gardener-controllerregistration.yaml DNSProvider:aws-route53 DNSProvider:alicloud-dns DNSProvider:azure-dns DNSProvider:google-clouddns DNSProvider:openstack-designate DNSProvider:cloudflare-dns
 //go:generate ../../hack/generate-controller-registration.sh dns-external ../../charts/external-dns-management/ ../../examples/controller-registration.yaml         DNSProvider:aws-route53 DNSProvider:alicloud-dns DNSProvider:azure-dns DNSProvider:google-clouddns DNSProvider:openstack-designate DNSProvider:cloudflare-dns
 
 // Package chart enables go:generate support for generating the correct controller registration.
