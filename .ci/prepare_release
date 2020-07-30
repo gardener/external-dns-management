@@ -31,10 +31,8 @@ fi
 "${SOURCE_PATH}/hack/generate-controller-registration.sh" \
   dns-external \
   "${SOURCE_PATH}/charts/external-dns-management/" \
-  "${SOURCE_PATH}/examples/gardener-controllerregistration.yaml" \
+  "${SOURCE_PATH}/examples/controller-registration.yaml" \
   DNSProvider:aws-route53 DNSProvider:alicloud-dns DNSProvider:azure-dns DNSProvider:google-clouddns DNSProvider:openstack-designate DNSProvider:cloudflare-dns
-
-cp "${SOURCE_PATH}/examples/gardener-controllerregistration.yaml" "${SOURCE_PATH}/examples/controller-registration.yaml"
 
 VERSION_FILE="$(readlink -f "${SOURCE_PATH}/VERSION")"
 VERSION="$(cat "${VERSION_FILE}")"
