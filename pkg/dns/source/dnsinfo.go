@@ -50,13 +50,13 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 	}
 	annos := obj.GetAnnotations()
 	current.AnnotatedNames = utils.StringSet{}
-	current.AnnotatedNames.AddAllSplitted(annos[DNS_ANNOTATION])
+	current.AnnotatedNames.AddAllSplittedSelected(annos[DNS_ANNOTATION], utils.StandardNonEmptyStringElement)
 
 	addons := this.annotations.GetInfoFor(obj.ClusterKey())
 	if len(addons) > 0 {
 		for k, v := range addons {
 			if k == DNS_ANNOTATION {
-				current.AnnotatedNames.AddAllSplitted(v)
+				current.AnnotatedNames.AddAllSplittedSelected(v, utils.StandardNonEmptyStringElement)
 				logger.Infof("adding dns names by annotation injection: %s", v)
 			} else {
 				if _, ok := annos[k]; !ok {
