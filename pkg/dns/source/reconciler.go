@@ -355,7 +355,7 @@ func ref(r *api.EntryReference) string {
 }
 
 func (this *sourceReconciler) usedRef(obj resources.Object, info *DNSInfo) *resources.ClusterObjectKey {
-	if info.OrigRef != nil && info.TargetRef == nil {
+	if info != nil && info.OrigRef != nil && info.TargetRef == nil {
 		namespace := info.OrigRef.Namespace
 		if this.namespace == "" {
 			namespace = obj.GetNamespace()
