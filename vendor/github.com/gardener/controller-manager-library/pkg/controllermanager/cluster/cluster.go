@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"syscall"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -180,8 +181,20 @@ func (this *_Cluster) WithScheme(scheme *runtime.Scheme) (Interface, error) {
 }
 
 func CreateCluster(ctx context.Context, logger logger.LogContext, def Definition, id string, kubeconfig string) (Interface, error) {
-	if kubeconfig == "" {
-		kubeconfig = os.Getenv("KUBECONFIG")
+	if kubeconfig == "IN-CLUSTER" {
+		kubeconfig = ""
+	} else {
+		if kubeconfig == "ENVIRONMENT" {
+			ok := false
+			kubeconfig, ok = syscall.Getenv("KUBECONFIG")
+			if !ok {
+				return nil, fmt.Errorf("environment variable KUBECONFIG not set")
+			}
+		} else {
+			if kubeconfig == "" {
+				kubeconfig = os.Getenv("KUBECONFIG")
+			}
+		}
 	}
 	name := def.Name()
 	logger.Infof("using %q for cluster %q[%s]", kubeconfig, name, id)

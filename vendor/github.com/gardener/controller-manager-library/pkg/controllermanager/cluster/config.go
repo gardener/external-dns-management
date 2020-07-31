@@ -36,6 +36,8 @@ type Config struct {
 	OmitCRDs   bool
 
 	config.OptionSet
+
+	set config.OptionSet
 }
 
 var _ config.OptionSource = (*Config)(nil)
@@ -60,4 +62,9 @@ func (this *Config) AddOptionsToSet(set config.OptionSet) {
 		set.AddStringOption(&this.KubeConfig, this.ConfigOptionName(), "", "", this.Description())
 	}
 	this.OptionSet.AddOptionsToSet(set)
+	this.set = set
+}
+
+func (this *Config) IsConfigured() bool {
+	return this.ClusterId != "" || this.set.GetOption(this.ConfigOptionName()).Changed()
 }

@@ -161,7 +161,7 @@ func (this *_Definitions) handleCluster(ctx context.Context, logger logger.LogCo
 	}
 	ccfg := cfg.GetSource(configTargetKey(req)).(*Config)
 
-	if name != DEFAULT && ccfg.KubeConfig != "" {
+	if name != DEFAULT && ccfg.IsConfigured() {
 		c, err = this.create(ctx, logger, ccfg, req)
 		if err != nil {
 			return err
