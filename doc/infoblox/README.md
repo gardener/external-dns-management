@@ -14,7 +14,7 @@ Create a `Secret` resource with `data.USER` and `data.PASSWORD` to be the base64
 apiVersion: v1
 kind: Secret
 metadata:
-  name: cloudflare-credentials
+  name: infoblox-credentials
   namespace: default
 type: Opaque
 data:
