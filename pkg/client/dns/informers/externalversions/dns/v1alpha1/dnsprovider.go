@@ -19,6 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	time "time"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -61,13 +62,13 @@ func NewFilteredDNSProviderInformer(client versioned.Interface, namespace string
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.DnsV1alpha1().DNSProviders(namespace).List(options)
+				return client.DnsV1alpha1().DNSProviders(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.DnsV1alpha1().DNSProviders(namespace).Watch(options)
+				return client.DnsV1alpha1().DNSProviders(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&dnsv1alpha1.DNSProvider{},

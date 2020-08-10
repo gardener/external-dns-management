@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -39,7 +41,7 @@ var dnsannotationsResource = schema.GroupVersionResource{Group: "dns.gardener.cl
 var dnsannotationsKind = schema.GroupVersionKind{Group: "dns.gardener.cloud", Version: "v1alpha1", Kind: "DNSAnnotation"}
 
 // Get takes name of the dNSAnnotation, and returns the corresponding dNSAnnotation object, and an error if there is any.
-func (c *FakeDNSAnnotations) Get(name string, options v1.GetOptions) (result *v1alpha1.DNSAnnotation, err error) {
+func (c *FakeDNSAnnotations) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.DNSAnnotation, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(dnsannotationsResource, c.ns, name), &v1alpha1.DNSAnnotation{})
 
@@ -50,7 +52,7 @@ func (c *FakeDNSAnnotations) Get(name string, options v1.GetOptions) (result *v1
 }
 
 // List takes label and field selectors, and returns the list of DNSAnnotations that match those selectors.
-func (c *FakeDNSAnnotations) List(opts v1.ListOptions) (result *v1alpha1.DNSAnnotationList, err error) {
+func (c *FakeDNSAnnotations) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.DNSAnnotationList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(dnsannotationsResource, dnsannotationsKind, c.ns, opts), &v1alpha1.DNSAnnotationList{})
 
@@ -72,14 +74,14 @@ func (c *FakeDNSAnnotations) List(opts v1.ListOptions) (result *v1alpha1.DNSAnno
 }
 
 // Watch returns a watch.Interface that watches the requested dNSAnnotations.
-func (c *FakeDNSAnnotations) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeDNSAnnotations) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(dnsannotationsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a dNSAnnotation and creates it.  Returns the server's representation of the dNSAnnotation, and an error, if there is any.
-func (c *FakeDNSAnnotations) Create(dNSAnnotation *v1alpha1.DNSAnnotation) (result *v1alpha1.DNSAnnotation, err error) {
+func (c *FakeDNSAnnotations) Create(ctx context.Context, dNSAnnotation *v1alpha1.DNSAnnotation, opts v1.CreateOptions) (result *v1alpha1.DNSAnnotation, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(dnsannotationsResource, c.ns, dNSAnnotation), &v1alpha1.DNSAnnotation{})
 
@@ -90,7 +92,7 @@ func (c *FakeDNSAnnotations) Create(dNSAnnotation *v1alpha1.DNSAnnotation) (resu
 }
 
 // Update takes the representation of a dNSAnnotation and updates it. Returns the server's representation of the dNSAnnotation, and an error, if there is any.
-func (c *FakeDNSAnnotations) Update(dNSAnnotation *v1alpha1.DNSAnnotation) (result *v1alpha1.DNSAnnotation, err error) {
+func (c *FakeDNSAnnotations) Update(ctx context.Context, dNSAnnotation *v1alpha1.DNSAnnotation, opts v1.UpdateOptions) (result *v1alpha1.DNSAnnotation, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(dnsannotationsResource, c.ns, dNSAnnotation), &v1alpha1.DNSAnnotation{})
 
@@ -102,7 +104,7 @@ func (c *FakeDNSAnnotations) Update(dNSAnnotation *v1alpha1.DNSAnnotation) (resu
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeDNSAnnotations) UpdateStatus(dNSAnnotation *v1alpha1.DNSAnnotation) (*v1alpha1.DNSAnnotation, error) {
+func (c *FakeDNSAnnotations) UpdateStatus(ctx context.Context, dNSAnnotation *v1alpha1.DNSAnnotation, opts v1.UpdateOptions) (*v1alpha1.DNSAnnotation, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(dnsannotationsResource, "status", c.ns, dNSAnnotation), &v1alpha1.DNSAnnotation{})
 
@@ -113,7 +115,7 @@ func (c *FakeDNSAnnotations) UpdateStatus(dNSAnnotation *v1alpha1.DNSAnnotation)
 }
 
 // Delete takes name of the dNSAnnotation and deletes it. Returns an error if one occurs.
-func (c *FakeDNSAnnotations) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeDNSAnnotations) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(dnsannotationsResource, c.ns, name), &v1alpha1.DNSAnnotation{})
 
@@ -121,15 +123,15 @@ func (c *FakeDNSAnnotations) Delete(name string, options *v1.DeleteOptions) erro
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeDNSAnnotations) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(dnsannotationsResource, c.ns, listOptions)
+func (c *FakeDNSAnnotations) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(dnsannotationsResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.DNSAnnotationList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched dNSAnnotation.
-func (c *FakeDNSAnnotations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.DNSAnnotation, err error) {
+func (c *FakeDNSAnnotations) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSAnnotation, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(dnsannotationsResource, c.ns, name, pt, data, subresources...), &v1alpha1.DNSAnnotation{})
 

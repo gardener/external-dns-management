@@ -19,8 +19,6 @@ package resources
 import (
 	"fmt"
 
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 )
 
@@ -66,10 +64,6 @@ func (this *AbstractObject) Event(eventtype, reason, message string) {
 
 func (this *AbstractObject) Eventf(eventtype, reason, messageFmt string, args ...interface{}) {
 	this.Resources().Eventf(this.ObjectData, eventtype, reason, messageFmt, args...)
-}
-
-func (this *AbstractObject) PastEventf(timestamp metav1.Time, eventtype, reason, messageFmt string, args ...interface{}) {
-	this.Resources().PastEventf(this.ObjectData, timestamp, eventtype, reason, messageFmt, args...)
 }
 
 func (this *AbstractObject) AnnotatedEventf(annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{}) {

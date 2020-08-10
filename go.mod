@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go v1.19.41
 	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
-	github.com/gardener/controller-manager-library v0.2.1-0.20200731133703-419b3e78e9c5
+	github.com/gardener/controller-manager-library v0.2.1-0.20200810091329-d980dbe10959
 	github.com/gophercloud/gophercloud v0.2.0
 	github.com/gophercloud/utils v0.0.0-20190527093828-25f1b77b8c03
 	github.com/imdario/mergo v0.3.7 // indirect
@@ -26,16 +26,14 @@ require (
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
 	google.golang.org/api v0.4.0
-	k8s.io/api v0.17.6
-	k8s.io/apimachinery v0.17.6
-	k8s.io/client-go v0.17.6
-	k8s.io/code-generator v0.17.6
+	k8s.io/api v0.18.6
+	k8s.io/apimachinery v0.18.6
+	k8s.io/client-go v0.18.6
+	k8s.io/code-generator v0.18.6
 	k8s.io/kube-openapi v0.0.0-20200410145947-bcb3869e6f29
 	sigs.k8s.io/controller-tools v0.2.9
 	sigs.k8s.io/kind v0.7.0
 )
-
-//replace github.com/gardener/controller-manager-library => ../controller-manager-library
 
 replace github.com/infobloxopen/infoblox-go-client => github.com/MartinWeindel/infoblox-go-client v1.1.1-0.20200616154106-b2951ec7a129
 

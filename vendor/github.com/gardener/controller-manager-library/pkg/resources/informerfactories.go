@@ -17,6 +17,7 @@
 package resources
 
 import (
+	"context"
 	"reflect"
 	"sync"
 	"time"
@@ -152,6 +153,7 @@ func (f *genericInformerFactory) getClient(gv schema.GroupVersion) (restclient.I
 func (f *genericInformerFactory) newInformer(client restclient.Interface, res *Info, elemType reflect.Type, listType reflect.Type) GenericInformer {
 	logger.Infof("new generic informer for %s (%s) %s (%d seconds)", elemType, res.GroupVersionKind(), listType, f.defaultResync/time.Second)
 	indexers := cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}
+	ctx := context.TODO()
 	informer := cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
@@ -166,7 +168,7 @@ func (f *genericInformerFactory) newInformer(client restclient.Interface, res *I
 					r = r.Namespace(f.namespace)
 				}
 
-				return result, r.Do().Into(result)
+				return result, r.Do(ctx).Into(result)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				options.Watch = true
@@ -180,7 +182,7 @@ func (f *genericInformerFactory) newInformer(client restclient.Interface, res *I
 					r = r.Namespace(f.namespace)
 				}
 
-				return r.Watch()
+				return r.Watch(ctx)
 			},
 		},
 		reflect.New(elemType).Interface().(runtime.Object),

@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -39,7 +41,7 @@ var dnsownersResource = schema.GroupVersionResource{Group: "dns.gardener.cloud",
 var dnsownersKind = schema.GroupVersionKind{Group: "dns.gardener.cloud", Version: "v1alpha1", Kind: "DNSOwner"}
 
 // Get takes name of the dNSOwner, and returns the corresponding dNSOwner object, and an error if there is any.
-func (c *FakeDNSOwners) Get(name string, options v1.GetOptions) (result *v1alpha1.DNSOwner, err error) {
+func (c *FakeDNSOwners) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.DNSOwner, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(dnsownersResource, c.ns, name), &v1alpha1.DNSOwner{})
 
@@ -50,7 +52,7 @@ func (c *FakeDNSOwners) Get(name string, options v1.GetOptions) (result *v1alpha
 }
 
 // List takes label and field selectors, and returns the list of DNSOwners that match those selectors.
-func (c *FakeDNSOwners) List(opts v1.ListOptions) (result *v1alpha1.DNSOwnerList, err error) {
+func (c *FakeDNSOwners) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.DNSOwnerList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(dnsownersResource, dnsownersKind, c.ns, opts), &v1alpha1.DNSOwnerList{})
 
@@ -72,14 +74,14 @@ func (c *FakeDNSOwners) List(opts v1.ListOptions) (result *v1alpha1.DNSOwnerList
 }
 
 // Watch returns a watch.Interface that watches the requested dNSOwners.
-func (c *FakeDNSOwners) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeDNSOwners) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(dnsownersResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a dNSOwner and creates it.  Returns the server's representation of the dNSOwner, and an error, if there is any.
-func (c *FakeDNSOwners) Create(dNSOwner *v1alpha1.DNSOwner) (result *v1alpha1.DNSOwner, err error) {
+func (c *FakeDNSOwners) Create(ctx context.Context, dNSOwner *v1alpha1.DNSOwner, opts v1.CreateOptions) (result *v1alpha1.DNSOwner, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(dnsownersResource, c.ns, dNSOwner), &v1alpha1.DNSOwner{})
 
@@ -90,7 +92,7 @@ func (c *FakeDNSOwners) Create(dNSOwner *v1alpha1.DNSOwner) (result *v1alpha1.DN
 }
 
 // Update takes the representation of a dNSOwner and updates it. Returns the server's representation of the dNSOwner, and an error, if there is any.
-func (c *FakeDNSOwners) Update(dNSOwner *v1alpha1.DNSOwner) (result *v1alpha1.DNSOwner, err error) {
+func (c *FakeDNSOwners) Update(ctx context.Context, dNSOwner *v1alpha1.DNSOwner, opts v1.UpdateOptions) (result *v1alpha1.DNSOwner, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(dnsownersResource, c.ns, dNSOwner), &v1alpha1.DNSOwner{})
 
@@ -102,7 +104,7 @@ func (c *FakeDNSOwners) Update(dNSOwner *v1alpha1.DNSOwner) (result *v1alpha1.DN
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeDNSOwners) UpdateStatus(dNSOwner *v1alpha1.DNSOwner) (*v1alpha1.DNSOwner, error) {
+func (c *FakeDNSOwners) UpdateStatus(ctx context.Context, dNSOwner *v1alpha1.DNSOwner, opts v1.UpdateOptions) (*v1alpha1.DNSOwner, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(dnsownersResource, "status", c.ns, dNSOwner), &v1alpha1.DNSOwner{})
 
@@ -113,7 +115,7 @@ func (c *FakeDNSOwners) UpdateStatus(dNSOwner *v1alpha1.DNSOwner) (*v1alpha1.DNS
 }
 
 // Delete takes name of the dNSOwner and deletes it. Returns an error if one occurs.
-func (c *FakeDNSOwners) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeDNSOwners) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(dnsownersResource, c.ns, name), &v1alpha1.DNSOwner{})
 
@@ -121,15 +123,15 @@ func (c *FakeDNSOwners) Delete(name string, options *v1.DeleteOptions) error {
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeDNSOwners) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(dnsownersResource, c.ns, listOptions)
+func (c *FakeDNSOwners) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(dnsownersResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.DNSOwnerList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched dNSOwner.
-func (c *FakeDNSOwners) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.DNSOwner, err error) {
+func (c *FakeDNSOwners) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSOwner, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(dnsownersResource, c.ns, name, pt, data, subresources...), &v1alpha1.DNSOwner{})
 
