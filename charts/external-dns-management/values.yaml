@@ -16,6 +16,11 @@ resources:
    cpu: 200m
    memory: 128Mi
 
+vpa:
+  enabled: true
+  updatePolicy:
+    updateMode: "Auto"
+
 nodeSelector: {}
 tolerations: []
 affinity: {}
