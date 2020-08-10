@@ -22,9 +22,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/config"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 
 	k8s "k8s.io/client-go/kubernetes"
@@ -65,7 +65,7 @@ func (this *leasestartupgroup) Startup() error {
 		this.extension.Infof("requesting lease %q for cluster %s in namespace %q",
 			this.extension.config.LeaseName, msg, this.extension.Namespace())
 		leaderElectionConfig, err := makeLeaderElectionConfig(this.cluster,
-			this.extension.Namespace(), this.extension.config.LeaseName)
+			this.extension.Namespace(), this.extension.config)
 		if err != nil {
 			return err
 		}
@@ -93,7 +93,7 @@ func (this *leasestartupgroup) Startup() error {
 	return nil
 }
 
-func makeLeaderElectionConfig(cluster cluster.Interface, namespace, name string) (*leaderelection.LeaderElectionConfig, error) {
+func makeLeaderElectionConfig(cluster cluster.Interface, namespace string, ctrlconfig *config.Config) (*leaderelection.LeaderElectionConfig, error) {
 	hostname, err := os.Hostname()
 	hostname = fmt.Sprintf("%s/%d", hostname, os.Getpid())
 	if err != nil {
@@ -108,7 +108,7 @@ func makeLeaderElectionConfig(cluster cluster.Interface, namespace, name string)
 	lock, err := resourcelock.New(
 		"configmaps",
 		namespace,
-		name,
+		ctrlconfig.LeaseName,
 		client.CoreV1(),
 		client.CoordinationV1(),
 		resourcelock.ResourceLockConfig{
@@ -122,8 +122,8 @@ func makeLeaderElectionConfig(cluster cluster.Interface, namespace, name string)
 
 	return &leaderelection.LeaderElectionConfig{
 		Lock:          lock,
-		LeaseDuration: 15 * time.Second,
-		RenewDeadline: 10 * time.Second,
-		RetryPeriod:   2 * time.Second,
+		LeaseDuration: ctrlconfig.LeaseDuration,
+		RenewDeadline: ctrlconfig.LeaseRenewDeadline,
+		RetryPeriod:   ctrlconfig.LeaseRetryPeriod,
 	}, nil
 }

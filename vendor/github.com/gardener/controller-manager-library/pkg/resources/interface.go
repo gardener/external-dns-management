@@ -75,9 +75,6 @@ type EventRecorder interface {
 	// Eventf is just like Event, but with Sprintf for the message field.
 	Eventf(eventtype, reason, messageFmt string, args ...interface{})
 
-	// PastEventf is just like Eventf, but with an option to specify the event's 'timestamp' field.
-	PastEventf(timestamp metav1.Time, eventtype, reason, messageFmt string, args ...interface{})
-
 	// AnnotatedEventf is just like eventf, but with annotations attached
 	AnnotatedEventf(annotations map[string]string, eventtype, reason, messageFmt string, args ...interface{})
 }

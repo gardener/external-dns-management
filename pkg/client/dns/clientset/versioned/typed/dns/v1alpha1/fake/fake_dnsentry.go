@@ -19,6 +19,8 @@ limitations under the License.
 package fake
 
 import (
+	"context"
+
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
@@ -39,7 +41,7 @@ var dnsentriesResource = schema.GroupVersionResource{Group: "dns.gardener.cloud"
 var dnsentriesKind = schema.GroupVersionKind{Group: "dns.gardener.cloud", Version: "v1alpha1", Kind: "DNSEntry"}
 
 // Get takes name of the dNSEntry, and returns the corresponding dNSEntry object, and an error if there is any.
-func (c *FakeDNSEntries) Get(name string, options v1.GetOptions) (result *v1alpha1.DNSEntry, err error) {
+func (c *FakeDNSEntries) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.DNSEntry, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewGetAction(dnsentriesResource, c.ns, name), &v1alpha1.DNSEntry{})
 
@@ -50,7 +52,7 @@ func (c *FakeDNSEntries) Get(name string, options v1.GetOptions) (result *v1alph
 }
 
 // List takes label and field selectors, and returns the list of DNSEntries that match those selectors.
-func (c *FakeDNSEntries) List(opts v1.ListOptions) (result *v1alpha1.DNSEntryList, err error) {
+func (c *FakeDNSEntries) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.DNSEntryList, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewListAction(dnsentriesResource, dnsentriesKind, c.ns, opts), &v1alpha1.DNSEntryList{})
 
@@ -72,14 +74,14 @@ func (c *FakeDNSEntries) List(opts v1.ListOptions) (result *v1alpha1.DNSEntryLis
 }
 
 // Watch returns a watch.Interface that watches the requested dNSEntries.
-func (c *FakeDNSEntries) Watch(opts v1.ListOptions) (watch.Interface, error) {
+func (c *FakeDNSEntries) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
 		InvokesWatch(testing.NewWatchAction(dnsentriesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a dNSEntry and creates it.  Returns the server's representation of the dNSEntry, and an error, if there is any.
-func (c *FakeDNSEntries) Create(dNSEntry *v1alpha1.DNSEntry) (result *v1alpha1.DNSEntry, err error) {
+func (c *FakeDNSEntries) Create(ctx context.Context, dNSEntry *v1alpha1.DNSEntry, opts v1.CreateOptions) (result *v1alpha1.DNSEntry, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewCreateAction(dnsentriesResource, c.ns, dNSEntry), &v1alpha1.DNSEntry{})
 
@@ -90,7 +92,7 @@ func (c *FakeDNSEntries) Create(dNSEntry *v1alpha1.DNSEntry) (result *v1alpha1.D
 }
 
 // Update takes the representation of a dNSEntry and updates it. Returns the server's representation of the dNSEntry, and an error, if there is any.
-func (c *FakeDNSEntries) Update(dNSEntry *v1alpha1.DNSEntry) (result *v1alpha1.DNSEntry, err error) {
+func (c *FakeDNSEntries) Update(ctx context.Context, dNSEntry *v1alpha1.DNSEntry, opts v1.UpdateOptions) (result *v1alpha1.DNSEntry, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateAction(dnsentriesResource, c.ns, dNSEntry), &v1alpha1.DNSEntry{})
 
@@ -102,7 +104,7 @@ func (c *FakeDNSEntries) Update(dNSEntry *v1alpha1.DNSEntry) (result *v1alpha1.D
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeDNSEntries) UpdateStatus(dNSEntry *v1alpha1.DNSEntry) (*v1alpha1.DNSEntry, error) {
+func (c *FakeDNSEntries) UpdateStatus(ctx context.Context, dNSEntry *v1alpha1.DNSEntry, opts v1.UpdateOptions) (*v1alpha1.DNSEntry, error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewUpdateSubresourceAction(dnsentriesResource, "status", c.ns, dNSEntry), &v1alpha1.DNSEntry{})
 
@@ -113,7 +115,7 @@ func (c *FakeDNSEntries) UpdateStatus(dNSEntry *v1alpha1.DNSEntry) (*v1alpha1.DN
 }
 
 // Delete takes name of the dNSEntry and deletes it. Returns an error if one occurs.
-func (c *FakeDNSEntries) Delete(name string, options *v1.DeleteOptions) error {
+func (c *FakeDNSEntries) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
 		Invokes(testing.NewDeleteAction(dnsentriesResource, c.ns, name), &v1alpha1.DNSEntry{})
 
@@ -121,15 +123,15 @@ func (c *FakeDNSEntries) Delete(name string, options *v1.DeleteOptions) error {
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeDNSEntries) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(dnsentriesResource, c.ns, listOptions)
+func (c *FakeDNSEntries) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(dnsentriesResource, c.ns, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.DNSEntryList{})
 	return err
 }
 
 // Patch applies the patch and returns the patched dNSEntry.
-func (c *FakeDNSEntries) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.DNSEntry, err error) {
+func (c *FakeDNSEntries) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSEntry, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(dnsentriesResource, c.ns, name, pt, data, subresources...), &v1alpha1.DNSEntry{})
 

@@ -17,6 +17,7 @@
 package resources
 
 import (
+	"context"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -77,7 +78,7 @@ func (this *_i_resource) I_update(data ObjectData) (ObjectData, error) {
 	result := this.CreateData()
 	return result, this.objectRequest(this.client.Put(), data).
 		Body(data).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 }
 
@@ -86,7 +87,7 @@ func (this *_i_resource) I_updateStatus(data ObjectData) (ObjectData, error) {
 	result := this.CreateData()
 	return result, this.objectRequest(this.client.Put(), data, "status").
 		Body(data).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 }
 
@@ -94,20 +95,20 @@ func (this *_i_resource) I_create(data ObjectData) (ObjectData, error) {
 	result := this.CreateData()
 	return result, this.resourceRequest(this.client.Post(), data).
 		Body(data).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 }
 
 func (this *_i_resource) I_get(data ObjectData) error {
 	return this.objectRequest(this.client.Get(), data).
-		Do().
+		Do(context.TODO()).
 		Into(data)
 }
 
 func (this *_i_resource) I_delete(data ObjectDataName) error {
 	return this.objectRequest(this.client.Delete(), data).
 		Body(&metav1.DeleteOptions{}).
-		Do().
+		Do(context.TODO()).
 		Error()
 }
 
@@ -169,7 +170,7 @@ func (this *_i_resource) I_lookupInformer(namespace string) (GenericInformer, er
 func (this *_i_resource) I_list(namespace string, options metav1.ListOptions) ([]Object, error) {
 	result := this.CreateListData()
 	err := this.namespacedRequest(this.client.Get(), namespace).VersionedParams(&options, this.GetParameterCodec()).
-		Do().
+		Do(context.TODO()).
 		Into(result)
 	if err != nil {
 		return nil, err
