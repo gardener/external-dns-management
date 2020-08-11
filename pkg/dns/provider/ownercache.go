@@ -27,13 +27,14 @@ import (
 )
 
 type ProviderTypeCounts map[string]int
-type OwnerCounts map[string]ProviderTypeCounts
+type OwnerCounts map[OwnerName]ProviderTypeCounts
 
 type OwnerObjectInfo struct {
 	active bool
 	id     string
 }
-type OwnerObjectInfos map[string]OwnerObjectInfo
+type OwnerName string
+type OwnerObjectInfos map[OwnerName]OwnerObjectInfo
 
 type OwnerIDInfo struct {
 	refcount    int
@@ -110,10 +111,10 @@ func (this *OwnerCache) checkCount(e *OwnerIDInfo, ptype string, count int) bool
 }
 
 func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changeset utils.StringSet, activeset utils.StringSet) {
-	return this.updateOwnerData(owner.ObjectName().String(), owner.GetOwnerId(), owner.IsActive(), owner.GetCounts())
+	return this.updateOwnerData(OwnerName(owner.GetName()), owner.GetOwnerId(), owner.IsActive(), owner.GetCounts())
 }
 
-func (this *OwnerCache) updateOwnerData(cachekey, id string, active bool, counts ProviderTypeCounts) (changeset utils.StringSet, activeset utils.StringSet) {
+func (this *OwnerCache) updateOwnerData(cachekey OwnerName, id string, active bool, counts ProviderTypeCounts) (changeset utils.StringSet, activeset utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
@@ -133,7 +134,7 @@ func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changeset utils.St
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	changeset = utils.StringSet{}
-	cachekey := key.ObjectName().String()
+	cachekey := OwnerName(key.Name())
 	old, ok := this.owners[cachekey]
 	if ok {
 		this.deactivate(cachekey, old, changeset)
@@ -141,7 +142,7 @@ func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changeset utils.St
 	return changeset, this.ownerids.KeySet()
 }
 
-func (this *OwnerCache) deactivate(cachekey string, old OwnerObjectInfo, changeset utils.StringSet) {
+func (this *OwnerCache) deactivate(cachekey OwnerName, old OwnerObjectInfo, changeset utils.StringSet) {
 	if old.active {
 		e := this.ownerids[old.id]
 		e.refcount--
@@ -154,7 +155,7 @@ func (this *OwnerCache) deactivate(cachekey string, old OwnerObjectInfo, changes
 	delete(this.owners, cachekey)
 }
 
-func (this *OwnerCache) activate(cachekey string, id string, active bool, changeset utils.StringSet, counts ProviderTypeCounts) {
+func (this *OwnerCache) activate(cachekey OwnerName, id string, active bool, changeset utils.StringSet, counts ProviderTypeCounts) {
 	if active {
 		e, ok := this.ownerids[id]
 		if !ok {
