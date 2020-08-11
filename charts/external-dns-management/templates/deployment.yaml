@@ -35,7 +35,7 @@ spec:
         runAsNonRoot: true
         runAsUser: 65534
       containers:
-      - name: {{ .Chart.Name }}
+      - name: dns-controller-manager
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
