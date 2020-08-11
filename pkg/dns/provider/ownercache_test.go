@@ -30,9 +30,9 @@ var _ = ginkgo.Describe("Owner cache", func() {
 		Ident: "TEST",
 	}
 	key1 := resources.NewKey(resources.NewGroupKind("", "test"), "test", "o1")
-	name1 := key1.ObjectName().String()
+	name1 := OwnerName(key1.Name())
 	key2 := resources.NewKey(resources.NewGroupKind("", "test"), "test", "o2")
-	name2 := key2.ObjectName().String()
+	name2 := OwnerName(key2.Name())
 
 	ginkgo.It("initializes the cache correctly", func() {
 		cache := NewOwnerCache(config)

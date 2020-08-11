@@ -106,6 +106,12 @@ func (this *state) GetEntry(name resources.ObjectName) *Entry {
 	return this.entries[name]
 }
 
+func (this *state) SmartInfof(logger logger.LogContext, format string, args ...interface{}) {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	this.smartInfof(logger, format, args...)
+}
+
 func (this *state) smartInfof(logger logger.LogContext, format string, args ...interface{}) {
 	if this.hasProviders() {
 		logger.Infof(format, args...)
@@ -258,7 +264,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 			}
 		}
 		if new.IsModified() && new.ZoneId() != "" {
-			this.smartInfof(logger, "trigger zone %q", new.ZoneId())
+			this.SmartInfof(logger, "trigger zone %q", new.ZoneId())
 			this.TriggerHostedZone(new.ZoneId())
 		} else {
 			logger.Debugf("skipping trigger zone %q because entry not modified", new.ZoneId())

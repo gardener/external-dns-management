@@ -44,7 +44,8 @@ func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwne
 		logger.Infof("entries synchronized")
 	}
 	changed, active := this.ownerCache.UpdateOwner(owner)
-	logger.Infof("update: changed owner ids %s, active owner ids %s", changed, active)
+	logger.Infof("update: changed owner ids %s", changed)
+	logger.Debugf("       active owner ids %s", active)
 	if len(changed) > 0 {
 		this.TriggerEntriesByOwner(logger, changed)
 		this.TriggerHostedZones()
@@ -54,7 +55,8 @@ func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwne
 
 func (this *state) OwnerDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
 	changed, active := this.ownerCache.DeleteOwner(key)
-	logger.Infof("delete: changed owner ids %s, active owner ids %s", changed, active)
+	logger.Infof("delete: changed owner ids %s", changed)
+	logger.Debugf("       active owner ids %s", active)
 	if len(changed) > 0 {
 		this.TriggerEntriesByOwner(logger, changed)
 		this.TriggerHostedZones()
@@ -95,7 +97,7 @@ func startOwnerUpdater(ctx Context, ownerresc resources.Interface) chan OwnerCou
 				log.Infof("starting owner update for %d changes", len(changes))
 				for n, counts := range changes {
 					log.Infof("  updating owner counts %v for %s", counts, n)
-					_, _, err := ownerresc.ModifyStatusByName(resources.NewObjectName(n), func(data resources.ObjectData) (bool, error) {
+					_, _, err := ownerresc.ModifyStatusByName(resources.NewObjectName(string(n)), func(data resources.ObjectData) (bool, error) {
 						owner, ok := data.(*v1alpha1.DNSOwner)
 						if !ok {
 							return false, fmt.Errorf("invalid owner object type %T", data)

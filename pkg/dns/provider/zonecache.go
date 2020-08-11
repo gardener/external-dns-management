@@ -20,17 +20,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"io/ioutil"
-	"k8s.io/apimachinery/pkg/runtime"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/gardener/controller-manager-library/pkg/logger"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
 type ZoneCacheConfig struct {
@@ -199,6 +201,8 @@ type defaultZoneCache struct {
 	state    *zoneState
 	persist  bool
 	persistC chan string
+
+	backoffOnError time.Duration
 }
 
 var _ ZoneCache = &defaultZoneCache{}
@@ -236,8 +240,12 @@ func (c *defaultZoneCache) GetZones() (DNSHostedZones, error) {
 		c.zones, c.zonesErr = c.zonesUpdater(c)
 		updateTime := time.Now()
 		if c.zonesErr != nil {
-			c.zonesNext = updateTime.Add(c.config.zonesTTL / 2)
+			// if getzones fails, don't wait zonesTTL, but use an exponential backoff
+			// to recover fast from temporary failures like throttling, network problems...
+			backoff := c.nextBackoff()
+			c.zonesNext = updateTime.Add(backoff)
 		} else {
+			c.clearBackoff()
 			c.zonesNext = updateTime.Add(c.config.zonesTTL)
 		}
 		c.state.RestrictCacheToZones(c.zones)
@@ -245,6 +253,20 @@ func (c *defaultZoneCache) GetZones() (DNSHostedZones, error) {
 		c.metrics.AddRequests(M_CACHED_GETZONES, 1)
 	}
 	return c.zones, c.zonesErr
+}
+
+func (c *defaultZoneCache) nextBackoff() time.Duration {
+	next := c.backoffOnError*5/4 + 2*time.Second
+	maxBackoff := c.config.zonesTTL / 4
+	if next > maxBackoff {
+		next = maxBackoff
+	}
+	c.backoffOnError = next
+	return next
+}
+
+func (c *defaultZoneCache) clearBackoff() {
+	c.backoffOnError = 0
 }
 
 func (c *defaultZoneCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
