@@ -119,7 +119,7 @@ type state struct {
 	providersecrets map[resources.ObjectName]resources.ObjectName
 
 	entries         Entries
-	outdated        Entries
+	outdated        *synchronizedEntries
 	blockingEntries map[resources.ObjectName]time.Time
 
 	dnsnames   DNSNames
@@ -160,7 +160,7 @@ func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller
 		providerzones:   map[resources.ObjectName]map[string]*dnsHostedZone{},
 		providersecrets: map[resources.ObjectName]resources.ObjectName{},
 		entries:         Entries{},
-		outdated:        Entries{},
+		outdated:        newSynchronizedEntries(),
 		blockingEntries: map[resources.ObjectName]time.Time{},
 		dnsnames:        map[string]*Entry{},
 		references:      NewReferenceCache(),
@@ -307,28 +307,44 @@ func (this *state) LookupProvider(e *EntryVersion) (DNSProvider, error) {
 	return this.lookupProvider(e.Object())
 }
 
+type providerMatch struct {
+	found DNSProvider
+	match int
+}
+
+func newMatch() *providerMatch {
+	return &providerMatch{nil, -1}
+}
+
 func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, error) {
 	var err error
-	var found DNSProvider
-	match := -1
+	validMatch := newMatch()
+	errorMatch := newMatch()
 	for _, p := range this.providers {
-		if p.IsValid() {
-			n := p.Match(e.GetDNSName())
-			if n > 0 {
-				if match < n {
-					err = access.CheckAccessWithRealms(e, "use", p.Object(), this.realms)
-					if err == nil {
-						found = p
-						match = n
-					}
+		n := p.Match(e.GetDNSName())
+		if n > 0 {
+			var match *providerMatch
+			if p.IsValid() {
+				match = validMatch
+			} else {
+				match = errorMatch
+			}
+			if match.match < n {
+				err = access.CheckAccessWithRealms(e, "use", p.Object(), this.realms)
+				if err == nil {
+					match.found = p
+					match.match = n
 				}
 			}
 		}
 	}
-	if found != nil {
-		err = nil
+	if validMatch.found != nil {
+		return validMatch.found, nil
 	}
-	return found, err
+	if errorMatch.found != nil {
+		return errorMatch.found, nil
+	}
+	return nil, err
 }
 
 func (this *state) GetProvider(name resources.ObjectName) DNSProvider {
@@ -374,11 +390,15 @@ loop:
 	for dns, e := range this.dnsnames {
 		if e.IsValid() {
 			provider, err := this.lookupProvider(e.Object())
-			if provider == nil && !e.IsDeleting() {
-				if err != nil {
-					logger.Infof("no valid provider found for %q(%s): %s", e.ObjectName(), dns, err)
+			if (provider == nil || !provider.IsValid()) && !e.IsDeleting() {
+				if provider != nil {
+					logger.Infof("no valid provider found for %q(%s found, but is not valid)", e.ObjectName(), provider.ObjectName())
 				} else {
-					logger.Infof("no valid provider found for %q(%s)", e.ObjectName(), dns)
+					if err != nil {
+						logger.Infof("no valid provider found for %q(%s): %s", e.ObjectName(), dns, err)
+					} else {
+						logger.Infof("no valid provider found for %q(%s)", e.ObjectName(), dns)
+					}
 				}
 				stale[e.DNSName()] = e
 				continue

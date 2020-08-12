@@ -143,7 +143,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 			if this.zones[new.activezone] != nil {
 				if this.HasFinalizer(new.Object()) {
 					logger.Infof("deleting delayed until entry deleted in provider")
-					this.outdated[new.ObjectName()] = new
+					this.outdated.AddEntry(new)
 					return new, reconcile.Succeeded(logger)
 				}
 			} else {
@@ -231,6 +231,9 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 		p.ptype = zone.ProviderType()
 		p.zoneid = zone.Id()
 		p.zonedomain = zone.Domain()
+	} else if provider != nil && !provider.IsValid() && e.Status().Zone != nil {
+		p.ptype = provider.TypeCode()
+		p.zoneid = *e.Status().Zone
 	}
 	return p, err
 }

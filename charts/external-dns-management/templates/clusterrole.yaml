@@ -32,6 +32,7 @@ rules:
   - dnsannotations
   - dnsannotations/status
   - dnsowners
+  - dnsowners/status
   verbs:
   - get
   - list
