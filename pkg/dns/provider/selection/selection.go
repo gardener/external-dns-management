@@ -57,11 +57,12 @@ type LightDNSHostedZone interface {
 	ForwardedDomains() []string
 }
 
-// CalcZoneAndDomainSelection calculates the included/excluded domains and zones for the given spec and zones.
+// CalcZoneAndDomainSelection calculates the effective included/excluded domains and zones for the given spec and
+// zones supported by a provider.
 func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, zones []LightDNSHostedZone) SelectionResult {
 	this := SelectionResult{
-		SpecDomainSel: prepareSelection(spec.Domains),
-		SpecZoneSel:   prepareSelection(spec.Zones),
+		SpecDomainSel: PrepareSelection(spec.Domains),
+		SpecZoneSel:   PrepareSelection(spec.Zones),
 		ZoneSel:       NewSubSelection(),
 		DomainSel:     NewSubSelection(),
 	}
@@ -162,7 +163,7 @@ outer:
 	return this
 }
 
-func prepareSelection(sel *v1alpha1.DNSSelection) SubSelection {
+func PrepareSelection(sel *v1alpha1.DNSSelection) SubSelection {
 	subSel := NewSubSelection()
 	if sel != nil {
 		subSel.Include = utils.NewStringSetByArray(sel.Include)

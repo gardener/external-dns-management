@@ -496,7 +496,12 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				this.status.Provider = nil
 				this.status.Message = StatusMessagef("no provider found for %q", this.dnsname)
 			} else {
-				this.valid = true
+				if p.provider.IsValid() {
+					this.valid = true
+				} else {
+					this.status.State = api.STATE_STALE
+					this.status.Message = StatusMessagef("provider %q not valid", p.provider.ObjectName())
+				}
 			}
 		}
 	}
@@ -761,6 +766,14 @@ func (this Entries) AddResponsibleTo(list *EntryList) {
 	}
 }
 
+func (this Entries) AddActiveZoneTo(zoneid string, list *EntryList) {
+	for _, e := range this {
+		if e.activezone == zoneid {
+			*list = append(*list, e)
+		}
+	}
+}
+
 func (this Entries) AddEntry(entry *Entry) *Entry {
 	old := this[entry.ObjectName()]
 	this[entry.ObjectName()] = entry
@@ -774,6 +787,43 @@ func (this Entries) Delete(e *Entry) {
 	if this[e.ObjectName()] == e {
 		delete(this, e.ObjectName())
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// synchronizedEntries
+////////////////////////////////////////////////////////////////////////////////
+
+type synchronizedEntries struct {
+	lock    sync.Mutex
+	entries Entries
+}
+
+func newSynchronizedEntries() *synchronizedEntries {
+	return &synchronizedEntries{entries: Entries{}}
+}
+
+func (this *synchronizedEntries) AddResponsibleTo(list *EntryList) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.entries.AddResponsibleTo(list)
+}
+
+func (this *synchronizedEntries) AddActiveZoneTo(zoneid string, list *EntryList) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.entries.AddActiveZoneTo(zoneid, list)
+}
+
+func (this *synchronizedEntries) AddEntry(entry *Entry) *Entry {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	return this.entries.AddEntry(entry)
+}
+
+func (this *synchronizedEntries) Delete(e *Entry) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.entries.Delete(e)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

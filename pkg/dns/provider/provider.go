@@ -283,6 +283,10 @@ func (this *dnsProviderVersion) IsValid() bool {
 	return this.valid
 }
 
+func (this *dnsProviderVersion) TypeCode() string {
+	return this.object.TypeCode()
+}
+
 func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
 	if this.account != v.account {
 		return false
@@ -307,15 +311,28 @@ func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
 }
 
 func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutils.DNSProviderObject, last *dnsProviderVersion) (*dnsProviderVersion, reconcile.Status) {
+	domsel := selection.PrepareSelection(provider.DNSProvider().Spec.Domains)
 	this := &dnsProviderVersion{
 		state:  state,
 		object: provider,
 
-		def_include: utils.StringSet{},
-		def_exclude: utils.StringSet{},
+		def_include: domsel.Include,
+		def_exclude: domsel.Exclude,
 
 		included: utils.StringSet{},
 		excluded: utils.StringSet{},
+	}
+
+	if last != nil {
+		this.included = last.included
+		this.excluded = last.excluded
+		this.included_zones = last.included_zones
+		this.excluded_zones = last.excluded_zones
+	} else {
+		this.included = utils.NewStringSet(provider.Status().Domains.Included...)
+		this.excluded = utils.NewStringSet(provider.Status().Domains.Excluded...)
+		this.included_zones = utils.NewStringSet(provider.Status().Zones.Included...)
+		this.excluded_zones = utils.NewStringSet(provider.Status().Zones.Excluded...)
 	}
 
 	if last != nil && last.ObjectName() != this.ObjectName() {
@@ -362,8 +379,6 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 
 	results := selection.CalcZoneAndDomainSelection(provider.DNSProvider().Spec, toLightZones(zones))
 	this.zones = fromLightZones(results.Zones)
-	this.def_include = results.SpecDomainSel.Include
-	this.def_exclude = results.SpecDomainSel.Exclude
 	this.included = results.DomainSel.Include
 	this.excluded = results.DomainSel.Exclude
 	this.included_zones = results.ZoneSel.Include
@@ -457,8 +472,6 @@ func (this *dnsProviderVersion) MapTarget(t Target) Target {
 }
 
 func (this *dnsProviderVersion) setError(modified bool, err error) error {
-	modified = this.object.SetSelection(utils.StringSet{}, utils.StringSet{}, &this.object.Status().Domains) || modified
-	modified = this.object.SetSelection(utils.StringSet{}, utils.StringSet{}, &this.object.Status().Zones) || modified
 	modified = this.object.SetStateWithError(api.STATE_ERROR, err) || modified
 	if modified {
 		return this.object.UpdateStatus()

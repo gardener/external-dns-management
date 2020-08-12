@@ -225,6 +225,7 @@ type DNSProviders map[resources.ObjectName]DNSProvider
 type DNSProvider interface {
 	ObjectName() resources.ObjectName
 	Object() resources.Object
+	TypeCode() string
 
 	GetZones() DNSHostedZones
 
@@ -232,6 +233,7 @@ type DNSProvider interface {
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
 
 	Match(dns string) int
+	IsValid() bool
 
 	AccountHash() string
 	MapTarget(t Target) Target

@@ -207,13 +207,13 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		err = changes.Update(logger)
 	}
 
-	for k, e := range this.outdated {
-		if e.activezone == zoneid {
-			logger.Infof("cleanup outdated entry %q", k)
-			err := e.RemoveFinalizer()
-			if err == nil || errors.IsNotFound(err) {
-				delete(this.outdated, k)
-			}
+	outdatedEntries := EntryList{}
+	this.outdated.AddActiveZoneTo(zoneid, &outdatedEntries)
+	for _, e := range outdatedEntries {
+		logger.Infof("cleanup outdated entry %q", e.ObjectName())
+		err := e.RemoveFinalizer()
+		if err == nil || errors.IsNotFound(err) {
+			this.outdated.Delete(e)
 		}
 	}
 	if err == nil {
