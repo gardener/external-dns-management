@@ -32,7 +32,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.4
+    controller-gen.kubebuilder.io/version: v0.2.9
   creationTimestamp: null
   name: dnsannotations.dns.gardener.cloud
 spec:
@@ -70,14 +70,10 @@ spec:
       openAPIV3Schema:
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -99,8 +95,7 @@ spec:
                     description: Name of the annotated object
                     type: string
                   namespace:
-                    description: Namspace of the annotated object Defaulted by the
-                      namespace of the containing resource.
+                    description: Namspace of the annotated object Defaulted by the namespace of the containing resource.
                     type: string
                 required:
                 - apiVersion
@@ -113,12 +108,10 @@ spec:
           status:
             properties:
               active:
-                description: Indicates that annotation is observed by a DNS sorce
-                  controller
+                description: Indicates that annotation is observed by a DNS sorce controller
                 type: boolean
               message:
-                description: In case of a configuration problem this field describes
-                  the reason
+                description: In case of a configuration problem this field describes the reason
                 type: string
             type: object
         required:
@@ -143,7 +136,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.4
+    controller-gen.kubebuilder.io/version: v0.2.9
   creationTimestamp: null
   name: dnsentries.dns.gardener.cloud
 spec:
@@ -179,22 +172,17 @@ spec:
       openAPIV3Schema:
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
           spec:
             properties:
               cnameLookupInterval:
-                description: lookup interval for CNAMEs that must be resolved to IP
-                  addresses
+                description: lookup interval for CNAMEs that must be resolved to IP addresses
                 format: int64
                 type: integer
               dnsName:
@@ -216,8 +204,7 @@ spec:
                 - name
                 type: object
               targets:
-                description: target records (CNAME or A records), either text or targets
-                  must be specified
+                description: target records (CNAME or A records), either text or targets must be specified
                 items:
                   type: string
                 type: array
@@ -285,7 +272,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.4
+    controller-gen.kubebuilder.io/version: v0.2.9
   creationTimestamp: null
   name: dnsowners.dns.gardener.cloud
 spec:
@@ -306,30 +293,25 @@ spec:
     - jsonPath: .spec.active
       name: Active
       type: boolean
-    - jsonPath: .status.amount
+    - jsonPath: .status.entries.amount
       name: Usages
-      type: string
+      type: integer
     name: v1alpha1
     schema:
       openAPIV3Schema:
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
           spec:
             properties:
               active:
-                description: state of the ownerid for the DNS controller observing
-                  entry using this owner id (default:true)
+                description: state of the ownerid for the DNS controller observing entry using this owner id (default:true)
                 type: boolean
               ownerId:
                 description: owner id used to tag entries in external DNS system
@@ -374,7 +356,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.2.4
+    controller-gen.kubebuilder.io/version: v0.2.9
   creationTimestamp: null
   name: dnsproviders.dns.gardener.cloud
 spec:
@@ -400,22 +382,17 @@ spec:
       openAPIV3Schema:
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
           spec:
             properties:
               domains:
-                description: desired selection of usable domains (by default all zones
-                  and domains in those zones will be served)
+                description: desired selection of usable domains (by default all zones and domains in those zones will be served)
                 properties:
                   exclude:
                     description: values that should be ignored (domains or zones)
@@ -433,25 +410,20 @@ spec:
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
               secretRef:
-                description: access credential for the external DNS system of the
-                  given type
+                description: access credential for the external DNS system of the given type
                 properties:
                   name:
-                    description: Name is unique within a namespace to reference a
-                      secret resource.
+                    description: Name is unique within a namespace to reference a secret resource.
                     type: string
                   namespace:
-                    description: Namespace defines the space within which the secret
-                      name must be unique.
+                    description: Namespace defines the space within which the secret name must be unique.
                     type: string
                 type: object
               type:
-                description: type of the provider (selecting the responsible type
-                  of DNS controller)
+                description: type of the provider (selecting the responsible type of DNS controller)
                 type: string
               zones:
-                description: desired selection of usable domains the domain selection
-                  is used for served zones, only (by default all zones will be served)
+                description: desired selection of usable domains the domain selection is used for served zones, only (by default all zones will be served)
                 properties:
                   exclude:
                     description: values that should be ignored (domains or zones)
@@ -482,8 +454,7 @@ spec:
                     type: array
                 type: object
               message:
-                description: message describing the reason for the actual state of
-                  the provider
+                description: message describing the reason for the actual state of the provider
                 type: string
               observedGeneration:
                 format: int64

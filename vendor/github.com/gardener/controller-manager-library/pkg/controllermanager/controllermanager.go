@@ -79,14 +79,11 @@ func NewControllerManager(ctx context.Context, def *Definition) (*ControllerMana
 		logger.Infof("disable namespace restriction for access control")
 	}
 
-	name := def.GetName()
-	if cfg.Name != "" {
-		name = cfg.Name
-	} else {
-		cfg.Name = name
+	if cfg.Name == "" {
+		cfg.Name = def.GetName()
 	}
-	if cfg.Maintainer == "" {
-		cfg.Maintainer = cfg.Name
+	if len(cfg.CRDMaintainer.Idents) == 0 {
+		cfg.CRDMaintainer.Idents = utils.NewStringSet(cfg.Name)
 	}
 
 	namespace := run.GetConfig(maincfg).Namespace
@@ -177,8 +174,8 @@ func (this *ControllerManager) GetName() string {
 	return this.config.Name
 }
 
-func (this *ControllerManager) GetMaintainer() string {
-	return this.config.Maintainer
+func (this *ControllerManager) GetMaintainer() extension.MaintainerInfo {
+	return this.config.CRDMaintainer
 }
 
 func (this *ControllerManager) GetNamespace() string {

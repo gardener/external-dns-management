@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 	reserr "github.com/gardener/controller-manager-library/pkg/resources/errors"
@@ -127,7 +128,7 @@ func (this *CustomResourceDefinitionVersions) Override(v *semver.Version, spec C
 	return this
 }
 
-func (this *CustomResourceDefinitionVersions) Deploy(log logger.LogContext, cluster cluster.Interface, maintainer string) error {
+func (this *CustomResourceDefinitionVersions) Deploy(log logger.LogContext, cluster cluster.Interface, maintainer extension.MaintainerInfo) error {
 	crd := this.GetFor(cluster.GetServerVersion())
 	if crd != nil {
 		err := CreateCRDFromObject(log, cluster, crd.DataFor(cluster, nil), maintainer)

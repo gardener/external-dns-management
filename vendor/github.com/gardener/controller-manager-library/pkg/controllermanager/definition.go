@@ -60,7 +60,7 @@ func (this *Definition) ClusterDefinitions() cluster.Definitions {
 }
 
 func (this *Definition) ExtendConfig(cfg *configmain.Config) {
-	ccfg := areacfg.NewConfig()
+	ccfg := areacfg.NewConfig(this.GetName())
 	cfg.AddSource(areacfg.OPTION_SOURCE, ccfg)
 
 	for _, e := range this.extensions {
