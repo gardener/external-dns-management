@@ -21,6 +21,7 @@ import (
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 )
@@ -73,5 +74,5 @@ func _CreateCRDObject(status bool, groupName, version, rkind, rplural, shortName
 
 func CreateCRD(cluster resources.Cluster, groupName, version, rkind, rplural, shortName string, namespaces bool, columns ...v1beta1.CustomResourceColumnDefinition) error {
 	crd := CreateCRDObject(groupName, version, rkind, rplural, shortName, namespaces, columns...)
-	return CreateCRDFromObject(logger.New(), cluster, crd, "")
+	return CreateCRDFromObject(logger.New(), cluster, crd, extension.MaintainerInfo{})
 }

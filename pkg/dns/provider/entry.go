@@ -426,7 +426,6 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	spec, targets, warnings, verr := validate(logger, state, this, p)
 	if p.provider != nil && spec.TTL != nil {
 		this.status.TTL = spec.TTL
-
 	}
 
 	if verr != nil {
@@ -481,7 +480,11 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		this.targets = targets
 		if err != nil {
 			if this.status.State != api.STATE_STALE {
-				this.status.State = api.STATE_ERROR
+				if this.status.State == api.STATE_READY && (p.provider != nil && !p.provider.IsValid()) {
+					this.status.State = api.STATE_STALE
+				} else {
+					this.status.State = api.STATE_ERROR
+				}
 				this.status.Message = StatusMessage(err.Error())
 			} else {
 				if strings.HasPrefix(*this.status.Message, MSG_PRESERVED) {

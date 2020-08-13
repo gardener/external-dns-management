@@ -161,9 +161,11 @@ func RegisterExtension(e ExtensionType) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
+type MaintainerInfo = areacfg.MaintainerInfo
+
 type ControllerManager interface {
 	GetName() string
-	GetMaintainer() string
+	GetMaintainer() MaintainerInfo
 	GetNamespace() string
 
 	GetConfig() *areacfg.Config

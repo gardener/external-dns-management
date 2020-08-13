@@ -36,7 +36,7 @@ type DNSOwnerList struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name=OwnerId,JSONPath=".spec.ownerId",type=string
 // +kubebuilder:printcolumn:name=Active,JSONPath=".spec.active",type=boolean
-// +kubebuilder:printcolumn:name=Usages,JSONPath=".status.amount",type=string
+// +kubebuilder:printcolumn:name=Usages,JSONPath=".status.entries.amount",type=integer
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

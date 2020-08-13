@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go v1.19.41
 	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
-	github.com/gardener/controller-manager-library v0.2.1-0.20200810091329-d980dbe10959
+	github.com/gardener/controller-manager-library v0.2.1-0.20200813153030-6d3f08405a80
 	github.com/gophercloud/gophercloud v0.2.0
 	github.com/gophercloud/utils v0.0.0-20190527093828-25f1b77b8c03
 	github.com/imdario/mergo v0.3.7 // indirect
@@ -25,6 +25,7 @@ require (
 	go.uber.org/atomic v1.4.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b
 	golang.org/x/oauth2 v0.0.0-20190604053449-0f29369cfe45
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/api v0.4.0
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6

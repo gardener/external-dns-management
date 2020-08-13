@@ -30,6 +30,7 @@ import (
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -151,7 +152,7 @@ func (this *CustomResourceDefinition) DataFor(cluster resources.Cluster, cp Webh
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func CreateCRDFromObject(log logger.LogContext, cluster resources.Cluster, crd resources.ObjectData, maintainer string) error {
+func CreateCRDFromObject(log logger.LogContext, cluster resources.Cluster, crd resources.ObjectData, maintainer extension.MaintainerInfo) error {
 	var err error
 
 	if abs, ok := crd.(*CustomResourceDefinition); ok {
@@ -161,10 +162,12 @@ func CreateCRDFromObject(log logger.LogContext, cluster resources.Cluster, crd r
 		return errors.New(errors.ERR_INVALID, "invalid crd")
 	}
 	msg := logger.NewOptionalSingletonMessage(log.Infof, "foreign %s", crd.GetName())
-	resources.SetAnnotation(crd, A_MAINTAINER, maintainer)
+	if maintainer.Ident != "" {
+		resources.SetAnnotation(crd, A_MAINTAINER, maintainer.Ident)
+	}
 	found, err := cluster.Resources().GetObject(crd)
 	if err == nil {
-		if found.GetAnnotation(A_MAINTAINER) == maintainer {
+		if maintainer.ForceCRDUpdate || maintainer.Idents.Contains(found.GetAnnotation(A_MAINTAINER)) {
 			msg.ResetWith("uptodate %s", crd.GetName())
 			new, _ := resources.GetObjectSpec(crd)
 			_, err := found.Modify(func(data resources.ObjectData) (bool, error) {
@@ -173,6 +176,12 @@ func CreateCRDFromObject(log logger.LogContext, cluster resources.Cluster, crd r
 					msg.Default("updating %s", crd.GetName())
 					resources.SetObjectSpec(data, new)
 					return true, nil
+				}
+				if v, _ := resources.GetAnnotation(data, A_MAINTAINER); v != maintainer.Ident {
+					if maintainer.Ident == "" {
+						return resources.RemoveAnnotation(data, A_MAINTAINER), nil
+					}
+					return resources.SetAnnotation(data, A_MAINTAINER, maintainer.Ident), nil
 				}
 				return false, nil
 			})
