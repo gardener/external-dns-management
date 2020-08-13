@@ -626,6 +626,12 @@ spec:
         {{- if .Values.configuration.maintainer }}
         - --maintainer={{ .Values.configuration.maintainer }}
         {{- end }}
+        {{- if .Values.configuration.acceptedMaintainers }}
+        - --accepted-maintainers={{ .Values.configuration.acceptedMaintainers }}
+        {{- end }}
+        {{- if .Values.configuration.forceCRDUpdate }}
+        - --force-crd-update={{ .Values.configuration.forceCRDUpdate }}
+        {{- end }}
         {{- if .Values.configuration.namespace }}
         - --namespace={{ .Values.configuration.namespace }}
         {{- end }}

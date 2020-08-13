@@ -56,6 +56,12 @@ generate:
 	@./hack/generate-code
 	@GO111MODULE=on go generate ./charts/external-dns-management
 
+.PHONY: install-requirements
+install-requirements:
+	@go install -mod=vendor github.com/onsi/ginkgo/ginkgo
+	@GO111MODULE=off go get golang.org/x/tools/cmd/goimports
+	@./hack/install-requirements.sh
+
 alltests:
 	GO111MODULE=on go test -mod=vendor ./pkg/...
 	test/integration/run.sh $(kindargs) -- $(args)
