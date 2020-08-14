@@ -6,6 +6,7 @@
 import re
 
 options = """
+      --accepted-maintainers string                                 accepted maintainer key(s) for crds
       --alicloud-dns.cache-dir string                               Directory to store zone caches (for reload after restart) of controller alicloud-dns
       --alicloud-dns.cache-ttl int                                  Time-to-live for provider hosted zone cache of controller alicloud-dns (default 120)
       --alicloud-dns.default.pool.size int                          Worker pool size for pool default of controller alicloud-dns (default 2)
@@ -134,6 +135,7 @@ options = """
       --dnsentry-source.targets.pool.size int                       Worker pool size for pool targets of controller dnsentry-source (default 2)
       --dry-run                                                     just check, don't modify
       --exclude-domains stringArray                                 excluded domains
+      --force-crd-update                                            enforce update of crds even they are unmanaged
       --google-clouddns.cache-dir string                            Directory to store zone caches (for reload after restart) of controller google-clouddns
       --google-clouddns.cache-ttl int                               Time-to-live for provider hosted zone cache of controller google-clouddns (default 120)
       --google-clouddns.default.pool.size int                       Worker pool size for pool default of controller google-clouddns (default 2)
@@ -203,10 +205,13 @@ options = """
       --kubeconfig string                                           default cluster access
       --kubeconfig.disable-deploy-crds                              disable deployment of required crds for cluster default
       --kubeconfig.id string                                        id for cluster default
+      --lease-duration duration                                     lease duration (default 15s)
       --lease-name string                                           name for lease object
+      --lease-renew-deadline duration                               lease renew deadline (default 10s)
+      --lease-retry-period duration                                 lease retry period (default 2s)
   -D, --log-level string                                            logrus log level
-      --maintainer string                                           maintainer key for crds (defaulted by manager name)
-      --name string                                                 name used for controller manager
+      --maintainer string                                           maintainer key for crds (default "dns-controller-manager")
+      --name string                                                 name used for controller manager (default "dns-controller-manager")
       --namespace string                                            namespace for lease (default "kube-system")
   -n, --namespace-local-access-only                                 enable access restriction for namespace local access only (deprecated)
       --omit-lease                                                  omit lease for development

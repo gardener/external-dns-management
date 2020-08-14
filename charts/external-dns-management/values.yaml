@@ -32,7 +32,7 @@ affinity: {}
 createCRDs: true
 
 configuration:
-  # accepted-maintainers: UNMANAGED
+  # acceptedMaintainers: UNMANAGED
   # alicloudDNSCacheTtl: 120
   # alicloudDNSDefaultPoolSize: 2
   # alicloudDNSDisableZoneStateCaching: false
@@ -155,7 +155,7 @@ configuration:
   # dnsentrySourceTargetSetIgnoreOwners: false
   # dnsentrySourceTargetsPoolSize: 2
   # excludeDomains: google.com
-  # force-crd-update: false
+  # forceCrdUpdate: false
   # googleCloudDNSCacheTtl: 120
   # googleCloudDNSDefaultPoolSize: 2
   # googleCloudDNSDisableZoneStateCaching: false
@@ -221,7 +221,10 @@ configuration:
   # kubeconfig: ""
   # kubeconfigDisableDeployCrds: false
   # kubeconfigId: ""
+  # leaseDuration:
   # leaseName:
+  # leaseRenewDeadline:
+  # leaseRetryPeriod:
   # logLevel: info
   # maintainer:
   # namespace: default

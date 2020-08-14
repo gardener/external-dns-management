@@ -56,6 +56,9 @@ spec:
         - --cache-dir=/persistent-cache
         {{- end }}
         ### start generated configuration
+        {{- if .Values.configuration.acceptedMaintainers }}
+        - --accepted-maintainers={{ .Values.configuration.acceptedMaintainers }}
+        {{- end }}
         {{- if .Values.configuration.alicloudDNSCacheTtl }}
         - --alicloud-dns.cache-ttl={{ .Values.configuration.alicloudDNSCacheTtl }}
         {{- end }}
@@ -422,6 +425,9 @@ spec:
         {{- if .Values.configuration.excludeDomains }}
         - --exclude-domains={{ .Values.configuration.excludeDomains }}
         {{- end }}
+        {{- if .Values.configuration.forceCrdUpdate }}
+        - --force-crd-update={{ .Values.configuration.forceCrdUpdate }}
+        {{- end }}
         {{- if .Values.configuration.googleCloudDNSCacheTtl }}
         - --google-clouddns.cache-ttl={{ .Values.configuration.googleCloudDNSCacheTtl }}
         {{- end }}
@@ -617,20 +623,23 @@ spec:
         {{- if .Values.configuration.kubeconfigId }}
         - --kubeconfig.id={{ .Values.configuration.kubeconfigId }}
         {{- end }}
+        {{- if .Values.configuration.leaseDuration }}
+        - --lease-duration={{ .Values.configuration.leaseDuration }}
+        {{- end }}
         {{- if .Values.configuration.leaseName }}
         - --lease-name={{ .Values.configuration.leaseName }}
+        {{- end }}
+        {{- if .Values.configuration.leaseRenewDeadline }}
+        - --lease-renew-deadline={{ .Values.configuration.leaseRenewDeadline }}
+        {{- end }}
+        {{- if .Values.configuration.leaseRetryPeriod }}
+        - --lease-retry-period={{ .Values.configuration.leaseRetryPeriod }}
         {{- end }}
         {{- if .Values.configuration.logLevel }}
         - --log-level={{ .Values.configuration.logLevel }}
         {{- end }}
         {{- if .Values.configuration.maintainer }}
         - --maintainer={{ .Values.configuration.maintainer }}
-        {{- end }}
-        {{- if .Values.configuration.acceptedMaintainers }}
-        - --accepted-maintainers={{ .Values.configuration.acceptedMaintainers }}
-        {{- end }}
-        {{- if .Values.configuration.forceCRDUpdate }}
-        - --force-crd-update={{ .Values.configuration.forceCRDUpdate }}
         {{- end }}
         {{- if .Values.configuration.namespace }}
         - --namespace={{ .Values.configuration.namespace }}
