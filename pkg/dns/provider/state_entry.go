@@ -199,7 +199,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				} else {
 					cur.duplicate = true
 					cur.modified = false
-					logger.Warnf("DNS name %q already busy for %q, but this one was earlier", dnsname, cur.ObjectName())
+					logger.Warnf("DNS name %q already busy for entry %q, but this one was earlier", dnsname, cur.ObjectName())
 					logger.Infof("reschedule %q for error update", cur.ObjectName())
 					this.triggerKey(cur.ClusterKey())
 				}

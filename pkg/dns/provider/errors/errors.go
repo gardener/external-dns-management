@@ -18,8 +18,9 @@ package errors
 
 import (
 	"fmt"
-	"github.com/gardener/controller-manager-library/pkg/resources"
 	"time"
+
+	"github.com/gardener/controller-manager-library/pkg/resources"
 )
 
 type AlreadyBusyForEntry struct {
@@ -28,7 +29,7 @@ type AlreadyBusyForEntry struct {
 }
 
 func (e *AlreadyBusyForEntry) Error() string {
-	return fmt.Sprintf("DNS name %q already busy for %q", e.DNSName, e.ObjectName)
+	return fmt.Sprintf("DNS name %q already busy for entry %q", e.DNSName, e.ObjectName)
 }
 
 type AlreadyBusyForOwner struct {

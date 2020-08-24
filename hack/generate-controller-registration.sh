@@ -41,6 +41,7 @@ CHART_DIR="$2"
 DEST="$3"
 KIND_AND_TYPE="$4"
 
+echo args: "$@"
 ( [[ -z "$NAME" ]] || [[ -z "$CHART_DIR" ]] || [[ -z "$DEST" ]] || [[ -z "$KIND_AND_TYPE" ]]) && usage
 
 KINDS_AND_TYPES=("$KIND_AND_TYPE" "${@:5}")

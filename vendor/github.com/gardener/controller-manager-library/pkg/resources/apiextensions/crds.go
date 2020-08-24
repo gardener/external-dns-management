@@ -171,19 +171,21 @@ func CreateCRDFromObject(log logger.LogContext, cluster resources.Cluster, crd r
 			msg.ResetWith("uptodate %s", crd.GetName())
 			new, _ := resources.GetObjectSpec(crd)
 			_, err := found.Modify(func(data resources.ObjectData) (bool, error) {
+				mod := false
 				spec, _ := resources.GetObjectSpec(data)
 				if !reflect.DeepEqual(spec, new) {
 					msg.Default("updating %s", crd.GetName())
 					resources.SetObjectSpec(data, new)
-					return true, nil
+					mod = true
 				}
 				if v, _ := resources.GetAnnotation(data, A_MAINTAINER); v != maintainer.Ident {
 					if maintainer.Ident == "" {
-						return resources.RemoveAnnotation(data, A_MAINTAINER), nil
+						mod = resources.RemoveAnnotation(data, A_MAINTAINER) || mod
+					} else {
+						mod = resources.SetAnnotation(data, A_MAINTAINER, maintainer.Ident) || mod
 					}
-					return resources.SetAnnotation(data, A_MAINTAINER, maintainer.Ident), nil
 				}
-				return false, nil
+				return mod, nil
 			})
 			if err != nil {
 				log.Errorf("cannot update crd: %s", err)
