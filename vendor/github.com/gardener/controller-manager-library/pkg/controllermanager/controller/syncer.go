@@ -194,16 +194,16 @@ func (this *SyncRequest) update(log logger.LogContext, initiator resources.Objec
 
 	if this.resourceVersion == initiator.GetResourceVersion() {
 		if len(this.syncPoints) == 0 {
-			log.Info("synchronization %s(%s) for %s(%s) done", this.name, this.resource, initiator.ClusterKey(), this.resourceVersion)
+			log.Infof("synchronization %s(%s) for %s(%s) done", this.name, this.resource, initiator.ClusterKey(), this.resourceVersion)
 			return true, nil
 		}
-		log.Info("synchronization %s(%s) for %s(%s) still pending", this.name, this.resource, initiator.ClusterKey(), this.resourceVersion)
+		log.Infof("synchronization %s(%s) for %s(%s) still pending", this.name, this.resource, initiator.ClusterKey(), this.resourceVersion)
 		return false, nil
 	}
 	if this.resourceVersion == "" {
-		log.Info("synchronizing %s(%s) for %s(%s)", this.name, this.resource, initiator, initiator.GetResourceVersion())
+		log.Infof("synchronizing %s(%s) for %s(%s)", this.name, this.resource, initiator, initiator.GetResourceVersion())
 	} else {
-		log.Info("resynchronizing %s(%s) for %s(%s->%s)", this.name, this.resource, initiator, this.resourceVersion, initiator.GetResourceVersion())
+		log.Infof("resynchronizing %s(%s) for %s(%s->%s)", this.name, this.resource, initiator, this.resourceVersion, initiator.GetResourceVersion())
 	}
 	this.resourceVersion = initiator.GetResourceVersion()
 	reconcilers := this.controller.mappings.Get(this.cluster, this.resource.GroupKind())
@@ -216,7 +216,7 @@ func (this *SyncRequest) update(log logger.LogContext, initiator resources.Objec
 	}
 	this.syncPoints = SyncPoints{}
 	if len(list) == 0 {
-		log.Info("  no %s found for sync -> done", this.resource)
+		log.Infof("  no %s found for sync -> done", this.resource)
 		return true, nil
 	}
 	if len(reconcilers) == 1 {

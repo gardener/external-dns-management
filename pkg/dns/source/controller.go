@@ -68,7 +68,6 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 	gk := source.GroupKind()
 	return controller.Configure(source.Name()).
 		After(annotation.CONTROLLER).
-		RequireLease().
 		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "identifier used to differentiate responsible controllers for entries").
 		StringOption(OPT_TARGET_CLASS, "identifier used to differentiate responsible dns controllers for target entries").
 		StringArrayOption(OPT_EXCLUDE, "excluded domains").
@@ -89,7 +88,8 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		Cluster(TARGET_CLUSTER).
 		CustomResourceDefinitions(ENTRY).
 		WorkerPool("targets", 2, 0).
-		ReconcilerWatch("entries", api.GroupName, api.DNSEntryKind)
+		ReconcilerWatch("entries", api.GroupName, api.DNSEntryKind).
+		RequireLease(TARGET_CLUSTER)
 }
 
 var SlaveResources = reconcilers.ClusterResources(TARGET_CLUSTER, ENTRY)

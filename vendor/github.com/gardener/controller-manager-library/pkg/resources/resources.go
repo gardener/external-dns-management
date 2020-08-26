@@ -222,6 +222,15 @@ func (this *_resources) GetObject(spec interface{}) (Object, error) {
 	return h.Get(spec)
 }
 
+func (this *_resources) GetObjectInto1(obj ObjectData) (Object, error) {
+	h, err := this.GetByExample(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return h.GetInto1(obj)
+}
+
 func (this *_resources) GetObjectInto(name ObjectName, obj ObjectData) (Object, error) {
 	h, err := this.GetByExample(obj)
 	if err != nil {

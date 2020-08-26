@@ -249,7 +249,8 @@ func (this *Extension) Start(ctx context.Context) error {
 	for _, cntr := range this.controllers {
 		def := this.registrations[cntr.GetName()]
 		if def.RequireLease() {
-			this.getLeaseStartupGroup(cntr.GetMainCluster()).Add(cntr)
+			cluster := cntr.GetCluster(def.LeaseClusterName())
+			this.getLeaseStartupGroup(cluster).Add(cntr)
 		} else {
 			this.getPlainStartupGroup(cntr.GetMainCluster()).Add(cntr)
 		}

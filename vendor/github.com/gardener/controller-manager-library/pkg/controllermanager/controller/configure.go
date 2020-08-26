@@ -164,6 +164,7 @@ type _Definition struct {
 	required_clusters    []string
 	required_controllers []string
 	require_lease        bool
+	lease_cluster        string
 	pools                map[string]PoolDefinition
 	configs              extension.OptionDefinitions
 	configsources        extension.OptionSourceDefinitions
@@ -189,6 +190,9 @@ func (this *_Definition) String() string {
 	s += fmt.Sprintf("  pools:       %s\n", toString(this.pools))
 	s += fmt.Sprintf("  finalizer:   %s\n", this.FinalizerName())
 	s += fmt.Sprintf("  explicit :   %t\n", this.activateExplicitly)
+	if this.require_lease {
+		s += fmt.Sprintf("  lease on:    %s\n", this.LeaseClusterName())
+	}
 	if this.scheme != nil {
 		s += fmt.Sprintf("  scheme is set\n")
 	}
@@ -233,6 +237,12 @@ func (this *_Definition) RequiredControllers() []string {
 }
 func (this *_Definition) RequireLease() bool {
 	return this.require_lease
+}
+func (this *_Definition) LeaseClusterName() string {
+	if this.lease_cluster != "" {
+		return this.lease_cluster
+	}
+	return CLUSTER_MAIN
 }
 func (this *_Definition) FinalizerName() string {
 	if this.finalizerName == "" {
@@ -646,8 +656,21 @@ func (this Configuration) FinalizerDomain(name string) Configuration {
 	this.settings.finalizerDomain = name
 	return this
 }
-func (this Configuration) RequireLease() Configuration {
+func (this Configuration) RequireLease(clusters ...string) Configuration {
 	this.settings.require_lease = true
+	if len(clusters) > 0 {
+		found := false
+		for _, name := range this.settings.required_clusters {
+			if name == clusters[0] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			panic(fmt.Sprintf("lease cluster %s not found", clusters[0]))
+		}
+		this.settings.lease_cluster = clusters[0]
+	}
 	return this
 }
 

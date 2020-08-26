@@ -132,6 +132,7 @@ type Interface interface {
 	New(ObjectName) Object
 
 	GetInto(ObjectName, ObjectData) (Object, error)
+	GetInto1(ObjectData) (Object, error)
 
 	GetCached(interface{}) (Object, error)
 	// GET_ deprecrated: use Get
@@ -183,6 +184,7 @@ type Resources interface {
 	Decode(bytes []byte) (Object, error)
 
 	GetObjectInto(ObjectName, ObjectData) (Object, error)
+	GetObjectInto1(ObjectData) (Object, error)
 
 	GetObject(spec interface{}) (Object, error)
 	GetCachedObject(spec interface{}) (Object, error)

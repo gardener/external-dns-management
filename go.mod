@@ -11,7 +11,7 @@ require (
 	github.com/aws/aws-sdk-go v1.19.41
 	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
-	github.com/gardener/controller-manager-library v0.2.1-0.20200814085853-45032cce52c3
+	github.com/gardener/controller-manager-library v0.2.1-0.20200826092304-559a0c67bfe5
 	github.com/gophercloud/gophercloud v0.2.0
 	github.com/gophercloud/utils v0.0.0-20190527093828-25f1b77b8c03
 	github.com/imdario/mergo v0.3.7 // indirect

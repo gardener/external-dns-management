@@ -55,7 +55,7 @@ func (this *_resource) GetCached(obj interface{}) (Object, error) {
 		if err := this.CheckOType(o); err != nil {
 			return nil, err
 		}
-		return this.helper.ObjectAsResource(o), nil
+		return this.getCached(o.GetNamespace(), o.GetName())
 	case ObjectKey:
 		if o.GroupKind() != this.GroupKind() {
 			return nil, errors.ErrResourceMismatch.New(this.GroupVersionKind(), o.GroupKind())

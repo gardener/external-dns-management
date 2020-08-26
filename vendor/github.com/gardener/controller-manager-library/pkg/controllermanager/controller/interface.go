@@ -166,6 +166,7 @@ type Definition interface {
 	RequiredControllers() []string
 	CustomResourceDefinitions() map[string][]*apiextensions.CustomResourceDefinitionVersions
 	RequireLease() bool
+	LeaseClusterName() string
 	FinalizerName() string
 	ActivateExplicitly() bool
 	ConfigOptions() map[string]OptionDefinition

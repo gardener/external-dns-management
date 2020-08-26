@@ -23,6 +23,8 @@ import (
 	"syscall"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/Masterminds/semver"
@@ -225,6 +227,28 @@ func CreateClusterForScheme(ctx context.Context, logger logger.LogContext, def D
 		return nil, err
 	}
 
+	if id == "" {
+		logger.Infof("no cluster identity given -> checking cluster")
+		cm := &corev1.ConfigMap{}
+		_, err := cluster.Resources().GetObjectInto(resources.NewObjectName("kube-system", "cluster-identity"), cm)
+		if err != nil {
+			if !errors.IsNotFound(err) {
+				logger.Errorf("cannot read cluster-identity config map: %s", err)
+				return nil, err
+			}
+			logger.Warnf("no cluster identity configmap provided by cluster %q", cluster.name)
+		} else {
+			id, ok := cm.Data["cluster-identity"]
+			if ok {
+				logger.Infof("using cluster identity provided by cluster %q: %s", cluster.name, id)
+				cluster.id = id
+			} else {
+				logger.Warnf("no cluster identity provided by configmap in cluster %q", cluster.name)
+			}
+		}
+	} else {
+		logger.Infof("using cluster identity for cluster %q: %s", cluster.id, cluster.name)
+	}
 	return cluster, nil
 }
 

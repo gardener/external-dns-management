@@ -158,6 +158,16 @@ func (this *AbstractResource) GetInto(name ObjectName, obj ObjectData) (Object, 
 	return this.helper.Get(name.Namespace(), name.Name(), obj)
 }
 
+func (this *AbstractResource) GetInto1(obj ObjectData) (Object, error) {
+	if o, ok := obj.(Object); ok {
+		obj = o.Data()
+	}
+	if err := this.CheckOType(obj, true); err != nil {
+		return nil, err
+	}
+	return this.helper.Get(obj.GetNamespace(), obj.GetName(), obj)
+}
+
 func (this *AbstractResource) Get_(obj interface{}) (Object, error) {
 	return this.Get(obj)
 }

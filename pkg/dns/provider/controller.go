@@ -111,7 +111,6 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		name = factory.Name()
 	}
 	cfg := controller.Configure(name).
-		RequireLease().
 		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "Class identifier used to differentiate responsible controllers for entry resources").
 		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries in DNS system").
 		DefaultedStringOption(OPT_CACHE_DIR, "", "Directory to store zone caches (for reload after restart)").
@@ -145,7 +144,8 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		).
 		WorkerPool("dns", 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
 		WorkerPool("statistic", 1, 0).Commands(CMD_STATISTIC).
-		OptionSource(FACTORY_OPTIONS, FactoryOptionSourceCreator(factory))
+		OptionSource(FACTORY_OPTIONS, FactoryOptionSourceCreator(factory)).
+		RequireLease(TARGET_CLUSTER)
 	return cfg
 }
 
