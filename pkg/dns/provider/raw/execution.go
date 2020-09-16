@@ -58,6 +58,7 @@ func NewExecution(logger logger.LogContext, e Executor, state *ZoneState, zone p
 		executor:   e,
 		zone:       zone,
 		state:      state,
+		domain:     zone.Domain(),
 		results:    map[string]*result{},
 		additions:  RecordSet{},
 		updates:    RecordSet{},
