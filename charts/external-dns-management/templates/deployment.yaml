@@ -623,6 +623,9 @@ spec:
         {{- if .Values.configuration.kubeconfigId }}
         - --kubeconfig.id={{ .Values.configuration.kubeconfigId }}
         {{- end }}
+        {{- if .Values.configuration.kubeconfigMigrationIds }}
+        - --kubeconfig.migration-ids={{ .Values.configuration.kubeconfigMigrationIds }}
+        {{- end }}
         {{- if .Values.configuration.leaseDuration }}
         - --lease-duration={{ .Values.configuration.leaseDuration }}
         {{- end }}
@@ -737,6 +740,9 @@ spec:
         {{- if .Values.configuration.providersId }}
         - --providers.id={{ .Values.configuration.providersId }}
         {{- end }}
+        {{- if .Values.configuration.providersMigrationIds }}
+        - --providers.migration-ids={{ .Values.configuration.providersMigrationIds }}
+        {{- end }}
         {{- if .Values.configuration.providersPoolResyncPeriod }}
         - --providers.pool.resync-period={{ .Values.configuration.providersPoolResyncPeriod }}
         {{- end }}
@@ -844,6 +850,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.targetId }}
         - --target.id={{ .Values.configuration.targetId }}
+        {{- end }}
+        {{- if .Values.configuration.targetMigrationIds }}
+        - --target.migration-ids={{ .Values.configuration.targetMigrationIds }}
         {{- end }}
         {{- if .Values.configuration.targetsPoolSize }}
         - --targets.pool.size={{ .Values.configuration.targetsPoolSize }}

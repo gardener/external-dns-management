@@ -1,0 +1,11 @@
+# The cluster-identity is created automatically on all Gardener shoot clusters.
+# It must only be added manually for the default cluster, if you are using a cluster not created/used by Gardener and
+# you are using source controllers with different default and target cluster and
+# you are not using the command line option `--kubeconfig.id`
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-identity
+  namespace: kube-system
+data:
+  cluster-identity: my-unique-cluster-id

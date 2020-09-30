@@ -221,6 +221,7 @@ configuration:
   # kubeconfig: ""
   # kubeconfigDisableDeployCrds: false
   # kubeconfigId: ""
+  # kubeconfigMigrationIds: ""
   # leaseDuration:
   # leaseName:
   # leaseRenewDeadline:
@@ -262,6 +263,7 @@ configuration:
   # providers: ""
   # providersDisableDeployCrds: false
   # providersId: ""
+  # providersMigrationIds: ""
   # providersPoolResyncPeriod: 30s
   # providersPoolSize: 1
   # ratelimiterBurst:
@@ -298,6 +300,7 @@ configuration:
   # targetSetIgnoreOwners: false
   # targetDisableDeployCrds: false
   # targetId: ""
+  # targetMigrationIds: ""
   # targetsPoolSize:
   ttl: 120
   # version:
