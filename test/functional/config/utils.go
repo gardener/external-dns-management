@@ -19,11 +19,12 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/onsi/gomega"
 	"math/rand"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/onsi/gomega"
 )
 
 const STATE_DELETED = "~DELETED~"
@@ -104,7 +105,7 @@ func (u *TestUtils) runCmd(cmdline string) (string, error) {
 	cmd := exec.Command("sh", "-c", cmdline)
 	out, err := cmd.Output()
 	if err != nil {
-		println(string(err.(*exec.ExitError).Stderr))
+		fmt.Printf("command `%s` failed: %s\n", cmdline, string(err.(*exec.ExitError).Stderr))
 		return string(out), fmt.Errorf("command `%s` failed with %s", cmdline, err)
 	}
 	return string(out), nil

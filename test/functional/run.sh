@@ -181,6 +181,18 @@ if [ "$NOBOOTSTRAP" == "" ] && [ "$LOCAL_APISERVER" == "" ]; then
 
   # create K8n cluster in docker
   kind create cluster --name integration
+
+  # set cluster identity
+  kubectl -n kube-system get cm cluster-identity >/dev/null || kubectl create -f - << EOM
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-identity
+  namespace: kube-system
+data:
+  cluster-identity: kind-integration
+EOM
+
 fi
 
 

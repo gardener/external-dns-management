@@ -1,17 +1,7 @@
 /*
- * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+ * SPDX-FileCopyrightText: 2019 SAP SE or an SAP affiliate company and Gardener contributors
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package cluster
@@ -23,6 +13,8 @@ import (
 	"syscall"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/Masterminds/semver"
@@ -60,9 +52,11 @@ func Canonical(names []string) []string {
 type Interface interface {
 	GetName() string
 	GetId() string
+	GetMigrationIds() utils.StringSet
 	GetServerVersion() *semver.Version
 	GetAttr(key interface{}) interface{}
 	SetAttr(key, value interface{})
+	AddMigrationIds(id ...string)
 	GetObject(interface{}) (resources.Object, error)
 	GetObjectInto(resources.ObjectName, resources.ObjectData) (resources.Object, error)
 	GetCachedObject(interface{}) (resources.Object, error)
@@ -74,6 +68,8 @@ type Interface interface {
 
 	WithScheme(scheme *runtime.Scheme) (Interface, error)
 	resources.ClusterSource
+
+	EnforceExplicitClusterIdentity(logger logger.LogContext) error
 }
 
 type Extension interface {
@@ -84,6 +80,7 @@ type Extension interface {
 type _Cluster struct {
 	name       string
 	id         string
+	migids     utils.StringSet
 	definition Definition
 	kubeConfig *restclient.Config
 	ctx        context.Context
@@ -91,6 +88,7 @@ type _Cluster struct {
 	rctx       resources.ResourceContext
 	resources  resources.Resources
 	attributes map[interface{}]interface{}
+	iderr      error
 }
 
 var _ Interface = &_Cluster{}
@@ -112,6 +110,14 @@ func (this *_Cluster) GetId() string {
 		return this.id
 	}
 	return this.name + "/" + CLUSTERID_GROUP
+}
+
+func (this *_Cluster) GetMigrationIds() utils.StringSet {
+	return this.migids
+}
+
+func (this *_Cluster) AddMigrationIds(ids ...string) {
+	this.migids.Add(ids...)
 }
 
 func (this *_Cluster) SetId(id string) {
@@ -180,6 +186,14 @@ func (this *_Cluster) WithScheme(scheme *runtime.Scheme) (Interface, error) {
 	return CreateClusterForScheme(this.ctx, this.logctx, this.definition, this.id, this.kubeConfig, scheme)
 }
 
+func (this *_Cluster) EnforceExplicitClusterIdentity(logger logger.LogContext) error {
+	if this.id == "" {
+		logger.Errorf("cluster identity required for %q, but neither set nor retrievable: %s", this.name, this.iderr)
+		return this.iderr
+	}
+	return nil
+}
+
 func CreateCluster(ctx context.Context, logger logger.LogContext, def Definition, id string, kubeconfig string) (Interface, error) {
 	if kubeconfig == "IN-CLUSTER" {
 		kubeconfig = ""
@@ -206,7 +220,7 @@ func CreateCluster(ctx context.Context, logger logger.LogContext, def Definition
 }
 
 func CreateClusterForScheme(ctx context.Context, logger logger.LogContext, def Definition, id string, kubeconfig *restclient.Config, scheme *runtime.Scheme) (Interface, error) {
-	cluster := &_Cluster{name: def.Name(), attributes: map[interface{}]interface{}{}}
+	cluster := &_Cluster{name: def.Name(), attributes: map[interface{}]interface{}{}, migids: utils.StringSet{}}
 
 	if def.Scheme() == nil {
 		scheme = resources.DefaultScheme()
@@ -225,6 +239,28 @@ func CreateClusterForScheme(ctx context.Context, logger logger.LogContext, def D
 		return nil, err
 	}
 
+	if id == "" {
+		logger.Infof("no cluster identity given -> checking cluster")
+		cm := &corev1.ConfigMap{}
+		_, err := cluster.Resources().GetObjectInto(resources.NewObjectName("kube-system", "cluster-identity"), cm)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				cluster.iderr = fmt.Errorf("no cluster identity configmap provided by cluster %q", cluster.name)
+			} else {
+				cluster.iderr = fmt.Errorf("cannot get cluster-identity config map: %s", err)
+			}
+		} else {
+			id, ok := cm.Data["cluster-identity"]
+			if ok {
+				logger.Infof("using cluster identity provided by cluster %q: %s", cluster.name, id)
+				cluster.id = id
+			} else {
+				cluster.iderr = fmt.Errorf("no cluster identity provided by configmap in cluster %q", cluster.name)
+			}
+		}
+	} else {
+		logger.Infof("using cluster identity for cluster %q: %s", cluster.id, cluster.name)
+	}
 	return cluster, nil
 }
 

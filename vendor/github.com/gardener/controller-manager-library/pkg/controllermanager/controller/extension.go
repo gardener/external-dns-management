@@ -1,19 +1,7 @@
 /*
- * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved.
- * This file is licensed under the Apache Software License, v. 2 except as noted
- * otherwise in the LICENSE file
+ * SPDX-FileCopyrightText: 2019 SAP SE or an SAP affiliate company and Gardener contributors
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package controller
@@ -207,7 +195,7 @@ func NewExtension(defs Definitions, cm extension.ControllerManager) (*Extension,
 	}, nil
 }
 
-func (this *Extension) RequiredClusters() (utils.StringSet, error) {
+func (this *Extension) RequiredClusters() (utils.StringSet, utils.StringSet, error) {
 	return this.definitions.DetermineRequestedClusters(this.ClusterDefinitions(), this.registrations.Names())
 }
 
@@ -222,6 +210,12 @@ func (this *Extension) Setup(ctx context.Context) error {
 func (this *Extension) Start(ctx context.Context) error {
 	var err error
 
+	if this.ControllerManager().GetClusterIdMigration() != nil {
+		mig := this.ControllerManager().GetClusterIdMigration().String()
+		if mig != "" {
+			this.Infof("found migrations: %s", this.ControllerManager().GetClusterIdMigration())
+		}
+	}
 	for _, def := range this.registrations {
 		lines := strings.Split(def.String(), "\n")
 		this.Infof("creating %s", lines[0])
@@ -249,7 +243,8 @@ func (this *Extension) Start(ctx context.Context) error {
 	for _, cntr := range this.controllers {
 		def := this.registrations[cntr.GetName()]
 		if def.RequireLease() {
-			this.getLeaseStartupGroup(cntr.GetMainCluster()).Add(cntr)
+			cluster := cntr.GetCluster(def.LeaseClusterName())
+			this.getLeaseStartupGroup(cluster).Add(cntr)
 		} else {
 			this.getPlainStartupGroup(cntr.GetMainCluster()).Add(cntr)
 		}

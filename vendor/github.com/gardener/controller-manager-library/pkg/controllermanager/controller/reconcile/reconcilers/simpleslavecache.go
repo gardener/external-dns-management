@@ -1,17 +1,7 @@
 /*
- * Copyright 2020 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+ * SPDX-FileCopyrightText: 2020 SAP SE or an SAP affiliate company and Gardener contributors
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  *
  */
 
@@ -35,18 +25,25 @@ var slavesKey = ctxutil.SimpleKey("slaves")
 // GetSharedSimpleSlaveCache returns an instance of a usage cache unique for
 // the complete controller manager
 func GetSharedSimpleSlaveCache(controller controller.Interface) *SimpleSlaveCache {
+	mig := controller.GetEnvironment().ControllerManager().GetClusterIdMigration()
 	return controller.GetEnvironment().GetOrCreateSharedValue(slavesKey, func() interface{} {
-		return NewSimpleSlaveCache()
+		return NewSimpleSlaveCache(mig)
 	}).(*SimpleSlaveCache)
 }
 
 type SimpleSlaveCache struct {
-	usages *SimpleUsageCache
+	migration resources.ClusterIdMigration
+	usages    *SimpleUsageCache
 }
 
-func NewSimpleSlaveCache() *SimpleSlaveCache {
+func NewSimpleSlaveCache(migration ...resources.ClusterIdMigration) *SimpleSlaveCache {
+	var mig resources.ClusterIdMigration
+	if len(migration) > 0 {
+		mig = migration[0]
+	}
 	return &SimpleSlaveCache{
-		usages: NewSimpleUsageCache(),
+		migration: mig,
+		usages:    NewSimpleUsageCache(),
 	}
 }
 
@@ -77,6 +74,12 @@ func (this *SimpleSlaveCache) UpdateSlave(slave resources.Object) {
 
 func (this *SimpleSlaveCache) SetupFor(log logger.LogContext, resc resources.Interface) error {
 	return ProcessResource(log, "setup owners for", resc, func(log logger.LogContext, obj resources.Object) (bool, error) {
+		if this.migration != nil {
+			err := resources.MigrateOwnerClusterIds(obj, this.migration)
+			if err != nil {
+				return false, err
+			}
+		}
 		this.UpdateSlave(obj)
 		return true, nil
 	})

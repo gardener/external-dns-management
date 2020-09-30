@@ -1,17 +1,7 @@
 /*
- * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+ * SPDX-FileCopyrightText: 2019 SAP SE or an SAP affiliate company and Gardener contributors
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package controller
@@ -162,8 +152,10 @@ type _Definition struct {
 	after                []string
 	before               []string
 	required_clusters    []string
+	identity_clusters    []string
 	required_controllers []string
 	require_lease        bool
+	lease_cluster        string
 	pools                map[string]PoolDefinition
 	configs              extension.OptionDefinitions
 	configsources        extension.OptionSourceDefinitions
@@ -180,15 +172,19 @@ func (this *_Definition) String() string {
 	s := fmt.Sprintf("controller %q:\n", this.name)
 	s += fmt.Sprintf("  main rsc:    %s\n", this.main.String())
 	s += fmt.Sprintf("  clusters:    %s\n", utils.Strings(this.RequiredClusters()...))
+	s += fmt.Sprintf("  ref targets: %s\n", utils.Strings(this.ReferenceTargetClusters()...))
 	s += fmt.Sprintf("  required:    %s\n", utils.Strings(this.RequiredControllers()...))
 	s += fmt.Sprintf("  after:       %s\n", utils.Strings(this.After()...))
-	s += fmt.Sprintf("  before:       %s\n", utils.Strings(this.Before()...))
+	s += fmt.Sprintf("  before:      %s\n", utils.Strings(this.Before()...))
 	s += fmt.Sprintf("  reconcilers: %s\n", toString(this.reconcilers))
 	s += fmt.Sprintf("  watches:     %s\n", toString(this.watches))
 	s += fmt.Sprintf("  commands:    %s\n", toString(this.commands))
 	s += fmt.Sprintf("  pools:       %s\n", toString(this.pools))
 	s += fmt.Sprintf("  finalizer:   %s\n", this.FinalizerName())
 	s += fmt.Sprintf("  explicit :   %t\n", this.activateExplicitly)
+	if this.require_lease {
+		s += fmt.Sprintf("  lease on:    %s\n", this.LeaseClusterName())
+	}
 	if this.scheme != nil {
 		s += fmt.Sprintf("  scheme is set\n")
 	}
@@ -228,11 +224,33 @@ func (this *_Definition) RequiredClusters() []string {
 	}
 	return []string{cluster.DEFAULT}
 }
+func (this *_Definition) ReferenceTargetClusters() []string {
+	var result []string
+
+	for _, r := range this.identity_clusters {
+		if r == CLUSTER_MAIN {
+			if len(this.required_clusters) > 0 {
+				r = this.required_clusters[0]
+			} else {
+				r = cluster.DEFAULT
+			}
+		}
+		result = append(result, r)
+	}
+	return result
+}
+
 func (this *_Definition) RequiredControllers() []string {
 	return this.required_controllers
 }
 func (this *_Definition) RequireLease() bool {
 	return this.require_lease
+}
+func (this *_Definition) LeaseClusterName() string {
+	if this.lease_cluster != "" {
+		return this.lease_cluster
+	}
+	return CLUSTER_MAIN
 }
 func (this *_Definition) FinalizerName() string {
 	if this.finalizerName == "" {
@@ -408,7 +426,7 @@ func (this Configuration) DefaultCluster() Configuration {
 	return this.Cluster(cluster.DEFAULT)
 }
 
-func (this Configuration) Cluster(name string) Configuration {
+func (this Configuration) Cluster(name string, userefs ...bool) Configuration {
 	this.pushState()
 	if name == "" {
 		name = CLUSTER_MAIN
@@ -428,6 +446,31 @@ func (this Configuration) Cluster(name string) Configuration {
 		}
 		this.settings.required_clusters = append([]string{}, this.settings.required_clusters...)
 		this.settings.required_clusters = append(this.settings.required_clusters, name)
+	}
+	if len(userefs) > 0 && userefs[0] {
+		return this.ReferenceTargetClusters(name)
+	}
+	return this
+}
+
+func (this Configuration) ReferenceTargetClusters(names ...string) Configuration {
+	this.pushState()
+
+	this.settings.identity_clusters = append([]string{}, this.settings.identity_clusters...)
+	for _, name := range names {
+		if name != CLUSTER_MAIN {
+			found := false
+			for _, c := range this.settings.required_clusters {
+				if c == name {
+					found = true
+					break
+				}
+			}
+			if !found {
+				panic(fmt.Errorf("unknown cluster %q", name))
+			}
+		}
+		this.settings.identity_clusters = append(this.settings.identity_clusters, name)
 	}
 	return this
 }
@@ -646,8 +689,21 @@ func (this Configuration) FinalizerDomain(name string) Configuration {
 	this.settings.finalizerDomain = name
 	return this
 }
-func (this Configuration) RequireLease() Configuration {
+func (this Configuration) RequireLease(clusters ...string) Configuration {
 	this.settings.require_lease = true
+	if len(clusters) > 0 {
+		found := false
+		for _, name := range this.settings.required_clusters {
+			if name == clusters[0] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			panic(fmt.Sprintf("lease cluster %s not found", clusters[0]))
+		}
+		this.settings.lease_cluster = clusters[0]
+	}
 	return this
 }
 
