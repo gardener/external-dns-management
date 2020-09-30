@@ -181,18 +181,6 @@ if [ "$NOBOOTSTRAP" == "" ] && [ "$LOCAL_APISERVER" == "" ]; then
 
   # create K8n cluster in docker
   kind create cluster --name integration
-
-  # set cluster identity
-  kubectl -n kube-system get cm cluster-identity >/dev/null || kubectl create -f - << EOM
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: cluster-identity
-  namespace: kube-system
-data:
-  cluster-identity: kind-integration
-EOM
-
 fi
 
 
@@ -256,11 +244,11 @@ kubectl cluster-info
 if [ "$RUN_CONTROLLER" == "true" ]; then
   if [ "$DNS_COMPOUND" == "true" ]; then
     go build -mod=vendor -race -o $ROOTDIR/dns-controller-manager-compound $ROOTDIR/cmd/compound
-    $ROOTDIR/dns-controller-manager-compound --controllers=dnscontrollers,infoblox-dns --identifier=functest >/dev/null 2>&1 &
+    $ROOTDIR/dns-controller-manager-compound --controllers=dnscontrollers,infoblox-dns --identifier=functest --omit-lease >/tmp/dnsmgr-functional.log 2>&1 &
     PID_CONTROLLER=$!
   else
     go build -mod=vendor -race -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/dns
-    $ROOTDIR/dns-controller-manager --controllers=dnscontrollers,infoblox-dns --identifier=functest >/dev/null 2>&1 &
+    $ROOTDIR/dns-controller-manager --controllers=dnscontrollers,infoblox-dns --identifier=functest --omit-lease > /tmp/dnsmgr-functional.log 2>&1 &
     PID_CONTROLLER=$!
   fi
 else

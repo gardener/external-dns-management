@@ -31,12 +31,13 @@ const STATE_DELETED = "~DELETED~"
 const letterBytes = "abcdefghijklmnopqrstuvwxyz"
 
 type TestUtils struct {
-	AwaitTimeout  time.Duration
-	LookupTimeout time.Duration
-	PollingPeriod time.Duration
-	Namespace     string
-	Verbose       bool
-	dnsClient     *dnsClient
+	AwaitTimeout     time.Duration
+	LookupTimeout    time.Duration
+	PollingPeriod    time.Duration
+	Namespace        string
+	Verbose          bool
+	dnsClient        *dnsClient
+	nextAwaitTimeout time.Duration
 }
 
 func CreateDefaultTestUtils(dnsServer string) *TestUtils {
@@ -160,10 +161,19 @@ func (u *TestUtils) AwaitState(resourceName, expectedState string, names ...stri
 	})
 }
 
+func (u *TestUtils) SetTimeoutForNextAwait(timeout time.Duration) {
+	u.nextAwaitTimeout = timeout
+}
+
 type CheckFunc func() (bool, error)
 
 func (u *TestUtils) Await(msg string, check CheckFunc) error {
-	return u.AwaitWithTimeout(msg, check, u.AwaitTimeout)
+	timeout := u.AwaitTimeout
+	if u.nextAwaitTimeout != 0 {
+		timeout = u.nextAwaitTimeout
+		u.nextAwaitTimeout = 0
+	}
+	return u.AwaitWithTimeout(msg, check, timeout)
 }
 
 func (u *TestUtils) AwaitWithTimeout(msg string, check CheckFunc, timeout time.Duration) error {
