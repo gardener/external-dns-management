@@ -24,7 +24,7 @@ type Definitions interface {
 	Groups() groups.Definitions
 	GetRequiredControllers(name string) (utils.StringSet, error)
 	GetMappingsFor(name string) (mappings.Definition, error)
-	DetermineRequestedClusters(clusters cluster.Definitions, sets ...utils.StringSet) (_clusters utils.StringSet, _withids utils.StringSet, _err error)
+	DetermineRequestedClusters(clusters cluster.Definitions, sets ...utils.StringSet) (_clusters utils.StringSet, _refs CrossClusterRefs, _err error)
 	Registrations(names ...string) (Registrations, error)
 	ExtendConfig(cfg *areacfg.Config)
 }
@@ -73,7 +73,7 @@ func (this *_Definitions) GetMappingsFor(name string) (mappings.Definition, erro
 	return this.mappings.GetEffective(name, this.groups)
 }
 
-func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, controllersets ...utils.StringSet) (_clusters utils.StringSet, _withids utils.StringSet, _err error) {
+func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, controllersets ...utils.StringSet) (_clusters utils.StringSet, refs CrossClusterRefs, _err error) {
 	var controller_names utils.StringSet
 	switch len(controllersets) {
 	case 0:
@@ -87,7 +87,7 @@ func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, 
 	defer this.lock.RUnlock()
 
 	clusters := utils.StringSet{}
-	withids := utils.StringSet{}
+	withids := CrossClusterRefs{}
 	logger.Infof("determining required clusters:")
 	logger.Infof("  found mappings: %s", this.mappings)
 	for n := range controller_names {
@@ -96,27 +96,26 @@ func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, 
 			return nil, nil, fmt.Errorf("controller %q not definied", n)
 		}
 		names := cluster.Canonical(def.RequiredClusters())
-		reftargets := cluster.Canonical(def.ReferenceTargetClusters())
+
 		cmp, err := this.GetMappingsFor(def.Name())
 		if err != nil {
 			return nil, nil, err
 		}
+
 		logger.Infof("  for controller %s:", n)
 		logger.Infof("     found mappings %s", cmp)
 		logger.Infof("     logical clusters %s", utils.Strings(names...))
-		logger.Infof("     reference target clusters %s", utils.Strings(reftargets...))
+		logger.Infof("     found cross refs %s", def.CrossClusterReferences())
 
-		set, found, err := mappings.DetermineClusters(cdefs, cmp, names...)
+		set, mapping, found, err := mappings.DetermineClusterMappings(cdefs, cmp, names...)
 		if err != nil {
 			return nil, nil, fmt.Errorf("controller %q %s", def.Name(), err)
 		}
 		clusters.AddSet(set)
 		logger.Infof("  mapped to %s", utils.Strings(found...))
-		set, _, err = mappings.DetermineClusters(cdefs, cmp, reftargets...)
-		if err != nil {
-			return nil, nil, fmt.Errorf("controller %q %s", def.Name(), err)
-		}
-		withids.AddSet(set)
+		def.CrossClusterReferences().Map(mapping)
+
+		withids.AddAll(def.CrossClusterReferences().Map(mapping))
 	}
 	return clusters, withids, nil
 }

@@ -74,6 +74,37 @@ func (this *syncerdef) GetResource() ResourceKey {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+type foreignclusterrefs struct {
+	from string
+	to   utils.StringSet
+}
+
+var _ ForeignClusterRefs = &foreignclusterrefs{}
+
+func NewForeignClusterRefs(from string) *foreignclusterrefs {
+	return &foreignclusterrefs{from, utils.StringSet{}}
+}
+
+func (this *foreignclusterrefs) From() string {
+	return this.from
+}
+func (this *foreignclusterrefs) To() utils.StringSet {
+	return this.to.Copy()
+}
+func (this *foreignclusterrefs) Add(names ...string) ForeignClusterRefs {
+	this.to.Add(names...)
+	return this
+}
+func (this *foreignclusterrefs) AddSet(sets ...utils.StringSet) ForeignClusterRefs {
+	this.to.AddSet(sets...)
+	return this
+}
+func (this *foreignclusterrefs) String() string {
+	return fmt.Sprintf("%s=>%s", this.from, this.to)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 type pooldef struct {
 	name   string
 	size   int
@@ -152,7 +183,7 @@ type _Definition struct {
 	after                []string
 	before               []string
 	required_clusters    []string
-	identity_clusters    []string
+	identity_clusters    map[string]*foreignclusterrefs
 	required_controllers []string
 	require_lease        bool
 	lease_cluster        string
@@ -172,7 +203,7 @@ func (this *_Definition) String() string {
 	s := fmt.Sprintf("controller %q:\n", this.name)
 	s += fmt.Sprintf("  main rsc:    %s\n", this.main.String())
 	s += fmt.Sprintf("  clusters:    %s\n", utils.Strings(this.RequiredClusters()...))
-	s += fmt.Sprintf("  ref targets: %s\n", utils.Strings(this.ReferenceTargetClusters()...))
+	s += fmt.Sprintf("  ref targets: %s\n", this.CrossClusterReferences())
 	s += fmt.Sprintf("  required:    %s\n", utils.Strings(this.RequiredControllers()...))
 	s += fmt.Sprintf("  after:       %s\n", utils.Strings(this.After()...))
 	s += fmt.Sprintf("  before:      %s\n", utils.Strings(this.Before()...))
@@ -224,18 +255,28 @@ func (this *_Definition) RequiredClusters() []string {
 	}
 	return []string{cluster.DEFAULT}
 }
-func (this *_Definition) ReferenceTargetClusters() []string {
-	var result []string
+
+func (this *_Definition) mapCluster(n string) string {
+	if n == CLUSTER_MAIN {
+		if len(this.required_clusters) > 0 {
+			n = this.required_clusters[0]
+		} else {
+			n = cluster.DEFAULT
+		}
+	}
+	return n
+}
+
+func (this *_Definition) CrossClusterReferences() CrossClusterRefs {
+	result := CrossClusterRefs{}
 
 	for _, r := range this.identity_clusters {
-		if r == CLUSTER_MAIN {
-			if len(this.required_clusters) > 0 {
-				r = this.required_clusters[0]
-			} else {
-				r = cluster.DEFAULT
-			}
+		from := this.mapCluster(r.from)
+		to := utils.NewStringSet()
+		for t := range r.to {
+			to.Add(this.mapCluster(t))
 		}
-		result = append(result, r)
+		result[from] = &foreignclusterrefs{from, to}
 	}
 	return result
 }
@@ -335,12 +376,13 @@ func (this *configState) pushState() {
 func Configure(name string) Configuration {
 	return Configuration{
 		settings: _Definition{
-			name:          name,
-			reconcilers:   map[string]ReconcilerType{},
-			syncers:       map[string]SyncerDefinition{},
-			pools:         map[string]PoolDefinition{},
-			configs:       extension.OptionDefinitions{},
-			configsources: extension.OptionSourceDefinitions{},
+			name:              name,
+			reconcilers:       map[string]ReconcilerType{},
+			syncers:           map[string]SyncerDefinition{},
+			pools:             map[string]PoolDefinition{},
+			configs:           extension.OptionDefinitions{},
+			configsources:     extension.OptionSourceDefinitions{},
+			identity_clusters: map[string]*foreignclusterrefs{},
 		},
 		configState: configState{
 			cluster:    CLUSTER_MAIN,
@@ -426,7 +468,7 @@ func (this Configuration) DefaultCluster() Configuration {
 	return this.Cluster(cluster.DEFAULT)
 }
 
-func (this Configuration) Cluster(name string, userefs ...bool) Configuration {
+func (this Configuration) Cluster(name string, to ...string) Configuration {
 	this.pushState()
 	if name == "" {
 		name = CLUSTER_MAIN
@@ -447,30 +489,35 @@ func (this Configuration) Cluster(name string, userefs ...bool) Configuration {
 		this.settings.required_clusters = append([]string{}, this.settings.required_clusters...)
 		this.settings.required_clusters = append(this.settings.required_clusters, name)
 	}
-	if len(userefs) > 0 && userefs[0] {
-		return this.ReferenceTargetClusters(name)
+	if len(to) > 0 {
+		return this.CrossClusterReferences(name, to...)
 	}
 	return this
 }
 
-func (this Configuration) ReferenceTargetClusters(names ...string) Configuration {
-	this.pushState()
-
-	this.settings.identity_clusters = append([]string{}, this.settings.identity_clusters...)
-	for _, name := range names {
-		if name != CLUSTER_MAIN {
-			found := false
-			for _, c := range this.settings.required_clusters {
-				if c == name {
-					found = true
-					break
-				}
-			}
-			if !found {
-				panic(fmt.Errorf("unknown cluster %q", name))
+func (this *Configuration) verifyCluster(name string) {
+	if name != CLUSTER_MAIN {
+		for _, c := range this.settings.required_clusters {
+			if c == name {
+				return
 			}
 		}
-		this.settings.identity_clusters = append(this.settings.identity_clusters, name)
+		panic(fmt.Errorf("unknown cluster %q", name))
+	}
+}
+
+func (this Configuration) CrossClusterReferences(from string, to ...string) Configuration {
+	this.pushState()
+
+	this.verifyCluster(from)
+	refs := this.settings.identity_clusters[from]
+	if refs == nil {
+		refs = NewForeignClusterRefs(from)
+		this.settings.identity_clusters[from] = refs
+	}
+	for _, name := range to {
+		this.verifyCluster(name)
+		refs.to.Add(name)
 	}
 	return this
 }

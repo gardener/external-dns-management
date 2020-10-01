@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/sync"
 
@@ -96,6 +97,20 @@ func (this *ExtensionDefinition) CreateExtension(cm extension.ControllerManager)
 
 ////////////////////////////////////////////////////////////////////////////////
 
+type clusterMapping struct {
+	cluster.Clusters
+}
+
+func (this clusterMapping) Map(name string) string {
+	c := this.GetCluster(name)
+	if c == nil {
+		return ""
+	}
+	return c.GetName()
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 type Extension struct {
 	extension.Environment
 	sharedAttributes
@@ -110,6 +125,9 @@ type Extension struct {
 	plain_groups map[string]StartupGroup
 	lease_groups map[string]StartupGroup
 	prepared     map[string]*sync.SyncPoint
+
+	clusters  utils.StringSet
+	crossrefs CrossClusterRefs
 }
 
 var _ Environment = &Extension{}
@@ -179,7 +197,7 @@ func NewExtension(defs Definitions, cm extension.ControllerManager) (*Extension,
 	if err != nil {
 		return nil, err
 	}
-	return &Extension{
+	this := &Extension{
 		Environment: ext,
 		sharedAttributes: sharedAttributes{
 			LogContext: ext,
@@ -192,11 +210,22 @@ func NewExtension(defs Definitions, cm extension.ControllerManager) (*Extension,
 		after:        after,
 		plain_groups: map[string]StartupGroup{},
 		lease_groups: map[string]StartupGroup{},
-	}, nil
+	}
+	this.clusters, this.crossrefs, err = this.definitions.DetermineRequestedClusters(this.ClusterDefinitions(), this.registrations.Names())
+	if err != nil {
+		return nil, err
+	}
+	return this, nil
 }
 
-func (this *Extension) RequiredClusters() (utils.StringSet, utils.StringSet, error) {
-	return this.definitions.DetermineRequestedClusters(this.ClusterDefinitions(), this.registrations.Names())
+func (this *Extension) RequiredClusters() (utils.StringSet, error) {
+	return this.clusters, nil
+}
+
+func (this *Extension) RequiredClusterIds(clusters cluster.Clusters) utils.StringSet {
+	refs := this.crossrefs.Map(clusterMapping{clusters})
+	this.Infof("extension %s requires cross cluster references for configured clusters: %s", this.Name(), refs)
+	return refs.Targets()
 }
 
 func (this *Extension) GetConfig() *areacfg.Config {

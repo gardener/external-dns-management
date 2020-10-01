@@ -48,7 +48,8 @@ type Definition interface {
 type Extension interface {
 	Name() string
 	//Definition() Definition
-	RequiredClusters() (clusters utils.StringSet, withids utils.StringSet, err error)
+	RequiredClusters() (clusters utils.StringSet, err error)
+	RequiredClusterIds(clusters cluster.Clusters) utils.StringSet
 	Setup(ctx context.Context) error
 	Start(ctx context.Context) error
 }

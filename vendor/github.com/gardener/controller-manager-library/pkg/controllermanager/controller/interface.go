@@ -7,11 +7,13 @@
 package controller
 
 import (
+	"fmt"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	"github.com/gardener/controller-manager-library/pkg/controllermanager"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	areacfg "github.com/gardener/controller-manager-library/pkg/controllermanager/controller/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
@@ -140,6 +142,77 @@ type PoolDefinition interface {
 
 type OptionDefinition extension.OptionDefinition
 
+type ForeignClusterRefs interface {
+	From() string
+	To() utils.StringSet
+	String() string
+
+	Add(names ...string) ForeignClusterRefs
+	AddSet(sets ...utils.StringSet) ForeignClusterRefs
+}
+
+type CrossClusterRefs map[string]ForeignClusterRefs
+
+func (this CrossClusterRefs) String() string {
+	r := "{"
+	sep := ""
+	for _, m := range this {
+		r = fmt.Sprintf("%s%s%s", r, sep, m)
+		sep = ", "
+	}
+	return r + "}"
+}
+
+func (this CrossClusterRefs) AddAll(refs CrossClusterRefs) {
+	for _, r := range refs {
+		this.Add(r)
+	}
+}
+
+func (this CrossClusterRefs) Add(ref ForeignClusterRefs) {
+	if ref != nil {
+		c := this[ref.From()]
+		if c == nil {
+			c = NewForeignClusterRefs(ref.From())
+			this[ref.From()] = c
+		}
+		for r := range ref.To() {
+			c.Add(r)
+		}
+	}
+}
+
+func (this CrossClusterRefs) Targets() utils.StringSet {
+	targets := utils.StringSet{}
+	for _, r := range this {
+		targets.AddSet(r.To())
+	}
+	return targets
+}
+
+func (this CrossClusterRefs) Map(mapping controllermanager.Mapping) CrossClusterRefs {
+	if this == nil {
+		return nil
+	}
+	result := CrossClusterRefs{}
+	for _, cross := range this {
+		from := mapping.Map(cross.From())
+		if from == "" {
+			panic(fmt.Sprintf("programmatic error: there must always be a mapping for cluster mentioned in the cross cluster references %s: %s", cross, cross.From()))
+		}
+		for n := range cross.To() {
+			m := mapping.Map(n)
+			if m == "" {
+				panic(fmt.Sprintf("programmatic error: there must always be a mapping for cluster mentioned in the cross cluster references %s: %s", cross, n))
+			}
+			if m != from {
+				result.Add(NewForeignClusterRefs(from).Add(m))
+			}
+		}
+	}
+	return result
+}
+
 type Definition interface {
 	extension.OrderedElem
 
@@ -153,7 +226,7 @@ type Definition interface {
 	Pools() map[string]PoolDefinition
 	ResourceFilters() []ResourceFilter
 	RequiredClusters() []string
-	ReferenceTargetClusters() []string
+	CrossClusterReferences() CrossClusterRefs
 	RequiredControllers() []string
 	CustomResourceDefinitions() map[string][]*apiextensions.CustomResourceDefinitionVersions
 	RequireLease() bool

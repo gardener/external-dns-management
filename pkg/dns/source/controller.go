@@ -86,7 +86,7 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		DefaultWorkerPool(2, 120*time.Second).
 		MainResource(gk.Group, gk.Kind).
 		Reconciler(reconcilers.SlaveReconcilerType(source.Name(), SlaveResources, SlaveReconcilerType, MasterResourcesType(source.GroupKind())), "entries").
-		Cluster(TARGET_CLUSTER).
+		Cluster(TARGET_CLUSTER, cluster.DEFAULT).
 		CustomResourceDefinitions(ENTRY).
 		WorkerPool("targets", 2, 0).
 		ReconcilerWatch("entries", api.GroupName, api.DNSEntryKind)

@@ -81,6 +81,16 @@ func Strings(s ...string) string {
 	return "[" + strings.Join(s, ", ") + "]"
 }
 
+func Interfaces(elems ...interface{}) string {
+	r := "["
+	sep := ""
+	for _, e := range elems {
+		r = fmt.Sprintf("%s%s%s", r, sep, e)
+		sep = ", "
+	}
+	return r + "]"
+}
+
 func StringArrayAddUnique(array *[]string, values ...string) []string {
 values:
 	for _, v := range values {
