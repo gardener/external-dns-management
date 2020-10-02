@@ -33,6 +33,7 @@ func init() {
 	prometheus.MustRegister(Requests)
 	prometheus.MustRegister(Accounts)
 	prometheus.MustRegister(Entries)
+	prometheus.MustRegister(StaleEntries)
 	prometheus.MustRegister(Owners)
 
 	server.RegisterHandler("/metrics", promhttp.Handler())
@@ -41,7 +42,7 @@ func init() {
 var (
 	Requests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "total_provider_requests",
+			Name: "external_dns_management_total_provider_requests",
 			Help: "Total requests per provider type and credential set",
 		},
 		[]string{"providertype", "accounthash", "requesttype"},
@@ -49,7 +50,7 @@ var (
 
 	Accounts = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "account_providers",
+			Name: "external_dns_management_account_providers",
 			Help: "Total number of providers per account",
 		},
 		[]string{"providertype", "accounthash"},
@@ -57,15 +58,23 @@ var (
 
 	Entries = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "dns_entries",
+			Name: "external_dns_management_dns_entries",
 			Help: "Total number of dns entries per hosted zone",
+		},
+		[]string{"providertype", "zone"},
+	)
+
+	StaleEntries = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "external_dns_management_dns_entries_stale",
+			Help: "Total number of stale dns entries per hosted zone",
 		},
 		[]string{"providertype", "zone"},
 	)
 
 	Owners = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "dns_owners",
+			Name: "external_dns_management_dns_owners",
 			Help: "Total number of dns entries per owner",
 		},
 		[]string{"owner", "providertype", "provider"},
@@ -146,8 +155,9 @@ func (this *ZoneProviderTypes) Remove(zone string) string {
 
 var zoneProviders = &ZoneProviderTypes{providers: map[string]string{}}
 
-func ReportZoneEntries(ptype, zone string, amount int) {
+func ReportZoneEntries(ptype, zone string, amount int, stale int) {
 	Entries.WithLabelValues(ptype, zone).Set(float64(amount))
+	StaleEntries.WithLabelValues(ptype, zone).Set(float64(stale))
 	zoneProviders.Add(ptype, zone)
 }
 
