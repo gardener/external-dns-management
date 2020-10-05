@@ -454,7 +454,7 @@ Flags:
       --default.pool.size int                                       Worker pool size for pool default
       --disable-namespace-restriction                               disable access restriction for namespace local access only
       --disable-zone-state-caching                                  disable use of cached dns zone state on changes
-      --dns-class string                                            Class identifier used to differentiate responsible controllers for entry resources
+      --dns-class string                                            identifier used to differentiate responsible controllers for entries
       --dns-delay duration                                          delay between two dns reconciliations
       --dns-target-class string                                     identifier used to differentiate responsible dns controllers for target entries
       --dns.pool.resync-period duration                             Period for resynchronization for pool dns
@@ -547,6 +547,7 @@ Flags:
       --kubeconfig string                                           default cluster access
       --kubeconfig.disable-deploy-crds                              disable deployment of required crds for cluster default
       --kubeconfig.id string                                        id for cluster default
+      --kubeconfig.migration-ids string                             migration id for cluster default
       --lease-duration duration                                     lease duration (default 15s)
       --lease-name string                                           name for lease object
       --lease-renew-deadline duration                               lease renew deadline (default 10s)
@@ -587,6 +588,7 @@ Flags:
       --providers string                                            cluster to look for provider objects
       --providers.disable-deploy-crds                               disable deployment of required crds for cluster provider
       --providers.id string                                         id for cluster provider
+      --providers.migration-ids string                              migration id for cluster provider
       --providers.pool.resync-period duration                       Period for resynchronization for pool providers
       --providers.pool.size int                                     Worker pool size for pool providers
       --ratelimiter.burst int                                       number of burst requests for rate limiter
@@ -623,6 +625,7 @@ Flags:
       --target-set-ignore-owners                                    mark generated DNS entries to omit owner based access control
       --target.disable-deploy-crds                                  disable deployment of required crds for cluster target
       --target.id string                                            id for cluster target
+      --target.migration-ids string                                 migration id for cluster target
       --targets.pool.size int                                       Worker pool size for pool targets
       --ttl int                                                     Default time-to-live for DNS entries
       --version                                                     version for dns-controller-manager

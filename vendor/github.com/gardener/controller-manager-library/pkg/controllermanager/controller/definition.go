@@ -1,17 +1,7 @@
 /*
- * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+ * SPDX-FileCopyrightText: 2019 SAP SE or an SAP affiliate company and Gardener contributors
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package controller
@@ -34,7 +24,7 @@ type Definitions interface {
 	Groups() groups.Definitions
 	GetRequiredControllers(name string) (utils.StringSet, error)
 	GetMappingsFor(name string) (mappings.Definition, error)
-	DetermineRequestedClusters(clusters cluster.Definitions, sets ...utils.StringSet) (utils.StringSet, error)
+	DetermineRequestedClusters(clusters cluster.Definitions, sets ...utils.StringSet) (_clusters utils.StringSet, _refs CrossClusterRefs, _err error)
 	Registrations(names ...string) (Registrations, error)
 	ExtendConfig(cfg *areacfg.Config)
 }
@@ -83,7 +73,7 @@ func (this *_Definitions) GetMappingsFor(name string) (mappings.Definition, erro
 	return this.mappings.GetEffective(name, this.groups)
 }
 
-func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, controllersets ...utils.StringSet) (utils.StringSet, error) {
+func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, controllersets ...utils.StringSet) (_clusters utils.StringSet, refs CrossClusterRefs, _err error) {
 	var controller_names utils.StringSet
 	switch len(controllersets) {
 	case 0:
@@ -97,30 +87,37 @@ func (this *_Definitions) DetermineRequestedClusters(cdefs cluster.Definitions, 
 	defer this.lock.RUnlock()
 
 	clusters := utils.StringSet{}
+	withids := CrossClusterRefs{}
 	logger.Infof("determining required clusters:")
 	logger.Infof("  found mappings: %s", this.mappings)
 	for n := range controller_names {
 		def := this.definitions[n]
 		if def == nil {
-			return nil, fmt.Errorf("controller %q not definied", n)
+			return nil, nil, fmt.Errorf("controller %q not definied", n)
 		}
 		names := cluster.Canonical(def.RequiredClusters())
+
 		cmp, err := this.GetMappingsFor(def.Name())
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
+
 		logger.Infof("  for controller %s:", n)
 		logger.Infof("     found mappings %s", cmp)
 		logger.Infof("     logical clusters %s", utils.Strings(names...))
+		logger.Infof("     found cross refs %s", def.CrossClusterReferences())
 
-		set, found, err := mappings.DetermineClusters(cdefs, cmp, names...)
+		set, mapping, found, err := mappings.DetermineClusterMappings(cdefs, cmp, names...)
 		if err != nil {
-			return nil, fmt.Errorf("controller %q %s", def.Name(), err)
+			return nil, nil, fmt.Errorf("controller %q %s", def.Name(), err)
 		}
 		clusters.AddSet(set)
 		logger.Infof("  mapped to %s", utils.Strings(found...))
+		def.CrossClusterReferences().Map(mapping)
+
+		withids.AddAll(def.CrossClusterReferences().Map(mapping))
 	}
-	return clusters, nil
+	return clusters, withids, nil
 }
 
 func (this *_Definitions) Registrations(names ...string) (Registrations, error) {

@@ -1,17 +1,7 @@
 /*
- * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+ * SPDX-FileCopyrightText: 2019 SAP SE or an SAP affiliate company and Gardener contributors
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package mappings
@@ -19,6 +9,7 @@ package mappings
 import (
 	"fmt"
 
+	"github.com/gardener/controller-manager-library/pkg/controllermanager"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
@@ -31,7 +22,13 @@ func ClusterName(name string) string {
 }
 
 func DetermineClusters(cdefs cluster.Definitions, cmp Definition, names ...string) (utils.StringSet, []string, error) {
-	clusters := utils.StringSet{}
+	s, _, infos, err := DetermineClusterMappings(cdefs, cmp, names...)
+	return s, infos, err
+}
+
+func DetermineClusterMappings(cdefs cluster.Definitions, cmp Definition, names ...string) (utils.StringSet, controllermanager.Mapping, []string, error) {
+	clusters := controllermanager.DefaultMapping{}
+	eff := utils.StringSet{}
 	found := []string{}
 	main_cluster := ""
 	for i, name := range names {
@@ -39,7 +36,7 @@ func DetermineClusters(cdefs cluster.Definitions, cmp Definition, names ...strin
 		rc := cdefs.Get(real)
 		if rc == nil {
 			if i == 0 {
-				return nil, nil, fmt.Errorf("unknown cluster %s", info)
+				return nil, nil, nil, fmt.Errorf("unknown cluster %s", info)
 			}
 			real = main_cluster
 			info = fmt.Sprintf("%s (%s mapped to %s cluster)", found[0], name, ClusterName(CLUSTER_MAIN))
@@ -48,9 +45,10 @@ func DetermineClusters(cdefs cluster.Definitions, cmp Definition, names ...strin
 			main_cluster = real
 		}
 		found = append(found, info)
-		clusters.Add(real)
+		eff.Add(real)
+		clusters[name] = real
 	}
-	return clusters, found, nil
+	return eff, clusters, found, nil
 }
 
 func MapClusters(clusters cluster.Clusters, cmp Definition, names ...string) (cluster.Clusters, error) {

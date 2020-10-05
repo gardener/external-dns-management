@@ -1,17 +1,7 @@
 /*
- * Copyright 2020 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+ * SPDX-FileCopyrightText: 2020 SAP SE or an SAP affiliate company and Gardener contributors
  *
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *
- *       http://www.apache.org/licenses/LICENSE-2.0
- *
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
+ * SPDX-License-Identifier: Apache-2.0
  *
  */
 
@@ -194,16 +184,16 @@ func (this *SyncRequest) update(log logger.LogContext, initiator resources.Objec
 
 	if this.resourceVersion == initiator.GetResourceVersion() {
 		if len(this.syncPoints) == 0 {
-			log.Info("synchronization %s(%s) for %s(%s) done", this.name, this.resource, initiator.ClusterKey(), this.resourceVersion)
+			log.Infof("synchronization %s(%s) for %s(%s) done", this.name, this.resource, initiator.ClusterKey(), this.resourceVersion)
 			return true, nil
 		}
-		log.Info("synchronization %s(%s) for %s(%s) still pending", this.name, this.resource, initiator.ClusterKey(), this.resourceVersion)
+		log.Infof("synchronization %s(%s) for %s(%s) still pending", this.name, this.resource, initiator.ClusterKey(), this.resourceVersion)
 		return false, nil
 	}
 	if this.resourceVersion == "" {
-		log.Info("synchronizing %s(%s) for %s(%s)", this.name, this.resource, initiator, initiator.GetResourceVersion())
+		log.Infof("synchronizing %s(%s) for %s(%s)", this.name, this.resource, initiator, initiator.GetResourceVersion())
 	} else {
-		log.Info("resynchronizing %s(%s) for %s(%s->%s)", this.name, this.resource, initiator, this.resourceVersion, initiator.GetResourceVersion())
+		log.Infof("resynchronizing %s(%s) for %s(%s->%s)", this.name, this.resource, initiator, this.resourceVersion, initiator.GetResourceVersion())
 	}
 	this.resourceVersion = initiator.GetResourceVersion()
 	reconcilers := this.controller.mappings.Get(this.cluster, this.resource.GroupKind())
@@ -216,7 +206,7 @@ func (this *SyncRequest) update(log logger.LogContext, initiator resources.Objec
 	}
 	this.syncPoints = SyncPoints{}
 	if len(list) == 0 {
-		log.Info("  no %s found for sync -> done", this.resource)
+		log.Infof("  no %s found for sync -> done", this.resource)
 		return true, nil
 	}
 	if len(reconcilers) == 1 {

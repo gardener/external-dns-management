@@ -86,7 +86,7 @@ if [ "$NOBOOTSTRAP" == "" ] && [ "$LOCAL_APISERVER" == "" ]; then
   kind delete cluster --name integration || true
 
   # create K8n cluster in docker
-  kind create cluster --name integration 
+  kind create cluster --name integration
 fi
 
 cd $ROOTDIR/test/integration

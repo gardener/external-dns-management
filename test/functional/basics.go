@@ -17,14 +17,15 @@
 package functional
 
 import (
+	"os"
+	"text/template"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 
 	"github.com/gardener/external-dns-management/test/functional/config"
-
-	"os"
-	"text/template"
 )
 
 var basicTemplate = `
@@ -266,8 +267,26 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 				})
 			}
 
+			if cfg.DNSLookup && cfg.Utils.CanLookup(p.PrivateDNS) {
+				if p.AliasTarget != "" {
+					u.AwaitLookupCName(dnsName(p, "alias"), p.AliasTarget)
+				}
+				u.AwaitLookup(dnsName(p, "a"), "11.11.11.11")
+				randname := config.RandStringBytes(6)
+				u.AwaitLookup(randname+"."+dnsName(p, "wildcard"), "44.44.44.44")
+				u.AwaitLookupCName(dnsName(p, "cname"), "google-public-dns-a.google.com")
+				u.AwaitLookup(dnsName(p, "cname-multi"), "8.8.8.8", "8.8.4.4")
+				// propagation of TXT entries is sometimes slower, therefore check at last
+				u.AwaitLookupTXT(dnsName(p, "txt"), "line1", "line2 bla bla")
+			}
+
 			entryForeign := entryName(p, "foreign")
+			// sometimes, need to wait for 120 seconds for status change to error
+			u.SetTimeoutForNextAwait(130 * time.Second)
 			err = u.AwaitDNSEntriesError(entryForeign)
+			Ω(err).Should(BeNil())
+			time.Sleep(5 * time.Second)
+			itemMap, err = u.KubectlGetAllDNSEntries()
 			Ω(err).Should(BeNil())
 			Ω(itemMap).Should(MatchKeys(IgnoreExtras, Keys{
 				entryForeign: MatchKeys(IgnoreExtras, Keys{
@@ -283,19 +302,6 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 					}),
 				}),
 			}))
-
-			if cfg.DNSLookup && cfg.Utils.CanLookup(p.PrivateDNS) {
-				if p.AliasTarget != "" {
-					u.AwaitLookupCName(dnsName(p, "alias"), p.AliasTarget)
-				}
-				u.AwaitLookup(dnsName(p, "a"), "11.11.11.11")
-				randname := config.RandStringBytes(6)
-				u.AwaitLookup(randname+"."+dnsName(p, "wildcard"), "44.44.44.44")
-				u.AwaitLookupCName(dnsName(p, "cname"), "google-public-dns-a.google.com")
-				u.AwaitLookup(dnsName(p, "cname-multi"), "8.8.8.8", "8.8.4.4")
-				// propagation of TXT entries is sometimes slower, therefore check at last
-				u.AwaitLookupTXT(dnsName(p, "txt"), "line1", "line2 bla bla")
-			}
 
 			err = u.KubectlDelete(p.TmpManifestFilename)
 			Ω(err).Should(BeNil())

@@ -1,19 +1,7 @@
 /*
- * Copyright 2019 SAP SE or an SAP affiliate company. All rights reserved.
- * This file is licensed under the Apache Software License, v. 2 except as noted
- * otherwise in the LICENSE file
+ * SPDX-FileCopyrightText: 2019 SAP SE or an SAP affiliate company and Gardener contributors
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- *
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 package controller
@@ -25,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/sync"
 
@@ -108,6 +97,20 @@ func (this *ExtensionDefinition) CreateExtension(cm extension.ControllerManager)
 
 ////////////////////////////////////////////////////////////////////////////////
 
+type clusterMapping struct {
+	cluster.Clusters
+}
+
+func (this clusterMapping) Map(name string) string {
+	c := this.GetCluster(name)
+	if c == nil {
+		return ""
+	}
+	return c.GetName()
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 type Extension struct {
 	extension.Environment
 	sharedAttributes
@@ -122,6 +125,9 @@ type Extension struct {
 	plain_groups map[string]StartupGroup
 	lease_groups map[string]StartupGroup
 	prepared     map[string]*sync.SyncPoint
+
+	clusters  utils.StringSet
+	crossrefs CrossClusterRefs
 }
 
 var _ Environment = &Extension{}
@@ -191,7 +197,7 @@ func NewExtension(defs Definitions, cm extension.ControllerManager) (*Extension,
 	if err != nil {
 		return nil, err
 	}
-	return &Extension{
+	this := &Extension{
 		Environment: ext,
 		sharedAttributes: sharedAttributes{
 			LogContext: ext,
@@ -204,11 +210,22 @@ func NewExtension(defs Definitions, cm extension.ControllerManager) (*Extension,
 		after:        after,
 		plain_groups: map[string]StartupGroup{},
 		lease_groups: map[string]StartupGroup{},
-	}, nil
+	}
+	this.clusters, this.crossrefs, err = this.definitions.DetermineRequestedClusters(this.ClusterDefinitions(), this.registrations.Names())
+	if err != nil {
+		return nil, err
+	}
+	return this, nil
 }
 
 func (this *Extension) RequiredClusters() (utils.StringSet, error) {
-	return this.definitions.DetermineRequestedClusters(this.ClusterDefinitions(), this.registrations.Names())
+	return this.clusters, nil
+}
+
+func (this *Extension) RequiredClusterIds(clusters cluster.Clusters) utils.StringSet {
+	refs := this.crossrefs.Map(clusterMapping{clusters})
+	this.Infof("extension %s requires cross cluster references for configured clusters: %s", this.Name(), refs)
+	return refs.Targets()
 }
 
 func (this *Extension) GetConfig() *areacfg.Config {
@@ -222,6 +239,12 @@ func (this *Extension) Setup(ctx context.Context) error {
 func (this *Extension) Start(ctx context.Context) error {
 	var err error
 
+	if this.ControllerManager().GetClusterIdMigration() != nil {
+		mig := this.ControllerManager().GetClusterIdMigration().String()
+		if mig != "" {
+			this.Infof("found migrations: %s", this.ControllerManager().GetClusterIdMigration())
+		}
+	}
 	for _, def := range this.registrations {
 		lines := strings.Split(def.String(), "\n")
 		this.Infof("creating %s", lines[0])
@@ -249,7 +272,8 @@ func (this *Extension) Start(ctx context.Context) error {
 	for _, cntr := range this.controllers {
 		def := this.registrations[cntr.GetName()]
 		if def.RequireLease() {
-			this.getLeaseStartupGroup(cntr.GetMainCluster()).Add(cntr)
+			cluster := cntr.GetCluster(def.LeaseClusterName())
+			this.getLeaseStartupGroup(cluster).Add(cntr)
 		} else {
 			this.getPlainStartupGroup(cntr.GetMainCluster()).Add(cntr)
 		}

@@ -19,23 +19,25 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/onsi/gomega"
 	"math/rand"
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/onsi/gomega"
 )
 
 const STATE_DELETED = "~DELETED~"
 const letterBytes = "abcdefghijklmnopqrstuvwxyz"
 
 type TestUtils struct {
-	AwaitTimeout  time.Duration
-	LookupTimeout time.Duration
-	PollingPeriod time.Duration
-	Namespace     string
-	Verbose       bool
-	dnsClient     *dnsClient
+	AwaitTimeout     time.Duration
+	LookupTimeout    time.Duration
+	PollingPeriod    time.Duration
+	Namespace        string
+	Verbose          bool
+	dnsClient        *dnsClient
+	nextAwaitTimeout time.Duration
 }
 
 func CreateDefaultTestUtils(dnsServer string) *TestUtils {
@@ -104,7 +106,7 @@ func (u *TestUtils) runCmd(cmdline string) (string, error) {
 	cmd := exec.Command("sh", "-c", cmdline)
 	out, err := cmd.Output()
 	if err != nil {
-		println(string(err.(*exec.ExitError).Stderr))
+		fmt.Printf("command `%s` failed: %s\n", cmdline, string(err.(*exec.ExitError).Stderr))
 		return string(out), fmt.Errorf("command `%s` failed with %s", cmdline, err)
 	}
 	return string(out), nil
@@ -159,10 +161,19 @@ func (u *TestUtils) AwaitState(resourceName, expectedState string, names ...stri
 	})
 }
 
+func (u *TestUtils) SetTimeoutForNextAwait(timeout time.Duration) {
+	u.nextAwaitTimeout = timeout
+}
+
 type CheckFunc func() (bool, error)
 
 func (u *TestUtils) Await(msg string, check CheckFunc) error {
-	return u.AwaitWithTimeout(msg, check, u.AwaitTimeout)
+	timeout := u.AwaitTimeout
+	if u.nextAwaitTimeout != 0 {
+		timeout = u.nextAwaitTimeout
+		u.nextAwaitTimeout = 0
+	}
+	return u.AwaitWithTimeout(msg, check, timeout)
 }
 
 func (u *TestUtils) AwaitWithTimeout(msg string, check CheckFunc, timeout time.Duration) error {
