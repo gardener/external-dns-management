@@ -9,6 +9,7 @@ package reconcilers
 import (
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
@@ -32,4 +33,11 @@ func ClusterResources(cluster string, gks ...schema.GroupKind) Resources {
 
 func MainResources(gks ...schema.GroupKind) Resources {
 	return ClusterResources("", gks...)
+}
+
+func listCachedWithNamespace(r resources.Interface, namespace string) ([]resources.Object, error) {
+	if namespace != "" {
+		return r.Namespace(namespace).ListCached(labels.Everything())
+	}
+	return r.ListCached(labels.Everything())
 }

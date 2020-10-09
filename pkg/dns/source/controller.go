@@ -85,11 +85,11 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		Cluster(cluster.DEFAULT). // first one used as MAIN cluster
 		DefaultWorkerPool(2, 120*time.Second).
 		MainResource(gk.Group, gk.Kind).
-		Reconciler(reconcilers.SlaveReconcilerType(source.Name(), SlaveResources, SlaveReconcilerType, MasterResourcesType(source.GroupKind())), "entries").
+		Reconciler(reconcilers.SlaveReconcilerTypeByFunction(SlaveReconcilerType, SlaveAccessSpecCreatorForSource(source)), "entries").
 		Cluster(TARGET_CLUSTER, cluster.DEFAULT).
 		CustomResourceDefinitions(ENTRY).
 		WorkerPool("targets", 2, 0).
-		ReconcilerWatch("entries", api.GroupName, api.DNSEntryKind)
+		ReconcilerSelectedWatchesByGK("entries", controller.NamespaceByOptionSelection(OPT_NAMESPACE), ENTRY)
 }
 
 var SlaveResources = reconcilers.ClusterResources(TARGET_CLUSTER, ENTRY)
@@ -102,5 +102,11 @@ func MasterResourcesType(kind schema.GroupKind) reconcilers.Resources {
 			panic(err)
 		}
 		return []resources.Interface{res}
+	}
+}
+
+func SlaveAccessSpecCreatorForSource(sourceType DNSSourceType) reconcilers.SlaveAccessSpecCreator {
+	return func(c controller.Interface) reconcilers.SlaveAccessSpec {
+		return NewSlaveAccessSpec(c, sourceType)
 	}
 }

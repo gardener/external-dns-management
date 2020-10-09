@@ -10,7 +10,6 @@ import (
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
@@ -109,19 +108,24 @@ type SlaveAccess struct {
 
 type SlaveAccessSpec struct {
 	Name            string
+	Namespace       string
 	Slaves          Resources
 	Masters         Resources
 	RequeueDeleting bool
 	Migration       resources.ClusterIdMigrationProvider
 }
 
-func NewSlaveAccess(c controller.Interface, name string, slave_func Resources, master_func Resources) *SlaveAccess {
-	return NewSlaveAccessBySpec(c, SlaveAccessSpec{
+func NewSlaveAccessSpec(c controller.Interface, name string, slave_func Resources, master_func Resources) SlaveAccessSpec {
+	return SlaveAccessSpec{
 		Name:      name,
 		Slaves:    slave_func,
 		Masters:   master_func,
 		Migration: c.GetEnvironment().ControllerManager(),
-	})
+	}
+}
+
+func NewSlaveAccess(c controller.Interface, name string, slave_func Resources, master_func Resources) *SlaveAccess {
+	return NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c, name, slave_func, master_func))
 }
 
 func NewSlaveAccessBySpec(c controller.Interface, spec SlaveAccessSpec) *SlaveAccess {
@@ -144,17 +148,18 @@ func NewSlaveAccessBySpec(c controller.Interface, spec SlaveAccessSpec) *SlaveAc
 }
 
 type accesskey struct {
-	name    string
-	masters string
-	slaves  string
+	name      string
+	namespace string
+	masters   string
+	slaves    string
 }
 
 func (this accesskey) String() string {
-	return fmt.Sprintf("%s:[%s%s]", this.name, this.masters, this.slaves)
+	return fmt.Sprintf("%s/%s:[%s%s]", this.namespace, this.name, this.masters, this.slaves)
 }
 
 func (this *SlaveAccess) Key() interface{} {
-	return accesskey{name: this.name, masters: this.master_resources.String(), slaves: this.slave_resources.String()}
+	return accesskey{name: this.name, namespace: this.spec.Namespace, masters: this.master_resources.String(), slaves: this.slave_resources.String()}
 }
 
 func (this *SlaveAccess) Setup() {
@@ -173,7 +178,7 @@ func (this *SlaveAccess) setupSlaveCache() interface{} {
 	cache.AddSlaveFilter(this.slavefilters...)
 	this.Infof("setup %s owner cache", this.name)
 	for _, r := range this.slave_resources.resources {
-		list, _ := r.ListCached(labels.Everything())
+		list, _ := listCachedWithNamespace(r, this.spec.Namespace)
 		cache.Setup(list)
 	}
 	this.Infof("found %d %s(s) for %d owners", cache.SlaveCount(), this.name, cache.Size())
@@ -308,6 +313,14 @@ func filterKeysByClusters(set resources.ClusterObjectKeySet, clusters ClusterGro
 func SlaveReconcilerType(name string, slaveResources Resources, reconciler controller.ReconcilerType, masterResources Resources) controller.ReconcilerType {
 	return func(c controller.Interface) (reconcile.Interface, error) {
 		return NewSlaveReconciler(c, name, slaveResources, reconciler, masterResources)
+	}
+}
+
+type SlaveAccessSpecCreator func(c controller.Interface) SlaveAccessSpec
+
+func SlaveReconcilerTypeByFunction(reconciler controller.ReconcilerType, creator SlaveAccessSpecCreator) controller.ReconcilerType {
+	return func(c controller.Interface) (reconcile.Interface, error) {
+		return NewSlaveReconcilerBySpec(c, reconciler, creator(c))
 	}
 }
 
