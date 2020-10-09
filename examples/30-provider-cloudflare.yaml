@@ -1,4 +1,4 @@
-# For details see https://github.com/gardener/external-dns-management/blob/master/doc/cloudflare/README.md
+# For details see https://github.com/gardener/external-dns-management/blob/master/docs/cloudflare/README.md
 apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSProvider
 metadata:

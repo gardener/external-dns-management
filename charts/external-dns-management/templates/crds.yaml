@@ -83,6 +83,10 @@ spec:
           type: object
         status:
           properties:
+            lastUpdateTime:
+              description: lastUpdateTime contains the timestamp of the last status update
+              format: date-time
+              type: string
             message:
               type: string
             observedGeneration:
@@ -340,6 +344,10 @@ spec:
                     type: string
                   type: array
               type: object
+            lastUpdateTime:
+              description: lastUpdateTime contains the timestamp of the last status update
+              format: date-time
+              type: string
             message:
               type: string
             state:

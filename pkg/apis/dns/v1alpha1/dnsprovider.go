@@ -87,6 +87,9 @@ type DNSProviderStatus struct {
 	State string `json:"state"`
 	// message describing the reason for the actual state of the provider
 	Message *string `json:"message,omitempty"`
+	// lastUpdateTime contains the timestamp of the last status update
+	// +optional
+	LastUptimeTime *metav1.Time `json:"lastUpdateTime,omitempty"`
 	// actually served domain selection
 	// +optional
 	Domains DNSSelectionStatus `json:"domains"`

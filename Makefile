@@ -54,6 +54,7 @@ test:
 .PHONY: generate
 generate:
 	@./hack/generate-code
+	@GO111MODULE=on go generate ./pkg/apis/dns/...
 	@GO111MODULE=on go generate ./charts/external-dns-management
 
 .PHONY: install-requirements
