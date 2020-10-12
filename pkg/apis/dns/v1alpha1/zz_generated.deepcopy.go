@@ -241,6 +241,10 @@ func (in *DNSEntryStatus) DeepCopyInto(out *DNSEntryStatus) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.LastUptimeTime != nil {
+		in, out := &in.LastUptimeTime, &out.LastUptimeTime
+		*out = (*in).DeepCopy()
+	}
 	if in.ProviderType != nil {
 		in, out := &in.ProviderType, &out.ProviderType
 		*out = new(string)
@@ -505,6 +509,10 @@ func (in *DNSProviderStatus) DeepCopyInto(out *DNSProviderStatus) {
 		in, out := &in.Message, &out.Message
 		*out = new(string)
 		**out = **in
+	}
+	if in.LastUptimeTime != nil {
+		in, out := &in.LastUptimeTime, &out.LastUptimeTime
+		*out = (*in).DeepCopy()
 	}
 	in.Domains.DeepCopyInto(&out.Domains)
 	in.Zones.DeepCopyInto(&out.Zones)

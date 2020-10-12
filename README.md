@@ -4,13 +4,13 @@ The main artefact of this project is the <b>DNS controller manager</b> for manag
 nicknamed as the Gardener "DNS Controller".
 
 It contains provisioning controllers for creating DNS records in one of the DNS cloud services
-  - [_Amazon Route53_](/doc/aws-route53/README.md),
+  - [_Amazon Route53_](/docs/aws-route53/README.md),
   - _Google CloudDNS_,
   - _AliCloud DNS_,
   - _Azure DNS_,
   - _OpenStack Designate_,
-  - [_Cloudflare DNS_](/doc/cloudflare/README.md),
-  - [_Infoblox_](/doc/infoblox/README.md),
+  - [_Cloudflare DNS_](/docs/cloudflare/README.md),
+  - [_Infoblox_](/docs/infoblox/README.md),
 
 and source controllers for services and ingresses to create DNS entries by annotations.
 
@@ -194,7 +194,7 @@ DNS entries are required in their realm and manage appropriate `DNSEntry`
 objects. From these objects they can also read the provisioning status and
 report it back to the original source.
 
-![Model Overview](doc/model.png)
+![Model Overview](docs/model.png)
 
 Provisioning of DNS entries in external DNS providers is done by
 _DNS Provisioning Controllers_. They don't need to know anything about the

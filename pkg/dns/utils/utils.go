@@ -20,7 +20,10 @@ import (
 	"fmt"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"strings"
+	"time"
 )
 
 func Match(hostname, domain string) bool {
@@ -82,4 +85,9 @@ func (this *LogMessage) Warnf(logger logger.LogContext, add ...interface{}) bool
 
 func (this *LogMessage) Debugf(logger logger.LogContext, add ...interface{}) bool {
 	return this.out(logger.Debugf, add...)
+}
+
+// SetLastUpdateTime sets the time wrapper to the current UTC time.
+func SetLastUpdateTime(lastUptimeTime **metav1.Time) {
+	*lastUptimeTime = &metav1.Time{Time: time.Now().UTC()}
 }

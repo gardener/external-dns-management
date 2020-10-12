@@ -522,6 +522,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			AssureStringPtrPtr(&e.Status.Zone, this.status.Zone).
 			AssureStringPtrPtr(&e.Status.Provider, this.status.Provider)
 		if mod.IsModified() {
+			dnsutils.SetLastUpdateTime(&e.Status.LastUptimeTime)
 			logmsg.Infof(logger)
 		}
 		return mod.IsModified(), nil
@@ -590,6 +591,7 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 			this.status.State = state
 		}
 		if mod.IsModified() {
+			dnsutils.SetLastUpdateTime(&o.Status.LastUptimeTime)
 			logger.Infof("update state of '%s/%s' to %s (%s)", o.Namespace, o.Name, state, msg)
 		}
 		return mod.IsModified(), nil
