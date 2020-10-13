@@ -8,7 +8,6 @@ package reconcilers
 
 import (
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
@@ -40,6 +39,7 @@ type UsedExtractorFactory func(controller.Interface) resources.UsedExtractor
 
 type UsageAccessSpec struct {
 	Name                string
+	Namespace           string
 	MasterResources     Resources
 	Extractor           resources.UsedExtractor
 	ExtractorFactory    UsedExtractorFactory
@@ -78,7 +78,7 @@ func (this *UsageAccess) setupUsageCache() interface{} {
 
 	this.Infof("setup %s usage cache", this.name)
 	for _, r := range this.master_resources.resources {
-		list, _ := r.ListCached(labels.Everything())
+		list, _ := listCachedWithNamespace(r, this.spec.Namespace)
 		cache.Setup(list)
 	}
 	this.Infof("found %d %s(s) for %d objects", cache.UsedCount(), this.name, cache.Size())

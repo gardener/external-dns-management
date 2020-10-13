@@ -7,6 +7,7 @@
 package resources
 
 import (
+	"fmt"
 	"reflect"
 
 	"k8s.io/api/core/v1"
@@ -96,7 +97,11 @@ func (this *_resource) AddRawEventHandler(handlers cache.ResourceEventHandlerFun
 }
 
 func (this *_resource) AddRawSelectedEventHandler(handlers cache.ResourceEventHandlerFuncs, namespace string, optionsFunc TweakListOptionsFunc) error {
-	logger.Infof("adding watch for %s", this.GroupVersionKind())
+	withNamespace := "global"
+	if namespace != "" {
+		withNamespace = fmt.Sprintf("namespace %s", namespace)
+	}
+	logger.Infof("adding watch for %s (cluster %s, %s)", this.GroupVersionKind(), this.GetCluster().GetId(), withNamespace)
 	informer, err := this.helper.Internal.I_getInformer(namespace, optionsFunc)
 	if err != nil {
 		return err

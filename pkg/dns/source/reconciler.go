@@ -38,6 +38,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
+func NewSlaveAccessSpec(c controller.Interface, sourceType DNSSourceType) reconcilers.SlaveAccessSpec {
+	spec := reconcilers.NewSlaveAccessSpec(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind()))
+	spec.Namespace, _ = c.GetStringOption(OPT_NAMESPACE)
+	return spec
+}
+
 func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType) controller.ReconcilerType {
 	return func(c controller.Interface) (reconcile.Interface, error) {
 		source, err := sourceType.Create(c)
@@ -54,7 +60,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		classes := controller.NewClassesByOption(c, OPT_CLASS, dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
 		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
 		targetclasses := controller.NewTargetClassesByOption(c, OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
-		slaves := reconcilers.NewSlaveAccess(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind()))
+		slaves := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c, sourceType))
 		reconciler := &sourceReconciler{
 			SlaveAccess:   slaves,
 			classes:       classes,
