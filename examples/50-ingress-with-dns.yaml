@@ -1,0 +1,24 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  annotations:
+    dns.gardener.cloud/dnsnames: '*'
+    # If you are delegating the DNS management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
+    #dns.gardener.cloud/class: garden
+    # If you are delegating the certificate management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/x509_certificates/)
+    #cert.gardener.cloud/purpose: managed
+  name: test-ingress
+  namespace: default
+spec:
+  rules:
+    - host: test.ingress.my-dns-domain.com
+      http:
+        paths:
+          - backend:
+              serviceName: my-service
+              servicePort: 9000
+            path: /
+  tls:
+    - hosts:
+        - test.ingress.my-dns-domain.com
+      #secretName: my-cert-secret-name

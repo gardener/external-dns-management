@@ -2,14 +2,15 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    dns.gardener.cloud/dnsnames: echo.ringtest.dev.k8s.ondemand.com
+    dns.gardener.cloud/dnsnames: echo.my-dns-domain.com
     dns.gardener.cloud/ttl: "500"
+    # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
+    #dns.gardener.cloud/class: garden
   name: test-service
   namespace: default
 spec:
   ports:
   - name: http
-    nodePort: 31787
     port: 80
     protocol: TCP
     targetPort: 8080
