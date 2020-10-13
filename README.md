@@ -173,6 +173,44 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
 For more examples about the custom resources and the annotations for services and ingresses
 see the `examples` directory.
 
+### Automatic creation of DNS entries for services and ingresses
+
+Using the source controllers, it is also possible to create DNS entries for services (of type `LoadBalancer`)
+and ingresses automatically. The resources only need to be annotated with some special values.
+In this case ensure that the source controllers are enabled on startup of the DNS controller manager, i.e. the
+value of the command line option `--controllers` must contain `dnscontrollers` or equal to `all`.
+The DNS source controllers watch resources on the default cluster and create DNS entries on
+the target cluster. As there can be multiple controllers active on the same cluster, you may
+need to set the correct `DNSClass` both for the controller and for the source resource by
+setting the annotation `dns.gardener.cloud/class`. The default value for the `DNSClass` is `gardendns`.
+
+Note that if you delegate the DNS management for shoot resources to Gardener via the 
+[shoot-dns-service extension](https://github.com/gardener/gardener-extension-shoot-dns-service),
+the correct annotation is `dns.gardener.cloud/class=garden`.
+
+Here is an example for annotating a service (same as `examples/50-service-with-dns.yaml`)]:
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    dns.gardener.cloud/dnsnames: echo.my-dns-domain.com
+    dns.gardener.cloud/ttl: "500"
+    # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
+    #`dns.gardener.cloud/class`: garden
+  name: test-service
+  namespace: default
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+  sessionAffinity: None
+  type: LoadBalancer
+``` 
+
 ## The Model
 
 This project provides a flexible model allowing to
