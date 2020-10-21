@@ -20,12 +20,21 @@ type: Opaque
 data:
   USERNAME: bXktdGVjaG5pY2FsLXVzZXI=
   PASSWORD: bXktcGFzc3dvcmQ=
+  # The providerConfig parameters of the DNS provider can be specified here alternatively (not recommenended)
+  #HOST: MTAuMTEuMjMuNDU=
+  #PORT: NDQz
+  #VERSION: Mi4xMA==
+  #VIEW: ZGVmYXVsdA==
+  #SSL_VERIFY: ZmFsc2U=
+  #HTTP_POOL_CONNECTIONS: MTA=
+  #HTTP_REQUEST_TIMEOUT: NjA=
+  #PROXY_URL: aHR0cDovLzEwLjEuMi4zOjg4ODg=
 ```
 
 ## Create DNS provider
 
-The Infoblox `DNSProvider` needs additional parameters as `providerConfig`. `host` and `version` parameters is required.
-All others are optional.
+The Infoblox `DNSProvider` needs additional parameters as `providerConfig`. The `host` parameter is required.
+The `version` parameter is defaulted to `2.10`, but can be overwritten. All others are optional.
 
 ```yaml
 apiVersion: dns.gardener.cloud/v1alpha1
@@ -41,11 +50,11 @@ spec:
     host: 10.11.23.45
     #port: 443
     
-    # sslVerify is the flag to use HTTPS for API reqeust. Set to true by default.
+    # sslVerify is the flag to use HTTPS for API request. Set to true by default.
     #sslVerify: true
 
-    # version is the api version
-    version: "2.10"
+    # version is the api version. Set to "2.10" by default.
+    #version: "2.10"
    
     # view is the Infoblox DNS view to use
     #view: default

@@ -87,7 +87,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		return nil, err
 	}
 
-	if err := config.FillRequiredProperty(&infobloxConfig.Version, "VERSION", "password"); err != nil {
+	if err := config.FillDefaultedProperty(&infobloxConfig.Version, "2.10", "VERSION", "version"); err != nil {
 		return nil, err
 	}
 	if err := config.FillDefaultedProperty(&infobloxConfig.View, "default", "VIEW", "view"); err != nil {
@@ -106,6 +106,9 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		return nil, err
 	}
 	if err := config.FillDefaultedProperty(&infobloxConfig.ProxyURL, "", "PROXY_URL", "proxy_url"); err != nil {
+		return nil, err
+	}
+	if err := config.FillDefaultedBoolProperty(&infobloxConfig.SSLVerify, true, "SSL_VERIFY", "ssl_verify"); err != nil {
 		return nil, err
 	}
 
