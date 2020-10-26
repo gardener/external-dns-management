@@ -43,7 +43,9 @@ func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwne
 		}
 		logger.Infof("entries synchronized")
 	}
+	this.lock.Lock()
 	changed, active := this.ownerCache.UpdateOwner(owner)
+	this.lock.Unlock()
 	logger.Infof("update: changed owner ids %s", changed)
 	logger.Debugf("       active owner ids %s", active)
 	if len(changed) > 0 {
@@ -54,7 +56,9 @@ func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwne
 }
 
 func (this *state) OwnerDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
+	this.lock.Lock()
 	changed, active := this.ownerCache.DeleteOwner(key)
+	this.lock.Unlock()
 	logger.Infof("delete: changed owner ids %s", changed)
 	logger.Debugf("       active owner ids %s", active)
 	if len(changed) > 0 {

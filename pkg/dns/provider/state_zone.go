@@ -66,6 +66,7 @@ func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string)
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
+	req.ownerIds = this.ownerCache.GetIds()
 	hasProviders := this.hasProviders()
 	zone := this.zones[zoneid]
 	if zone == nil {
@@ -177,7 +178,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		return nil
 	}
 	req.zone.next = time.Now().Add(this.config.Delay)
-	ownerids := this.ownerCache.GetIds()
+	ownerids := req.ownerIds
 	metrics.ReportZoneEntries(req.zone.ProviderType(), zoneid, len(req.entries), len(req.stale))
 	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", req.zone.Id(), req.zone.Domain(), len(req.entries), len(req.stale))
 	logger.Debugf("    ownerids: %s", ownerids)

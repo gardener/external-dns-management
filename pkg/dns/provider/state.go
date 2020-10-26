@@ -44,6 +44,7 @@ type zoneReconciliation struct {
 	zone      *dnsHostedZone
 	providers DNSProviders
 	entries   Entries
+	ownerIds  utils.StringSet
 	stale     DNSNames
 	dedicated bool
 	deleting  bool
