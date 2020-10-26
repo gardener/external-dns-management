@@ -100,6 +100,14 @@ func (c *DNSHandlerConfig) GetRequiredIntProperty(key string, altKeys ...string)
 	return strconv.Atoi(value)
 }
 
+func (c *DNSHandlerConfig) GetRequiredBoolProperty(key string, altKeys ...string) (bool, error) {
+	value, err := c.getProperty(key, true, altKeys...)
+	if err != nil {
+		return false, err
+	}
+	return strconv.ParseBool(value)
+}
+
 func (c *DNSHandlerConfig) GetDefaultedProperty(key string, def string, altKeys ...string) string {
 	value, _ := c.getProperty(key, false, altKeys...)
 	if value == "" {
@@ -114,6 +122,14 @@ func (c *DNSHandlerConfig) GetDefaultedIntProperty(key string, def int, altKeys 
 		return def, nil
 	}
 	return strconv.Atoi(value)
+}
+
+func (c *DNSHandlerConfig) GetDefaultedBoolProperty(key string, def bool, altKeys ...string) (bool, error) {
+	value, _ := c.getProperty(key, false, altKeys...)
+	if value == "" {
+		return def, nil
+	}
+	return strconv.ParseBool(value)
 }
 
 func (c *DNSHandlerConfig) getProperty(key string, required bool, altKeys ...string) (string, error) {
@@ -208,6 +224,23 @@ func (c *DNSHandlerConfig) FillDefaultedProperty(target **string, def string, pr
 			return nil
 		}
 		*target = &value
+		return nil
+	}
+	return c.checkNotDefinedInConfig(prop, alt...)
+}
+
+func (c *DNSHandlerConfig) FillDefaultedBoolProperty(target **bool, def bool, prop string, alt ...string) error {
+	if *target == nil || **target == def {
+		value := c.GetProperty(prop, alt...)
+		if value == "" {
+			*target = &def
+			return nil
+		}
+		b, err := strconv.ParseBool(value)
+		if err != nil {
+			return err
+		}
+		*target = &b
 		return nil
 	}
 	return c.checkNotDefinedInConfig(prop, alt...)
