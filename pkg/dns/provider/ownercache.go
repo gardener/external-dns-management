@@ -53,14 +53,16 @@ func (this OwnerIDInfos) KeySet() utils.StringSet {
 type OwnerCache struct {
 	lock sync.RWMutex
 
-	owners   OwnerObjectInfos
-	ownerids OwnerIDInfos
+	owners     OwnerObjectInfos
+	ownerids   OwnerIDInfos
+	pendingids utils.StringSet
 }
 
 func NewOwnerCache(config *Config) *OwnerCache {
 	return &OwnerCache{
-		owners:   OwnerObjectInfos{},
-		ownerids: OwnerIDInfos{config.Ident: {refcount: 1, entrycounts: ProviderTypeCounts{}}},
+		owners:     OwnerObjectInfos{},
+		ownerids:   OwnerIDInfos{config.Ident: {refcount: 1, entrycounts: ProviderTypeCounts{}}},
+		pendingids: utils.StringSet{},
 	}
 }
 
@@ -68,6 +70,12 @@ func (this *OwnerCache) IsResponsibleFor(id string) bool {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 	return this.ownerids.Contains(id)
+}
+
+func (this *OwnerCache) IsResponsiblePendingFor(id string) bool {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	return this.pendingids.Contains(id)
 }
 
 func (this *OwnerCache) GetIds() utils.StringSet {
@@ -143,6 +151,7 @@ func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changeset utils.St
 }
 
 func (this *OwnerCache) deactivate(cachekey OwnerName, old OwnerObjectInfo, changeset utils.StringSet) {
+	this.pendingids.Remove(old.id)
 	if old.active {
 		e := this.ownerids[old.id]
 		e.refcount--
@@ -156,6 +165,7 @@ func (this *OwnerCache) deactivate(cachekey OwnerName, old OwnerObjectInfo, chan
 }
 
 func (this *OwnerCache) activate(cachekey OwnerName, id string, active bool, changeset utils.StringSet, counts ProviderTypeCounts) {
+	this.pendingids.Remove(id)
 	if active {
 		e, ok := this.ownerids[id]
 		if !ok {
@@ -171,4 +181,12 @@ func (this *OwnerCache) activate(cachekey OwnerName, id string, active bool, cha
 		}
 	}
 	this.owners[cachekey] = OwnerObjectInfo{id: id, active: active}
+}
+
+func (this *OwnerCache) SetPending(id string) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	if !this.ownerids.Contains(id) {
+		this.pendingids.Add(id)
+	}
 }

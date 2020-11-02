@@ -336,7 +336,7 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 	}
 
 	if utils.StringValue(effspec.OwnerId) != "" {
-		if !state.ownerCache.IsResponsibleFor(*effspec.OwnerId) {
+		if !state.ownerCache.IsResponsibleFor(*effspec.OwnerId) && !state.ownerCache.IsResponsiblePendingFor(*effspec.OwnerId) {
 			err = fmt.Errorf("unknown owner id '%s'", *effspec.OwnerId)
 		}
 	}
