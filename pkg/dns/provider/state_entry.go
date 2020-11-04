@@ -160,6 +160,12 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 		return new, reconcile.DelayOnError(logger, err)
 	}
 
+	if new.valid && this.IsManaging(v) {
+		err := this.SetFinalizer(new.Object())
+		if err != nil {
+			return new, reconcile.DelayOnError(logger, err)
+		}
+	}
 	this.entries[v.ObjectName()] = new
 
 	if old != nil && old != new {
@@ -208,8 +214,12 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 		if new.valid && new.status.State != api.STATE_READY && new.status.State != api.STATE_PENDING {
 			msg := fmt.Sprintf("activating for %s", new.DNSName())
 			logger.Info(msg)
-			new.UpdateStatus(logger, api.STATE_PENDING, msg)
+			_, err := new.UpdateStatus(logger, api.STATE_PENDING, msg)
+			if err != nil {
+				logger.Errorf("cannot update: %s", err)
+			}
 		}
+
 		this.dnsnames[dnsname] = new
 	}
 
