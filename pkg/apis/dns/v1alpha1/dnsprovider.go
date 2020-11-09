@@ -68,6 +68,9 @@ type DNSProviderSpec struct {
 	// (by default all zones will be served)
 	// +optional
 	Zones *DNSSelection `json:"zones,omitempty"`
+	// default TTL used for DNS entries if not specified explicitly
+	// +optional
+	DefaultTTL *int64 `json:"defaultTTL,omitempty"`
 }
 
 type DNSSelection struct {
@@ -96,6 +99,9 @@ type DNSProviderStatus struct {
 	// actually served zones
 	// +optional
 	Zones DNSSelectionStatus `json:"zones"`
+	// actually used default TTL for DNS entries
+	// +optional
+	DefaultTTL *int64 `json:"defaultTTL,omitempty"`
 }
 
 type DNSSelectionStatus struct {

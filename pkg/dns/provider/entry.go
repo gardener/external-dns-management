@@ -410,7 +410,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		this.providername = p.provider.ObjectName()
 		provider = p.provider.ObjectName().String()
 		this.status.Provider = &provider
-		defaultTTL := config.TTL
+		defaultTTL := p.provider.DefaultTTL()
 		this.status.TTL = &defaultTTL
 		if spec.TTL != nil {
 			this.status.TTL = spec.TTL
