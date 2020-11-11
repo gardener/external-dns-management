@@ -21,6 +21,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"sync"
 	"time"
@@ -265,6 +266,8 @@ type dnsProviderVersion struct {
 	account *DNSAccount
 	valid   bool
 
+	defaultTTL int64
+
 	secret      resources.ObjectName
 	def_include utils.StringSet
 	def_exclude utils.StringSet
@@ -287,6 +290,10 @@ func (this *dnsProviderVersion) TypeCode() string {
 	return this.object.TypeCode()
 }
 
+func (this *dnsProviderVersion) DefaultTTL() int64 {
+	return this.defaultTTL
+}
+
 func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
 	if this.account != v.account {
 		return false
@@ -298,6 +305,9 @@ func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
 		return false
 	}
 	if !this.def_exclude.Equals(v.def_exclude) {
+		return false
+	}
+	if !reflect.DeepEqual(this.defaultTTL, v.defaultTTL) {
 		return false
 	}
 	if this.secret != nil && v.secret != nil && this.secret != v.secret {
@@ -333,6 +343,12 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		this.excluded = utils.NewStringSet(provider.Status().Domains.Excluded...)
 		this.included_zones = utils.NewStringSet(provider.Status().Zones.Included...)
 		this.excluded_zones = utils.NewStringSet(provider.Status().Zones.Excluded...)
+	}
+
+	if provider.Spec().DefaultTTL != nil {
+		this.defaultTTL = *provider.Spec().DefaultTTL
+	} else {
+		this.defaultTTL = state.config.TTL
 	}
 
 	if last != nil && last.ObjectName() != this.ObjectName() {
@@ -529,6 +545,7 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	mod.AssureStringValue(&status.State, api.STATE_READY)
 	mod.AssureStringPtrValue(&status.Message, "provider operational")
 	mod.AssureInt64Value(&status.ObservedGeneration, this.object.DNSProvider().Generation)
+	mod.AssureInt64PtrValue(&status.DefaultTTL, this.defaultTTL)
 	if mod.IsModified() {
 		dnsutils.SetLastUpdateTime(&this.object.Status().LastUptimeTime)
 	}

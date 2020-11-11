@@ -227,6 +227,8 @@ type DNSProvider interface {
 	Object() resources.Object
 	TypeCode() string
 
+	DefaultTTL() int64
+
 	GetZones() DNSHostedZones
 
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)

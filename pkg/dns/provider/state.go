@@ -330,11 +330,13 @@ func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, erro
 			} else {
 				match = errorMatch
 			}
-			if match.match < n {
+			if match.match <= n {
 				err = access.CheckAccessWithRealms(e, "use", p.Object(), this.realms)
 				if err == nil {
-					match.found = p
-					match.match = n
+					if match.match < n || (e.Status().Provider != nil && *e.Status().Provider == p.object.ObjectName().String()) {
+						match.found = p
+						match.match = n
+					}
 				}
 			}
 		}

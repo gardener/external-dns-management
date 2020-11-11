@@ -489,6 +489,11 @@ func (in *DNSProviderSpec) DeepCopyInto(out *DNSProviderSpec) {
 		*out = new(DNSSelection)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.DefaultTTL != nil {
+		in, out := &in.DefaultTTL, &out.DefaultTTL
+		*out = new(int64)
+		**out = **in
+	}
 	return
 }
 
@@ -516,6 +521,11 @@ func (in *DNSProviderStatus) DeepCopyInto(out *DNSProviderStatus) {
 	}
 	in.Domains.DeepCopyInto(&out.Domains)
 	in.Zones.DeepCopyInto(&out.Zones)
+	if in.DefaultTTL != nil {
+		in, out := &in.DefaultTTL, &out.DefaultTTL
+		*out = new(int64)
+		**out = **in
+	}
 	return
 }
 

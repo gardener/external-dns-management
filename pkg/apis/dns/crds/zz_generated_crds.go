@@ -385,6 +385,10 @@ spec:
             type: object
           spec:
             properties:
+              defaultTTL:
+                description: default TTL used for DNS entries if not specified explicitly
+                format: int64
+                type: integer
               domains:
                 description: desired selection of usable domains (by default all zones and domains in those zones will be served)
                 properties:
@@ -433,6 +437,10 @@ spec:
             type: object
           status:
             properties:
+              defaultTTL:
+                description: actually used default TTL for DNS entries
+                format: int64
+                type: integer
               domains:
                 description: actually served domain selection
                 properties:

@@ -304,6 +304,10 @@ spec:
           type: object
         spec:
           properties:
+            defaultTTL:
+              description: default TTL used for DNS entries if not specified explicitly
+              format: int64
+              type: integer
             domains:
               properties:
                 exclude:
@@ -324,6 +328,10 @@ spec:
           type: object
         status:
           properties:
+            defaultTTL:
+              description: actually used default TTL for DNS entries
+              format: int64
+              type: integer
             domains:
               properties:
                 excluded:

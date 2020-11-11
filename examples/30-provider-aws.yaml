@@ -17,3 +17,4 @@ spec:
   #  - <ZONEID>
   #  exclude:
   #  - <ZONEID>
+  #defaultTTL: 300

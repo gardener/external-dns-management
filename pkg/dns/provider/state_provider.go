@@ -117,6 +117,8 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 				logger.Infof("        forwarded: %s", utils.Strings(z.ForwardedDomains()...))
 			}
 		}
+	}
+	if len(entries) > 0 && (mod || new.IsValid()) {
 		this.addBlockingEntries(logger, entries)
 		this.TriggerEntries(logger, entries)
 	}
