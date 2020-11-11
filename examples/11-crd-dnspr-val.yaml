@@ -33,17 +33,30 @@ spec:
     - dnspr
     singular: dnsprovider
   additionalPrinterColumns:
-  - JSONPath: .spec.type
-    description: Provider type
-    name: TYPE
-    type: string
-  - JSONPath: .status.state
-    description: Status of DNS provider
-    name: STATUS
-    type: string
-  - JSONPath: .metadata.creationTimestamp
-    name: AGE
-    type: date
+    - JSONPath: .spec.type
+      name: TYPE
+      type: string
+    - JSONPath: .status.state
+      name: STATUS
+      type: string
+    - JSONPath: .metadata.creationTimestamp
+      description: creation timestamp
+      name: AGE
+      type: date
+    - JSONPath: .status.domains.included
+      description: included domains
+      name: INCLUDED_DOMAINS
+      type: string
+    - JSONPath: .status.zones.included
+      description: included zones
+      name: INCLUDED_ZONES
+      priority: 2000
+      type: string
+    - JSONPath: .status.message
+      description: message describing the reason for the state
+      name: MESSAGE
+      priority: 2000
+      type: string
   validation:
     openAPIV3Schema:
       type: object

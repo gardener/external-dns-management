@@ -38,6 +38,10 @@ type DNSProviderList struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name=TYPE,JSONPath=".spec.type",type=string
 // +kubebuilder:printcolumn:name=STATUS,JSONPath=".status.state",type=string
+// +kubebuilder:printcolumn:name=AGE,JSONPath=".metadata.creationTimestamp",type=date,description="creation timestamp"
+// +kubebuilder:printcolumn:name=INCLUDED_DOMAINS,JSONPath=".status.domains.included",type=string,description="included domains"
+// +kubebuilder:printcolumn:name=INCLUDED_ZONES,JSONPath=".status.zones.included",type=string,priority=2000,description="included zones"
+// +kubebuilder:printcolumn:name=MESSAGE,JSONPath=".status.message",type=string,priority=2000,description="message describing the reason for the state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

@@ -145,17 +145,44 @@ spec:
       jsonPath: .spec.dnsName
       name: DNS
       type: string
-    - jsonPath: .spec.ownerId
-      name: OWNERID
-      type: string
-    - jsonPath: .status.providerType
+    - description: provider type
+      jsonPath: .status.providerType
       name: TYPE
       type: string
-    - jsonPath: .status.provider
+    - description: assigned provider (namespace/name)
+      jsonPath: .status.provider
       name: PROVIDER
       type: string
-    - jsonPath: .status.state
+    - description: entry status
+      jsonPath: .status.state
       name: STATUS
+      type: string
+    - description: entry creation timestamp
+      jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    - description: effective targets
+      jsonPath: .status.targets
+      name: TARGETS
+      type: string
+    - description: owner id used to tag entries in external DNS system
+      jsonPath: .spec.ownerId
+      name: OWNERID
+      type: string
+    - description: time to live
+      jsonPath: .status.ttl
+      name: TTL
+      priority: 2000
+      type: integer
+    - description: zone id
+      jsonPath: .status.zone
+      name: ZONE
+      priority: 2000
+      type: string
+    - description: message describing the reason for the state
+      jsonPath: .status.message
+      name: MESSAGE
+      priority: 2000
       type: string
     name: v1alpha1
     schema:
@@ -290,6 +317,10 @@ spec:
     - jsonPath: .status.entries.amount
       name: Usages
       type: integer
+    - description: creation timestamp
+      jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -370,6 +401,24 @@ spec:
       type: string
     - jsonPath: .status.state
       name: STATUS
+      type: string
+    - description: creation timestamp
+      jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    - description: included domains
+      jsonPath: .status.domains.included
+      name: INCLUDED_DOMAINS
+      type: string
+    - description: included zones
+      jsonPath: .status.zones.included
+      name: INCLUDED_ZONES
+      priority: 2000
+      type: string
+    - description: message describing the reason for the state
+      jsonPath: .status.message
+      name: MESSAGE
+      priority: 2000
       type: string
     name: v1alpha1
     schema:
