@@ -871,6 +871,10 @@ spec:
         ports:
         - containerPort: {{ .Values.configuration.serverPortHttp }}
           protocol: TCP
+        {{- if .Values.env }}
+        env:
+        {{- toYaml .Values.env | nindent 8 }}
+        {{- end }}
         livenessProbe:
           httpGet:
             path: /healthz
