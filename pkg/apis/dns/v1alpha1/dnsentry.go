@@ -35,10 +35,15 @@ type DNSEntryList struct {
 // +kubebuilder:resource:scope=Namespaced,path=dnsentries,shortName=dnse,singular=dnsentry
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name=DNS,description="FQDN of DNS Entry",JSONPath=".spec.dnsName",type=string
-// +kubebuilder:printcolumn:name=OWNERID,JSONPath=".spec.ownerId",type=string
-// +kubebuilder:printcolumn:name=TYPE,JSONPath=".status.providerType",type=string
-// +kubebuilder:printcolumn:name=PROVIDER,JSONPath=".status.provider",type=string
-// +kubebuilder:printcolumn:name=STATUS,JSONPath=".status.state",type=string
+// +kubebuilder:printcolumn:name=TYPE,JSONPath=".status.providerType",type=string,description="provider type"
+// +kubebuilder:printcolumn:name=PROVIDER,JSONPath=".status.provider",type=string,description="assigned provider (namespace/name)"
+// +kubebuilder:printcolumn:name=STATUS,JSONPath=".status.state",type=string,description="entry status"
+// +kubebuilder:printcolumn:name=AGE,JSONPath=".metadata.creationTimestamp",type=date,description="entry creation timestamp"
+// +kubebuilder:printcolumn:name=TARGETS,JSONPath=".status.targets",type=string,description="effective targets"
+// +kubebuilder:printcolumn:name=OWNERID,JSONPath=".spec.ownerId",type=string,description="owner id used to tag entries in external DNS system"
+// +kubebuilder:printcolumn:name=TTL,JSONPath=".status.ttl",type=integer,priority=2000,description="time to live"
+// +kubebuilder:printcolumn:name=ZONE,JSONPath=".status.zone",type=string,priority=2000,description="zone id"
+// +kubebuilder:printcolumn:name=MESSAGE,JSONPath=".status.message",type=string,priority=2000,description="message describing the reason for the state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

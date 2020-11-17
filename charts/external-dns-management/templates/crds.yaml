@@ -11,24 +11,48 @@ metadata:
 spec:
   additionalPrinterColumns:
     - JSONPath: .spec.dnsName
-      description: DNS ObjectName
+      description: FQDN of DNS Entry
       name: DNS
       type: string
     - JSONPath: .status.providerType
-      description: Provider type
+      description: provider type
       name: TYPE
       type: string
     - JSONPath: .status.provider
-      description: Provider
+      description: assigned provider (namespace/name)
       name: PROVIDER
       type: string
     - JSONPath: .status.state
-      description: Status of DNS entry in cloud provider
+      description: entry status
       name: STATUS
       type: string
     - JSONPath: .metadata.creationTimestamp
+      description: entry creation timestamp
       name: AGE
       type: date
+    - JSONPath: .status.targets
+      description: effective targets
+      name: TARGETS
+      type: string
+    - JSONPath: .spec.ownerId
+      description: owner id used to tag entries in external DNS system
+      name: OWNERID
+      type: string
+    - JSONPath: .status.ttl
+      description: time to live
+      name: TTL
+      priority: 2000
+      type: integer
+    - JSONPath: .status.zone
+      description: zone id
+      name: ZONE
+      priority: 2000
+      type: string
+    - JSONPath: .status.message
+      description: message describing the reason for the state
+      name: MESSAGE
+      priority: 2000
+      type: string
   conversion:
     strategy: None
   group: dns.gardener.cloud
@@ -236,10 +260,16 @@ metadata:
 spec:
   additionalPrinterColumns:
     - JSONPath: .spec.ownerId
-      description: Owner Id
-      name: OWNERID
+      name: OwnerId
       type: string
+    - JSONPath: .spec.active
+      name: Active
+      type: boolean
+    - JSONPath: .status.entries.amount
+      name: Usages
+      type: integer
     - JSONPath: .metadata.creationTimestamp
+      description: creation timestamp
       name: AGE
       type: date
   conversion:
@@ -272,16 +302,29 @@ metadata:
 spec:
   additionalPrinterColumns:
     - JSONPath: .spec.type
-      description: Provider type
       name: TYPE
       type: string
     - JSONPath: .status.state
-      description: Status of DNS provider
       name: STATUS
       type: string
     - JSONPath: .metadata.creationTimestamp
+      description: creation timestamp
       name: AGE
       type: date
+    - JSONPath: .status.domains.included
+      description: included domains
+      name: INCLUDED_DOMAINS
+      type: string
+    - JSONPath: .status.zones.included
+      description: included zones
+      name: INCLUDED_ZONES
+      priority: 2000
+      type: string
+    - JSONPath: .status.message
+      description: message describing the reason for the state
+      name: MESSAGE
+      priority: 2000
+      type: string
   conversion:
     strategy: None
   group: dns.gardener.cloud

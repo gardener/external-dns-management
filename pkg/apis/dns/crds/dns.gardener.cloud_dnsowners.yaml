@@ -28,6 +28,10 @@ spec:
     - jsonPath: .status.entries.amount
       name: Usages
       type: integer
+    - description: creation timestamp
+      jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
     name: v1alpha1
     schema:
       openAPIV3Schema:

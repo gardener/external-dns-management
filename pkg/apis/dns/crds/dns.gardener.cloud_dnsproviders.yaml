@@ -25,6 +25,24 @@ spec:
     - jsonPath: .status.state
       name: STATUS
       type: string
+    - description: creation timestamp
+      jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    - description: included domains
+      jsonPath: .status.domains.included
+      name: INCLUDED_DOMAINS
+      type: string
+    - description: included zones
+      jsonPath: .status.zones.included
+      name: INCLUDED_ZONES
+      priority: 2000
+      type: string
+    - description: message describing the reason for the state
+      jsonPath: .status.message
+      name: MESSAGE
+      priority: 2000
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
