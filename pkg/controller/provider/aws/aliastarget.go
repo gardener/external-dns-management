@@ -24,8 +24,8 @@ import (
 )
 
 var (
-	// original code: https://github.com/kubernetes-incubator/external-dns/blob/master/provider/aws.go
-	// see: https://docs.aws.amazon.com/general/latest/gr/rande.html#elb_region
+	// original code: https://github.com/kubernetes-sigs/external-dns/blob/master/provider/aws/aws.go
+	// see: https://docs.aws.amazon.com/general/latest/gr/elb.html
 	canonicalHostedZones = map[string]string{
 		// Application Load Balancers and Classic Load Balancers
 		"us-east-2.elb.amazonaws.com":         "Z3AADJGX6KTTL2",
@@ -45,11 +45,14 @@ var (
 		"eu-west-2.elb.amazonaws.com":         "ZHURV8PSTC4K8",
 		"eu-west-3.elb.amazonaws.com":         "Z3Q77PNBQS71R4",
 		"eu-north-1.elb.amazonaws.com":        "Z23TAZ6LKFMNIO",
+		"eu-south-1.elb.amazonaws.com":        "Z3ULH7SSC9OV64",
 		"sa-east-1.elb.amazonaws.com":         "Z2P70J7HTTTPLU",
-		"cn-north-1.elb.amazonaws.com.cn":     "Z3BX2TMKNYI13Y",
-		"cn-northwest-1.elb.amazonaws.com.cn": "Z3BX2TMKNYI13Y",
-		"us-gov-west-1.amazonaws.com":         "Z1K6XKP9SAGWDV",
+		"cn-north-1.elb.amazonaws.com.cn":     "Z1GDH35T77C1KE",
+		"cn-northwest-1.elb.amazonaws.com.cn": "ZM7IZAIOVVDZF",
+		"us-gov-west-1.elb.amazonaws.com":     "Z33AYJ8TM3BH4J",
+		"us-gov-east-1.elb.amazonaws.com":     "Z166TLBEWOO7G0",
 		"me-south-1.elb.amazonaws.com":        "ZS929ML54UICD",
+		"af-south-1.elb.amazonaws.com":        "Z268VQBMOI5EKX",
 		// Network Load Balancers
 		"elb.us-east-2.amazonaws.com":         "ZLMOA37VPKANP",
 		"elb.us-east-1.amazonaws.com":         "Z26RNL4JYFTOTI",
@@ -67,10 +70,16 @@ var (
 		"elb.eu-west-2.amazonaws.com":         "ZD4D7Y8KGAS4G",
 		"elb.eu-west-3.amazonaws.com":         "Z1CMS0P5QUZ6D5",
 		"elb.eu-north-1.amazonaws.com":        "Z1UDT6IFJ4EJM",
+		"elb.eu-south-1.amazonaws.com":        "Z23146JA1KNAFP",
 		"elb.sa-east-1.amazonaws.com":         "ZTK26PT1VY4CU",
 		"elb.cn-north-1.amazonaws.com.cn":     "Z3QFB96KMJ7ED6",
 		"elb.cn-northwest-1.amazonaws.com.cn": "ZQEIKTCZ8352D",
+		"elb.us-gov-west-1.amazonaws.com":     "ZMG1MZ2THAWF1",
+		"elb.us-gov-east-1.amazonaws.com":     "Z1ZSMQQ6Q24QQ8",
 		"elb.me-south-1.amazonaws.com":        "Z3QSRYVP46NYYV",
+		"elb.af-south-1.amazonaws.com":        "Z203XCE67M25HM",
+		// Global Accelerator
+		"awsglobalaccelerator.com": "Z2BJ6XQ5FK7U4H",
 	}
 )
 
