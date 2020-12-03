@@ -19,9 +19,10 @@ package aws
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
+
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
-	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -62,17 +63,10 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		config:            *c,
 		awsConfig:         awsConfig,
 	}
-	accessKeyID, err := c.GetRequiredProperty("AWS_ACCESS_KEY_ID", "accessKeyID")
-	if err != nil {
-		return nil, err
-	}
-	c.Logger.Infof("creating aws-route53 handler for %s", accessKeyID)
-	secretAccessKey, err := c.GetRequiredProperty("AWS_SECRET_ACCESS_KEY", "secretAccessKey")
-	if err != nil {
-		return nil, err
-	}
+	accessKeyID := c.GetProperty("AWS_ACCESS_KEY_ID", "accessKeyID")
+
+	secretAccessKey := c.GetProperty("AWS_SECRET_ACCESS_KEY", "secretAccessKey")
 	token := c.GetProperty("AWS_SESSION_TOKEN")
-	creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, token)
 
 	region := c.GetProperty("AWS_REGION", "region")
 	var endpoint *string
@@ -83,11 +77,19 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		endpoint = aws.String("route53.us-gov.amazonaws.com")
 	}
 
-	sess, err := session.NewSession(&aws.Config{
-		Region:      aws.String(region),
-		Credentials: creds,
-		Endpoint:    endpoint, // temporary workarround for AWS problem
-	})
+	config := aws.Config{
+		Region:   aws.String(region),
+		Endpoint: endpoint, // temporary workarround for AWS problem
+	}
+
+	// only use aws static credentials when accessKeyID and secretAccessKey not null
+	if accessKeyID != "" && secretAccessKey != "" {
+		c.Logger.Infof("creating aws-route53 handler for static credentials, accessKeyID: %s", accessKeyID)
+		creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, token)
+		config.Credentials = creds
+	}
+
+	sess, err := session.NewSession(&config)
 	if err != nil {
 		return nil, err
 	}
