@@ -9,7 +9,7 @@ require (
 	github.com/Masterminds/semver v1.4.2 // indirect
 	github.com/ahmetb/gen-crd-api-reference-docs v0.1.5
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190603021944-12ad9f921c0b
-	github.com/aws/aws-sdk-go v1.19.41
+	github.com/aws/aws-sdk-go v1.23.13
 	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
 	github.com/gardener/controller-manager-library v0.1.1-0.20200402075246-46a23d87218c
