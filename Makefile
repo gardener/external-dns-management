@@ -1,6 +1,9 @@
-EXECUTABLE=dns-controller-manager
-PROJECT=github.com/gardener/external-dns-management
-VERSION=$(shell cat VERSION)
+REGISTRY              := eu.gcr.io/gardener-project
+EXECUTABLE            := dns-controller-manager
+PROJECT               := github.com/gardener/external-dns-management
+IMAGE_REPOSITORY      := $(REGISTRY)/dns-controller-manager
+VERSION               := $(shell cat VERSION)
+IMAGE_TAG             := $(VERSION)
 
 .PHONY: revendor
 revendor:
@@ -66,3 +69,7 @@ install-requirements:
 alltests:
 	GO111MODULE=on go test -mod=vendor ./pkg/...
 	test/integration/run.sh $(kindargs) -- $(args)
+
+.PHONY: docker-images
+docker-images:
+	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) -f build/Dockerfile .
