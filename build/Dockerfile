@@ -12,12 +12,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine:3.10
+#############      builder       #############
+FROM eu.gcr.io/gardener-project/3rd/golang:1.15.5 AS builder
+
+WORKDIR /build
+COPY . .
+
+RUN make release
+
+############# base
+FROM eu.gcr.io/gardener-project/3rd/alpine:3.12.1 AS base
+
+#############      dns-controller-manager     #############
+FROM base AS dns-controller-manager
 
 RUN apk add --update bash curl tzdata
 RUN mkdir /plugins
 
-ADD bin/rel/dns-controller-manager /dns-controller-manager
+COPY --from=builder /build/dns-controller-manager /dns-controller-manager
 
 WORKDIR /
 
