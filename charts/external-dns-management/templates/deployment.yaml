@@ -650,6 +650,72 @@ spec:
         {{- if .Values.configuration.namespaceLocalAccessOnly }}
         - --namespace-local-access-only={{ .Values.configuration.namespaceLocalAccessOnly }}
         {{- end }}
+        {{- if .Values.configuration.netlifyDNSCacheTtl }}
+        - --netlify-dns.cache-ttl={{ .Values.configuration.netlifyDNSCacheTtl }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSDefaultPoolSize }}
+        - --netlify-dns.default.pool.size={{ .Values.configuration.netlifyDNSDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSDisableZoneStateCaching }}
+        - --netlify-dns.disable-zone-state-caching={{ .Values.configuration.netlifyDNSDisableZoneStateCaching }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSDnsClass }}
+        - --netlify-dns.dns-class={{ .Values.configuration.netlifyDNSDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSDnsDelay }}
+        - --netlify-dns.dns-delay={{ .Values.configuration.netlifyDNSDnsDelay }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSDnsPoolResyncPeriod }}
+        - --netlify-dns.dns.pool.resync-period={{ .Values.configuration.netlifyDNSDnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSDnsPoolSize }}
+        - --netlify-dns.dns.pool.size={{ .Values.configuration.netlifyDNSDnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSDryRun }}
+        - --netlify-dns.dry-run={{ .Values.configuration.netlifyDNSDryRun }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSIdentifier }}
+        - --netlify-dns.identifier={{ .Values.configuration.netlifyDNSIdentifier }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSOwneridsPoolSize }}
+        - --netlify-dns.ownerids.pool.size={{ .Values.configuration.netlifyDNSOwneridsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSPoolResyncPeriod }}
+        - --netlify-dns.pool.resync-period={{ .Values.configuration.netlifyDNSPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSPoolSize }}
+        - --netlify-dns.pool.size={{ .Values.configuration.netlifyDNSPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSProvidersPoolResyncPeriod }}
+        - --netlify-dns.providers.pool.resync-period={{ .Values.configuration.netlifyDNSProvidersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSProvidersPoolSize }}
+        - --netlify-dns.providers.pool.size={{ .Values.configuration.netlifyDNSProvidersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSRatelimiterBurst }}
+        - --netlify-dns.ratelimiter.burst={{ .Values.configuration.netlifyDNSRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSRatelimiterEnabled }}
+        - --netlify-dns.ratelimiter.enabled={{ .Values.configuration.netlifyDNSRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSRatelimiterQps }}
+        - --netlify-dns.ratelimiter.qps={{ .Values.configuration.netlifyDNSRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSRescheduleDelay }}
+        - --netlify-dns.reschedule-delay={{ .Values.configuration.netlifyDNSRescheduleDelay }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSSecretsPoolSize }}
+        - --netlify-dns.secrets.pool.size={{ .Values.configuration.netlifyDNSSecretsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSSetup }}
+        - --netlify-dns.setup={{ .Values.configuration.netlifyDNSSetup }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSStatisticPoolSize }}
+        - --netlify-dns.statistic.pool.size={{ .Values.configuration.netlifyDNSStatisticPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDNSTtl }}
+        - --netlify-dns.ttl={{ .Values.configuration.netlifyDNSTtl }}
+        {{- end }}
         {{- if .Values.configuration.omitLease }}
         - --omit-lease={{ .Values.configuration.omitLease }}
         {{- end }}

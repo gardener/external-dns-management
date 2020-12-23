@@ -17,6 +17,8 @@ spec:
     type: openstack-designate
   - kind: DNSProvider
     type: cloudflare-dns
+  - kind: DNSProvider
+    type: netlify-dns
   deployment:
     type: helm
     providerConfig:

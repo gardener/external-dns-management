@@ -236,6 +236,28 @@ configuration:
   # maintainer:
   # namespace: default
   # namespaceLocalAccessOnly: false
+  # netlifyDNSCacheTtl: 120
+  # netlifyDNSDefaultPoolSize: 2
+  # netlifyDNSDisableZoneStateCaching: false
+  # netlifyDNSDnsClass: "gardendns"
+  # netlifyDNSDnsDelay: 10s
+  # netlifyDNSDnsPoolResyncPeriod: 30s
+  # netlifyDNSDnsPoolSize: 1
+  # netlifyDNSDryRun: false
+  # netlifyDNSIdentifier: ""
+  # netlifyDNSOwneridsPoolSize: 1
+  # netlifyDNSPoolResyncPeriod:
+  # netlifyDNSPoolSize:
+  # netlifyDNSProvidersPoolResyncPeriod: 30s
+  # netlifyDNSProvidersPoolSize: 2
+  # netlifyDNSRatelimiterBurst:
+  # netlifyDNSRatelimiterEnabled:
+  # netlifyDNSRatelimiterQps:
+  # netlifyDNSRescheduleDelay: 120s
+  # netlifyDNSSecretsPoolSize: 2
+  # netlifyDNSSetup: 10
+  # netlifyDNSStatisticPoolSize:
+  # netlifyDNSTtl: 120
   # omitLease: false
   # openstackDesignateCacheTtl: 120
   # openstackDesignateDefaultPoolSize: 2
