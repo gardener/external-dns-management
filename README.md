@@ -665,7 +665,7 @@ Flags:
       --target.id string                                            id for cluster target
       --target.migration-ids string                                 migration id for cluster target
       --targets.pool.size int                                       Worker pool size for pool targets
-      --ttl int                                                     Default time-to-live for DNS entries
+      --ttl int                                                     Default time-to-live for DNS entries (defaults to 300s). Defines how long the record is kept in cache by DNS servers or resolvers.
       --version                                                     version for dns-controller-manager
 ```
 

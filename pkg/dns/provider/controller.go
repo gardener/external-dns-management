@@ -117,7 +117,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedStringOption(OPT_CACHE_DIR, "", "Directory to store zone caches (for reload after restart)").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
 		DefaultedBoolOption(OPT_DISABLE_ZONE_STATE_CACHING, false, "disable use of cached dns zone state on changes").
-		DefaultedIntOption(OPT_TTL, 300, "Default time-to-live for DNS entries").
+		DefaultedIntOption(OPT_TTL, 300, "Default time-to-live for DNS entries. Defines how long the record is kept in cache by DNS servers or resolvers.").
 		DefaultedIntOption(OPT_CACHE_TTL, 120, "Time-to-live for provider hosted zone cache").
 		DefaultedIntOption(OPT_SETUP, 10, "number of processors for controller setup").
 		DefaultedDurationOption(OPT_DNSDELAY, 10*time.Second, "delay between two dns reconciliations").
