@@ -62,17 +62,17 @@ func (this *access) DeleteRecord(r raw.Record) error {
 	return err
 }
 
-func (this *access) NewRecord(fqdn string, rtype string, value string, zone provider.DNSHostedZone, ttl int64) raw.Record {
+func (this *access) NewRecord(fqdn string, rtype string, value string, zone provider.DNSHostedZone, ttl int64) (record raw.Record) {
 	switch rtype {
 	case dns.RS_A:
-		return (*RecordA)(ibclient.NewRecordA(ibclient.RecordA{
+		record = (*RecordA)(ibclient.NewRecordA(ibclient.RecordA{
 			Name:     fqdn,
 			Ipv4Addr: value,
 			//Zone:     zone.Key(),
 			View: this.view,
 		}))
 	case dns.RS_CNAME:
-		return (*RecordCNAME)(ibclient.NewRecordCNAME(ibclient.RecordCNAME{
+		record = (*RecordCNAME)(ibclient.NewRecordCNAME(ibclient.RecordCNAME{
 			Name:      fqdn,
 			Canonical: value,
 			//Zone:      zone.Key(),
@@ -82,12 +82,15 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 		if n, err := strconv.Unquote(value); err == nil && !strings.Contains(value, " ") {
 			value = n
 		}
-		return (*RecordTXT)(ibclient.NewRecordTXT(ibclient.RecordTXT{
+		record = (*RecordTXT)(ibclient.NewRecordTXT(ibclient.RecordTXT{
 			Name: fqdn,
 			Text: value,
 			//Zone: zone.Key(),
 			View: this.view,
 		}))
 	}
-	return nil
+	if record != nil {
+		record.SetTTL(int(ttl))
+	}
+	return
 }
