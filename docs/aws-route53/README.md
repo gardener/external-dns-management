@@ -64,7 +64,35 @@ data:
   # see https://docs.aws.amazon.com/general/latest/gr/managing-aws-access-keys.html
   AWS_ACCESS_KEY_ID: ...
   AWS_SECRET_ACCESS_KEY: ...
+  # optionally specify the region
+  #AWS_REGION: ...
+  # optionally specify the token
+  #AWS_SESSION_TOKEN: ...
+  
   # Alternatively use Gardener cloud provider credentials convention
   #accessKeyID: ...
   #secretAccessKey: ...
 ``` 
+
+## Using the chain of credential providers
+
+Alternatively the credentials can be provided externally, i.e. by using the
+chain of credential providers to search for credentials in environment
+variables, shared credential file, and EC2 Instance Roles.
+
+In this case create a `Secret` with the data field `AWS_USE_CREDENTIALS_CHAIN` and set the value to 
+`true` (encoded as base64). Typical examples are usage of an AWS Web Identity provider or
+[IAM role assigned to the service account](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html).
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: aws-credentials
+  namespace: default
+type: Opaque
+data:
+  AWS_USE_CREDENTIALS_CHAIN: dHJ1ZQ==
+  # optionally specify the region
+  #AWS_REGION: ...
+```

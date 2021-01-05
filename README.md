@@ -76,6 +76,8 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
      # see https://docs.aws.amazon.com/general/latest/gr/managing-aws-access-keys.html
      AWS_ACCESS_KEY_ID: ...
      AWS_SECRET_ACCESS_KEY: ...
+     # or if the chain of credential providers should be used:
+     #AWS_USE_CREDENTIALS_CHAIN: dHJ1ZQ==
    EOF
    ```
 

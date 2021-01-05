@@ -63,17 +63,30 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		config:            *c,
 		awsConfig:         awsConfig,
 	}
-	accessKeyID, err := c.GetRequiredProperty("AWS_ACCESS_KEY_ID", "accessKeyID")
+
+	var creds *credentials.Credentials
+	useCredentialsChain, err := c.GetDefaultedBoolProperty("AWS_USE_CREDENTIALS_CHAIN", false)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid value for AWS_USE_CREDENTIALS_CHAIN: %s", err)
 	}
-	c.Logger.Infof("creating aws-route53 handler for %s", accessKeyID)
-	secretAccessKey, err := c.GetRequiredProperty("AWS_SECRET_ACCESS_KEY", "secretAccessKey")
-	if err != nil {
-		return nil, err
+	if !useCredentialsChain {
+		accessKeyID, err := c.GetRequiredProperty("AWS_ACCESS_KEY_ID", "accessKeyID")
+		if err != nil {
+			return nil, err
+		}
+		c.Logger.Infof("creating aws-route53 handler for %s", accessKeyID)
+		secretAccessKey, err := c.GetRequiredProperty("AWS_SECRET_ACCESS_KEY", "secretAccessKey")
+		if err != nil {
+			return nil, err
+		}
+		token := c.GetProperty("AWS_SESSION_TOKEN")
+		creds = credentials.NewStaticCredentials(accessKeyID, secretAccessKey, token)
+	} else {
+		if c.GetProperty("AWS_ACCESS_KEY_ID", "accessKeyID") != "" {
+			return nil, fmt.Errorf("explicit credentials (AWS_ACCESS_KEY_ID or accessKeyID) cannot be used together with AWS_USE_CREDENTIALS_CHAIN=true")
+		}
+		c.Logger.Infof("creating aws-route53 handler using the chain of credential providers")
 	}
-	token := c.GetProperty("AWS_SESSION_TOKEN")
-	creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, token)
 
 	region := c.GetProperty("AWS_REGION", "region")
 	var endpoint *string
@@ -87,7 +100,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String(region),
 		Credentials: creds,
-		Endpoint:    endpoint, // temporary workarround for AWS problem
+		Endpoint:    endpoint, // temporary workaround for AWS problem
 	})
 	if err != nil {
 		return nil, err
