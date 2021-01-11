@@ -6,6 +6,7 @@ tmp/
 /local
 /dns-controller-manager
 /dns-controller-manager-compound
+/dns-controller-manager-dedicated
 /cmd/dns/dns-controller-manager
 /main
 /test/functional/tmp-*.yaml

@@ -29,16 +29,16 @@ build-local:
 	    -race \
 	    -gcflags="all=-N -l" \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
-	    ./cmd/dns
+	    ./cmd/compound
 
-.PHONY: build-local-compound
-build-local-compound:
-	@CGO_ENABLED=1 GO111MODULE=on go build -o $(EXECUTABLE)-compound \
+.PHONY: build-local-dedicated
+build-local-dedicated:
+	@CGO_ENABLED=1 GO111MODULE=on go build -o $(EXECUTABLE)-dedicated \
 	    -mod=vendor \
 	    -race \
 	    -gcflags="all=-N -l" \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
-	    ./cmd/compound
+	    ./cmd/dedicated
 
 .PHONY: release
 release:
@@ -46,7 +46,7 @@ release:
 	    -a \
 	    -mod=vendor \
 	    -ldflags "-w -X main.Version=$(VERSION)" \
-	    ./cmd/dns
+	    ./cmd/compound
 
 .PHONY: test
 test:

@@ -1,4 +1,4 @@
-# AWS Route DNS Provider
+# AWS Route 53 DNS Provider
 
 This DNS provider allows you to create and manage DNS entries in AWS Route 53. 
 

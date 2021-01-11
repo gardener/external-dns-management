@@ -24,7 +24,7 @@ cd $SCRIPT_BASEDIR
 
 FUNCTEST_CONFIG=$ROOTDIR/local/functest-config.yaml
 DNS_LOOKUP=true
-DNS_COMPOUND=false
+DNS_DEDICATED=false
 DNS_SERVER=8.8.4.4
 RUN_CONTROLLER=true
 GLOBAL_LOCK_URL=https://kvdb.io/8Kr6JtkwHUrq96Wk5aogEK/functest-lock
@@ -36,7 +36,7 @@ Usage:
 Runs functional tests for external-dns-management for all provider using secrets from a
 functest-config.yaml file (see functest-config-template.yaml for details how it should look).
 
-./run.sh [--no-dns] [-f <functest-config.yaml>] [-r|--reuse] [-l] [-v] [-k|--keep] [--dns-server <dns-server>] [--no-controller] [--compound] [-- <options> <for> <ginkgo>]
+./run.sh [--no-dns] [-f <functest-config.yaml>] [-r|--reuse] [-l] [-v] [-k|--keep] [--dns-server <dns-server>] [--no-controller] [--dedicated] [-- <options> <for> <ginkgo>]
 
 Options:
     -r | --reuse           reuse existing kind cluster
@@ -46,7 +46,7 @@ Options:
     --dns-server <server>  dns server to use for DNS lookups (defaults to $DNS_SERVER)
     --no-dns               do not perform DNS lookups (for faster testing)
     -f <config.yaml>       path to functest configuration file (defaults to $FUNCTEST_CONFIG)
-    --compound             use compound controller
+    --dedicated            use dedicated, non-compound controller
     --no-controller        do not start the dns-controller-manager
 
 For options of ginkgo run:
@@ -81,8 +81,8 @@ while [ "$1" != "" ]; do
                            DNS_LOOKUP=$1
                            shift
                            ;;
-        --compound )       shift
-                           DNS_COMPOUND=true
+        --dedicated )      shift
+                           DNS_DEDICATED=true
                            ;;
         --no-controller )  shift
                            RUN_CONTROLLER=false
@@ -242,18 +242,18 @@ fi
 kubectl cluster-info
 
 if [ "$RUN_CONTROLLER" == "true" ]; then
-  if [ "$DNS_COMPOUND" == "true" ]; then
-    go build -mod=vendor -race -o $ROOTDIR/dns-controller-manager-compound $ROOTDIR/cmd/compound
-    $ROOTDIR/dns-controller-manager-compound --controllers=dnscontrollers,infoblox-dns --identifier=functest --omit-lease >/tmp/dnsmgr-functional.log 2>&1 &
+  if [ "$DNS_DEDICATED" == "true" ]; then
+    go build -mod=vendor -race -o $ROOTDIR/dns-controller-manager-dedicated $ROOTDIR/cmd/dedicated
+    $ROOTDIR/dns-controller-manager-dedicated --controllers=dnscontrollers,infoblox-dns --identifier=functest --omit-lease >/tmp/dnsmgr-functional.log 2>&1 &
     PID_CONTROLLER=$!
   else
-    go build -mod=vendor -race -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/dns
-    $ROOTDIR/dns-controller-manager --controllers=dnscontrollers,infoblox-dns --identifier=functest --omit-lease > /tmp/dnsmgr-functional.log 2>&1 &
+    go build -mod=vendor -race -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/compound
+    $ROOTDIR/dns-controller-manager --controllers=dnscontrollers --identifier=functest --omit-lease > /tmp/dnsmgr-functional.log 2>&1 &
     PID_CONTROLLER=$!
   fi
 else
-  if [ "$DNS_COMPOUND" == "true" ]; then
-    echo dns-controller-manager-compound must be started with arguments: '--controllers=dnscontrollers --identifier=functest'
+  if [ "$DNS_DEDICATED" == "true" ]; then
+    echo dns-controller-manager-dedicated must be started with arguments: '--controllers=dnscontrollers,infoblox-dns --identifier=functest'
   else
     echo dns-controller-manager must be started with arguments: '--controllers=dnscontrollers --identifier=functest'
   fi
@@ -262,7 +262,7 @@ fi
 # install ginkgo
 go install -mod=vendor github.com/onsi/ginkgo/ginkgo
 
-GOFLAGS="-mod=vendor" FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER DNS_COMPOUND=$DNS_COMPOUND ginkgo -p "$@"
+GOFLAGS="-mod=vendor" FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER DNS_DEDICATED=$DNS_DEDICATED ginkgo -p "$@"
 
 RETCODE=$?
 

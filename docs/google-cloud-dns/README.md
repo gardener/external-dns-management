@@ -50,5 +50,4 @@ data:
   # replace '...' with json key from service account creation (encoded as base64)
   # see https://cloud.google.com/iam/docs/creating-managing-service-accounts
   serviceaccount.json: ...
-``` 
-
+```

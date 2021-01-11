@@ -33,7 +33,7 @@ var (
 	namespace      = "default"
 	dnsServer      = ""
 	dnsLookup      = true
-	compound       = false
+	dedicated      = false
 )
 
 func init() {
@@ -47,9 +47,9 @@ func init() {
 		dnsLookup = strings.ToLower(value) == "true"
 	}
 
-	value = os.Getenv("DNS_COMPOUND")
+	value = os.Getenv("DNS_DEDICATED")
 	if value != "" {
-		compound = strings.ToLower(value) == "true"
+		dedicated = strings.ToLower(value) == "true"
 	}
 
 	value = os.Getenv("DNS_SERVER")
@@ -151,7 +151,7 @@ func (c *Config) postProcess(namespace string) error {
 		names[provider.Name] = provider
 		provider.Namespace = namespace
 		if provider.FinalizerType == "" {
-			if compound {
+			if !dedicated {
 				provider.FinalizerType = "compound"
 			} else {
 				provider.FinalizerType = provider.Type
