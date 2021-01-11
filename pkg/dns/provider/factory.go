@@ -35,6 +35,7 @@ type Factory struct {
 	optionCreator         extension.OptionSourceCreator
 	genericDefaults       *GenericFactoryOptions
 	supportZoneStateCache bool
+	finalizers            utils.StringSet
 }
 
 var _ DNSHandlerFactory = &Factory{}
@@ -44,7 +45,10 @@ func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction, dis
 	for _, b := range disableZoneStateCache {
 		disable = disable || b
 	}
+	finalizers := utils.NewStringSet(controller.FinalizerName("dns.gardener.cloud", typecode),
+		controller.FinalizerName("dns.gardener.cloud", "compound"))
 	return &Factory{
+		finalizers:            finalizers,
 		typecode:              typecode,
 		create:                create,
 		supportZoneStateCache: !disable,
@@ -104,6 +108,10 @@ func (this *Factory) SupportZoneStateCache(typecode string) (bool, error) {
 		return this.supportZoneStateCache, nil
 	}
 	return false, fmt.Errorf("not responsible for %q", typecode)
+}
+
+func (this *Factory) Finalizers() utils.StringSet {
+	return this.finalizers.Copy()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
