@@ -17,9 +17,15 @@
 set -e
 
 
-# add full-fleshed tar
-apk update
-apk add --no-cache tar
+# add full-fleshed tar and helm
+BASE_URL="https://get.helm.sh"
+HELM_VERSION=v2.17.0
+TAR_FILE="helm-${HELM_VERSION}-linux-amd64.tar.gz"
+
+apk add --update --no-cache curl ca-certificates tar 
+curl -L ${BASE_URL}/${TAR_FILE} |tar xvz 
+mv linux-amd64/helm /usr/bin/helm 
+chmod +x /usr/bin/helm 
 
 
 if [[ -z "${SOURCE_PATH}" ]]; then
