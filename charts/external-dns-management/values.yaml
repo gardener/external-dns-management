@@ -33,6 +33,10 @@ affinity: {}
 
 createCRDs: true
 
+#serviceAccountAnnotations:
+#  annotkey1: annotvalue1
+#  annotkey2: annotvalue2
+
 configuration:
   # acceptedMaintainers: UNMANAGED
   # alicloudDNSCacheTtl: 120
