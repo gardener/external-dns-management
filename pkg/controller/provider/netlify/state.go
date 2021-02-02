@@ -34,6 +34,6 @@ func (r *Record) GetValue() string {
 	}
 	return r.Value
 }
-func (r *Record) GetTTL() int      { return int(r.TTL) } // The Netlify Record uses int64 for TTL
+func (r *Record) GetTTL() int      { return int(r.TTL) }  // The Netlify Record uses int64 for TTL
 func (r *Record) SetTTL(ttl int)   { r.TTL = int64(ttl) } // The Netlify Record uses int64 for TTL
 func (r *Record) Copy() raw.Record { n := *r; return &n }

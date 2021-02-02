@@ -12,7 +12,7 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  *
-*/
+ */
 
 package netlify
 
@@ -36,8 +36,8 @@ type Access interface {
 }
 
 type access struct {
-	client		operations.ClientService
-	authInfo	runtime.ClientAuthInfoWriter
+	client      operations.ClientService
+	authInfo    runtime.ClientAuthInfoWriter
 	metrics     provider.Metrics
 	rateLimiter flowcontrol.RateLimiter
 }
@@ -74,8 +74,9 @@ func (this *access) ListZones(consume func(zone models.DNSZone) (bool, error)) e
 func (this *access) ListRecords(zoneId string, consume func(record models.DNSRecord) (bool, error)) error {
 	this.metrics.AddRequests(provider.M_LISTRECORDS, 1)
 	this.rateLimiter.Accept()
-	params := operations.GetDNSRecordsParams{ZoneID: zoneId}
-	results, err := this.client.GetDNSRecords(&params, this.authInfo)
+	params := operations.NewGetDNSRecordsParams()
+	params.ZoneID = zoneId
+	results, err := this.client.GetDNSRecords(params, this.authInfo)
 	if err != nil {
 		return err
 	}
@@ -99,57 +100,31 @@ func (this *access) CreateRecord(r raw.Record) error {
 	}
 	this.metrics.AddRequests(provider.M_CREATERECORDS, 1)
 	this.rateLimiter.Accept()
-	params := operations.CreateDNSRecordParams{
-		ZoneID: a.DNSZoneID,
-		DNSRecord: &dnsRecord,
-	}
-	_, err := this.client.CreateDNSRecord(&params, this.authInfo)
+	createParams := operations.NewCreateDNSRecordParams()
+	createParams.SetZoneID(a.DNSZoneID)
+	createParams.SetDNSRecord(&dnsRecord)
+	_, err := this.client.CreateDNSRecord(createParams, this.authInfo)
 	return err
 }
 
 func (this *access) UpdateRecord(r raw.Record) error {
-	a := r.(*Record)
-	ttl := r.GetTTL()
-	testTTL(&ttl)
 	// Netlify does not support updating a record
 	// Delete the existing record and re-create it
-	deleteParams := operations.DeleteDNSRecordParams{
-		ZoneID: a.DNSZoneID,
-		DNSRecordID: a.ID,
-	}
-	// Update records is not atomic as it's made of delete + create
-	// We update the metrics before the delete is started
-	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
-	this.rateLimiter.Accept()
-	_, err := this.client.DeleteDNSRecord(&deleteParams, this.authInfo)
+	err := this.DeleteRecord(r)
 	if err != nil {
 		return err
 	}
-	dnsRecord := models.DNSRecordCreate{
-		Type:     r.GetType(),
-		Hostname: r.GetDNSName(),
-		Value:    r.GetValue(),
-		TTL:      int64(ttl),
-	}
-	params := operations.CreateDNSRecordParams{
-		ZoneID: a.DNSZoneID,
-		DNSRecord: &dnsRecord,
-	}
-	// We wait for a rate limiter slot for the second API call
-	this.rateLimiter.Accept()
-	_, err = this.client.CreateDNSRecord(&params, this.authInfo)
-	return err
+	return this.CreateRecord(r)
 }
 
 func (this *access) DeleteRecord(r raw.Record) error {
 	a := r.(*Record)
-	deleteParams := operations.DeleteDNSRecordParams{
-		ZoneID: a.DNSZoneID,
-		DNSRecordID: a.ID,
-	}
+	deleteParams := operations.NewDeleteDNSRecordParams()
+	deleteParams.SetZoneID(a.DNSZoneID)
+	deleteParams.SetDNSRecordID(a.ID)
 	this.metrics.AddRequests(provider.M_DELETERECORDS, 1)
 	this.rateLimiter.Accept()
-	_, err := this.client.DeleteDNSRecord(&deleteParams, this.authInfo)
+	_, err := this.client.DeleteDNSRecord(deleteParams, this.authInfo)
 	return err
 }
 
@@ -164,7 +139,7 @@ func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHosted
 }
 
 func testTTL(ttl *int) {
-	if *ttl < 120 {
+	if *ttl < 1 {
 		*ttl = 1
 	}
 }

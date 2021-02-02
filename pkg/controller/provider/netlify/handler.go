@@ -19,8 +19,8 @@ package netlify
 import (
 	"strings"
 
-	"github.com/netlify/open-api/go/models"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/netlify/open-api/go/models"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -44,7 +44,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		config:            *c,
 	}
 
-	apiToken, err := c.GetRequiredProperty("NETLIFY_API_TOKEN", "apiToken")
+	apiToken, err := c.GetRequiredProperty("NETLIFY_AUTH_TOKEN", "NETLIFY_API_TOKEN")
 	if err != nil {
 		return nil, err
 	}
