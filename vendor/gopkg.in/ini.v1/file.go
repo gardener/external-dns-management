@@ -48,6 +48,9 @@ func newFile(dataSources []dataSource, opts LoadOptions) *File {
 	if len(opts.KeyValueDelimiters) == 0 {
 		opts.KeyValueDelimiters = "=:"
 	}
+	if len(opts.KeyValueDelimiterOnWrite) == 0 {
+		opts.KeyValueDelimiterOnWrite = "="
+	}
 	return &File{
 		BlockMode:   true,
 		dataSources: dataSources,
@@ -68,7 +71,7 @@ func Empty() *File {
 func (f *File) NewSection(name string) (*Section, error) {
 	if len(name) == 0 {
 		return nil, errors.New("error creating new section: empty section name")
-	} else if f.options.Insensitive && name != DEFAULT_SECTION {
+	} else if f.options.Insensitive && name != DefaultSection {
 		name = strings.ToLower(name)
 	}
 
@@ -111,7 +114,7 @@ func (f *File) NewSections(names ...string) (err error) {
 // GetSection returns section by given name.
 func (f *File) GetSection(name string) (*Section, error) {
 	if len(name) == 0 {
-		name = DEFAULT_SECTION
+		name = DefaultSection
 	}
 	if f.options.Insensitive {
 		name = strings.ToLower(name)
@@ -141,7 +144,7 @@ func (f *File) Section(name string) *Section {
 	return sec
 }
 
-// Section returns list of Section.
+// Sections returns a list of Section stored in the current instance.
 func (f *File) Sections() []*Section {
 	if f.BlockMode {
 		f.lock.RLock()
@@ -175,7 +178,7 @@ func (f *File) DeleteSection(name string) {
 	}
 
 	if len(name) == 0 {
-		name = DEFAULT_SECTION
+		name = DefaultSection
 	}
 
 	for i, s := range f.sectionList {
@@ -230,10 +233,10 @@ func (f *File) Append(source interface{}, others ...interface{}) error {
 }
 
 func (f *File) writeToBuffer(indent string) (*bytes.Buffer, error) {
-	equalSign := DefaultFormatLeft + "=" + DefaultFormatRight
+	equalSign := DefaultFormatLeft + f.options.KeyValueDelimiterOnWrite + DefaultFormatRight
 
 	if PrettyFormat || PrettyEqual {
-		equalSign = " = "
+		equalSign = fmt.Sprintf(" %s ", f.options.KeyValueDelimiterOnWrite)
 	}
 
 	// Use buffer to make sure target is safe until finish encoding.
@@ -302,11 +305,11 @@ func (f *File) writeToBuffer(indent string) (*bytes.Buffer, error) {
 		}
 		alignSpaces := bytes.Repeat([]byte(" "), alignLength)
 
-	KEY_LIST:
+	KeyList:
 		for _, kname := range sec.keyList {
 			key := sec.Key(kname)
 			if len(key.Comment) > 0 {
-				if len(indent) > 0 && sname != DEFAULT_SECTION {
+				if len(indent) > 0 && sname != DefaultSection {
 					buf.WriteString(indent)
 				}
 
@@ -325,7 +328,7 @@ func (f *File) writeToBuffer(indent string) (*bytes.Buffer, error) {
 				}
 			}
 
-			if len(indent) > 0 && sname != DEFAULT_SECTION {
+			if len(indent) > 0 && sname != DefaultSection {
 				buf.WriteString(indent)
 			}
 
@@ -347,7 +350,7 @@ func (f *File) writeToBuffer(indent string) (*bytes.Buffer, error) {
 					if kname != sec.keyList[len(sec.keyList)-1] {
 						buf.WriteString(LineBreak)
 					}
-					continue KEY_LIST
+					continue KeyList
 				}
 
 				// Write out alignment spaces before "=" sign

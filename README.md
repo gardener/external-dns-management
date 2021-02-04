@@ -11,6 +11,7 @@ It contains provisioning controllers for creating DNS records in one of the DNS 
   - _OpenStack Designate_,
   - [_Cloudflare DNS_](/docs/cloudflare/README.md),
   - [_Infoblox_](/docs/infoblox/README.md),
+  - [_Netlify DNS_](docs/netlify/README.md),
 
 and source controllers for services and ingresses to create DNS entries by annotations.
 
@@ -369,6 +370,7 @@ Here the following controller groups can be used:
   - `google-clouddns`:
   - `openstack-designate`:
   - `cloudflare-dns`
+  - `netlify-dns`
 
 - `all`: (default) all controllers
 
@@ -597,6 +599,29 @@ Flags:
       --name string                                                 name used for controller manager (default "dns-controller-manager")
       --namespace string                                            namespace for lease (default "kube-system")
   -n, --namespace-local-access-only                                 enable access restriction for namespace local access only (deprecated)
+      --netlify-dns.cache-dir string                                Directory to store zone caches (for reload after restart) of controller netlify-dns
+      --netlify-dns.cache-ttl int                                   Time-to-live for provider hosted zone cache of controller netlify-dns (default 120)
+      --netlify-dns.default.pool.size int                           Worker pool size for pool default of controller netlify-dns (default 2)
+      --netlify-dns.disable-zone-state-caching                      disable use of cached dns zone state on changes of controller netlify-dns
+      --netlify-dns.dns-class string                                Class identifier used to differentiate responsible controllers for entry resources of controller netlify-dns (default "gardendns")
+      --netlify-dns.dns-delay duration                              delay between two dns reconciliations of controller netlify-dns (default 10s)
+      --netlify-dns.dns.pool.resync-period duration                 Period for resynchronization for pool dns of controller netlify-dns (default 15m0s)
+      --netlify-dns.dns.pool.size int                               Worker pool size for pool dns of controller netlify-dns (default 1)
+      --netlify-dns.dry-run                                         just check, don't modify of controller netlify-dns
+      --netlify-dns.identifier string                                Identifier used to mark DNS entries in DNS system of controller netlify-dns (default "dnscontroller")
+      --netlify-dns.ownerids.pool.size int                          Worker pool size for pool ownerids of controller netlify-dns (default 1)
+      --netlify-dns.pool.resync-period duration                     Period for resynchronization of controller netlify-dns
+      --netlify-dns.pool.size int                                   Worker pool size of controller netlify-dns
+      --netlify-dns.providers.pool.resync-period duration           Period for resynchronization for pool providers of controller netlify-dns (default 10m0s)
+      --netlify-dns.providers.pool.size int                         Worker pool size for pool providers of controller netlify-dns (default 2)
+      --netlify-dns.ratelimiter.burst int                           number of burst requests for rate limiter of controller netlify-dns
+      --netlify-dns.ratelimiter.enabled                             enables rate limiter for DNS provider requests of controller netlify-dns
+      --netlify-dns.ratelimiter.qps int                             maximum requests/queries per second of controller netlify-dns
+      --netlify-dns.reschedule-delay duration                       reschedule delay after losing provider of controller netlify-dns (default 2m0s)
+      --netlify-dns.secrets.pool.size int                           Worker pool size for pool secrets of controller netlify-dns (default 2)
+      --netlify-dns.setup int                                       number of processors for controller setup of controller netlify-dns (default 10)
+      --netlify-dns.statistic.pool.size int                         Worker pool size for pool statistic of controller netlify-dns (default 1)
+      --netlify-dns.ttl int                                         Default time-to-live for DNS entries of controller netlify-dns (default 300)
       --omit-lease                                                  omit lease for development
       --openstack-designate.cache-dir string                        Directory to store zone caches (for reload after restart) of controller openstack-designate
       --openstack-designate.cache-ttl int                           Time-to-live for provider hosted zone cache of controller openstack-designate (default 120)
@@ -887,6 +912,7 @@ import (
     _ "github.com/gardener/external-dns-management/pkg/controller/provider/google"
     _ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
     _ "github.com/gardener/external-dns-management/pkg/controller/provider/cloudflare"
+    _ "github.com/gardener/external-dns-management/pkg/controller/provider/netlify"
 
     _ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
     _ "github.com/gardener/external-dns-management/pkg/controller/source/service"

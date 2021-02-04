@@ -1,0 +1,13 @@
+# For details see https://github.com/gardener/external-dns-management/blob/master/docs/netlify/README.md
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: netlify
+  namespace: default
+spec:
+  type: netlify-dns
+  secretRef:
+    name: netlify-credentials
+  domains:
+    include:
+    - my.own.domain.com
