@@ -5,7 +5,7 @@ replicaCount: 1
 
 image:
   repository: eu.gcr.io/gardener-project/dns-controller-manager
-  tag: v0.7.23-master
+  tag: v0.8.0-master
   pullPolicy: IfNotPresent
 
 env: []
@@ -39,99 +39,71 @@ createCRDs: true
 
 configuration:
   # acceptedMaintainers: UNMANAGED
-  # alicloudDNSCacheTtl: 120
-  # alicloudDNSDefaultPoolSize: 2
-  # alicloudDNSDisableZoneStateCaching: false
-  # alicloudDNSDnsClass: "gardendns"
-  # alicloudDNSDnsDelay: 10s
-  # alicloudDNSDnsPoolResyncPeriod: 30s
-  # alicloudDNSDnsPoolSize: 1
-  # alicloudDNSDryRun: false
-  # alicloudDNSIdentifier: ""
-  # alicloudDNSOwneridsPoolSize: 1
-  # alicloudDNSPoolResyncPeriod:
-  # alicloudDNSPoolSize:
-  # alicloudDNSProvidersPoolResyncPeriod: 30s
-  # alicloudDNSProvidersPoolSize: 2
   # alicloudDNSRatelimiterBurst:
   # alicloudDNSRatelimiterEnabled:
   # alicloudDNSRatelimiterQps:
-  # alicloudDNSRescheduleDelay: 120s
-  # alicloudDNSSecretsPoolSize: 2
-  # alicloudDNSSetup: 10
-  # alicloudDNSStatisticPoolSize:
-  # alicloudDNSTtl: 120
   # annotationDefaultPoolSize:
   # annotationPoolSize:
   # annotationSetup:
-  # awsRoute53CacheTtl: 120
-  # awsRoute53DefaultPoolSize: 2
-  # awsRoute53DisableZoneStateCaching: false
-  # awsRoute53DnsClass: "gardendns"
-  # awsRoute53DnsDelay: 10s
-  # awsRoute53DnsPoolResyncPeriod: 30s
-  # awsRoute53DnsPoolSize: 1
-  # awsRoute53DryRun: false
-  # awsRoute53Identifier: ""
-  # awsRoute53OwneridsPoolSize: 1
-  # awsRoute53PoolResyncPeriod:
-  # awsRoute53PoolSize:
-  # awsRoute53ProvidersPoolResyncPeriod: 30s
-  # awsRoute53ProvidersPoolSize: 2
   # awsRoute53RatelimiterBurst:
   # awsRoute53RatelimiterEnabled:
   # awsRoute53RatelimiterQps:
-  # awsRoute53RescheduleDelay: 120s
-  # awsRoute53SecretsPoolSize: 2
-  # awsRoute53Setup: 10
-  # awsRoute53StatisticPoolSize:
-  # awsRoute53Ttl: 120
-  # azureDNSCacheTtl: 120
-  # azureDNSDefaultPoolSize: 2
-  # azureDNSDisableZoneStateCaching: false
-  # azureDNSDnsClass: "gardendns"
-  # azureDNSDnsDelay: 10s
-  # azureDNSDnsPoolResyncPeriod: 30s
-  # azureDNSDnsPoolSize: 1
-  # azureDNSDryRun: false
-  # azureDNSIdentifier: ""
-  # azureDNSOwneridsPoolSize: 1
-  # azureDNSPoolResyncPeriod:
-  # azureDNSPoolSize:
-  # azureDNSProvidersPoolResyncPeriod: 30s
-  # azureDNSProvidersPoolSize: 2
   # azureDNSRatelimiterBurst:
   # azureDNSRatelimiterEnabled:
   # azureDNSRatelimiterQps:
-  # azureDNSRescheduleDelay: 120s
-  # azureDNSSecretsPoolSize: 2
-  # azureDNSSetup: 10
-  # azureDNSStatisticPoolSize:
-  # azureDNSTtl: 120
   # bindAddressHttp:
   # cacheTtl: 120
-  # cloudflareDNSCacheTtl: 120
-  # cloudflareDNSDefaultPoolSize: 2
-  # cloudflareDNSDisableZoneStateCaching: false
-  # cloudflareDNSDnsClass: "gardendns"
-  # cloudflareDNSDnsDelay: 10s
-  # cloudflareDNSDnsPoolResyncPeriod: 30s
-  # cloudflareDNSDnsPoolSize: 1
-  # cloudflareDNSDryRun: false
-  # cloudflareDNSIdentifier: ""
-  # cloudflareDNSOwneridsPoolSize: 1
-  # cloudflareDNSPoolResyncPeriod:
-  # cloudflareDNSPoolSize:
-  # cloudflareDNSProvidersPoolResyncPeriod: 30s
-  # cloudflareDNSProvidersPoolSize: 2
   # cloudflareDNSRatelimiterBurst:
   # cloudflareDNSRatelimiterEnabled:
   # cloudflareDNSRatelimiterQps:
-  # cloudflareDNSRescheduleDelay: 120s
-  # cloudflareDNSSecretsPoolSize: 2
-  # cloudflareDNSSetup: 10
-  # cloudflareDNSStatisticPoolSize:
-  # cloudflareDNSTtl: 120
+  # compoundAlicloudDnsRatelimiterBurst:
+  # compoundAlicloudDnsRatelimiterEnabled:
+  # compoundAlicloudDnsRatelimiterQps:
+  # compoundAwsRoute53RatelimiterBurst:
+  # compoundAwsRoute53RatelimiterEnabled:
+  # compoundAwsRoute53RatelimiterQps:
+  # compoundAzureDnsRatelimiterBurst:
+  # compoundAzureDnsRatelimiterEnabled:
+  # compoundAzureDnsRatelimiterQps:
+  # compoundCacheDir:
+  # compoundCacheTtl: 120
+  # compoundCloudflareDnsRatelimiterBurst:
+  # compoundCloudflareDnsRatelimiterEnabled:
+  # compoundCloudflareDnsRatelimiterQps:
+  # compoundDefaultPoolSize: 2
+  # compoundDisableZoneStateCaching: false
+  # compoundDnsClass: "gardendns"
+  # compoundDnsDelay: 10s
+  # compoundDnsPoolResyncPeriod: 30s
+  # compoundDnsPoolSize: 1
+  # compoundDryRun: false
+  # compoundGoogleClouddnsRatelimiterBurst:
+  # compoundGoogleClouddnsRatelimiterEnabled:
+  # compoundGoogleClouddnsRatelimiterQps:
+  # compoundIdentifier: ""
+  # compoundInfobloxDnsRatelimiterBurst:
+  # compoundInfobloxDnsRatelimiterEnabled:
+  # compoundInfobloxDnsRatelimiterQps:
+  # compoundNetlifyDnsRatelimiterBurst:
+  # compoundNetlifyDnsRatelimiterEnabled:
+  # compoundNetlifyDnsRatelimiterQps:
+  # compoundOpenstackDesignateRatelimiterBurst:
+  # compoundOpenstackDesignateRatelimiterEnabled:
+  # compoundOpenstackDesignateRatelimiterQps:
+  # compoundOwneridsPoolSize: 1
+  # compoundPoolResyncPeriod:
+  # compoundPoolSize:
+  # compoundProviderTypes:
+  # compoundProvidersPoolResyncPeriod: 30s
+  # compoundProvidersPoolSize: 2
+  # compoundRatelimiterBurst:
+  # compoundRatelimiterEnabled:
+  # compoundRatelimiterQps:
+  # compoundRescheduleDelay: 120s
+  # compoundSecretsPoolSize: 2
+  # compoundSetup: 10
+  # compoundStatisticPoolSize:
+  # compoundTtl: 120
   # config:
   controllers: all
   # cpuprofile: ""
@@ -162,51 +134,13 @@ configuration:
   # dnsentrySourceTargetsPoolSize: 2
   # excludeDomains: google.com
   # forceCrdUpdate: false
-  # googleCloudDNSCacheTtl: 120
-  # googleCloudDNSDefaultPoolSize: 2
-  # googleCloudDNSDisableZoneStateCaching: false
-  # googleCloudDNSDnsClass: "gardendns"
-  # googleCloudDNSDnsDelay: 10s
-  # googleCloudDNSDnsPoolResyncPeriod: 30s
-  # googleCloudDNSDnsPoolSize: 1
-  # googleCloudDNSDryRun: false
-  # googleCloudDNSIdentifier: ""
-  # googleCloudDNSOwneridsPoolSize: 1
-  # googleCloudDNSPoolResyncPeriod:
-  # googleCloudDNSPoolSize:
-  # googleCloudDNSProvidersPoolResyncPeriod: 30s
-  # googleCloudDNSProvidersPoolSize: 2
   # googleCloudDNSRatelimiterBurst:
   # googleCloudDNSRatelimiterEnabled:
   # googleCloudDNSRatelimiterQps:
-  # googleCloudDNSRescheduleDelay: 120s
-  # googleCloudDNSSecretsPoolSize: 2
-  # googleCloudDNSSetup: 10
-  # googleCloudDNSStatisticPoolSize:
-  # googleCloudDNSTtl: 120
   # gracePeriod: 0
-  # infobloxDNSCacheTtl: 120
-  # infobloxDNSDefaultPoolSize: 2
-  # infobloxDNSDisableZoneStateCaching: false
-  # infobloxDNSDnsClass: "gardendns"
-  # infobloxDNSDnsDelay: 10s
-  # infobloxDNSDnsPoolResyncPeriod: 30s
-  # infobloxDNSDnsPoolSize: 1
-  # infobloxDNSDryRun: false
-  # infobloxDNSIdentifier: ""
-  # infobloxDNSOwneridsPoolSize: 1
-  # infobloxDNSPoolResyncPeriod:
-  # infobloxDNSPoolSize:
-  # infobloxDNSProvidersPoolResyncPeriod: 30s
-  # infobloxDNSProvidersPoolSize: 2
   # infobloxDNSRatelimiterBurst:
   # infobloxDNSRatelimiterEnabled:
   # infobloxDNSRatelimiterQps:
-  # infobloxDNSRescheduleDelay: 120s
-  # infobloxDNSSecretsPoolSize: 2
-  # infobloxDNSSetup: 10
-  # infobloxDNSStatisticPoolSize:
-  # infobloxDNSTtl: 120
   # ingressDNSDefaultPoolResyncPeriod: 30s
   # ingressDNSDefaultPoolSize: 2
   # ingressDNSDnsClass: "gardendns"
@@ -259,28 +193,9 @@ configuration:
   # netlifyDNSStatisticPoolSize:
   # netlifyDNSTtl: 120
   # omitLease: false
-  # openstackDesignateCacheTtl: 120
-  # openstackDesignateDefaultPoolSize: 2
-  # openstackDesignateDisableZoneStateCaching: false
-  # openstackDesignateDnsClass: "gardendns"
-  # openstackDesignateDnsDelay: 10s
-  # openstackDesignateDnsPoolResyncPeriod: 30s
-  # openstackDesignateDnsPoolSize: 1
-  # openstackDesignateDryRun: false
-  # openstackDesignateIdentifier: ""
-  # openstackDesignateOwneridsPoolSize: 1
-  # openstackDesignatePoolResyncPeriod:
-  # openstackDesignatePoolSize:
-  # openstackDesignateProvidersPoolResyncPeriod: 30s
-  # openstackDesignateProvidersPoolSize: 2
   # openstackDesignateRatelimiterBurst:
   # openstackDesignateRatelimiterEnabled:
   # openstackDesignateRatelimiterQps:
-  # openstackDesignateRescheduleDelay:
-  # openstackDesignateSecretsPoolSize: 2
-  # openstackDesignateSetup: 10
-  # openstackDesignateStatisticPoolSize:
-  # openstackDesignateTtl: 120
   # owneridsPoolSize:
   persistentCache: false
   persistentCacheStorageSize: 1Gi
@@ -288,6 +203,7 @@ configuration:
   # pluginFile:
   # poolResyncPeriod: 30s
   # poolSize: 2
+  # providerTypes: ""
   # providers: ""
   # providersDisableDeployCrds: false
   # providersId: ""

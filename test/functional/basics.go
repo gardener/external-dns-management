@@ -298,7 +298,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 					}),
 					"status": MatchKeys(IgnoreExtras, Keys{
 						"state":   Equal("Error"),
-						"message": ContainSubstring("no matching provider for zone"),
+						"message": Or(ContainSubstring("no matching provider"), ContainSubstring("No responsible provider found")),
 					}),
 				}),
 			}))

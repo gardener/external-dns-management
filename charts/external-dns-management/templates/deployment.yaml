@@ -59,48 +59,6 @@ spec:
         {{- if .Values.configuration.acceptedMaintainers }}
         - --accepted-maintainers={{ .Values.configuration.acceptedMaintainers }}
         {{- end }}
-        {{- if .Values.configuration.alicloudDNSCacheTtl }}
-        - --alicloud-dns.cache-ttl={{ .Values.configuration.alicloudDNSCacheTtl }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSDefaultPoolSize }}
-        - --alicloud-dns.default.pool.size={{ .Values.configuration.alicloudDNSDefaultPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSDisableZoneStateCaching }}
-        - --alicloud-dns.disable-zone-state-caching={{ .Values.configuration.alicloudDNSDisableZoneStateCaching }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSDnsClass }}
-        - --alicloud-dns.dns-class={{ .Values.configuration.alicloudDNSDnsClass }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSDnsDelay }}
-        - --alicloud-dns.dns-delay={{ .Values.configuration.alicloudDNSDnsDelay }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSDnsPoolResyncPeriod }}
-        - --alicloud-dns.dns.pool.resync-period={{ .Values.configuration.alicloudDNSDnsPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSDnsPoolSize }}
-        - --alicloud-dns.dns.pool.size={{ .Values.configuration.alicloudDNSDnsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSDryRun }}
-        - --alicloud-dns.dry-run={{ .Values.configuration.alicloudDNSDryRun }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSIdentifier }}
-        - --alicloud-dns.identifier={{ .Values.configuration.alicloudDNSIdentifier }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSOwneridsPoolSize }}
-        - --alicloud-dns.ownerids.pool.size={{ .Values.configuration.alicloudDNSOwneridsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSPoolResyncPeriod }}
-        - --alicloud-dns.pool.resync-period={{ .Values.configuration.alicloudDNSPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSPoolSize }}
-        - --alicloud-dns.pool.size={{ .Values.configuration.alicloudDNSPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSProvidersPoolResyncPeriod }}
-        - --alicloud-dns.providers.pool.resync-period={{ .Values.configuration.alicloudDNSProvidersPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSProvidersPoolSize }}
-        - --alicloud-dns.providers.pool.size={{ .Values.configuration.alicloudDNSProvidersPoolSize }}
-        {{- end }}
         {{- if .Values.configuration.alicloudDNSRatelimiterBurst }}
         - --alicloud-dns.ratelimiter.burst={{ .Values.configuration.alicloudDNSRatelimiterBurst }}
         {{- end }}
@@ -109,21 +67,6 @@ spec:
         {{- end }}
         {{- if .Values.configuration.alicloudDNSRatelimiterQps }}
         - --alicloud-dns.ratelimiter.qps={{ .Values.configuration.alicloudDNSRatelimiterQps }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSRescheduleDelay }}
-        - --alicloud-dns.reschedule-delay={{ .Values.configuration.alicloudDNSRescheduleDelay }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSSecretsPoolSize }}
-        - --alicloud-dns.secrets.pool.size={{ .Values.configuration.alicloudDNSSecretsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSSetup }}
-        - --alicloud-dns.setup={{ .Values.configuration.alicloudDNSSetup }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSStatisticPoolSize }}
-        - --alicloud-dns.statistic.pool.size={{ .Values.configuration.alicloudDNSStatisticPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.alicloudDNSTtl }}
-        - --alicloud-dns.ttl={{ .Values.configuration.alicloudDNSTtl }}
         {{- end }}
         {{- if .Values.configuration.annotationDefaultPoolSize }}
         - --annotation.default.pool.size={{ .Values.configuration.annotationDefaultPoolSize }}
@@ -134,48 +77,6 @@ spec:
         {{- if .Values.configuration.annotationSetup }}
         - --annotation.setup={{ .Values.configuration.annotationSetup }}
         {{- end }}
-        {{- if .Values.configuration.awsRoute53CacheTtl }}
-        - --aws-route53.cache-ttl={{ .Values.configuration.awsRoute53CacheTtl }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53DefaultPoolSize }}
-        - --aws-route53.default.pool.size={{ .Values.configuration.awsRoute53DefaultPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53DisableZoneStateCaching }}
-        - --aws-route53.disable-zone-state-caching={{ .Values.configuration.awsRoute53DisableZoneStateCaching }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53DnsClass }}
-        - --aws-route53.dns-class={{ .Values.configuration.awsRoute53DnsClass }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53DnsDelay }}
-        - --aws-route53.dns-delay={{ .Values.configuration.awsRoute53DnsDelay }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53DnsPoolResyncPeriod }}
-        - --aws-route53.dns.pool.resync-period={{ .Values.configuration.awsRoute53DnsPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53DnsPoolSize }}
-        - --aws-route53.dns.pool.size={{ .Values.configuration.awsRoute53DnsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53DryRun }}
-        - --aws-route53.dry-run={{ .Values.configuration.awsRoute53DryRun }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53Identifier }}
-        - --aws-route53.identifier={{ .Values.configuration.awsRoute53Identifier }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53OwneridsPoolSize }}
-        - --aws-route53.ownerids.pool.size={{ .Values.configuration.awsRoute53OwneridsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53PoolResyncPeriod }}
-        - --aws-route53.pool.resync-period={{ .Values.configuration.awsRoute53PoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53PoolSize }}
-        - --aws-route53.pool.size={{ .Values.configuration.awsRoute53PoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53ProvidersPoolResyncPeriod }}
-        - --aws-route53.providers.pool.resync-period={{ .Values.configuration.awsRoute53ProvidersPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53ProvidersPoolSize }}
-        - --aws-route53.providers.pool.size={{ .Values.configuration.awsRoute53ProvidersPoolSize }}
-        {{- end }}
         {{- if .Values.configuration.awsRoute53RatelimiterBurst }}
         - --aws-route53.ratelimiter.burst={{ .Values.configuration.awsRoute53RatelimiterBurst }}
         {{- end }}
@@ -184,63 +85,6 @@ spec:
         {{- end }}
         {{- if .Values.configuration.awsRoute53RatelimiterQps }}
         - --aws-route53.ratelimiter.qps={{ .Values.configuration.awsRoute53RatelimiterQps }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53RescheduleDelay }}
-        - --aws-route53.reschedule-delay={{ .Values.configuration.awsRoute53RescheduleDelay }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53SecretsPoolSize }}
-        - --aws-route53.secrets.pool.size={{ .Values.configuration.awsRoute53SecretsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53Setup }}
-        - --aws-route53.setup={{ .Values.configuration.awsRoute53Setup }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53StatisticPoolSize }}
-        - --aws-route53.statistic.pool.size={{ .Values.configuration.awsRoute53StatisticPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.awsRoute53Ttl }}
-        - --aws-route53.ttl={{ .Values.configuration.awsRoute53Ttl }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSCacheTtl }}
-        - --azure-dns.cache-ttl={{ .Values.configuration.azureDNSCacheTtl }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSDefaultPoolSize }}
-        - --azure-dns.default.pool.size={{ .Values.configuration.azureDNSDefaultPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSDisableZoneStateCaching }}
-        - --azure-dns.disable-zone-state-caching={{ .Values.configuration.azureDNSDisableZoneStateCaching }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSDnsClass }}
-        - --azure-dns.dns-class={{ .Values.configuration.azureDNSDnsClass }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSDnsDelay }}
-        - --azure-dns.dns-delay={{ .Values.configuration.azureDNSDnsDelay }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSDnsPoolResyncPeriod }}
-        - --azure-dns.dns.pool.resync-period={{ .Values.configuration.azureDNSDnsPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSDnsPoolSize }}
-        - --azure-dns.dns.pool.size={{ .Values.configuration.azureDNSDnsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSDryRun }}
-        - --azure-dns.dry-run={{ .Values.configuration.azureDNSDryRun }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSIdentifier }}
-        - --azure-dns.identifier={{ .Values.configuration.azureDNSIdentifier }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSOwneridsPoolSize }}
-        - --azure-dns.ownerids.pool.size={{ .Values.configuration.azureDNSOwneridsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSPoolResyncPeriod }}
-        - --azure-dns.pool.resync-period={{ .Values.configuration.azureDNSPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSPoolSize }}
-        - --azure-dns.pool.size={{ .Values.configuration.azureDNSPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSProvidersPoolResyncPeriod }}
-        - --azure-dns.providers.pool.resync-period={{ .Values.configuration.azureDNSProvidersPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSProvidersPoolSize }}
-        - --azure-dns.providers.pool.size={{ .Values.configuration.azureDNSProvidersPoolSize }}
         {{- end }}
         {{- if .Values.configuration.azureDNSRatelimiterBurst }}
         - --azure-dns.ratelimiter.burst={{ .Values.configuration.azureDNSRatelimiterBurst }}
@@ -251,68 +95,11 @@ spec:
         {{- if .Values.configuration.azureDNSRatelimiterQps }}
         - --azure-dns.ratelimiter.qps={{ .Values.configuration.azureDNSRatelimiterQps }}
         {{- end }}
-        {{- if .Values.configuration.azureDNSRescheduleDelay }}
-        - --azure-dns.reschedule-delay={{ .Values.configuration.azureDNSRescheduleDelay }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSSecretsPoolSize }}
-        - --azure-dns.secrets.pool.size={{ .Values.configuration.azureDNSSecretsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSSetup }}
-        - --azure-dns.setup={{ .Values.configuration.azureDNSSetup }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSStatisticPoolSize }}
-        - --azure-dns.statistic.pool.size={{ .Values.configuration.azureDNSStatisticPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.azureDNSTtl }}
-        - --azure-dns.ttl={{ .Values.configuration.azureDNSTtl }}
-        {{- end }}
         {{- if .Values.configuration.bindAddressHttp }}
         - --bind-address-http={{ .Values.configuration.bindAddressHttp }}
         {{- end }}
         {{- if .Values.configuration.cacheTtl }}
         - --cache-ttl={{ .Values.configuration.cacheTtl }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSCacheTtl }}
-        - --cloudflare-dns.cache-ttl={{ .Values.configuration.cloudflareDNSCacheTtl }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSDefaultPoolSize }}
-        - --cloudflare-dns.default.pool.size={{ .Values.configuration.cloudflareDNSDefaultPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSDisableZoneStateCaching }}
-        - --cloudflare-dns.disable-zone-state-caching={{ .Values.configuration.cloudflareDNSDisableZoneStateCaching }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSDnsClass }}
-        - --cloudflare-dns.dns-class={{ .Values.configuration.cloudflareDNSDnsClass }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSDnsDelay }}
-        - --cloudflare-dns.dns-delay={{ .Values.configuration.cloudflareDNSDnsDelay }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSDnsPoolResyncPeriod }}
-        - --cloudflare-dns.dns.pool.resync-period={{ .Values.configuration.cloudflareDNSDnsPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSDnsPoolSize }}
-        - --cloudflare-dns.dns.pool.size={{ .Values.configuration.cloudflareDNSDnsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSDryRun }}
-        - --cloudflare-dns.dry-run={{ .Values.configuration.cloudflareDNSDryRun }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSIdentifier }}
-        - --cloudflare-dns.identifier={{ .Values.configuration.cloudflareDNSIdentifier }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSOwneridsPoolSize }}
-        - --cloudflare-dns.ownerids.pool.size={{ .Values.configuration.cloudflareDNSOwneridsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSPoolResyncPeriod }}
-        - --cloudflare-dns.pool.resync-period={{ .Values.configuration.cloudflareDNSPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSPoolSize }}
-        - --cloudflare-dns.pool.size={{ .Values.configuration.cloudflareDNSPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSProvidersPoolResyncPeriod }}
-        - --cloudflare-dns.providers.pool.resync-period={{ .Values.configuration.cloudflareDNSProvidersPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.cloudflareDNSProvidersPoolSize }}
-        - --cloudflare-dns.providers.pool.size={{ .Values.configuration.cloudflareDNSProvidersPoolSize }}
         {{- end }}
         {{- if .Values.configuration.cloudflareDNSRatelimiterBurst }}
         - --cloudflare-dns.ratelimiter.burst={{ .Values.configuration.cloudflareDNSRatelimiterBurst }}
@@ -323,20 +110,149 @@ spec:
         {{- if .Values.configuration.cloudflareDNSRatelimiterQps }}
         - --cloudflare-dns.ratelimiter.qps={{ .Values.configuration.cloudflareDNSRatelimiterQps }}
         {{- end }}
-        {{- if .Values.configuration.cloudflareDNSRescheduleDelay }}
-        - --cloudflare-dns.reschedule-delay={{ .Values.configuration.cloudflareDNSRescheduleDelay }}
+        {{- if .Values.configuration.compoundAlicloudDnsRatelimiterBurst }}
+        - --compound.alicloud-dns.ratelimiter.burst={{ .Values.configuration.compoundAlicloudDnsRatelimiterBurst }}
         {{- end }}
-        {{- if .Values.configuration.cloudflareDNSSecretsPoolSize }}
-        - --cloudflare-dns.secrets.pool.size={{ .Values.configuration.cloudflareDNSSecretsPoolSize }}
+        {{- if .Values.configuration.compoundAlicloudDnsRatelimiterEnabled }}
+        - --compound.alicloud-dns.ratelimiter.enabled={{ .Values.configuration.compoundAlicloudDnsRatelimiterEnabled }}
         {{- end }}
-        {{- if .Values.configuration.cloudflareDNSSetup }}
-        - --cloudflare-dns.setup={{ .Values.configuration.cloudflareDNSSetup }}
+        {{- if .Values.configuration.compoundAlicloudDnsRatelimiterQps }}
+        - --compound.alicloud-dns.ratelimiter.qps={{ .Values.configuration.compoundAlicloudDnsRatelimiterQps }}
         {{- end }}
-        {{- if .Values.configuration.cloudflareDNSStatisticPoolSize }}
-        - --cloudflare-dns.statistic.pool.size={{ .Values.configuration.cloudflareDNSStatisticPoolSize }}
+        {{- if .Values.configuration.compoundAwsRoute53RatelimiterBurst }}
+        - --compound.aws-route53.ratelimiter.burst={{ .Values.configuration.compoundAwsRoute53RatelimiterBurst }}
         {{- end }}
-        {{- if .Values.configuration.cloudflareDNSTtl }}
-        - --cloudflare-dns.ttl={{ .Values.configuration.cloudflareDNSTtl }}
+        {{- if .Values.configuration.compoundAwsRoute53RatelimiterEnabled }}
+        - --compound.aws-route53.ratelimiter.enabled={{ .Values.configuration.compoundAwsRoute53RatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAwsRoute53RatelimiterQps }}
+        - --compound.aws-route53.ratelimiter.qps={{ .Values.configuration.compoundAwsRoute53RatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAzureDnsRatelimiterBurst }}
+        - --compound.azure-dns.ratelimiter.burst={{ .Values.configuration.compoundAzureDnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAzureDnsRatelimiterEnabled }}
+        - --compound.azure-dns.ratelimiter.enabled={{ .Values.configuration.compoundAzureDnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAzureDnsRatelimiterQps }}
+        - --compound.azure-dns.ratelimiter.qps={{ .Values.configuration.compoundAzureDnsRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundCacheDir }}
+        - --compound.cache-dir={{ .Values.configuration.compoundCacheDir }}
+        {{- end }}
+        {{- if .Values.configuration.compoundCacheTtl }}
+        - --compound.cache-ttl={{ .Values.configuration.compoundCacheTtl }}
+        {{- end }}
+        {{- if .Values.configuration.compoundCloudflareDnsRatelimiterBurst }}
+        - --compound.cloudflare-dns.ratelimiter.burst={{ .Values.configuration.compoundCloudflareDnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundCloudflareDnsRatelimiterEnabled }}
+        - --compound.cloudflare-dns.ratelimiter.enabled={{ .Values.configuration.compoundCloudflareDnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundCloudflareDnsRatelimiterQps }}
+        - --compound.cloudflare-dns.ratelimiter.qps={{ .Values.configuration.compoundCloudflareDnsRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundDefaultPoolSize }}
+        - --compound.default.pool.size={{ .Values.configuration.compoundDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundDisableZoneStateCaching }}
+        - --compound.disable-zone-state-caching={{ .Values.configuration.compoundDisableZoneStateCaching }}
+        {{- end }}
+        {{- if .Values.configuration.compoundDnsClass }}
+        - --compound.dns-class={{ .Values.configuration.compoundDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.compoundDnsDelay }}
+        - --compound.dns-delay={{ .Values.configuration.compoundDnsDelay }}
+        {{- end }}
+        {{- if .Values.configuration.compoundDnsPoolResyncPeriod }}
+        - --compound.dns.pool.resync-period={{ .Values.configuration.compoundDnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.compoundDnsPoolSize }}
+        - --compound.dns.pool.size={{ .Values.configuration.compoundDnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundDryRun }}
+        - --compound.dry-run={{ .Values.configuration.compoundDryRun }}
+        {{- end }}
+        {{- if .Values.configuration.compoundGoogleClouddnsRatelimiterBurst }}
+        - --compound.google-clouddns.ratelimiter.burst={{ .Values.configuration.compoundGoogleClouddnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundGoogleClouddnsRatelimiterEnabled }}
+        - --compound.google-clouddns.ratelimiter.enabled={{ .Values.configuration.compoundGoogleClouddnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundGoogleClouddnsRatelimiterQps }}
+        - --compound.google-clouddns.ratelimiter.qps={{ .Values.configuration.compoundGoogleClouddnsRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundIdentifier }}
+        - --compound.identifier={{ .Values.configuration.compoundIdentifier }}
+        {{- end }}
+        {{- if .Values.configuration.compoundInfobloxDnsRatelimiterBurst }}
+        - --compound.infoblox-dns.ratelimiter.burst={{ .Values.configuration.compoundInfobloxDnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundInfobloxDnsRatelimiterEnabled }}
+        - --compound.infoblox-dns.ratelimiter.enabled={{ .Values.configuration.compoundInfobloxDnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundInfobloxDnsRatelimiterQps }}
+        - --compound.infoblox-dns.ratelimiter.qps={{ .Values.configuration.compoundInfobloxDnsRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundNetlifyDnsRatelimiterBurst }}
+        - --compound.netlify-dns.ratelimiter.burst={{ .Values.configuration.compoundNetlifyDnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundNetlifyDnsRatelimiterEnabled }}
+        - --compound.netlify-dns.ratelimiter.enabled={{ .Values.configuration.compoundNetlifyDnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundNetlifyDnsRatelimiterQps }}
+        - --compound.netlify-dns.ratelimiter.qps={{ .Values.configuration.compoundNetlifyDnsRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundOpenstackDesignateRatelimiterBurst }}
+        - --compound.openstack-designate.ratelimiter.burst={{ .Values.configuration.compoundOpenstackDesignateRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundOpenstackDesignateRatelimiterEnabled }}
+        - --compound.openstack-designate.ratelimiter.enabled={{ .Values.configuration.compoundOpenstackDesignateRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundOpenstackDesignateRatelimiterQps }}
+        - --compound.openstack-designate.ratelimiter.qps={{ .Values.configuration.compoundOpenstackDesignateRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundOwneridsPoolSize }}
+        - --compound.ownerids.pool.size={{ .Values.configuration.compoundOwneridsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundPoolResyncPeriod }}
+        - --compound.pool.resync-period={{ .Values.configuration.compoundPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.compoundPoolSize }}
+        - --compound.pool.size={{ .Values.configuration.compoundPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundProviderTypes }}
+        - --compound.provider-types={{ .Values.configuration.compoundProviderTypes }}
+        {{- end }}
+        {{- if .Values.configuration.compoundProvidersPoolResyncPeriod }}
+        - --compound.providers.pool.resync-period={{ .Values.configuration.compoundProvidersPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.compoundProvidersPoolSize }}
+        - --compound.providers.pool.size={{ .Values.configuration.compoundProvidersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRatelimiterBurst }}
+        - --compound.ratelimiter.burst={{ .Values.configuration.compoundRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRatelimiterEnabled }}
+        - --compound.ratelimiter.enabled={{ .Values.configuration.compoundRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRatelimiterQps }}
+        - --compound.ratelimiter.qps={{ .Values.configuration.compoundRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRescheduleDelay }}
+        - --compound.reschedule-delay={{ .Values.configuration.compoundRescheduleDelay }}
+        {{- end }}
+        {{- if .Values.configuration.compoundSecretsPoolSize }}
+        - --compound.secrets.pool.size={{ .Values.configuration.compoundSecretsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundSetup }}
+        - --compound.setup={{ .Values.configuration.compoundSetup }}
+        {{- end }}
+        {{- if .Values.configuration.compoundStatisticPoolSize }}
+        - --compound.statistic.pool.size={{ .Values.configuration.compoundStatisticPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundTtl }}
+        - --compound.ttl={{ .Values.configuration.compoundTtl }}
         {{- end }}
         {{- if .Values.configuration.config }}
         - --config={{ .Values.configuration.config }}
@@ -428,48 +344,6 @@ spec:
         {{- if .Values.configuration.forceCrdUpdate }}
         - --force-crd-update={{ .Values.configuration.forceCrdUpdate }}
         {{- end }}
-        {{- if .Values.configuration.googleCloudDNSCacheTtl }}
-        - --google-clouddns.cache-ttl={{ .Values.configuration.googleCloudDNSCacheTtl }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSDefaultPoolSize }}
-        - --google-clouddns.default.pool.size={{ .Values.configuration.googleCloudDNSDefaultPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSDisableZoneStateCaching }}
-        - --google-clouddns.disable-zone-state-caching={{ .Values.configuration.googleCloudDNSDisableZoneStateCaching }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSDnsClass }}
-        - --google-clouddns.dns-class={{ .Values.configuration.googleCloudDNSDnsClass }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSDnsDelay }}
-        - --google-clouddns.dns-delay={{ .Values.configuration.googleCloudDNSDnsDelay }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSDnsPoolResyncPeriod }}
-        - --google-clouddns.dns.pool.resync-period={{ .Values.configuration.googleCloudDNSDnsPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSDnsPoolSize }}
-        - --google-clouddns.dns.pool.size={{ .Values.configuration.googleCloudDNSDnsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSDryRun }}
-        - --google-clouddns.dry-run={{ .Values.configuration.googleCloudDNSDryRun }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSIdentifier }}
-        - --google-clouddns.identifier={{ .Values.configuration.googleCloudDNSIdentifier }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSOwneridsPoolSize }}
-        - --google-clouddns.ownerids.pool.size={{ .Values.configuration.googleCloudDNSOwneridsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSPoolResyncPeriod }}
-        - --google-clouddns.pool.resync-period={{ .Values.configuration.googleCloudDNSPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSPoolSize }}
-        - --google-clouddns.pool.size={{ .Values.configuration.googleCloudDNSPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSProvidersPoolResyncPeriod }}
-        - --google-clouddns.providers.pool.resync-period={{ .Values.configuration.googleCloudDNSProvidersPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSProvidersPoolSize }}
-        - --google-clouddns.providers.pool.size={{ .Values.configuration.googleCloudDNSProvidersPoolSize }}
-        {{- end }}
         {{- if .Values.configuration.googleCloudDNSRatelimiterBurst }}
         - --google-clouddns.ratelimiter.burst={{ .Values.configuration.googleCloudDNSRatelimiterBurst }}
         {{- end }}
@@ -479,65 +353,8 @@ spec:
         {{- if .Values.configuration.googleCloudDNSRatelimiterQps }}
         - --google-clouddns.ratelimiter.qps={{ .Values.configuration.googleCloudDNSRatelimiterQps }}
         {{- end }}
-        {{- if .Values.configuration.googleCloudDNSRescheduleDelay }}
-        - --google-clouddns.reschedule-delay={{ .Values.configuration.googleCloudDNSRescheduleDelay }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSSecretsPoolSize }}
-        - --google-clouddns.secrets.pool.size={{ .Values.configuration.googleCloudDNSSecretsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSSetup }}
-        - --google-clouddns.setup={{ .Values.configuration.googleCloudDNSSetup }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSStatisticPoolSize }}
-        - --google-clouddns.statistic.pool.size={{ .Values.configuration.googleCloudDNSStatisticPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.googleCloudDNSTtl }}
-        - --google-clouddns.ttl={{ .Values.configuration.googleCloudDNSTtl }}
-        {{- end }}
         {{- if .Values.configuration.gracePeriod }}
         - --grace-period={{ .Values.configuration.gracePeriod }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSCacheTtl }}
-        - --infoblox-dns.cache-ttl={{ .Values.configuration.infobloxDNSCacheTtl }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSDefaultPoolSize }}
-        - --infoblox-dns.default.pool.size={{ .Values.configuration.infobloxDNSDefaultPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSDisableZoneStateCaching }}
-        - --infoblox-dns.disable-zone-state-caching={{ .Values.configuration.infobloxDNSDisableZoneStateCaching }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSDnsClass }}
-        - --infoblox-dns.dns-class={{ .Values.configuration.infobloxDNSDnsClass }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSDnsDelay }}
-        - --infoblox-dns.dns-delay={{ .Values.configuration.infobloxDNSDnsDelay }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSDnsPoolResyncPeriod }}
-        - --infoblox-dns.dns.pool.resync-period={{ .Values.configuration.infobloxDNSDnsPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSDnsPoolSize }}
-        - --infoblox-dns.dns.pool.size={{ .Values.configuration.infobloxDNSDnsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSDryRun }}
-        - --infoblox-dns.dry-run={{ .Values.configuration.infobloxDNSDryRun }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSIdentifier }}
-        - --infoblox-dns.identifier={{ .Values.configuration.infobloxDNSIdentifier }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSOwneridsPoolSize }}
-        - --infoblox-dns.ownerids.pool.size={{ .Values.configuration.infobloxDNSOwneridsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSPoolResyncPeriod }}
-        - --infoblox-dns.pool.resync-period={{ .Values.configuration.infobloxDNSPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSPoolSize }}
-        - --infoblox-dns.pool.size={{ .Values.configuration.infobloxDNSPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSProvidersPoolResyncPeriod }}
-        - --infoblox-dns.providers.pool.resync-period={{ .Values.configuration.infobloxDNSProvidersPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSProvidersPoolSize }}
-        - --infoblox-dns.providers.pool.size={{ .Values.configuration.infobloxDNSProvidersPoolSize }}
         {{- end }}
         {{- if .Values.configuration.infobloxDNSRatelimiterBurst }}
         - --infoblox-dns.ratelimiter.burst={{ .Values.configuration.infobloxDNSRatelimiterBurst }}
@@ -547,21 +364,6 @@ spec:
         {{- end }}
         {{- if .Values.configuration.infobloxDNSRatelimiterQps }}
         - --infoblox-dns.ratelimiter.qps={{ .Values.configuration.infobloxDNSRatelimiterQps }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSRescheduleDelay }}
-        - --infoblox-dns.reschedule-delay={{ .Values.configuration.infobloxDNSRescheduleDelay }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSSecretsPoolSize }}
-        - --infoblox-dns.secrets.pool.size={{ .Values.configuration.infobloxDNSSecretsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSSetup }}
-        - --infoblox-dns.setup={{ .Values.configuration.infobloxDNSSetup }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSStatisticPoolSize }}
-        - --infoblox-dns.statistic.pool.size={{ .Values.configuration.infobloxDNSStatisticPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.infobloxDNSTtl }}
-        - --infoblox-dns.ttl={{ .Values.configuration.infobloxDNSTtl }}
         {{- end }}
         {{- if .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
         - --ingress-dns.default.pool.resync-period={{ .Values.configuration.ingressDNSDefaultPoolResyncPeriod }}
@@ -650,116 +452,17 @@ spec:
         {{- if .Values.configuration.namespaceLocalAccessOnly }}
         - --namespace-local-access-only={{ .Values.configuration.namespaceLocalAccessOnly }}
         {{- end }}
-        {{- if .Values.configuration.netlifyDNSCacheTtl }}
-        - --netlify-dns.cache-ttl={{ .Values.configuration.netlifyDNSCacheTtl }}
+        {{- if .Values.configuration.netlifyDnsRatelimiterBurst }}
+        - --netlify-dns.ratelimiter.burst={{ .Values.configuration.netlifyDnsRatelimiterBurst }}
         {{- end }}
-        {{- if .Values.configuration.netlifyDNSDefaultPoolSize }}
-        - --netlify-dns.default.pool.size={{ .Values.configuration.netlifyDNSDefaultPoolSize }}
+        {{- if .Values.configuration.netlifyDnsRatelimiterEnabled }}
+        - --netlify-dns.ratelimiter.enabled={{ .Values.configuration.netlifyDnsRatelimiterEnabled }}
         {{- end }}
-        {{- if .Values.configuration.netlifyDNSDisableZoneStateCaching }}
-        - --netlify-dns.disable-zone-state-caching={{ .Values.configuration.netlifyDNSDisableZoneStateCaching }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSDnsClass }}
-        - --netlify-dns.dns-class={{ .Values.configuration.netlifyDNSDnsClass }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSDnsDelay }}
-        - --netlify-dns.dns-delay={{ .Values.configuration.netlifyDNSDnsDelay }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSDnsPoolResyncPeriod }}
-        - --netlify-dns.dns.pool.resync-period={{ .Values.configuration.netlifyDNSDnsPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSDnsPoolSize }}
-        - --netlify-dns.dns.pool.size={{ .Values.configuration.netlifyDNSDnsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSDryRun }}
-        - --netlify-dns.dry-run={{ .Values.configuration.netlifyDNSDryRun }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSIdentifier }}
-        - --netlify-dns.identifier={{ .Values.configuration.netlifyDNSIdentifier }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSOwneridsPoolSize }}
-        - --netlify-dns.ownerids.pool.size={{ .Values.configuration.netlifyDNSOwneridsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSPoolResyncPeriod }}
-        - --netlify-dns.pool.resync-period={{ .Values.configuration.netlifyDNSPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSPoolSize }}
-        - --netlify-dns.pool.size={{ .Values.configuration.netlifyDNSPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSProvidersPoolResyncPeriod }}
-        - --netlify-dns.providers.pool.resync-period={{ .Values.configuration.netlifyDNSProvidersPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSProvidersPoolSize }}
-        - --netlify-dns.providers.pool.size={{ .Values.configuration.netlifyDNSProvidersPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSRatelimiterBurst }}
-        - --netlify-dns.ratelimiter.burst={{ .Values.configuration.netlifyDNSRatelimiterBurst }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSRatelimiterEnabled }}
-        - --netlify-dns.ratelimiter.enabled={{ .Values.configuration.netlifyDNSRatelimiterEnabled }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSRatelimiterQps }}
-        - --netlify-dns.ratelimiter.qps={{ .Values.configuration.netlifyDNSRatelimiterQps }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSRescheduleDelay }}
-        - --netlify-dns.reschedule-delay={{ .Values.configuration.netlifyDNSRescheduleDelay }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSSecretsPoolSize }}
-        - --netlify-dns.secrets.pool.size={{ .Values.configuration.netlifyDNSSecretsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSSetup }}
-        - --netlify-dns.setup={{ .Values.configuration.netlifyDNSSetup }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSStatisticPoolSize }}
-        - --netlify-dns.statistic.pool.size={{ .Values.configuration.netlifyDNSStatisticPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.netlifyDNSTtl }}
-        - --netlify-dns.ttl={{ .Values.configuration.netlifyDNSTtl }}
+        {{- if .Values.configuration.netlifyDnsRatelimiterQps }}
+        - --netlify-dns.ratelimiter.qps={{ .Values.configuration.netlifyDnsRatelimiterQps }}
         {{- end }}
         {{- if .Values.configuration.omitLease }}
         - --omit-lease={{ .Values.configuration.omitLease }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateCacheTtl }}
-        - --openstack-designate.cache-ttl={{ .Values.configuration.openstackDesignateCacheTtl }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateDefaultPoolSize }}
-        - --openstack-designate.default.pool.size={{ .Values.configuration.openstackDesignateDefaultPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateDisableZoneStateCaching }}
-        - --openstack-designate.disable-zone-state-caching={{ .Values.configuration.openstackDesignateDisableZoneStateCaching }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateDnsClass }}
-        - --openstack-designate.dns-class={{ .Values.configuration.openstackDesignateDnsClass }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateDnsDelay }}
-        - --openstack-designate.dns-delay={{ .Values.configuration.openstackDesignateDnsDelay }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateDnsPoolResyncPeriod }}
-        - --openstack-designate.dns.pool.resync-period={{ .Values.configuration.openstackDesignateDnsPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateDnsPoolSize }}
-        - --openstack-designate.dns.pool.size={{ .Values.configuration.openstackDesignateDnsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateDryRun }}
-        - --openstack-designate.dry-run={{ .Values.configuration.openstackDesignateDryRun }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateIdentifier }}
-        - --openstack-designate.identifier={{ .Values.configuration.openstackDesignateIdentifier }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateOwneridsPoolSize }}
-        - --openstack-designate.ownerids.pool.size={{ .Values.configuration.openstackDesignateOwneridsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignatePoolResyncPeriod }}
-        - --openstack-designate.pool.resync-period={{ .Values.configuration.openstackDesignatePoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignatePoolSize }}
-        - --openstack-designate.pool.size={{ .Values.configuration.openstackDesignatePoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateProvidersPoolResyncPeriod }}
-        - --openstack-designate.providers.pool.resync-period={{ .Values.configuration.openstackDesignateProvidersPoolResyncPeriod }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateProvidersPoolSize }}
-        - --openstack-designate.providers.pool.size={{ .Values.configuration.openstackDesignateProvidersPoolSize }}
         {{- end }}
         {{- if .Values.configuration.openstackDesignateRatelimiterBurst }}
         - --openstack-designate.ratelimiter.burst={{ .Values.configuration.openstackDesignateRatelimiterBurst }}
@@ -769,21 +472,6 @@ spec:
         {{- end }}
         {{- if .Values.configuration.openstackDesignateRatelimiterQps }}
         - --openstack-designate.ratelimiter.qps={{ .Values.configuration.openstackDesignateRatelimiterQps }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateRescheduleDelay }}
-        - --openstack-designate.reschedule-delay={{ .Values.configuration.openstackDesignateRescheduleDelay }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateSecretsPoolSize }}
-        - --openstack-designate.secrets.pool.size={{ .Values.configuration.openstackDesignateSecretsPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateSetup }}
-        - --openstack-designate.setup={{ .Values.configuration.openstackDesignateSetup }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateStatisticPoolSize }}
-        - --openstack-designate.statistic.pool.size={{ .Values.configuration.openstackDesignateStatisticPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.openstackDesignateTtl }}
-        - --openstack-designate.ttl={{ .Values.configuration.openstackDesignateTtl }}
         {{- end }}
         {{- if .Values.configuration.owneridsPoolSize }}
         - --ownerids.pool.size={{ .Values.configuration.owneridsPoolSize }}
@@ -796,6 +484,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.poolSize }}
         - --pool.size={{ .Values.configuration.poolSize }}
+        {{- end }}
+        {{- if .Values.configuration.providerTypes }}
+        - --provider-types={{ .Values.configuration.providerTypes }}
         {{- end }}
         {{- if .Values.configuration.providers }}
         - --providers={{ .Values.configuration.providers }}
