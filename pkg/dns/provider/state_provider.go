@@ -190,12 +190,10 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 		cur = this.deleting[pname]
 	}
 	if cur != nil {
-		entries := Entries{}
 		zones := this.providerzones[obj.ObjectName()]
 		logger.Infof("deleting PROVIDER with %d zones", len(zones))
 		for n, z := range zones {
 			if this.isProviderForZone(n, pname) {
-				this.addEntriesForZone(logger, entries, nil, z)
 				providers := this.getProvidersForZone(n)
 				if len(providers) == 1 {
 					// if this is the last provider for this zone
@@ -233,7 +231,11 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 			}
 		}
 		logger.Infof("zone cleanup done -> trigger entries")
-		this.TriggerEntries(logger, this.entries)
+		for _, e := range this.entries {
+			if e.providername == pname {
+				this.TriggerEntry(logger, e)
+			}
+		}
 		logger.Infof("releasing provider secret")
 		_, err := this.registerSecret(logger, nil, cur)
 		if err != nil {
