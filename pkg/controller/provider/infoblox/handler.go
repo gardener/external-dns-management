@@ -19,15 +19,14 @@ package infoblox
 
 import (
 	"context"
-	"crypto/x509"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/url"
-	"reflect"
+	"os"
 	"strconv"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/pkg/errors"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -126,6 +125,21 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	if infobloxConfig.SSLVerify != nil {
 		verify = strconv.FormatBool(*infobloxConfig.SSLVerify)
 	}
+
+	if infobloxConfig.CaCert != nil && verify == "true" {
+		tmpfile, err := ioutil.TempFile("", "cacert")
+		if err != nil {
+			return nil, errors.Wrap(err, "cannot create temporary file for cacert")
+		}
+		defer os.Remove(tmpfile.Name())
+		if _, err := tmpfile.Write([]byte(*infobloxConfig.CaCert)); err != nil {
+			return nil, errors.Wrap(err, "cannot write temporary file for cacert")
+		}
+		if err := tmpfile.Close(); err != nil {
+			return nil, errors.Wrap(err, "cannot close temporary file for cacert")
+		}
+		verify = tmpfile.Name()
+	}
 	transportConfig := ibclient.NewTransportConfig(
 		verify,
 		*infobloxConfig.RequestTimeout,
@@ -137,14 +151,6 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 			return nil, errors.Wrap(err, "parsing proxy url failed")
 		}
 		transportConfig.ProxyUrl = u
-	}
-
-	if infobloxConfig.CaCert != nil && verify == "true" {
-		caPool := x509.NewCertPool()
-		if !caPool.AppendCertsFromPEM([]byte(*infobloxConfig.CaCert)) {
-			return nil, fmt.Errorf("Cannot append certificate")
-		}
-		utils.SetValue(reflect.ValueOf(transportConfig).FieldByName("certPool"), caPool)
 	}
 
 	var requestBuilder ibclient.HttpRequestBuilder = &ibclient.WapiRequestBuilder{}
