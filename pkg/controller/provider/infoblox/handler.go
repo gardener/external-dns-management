@@ -98,16 +98,19 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	if err := config.FillDefaultedIntProperty(&infobloxConfig.Port, 443, "PORT", "port"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedIntProperty(&infobloxConfig.PoolConnections, 10, "HTTP_POOL_CONNECTIONS", "http_pool_connections"); err != nil {
+	if err := config.FillDefaultedIntProperty(&infobloxConfig.PoolConnections, 10, "HTTP_POOL_CONNECTIONS", "http_pool_connections", "httpPoolConnections"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedIntProperty(&infobloxConfig.RequestTimeout, 60, "HTTP_REQUEST_TIMEOUT", "http_request_timeout"); err != nil {
+	if err := config.FillDefaultedIntProperty(&infobloxConfig.RequestTimeout, 60, "HTTP_REQUEST_TIMEOUT", "http_request_timeout", "httpRequestTimeout"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedProperty(&infobloxConfig.ProxyURL, "", "PROXY_URL", "proxy_url"); err != nil {
+	if err := config.FillDefaultedProperty(&infobloxConfig.ProxyURL, "", "PROXY_URL", "proxy_url", "proxyUrl"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedBoolProperty(&infobloxConfig.SSLVerify, true, "SSL_VERIFY", "ssl_verify"); err != nil {
+	if err := config.FillDefaultedProperty(&infobloxConfig.CaCert, "", "CA_CERT", "ca_cert", "caCert"); err != nil {
+		return nil, err
+	}
+	if err := config.FillDefaultedBoolProperty(&infobloxConfig.SSLVerify, true, "SSL_VERIFY", "ssl_verify", "sslVerify"); err != nil {
 		return nil, err
 	}
 
