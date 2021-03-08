@@ -29,7 +29,6 @@ vpa:
 nodeSelector: {}
 tolerations: []
 affinity: {}
-# priorityClassName: ""
 
 createCRDs: true
 
