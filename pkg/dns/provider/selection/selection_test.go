@@ -249,7 +249,7 @@ var _ = Describe("Selection", func() {
 				Include: utils.NewStringSet(),
 				Exclude: utils.NewStringSet(),
 			},
-			Error: "no domain matching hosting zones",
+			Error: "no domain matching hosting zones. Need to be a (sub)domain of [a.b, c.a.b, o.p]",
 			Warnings: []string{
 				"domain \"y.z\" not in hosted domains",
 			},
