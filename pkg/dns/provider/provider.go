@@ -390,7 +390,10 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		return this, this.failed(logger, false, pkgerrors.Wrap(err, "cannot get hosted zones"), true)
 	}
 	if len(zones) == 0 {
-		return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zones available in account"))
+		empty := utils.StringSet{}
+		mod := this.object.SetSelection(empty, empty, &this.object.Status().Domains)
+		mod = this.object.SetSelection(empty, empty, &this.object.Status().Zones) || mod
+		return this, this.failedButRecheck(logger, fmt.Errorf("no hosted zones available in account"), mod)
 	}
 
 	results := selection.CalcZoneAndDomainSelection(provider.DNSProvider().Spec, toLightZones(zones))
@@ -402,8 +405,10 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	for _, warning := range results.Warnings {
 		this.object.Eventf(corev1.EventTypeWarning, "reconcile", "%s", warning)
 	}
+	mod := this.object.SetSelection(this.included, this.excluded, &this.object.Status().Domains)
+	mod = this.object.SetSelection(this.included_zones, this.excluded_zones, &this.object.Status().Zones) || mod
 	if results.Error != "" {
-		return this, this.failedButRecheck(logger, fmt.Errorf(results.Error))
+		return this, this.failedButRecheck(logger, fmt.Errorf(results.Error), mod)
 	}
 
 	if last == nil || !this.included.Equals(last.included) || !this.excluded.Equals(last.excluded) {
@@ -425,8 +430,6 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	}
 
 	this.valid = true
-	mod := this.object.SetSelection(this.included, this.excluded, &this.object.Status().Domains)
-	mod = this.object.SetSelection(this.included_zones, this.excluded_zones, &this.object.Status().Zones) || mod
 	return this, this.succeeded(logger, mod)
 }
 
@@ -528,8 +531,8 @@ func maxDuration(x, y time.Duration) time.Duration {
 	return x
 }
 
-func (this *dnsProviderVersion) failedButRecheck(logger logger.LogContext, err error) reconcile.Status {
-	uerr := this.setError(false, err)
+func (this *dnsProviderVersion) failedButRecheck(logger logger.LogContext, err error, modified bool) reconcile.Status {
+	uerr := this.setError(modified, err)
 	if uerr != nil {
 		logger.Error(err)
 		if errors.IsConflict(uerr) {

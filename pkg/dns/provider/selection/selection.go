@@ -18,6 +18,7 @@ package selection
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
@@ -121,8 +122,13 @@ func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, zones []LightDNSH
 		if len(this.DomainSel.Include) == 0 {
 			this.ZoneSel.Exclude.AddSet(this.ZoneSel.Include)
 			this.ZoneSel.Include = utils.NewStringSet()
+			zoneDomains := []string{}
+			for _, z := range this.Zones {
+				zoneDomains = append(zoneDomains, z.Domain())
+			}
 			this.Zones = nil
-			this.Error = "no domain matching hosting zones"
+			this.Error = fmt.Sprintf("no domain matching hosting zones. Need to be a (sub)domain of [%s]",
+				strings.Join(zoneDomains, ", "))
 			return this
 		}
 	}
