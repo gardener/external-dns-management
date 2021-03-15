@@ -30,3 +30,13 @@ Create chart name and version as used by the chart label.
 {{- define "external-dns-management.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
 {{- end -}}
+
+{{- define "priorityclassversion" -}}
+{{- if semverCompare ">= 1.14-0" .Capabilities.KubeVersion.GitVersion -}}
+scheduling.k8s.io/v1
+{{- else if semverCompare ">= 1.11-0" .Capabilities.KubeVersion.GitVersion -}}
+scheduling.k8s.io/v1beta1
+{{- else -}}
+scheduling.k8s.io/v1alpha1
+{{- end -}}
+{{- end -}}
