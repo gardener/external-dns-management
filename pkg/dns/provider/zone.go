@@ -93,6 +93,10 @@ func (this *dnsHostedZone) IsPrivate() bool {
 	return this.getZone().IsPrivate()
 }
 
+func (this *dnsHostedZone) Match(dnsname string) int {
+	return Match(this, dnsname)
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *dnsHostedZone) update(zone DNSHostedZone) {

@@ -72,6 +72,10 @@ func (tz *testzone) IsPrivate() bool {
 	return false
 }
 
+func (tz *testzone) Match(dnsname string) int {
+	return provider.Match(tz, dnsname)
+}
+
 type designateMockClient struct {
 	tzmap map[string]*testzone
 }

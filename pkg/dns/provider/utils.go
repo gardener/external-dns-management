@@ -41,3 +41,14 @@ func errorValue(format string, err error) string {
 	}
 	return fmt.Sprintf(format, err.Error())
 }
+
+func filterZoneByProvider(zones []*dnsHostedZone, provider DNSProvider) *dnsHostedZone {
+	if provider != nil {
+		for _, zone := range zones {
+			if provider.IncludesZone(zone.Id()) {
+				return zone
+			}
+		}
+	}
+	return nil
+}
