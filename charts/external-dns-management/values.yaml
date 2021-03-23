@@ -30,7 +30,7 @@ nodeSelector: {}
 tolerations: []
 affinity: {}
 
-createCRDs: true
+createCRDs: false
 
 #serviceAccountAnnotations:
 #  annotkey1: annotvalue1
