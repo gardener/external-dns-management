@@ -147,8 +147,12 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 					return new, reconcile.Succeeded(logger)
 				}
 			} else {
-				logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
-				err = this.RemoveFinalizer(v.object)
+				if old != nil {
+					logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
+				}
+				if v.object.Status() == nil || v.object.Status().Zone == nil {
+					err = this.RemoveFinalizer(v.object)
+				}
 			}
 		} else {
 			this.smartInfof(logger, "deleting yet unmanaged or errorneous entry")

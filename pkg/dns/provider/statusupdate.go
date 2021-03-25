@@ -55,8 +55,13 @@ func (this *StatusUpdate) Failed(err error) {
 	if !this.done {
 		this.done = true
 		this.modified = false
-		this.fhandler.RemoveFinalizer(this.Entry.Object())
-		_, err := this.UpdateStatus(this.logger, api.STATE_ERROR, err.Error())
+		newState := api.STATE_ERROR
+		if this.Entry.status.State != api.STATE_READY && this.Entry.status.State != api.STATE_STALE {
+			this.fhandler.RemoveFinalizer(this.Entry.Object())
+		} else {
+			newState = api.STATE_STALE
+		}
+		_, err := this.UpdateStatus(this.logger, newState, err.Error())
 		if err != nil {
 			this.logger.Errorf("cannot update: %s", err)
 		}
