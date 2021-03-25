@@ -118,6 +118,7 @@ type DNSHostedZone interface {
 	Id() string
 	Domain() string
 	ForwardedDomains() []string
+	Match(dnsname string) int
 	IsPrivate() bool
 }
 
@@ -230,11 +231,13 @@ type DNSProvider interface {
 	DefaultTTL() int64
 
 	GetZones() DNSHostedZones
+	IncludesZone(zoneID string) bool
 
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
 
 	Match(dns string) int
+	MatchZone(dns string) int
 	IsValid() bool
 
 	AccountHash() string

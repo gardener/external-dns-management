@@ -49,17 +49,6 @@ func (this *state) TriggerHostedZones() {
 	}
 }
 
-func (this *state) GetZoneInfo(logger logger.LogContext, zoneid string) (*dnsHostedZone, DNSProviders, Entries, DNSNames, bool) {
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-	zone := this.zones[zoneid]
-	if zone == nil {
-		return nil, nil, nil, nil, false
-	}
-	entries, stale, deleting := this.addEntriesForZone(logger, nil, nil, zone)
-	return zone, this.getProvidersForZone(zoneid), entries, stale, deleting
-}
-
 func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string) (time.Duration, bool, *zoneReconciliation) {
 	req := &zoneReconciliation{}
 

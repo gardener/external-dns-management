@@ -49,6 +49,7 @@ type EntryPremise struct {
 	ptypes   utils.StringSet
 	ptype    string
 	provider DNSProvider
+	fallback DNSProvider // provider with correct zone, but outside selection (only set if provider == nil)
 	zoneid   string
 
 	// non-identifying fields
@@ -56,7 +57,7 @@ type EntryPremise struct {
 }
 
 func (this *EntryPremise) Match(p *EntryPremise) bool {
-	return this.ptype == p.ptype && this.provider == p.provider && this.zoneid == p.zoneid
+	return this.ptype == p.ptype && this.provider == p.provider && this.zoneid == p.zoneid && this.fallback == p.fallback
 }
 
 func (this *EntryPremise) NotifyChange(p *EntryPremise) string {
@@ -69,6 +70,9 @@ func (this *EntryPremise) NotifyChange(p *EntryPremise) string {
 	}
 	if this.zoneid != p.zoneid {
 		r = append(r, fmt.Sprintf("zone (%s -> %s)", this.zoneid, p.zoneid))
+	}
+	if this.fallback != p.fallback {
+		r = append(r, fmt.Sprintf("fallback (%s -> %s)", Provider(this.fallback), Provider(p.fallback)))
 	}
 	if len(r) == 0 {
 		return ""
@@ -90,6 +94,7 @@ type EntryVersion struct {
 	responsible bool
 	valid       bool
 	duplicate   bool
+	obsolete    bool
 }
 
 func NewEntryVersion(object *dnsutils.DNSEntryObject, old *Entry) *EntryVersion {
@@ -130,6 +135,9 @@ func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string) 
 		if e.State() != api.STATE_READY {
 			reasons = append(reasons, "state changed")
 		}
+	}
+	if this.obsolete != e.obsolete {
+		reasons = append(reasons, "provider responsibility changed")
 	}
 	return
 }
@@ -387,12 +395,12 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	if p.zoneid == "" && !utils.IsEmptyString(this.status.ProviderType) && p.ptypes.Contains(*this.status.ProviderType) {
 		// revoke assignment to actual type
-		old := utils.StringValue(this.status.ProviderType)
-		hello.Infof(logger, "revoke assignment to %s", old)
+		oldType := utils.StringValue(this.status.ProviderType)
+		hello.Infof(logger, "revoke assignment to %s", oldType)
 		this.status.Provider = nil
 		this.status.ProviderType = nil
 		this.status.Zone = nil
-		err := this.updateStatus(logger, "", "not valid for known provider anymore -> releasing provider type %s", old)
+		err := this.updateStatus(logger, "", "not valid for known provider anymore -> releasing provider type %s", oldType)
 		if err != nil {
 			return reconcile.Delay(logger, err)
 		}

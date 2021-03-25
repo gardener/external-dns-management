@@ -483,7 +483,17 @@ func (this *dnsProviderVersion) Match(dns string) int {
 	if ilen > elen {
 		return ilen
 	}
-	return -1
+	return 0
+}
+
+func (this *dnsProviderVersion) MatchZone(dns string) int {
+	for _, zone := range this.zones {
+		ilen := zone.Match(dns)
+		if ilen > 0 {
+			return ilen
+		}
+	}
+	return 0
 }
 
 func (this *dnsProviderVersion) MapTarget(t Target) Target {
@@ -565,4 +575,8 @@ func (this *dnsProviderVersion) ReportZoneStateConflict(zone DNSHostedZone, err 
 
 func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error {
 	return this.account.ExecuteRequests(logger, zone, state, reqs)
+}
+
+func (this *dnsProviderVersion) IncludesZone(zoneID string) bool {
+	return this.included_zones != nil && this.included_zones.Contains(zoneID)
 }

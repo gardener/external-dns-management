@@ -16,7 +16,10 @@
 
 package provider
 
-import "github.com/gardener/external-dns-management/pkg/dns"
+import (
+	"github.com/gardener/external-dns-management/pkg/dns"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+)
 
 ////////////////////////////////////////////////////////////////////////////////
 //  Default Implementation for DNSZoneState
@@ -76,6 +79,22 @@ func (this *DefaultDNSHostedZone) ForwardedDomains() []string {
 
 func (this *DefaultDNSHostedZone) IsPrivate() bool {
 	return this.isPrivate
+}
+
+func (this *DefaultDNSHostedZone) Match(dnsname string) int {
+	return Match(this, dnsname)
+}
+
+func Match(zone DNSHostedZone, dnsname string) int {
+	for _, forwardedDomain := range zone.ForwardedDomains() {
+		if dnsutils.Match(dnsname, forwardedDomain) {
+			return 0
+		}
+	}
+	if dnsutils.Match(dnsname, zone.Domain()) {
+		return len(zone.Domain())
+	}
+	return 0
 }
 
 func NewDNSHostedZone(ptype string, id, domain, key string, forwarded []string, isPrivate bool) DNSHostedZone {

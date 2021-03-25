@@ -305,7 +305,8 @@ func (this *state) hasProviders() bool {
 func (this *state) LookupProvider(e *EntryVersion) (DNSProvider, error) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
-	return this.lookupProvider(e.Object())
+	provider, _, err := this.lookupProvider(e.Object())
+	return provider, err
 }
 
 type providerMatch struct {
@@ -317,37 +318,49 @@ func newMatch() *providerMatch {
 	return &providerMatch{nil, -1}
 }
 
-func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, error) {
+func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, DNSProvider, error) {
+	handleMatch := func(match *providerMatch, p *dnsProviderVersion, n int, err error) error {
+		if match.match <= n {
+			err2 := access.CheckAccessWithRealms(e, "use", p.Object(), this.realms)
+			if err2 == nil {
+				if match.match < n || (e.Status().Provider != nil && *e.Status().Provider == p.object.ObjectName().String()) {
+					match.found = p
+					match.match = n
+				}
+				return nil
+			}
+			if match.match == 0 {
+				return err2
+			}
+		}
+		return err
+	}
 	var err error
 	validMatch := newMatch()
 	errorMatch := newMatch()
+	validMatchFallback := newMatch()
 	for _, p := range this.providers {
 		n := p.Match(e.GetDNSName())
 		if n > 0 {
-			var match *providerMatch
 			if p.IsValid() {
-				match = validMatch
+				err = handleMatch(validMatch, p, n, err)
 			} else {
-				match = errorMatch
+				err = handleMatch(errorMatch, p, n, err)
 			}
-			if match.match <= n {
-				err = access.CheckAccessWithRealms(e, "use", p.Object(), this.realms)
-				if err == nil {
-					if match.match < n || (e.Status().Provider != nil && *e.Status().Provider == p.object.ObjectName().String()) {
-						match.found = p
-						match.match = n
-					}
-				}
+		} else {
+			n = p.MatchZone(e.GetDNSName())
+			if n > 0 && p.IsValid() {
+				handleMatch(validMatchFallback, p, n, nil)
 			}
 		}
 	}
 	if validMatch.found != nil {
-		return validMatch.found, nil
+		return validMatch.found, nil, nil
 	}
 	if errorMatch.found != nil {
-		return errorMatch.found, nil
+		return errorMatch.found, nil, nil
 	}
-	return nil, err
+	return nil, validMatchFallback.found, err
 }
 
 func (this *state) GetProvider(name resources.ObjectName) DNSProvider {
@@ -381,9 +394,10 @@ func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, 
 	if stale == nil {
 		stale = DNSNames{}
 	}
-	deleting := true
+	deleting := true // TODO check
 	domain := zone.Domain()
-	nested := utils.NewStringSet(zone.ForwardedDomains()...)
+	// fallback if no forwarded domains are reported
+	nested := utils.NewStringSet()
 	for _, z := range this.zones {
 		if z.Domain() != domain && dnsutils.Match(z.Domain(), domain) {
 			nested.Add(z.Domain())
@@ -392,7 +406,7 @@ func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, 
 loop:
 	for dns, e := range this.dnsnames {
 		if e.IsValid() {
-			provider, err := this.lookupProvider(e.Object())
+			provider, fallback, err := this.lookupProvider(e.Object())
 			if (provider == nil || !provider.IsValid()) && !e.IsDeleting() {
 				if provider != nil {
 					logger.Infof("no valid provider found for %q(%s found, but is not valid)", e.ObjectName(), provider.ObjectName())
@@ -403,15 +417,14 @@ loop:
 						logger.Infof("no valid provider found for %q(%s)", e.ObjectName(), dns)
 					}
 				}
-				stale[e.DNSName()] = e
+				if fallback == nil || !fallback.IncludesZone(zone.Id()) {
+					stale[e.DNSName()] = e
+					continue
+				}
+			} else if !provider.IncludesZone(zone.Id()) {
 				continue
 			}
-			if dnsutils.Match(dns, domain) {
-				for _, excl := range zone.ForwardedDomains() {
-					if dnsutils.Match(dns, excl) {
-						continue loop
-					}
-				}
+			if zone.Match(dns) > 0 {
 				for excl := range nested { // fallback if no forwarded domains are reported
 					if dnsutils.Match(dns, excl) {
 						continue loop
@@ -440,23 +453,29 @@ func (this *state) GetZoneForEntry(e *Entry) string {
 	if !e.IsValid() {
 		return ""
 	}
-	zoneid, _, _ := this.GetZoneForName(e.DNSName())
-	return zoneid
+	provider, _, _ := this.lookupProvider(e.object)
+	return this.GetProviderZoneForName(e.DNSName(), provider)
 }
 
-func (this *state) GetZoneForName(name string) (string, string, int) {
+func (this *state) GetProviderZoneForName(name string, provider DNSProvider) string {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
-	found := this.getZoneForName(name)
+	found := this.getProviderZoneForName(name, provider)
 	if found != nil {
-		return found.Id(), found.ProviderType(), len(found.Domain())
+		return found.Id()
 	}
-	return "", "", 0
+	return ""
 }
 
-func (this *state) getZoneForName(hostname string) *dnsHostedZone {
-	var found *dnsHostedZone
+func (this *state) getProviderZoneForName(hostname string, provider DNSProvider) *dnsHostedZone {
+	zones := this.getZonesForName(hostname)
+	return filterZoneByProvider(zones, provider)
+}
+
+// getZonesForName can return multiple zones in the case of private zones
+func (this *state) getZonesForName(hostname string) []*dnsHostedZone {
+	var found []*dnsHostedZone
 	length := 0
 loop:
 	for _, zone := range this.zones {
@@ -469,7 +488,9 @@ loop:
 			}
 			if length < len(name) {
 				length = len(name)
-				found = zone
+				found = []*dnsHostedZone{zone}
+			} else if length == len(name) {
+				found = append(found, zone)
 			}
 		}
 	}

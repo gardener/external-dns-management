@@ -230,13 +230,14 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
-	provider, err := this.lookupProvider(e)
-	zone := this.getZoneForName(e.GetDNSName())
-
+	provider, fallback, err := this.lookupProvider(e)
 	p := &EntryPremise{
 		ptypes:   this.config.Enabled,
 		provider: provider,
+		fallback: fallback,
 	}
+	zone := this.getProviderZoneForName(e.GetDNSName(), provider)
+
 	if zone != nil {
 		p.ptype = zone.ProviderType()
 		p.zoneid = zone.Id()
@@ -244,6 +245,13 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 	} else if provider != nil && !provider.IsValid() && e.Status().Zone != nil {
 		p.ptype = provider.TypeCode()
 		p.zoneid = *e.Status().Zone
+	} else if p.fallback != nil {
+		zone = this.getProviderZoneForName(e.GetDNSName(), p.fallback)
+		if zone != nil {
+			p.ptype = zone.ProviderType()
+			p.zoneid = zone.Id()
+			p.zonedomain = zone.Domain()
+		}
 	}
 	return p, err
 }
@@ -267,6 +275,9 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 
 	logger = this.RefineLogger(logger, p.ptype)
 	v := NewEntryVersion(object, old)
+	if p.fallback != nil {
+		v.obsolete = true
+	}
 	status := v.Setup(logger, this, p, op, err, this.config, old)
 	new, status := this.AddEntryVersion(logger, v, status)
 
@@ -306,7 +317,8 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 
 	old := this.entries[key.ObjectName()]
 	if old != nil {
-		zone := this.getZoneForName(old.DNSName())
+		provider, _, _ := this.lookupProvider(old.object)
+		zone := this.getProviderZoneForName(old.DNSName(), provider)
 		if zone != nil {
 			logger.Infof("removing entry %q (%s[%s])", key.ObjectName(), old.DNSName(), zone.Id())
 			this.triggerHostedZone(zone.Id())
