@@ -1,0 +1,16 @@
+apiVersion: landscaper.gardener.cloud/v1alpha1
+kind: Blueprint
+
+imports:
+- name: cluster
+  targetType: landscaper.gardener.cloud/kubernetes-cluster
+
+- name: chartValues
+  schema:
+    type: object
+
+deployExecutions:
+- file: /deploy-executions.yaml
+  name: manifests
+  type: GoTemplate
+

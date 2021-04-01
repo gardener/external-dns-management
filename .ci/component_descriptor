@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+
+set -eu -o pipefail
+
+# For the component_descriptor step concourse will set the following environment variables:
+# COMPONENT_DESCRIPTOR_DIR - path to directory which contains the base component descriptor
+# SOURCE_PATH - path to the locally cloned GitHub source repo
+
+echo "start component_descriptor build"
+
+# change directory to parent as the script will be called from within ${COMPONENT_DESCRIPTOR_DIR} 
+cd "../"
+
+echo "compute path variables"
+component_descriptor_dir="$(readlink -f ${COMPONENT_DESCRIPTOR_DIR})"
+base_cd_file="${component_descriptor_dir}/base_component_descriptor_v2"
+ctf_out_file="${component_descriptor_dir}/cnudie-transport-format.out"
+source_dir="$(readlink -f ${SOURCE_PATH})"
+component_cli_file="$(pwd)/component-cli"
+
+echo "component_descriptor_dir = ${component_descriptor_dir}"
+echo "base_cd_file = ${base_cd_file}"
+echo "ctf_out_file = ${ctf_out_file}"
+echo "source_dir = ${source_dir}"
+echo "component_cli_file = ${component_cli_file}"
+
+echo "download component-cli"
+curl -L https://github.com/gardener/component-cli/releases/latest/download/componentcli-linux-amd64.gz --output "${component_cli_file}.gz"
+gunzip "${component_cli_file}.gz"
+chmod +x "${component_cli_file}"
+
+pushd "${source_dir}/.landscaper" >/dev/null
+
+echo "copy base component descriptor"
+cp "${base_cd_file}" ./component-descriptor.yaml
+
+echo "add resources to component descriptor"
+"${component_cli_file}" component-archive resources add . resources.yaml
+
+echo "--- final component descriptor"
+cat ./component-descriptor.yaml
+echo "---"
+
+echo "create component archive"
+"${component_cli_file}" component-archive export . --format tar -o "ca.tar"
+
+echo "add component archive to ctf"
+"${component_cli_file}" ctf add "${ctf_out_file}" -f "ca.tar"
+
+popd >/dev/null
+
+echo "finished component_descriptor build"

@@ -1,0 +1,44 @@
+deployItems:
+- name: deploy
+  type: landscaper.gardener.cloud/kubernetes-manifest
+  target:
+    name: {{ .imports.cluster.metadata.name }}
+    namespace: {{ .imports.cluster.metadata.namespace }}
+  config:
+    apiVersion: manifest.deployer.landscaper.gardener.cloud/v1alpha1
+    kind: ProviderConfiguration
+
+    updateStrategy: patch
+
+    manifests:
+      - apiVersion: core.gardener.cloud/v1beta1
+        kind: ControllerRegistration
+        metadata:
+          name: external-dns-management
+        spec:
+          resources:
+          - kind: DNSProvider
+            type: aws-route53
+          - kind: DNSProvider
+            type: alicloud-dns
+          - kind: DNSProvider
+            type: azure-dns
+          - kind: DNSProvider
+            type: google-clouddns
+          - kind: DNSProvider
+            type: openstack-designate
+          - kind: DNSProvider
+            type: cloudflare-dns
+          deployment:
+            type: helm
+            providerConfig:
+              {{- $chart := getResource .cd "name" "dns-controller-manager-chart" }}
+              chart: {{ resolve ( $chart.access ) | toString | b64enc }}
+              values:
+                image:
+                  {{- $image := getResource .cd "name" "dns-controller-manager" }}
+                  repository: {{ ociRefRepo ( $image.access.imageReference ) }}
+                  tag: {{ ociRefVersion ( $image.access.imageReference ) }}
+                {{- $values := .imports.chartValues }}
+                {{- $values = unset $values "image" }}
+                {{- toYaml $values | nindent 16 }}
