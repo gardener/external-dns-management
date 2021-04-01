@@ -50,3 +50,20 @@ type NoSuchHostedZone struct {
 func (e *NoSuchHostedZone) Error() string {
 	return fmt.Sprintf("No such hosted zone %s: %s", e.ZoneId, e.Err)
 }
+
+func NewThrottlingError(err error) *ThrottlingError {
+	return &ThrottlingError{err: err}
+}
+
+type ThrottlingError struct {
+	err error
+}
+
+func (e *ThrottlingError) Error() string {
+	return fmt.Sprintf("Throttling: %s", e.err)
+}
+
+func IsThrottlingError(err error) bool {
+	_, ok := err.(*ThrottlingError)
+	return ok
+}

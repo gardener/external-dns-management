@@ -56,7 +56,7 @@ type ZoneCacheStateUpdater func(zone DNSHostedZone, cache ZoneCache) (DNSZoneSta
 type ZoneCache interface {
 	GetZones() (DNSHostedZones, error)
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
-	ApplyRequests(err error, zone DNSHostedZone, reqs []*ChangeRequest)
+	ApplyRequests(logctx logger.LogContext, err error, zone DNSHostedZone, reqs []*ChangeRequest)
 	GetHandlerData() HandlerData
 	Release()
 	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
@@ -179,7 +179,7 @@ func (c *onlyZonesCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) 
 	return state, err
 }
 
-func (c *onlyZonesCache) ApplyRequests(err error, zone DNSHostedZone, reqs []*ChangeRequest) {
+func (c *onlyZonesCache) ApplyRequests(logctx logger.LogContext, err error, zone DNSHostedZone, reqs []*ChangeRequest) {
 }
 
 func (c *onlyZonesCache) GetHandlerData() HandlerData {
@@ -294,12 +294,17 @@ func (c *defaultZoneCache) deleteZoneState(zone DNSHostedZone) {
 	c.persistZone(zone)
 }
 
-func (c *defaultZoneCache) ApplyRequests(err error, zone DNSHostedZone, reqs []*ChangeRequest) {
+func (c *defaultZoneCache) ApplyRequests(logctx logger.LogContext, err error, zone DNSHostedZone, reqs []*ChangeRequest) {
 	if err == nil {
 		c.state.ExecuteRequests(zone, reqs)
 		c.persistZone(zone)
 	} else {
-		c.deleteZoneState(zone)
+		if !errors.IsThrottlingError(err) {
+			logctx.Infof("zone cache discarded because of error during ExecuteRequests")
+			c.deleteZoneState(zone)
+		} else {
+			logctx.Infof("zone cache untouched (only throttling during ExecuteRequests)")
+		}
 	}
 }
 
