@@ -23,7 +23,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock/controller"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
 
@@ -48,7 +49,7 @@ var _ = BeforeSuite(func() {
 	args := []string{
 		"--kubeconfig", kubeconfig,
 		"--identifier", "integrationtest",
-		"--controllers", "mock-inmemory,dnssources",
+		"--controllers", "dnscontrollers,dnssources",
 		"--omit-lease",
 		"--reschedule-delay", "15s",
 		"--pool.size", "10",
