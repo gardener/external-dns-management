@@ -73,6 +73,9 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 		if !ok {
 			if s.IsOwnedBy(model.owners) {
 				if e := model.IsStale(s.Name); e != nil {
+					if e.IsDeleting() {
+						model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
+					}
 					status := e.Object().Status()
 					msg := MSG_PRESERVED
 					trigger := false
@@ -91,7 +94,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 					model.Infof("found unapplied managed set '%s'", s.Name)
 					for ty := range s.Sets {
 						mod = true
-						this.addDeleteRequest(s, ty, nil)
+						this.addDeleteRequest(s, ty, model.wrappedDoneHandler(s.Name, nil))
 					}
 				}
 			}
@@ -142,6 +145,7 @@ type ChangeModel struct {
 	dangling       *ChangeGroup
 	providergroups map[string]*ChangeGroup
 	zonestate      DNSZoneState
+	failedDNSNames utils.StringSet
 }
 
 type ChangeResult struct {
@@ -158,6 +162,7 @@ func NewChangeModel(logger logger.LogContext, owners utils.StringSet, req *zoneR
 		context:        req,
 		applied:        map[string]*dns.DNSSet{},
 		providergroups: map[string]*ChangeGroup{},
+		failedDNSNames: utils.StringSet{},
 	}
 }
 
@@ -244,6 +249,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt ti
 
 	if apply {
 		this.applied[name] = nil
+		done = this.wrappedDoneHandler(name, done)
 	}
 	p := this.context.providers.LookupFor(name)
 	if p == nil {
@@ -305,7 +311,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt ti
 					} else {
 						if apply {
 							view.addCreateRequest(newset, ty, done)
-							view.addDeleteRequest(oldset, ty, nil)
+							view.addDeleteRequest(oldset, ty, this.wrappedDoneHandler(name, nil))
 						}
 						mod = true
 					}
@@ -363,6 +369,46 @@ func (this *ChangeModel) Update(logger logger.LogContext) error {
 		return fmt.Errorf("entry reconciliation failed for some provider(s)")
 	}
 	return nil
+}
+
+func (this *ChangeModel) IsFailed(dnsName string) bool {
+	return this.failedDNSNames.Contains(dnsName)
+}
+
+func (this *ChangeModel) wrappedDoneHandler(dnsName string, done DoneHandler) DoneHandler {
+	return &changeModelDoneHandler{
+		changeModel: this,
+		inner:       done,
+		dnsName:     dnsName,
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+// changeModelDoneHandler
+
+type changeModelDoneHandler struct {
+	changeModel *ChangeModel
+	inner       DoneHandler
+	dnsName     string
+}
+
+func (this *changeModelDoneHandler) SetInvalid(err error) {
+	if this.inner != nil {
+		this.inner.SetInvalid(err)
+	}
+}
+
+func (this *changeModelDoneHandler) Failed(err error) {
+	this.changeModel.failedDNSNames.Add(this.dnsName)
+	if this.inner != nil {
+		this.inner.Failed(err)
+	}
+}
+
+func (this *changeModelDoneHandler) Succeeded() {
+	if this.inner != nil {
+		this.inner.Succeeded()
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -41,10 +41,19 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 	"github.com/gardener/external-dns-management/pkg/controller/source/service"
+	"github.com/gardener/external-dns-management/pkg/dns"
 
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
+)
+
+type FailOption int
+
+const (
+	FailGetZones FailOption = iota
+	FailDeleteEntry
 )
 
 type TestEnv struct {
@@ -99,8 +108,11 @@ func waitForCluster(kubeconfig string, logger logger.LogContext) (cluster.Interf
 		return err
 	}
 
-	awaitCRD(30, "dnsproviders.dns.gardener.cloud")
-	awaitCRD(10, "dnsentries.dns.gardener.cloud")
+	err = awaitCRD(30, "dnsproviders.dns.gardener.cloud")
+	if err != nil {
+		return nil, fmt.Errorf("Wait for CRD failed: %s", err)
+	}
+	err = awaitCRD(30, "dnsentries.dns.gardener.cloud")
 	if err != nil {
 		return nil, fmt.Errorf("Wait for CRD failed: %s", err)
 	}
@@ -151,22 +163,27 @@ func (te *TestEnv) CreateSecret(index int) (resources.Object, error) {
 	return obj, err
 }
 
-func BuildProviderConfig(domain, baseDomain string, failGetZones bool) *runtime.RawExtension {
+func BuildProviderConfig(domain, baseDomain string, failOptions ...FailOption) *runtime.RawExtension {
 	zones := fmt.Sprintf(`"zones": ["%s","x.%s"]`, domain, baseDomain)
 	fail := ""
-	if failGetZones {
-		fail = `,"failGetZones": true`
+	for _, opt := range failOptions {
+		switch opt {
+		case FailGetZones:
+			fail += `,"failGetZones": true`
+		case FailDeleteEntry:
+			fail += `,"failDeleteEntry": true`
+		}
 	}
 	return &runtime.RawExtension{Raw: []byte(fmt.Sprintf("{%s%s}", zones, fail))}
 }
 
-func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretName string) (resources.Object, string, error) {
+func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretName string, failOptions ...FailOption) (resources.Object, string, error) {
 	domain := fmt.Sprintf("pr-%d.%s", providerIndex, baseDomain)
 
 	setSpec := func(spec *v1alpha1.DNSProviderSpec) {
 		spec.Domains = &v1alpha1.DNSSelection{Include: []string{domain}}
 		spec.Type = "mock-inmemory"
-		spec.ProviderConfig = BuildProviderConfig(domain, baseDomain, false)
+		spec.ProviderConfig = BuildProviderConfig(domain, baseDomain, failOptions...)
 		spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: te.Namespace}
 	}
 	obj, err := te.CreateProviderEx(providerIndex, secretName, setSpec)
@@ -193,12 +210,12 @@ func (te *TestEnv) CreateProviderEx(providerIndex int, secretName string, setSpe
 	return obj, err
 }
 
-func (te *TestEnv) CreateSecretAndProvider(baseDomain string, index int) (resources.Object, string, error) {
+func (te *TestEnv) CreateSecretAndProvider(baseDomain string, index int, failOptions ...FailOption) (resources.Object, string, error) {
 	secret, err := te.CreateSecret(index)
 	if err != nil {
 		return nil, "", fmt.Errorf("Creation of secret failed with: %s", err.Error())
 	}
-	return te.CreateProvider(baseDomain, index, secret.GetName())
+	return te.CreateProvider(baseDomain, index, secret.GetName(), failOptions...)
 }
 
 func (te *TestEnv) DeleteProviderAndSecret(pr resources.Object) error {
@@ -608,6 +625,45 @@ func (te *TestEnv) DeleteSecretByName(name string) error {
 	secret.SetName(name)
 	secret.SetNamespace(te.Namespace)
 	return te.resources.DeleteObject(secret)
+}
+
+func (te *TestEnv) MockInMemoryHasEntry(e resources.Object) error {
+	entry := e.Data().(*v1alpha1.DNSEntry)
+	dnsSet, err := te.MockInMemoryGetDNSSet(entry.Spec.DNSName)
+	if err != nil {
+		return err
+	}
+	if dnsSet == nil {
+		return fmt.Errorf("no DNSSet found for %s in mock-inmemory", entry.Spec.DNSName)
+	}
+	return nil
+}
+
+func (te *TestEnv) MockInMemoryGetDNSSet(dnsName string) (*dns.DNSSet, error) {
+	for _, zone := range mock.TestMock.GetZones() {
+		if zone.Match(dnsName) > 0 {
+			state, err := mock.TestMock.CloneZoneState(zone)
+			if err != nil {
+				return nil, err
+			}
+			if set := state.GetDNSSets()[dnsName]; set != nil {
+				return set, nil
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (te *TestEnv) MockInMemoryHasNotEntry(e resources.Object) error {
+	entry := e.Data().(*v1alpha1.DNSEntry)
+	dnsSet, err := te.MockInMemoryGetDNSSet(entry.Spec.DNSName)
+	if err != nil {
+		return err
+	}
+	if dnsSet != nil {
+		return fmt.Errorf("DNSSet found for %s in mock-inmemory", entry.Spec.DNSName)
+	}
+	return nil
 }
 
 func same(lst1 []string, lst2 []string) bool {

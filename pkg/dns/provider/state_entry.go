@@ -150,13 +150,19 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				if old != nil {
 					logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
 				}
-				if v.object.Status() == nil || v.object.Status().Zone == nil {
+				if !new.IsActive() || v.object.Status().Zone == nil {
 					err = this.RemoveFinalizer(v.object)
 				}
 			}
 		} else {
-			this.smartInfof(logger, "deleting yet unmanaged or errorneous entry")
-			err = this.RemoveFinalizer(v.object)
+			if !new.IsActive() || v.object.Status().State != api.STATE_STALE {
+				this.smartInfof(logger, "deleting yet unmanaged or errorneous entry")
+				err = this.RemoveFinalizer(v.object)
+			} else {
+				if this.HasFinalizer(v.object) {
+					this.smartInfof(logger, "preventing deletion of stale entry")
+				}
+			}
 		}
 		if err != nil {
 			this.entries[v.ObjectName()] = new

@@ -78,7 +78,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		Ω(err).Should(BeNil())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain, true)
+			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain, FailGetZones)
 			return nil
 		})
 		Ω(err).Should(BeNil())
@@ -87,7 +87,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		Ω(err).Should(BeNil())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain, false)
+			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain)
 			return nil
 		})
 		Ω(err).Should(BeNil())
@@ -96,6 +96,47 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		Ω(err).Should(BeNil())
 
 		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).Should(BeNil())
+
+		err = testEnv.DeleteProviderAndSecret(pr)
+		Ω(err).Should(BeNil())
+	})
+	It("should not delete entry if delete request fails", func() {
+		baseDomain := "pr-1.inmemory.mock"
+		pr, domain, err := testEnv.CreateSecretAndProvider(baseDomain, 0, FailDeleteEntry)
+		Ω(err).Should(BeNil())
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		checkProvider(pr)
+
+		e, err := testEnv.CreateEntry(0, domain)
+		Ω(err).Should(BeNil())
+		checkEntry(e, pr)
+
+		err = testEnv.AwaitEntryReady(e.GetName())
+		Ω(err).Should(BeNil())
+
+		err = testEnv.MockInMemoryHasEntry(e)
+		Ω(err).Should(BeNil())
+
+		err = testEnv.DeleteEntryAndWait(e)
+		if err == nil {
+			Fail("delete must fail, as deleting mock DNS record has failed")
+		}
+		Ω(err.Error()).Should(ContainSubstring("Timeout"))
+		err = testEnv.MockInMemoryHasEntry(e)
+		Ω(err).Should(BeNil())
+
+		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
+			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain)
+			return nil
+		})
+		Ω(err).Should(BeNil())
+
+		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).Should(BeNil())
+
+		err = testEnv.MockInMemoryHasNotEntry(e)
 		Ω(err).Should(BeNil())
 
 		err = testEnv.DeleteProviderAndSecret(pr)

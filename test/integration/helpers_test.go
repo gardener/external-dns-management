@@ -22,7 +22,7 @@ import (
 )
 
 func checkHasFinalizer(obj resources.Object) {
-	err := testEnv.AwaitFinalizers(obj, "dns.gardener.cloud/mock-inmemory")
+	err := testEnv.AwaitFinalizers(obj, "dns.gardener.cloud/compound")
 	Ω(err).ShouldNot(HaveOccurred())
 }
 

@@ -38,14 +38,19 @@ type Handler struct {
 }
 
 type MockConfig struct {
-	Zones        []string `json:"zones"`
-	FailGetZones bool     `json:"failGetZones"`
+	Zones           []string `json:"zones"`
+	FailGetZones    bool     `json:"failGetZones"`
+	FailDeleteEntry bool     `json:"failDeleteEntry"`
 }
 
 var _ provider.DNSHandler = &Handler{}
 
+// TestMock allows tests to access mocked DNSHosted Zones
+var TestMock *provider.InMemory
+
 func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	mock := provider.NewInMemory()
+	TestMock = mock
 
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
@@ -115,7 +120,12 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 	var succeeded, failed int
 	for _, r := range reqs {
 		h.config.RateLimiter.Accept()
-		err := h.mock.Apply(zone.Id(), r, h.config.Metrics)
+		var err error
+		if h.mockConfig.FailDeleteEntry && r.Action == provider.R_DELETE {
+			err = fmt.Errorf("forced error by mockConfig.FailDeleteEntry")
+		} else {
+			err = h.mock.Apply(zone.Id(), r, h.config.Metrics)
+		}
 		if err != nil {
 			failed++
 			logger.Infof("Apply failed with %s", err.Error())

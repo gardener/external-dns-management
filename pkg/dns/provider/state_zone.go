@@ -200,6 +200,9 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	outdatedEntries := EntryList{}
 	this.outdated.AddActiveZoneTo(zoneid, &outdatedEntries)
 	for _, e := range outdatedEntries {
+		if changes.IsFailed(e.DNSName()) {
+			continue
+		}
 		logger.Infof("cleanup outdated entry %q", e.ObjectName())
 		err := e.RemoveFinalizer()
 		if err == nil || errors.IsNotFound(err) {
