@@ -53,7 +53,7 @@ func (this *EventFeedback) Pending(logger logger.LogContext, dnsname, msg string
 
 func (this *EventFeedback) Failed(logger logger.LogContext, dnsname string, err error, state *DNSState) {
 	if err == nil {
-		err = fmt.Errorf("dns entry is errornous")
+		err = fmt.Errorf("dns entry is errorneous")
 	}
 	this.event(logger, dnsname, err.Error())
 }

@@ -94,7 +94,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 				logger.Infof("update event")
 				switch s.State {
 				case api.STATE_ERROR:
-					msg := fmt.Errorf("errornous dns entry")
+					msg := fmt.Errorf("errorneous dns entry")
 					if s.Message != nil {
 						msg = fmt.Errorf("%s: %s", msg, *s.Message)
 					}
@@ -119,7 +119,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 					fb.Ready(logger, n, *stateCopy.Message, &stateCopy)
 				}
 			} else {
-				logger.Infof("owner %s not found: %s", k, err)
+				logger.Debugf("owner %s not found: %s", k, err)
 			}
 		}
 	}
