@@ -314,10 +314,6 @@ type providerMatch struct {
 	match int
 }
 
-func newMatch() *providerMatch {
-	return &providerMatch{nil, -1}
-}
-
 func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, DNSProvider, error) {
 	handleMatch := func(match *providerMatch, p *dnsProviderVersion, n int, err error) error {
 		if match.match <= n {
@@ -336,9 +332,9 @@ func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, DNSP
 		return err
 	}
 	var err error
-	validMatch := newMatch()
-	errorMatch := newMatch()
-	validMatchFallback := newMatch()
+	validMatch := &providerMatch{}
+	errorMatch := &providerMatch{}
+	validMatchFallback := &providerMatch{}
 	for _, p := range this.providers {
 		n := p.Match(e.GetDNSName())
 		if n > 0 {
