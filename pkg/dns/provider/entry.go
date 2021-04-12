@@ -376,11 +376,15 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				return reconcile.Succeeded(logger).RescheduleAfter(config.RescheduleDelay)
 			}
 			hello.Infof(logger)
-			logger.Infof("probably no responsible controller found -> mark as error")
+			logger.Infof("probably no responsible controller found (%s) -> mark as error", err)
 			this.status.Provider = nil
 			this.status.ProviderType = nil
 			this.status.Zone = nil
-			err := this.updateStatus(logger, api.STATE_ERROR, "No responsible provider found")
+			msg := "No responsible provider found"
+			if err != nil {
+				msg = fmt.Sprintf("%s: %s", msg, err)
+			}
+			err := this.updateStatus(logger, api.STATE_ERROR, msg)
 			if err != nil {
 				return reconcile.Delay(logger, err)
 			}
