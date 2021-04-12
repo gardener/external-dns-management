@@ -227,7 +227,7 @@ func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	err := h.executeRequests(logger, zone, state, reqs)
-	h.cache.ApplyRequests(err, zone, reqs)
+	h.cache.ApplyRequests(logger, err, zone, reqs)
 	return err
 }
 

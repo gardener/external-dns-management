@@ -272,6 +272,6 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	err := raw.ExecuteRequests(logger, &h.config, h.access, zone, state, reqs)
-	h.ApplyRequests(err, zone, reqs)
+	h.ApplyRequests(logger, err, zone, reqs)
 	return err
 }

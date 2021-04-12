@@ -18,7 +18,9 @@ package aws
 
 import (
 	"fmt"
+
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/route53"
 	"k8s.io/client-go/util/flowcontrol"
 
@@ -26,6 +28,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
 type Change struct {
@@ -101,6 +104,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 	}
 
 	failed := 0
+	throttlingErrCount := 0
 	limitedChanges := limitChangeSet(this.changes, this.batchSize)
 	this.Infof("require %d batches for %d dns names", len(limitedChanges), len(this.changes))
 	for i, changes := range limitedChanges {
@@ -124,6 +128,11 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		this.rateLimiter.Accept()
 		if _, err := this.r53.ChangeResourceRecordSets(params); err != nil {
 			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)
+			if b, ok := err.(awserr.BatchedErrors); ok {
+				if b.Code() == "Throttling" {
+					throttlingErrCount++
+				}
+			}
 			for _, c := range changes {
 				failed++
 				if c.Done != nil {
@@ -141,7 +150,11 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		}
 	}
 	if failed > 0 {
-		return fmt.Errorf("%d changes failed", failed)
+		err := fmt.Errorf("%d changes failed", failed)
+		if throttlingErrCount == len(limitedChanges) {
+			err = errors.NewThrottlingError(err)
+		}
+		return err
 	}
 	return nil
 }
