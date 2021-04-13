@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"k8s.io/client-go/util/flowcontrol"
 
@@ -121,7 +122,8 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 
 	zones := provider.DNSHostedZones{}
 	for _, z := range raw {
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.Name, dns.NormalizeHostname(z.DnsName), "", []string{}, false)
+		zoneID := h.makeZoneID(z.Name)
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(z.DnsName), "", []string{}, false)
 
 		// call GetZoneState for side effect to calculate forwarded domains
 		_, err := cache.GetZoneState(hostedZone)
@@ -156,7 +158,8 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *google
 		return nil
 	}
 	h.config.RateLimiter.Accept()
-	err := h.service.ResourceRecordSets.List(h.credentials.ProjectID, zone.Id()).Pages(h.ctx, aggr)
+	projectID, zoneName := SplitZoneID(zone.Id())
+	err := h.service.ResourceRecordSets.List(projectID, zoneName).Pages(h.ctx, aggr)
 	return forwarded, err
 }
 
@@ -206,4 +209,17 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 		return nil
 	}
 	return exec.submitChanges(h.config.Metrics)
+}
+
+func (h *Handler) makeZoneID(name string) string {
+	return fmt.Sprintf("%s/%s", h.credentials.ProjectID, name)
+}
+
+// SplitZoneID splits the zone id into project id and zone name
+func SplitZoneID(id string) (string, string) {
+	parts := strings.SplitN(id, "/", 2)
+	if len(parts) != 2 {
+		return "???", id
+	}
+	return parts[0], parts[1]
 }
