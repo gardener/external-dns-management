@@ -12,5 +12,6 @@ tmp/
 /test/functional/tmp-*.yaml
 /test/integration/kubebuilder*
 /test/integration/default.etcd
+/test/integration/integration.test
 .vscode/
 .kubeconfig-kind-integration

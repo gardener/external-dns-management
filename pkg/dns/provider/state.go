@@ -48,6 +48,7 @@ type zoneReconciliation struct {
 	stale     DNSNames
 	dedicated bool
 	deleting  bool
+	fhandler  FinalizerHandler
 }
 
 type setup struct {
@@ -438,7 +439,9 @@ loop:
 				if utils.StringValue(e.object.Status().Provider) != "" {
 					logger.Infof("invalid entry %q (%s): %s (%s)", e.ObjectName(), e.DNSName(), e.State(), e.Message())
 				}
-				stale[e.DNSName()] = e
+				if e.KeepRecords() {
+					stale[e.DNSName()] = e
+				}
 			}
 		}
 	}

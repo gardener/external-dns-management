@@ -92,9 +92,16 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 					}
 				} else {
 					model.Infof("found unapplied managed set '%s'", s.Name)
+					var done DoneHandler
+					for _, e := range model.context.entries {
+						if e.dnsname == s.Name {
+							done = NewStatusUpdate(logger, e, model.context.fhandler)
+							break
+						}
+					}
 					for ty := range s.Sets {
 						mod = true
-						this.addDeleteRequest(s, ty, model.wrappedDoneHandler(s.Name, nil))
+						this.addDeleteRequest(s, ty, model.wrappedDoneHandler(s.Name, done))
 					}
 				}
 			}

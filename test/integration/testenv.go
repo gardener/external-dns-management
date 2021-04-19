@@ -301,6 +301,21 @@ func (te *TestEnv) UpdateEntryDomain(obj resources.Object, domain string) (resou
 	return obj, err
 }
 
+func (te *TestEnv) UpdateEntryTargets(obj resources.Object, targets ...string) (resources.Object, error) {
+	obj, err := te.GetEntry(obj.GetName())
+	if err != nil {
+		return nil, err
+	}
+	e := UnwrapEntry(obj)
+	if len(targets) == 0 {
+		e.Spec.Targets = nil
+	} else {
+		e.Spec.Targets = targets
+	}
+	err = obj.Update()
+	return obj, err
+}
+
 func (te *TestEnv) DeleteEntryAndWait(obj resources.Object) error {
 	err := obj.Delete()
 	if err != nil {
@@ -528,6 +543,10 @@ func (te *TestEnv) AwaitEntryReady(name string) error {
 
 func (te *TestEnv) AwaitEntryStale(name string) error {
 	return te.AwaitEntryState(name, "Stale")
+}
+
+func (te *TestEnv) AwaitEntryInvalid(name string) error {
+	return te.AwaitEntryState(name, "Invalid")
 }
 
 func (te *TestEnv) AwaitEntryError(name string) error {

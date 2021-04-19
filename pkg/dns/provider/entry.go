@@ -146,6 +146,10 @@ func (this *EntryVersion) IsValid() bool {
 	return this.valid
 }
 
+func (this *EntryVersion) KeepRecords() bool {
+	return this.IsValid() || this.status.State != api.STATE_INVALID
+}
+
 func (this *EntryVersion) IsDeleting() bool {
 	return this.object.IsDeleting()
 }
@@ -343,15 +347,21 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 		return
 	}
 
-	if utils.StringValue(effspec.OwnerId) != "" {
-		if !state.ownerCache.IsResponsibleFor(*effspec.OwnerId) && !state.ownerCache.IsResponsiblePendingFor(*effspec.OwnerId) {
-			err = fmt.Errorf("unknown owner id '%s'", *effspec.OwnerId)
-		}
-	}
 	if len(targets) == 0 {
 		err = fmt.Errorf("no target or text specified")
 	}
 	return
+}
+
+func validateOwner(logger logger.LogContext, state *state, entry *EntryVersion) error {
+	effspec := entry.object.DNSEntry().Spec
+
+	if utils.StringValue(effspec.OwnerId) != "" {
+		if !state.ownerCache.IsResponsibleFor(*effspec.OwnerId) && !state.ownerCache.IsResponsiblePendingFor(*effspec.OwnerId) {
+			return fmt.Errorf("unknown owner id '%s'", *effspec.OwnerId)
+		}
+	}
+	return nil
 }
 
 func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config, old *Entry) reconcile.Status {
@@ -435,6 +445,13 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	///////////// validate
 
+	if verr := validateOwner(logger, state, this); verr != nil {
+		hello.Infof(logger, "owner validation failed: %s", verr)
+
+		this.UpdateStatus(logger, api.STATE_STALE, verr.Error())
+		return reconcile.Failed(logger, verr)
+	}
+
 	spec, targets, warnings, verr := validate(logger, state, this, p)
 	if p.provider != nil && spec.TTL != nil {
 		this.status.TTL = spec.TTL
@@ -443,11 +460,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	if verr != nil {
 		hello.Infof(logger, "validation failed: %s", verr)
 
-		state := api.STATE_INVALID
-		if this.status.State == api.STATE_READY {
-			state = api.STATE_STALE
-		}
-		this.UpdateStatus(logger, state, verr.Error())
+		this.UpdateStatus(logger, api.STATE_INVALID, verr.Error())
 		return reconcile.Failed(logger, verr)
 	}
 
@@ -478,11 +491,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				verr := fmt.Errorf(msg)
 				hello.Infof(logger, msg)
 
-				state := api.STATE_INVALID
-				if this.status.State == api.STATE_READY {
-					state = api.STATE_STALE
-				}
-				this.UpdateStatus(logger, state, verr.Error())
+				this.UpdateStatus(logger, api.STATE_INVALID, verr.Error())
 				return reconcile.Recheck(logger, verr, time.Duration(this.interval)*time.Second)
 			}
 		} else {
@@ -592,16 +601,19 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 			if this.status.Provider != nil {
 				mod.AssureStringPtrPtr(&o.Status.Provider, this.status.Provider)
 			}
+		} else if state != api.STATE_STALE {
+			if o.Status.Targets != nil {
+				o.Status.Targets = nil
+				mod.Modify(true)
+			}
 		}
 		mod.AssureInt64Value(&o.Status.ObservedGeneration, o.Generation)
 		if !(this.status.State == api.STATE_STALE && this.status.State == state) {
 			mod.AssureStringPtrValue(&o.Status.Message, msg)
 			this.status.Message = &msg
 		}
-		if !(this.status.State == api.STATE_STALE && state == api.STATE_INVALID) {
-			mod.AssureStringValue(&o.Status.State, state)
-			this.status.State = state
-		}
+		mod.AssureStringValue(&o.Status.State, state)
+		this.status.State = state
 		if mod.IsModified() {
 			dnsutils.SetLastUpdateTime(&o.Status.LastUptimeTime)
 			logger.Infof("update state of '%s/%s' to %s (%s)", o.Namespace, o.Name, state, msg)

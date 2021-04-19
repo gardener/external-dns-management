@@ -207,6 +207,7 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 						stale:     nil,
 						dedicated: false,
 						deleting:  false,
+						fhandler:  this.context,
 					})
 					if !done {
 						return reconcile.Delay(logger, fmt.Errorf("zone reconcilation busy -> delay deletion"))
