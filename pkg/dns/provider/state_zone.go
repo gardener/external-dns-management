@@ -50,7 +50,9 @@ func (this *state) TriggerHostedZones() {
 }
 
 func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string) (time.Duration, bool, *zoneReconciliation) {
-	req := &zoneReconciliation{}
+	req := &zoneReconciliation{
+		fhandler: this.context,
+	}
 
 	this.lock.RLock()
 	defer this.lock.RUnlock()
