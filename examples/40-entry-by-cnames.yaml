@@ -1,6 +1,9 @@
 apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSEntry
 metadata:
+  annotations:
+    # If you are delegating the DNS management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
+    #dns.gardener.cloud/class: garden
   name: test
   namespace: default
 spec:
