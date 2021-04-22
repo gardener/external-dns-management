@@ -1,6 +1,6 @@
 ---
-type: blueprint
-name: dns-controller-manager-blueprint
+type: landscaper.gardener.cloud/blueprint
+name: dns-controller-manager-controller-registration
 relation: local
 input:
   type: "dir"
@@ -8,7 +8,7 @@ input:
   compress: true
   mediaType: "application/vnd.gardener.landscaper.blueprint.v1+tar+gzip"
 ---
-type: helm
+type: helm.io/chart
 name: dns-controller-manager-chart
 relation: local
 input:

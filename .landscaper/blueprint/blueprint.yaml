@@ -6,6 +6,7 @@ imports:
   targetType: landscaper.gardener.cloud/kubernetes-cluster
 
 - name: chartValues
+  required: false
   schema:
     type: object
 

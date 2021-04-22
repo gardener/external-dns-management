@@ -29,6 +29,10 @@ deployItems:
             type: openstack-designate
           - kind: DNSProvider
             type: cloudflare-dns
+          - kind: DNSProvider
+            type: infoblox-dns
+          - kind: DNSProvider
+            type: netlify-dns 
           deployment:
             type: helm
             providerConfig:
@@ -39,6 +43,8 @@ deployItems:
                   {{- $image := getResource .cd "name" "dns-controller-manager" }}
                   repository: {{ ociRefRepo ( $image.access.imageReference ) }}
                   tag: {{ ociRefVersion ( $image.access.imageReference ) }}
+                {{- if .imports.chartValues }}
                 {{- $values := .imports.chartValues }}
                 {{- $values = unset $values "image" }}
                 {{- toYaml $values | nindent 16 }}
+                {{- end }}
