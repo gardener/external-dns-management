@@ -17,8 +17,11 @@
 package integration
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -235,4 +238,39 @@ var _ = Describe("EntryLivecycle", func() {
 		err = testEnv.DeleteEntryAndWait(e)
 		Ω(err).Should(BeNil())
 	})
+
+	It("handles entry with multiple cname targets correctly (deduplication)", func() {
+		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		Ω(err).Should(BeNil())
+
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		index := 0
+		ttl := int64(300)
+		setSpec := func(e *v1alpha1.DNSEntry) {
+			e.Spec.TTL = &ttl
+			e.Spec.DNSName = fmt.Sprintf("e%d.%s", index, domain)
+			e.Spec.Targets = []string{
+				"wikipedia.org",
+				"www.wikipedia.org",
+				"wikipedia.com",
+				"www.wikipedia.com",
+			}
+		}
+		e, err := testEnv.CreateEntryGeneric(index, setSpec)
+		Ω(err).Should(BeNil())
+
+		checkProvider(pr)
+
+		entry := checkEntry(e, pr)
+		targets := utils.NewStringSet(entry.Status.Targets...)
+		Ω(len(targets)).To(Equal(len(entry.Status.Targets))) // no duplicates
+
+		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).Should(BeNil())
+
+		err = testEnv.DeleteProviderAndSecret(pr)
+		Ω(err).Should(BeNil())
+	})
+
 })

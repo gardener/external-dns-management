@@ -491,7 +491,12 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				verr := fmt.Errorf(msg)
 				hello.Infof(logger, msg)
 
-				this.UpdateStatus(logger, api.STATE_INVALID, verr.Error())
+				state := api.STATE_INVALID
+				// if DNS lookup fails temporarily, go to state STALE
+				if this.status.State == api.STATE_READY || this.status.State == api.STATE_STALE {
+					state = api.STATE_STALE
+				}
+				this.UpdateStatus(logger, state, verr.Error())
 				return reconcile.Recheck(logger, verr, time.Duration(this.interval)*time.Second)
 			}
 		} else {
@@ -652,7 +657,13 @@ func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject,
 	for _, t := range targets {
 		addrs, err := lookupHostIPv4(t.GetHostName())
 		if err == nil {
+		outer:
 			for _, addr := range addrs {
+				for _, old := range result {
+					if old.GetHostName() == addr {
+						continue outer
+					}
+				}
 				result = append(result, NewTarget(dns.RS_A, addr, t.GetEntry()))
 			}
 		} else {

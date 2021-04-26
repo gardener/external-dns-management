@@ -1,6 +1,6 @@
 module github.com/gardener/external-dns-management
 
-go 1.14
+go 1.16
 
 require (
 	github.com/Azure/azure-sdk-for-go v39.0.0+incompatible

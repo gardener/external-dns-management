@@ -18,6 +18,7 @@ package integration
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	. "github.com/onsi/gomega"
 )
 
@@ -33,7 +34,7 @@ func checkProvider(obj resources.Object) {
 	checkHasFinalizer(obj)
 }
 
-func checkEntry(obj resources.Object, provider resources.Object) {
+func checkEntry(obj resources.Object, provider resources.Object) *v1alpha1.DNSEntry {
 	err := testEnv.AwaitEntryReady(obj.GetName())
 	Ω(err).Should(BeNil())
 
@@ -47,4 +48,5 @@ func checkEntry(obj resources.Object, provider resources.Object) {
 	Ω(entry.Status.Provider).ShouldNot(BeNil(), "Missing provider")
 	providerName := provider.ObjectName().String()
 	Ω(*entry.Status.Provider).Should(Equal(providerName))
+	return entry
 }
