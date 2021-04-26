@@ -181,7 +181,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 
 func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
 	var raw []ibclient.ZoneAuth
-	h.config.Metrics.AddRequests(provider.M_LISTZONES, 1)
+	h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
 	obj := ibclient.NewZoneAuth(ibclient.ZoneAuth{})
 	err := h.access.GetObject(obj, "", &raw)
 	if err != nil {
@@ -190,7 +190,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 
 	zones := provider.DNSHostedZones{}
 	for _, z := range raw {
-		h.config.Metrics.AddRequests(provider.M_LISTRECORDS, 1)
+		h.config.Metrics.AddZoneRequests(z.Ref, provider.M_LISTRECORDS, 1)
 		var resN []RecordNS
 		objN := ibclient.NewRecordNS(
 			ibclient.RecordNS{
@@ -218,7 +218,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	state := raw.NewState()
 	rt := provider.M_LISTRECORDS
 
-	h.config.Metrics.AddRequests(rt, 1)
+	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
 	var resA []RecordA
 	objA := ibclient.NewRecordA(
 		ibclient.RecordA{
@@ -234,7 +234,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		state.AddRecord((*RecordA)(&res).Copy())
 	}
 
-	h.config.Metrics.AddRequests(rt, 1)
+	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
 	var resC []RecordCNAME
 	objC := ibclient.NewRecordCNAME(
 		ibclient.RecordCNAME{
@@ -250,7 +250,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		state.AddRecord((*RecordCNAME)(&res).Copy())
 	}
 
-	h.config.Metrics.AddRequests(rt, 1)
+	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
 	var resT []RecordTXT
 	objT := ibclient.NewRecordTXT(
 		ibclient.RecordTXT{

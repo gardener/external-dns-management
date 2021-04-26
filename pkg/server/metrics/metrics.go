@@ -31,6 +31,8 @@ import (
 
 func init() {
 	prometheus.MustRegister(Requests)
+	prometheus.MustRegister(ZoneRequests)
+	prometheus.MustRegister(ZoneCacheDiscardings)
 	prometheus.MustRegister(Accounts)
 	prometheus.MustRegister(Entries)
 	prometheus.MustRegister(StaleEntries)
@@ -46,6 +48,22 @@ var (
 			Help: "Total requests per provider type and credential set",
 		},
 		[]string{"providertype", "accounthash", "requesttype"},
+	)
+
+	ZoneRequests = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_requests_per_zone",
+			Help: "Requests per provider type, credential set, and zone",
+		},
+		[]string{"providertype", "accounthash", "requesttype", "zone"},
+	)
+
+	ZoneCacheDiscardings = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_zone_cache_discardings",
+			Help: "Discardings of zone cache per provider type and zone",
+		},
+		[]string{"providertype", "zone"},
 	)
 
 	Accounts = prometheus.NewGaugeVec(
@@ -129,9 +147,16 @@ func ReportAccountProviders(ptype, account string, amount int) {
 	Accounts.WithLabelValues(ptype, account).Set(float64(amount))
 }
 
-func AddRequests(ptype, account, requestType string, no int) {
+func AddRequests(ptype, account, requestType string, no int, zone *string) {
 	theRequestLabels.AddRequestLabel(ptype, account, requestType)
 	Requests.WithLabelValues(ptype, account, requestType).Add(float64(no))
+	if zone != nil {
+		ZoneRequests.WithLabelValues(ptype, account, requestType, *zone).Add(float64(no))
+	}
+}
+
+func AddZoneCacheDiscarding(ptype, zone string) {
+	ZoneCacheDiscardings.WithLabelValues(ptype, zone).Add(float64(1))
 }
 
 type ZoneProviderTypes struct {

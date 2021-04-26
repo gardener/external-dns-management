@@ -110,7 +110,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		for _, zone := range resp.ManagedZones {
 			raw = append(raw, zone)
 		}
-		h.config.Metrics.AddRequests(rt, 1)
+		h.config.Metrics.AddGenericRequests(rt, 1)
 		rt = provider.M_PLISTZONES
 		return nil
 	}
@@ -153,7 +153,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *google
 				}
 			}
 		}
-		h.config.Metrics.AddRequests(rt, 1)
+		h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
 		rt = provider.M_PLISTRECORDS
 		return nil
 	}

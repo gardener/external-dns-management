@@ -57,7 +57,7 @@ func NewAccess(apiToken string, metrics provider.Metrics, rateLimiter flowcontro
 }
 
 func (this *access) ListZones(consume func(zone models.DNSZone) (bool, error)) error {
-	this.metrics.AddRequests(provider.M_LISTZONES, 1)
+	this.metrics.AddGenericRequests(provider.M_LISTZONES, 1)
 	this.rateLimiter.Accept()
 	results, err := this.client.GetDNSZones(nil, this.authInfo)
 	if err != nil {
@@ -71,11 +71,11 @@ func (this *access) ListZones(consume func(zone models.DNSZone) (bool, error)) e
 	return nil
 }
 
-func (this *access) ListRecords(zoneId string, consume func(record models.DNSRecord) (bool, error)) error {
-	this.metrics.AddRequests(provider.M_LISTRECORDS, 1)
+func (this *access) ListRecords(zoneID string, consume func(record models.DNSRecord) (bool, error)) error {
+	this.metrics.AddZoneRequests(zoneID, provider.M_LISTRECORDS, 1)
 	this.rateLimiter.Accept()
 	params := operations.NewGetDNSRecordsParams()
-	params.ZoneID = zoneId
+	params.ZoneID = zoneID
 	results, err := this.client.GetDNSRecords(params, this.authInfo)
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func (this *access) ListRecords(zoneId string, consume func(record models.DNSRec
 	return nil
 }
 
-func (this *access) CreateRecord(r raw.Record) error {
+func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) error {
 	a := r.(*Record)
 	ttl := r.GetTTL()
 	testTTL(&ttl)
@@ -98,7 +98,7 @@ func (this *access) CreateRecord(r raw.Record) error {
 		Value:    r.GetValue(),
 		TTL:      int64(ttl),
 	}
-	this.metrics.AddRequests(provider.M_CREATERECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id(), provider.M_CREATERECORDS, 1)
 	this.rateLimiter.Accept()
 	createParams := operations.NewCreateDNSRecordParams()
 	createParams.SetZoneID(a.DNSZoneID)
@@ -107,22 +107,22 @@ func (this *access) CreateRecord(r raw.Record) error {
 	return err
 }
 
-func (this *access) UpdateRecord(r raw.Record) error {
+func (this *access) UpdateRecord(r raw.Record, zone provider.DNSHostedZone) error {
 	// Netlify does not support updating a record
 	// Delete the existing record and re-create it
-	err := this.DeleteRecord(r)
+	err := this.DeleteRecord(r, zone)
 	if err != nil {
 		return err
 	}
-	return this.CreateRecord(r)
+	return this.CreateRecord(r, zone)
 }
 
-func (this *access) DeleteRecord(r raw.Record) error {
+func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
 	a := r.(*Record)
 	deleteParams := operations.NewDeleteDNSRecordParams()
 	deleteParams.SetZoneID(a.DNSZoneID)
 	deleteParams.SetDNSRecordID(a.ID)
-	this.metrics.AddRequests(provider.M_DELETERECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id(), provider.M_DELETERECORDS, 1)
 	this.rateLimiter.Accept()
 	_, err := this.client.DeleteDNSRecord(deleteParams, this.authInfo)
 	return err

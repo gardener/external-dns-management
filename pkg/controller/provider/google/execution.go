@@ -94,7 +94,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		this.Infof("desired change: Addition %s %s: %s", c.Name, c.Type, utils.Strings(c.Rrdatas...))
 	}
 
-	metrics.AddRequests(provider.M_UPDATERECORDS, 1)
+	metrics.AddZoneRequests(this.zone.Id(), provider.M_UPDATERECORDS, 1)
 	this.handler.config.RateLimiter.Accept()
 	projectID, zoneName := SplitZoneID(this.zone.Id())
 	if _, err := this.handler.service.Changes.Create(projectID, zoneName, this.change).Do(); err != nil {

@@ -137,13 +137,15 @@ func (exec *Execution) update(recordType azure.RecordType, rset *azure.RecordSet
 	exec.handler.config.RateLimiter.Accept()
 	_, err := exec.handler.recordsClient.CreateOrUpdate(exec.handler.ctx, exec.resourceGroup, exec.zoneName, *rset.Name,
 		recordType, *rset, "", "")
-	metrics.AddRequests("RecordSetsClient_CreateOrUpdate", 1)
+	zoneID := makeZoneID(exec.resourceGroup, exec.zoneName)
+	metrics.AddZoneRequests(zoneID, provider.M_UPDATERECORDS, 1)
 	return err
 }
 
 func (exec *Execution) delete(recordType azure.RecordType, rset *azure.RecordSet, metrics provider.Metrics) error {
 	exec.handler.config.RateLimiter.Accept()
 	_, err := exec.handler.recordsClient.Delete(exec.handler.ctx, exec.resourceGroup, exec.zoneName, *rset.Name, recordType, "")
-	metrics.AddRequests("RecordSetsClient_Delete", 1)
+	zoneID := makeZoneID(exec.resourceGroup, exec.zoneName)
+	metrics.AddZoneRequests(zoneID, provider.M_DELETERECORDS, 1)
 	return err
 }

@@ -53,9 +53,6 @@ type designateClientInterface interface {
 
 	// DeleteRecordSet deletes recordset in the given DNS zone
 	DeleteRecordSet(zoneID, recordSetID string) error
-
-	// GetRecordSet gets recordset by its ID
-	GetRecordSet(zoneID, recordSetID string, handler func(recordSet *recordsets.RecordSet) error) error
 }
 
 // implementation of the designateClientInterface
@@ -148,7 +145,7 @@ func (c designateClient) ForEachZone(handler func(zone *zones.Zone) error) error
 	rt := provider.M_LISTZONES
 	return pager.EachPage(
 		func(page pagination.Page) (bool, error) {
-			c.metrics.AddRequests(rt, 1)
+			c.metrics.AddGenericRequests(rt, 1)
 			rt = provider.M_PLISTZONES
 			list, err := zones.ExtractZones(page)
 			if err != nil {
@@ -176,7 +173,7 @@ func (c designateClient) ForEachRecordSetFilterByTypeAndName(zoneID string, rrty
 	rt := provider.M_LISTRECORDS
 	return pager.EachPage(
 		func(page pagination.Page) (bool, error) {
-			c.metrics.AddRequests(rt, 1)
+			c.metrics.AddZoneRequests(zoneID, rt, 1)
 			rt = provider.M_PLISTRECORDS
 			list, err := recordsets.ExtractRecordSets(page)
 			if err != nil {
@@ -196,7 +193,7 @@ func (c designateClient) ForEachRecordSetFilterByTypeAndName(zoneID string, rrty
 // CreateRecordSet creates recordset in the given DNS zone
 func (c designateClient) CreateRecordSet(zoneID string, opts recordsets.CreateOpts) (string, error) {
 	r, err := recordsets.Create(c.serviceClient, zoneID, opts).Extract()
-	c.metrics.AddRequests("RecordSets_Create", 1)
+	c.metrics.AddZoneRequests(zoneID, provider.M_CREATERECORDS, 1)
 	if err != nil {
 		return "", err
 	}
@@ -206,23 +203,13 @@ func (c designateClient) CreateRecordSet(zoneID string, opts recordsets.CreateOp
 // UpdateRecordSet updates recordset in the given DNS zone
 func (c designateClient) UpdateRecordSet(zoneID, recordSetID string, opts recordsets.UpdateOpts) error {
 	_, err := recordsets.Update(c.serviceClient, zoneID, recordSetID, opts).Extract()
-	c.metrics.AddRequests("RecordSets_Update", 1)
+	c.metrics.AddZoneRequests(zoneID, provider.M_UPDATERECORDS, 1)
 	return err
 }
 
 // DeleteRecordSet deletes recordset in the given DNS zone
 func (c designateClient) DeleteRecordSet(zoneID, recordSetID string) error {
 	err := recordsets.Delete(c.serviceClient, zoneID, recordSetID).ExtractErr()
-	c.metrics.AddRequests("RecordSets_Delete", 1)
+	c.metrics.AddZoneRequests(zoneID, provider.M_DELETERECORDS, 1)
 	return err
-}
-
-// GetRecordSet gets single recordset by its ID
-func (c designateClient) GetRecordSet(zoneID, recordSetID string, handler func(recordSet *recordsets.RecordSet) error) error {
-	rs, err := recordsets.Get(c.serviceClient, zoneID, recordSetID).Extract()
-	c.metrics.AddRequests("RecordSets_Get", 1)
-	if err != nil {
-		return err
-	}
-	return handler(rs)
 }

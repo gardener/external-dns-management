@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -250,7 +251,7 @@ func (c *defaultZoneCache) GetZones() (DNSHostedZones, error) {
 		}
 		c.state.RestrictCacheToZones(c.zones)
 	} else {
-		c.metrics.AddRequests(M_CACHED_GETZONES, 1)
+		c.metrics.AddGenericRequests(M_CACHED_GETZONES, 1)
 	}
 	return c.zones, c.zonesErr
 }
@@ -272,7 +273,7 @@ func (c *defaultZoneCache) clearBackoff() {
 func (c *defaultZoneCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
 	state, cached, err := c.state.GetZoneState(zone, c)
 	if cached {
-		c.metrics.AddRequests(M_CACHED_GETZONESTATE, 1)
+		c.metrics.AddZoneRequests(zone.Id(), M_CACHED_GETZONESTATE, 1)
 	} else {
 		c.persistZone(zone)
 	}
@@ -302,6 +303,7 @@ func (c *defaultZoneCache) ApplyRequests(logctx logger.LogContext, err error, zo
 		if !errors.IsThrottlingError(err) {
 			logctx.Infof("zone cache discarded because of error during ExecuteRequests")
 			c.deleteZoneState(zone)
+			metrics.AddZoneCacheDiscarding(zone.ProviderType(), zone.Id())
 		} else {
 			logctx.Infof("zone cache untouched (only throttling during ExecuteRequests)")
 		}

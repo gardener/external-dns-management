@@ -44,20 +44,20 @@ func NewAccess(client ibclient.IBConnector, view string, metrics provider.Metric
 	}
 }
 
-func (this *access) CreateRecord(r raw.Record) error {
-	this.metrics.AddRequests(provider.M_CREATERECORDS, 1)
+func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) error {
+	this.metrics.AddZoneRequests(zone.Id(), provider.M_CREATERECORDS, 1)
 	_, err := this.CreateObject(r.(ibclient.IBObject))
 	return err
 }
 
-func (this *access) UpdateRecord(r raw.Record) error {
-	this.metrics.AddRequests(provider.M_CREATERECORDS, 1)
+func (this *access) UpdateRecord(r raw.Record, zone provider.DNSHostedZone) error {
+	this.metrics.AddZoneRequests(zone.Id(), provider.M_CREATERECORDS, 1)
 	_, err := this.UpdateObject(r.(Record).PrepareUpdate().(ibclient.IBObject), r.GetId())
 	return err
 }
 
-func (this *access) DeleteRecord(r raw.Record) error {
-	this.metrics.AddRequests(provider.M_DELETERECORDS, 1)
+func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
+	this.metrics.AddZoneRequests(zone.Id(), provider.M_DELETERECORDS, 1)
 	_, err := this.DeleteObject(r.GetId())
 	return err
 }

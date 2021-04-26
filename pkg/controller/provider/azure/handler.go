@@ -115,7 +115,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	zones := provider.DNSHostedZones{}
 	h.config.RateLimiter.Accept()
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
-	h.config.Metrics.AddRequests("ZonesClient_ListComplete", 1)
+	h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
 	if err != nil {
 		return nil, perrs.WrapAsHandlerError(err, "Listing DNS zones failed")
 	}
@@ -133,7 +133,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		forwarded := h.collectForwardedSubzones(resourceGroup, *item.Name)
 
 		// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), resourceGroup+"/"+*item.Name, dns.NormalizeHostname(*item.Name), "", forwarded, false)
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), makeZoneID(resourceGroup, *item.Name), dns.NormalizeHostname(*item.Name), "", forwarded, false)
 
 		zones = append(zones, hostedZone)
 	}
@@ -147,7 +147,8 @@ func (h *Handler) collectForwardedSubzones(resourceGroup, zoneName string) []str
 	var top int32 = 1000
 	h.config.RateLimiter.Accept()
 	result, err := h.recordsClient.ListByType(h.ctx, resourceGroup, zoneName, azure.NS, &top, "")
-	h.config.Metrics.AddRequests("RecordSetsClient_ListByType_NS", 1)
+	zoneID := makeZoneID(resourceGroup, zoneName)
+	h.config.Metrics.AddZoneRequests(zoneID, provider.M_LISTRECORDS, 1)
 	if err != nil {
 		logger.Infof("Failed fetching NS records for %s: %s", zoneName, err.Error())
 		// just ignoring it
@@ -161,6 +162,10 @@ func (h *Handler) collectForwardedSubzones(resourceGroup, zoneName string) []str
 		}
 	}
 	return forwarded
+}
+
+func makeZoneID(resourceGroup, zoneName string) string {
+	return resourceGroup + "/" + zoneName
 }
 
 func splitZoneid(zoneid string) (string, string) {
@@ -181,12 +186,14 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	resourceGroup, zoneName := splitZoneid(zone.Id())
 	h.config.RateLimiter.Accept()
 	results, err := h.recordsClient.ListAllByDNSZoneComplete(h.ctx, resourceGroup, zoneName, nil, "")
-	h.config.Metrics.AddRequests("RecordSetsClient_ListAllByDNSZoneComplete", 1)
+	h.config.Metrics.AddZoneRequests(zone.Id(), provider.M_LISTRECORDS, 1)
 	if err != nil {
 		return nil, perrs.WrapfAsHandlerError(err, "Listing DNS zone state for zone %s failed", zoneName)
 	}
 
+	count := 0
 	for ; results.NotDone(); results.Next() {
+		count++
 		item := results.Value()
 		// We expect recordName.DNSZone. However Azure only return recordName . Reverse is dropZoneName() needed for calls to Azure
 		fullName := fmt.Sprintf("%s.%s", *item.Name, zoneName)
@@ -217,6 +224,10 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 			}
 			dnssets.AddRecordSetFromProvider(fullName, rs)
 		}
+	}
+	pages := count / 100
+	if pages > 0 {
+		h.config.Metrics.AddZoneRequests(zone.Id(), provider.M_PLISTRECORDS, count/100)
 	}
 	return provider.NewDNSZoneState(dnssets), nil
 }

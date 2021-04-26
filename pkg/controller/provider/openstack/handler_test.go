@@ -178,14 +178,6 @@ func (c *designateMockClient) DeleteRecordSet(zoneID, recordSetID string) error 
 	return nil
 }
 
-func (c *designateMockClient) GetRecordSet(zoneID, recordSetID string, handler func(recordSet *recordsets.RecordSet) error) error {
-	_, rs, err := c.getRecordSet(zoneID, recordSetID)
-	if err != nil {
-		return err
-	}
-	return handler(rs)
-}
-
 func newMockHandler(mockZones ...*zones.Zone) *Handler {
 	c := designateMockClient{
 		tzmap: map[string]*testzone{},
