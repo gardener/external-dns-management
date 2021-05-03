@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -51,7 +52,7 @@ func (this DNSProviders) LookupFor(dns string) DNSProvider {
 	for _, p := range this {
 		n := p.Match(dns)
 		if n > 0 {
-			if match < n {
+			if match < n || match == n && found != nil && strings.Compare(p.AccountHash(), found.AccountHash()) < 0 {
 				found = p
 				match = n
 			}
