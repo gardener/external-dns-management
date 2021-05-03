@@ -132,7 +132,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		for _, zone := range resp.HostedZones {
 			raw = append(raw, zone)
 		}
-		h.config.Metrics.AddRequests(rt, 1)
+		h.config.Metrics.AddGenericRequests(rt, 1)
 		rt = provider.M_PLISTZONES
 		return true
 	}
@@ -224,7 +224,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route
 	inp := (&route53.ListResourceRecordSetsInput{}).SetHostedZoneId(zone.Id())
 	forwarded := []string{}
 	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
-		h.config.Metrics.AddRequests(rt, 1)
+		h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
 		for _, r := range resp.ResourceRecordSets {
 			f(r)
 			if aws.StringValue(r.Type) == dns.RS_NS {

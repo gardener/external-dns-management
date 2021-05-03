@@ -51,7 +51,7 @@ func GetRR(dnsname, domain string) string {
 
 type Access interface {
 	ListDomains(consume func(domain alidns.Domain) (bool, error)) error
-	ListRecords(domain string, consume func(record alidns.Record) (bool, error)) error
+	ListRecords(zoneID, domain string, consume func(record alidns.Record) (bool, error)) error
 
 	raw.Executor
 }
@@ -83,7 +83,7 @@ func (this *access) ListDomains(consume func(domain alidns.Domain) (bool, error)
 	nextPage := 1
 	rt := provider.M_LISTZONES
 	for {
-		this.metrics.AddRequests(rt, 1)
+		this.metrics.AddGenericRequests(rt, 1)
 		rt = provider.M_PLISTZONES
 		request.PageNumber = requests.NewInteger(nextPage)
 		this.rateLimiter.Accept()
@@ -102,14 +102,14 @@ func (this *access) ListDomains(consume func(domain alidns.Domain) (bool, error)
 	}
 }
 
-func (this *access) ListRecords(domain string, consume func(record alidns.Record) (bool, error)) error {
+func (this *access) ListRecords(zoneID, domain string, consume func(record alidns.Record) (bool, error)) error {
 	request := alidns.CreateDescribeDomainRecordsRequest()
 	request.DomainName = domain
 	request.PageSize = requests.NewInteger(defaultPageSize)
 	nextPage := 1
 	rt := provider.M_LISTRECORDS
 	for {
-		this.metrics.AddRequests(rt, 1)
+		this.metrics.AddZoneRequests(zoneID, rt, 1)
 		rt = provider.M_PLISTRECORDS
 		request.PageNumber = requests.NewInteger(nextPage)
 		this.rateLimiter.Accept()
@@ -128,7 +128,7 @@ func (this *access) ListRecords(domain string, consume func(record alidns.Record
 	}
 }
 
-func (this *access) CreateRecord(r raw.Record) error {
+func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) error {
 	a := r.(*Record)
 	req := alidns.CreateAddDomainRecordRequest()
 	req.DomainName = a.DomainName
@@ -136,13 +136,13 @@ func (this *access) CreateRecord(r raw.Record) error {
 	req.Type = a.Type
 	req.TTL = requests.NewInteger(a.TTL)
 	req.Value = a.Value
-	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id(), provider.M_UPDATERECORDS, 1)
 	this.rateLimiter.Accept()
 	_, err := this.client.AddDomainRecord(req)
 	return err
 }
 
-func (this *access) UpdateRecord(r raw.Record) error {
+func (this *access) UpdateRecord(r raw.Record, zone provider.DNSHostedZone) error {
 	a := r.(*Record)
 	req := alidns.CreateUpdateDomainRecordRequest()
 	req.RecordId = a.RecordId
@@ -150,16 +150,16 @@ func (this *access) UpdateRecord(r raw.Record) error {
 	req.Type = a.Type
 	req.TTL = requests.NewInteger(a.TTL)
 	req.Value = a.Value
-	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id(), provider.M_UPDATERECORDS, 1)
 	this.rateLimiter.Accept()
 	_, err := this.client.UpdateDomainRecord(req)
 	return err
 }
 
-func (this *access) DeleteRecord(r raw.Record) error {
+func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
 	req := alidns.CreateDeleteDomainRecordRequest()
 	req.RecordId = r.GetId()
-	this.metrics.AddRequests(provider.M_UPDATERECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id(), provider.M_UPDATERECORDS, 1)
 	this.rateLimiter.Accept()
 	_, err := this.client.DeleteDomainRecord(req)
 	return err

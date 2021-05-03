@@ -99,13 +99,13 @@ func (m *InMemory) AddZone(zone DNSHostedZone) bool {
 	return true
 }
 
-func (m *InMemory) Apply(zoneId string, request *ChangeRequest, metrics Metrics) error {
+func (m *InMemory) Apply(zoneID string, request *ChangeRequest, metrics Metrics) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	data, ok := m.zones[zoneId]
+	data, ok := m.zones[zoneID]
 	if !ok {
-		return fmt.Errorf("DNSZone %s not hosted", zoneId)
+		return fmt.Errorf("DNSZone %s not hosted", zoneID)
 	}
 
 	name, rset := buildRecordSet(request)
@@ -113,10 +113,10 @@ func (m *InMemory) Apply(zoneId string, request *ChangeRequest, metrics Metrics)
 	switch request.Action {
 	case R_CREATE, R_UPDATE:
 		data.dnssets.AddRecordSet(name, rset)
-		metrics.AddRequests("AddRecordSet", 1)
+		metrics.AddZoneRequests(zoneID, M_UPDATERECORDS, 1)
 	case R_DELETE:
 		data.dnssets.RemoveRecordSet(name, rset.Type)
-		metrics.AddRequests("RemoveRecordSet", 1)
+		metrics.AddZoneRequests(zoneID, M_DELETERECORDS, 1)
 	}
 	return nil
 }

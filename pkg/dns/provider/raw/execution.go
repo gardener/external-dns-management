@@ -26,9 +26,9 @@ import (
 )
 
 type Executor interface {
-	CreateRecord(r Record) error
-	UpdateRecord(r Record) error
-	DeleteRecord(r Record) error
+	CreateRecord(r Record, zone provider.DNSHostedZone) error
+	UpdateRecord(r Record, zone provider.DNSHostedZone) error
+	DeleteRecord(r Record, zone provider.DNSHostedZone) error
 
 	NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) Record
 }
@@ -171,8 +171,8 @@ func (this *Execution) SubmitChanges() error {
 	return nil
 }
 
-func (this *Execution) submit(f func(record Record) error, r Record) {
-	err := f(r)
+func (this *Execution) submit(f func(record Record, zone provider.DNSHostedZone) error, r Record) {
+	err := f(r, this.zone)
 	if err != nil {
 		res := this.results[r.GetDNSName()]
 		if res != nil {

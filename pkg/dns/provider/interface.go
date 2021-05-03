@@ -174,7 +174,8 @@ const (
 )
 
 type Metrics interface {
-	AddRequests(request_type string, n int)
+	AddGenericRequests(request_type string, n int)
+	AddZoneRequests(zoneID, request_type string, n int)
 }
 
 type Finalizers interface {

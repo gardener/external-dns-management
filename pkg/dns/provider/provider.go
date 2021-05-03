@@ -85,8 +85,12 @@ func NewDNSAccount(config utils.Properties, handler DNSHandler, hash string) *DN
 	}
 }
 
-func (this *DNSAccount) AddRequests(requestType string, n int) {
-	metrics.AddRequests(this.handler.ProviderType(), this.hash, requestType, n)
+func (this *DNSAccount) AddGenericRequests(requestType string, n int) {
+	metrics.AddRequests(this.handler.ProviderType(), this.hash, requestType, n, nil)
+}
+
+func (this *DNSAccount) AddZoneRequests(zoneID, requestType string, n int) {
+	metrics.AddRequests(this.handler.ProviderType(), this.hash, requestType, n, &zoneID)
 }
 
 func (this *DNSAccount) ProviderType() string {

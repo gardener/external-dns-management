@@ -124,7 +124,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 			},
 		}
 
-		metrics.AddRequests(provider.M_UPDATERECORDS, 1)
+		metrics.AddZoneRequests(this.zone.Id(), provider.M_UPDATERECORDS, 1)
 		this.rateLimiter.Accept()
 		if _, err := this.r53.ChangeResourceRecordSets(params); err != nil {
 			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)

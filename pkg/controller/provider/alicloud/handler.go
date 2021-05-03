@@ -102,7 +102,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 				}
 				return true, nil
 			}
-			err := h.access.ListRecords(z.DomainName, f)
+			err := h.access.ListRecords(z.DomainId, z.DomainName, f)
 			if err != nil {
 				if checkAccessForbidden(err) {
 					// It is reasonable for some RAM user, it is only allowed to access certain domain's records detail
@@ -132,7 +132,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		//fmt.Printf("**** found %s %s: %s\n", a.GetType(), a.GetDNSName(), a.GetValue() )
 		return true, nil
 	}
-	err := h.access.ListRecords(zone.Key(), f)
+	err := h.access.ListRecords(zone.Id(), zone.Key(), f)
 	if err != nil {
 		return nil, perrs.WrapAsHandlerError(err, "list records failed")
 	}
