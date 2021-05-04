@@ -21,7 +21,7 @@ COPY . .
 RUN make release
 
 ############# base
-FROM eu.gcr.io/gardener-project/3rd/alpine:3.13.4 AS base
+FROM eu.gcr.io/gardener-project/3rd/alpine:3.13.5 AS base
 
 #############      dns-controller-manager     #############
 FROM base AS dns-controller-manager
