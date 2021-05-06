@@ -43,3 +43,10 @@ type: Opaque
 data:
   CLOUDFLARE_API_TOKEN: MTIzNDU2Nzg5MDEyMzQ1Njc4OQ==
 ``` 
+
+## Troubleshooting
+
+* If you get a permission error communicating with Cloudflare, be sure the domain name 
+  being registered does not exceed your plan limits. Hierarchical domains are not
+  supported on the free plan as of this writing.
+  
