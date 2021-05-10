@@ -1,0 +1,10 @@
+{{- if and (not .Values.configuration.identifier) .Values.gardener.seed.identity .Values.gardener.garden.identity }}
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSOwner
+metadata:
+  name: migrate-garden-identity
+  namespace: {{ .Release.Namespace }}
+spec:
+  ownerId: seed.gardener.cloud/{{ .Values.gardener.garden.identity }}/{{ .Values.gardener.seed.identity }}
+  active: true
+{{- end }}
