@@ -251,7 +251,7 @@ additionalConfiguration: []
 
 gardener:
   garden:
-    identity: garden
+    clusterIdentity: garden
   seed:
     identity: ""
     provider: ""
