@@ -127,7 +127,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 }
 
 func (this *slaveReconciler) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
-	logger.Infof("delete slave", obj.ClusterKey())
+	logger.Infof("delete slave %s", obj.ClusterKey())
 	entry := utils.DNSEntry(obj)
 	if entry != nil {
 		for k := range this.slaves.Slaves().GetOwnersFor(obj.ClusterKey()) {
@@ -145,7 +145,7 @@ func (this *slaveReconciler) Delete(logger logger.LogContext, obj resources.Obje
 }
 
 func (this *slaveReconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
-	logger.Infof("delete slave", key)
+	logger.Infof("deleted slave %s", key)
 	for k := range this.slaves.Slaves().GetOwnersFor(key) {
 		logger.Infof("found owner %s", k)
 		_, err := this.controller.GetObject(k)

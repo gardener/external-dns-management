@@ -28,12 +28,11 @@ require (
 	go.uber.org/atomic v1.4.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/api v0.4.0
-	k8s.io/api v0.18.6
-	k8s.io/apimachinery v0.18.6
-	k8s.io/client-go v0.18.6
-	k8s.io/code-generator v0.18.6
+	k8s.io/api v0.18.18
+	k8s.io/apimachinery v0.18.18
+	k8s.io/client-go v0.18.18
+	k8s.io/code-generator v0.18.18
 	k8s.io/kube-openapi v0.0.0-20200410145947-bcb3869e6f29
 	sigs.k8s.io/controller-tools v0.2.9
 	sigs.k8s.io/kind v0.7.0
