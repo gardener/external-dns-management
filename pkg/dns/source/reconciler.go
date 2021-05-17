@@ -299,6 +299,17 @@ outer:
 //  deleted unexpectedly (by removing the finalizer).
 //  It checks whether a slave is still available and deletes it.
 func (this *sourceReconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
+	// For unclear reasons, k8s client lister spuriously can "forget" an object for some seconds (seen with K8S 1.17.7).
+	// As a mitigation, the cache and the kube-apiserver are checked again here.
+	if _, err := this.GetCachedObject(key); err == nil {
+		logger.Infof("deleted call for source %s delayed, as still in cache", key)
+		return reconcile.Recheck(logger, err, 60*time.Second)
+	}
+	if _, err := this.GetObject(key); err == nil {
+		logger.Infof("deleted call for source %s delayed, as still active", key)
+		return reconcile.Recheck(logger, err, 60*time.Second)
+	}
+
 	logger.Infof("%s finally deleted", key)
 	failed := false
 	for _, s := range this.Slaves().GetByOwnerKey(key) {
