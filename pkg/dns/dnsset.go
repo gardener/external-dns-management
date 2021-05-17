@@ -85,6 +85,18 @@ func (dnssets DNSSets) Clone() DNSSets {
 	return clone
 }
 
+// GetOwners returns all owners for all DNSSets
+func (dnssets DNSSets) GetOwners() utils.StringSet {
+	owners := utils.NewStringSet()
+	for _, dnsset := range dnssets {
+		o := dnsset.GetAttr(ATTR_OWNER)
+		if o != "" {
+			owners.Add(o)
+		}
+	}
+	return owners
+}
+
 const (
 	ATTR_OWNER  = "owner"
 	ATTR_PREFIX = "prefix"
