@@ -51,7 +51,7 @@ func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwne
 	logger.Debugf("       active owner ids %s", active)
 	if len(changed) > 0 {
 		this.TriggerEntriesByOwner(logger, changed)
-		this.TriggerHostedZones()
+		this.TriggerHostedZonesByChangedOwners(logger, changed)
 	}
 	return reconcile.Succeeded(logger)
 }
@@ -64,7 +64,7 @@ func (this *state) OwnerDeleted(logger logger.LogContext, key resources.ObjectKe
 	logger.Debugf("       active owner ids %s", active)
 	if len(changed) > 0 {
 		this.TriggerEntriesByOwner(logger, changed)
-		this.TriggerHostedZones()
+		this.TriggerHostedZonesByChangedOwners(logger, changed)
 	}
 	return reconcile.Succeeded(logger)
 }

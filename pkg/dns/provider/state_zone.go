@@ -25,6 +25,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
@@ -41,11 +42,14 @@ func (this *state) TriggerHostedZone(name string) {
 	this.triggerHostedZone(name)
 }
 
-func (this *state) TriggerHostedZones() {
+func (this *state) TriggerHostedZonesByChangedOwners(logger logger.LogContext, changed utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	for name := range this.zones {
-		this.triggerHostedZone(name)
+	for zoneid, zone := range this.zones {
+		if intersection := zone.IntersectOwners(changed); len(intersection) > 0 {
+			logger.Infof("trigger zone %s because of changed owners %s", zoneid, intersection)
+			this.triggerHostedZone(zoneid)
+		}
 	}
 }
 
@@ -65,8 +69,9 @@ func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string)
 	}
 	now := time.Now()
 	req.zone = zone
-	if now.Before(zone.next) {
-		return zone.next.Sub(now), hasProviders, req
+	next := zone.GetNext()
+	if now.Before(next) {
+		return next.Sub(now), hasProviders, req
 	}
 	req.entries, req.stale, req.deleting = this.addEntriesForZone(logger, nil, nil, zone)
 	req.providers = this.getProvidersForZone(zoneid)
@@ -163,12 +168,7 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 
 func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliation) error {
 	zoneid := req.zone.Id()
-	req.zone = this.zones[zoneid]
-	if req.zone == nil {
-		metrics.DeleteZone(zoneid)
-		return nil
-	}
-	req.zone.next = time.Now().Add(this.config.Delay)
+	req.zone.SetNext(time.Now().Add(this.config.Delay))
 	ownerids := req.ownerIds
 	metrics.ReportZoneEntries(req.zone.ProviderType(), zoneid, len(req.entries), len(req.stale))
 	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", req.zone.Id(), req.zone.Domain(), len(req.entries), len(req.stale))

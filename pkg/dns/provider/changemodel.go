@@ -218,6 +218,7 @@ func (this *ChangeModel) Setup() error {
 		return err
 	}
 	sets := this.zonestate.GetDNSSets()
+	this.context.zone.SetOwners(sets.GetOwners())
 	this.dangling = newChangeGroup("dangling entries", provider, this)
 	for dnsName, set := range sets {
 		var view *ChangeGroup

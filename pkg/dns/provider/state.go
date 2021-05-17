@@ -566,15 +566,15 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 		name = last.ObjectName()
 		old := this.providerzones[name]
 		if old != nil {
-			for n, z := range old {
-				if result[n] == nil {
+			for zoneid, z := range old {
+				if result[zoneid] == nil {
 					modified = true
-					this.removeProviderForZone(n, name)
+					this.removeProviderForZone(zoneid, name)
 					logger.Infof("removing provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain())
-					if !this.hasProvidersForZone(n) {
+					if !this.hasProvidersForZone(zoneid) {
 						logger.Infof("removing hosted zone %q (%s)", z.Id(), z.Domain())
 						metrics.DeleteZone(z.Id())
-						delete(this.zones, n)
+						delete(this.zones, zoneid)
 					}
 				}
 			}

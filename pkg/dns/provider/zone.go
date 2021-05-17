@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/utils"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
@@ -28,16 +29,18 @@ type dnsHostedZones map[string]*dnsHostedZone
 
 type dnsHostedZone struct {
 	*dnsutils.RateLimiter
-	lock sync.Mutex
-	busy bool
-	zone DNSHostedZone
-	next time.Time
+	lock   sync.Mutex
+	busy   bool
+	zone   DNSHostedZone
+	next   time.Time
+	owners utils.StringSet
 }
 
 func newDNSHostedZone(min time.Duration, zone DNSHostedZone) *dnsHostedZone {
 	return &dnsHostedZone{
 		zone:        zone,
 		RateLimiter: dnsutils.NewRateLimiter(min, 10*time.Minute, min/2),
+		owners:      utils.StringSet{},
 	}
 }
 
@@ -95,6 +98,30 @@ func (this *dnsHostedZone) IsPrivate() bool {
 
 func (this *dnsHostedZone) Match(dnsname string) int {
 	return Match(this, dnsname)
+}
+
+func (this *dnsHostedZone) SetOwners(owners utils.StringSet) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.owners = owners
+}
+
+func (this *dnsHostedZone) IntersectOwners(owners utils.StringSet) utils.StringSet {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	return this.owners.Intersect(owners)
+}
+
+func (this *dnsHostedZone) GetNext() time.Time {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	return this.next
+}
+
+func (this *dnsHostedZone) SetNext(next time.Time) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.next = next
 }
 
 ////////////////////////////////////////////////////////////////////////////////
