@@ -93,7 +93,7 @@ func CreateFactoryOptionSource(factory DNSHandlerFactory, prefix string) config.
 	}
 	if required {
 		//set := &factoryOptionSet{config.NewSharedOptionSet(FACTORY_OPTIONS, prefix, nil)}
-		set := config.NewSharedOptionSet(FACTORY_OPTIONS, prefix, nil)
+		set := config.NewSharedOptionSet(FACTORY_OPTIONS, prefix)
 		set.AddSource(FACTORY_OPTIONS, src)
 		return set
 	}

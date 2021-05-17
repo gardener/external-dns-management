@@ -26,8 +26,10 @@ import (
 )
 
 // DNSEntryLister helps list DNSEntries.
+// All objects returned here must be treated as read-only.
 type DNSEntryLister interface {
 	// List lists all DNSEntries in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.DNSEntry, err error)
 	// DNSEntries returns an object that can list and get DNSEntries.
 	DNSEntries(namespace string) DNSEntryNamespaceLister
@@ -58,10 +60,13 @@ func (s *dNSEntryLister) DNSEntries(namespace string) DNSEntryNamespaceLister {
 }
 
 // DNSEntryNamespaceLister helps list and get DNSEntries.
+// All objects returned here must be treated as read-only.
 type DNSEntryNamespaceLister interface {
 	// List lists all DNSEntries in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.DNSEntry, err error)
 	// Get retrieves the DNSEntry from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.DNSEntry, error)
 	DNSEntryNamespaceListerExpansion
 }

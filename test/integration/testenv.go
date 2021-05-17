@@ -88,7 +88,8 @@ func runControllerManager(args []string) {
 func waitForCluster(kubeconfig string, logger logger.LogContext) (cluster.Interface, error) {
 	req := cluster.DefaultRegistry().GetDefinitions().Get(cluster.DEFAULT)
 	ctx := context.Background()
-	cluster, err := cluster.CreateCluster(ctx, logger, req, "", kubeconfig)
+	cfg := &cluster.Config{KubeConfig: kubeconfig}
+	cluster, err := cluster.CreateCluster(ctx, logger, req, "", cfg)
 	if err != nil {
 		return nil, fmt.Errorf("CreateCluster failed: %s", err)
 	}
