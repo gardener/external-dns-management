@@ -33,7 +33,7 @@ func EncodeCommandKey(cmd string) string {
 	return fmt.Sprintf("cmd:%s", cmd)
 }
 
-func EncodeObjectKeyForObject(o resources.Object) string {
+func EncodeObjectKeyForObject(o resources.ObjectInfo) string {
 	return EncodeObjectKey(o.GetCluster().GetName(), o.Key())
 }
 

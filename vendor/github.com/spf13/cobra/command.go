@@ -18,7 +18,6 @@ package cobra
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -29,8 +28,6 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-var ErrSubCommandRequired = errors.New("subcommand is required")
-
 // FParseErrWhitelist configures Flag parse errors to be ignored
 type FParseErrWhitelist flag.ParseErrorsWhitelist
 
@@ -40,6 +37,14 @@ type FParseErrWhitelist flag.ParseErrorsWhitelist
 // definition to ensure usability.
 type Command struct {
 	// Use is the one-line usage message.
+	// Recommended syntax is as follow:
+	//   [ ] identifies an optional argument. Arguments that are not enclosed in brackets are required.
+	//   ... indicates that you can specify multiple values for the previous argument.
+	//   |   indicates mutually exclusive information. You can use the argument to the left of the separator or the
+	//       argument to the right of the separator. You cannot use both arguments in a single use of the command.
+	//   { } delimits a set of mutually exclusive arguments when one of the arguments is required. If the arguments are
+	//       optional, they are enclosed in brackets ([ ]).
+	// Example: add [-F file | -D dir]... [-f format] profile
 	Use string
 
 	// Aliases is an array of aliases that can be used instead of the first word in Use.
@@ -60,6 +65,10 @@ type Command struct {
 
 	// ValidArgs is list of all valid non-flag arguments that are accepted in bash completions
 	ValidArgs []string
+	// ValidArgsFunction is an optional function that provides valid non-flag arguments for bash completion.
+	// It is a dynamic version of using ValidArgs.
+	// Only one of ValidArgs and ValidArgsFunction can be used for a command.
+	ValidArgsFunction func(cmd *Command, args []string, toComplete string) ([]string, ShellCompDirective)
 
 	// Expected arguments
 	Args PositionalArgs
@@ -84,7 +93,8 @@ type Command struct {
 
 	// Version defines the version for this command. If this value is non-empty and the command does not
 	// define a "version" flag, a "version" boolean flag will be added to the command and, if specified,
-	// will print content of the "Version" variable.
+	// will print content of the "Version" variable. A shorthand "v" flag will also be added if the
+	// command does not define one.
 	Version string
 
 	// The *Run functions are executed in the following order:
@@ -309,7 +319,7 @@ func (c *Command) ErrOrStderr() io.Writer {
 	return c.getErr(os.Stderr)
 }
 
-// InOrStdin returns output to stderr
+// InOrStdin returns input to stdin
 func (c *Command) InOrStdin() io.Reader {
 	return c.getIn(os.Stdin)
 }
@@ -357,7 +367,7 @@ func (c *Command) UsageFunc() (f func(*Command) error) {
 		c.mergePersistentFlags()
 		err := tmpl(c.OutOrStderr(), c.UsageTemplate(), c)
 		if err != nil {
-			c.Println(err)
+			c.PrintErrln(err)
 		}
 		return err
 	}
@@ -385,7 +395,7 @@ func (c *Command) HelpFunc() func(*Command, []string) {
 		// See https://github.com/spf13/cobra/issues/1002
 		err := tmpl(c.OutOrStdout(), c.HelpTemplate(), c)
 		if err != nil {
-			c.Println(err)
+			c.PrintErrln(err)
 		}
 	}
 }
@@ -800,7 +810,7 @@ func (c *Command) execute(a []string) (err error) {
 	}
 
 	if !c.Runnable() {
-		return ErrSubCommandRequired
+		return flag.ErrHelp
 	}
 
 	c.preRun()
@@ -913,6 +923,9 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 		args = os.Args[1:]
 	}
 
+	// initialize the hidden command to be used for bash completion
+	c.initCompleteCmd(args)
+
 	var flags []string
 	if c.TraverseChildren {
 		cmd, flags, err = c.Traverse(args)
@@ -925,8 +938,8 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 			c = cmd
 		}
 		if !c.SilenceErrors {
-			c.Println("Error:", err.Error())
-			c.Printf("Run '%v --help' for usage.\n", c.CommandPath())
+			c.PrintErrln("Error:", err.Error())
+			c.PrintErrf("Run '%v --help' for usage.\n", c.CommandPath())
 		}
 		return c, err
 	}
@@ -951,18 +964,10 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 			return cmd, nil
 		}
 
-		// If command wasn't runnable, show full help, but do return the error.
-		// This will result in apps by default returning a non-success exit code, but also gives them the option to
-		// handle specially.
-		if err == ErrSubCommandRequired {
-			cmd.HelpFunc()(cmd, args)
-			return cmd, err
-		}
-
 		// If root command has SilentErrors flagged,
 		// all subcommands should respect it
 		if !cmd.SilenceErrors && !c.SilenceErrors {
-			c.Println("Error:", err.Error())
+			c.PrintErrln("Error:", err.Error())
 		}
 
 		// If root command has SilentUsage flagged,
@@ -982,6 +987,10 @@ func (c *Command) ValidateArgs(args []string) error {
 }
 
 func (c *Command) validateRequiredFlags() error {
+	if c.DisableFlagParsing {
+		return nil
+	}
+
 	flags := c.Flags()
 	missingFlagNames := []string{}
 	flags.VisitAll(func(pflag *flag.Flag) {
@@ -1033,7 +1042,11 @@ func (c *Command) InitDefaultVersionFlag() {
 		} else {
 			usage += c.Name()
 		}
-		c.Flags().Bool("version", false, usage)
+		if c.Flags().ShorthandLookup("v") == nil {
+			c.Flags().BoolP("version", "v", false, usage)
+		} else {
+			c.Flags().Bool("version", false, usage)
+		}
 	}
 }
 
@@ -1051,7 +1064,25 @@ func (c *Command) InitDefaultHelpCmd() {
 			Short: "Help about any command",
 			Long: `Help provides help for any command in the application.
 Simply type ` + c.Name() + ` help [path to command] for full details.`,
-
+			ValidArgsFunction: func(c *Command, args []string, toComplete string) ([]string, ShellCompDirective) {
+				var completions []string
+				cmd, _, e := c.Root().Find(args)
+				if e != nil {
+					return nil, ShellCompDirectiveNoFileComp
+				}
+				if cmd == nil {
+					// Root help command.
+					cmd = c.Root()
+				}
+				for _, subCmd := range cmd.Commands() {
+					if subCmd.IsAvailableCommand() || subCmd == cmd.helpCommand {
+						if strings.HasPrefix(subCmd.Name(), toComplete) {
+							completions = append(completions, fmt.Sprintf("%s\t%s", subCmd.Name(), subCmd.Short))
+						}
+					}
+				}
+				return completions, ShellCompDirectiveNoFileComp
+			},
 			Run: func(c *Command, args []string) {
 				cmd, _, e := c.Root().Find(args)
 				if cmd == nil || e != nil {
@@ -1178,12 +1209,12 @@ func (c *Command) PrintErr(i ...interface{}) {
 
 // PrintErrln is a convenience method to Println to the defined Err output, fallback to Stderr if not set.
 func (c *Command) PrintErrln(i ...interface{}) {
-	c.Print(fmt.Sprintln(i...))
+	c.PrintErr(fmt.Sprintln(i...))
 }
 
 // PrintErrf is a convenience method to Printf to the defined Err output, fallback to Stderr if not set.
 func (c *Command) PrintErrf(format string, i ...interface{}) {
-	c.Print(fmt.Sprintf(format, i...))
+	c.PrintErr(fmt.Sprintf(format, i...))
 }
 
 // CommandPath returns the full path to this command.

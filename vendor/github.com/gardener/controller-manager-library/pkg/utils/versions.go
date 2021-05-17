@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 )
 
 // Versioned maintains a set of provided object versions and yields the best

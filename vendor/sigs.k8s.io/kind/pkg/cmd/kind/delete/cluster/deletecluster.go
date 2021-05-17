@@ -19,11 +19,14 @@ package cluster
 
 import (
 	"github.com/spf13/cobra"
-	"sigs.k8s.io/kind/pkg/errors"
 
 	"sigs.k8s.io/kind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/cmd"
+	"sigs.k8s.io/kind/pkg/errors"
 	"sigs.k8s.io/kind/pkg/log"
+
+	"sigs.k8s.io/kind/pkg/internal/cli"
+	"sigs.k8s.io/kind/pkg/internal/runtime"
 )
 
 type flagpole struct {
@@ -41,7 +44,8 @@ func NewCommand(logger log.Logger, streams cmd.IOStreams) *cobra.Command {
 		Short: "Deletes a cluster",
 		Long:  "Deletes a resource",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runE(logger, flags)
+			cli.OverrideDefaultName(cmd.Flags())
+			return deleteCluster(logger, flags)
 		},
 	}
 	cmd.Flags().StringVar(&flags.Name, "name", cluster.DefaultName, "the cluster name")
@@ -49,14 +53,15 @@ func NewCommand(logger log.Logger, streams cmd.IOStreams) *cobra.Command {
 	return cmd
 }
 
-func runE(logger log.Logger, flags *flagpole) error {
-	// Delete the cluster
-	logger.V(0).Infof("Deleting cluster %q ...\n", flags.Name)
+func deleteCluster(logger log.Logger, flags *flagpole) error {
 	provider := cluster.NewProvider(
 		cluster.ProviderWithLogger(logger),
+		runtime.GetDefault(logger),
 	)
+	// Delete individual cluster
+	logger.V(0).Infof("Deleting cluster %q ...", flags.Name)
 	if err := provider.Delete(flags.Name, flags.Kubeconfig); err != nil {
-		return errors.Wrap(err, "failed to delete cluster")
+		return errors.Wrapf(err, "failed to delete cluster %q", flags.Name)
 	}
 	return nil
 }

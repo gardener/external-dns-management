@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources/errors"

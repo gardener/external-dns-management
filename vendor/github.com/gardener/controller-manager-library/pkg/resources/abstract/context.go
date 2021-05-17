@@ -88,7 +88,6 @@ func (this *AbstractResourceContext) GetGroups() []schema.GroupVersion {
 
 func (this *AbstractResourceContext) GetGVKForGK(gk schema.GroupKind) (schema.GroupVersionKind, error) {
 	found := []schema.GroupVersionKind{}
-
 	for gvk := range this.Scheme().AllKnownTypes() {
 		if gvk.GroupKind() == gk {
 			found = append(found, gvk)

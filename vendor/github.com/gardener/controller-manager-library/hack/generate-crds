@@ -19,7 +19,20 @@ EOF
   done
 }
 
+boilerplate() {
+  D="${PWD}"
+  while [ "$D" != / ]; do
+    if [ -f "$D/hack/LICENSE_BOILERPLATE.txt" ]; then
+      echo "$D/hack/LICENSE_BOILERPLATE.txt"
+      return 0
+    fi
+    D="$(dirname "$D")"
+  done
+  echo "$PROJECT_ROOT"/hack/LICENSE_BOILERPLATE.txt
+}
+
 PROJECT_ROOT=$(dirname $0)/..
+BOILERPLATE="$(boilerplate)"
 
 #echo "ROOT=$PROJECT_ROOT"
 #echo "DIR=$(pwd)"
@@ -48,7 +61,7 @@ bash "${PROJECT_ROOT}/hack/controller-gen.sh"  \
     output:crd:artifacts:config=crds
 
 cat >"crds/zz_generated_crds.go" <<EOF
-$(cat "$PROJECT_ROOT"/hack/LICENSE_BOILERPLATE.txt)
+$(cat "$BOILERPLATE")
 
 package crds
 

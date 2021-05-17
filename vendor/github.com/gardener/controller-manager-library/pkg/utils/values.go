@@ -8,6 +8,8 @@ package utils
 
 import (
 	"fmt"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func AssureBoolValue(mod bool, old bool, value bool) (bool, bool) {
@@ -18,6 +20,13 @@ func AssureBoolValue(mod bool, old bool, value bool) (bool, bool) {
 }
 
 func AssureStringValue(mod bool, old string, value string) (string, bool) {
+	if old != value {
+		return value, true
+	}
+	return old, mod
+}
+
+func AssureTimeValue(mod bool, old metav1.Time, value metav1.Time) (metav1.Time, bool) {
 	if old != value {
 		return value, true
 	}
@@ -112,6 +121,11 @@ func (this *ModificationState) Modify(m bool) *ModificationState {
 
 func (this *ModificationState) AssureBoolValue(dst *bool, val bool) *ModificationState {
 	*dst, this.Modified = AssureBoolValue(this.Modified, *dst, val)
+	return this
+}
+
+func (this *ModificationState) AssureTimeValue(dst *metav1.Time, val metav1.Time) *ModificationState {
+	*dst, this.Modified = AssureTimeValue(this.Modified, *dst, val)
 	return this
 }
 

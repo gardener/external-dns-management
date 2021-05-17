@@ -19,7 +19,7 @@ func IsNil(o interface{}) bool {
 	}
 	v := reflect.ValueOf(o)
 	switch v.Kind() {
-	case reflect.Chan, reflect.Func, reflect.Map, reflect.Slice, reflect.Interface, reflect.Ptr, reflect.UnsafePointer:
+	case reflect.Interface, reflect.Slice, reflect.Map, reflect.Chan, reflect.Func, reflect.Ptr, reflect.UnsafePointer:
 		return v.IsNil()
 	}
 	return false
@@ -48,6 +48,31 @@ func GetValue(f reflect.Value) interface{} {
 		f = reflect.NewAt(f.Type(), unsafe.Pointer(f.UnsafeAddr())).Elem() // yepp, access unexported fields
 	}
 	return f.Interface()
+}
+
+func SplitString(n string, sel func(s string) (string, bool), seps ...string) []string {
+	var result []string
+	sep := ","
+	if len(seps) > 0 {
+		sep = seps[0]
+	}
+	for _, p := range strings.Split(n, sep) {
+		if v, ok := sel(p); ok {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
+func Sanitize(list []string, sel func(s string) (string, bool)) []string {
+	for i := 0; i < len(list); i++ {
+		if v, ok := sel(list[i]); ok {
+			list[i] = v
+		} else {
+			list = append(list[:i], list[i+1:]...)
+		}
+	}
+	return list
 }
 
 func IsEmptyString(s *string) bool {

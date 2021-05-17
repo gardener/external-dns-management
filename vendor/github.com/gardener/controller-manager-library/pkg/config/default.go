@@ -84,12 +84,13 @@ func (this *DefaultOptionSet) VisitOptions(f OptionVisitor) {
 	}
 }
 
-func (this *DefaultOptionSet) VisitSources(f OptionSourceVisitor) {
+func (this *DefaultOptionSet) VisitSources(f OptionSourceVisitor) bool {
 	for n, t := range this.nestedSources {
 		if !f(n, t) {
-			return
+			return false
 		}
 	}
+	return true
 }
 
 func (this *DefaultOptionSet) checkMod() {

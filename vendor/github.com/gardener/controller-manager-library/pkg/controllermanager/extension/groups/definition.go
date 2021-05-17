@@ -68,6 +68,11 @@ func (this *_Definitions) Members(log logger.LogContext, members []string) (util
 	defer this.lock.RUnlock()
 	active := utils.StringSet{}
 	explicitActive := utils.StringSet{}
+	members = utils.Sanitize(members, utils.NonEmptyStringElement)
+	if len(members) == 1 && members[0] == "none" {
+		log.Infof("disabling all %ss", this.typeName)
+		return active, nil
+	}
 	if len(members) == 0 {
 		log.Infof("activating all %ss", this.typeName)
 		active = this.AllNonExplicitMembers()

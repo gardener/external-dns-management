@@ -21,7 +21,7 @@ func IsIdentifierPart(r rune) bool {
 	return r == '_' || unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 
-func isSimpleType(t reflect.Type) bool {
+func IsSimpleType(t reflect.Type) bool {
 	switch t.Kind() {
 	case reflect.Map, reflect.Slice, reflect.Struct, reflect.Array, reflect.Func, reflect.Chan:
 		return false
@@ -55,7 +55,7 @@ func valueType(t reflect.Type) reflect.Type {
 	return t
 }
 
-func isPtr(v value) bool {
+func IsPtr(v value) bool {
 	if !v.IsValid() {
 		return false
 	}

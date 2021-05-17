@@ -13,22 +13,31 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
 )
 
-type Definition struct {
+type Definition interface {
+	GetName() string
+	GetDescription() string
+	GetExtensions() extension.ExtensionDefinitions
+	ExtensionDefinition(name string) extension.Definition
+	ClusterDefinitions() cluster.Definitions
+	ExtendConfig(cfg *configmain.Config)
+}
+
+type _Definition struct {
 	name         string
 	description  string
 	extensions   extension.ExtensionDefinitions
 	cluster_defs cluster.Definitions
 }
 
-func (this *Definition) GetName() string {
+func (this *_Definition) GetName() string {
 	return this.name
 }
 
-func (this *Definition) GetDescription() string {
+func (this *_Definition) GetDescription() string {
 	return this.description
 }
 
-func (this *Definition) GetExtensions() extension.ExtensionDefinitions {
+func (this *_Definition) GetExtensions() extension.ExtensionDefinitions {
 	defs := extension.ExtensionDefinitions{}
 	for n, e := range this.extensions {
 		defs[n] = e
@@ -36,7 +45,7 @@ func (this *Definition) GetExtensions() extension.ExtensionDefinitions {
 	return defs
 }
 
-func (this *Definition) ExtensionDefinition(name string) extension.Definition {
+func (this *_Definition) ExtensionDefinition(name string) extension.Definition {
 	for _, e := range this.extensions {
 		if e.Name() == name {
 			return e
@@ -45,11 +54,11 @@ func (this *Definition) ExtensionDefinition(name string) extension.Definition {
 	return nil
 }
 
-func (this *Definition) ClusterDefinitions() cluster.Definitions {
+func (this *_Definition) ClusterDefinitions() cluster.Definitions {
 	return this.cluster_defs
 }
 
-func (this *Definition) ExtendConfig(cfg *configmain.Config) {
+func (this *_Definition) ExtendConfig(cfg *configmain.Config) {
 	ccfg := areacfg.NewConfig(this.GetName())
 	cfg.AddSource(areacfg.OPTION_SOURCE, ccfg)
 
@@ -59,6 +68,6 @@ func (this *Definition) ExtendConfig(cfg *configmain.Config) {
 	this.cluster_defs.ExtendConfig(ccfg)
 }
 
-func DefaultDefinition(name, desc string) *Definition {
+func DefaultDefinition(name, desc string) Definition {
 	return Configure(name, desc, nil).ByDefault().Definition()
 }

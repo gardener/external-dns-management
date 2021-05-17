@@ -7,6 +7,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -29,7 +30,6 @@ type ReconcilerType func(Interface) (reconcile.Interface, error)
 
 type Environment interface {
 	extension.Environment
-	SharedAttributes
 
 	GetConfig() *areacfg.Config
 	Enqueue(obj resources.Object)
@@ -46,7 +46,7 @@ type Pool interface {
 
 type Interface interface {
 	extension.ElementBase
-	SharedAttributes
+	extension.SharedAttributes
 
 	IsReady() bool
 	Owning() ResourceKey
@@ -75,19 +75,24 @@ type Interface interface {
 
 	GetObject(key resources.ClusterObjectKey) (resources.Object, error)
 	GetCachedObject(key resources.ClusterObjectKey) (resources.Object, error)
+
+	WithLease(name string, regain bool, action func(ctx context.Context), cnames ...string) error
+	HasLeaseRequest(name string, cnames ...string) bool
+	IsLeaseActive(name string, cnames ...string) bool
 }
 
-type WatchSelectionFunction func(c Interface) (string, resources.TweakListOptionsFunc)
+type WatchSelectionFunction func(c Interface) (namespace string, tweaker resources.TweakListOptionsFunc)
 
 type WatchResource interface {
-	ResourceType() ResourceKey
-	WatchSelectionFunction() WatchSelectionFunction
+	WatchResourceDef(WatchContext) WatchResourceDef
+	String() string
 }
 
 type Watch interface {
 	WatchResource
 	Reconciler() string
 	PoolName() string
+	String() string
 }
 type Command interface {
 	Key() utils.Matcher
@@ -95,7 +100,6 @@ type Command interface {
 	PoolName() string
 }
 
-// ResourceKey implementations are used as key and MUST therefore be value types
 type ResourceKey = extension.ResourceKey
 
 func NewResourceKey(group, kind string) ResourceKey {
@@ -213,13 +217,16 @@ func (this CrossClusterRefs) Map(mapping controllermanager.Mapping) CrossCluster
 	return result
 }
 
+type ExtensionKey interface{}
+
 type Definition interface {
 	extension.OrderedElem
+	extension.ElementConfigDefinition
 
 	// Create(Object) (Reconciler, error)
 	Reconcilers() map[string]ReconcilerType
 	Syncers() map[string]SyncerDefinition
-	MainResource() ResourceKey
+	MainResource(WatchContext) *WatchResourceDef
 	MainWatchResource() WatchResource
 	Watches() Watches
 	Commands() Commands
@@ -233,8 +240,8 @@ type Definition interface {
 	LeaseClusterName() string
 	FinalizerName() string
 	ActivateExplicitly() bool
-	ConfigOptions() map[string]OptionDefinition
-	ConfigOptionSources() extension.OptionSourceDefinitions
+
+	GetDefinitionExtension(ExtensionKey) interface{}
 
 	Scheme() *runtime.Scheme
 

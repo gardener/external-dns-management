@@ -133,6 +133,12 @@ func (this *startupgroup) Startup() error {
 
 	this.extension.Infof("no lease required for %s -> starting controllers", msg)
 	for _, c := range this.controllers {
+		err := this.extension.setupController(c)
+		if err != nil {
+			return err
+		}
+	}
+	for _, c := range this.controllers {
 		err := this.extension.startController(c)
 		if err != nil {
 			return err

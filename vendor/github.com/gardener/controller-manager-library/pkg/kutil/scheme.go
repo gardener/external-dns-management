@@ -12,7 +12,27 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/controller-manager-library/pkg/utils"
 )
+
+var genericTypes = map[reflect.Type]reflect.Type{}
+
+func init() {
+	AddGenericType(&unstructured.Unstructured{}, &unstructured.UnstructuredList{})
+}
+
+func AddGenericType(elem, list interface{}) {
+	et, err := utils.TypeKey(elem)
+	if err != nil {
+		panic(err)
+	}
+	lt, err := utils.TypeKey(list)
+	if err != nil {
+		panic(err)
+	}
+	genericTypes[et] = lt
+}
 
 func IsListType(t reflect.Type) (reflect.Type, bool) {
 	for t.Kind() == reflect.Ptr {
@@ -37,12 +57,13 @@ func IsListType(t reflect.Type) (reflect.Type, bool) {
 	return t, true
 }
 
-var unstructuredType = reflect.TypeOf(unstructured.Unstructured{})
-var unstructuredListType = reflect.TypeOf(unstructured.UnstructuredList{})
-
 func DetermineListType(s *runtime.Scheme, gv schema.GroupVersion, t reflect.Type) reflect.Type {
-	if t == unstructuredType {
-		return unstructuredListType
+	t, err := utils.TypeKey(t)
+	if err != nil {
+		panic(err)
+	}
+	if _t := genericTypes[t]; _t != nil {
+		return _t
 	}
 	for _gvk, _t := range s.AllKnownTypes() {
 		if gv == _gvk.GroupVersion() {

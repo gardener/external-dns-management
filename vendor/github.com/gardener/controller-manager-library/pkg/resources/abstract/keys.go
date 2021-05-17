@@ -232,8 +232,10 @@ func (this ClusterObjectKeySet) Add(n ...ClusterObjectKey) ClusterObjectKeySet {
 
 func (this ClusterObjectKeySet) AddSet(sets ...ClusterObjectKeySet) ClusterObjectKeySet {
 	for _, s := range sets {
-		for e := range s {
-			this.Add(e)
+		if s != nil {
+			for e := range s {
+				this.Add(e)
+			}
 		}
 	}
 	return this
@@ -608,6 +610,12 @@ func ParseObjectName(name string) (GenericObjectName, error) {
 }
 
 func EqualsObjectName(a, b ObjectName) bool {
+	if a == b {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
 	return a.Name() == b.Name() && a.Namespace() == b.Namespace()
 }
 

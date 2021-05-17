@@ -136,6 +136,5 @@ func (this *_Definitions) Registrations(names ...string) (Registrations, error) 
 			r[name] = def
 		}
 	}
-
 	return r, nil
 }

@@ -25,6 +25,15 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
+type ConfigValidation interface {
+	Prepare() error
+}
+
+type SharedAttributes interface {
+	GetSharedValue(key interface{}) interface{}
+	GetOrCreateSharedValue(key interface{}, create func() interface{}) interface{}
+}
+
 type ExtensionDefinitions map[string]Definition
 type ExtensionTypes map[string]ExtensionType
 type Extensions map[string]Extension
@@ -154,6 +163,7 @@ func RegisterExtension(e ExtensionType) {
 type MaintainerInfo = areacfg.MaintainerInfo
 
 type ControllerManager interface {
+	SharedAttributes
 	GetName() string
 	GetMaintainer() MaintainerInfo
 	GetNamespace() string
@@ -174,6 +184,8 @@ type ControllerManager interface {
 
 type Environment interface {
 	logger.LogContext
+	SharedAttributes
+
 	ControllerManager() ControllerManager
 	Name() string
 	Namespace() string
@@ -185,7 +197,7 @@ type Environment interface {
 }
 
 type environment struct {
-	logger.LogContext
+	SharedAttributesImpl
 	name    string
 	context context.Context
 	manager ControllerManager
@@ -197,10 +209,10 @@ func NewDefaultEnvironment(ctx context.Context, name string, manager ControllerM
 	}
 	logctx := manager.NewContext("extension", name)
 	return &environment{
-		LogContext: logctx,
-		name:       name,
-		context:    logger.Set(ctx, logctx),
-		manager:    manager,
+		SharedAttributesImpl: *NewSharedAttributes(logctx),
+		name:                 name,
+		context:              logger.Set(ctx, logctx),
+		manager:              manager,
 	}
 }
 
@@ -238,14 +250,29 @@ func (this *environment) ClusterDefinitions() cluster.Definitions {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-type ElementBase interface {
-	logger.LogContext
+const configSource = "source"
 
-	GetType() string
-	GetName() string
+type ElementConfigDefinition interface {
+	ConfigOptions() OptionDefinitions
+	ConfigOptionSources() OptionSourceDefinitions
+}
 
-	GetContext() context.Context
+func AddElementConfigDefinitionToSet(def ElementConfigDefinition, setprefix string, set config.OptionSet) {
+	for oname, o := range def.ConfigOptions() {
+		set.AddOption(o.Type(), nil, oname, "", o.Default(), o.Description())
+	}
+	for oname, o := range def.ConfigOptionSources() {
+		if src := o.Create(); src != nil {
+			shared := config.NewSharedOptionSet(setprefix+oname, "")
+			shared.AddSource("source", src)
+			set.AddSource(shared.Name(), shared)
+		}
+	}
+}
 
+////////////////////////////////////////////////////////////////////////////////
+
+type ElementOptions interface {
 	GetOptionSource(name string) (config.OptionSource, error)
 	GetOption(name string) (*config.ArbitraryOption, error)
 	GetBoolOption(name string) (bool, error)
@@ -255,15 +282,27 @@ type ElementBase interface {
 	GetDurationOption(name string) (time.Duration, error)
 }
 
+type ElementBase interface {
+	logger.LogContext
+
+	GetType() string
+	GetName() string
+
+	GetContext() context.Context
+
+	ElementOptions
+}
+
 type elementBase struct {
 	logger.LogContext
 	name     string
 	typeName string
 	context  context.Context
+	prefix   string
 	options  config.OptionGroup
 }
 
-func NewElementBase(ctx context.Context, valueType ctxutil.ValueKey, element interface{}, name string, set config.OptionGroup) ElementBase {
+func NewElementBase(ctx context.Context, valueType ctxutil.ValueKey, element interface{}, name string, prefix string, set config.OptionGroup) ElementBase {
 	ctx = valueType.WithValue(ctx, name)
 	ctx, logctx := logger.WithLogger(ctx, valueType.Name(), name)
 	return &elementBase{
@@ -271,6 +310,7 @@ func NewElementBase(ctx context.Context, valueType ctxutil.ValueKey, element int
 		context:    ctx,
 		name:       name,
 		typeName:   valueType.Name(),
+		prefix:     prefix,
 		options:    set,
 	}
 }
@@ -296,11 +336,11 @@ func (this *elementBase) GetOption(name string) (*config.ArbitraryOption, error)
 }
 
 func (this *elementBase) GetOptionSource(name string) (config.OptionSource, error) {
-	src := this.options.GetSource(name)
+	src := this.options.GetSource(this.prefix + name)
 	if src == nil {
 		return nil, fmt.Errorf("unknown option source %q for %s %q", name, this.GetType(), this.GetName())
 	}
-	return src, nil
+	return src.(config.OptionSet).GetSource(configSource), nil
 }
 
 func (this *elementBase) GetBoolOption(name string) (bool, error) {
@@ -354,6 +394,14 @@ type OptionDefinition interface {
 
 type OptionDefinitions map[string]OptionDefinition
 
+func (this OptionDefinitions) Copy() OptionDefinitions {
+	cfgs := OptionDefinitions{}
+	for n, d := range this {
+		cfgs[n] = d
+	}
+	return cfgs
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 type OptionSourceCreator func() config.OptionSource
@@ -379,6 +427,14 @@ type OptionSourceDefinition interface {
 }
 
 type OptionSourceDefinitions map[string]OptionSourceDefinition
+
+func (this OptionSourceDefinitions) Copy() OptionSourceDefinitions {
+	cfgs := OptionSourceDefinitions{}
+	for n, d := range this {
+		cfgs[n] = d
+	}
+	return cfgs
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -413,19 +469,48 @@ var _ OptionDefinition = &DefaultOptionDefinition{}
 
 ///////////////////////////////////////////////////////////////////////////////
 
-type DefaultOptionSourceSefinition struct {
+type DefaultOptionSourceDefinition struct {
 	name    string
 	creator OptionSourceCreator
 }
 
 func NewOptionSourceDefinition(name string, creator OptionSourceCreator) OptionSourceDefinition {
-	return &DefaultOptionSourceSefinition{name, creator}
+	return &DefaultOptionSourceDefinition{name, creator}
 }
 
-func (this *DefaultOptionSourceSefinition) GetName() string {
+func (this *DefaultOptionSourceDefinition) GetName() string {
 	return this.name
 }
 
-func (this *DefaultOptionSourceSefinition) Create() config.OptionSource {
+func (this *DefaultOptionSourceDefinition) Create() config.OptionSource {
 	return this.creator()
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+func ValidateElementConfigs(elemtype string, areacfg config.OptionSourceSource, active utils.StringSet) error {
+	for n := range active {
+		var cerr error
+		options := areacfg.GetSource(n).(config.OptionSourceSource)
+		var f func(n string, s config.OptionSource) bool
+		f = func(n string, s config.OptionSource) bool {
+			if p, ok := s.(ConfigValidation); ok {
+				err := p.Prepare()
+				if err != nil {
+					cerr = err
+					return false
+				}
+			}
+			if p, ok := s.(config.OptionSourceSource); ok {
+				if !p.VisitSources(f) {
+					return false
+				}
+			}
+			return true
+		}
+		if !options.VisitSources(f) {
+			return fmt.Errorf("invalid config for %s %q: %s", elemtype, n, cerr)
+		}
+	}
+	return nil
 }

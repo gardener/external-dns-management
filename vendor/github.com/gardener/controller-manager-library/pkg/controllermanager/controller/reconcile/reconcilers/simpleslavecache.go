@@ -131,7 +131,7 @@ type slaveReconciler struct {
 	ReconcilerSupport
 	cache       *SimpleSlaveCache
 	clusterId   string
-	responsible resources.GroupKindSet
+	responsible resources.ClusterGroupKindSet
 }
 
 var _ reconcile.Interface = &slaveReconciler{}
@@ -141,7 +141,7 @@ func (this *slaveReconciler) RejectResourceReconcilation(cluster cluster.Interfa
 	if cluster == nil || this.clusterId != cluster.GetId() {
 		return true
 	}
-	return !this.responsible.Contains(gk)
+	return !this.responsible.Contains(resources.NewClusterGroupKind(cluster.GetId(), gk))
 }
 
 func (this *slaveReconciler) Setup() error {
@@ -183,11 +183,15 @@ func CreateSimpleSlaveReconcilerTypeFor(clusterName string, gks ...schema.GroupK
 		if cluster == nil {
 			return nil, fmt.Errorf("cluster %s not found", clusterName)
 		}
+		cgks := resources.ClusterGroupKindSet{}
+		for _, gk := range gks {
+			cgks.Add(resources.NewClusterGroupKind(cluster.GetId(), gk))
+		}
 		this := &slaveReconciler{
 			ReconcilerSupport: NewReconcilerSupport(controller),
 			cache:             cache,
 			clusterId:         cluster.GetId(),
-			responsible:       cache.usages.reconcilerFor(cluster, gks...),
+			responsible:       cache.usages.reconcilerFor(cgks),
 		}
 		return this, nil
 	}

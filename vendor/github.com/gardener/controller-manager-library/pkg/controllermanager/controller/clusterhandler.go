@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
@@ -46,13 +47,13 @@ type ClusterHandler struct {
 	cache      sync.Map
 }
 
-func newClusterHandler(controller *controller, cluster cluster.Interface) *ClusterHandler {
+func newClusterHandler(controller *controller, cluster cluster.Interface) (*ClusterHandler, error) {
 	return &ClusterHandler{
 		LogContext: controller.NewContext("cluster", cluster.GetName()),
 		controller: controller,
 		cluster:    cluster,
 		resources:  map[ResourceKey]*clusterResourceInfo{},
-	}
+	}, nil
 }
 
 func (c *ClusterHandler) whenReady() {
@@ -71,7 +72,8 @@ func (c *ClusterHandler) GetResource(resourceKey ResourceKey) (resources.Interfa
 	return c.cluster.GetResource(resourceKey.GroupKind())
 }
 
-func (c *ClusterHandler) register(resourceKey ResourceKey, namespace string, optionsFunc resources.TweakListOptionsFunc, usedpool *pool) error {
+func (c *ClusterHandler) register(def *watchDef, namespace string, optionsFunc resources.TweakListOptionsFunc, usedpool *pool) error {
+	resourceKey := def.Key
 	i := c.resources[resourceKey]
 	if i == nil {
 		resource, err := c.cluster.GetResource(resourceKey.GroupKind())
@@ -87,8 +89,14 @@ func (c *ClusterHandler) register(resourceKey ResourceKey, namespace string, opt
 		}
 		c.resources[resourceKey] = i
 
-		if err := resource.AddSelectedEventHandler(c.GetEventHandlerFuncs(), namespace, optionsFunc); err != nil {
-			return err
+		if def.Minimal || c.cluster.Definition().IsMinimalWatchEnforced(resourceKey.GroupKind()) {
+			if err := resource.AddSelectedInfoEventHandler(c.GetInfoEventHandlerFuncs(), namespace, optionsFunc); err != nil {
+				return err
+			}
+		} else {
+			if err := resource.AddSelectedEventHandler(c.GetEventHandlerFuncs(), namespace, optionsFunc); err != nil {
+				return err
+			}
 		}
 	} else {
 		if i.namespace != namespace {
@@ -125,6 +133,14 @@ func (c *ClusterHandler) GetEventHandlerFuncs() resources.ResourceEventHandlerFu
 	}
 }
 
+func (c *ClusterHandler) GetInfoEventHandlerFuncs() resources.ResourceInfoEventHandlerFuncs {
+	return resources.ResourceInfoEventHandlerFuncs{
+		AddFunc:    c.objectInfoAdd,
+		UpdateFunc: c.objectInfoUpdate,
+		DeleteFunc: c.objectInfoDelete,
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 
 func (c *ClusterHandler) EnqueueKey(key resources.ClusterObjectKey) error {
@@ -144,12 +160,12 @@ func (c *ClusterHandler) EnqueueKey(key resources.ClusterObjectKey) error {
 	return nil
 }
 
-func (c *ClusterHandler) enqueue(obj resources.Object, e func(p *pool, r resources.Object)) error {
+func (c *ClusterHandler) enqueue(obj resources.ObjectInfo, e func(p *pool, r resources.ObjectInfo)) error {
 	c.whenReady()
 	// c.Infof("enqueue %s", obj.Description())
 	i := c.resources[GetResourceKey(obj)]
 	if i.pools == nil || len(i.pools) == 0 {
-		return fmt.Errorf("no worker pool for type %s", obj.GroupKind())
+		return fmt.Errorf("no worker pool for type %s", obj.Key().GroupKind())
 	}
 	for _, p := range i.pools {
 		// p.Infof("enqueue %s", resources.ObjectrKey(obj))
@@ -158,23 +174,23 @@ func (c *ClusterHandler) enqueue(obj resources.Object, e func(p *pool, r resourc
 	return nil
 }
 
-func enq(p *pool, obj resources.Object) {
+func enq(p *pool, obj resources.ObjectInfo) {
 	p.EnqueueObject(obj)
 }
 
-func (c *ClusterHandler) EnqueueObject(obj resources.Object) error {
+func (c *ClusterHandler) EnqueueObject(obj resources.ObjectInfo) error {
 	return c.enqueue(obj, enq)
 }
 
-func enqRateLimited(p *pool, obj resources.Object) {
+func enqRateLimited(p *pool, obj resources.ObjectInfo) {
 	p.EnqueueObjectRateLimited(obj)
 }
-func (c *ClusterHandler) EnqueueObjectRateLimited(obj resources.Object) error {
+func (c *ClusterHandler) EnqueueObjectRateLimited(obj resources.ObjectInfo) error {
 	return c.enqueue(obj, enqRateLimited)
 }
 
-func (c *ClusterHandler) EnqueueObjectAfter(obj resources.Object, duration time.Duration) error {
-	e := func(p *pool, obj resources.Object) {
+func (c *ClusterHandler) EnqueueObjectAfter(obj resources.ObjectInfo, duration time.Duration) error {
+	e := func(p *pool, obj resources.ObjectInfo) {
 		p.EnqueueObjectAfter(obj, duration)
 	}
 	return c.enqueue(obj, e)
@@ -187,32 +203,56 @@ func (c *ClusterHandler) GetObject(key resources.ClusterObjectKey) (resources.Ob
 	if o == nil || !ok {
 		return nil, nil
 	}
-	return o.(resources.Object), nil
+	if obj, ok := o.(resources.Object); ok {
+		return obj, nil
+	}
+
+	resource, err := c.cluster.GetResource(key.GroupKind())
+	if err != nil {
+		return nil, err
+	}
+	obj, err := resource.Get(key.ObjectKey())
+	if err != nil && errors.IsNotFound(err) {
+		return nil, nil
+	}
+	return obj, err
 }
 
 func (c *ClusterHandler) objectAdd(obj resources.Object) {
-	c.Debugf("** GOT add event for %s", obj.Description())
-
 	if c.controller.mustHandle(obj) {
-		c.cache.Store(obj.Key(), obj)
-		c.EnqueueObject(obj)
+		c.objectInfoAdd(obj)
 	}
 }
 
 func (c *ClusterHandler) objectUpdate(old, new resources.Object) {
-	c.Debugf("** GOT update event for %s: %s", new.Description(), new.GetResourceVersion())
 	if !c.controller.mustHandle(old) && !c.controller.mustHandle(new) {
 		return
 	}
+	c.objectInfoUpdate(old, new)
+}
+
+func (c *ClusterHandler) objectDelete(obj resources.Object) {
+	if c.controller.mustHandle(obj) {
+		c.objectInfoDelete(obj)
+	}
+}
+
+func (c *ClusterHandler) objectInfoAdd(obj resources.ObjectInfo) {
+	c.Debugf("** GOT add event for %s", obj.Description())
+
+	c.cache.Store(obj.Key(), obj)
+	c.EnqueueObject(obj)
+}
+
+func (c *ClusterHandler) objectInfoUpdate(old, new resources.ObjectInfo) {
+	c.Debugf("** GOT update event for %s: %s", new.Description(), new.GetResourceVersion())
 	c.cache.Store(new.Key(), new)
 	c.EnqueueObject(new)
 }
 
-func (c *ClusterHandler) objectDelete(obj resources.Object) {
+func (c *ClusterHandler) objectInfoDelete(obj resources.ObjectInfo) {
 	c.Debugf("** GOT delete event for %s: %s", obj.Description(), obj.GetResourceVersion())
 
-	if c.controller.mustHandle(obj) {
-		c.cache.Delete(obj.Key())
-		c.EnqueueObject(obj)
-	}
+	c.cache.Delete(obj.Key())
+	c.EnqueueObject(obj)
 }

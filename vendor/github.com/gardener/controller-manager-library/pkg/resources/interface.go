@@ -7,7 +7,7 @@
 package resources
 
 import (
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -86,7 +86,20 @@ type ResourceEventHandlerFuncs struct {
 	DeleteFunc func(obj Object)
 }
 
+type ResourceInfoEventHandlerFuncs struct {
+	AddFunc    func(obj ObjectInfo)
+	UpdateFunc func(oldObj, newObj ObjectInfo)
+	DeleteFunc func(obj ObjectInfo)
+}
+
 type Modifier func(ObjectData) (bool, error)
+
+type ObjectInfo interface {
+	Key() ObjectKey
+	GetResourceVersion() string
+	Description() string
+	ClusterSource
+}
 
 type Object interface {
 	abstract.Object
@@ -125,9 +138,15 @@ type Interface interface {
 	Namespaced() bool
 	Info() *Info
 	ResourceContext() ResourceContext
+
 	AddSelectedEventHandler(eventHandlers ResourceEventHandlerFuncs, namespace string, optionsFunc TweakListOptionsFunc) error
 	AddEventHandler(eventHandlers ResourceEventHandlerFuncs) error
+
+	AddSelectedInfoEventHandler(eventHandlers ResourceInfoEventHandlerFuncs, namespace string, optionsFunc TweakListOptionsFunc) error
+	AddInfoEventHandler(eventHandlers ResourceInfoEventHandlerFuncs) error
+
 	AddRawEventHandler(handlers cache.ResourceEventHandlerFuncs) error
+	AddRawInfoEventHandler(handlers cache.ResourceEventHandlerFuncs) error
 
 	Wrap(ObjectData) (Object, error)
 	New(ObjectName) Object

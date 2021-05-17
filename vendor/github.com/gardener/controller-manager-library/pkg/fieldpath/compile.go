@@ -88,7 +88,7 @@ func Compile(path string) (Node, error) {
 	s := NewScanner(path)
 
 	s.Next()
-	n, err := parseSequence(s)
+	n, err := parseSequence(nil, s)
 	if err != nil {
 		return nil, err
 	}
@@ -101,7 +101,7 @@ func Compile(path string) (Node, error) {
 	return n, err
 }
 
-func parseSequence(s *scanner) (Node, error) {
+func parseSequence(ctx Node, s *scanner) (Node, error) {
 	var last Node
 	var next Node
 	var err error
@@ -110,9 +110,9 @@ func parseSequence(s *scanner) (Node, error) {
 		n := s.Current()
 		switch n {
 		case '.':
-			next, err = parseField(s, last)
+			next, err = parseField(ctx, s, last)
 		case '[':
-			next, err = parseEntry(s, last)
+			next, err = parseEntry(ctx, s, last)
 		default:
 			return last, nil
 		}
@@ -125,17 +125,17 @@ func parseSequence(s *scanner) (Node, error) {
 	return last, nil
 }
 
-func parseField(s *scanner, last Node) (Node, error) {
+func parseField(ctx Node, s *scanner, last Node) (Node, error) {
 	s.Next()
 
 	name, err := parseIdentifier(s, "field name")
 	if err != nil {
 		return nil, err
 	}
-	return NewFieldNode(name, last), nil
+	return NewFieldNode(ctx, name, last), nil
 }
 
-func parseEntry(s *scanner, last Node) (Node, error) {
+func parseEntry(ctx Node, s *scanner, last Node) (Node, error) {
 	index := ""
 
 	for unicode.IsDigit(s.Next()) {
@@ -151,16 +151,16 @@ func parseEntry(s *scanner, last Node) (Node, error) {
 			}
 			if index != "" {
 				v, _ := strconv.ParseInt(index, 10, 32)
-				return parseProjection(s, NewSlice(0, int(v), last))
+				return parseProjection(ctx, s, NewSlice(ctx, 0, int(v), last))
 			} else {
-				return parseProjection(s, NewSlice(0, -1, last))
+				return parseProjection(ctx, s, NewSlice(ctx, 0, -1, last))
 			}
 		}
 
 		if s.Current() != ']' {
-			return parseSelect(s, last)
+			return parseSelect(ctx, s, last)
 		} else {
-			return parseProjection(s, last)
+			return parseProjection(ctx, s, NewSlice(ctx, -1, -1, last))
 		}
 	}
 	if s.Current() != ']' {
@@ -178,20 +178,20 @@ func parseEntry(s *scanner, last Node) (Node, error) {
 				if start > v {
 					return nil, fmt.Errorf("start index (%d) larger than end index (%d)", start, v)
 				}
-				return parseProjection(s, NewSlice(int(start), int(v), last))
+				return parseProjection(ctx, s, NewSlice(ctx, int(start), int(v), last))
 			} else {
-				return parseProjection(s, NewSlice(int(start), -1, last))
+				return parseProjection(ctx, s, NewSlice(ctx, int(start), -1, last))
 			}
 		}
 		return unexpected(s, "expected ']'")
 	}
 	s.Next()
 	v, _ := strconv.ParseInt(index, 10, 32)
-	return NewEntry(int(v), last), nil
+	return NewEntry(ctx, int(v), last), nil
 }
 
-func parseSelect(s *scanner, last Node) (Node, error) {
-	n, err := parseSequence(s)
+func parseSelect(ctx Node, s *scanner, last Node) (Node, error) {
+	n, err := parseSequence(last, s)
 	if err != nil {
 		return nil, err
 	}
@@ -211,24 +211,24 @@ func parseSelect(s *scanner, last Node) (Node, error) {
 		return unexpected(s, "expected ']'")
 	}
 	s.Next()
-	return NewSelection(n, v, last), nil
+	return NewSelection(ctx, n, v, last), nil
 }
 
-func parseProjection(s *scanner, last Node) (Node, error) {
+func parseProjection(ctx Node, s *scanner, last Node) (Node, error) {
 	if s.Current() != ']' {
 		return unexpected(s, "expected ']'")
 	}
 	if s.Next() == EOI {
 		return last, nil
 	}
-	n, err := parseSequence(s)
+	n, err := parseSequence(last, s)
 	if err != nil {
 		return nil, err
 	}
 	if n == nil {
 		return unexpected(s, "index or path")
 	}
-	return NewProjection(n, last), nil
+	return NewProjection(ctx, n, last), nil
 }
 
 func parseValue(s *scanner) (interface{}, error) {

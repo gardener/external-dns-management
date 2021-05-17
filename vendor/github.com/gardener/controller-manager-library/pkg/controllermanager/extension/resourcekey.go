@@ -53,6 +53,9 @@ func GetResourceKey(objspec interface{}) ResourceKey {
 		return NewResourceKey(s.Group, s.Kind)
 	case schema.GroupVersionKind:
 		return NewResourceKey(s.Group, s.Kind)
+	case resources.ObjectInfo:
+		key := s.Key()
+		return NewResourceKey(key.Group(), key.Kind())
 	default:
 		panic(fmt.Errorf("invalid object spec %T for resource key", objspec))
 	}
@@ -85,7 +88,6 @@ func (k clusterResourceKey) ClusterId() string {
 func (k clusterResourceKey) String() string {
 	return fmt.Sprintf("%s/%s", k.clusterid, k.resourceKey.String())
 }
-
 func GetClusterResourceKey(objspec interface{}) ResourceKey {
 	switch s := objspec.(type) {
 	case resources.Object:

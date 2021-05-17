@@ -205,17 +205,17 @@ func (p *pool) enqueueKey(key resources.ClusterObjectKey, add func(interface{}))
 	add(okey)
 }
 
-func (p *pool) EnqueueObject(obj resources.Object) {
+func (p *pool) EnqueueObject(obj resources.ObjectInfo) {
 	p.enqueueObject(obj, p.workqueue.Add)
 }
-func (p *pool) EnqueueObjectRateLimited(obj resources.Object) {
+func (p *pool) EnqueueObjectRateLimited(obj resources.ObjectInfo) {
 	p.enqueueObject(obj, p.workqueue.AddRateLimited)
 }
-func (p *pool) EnqueueObjectAfter(obj resources.Object, duration time.Duration) {
+func (p *pool) EnqueueObjectAfter(obj resources.ObjectInfo, duration time.Duration) {
 	p.enqueueObject(obj, func(key interface{}) { p.workqueue.AddAfter(key, duration) })
 }
 
-func (p *pool) enqueueObject(obj resources.Object, add func(interface{})) {
+func (p *pool) enqueueObject(obj resources.ObjectInfo, add func(interface{})) {
 	if obj == nil {
 		panic("cannot enqueue nil objects")
 	}

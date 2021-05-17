@@ -41,3 +41,10 @@ func listCachedWithNamespace(r resources.Interface, namespace string) ([]resourc
 	}
 	return r.ListCached(labels.Everything())
 }
+
+func AsKeySet(key resources.ClusterObjectKey) resources.ClusterObjectKeySet {
+	if key.Name() == "" {
+		return resources.NewClusterObjectKeySet()
+	}
+	return resources.NewClusterObjectKeySet(key)
+}

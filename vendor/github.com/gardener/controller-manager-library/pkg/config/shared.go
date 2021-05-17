@@ -9,6 +9,7 @@ package config
 import (
 	"fmt"
 	"reflect"
+	"strings"
 )
 
 type SharedOptionSet struct {
@@ -21,10 +22,24 @@ type SharedOptionSet struct {
 
 var _ OptionGroup = (*SharedOptionSet)(nil)
 
-func NewSharedOptionSet(name, prefix string, descMapper StringMapper) *SharedOptionSet {
-	if descMapper == nil {
-		descMapper = IdenityStringMapper
+func ChainedStringMapper(mappers ...StringMapper) StringMapper {
+	switch len(mappers) {
+	case 0:
+		return IdenityStringMapper
+	case 1:
+		return mappers[0]
+	default:
+		return func(s string) string {
+			for _, m := range mappers {
+				s = m(s)
+			}
+			return s
+		}
 	}
+}
+
+func NewSharedOptionSet(name, prefix string, descMappers ...StringMapper) *SharedOptionSet {
+	descMapper := ChainedStringMapper(descMappers...)
 	s := &SharedOptionSet{
 		DefaultOptionSet:  NewDefaultOptionSet(name, prefix),
 		unshared:          map[string]bool{},
@@ -54,6 +69,10 @@ func (this *SharedOptionSet) AddOptionsToSet(set OptionSet) {
 			if old := set.GetOption(name); old != nil {
 				if o.Type != old.Type {
 					panic(fmt.Sprintf("type mismatch for shared option %s (%s)", name, this.prefix))
+				}
+				if strings.Index(old.Description, o.Description) < 0 {
+					old.Description += ", " + o.Description
+					old.Flag().Usage = o.Description
 				}
 			} else {
 				set.AddOption(o.Type, nil, o.Name, o.Flag().Shorthand, nil, o.Description)
