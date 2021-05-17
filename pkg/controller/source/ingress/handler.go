@@ -23,7 +23,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
-	api "k8s.io/api/extensions/v1beta1"
+	api "k8s.io/api/networking/v1beta1"
 )
 
 type IngressSource struct {
