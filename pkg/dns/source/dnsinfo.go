@@ -45,31 +45,16 @@ func (this *sourceReconciler) exclude(dns string) bool {
 }
 
 func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources.Object, s DNSSource, current *DNSCurrentState) (*DNSInfo, bool, error) {
+	obj = this.enrichAnnotations(obj)
+
 	if !this.classes.IsResponsibleFor(logger, obj) {
 		return nil, false, nil
 	}
+
 	annos := obj.GetAnnotations()
 	current.AnnotatedNames = utils.StringSet{}
 	current.AnnotatedNames.AddAllSplittedSelected(annos[DNS_ANNOTATION], utils.StandardNonEmptyStringElement)
 
-	addons := this.annotations.GetInfoFor(obj.ClusterKey())
-	if len(addons) > 0 {
-		for k, v := range addons {
-			if k == DNS_ANNOTATION {
-				current.AnnotatedNames.AddAllSplittedSelected(v, utils.StandardNonEmptyStringElement)
-				logger.Infof("adding dns names by annotation injection: %s", v)
-			} else {
-				if _, ok := annos[k]; !ok {
-					annos[k] = v
-					logger.Infof("using annotation injection: %s=%s", k, v)
-				}
-			}
-		}
-		if len(current.AnnotatedNames) > 0 {
-			annos[DNS_ANNOTATION] = strings.Join(current.AnnotatedNames.AsArray(), ",")
-		}
-		obj.SetAnnotations(annos)
-	}
 	info, err := s.GetDNSInfo(logger, obj, current)
 	if info != nil && info.Names != nil {
 		for d := range info.Names {
@@ -85,7 +70,7 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 		return nil, true, nil
 	}
 	if info.TTL == nil {
-		a := obj.GetAnnotations()[TTL_ANNOTATION]
+		a := annos[TTL_ANNOTATION]
 		if a != "" {
 			ttl, err := strconv.ParseInt(a, 10, 64)
 			if err != nil {
@@ -97,7 +82,7 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 		}
 	}
 	if info.Interval == nil {
-		a := obj.GetAnnotations()[PERIOD_ANNOTATION]
+		a := annos[PERIOD_ANNOTATION]
 		if a != "" {
 			interval, err := strconv.ParseInt(a, 10, 64)
 			if err != nil {
@@ -109,4 +94,33 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 		}
 	}
 	return info, true, nil
+}
+
+func (this *sourceReconciler) enrichAnnotations(obj resources.Object) resources.Object {
+	addons := this.annotations.GetInfoFor(obj.ClusterKey())
+	if len(addons) > 0 {
+		obj = obj.DeepCopy()
+		annos := obj.GetAnnotations()
+
+		annotatedNames := utils.StringSet{}
+		annotatedNames.AddAllSplittedSelected(annos[DNS_ANNOTATION], utils.StandardNonEmptyStringElement)
+
+		for k, v := range addons {
+			if k == DNS_ANNOTATION {
+				annotatedNames.AddAllSplittedSelected(v, utils.StandardNonEmptyStringElement)
+				logger.Infof("adding dns names by annotation injection: %s", v)
+			} else {
+				if old, ok := annos[k]; !ok || old != v {
+					annos[k] = v
+					logger.Infof("using annotation injection: %s=%s", k, v)
+				}
+			}
+		}
+
+		if len(annotatedNames) > 0 {
+			annos[DNS_ANNOTATION] = strings.Join(annotatedNames.AsArray(), ",")
+		}
+		obj.SetAnnotations(annos)
+	}
+	return obj
 }
