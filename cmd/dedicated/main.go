@@ -64,10 +64,15 @@ func init() {
 	resources.Register(v1alpha1.SchemeBuilder)
 }
 
+func migrateExtensionsIngress(c controllermanager.Configuration) controllermanager.Configuration {
+	return c.GlobalGroupKindMigrations(resources.NewGroupKind("extensions", "Ingress"),
+		resources.NewGroupKind("networking.k8s.io", "Ingress"))
+}
+
 func main() {
 	if len(os.Args) == 2 && os.Args[1] == "version" {
 		fmt.Println(Version)
 		os.Exit(0)
 	}
-	controllermanager.Start("dns-controller-manager", "dns controller manager", "nothing")
+	controllermanager.Start("dns-controller-manager", "dns controller manager", "nothing", migrateExtensionsIngress)
 }

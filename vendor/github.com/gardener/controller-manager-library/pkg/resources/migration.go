@@ -8,6 +8,8 @@
 package resources
 
 import (
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
@@ -16,7 +18,6 @@ type DefaultClusterIdMigration struct {
 }
 
 var _ ClusterIdMigration = &DefaultClusterIdMigration{}
-var _ ClusterIdMigrationProvider = &DefaultClusterIdMigration{}
 
 func ClusterIdMigrationFor(clusters ...Cluster) ClusterIdMigration {
 	migrations := map[string]string{}
@@ -39,10 +40,6 @@ func (this *DefaultClusterIdMigration) RequireMigration(id string) string {
 	return ""
 }
 
-func (this *DefaultClusterIdMigration) GetClusterIdMigration() ClusterIdMigration {
-	return this
-}
-
 func (this *DefaultClusterIdMigration) String() string {
 	m := map[string]utils.StringSet{}
 
@@ -62,4 +59,33 @@ func (this *DefaultClusterIdMigration) String() string {
 		sep = ", "
 	}
 	return r
+}
+
+///////////////////////////////////////////////////////////////////
+
+type DefaultGroupKindMigration struct {
+	migrations map[schema.GroupKind]schema.GroupKind
+}
+
+var _ GroupKindMigration = &DefaultGroupKindMigration{}
+
+func GroupKindMigrationFor(gks ...schema.GroupKind) GroupKindMigration {
+	if len(gks)%2 == 1 {
+		panic("must provide GroupKind migration pairs")
+	}
+	migrations := map[schema.GroupKind]schema.GroupKind{}
+	for i := 0; i < len(gks); i += 2 {
+		migrations[gks[i]] = gks[i+1]
+	}
+	if len(migrations) == 0 {
+		return nil
+	}
+	return &DefaultGroupKindMigration{migrations}
+}
+
+func (this *DefaultGroupKindMigration) RequireMigration(gk schema.GroupKind) *schema.GroupKind {
+	if new, ok := this.migrations[gk]; ok {
+		return &new
+	}
+	return nil
 }

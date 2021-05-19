@@ -98,6 +98,11 @@ func (this ClusterObjectKey) ChangeCluster(id string) ClusterObjectKey {
 	return this
 }
 
+func (this ClusterObjectKey) ChangeGroupKind(gk schema.GroupKind) ClusterObjectKey {
+	this.groupKind = gk
+	return this
+}
+
 func (this ClusterObjectKey) String() string {
 	return this.asString()
 }

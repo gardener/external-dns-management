@@ -180,6 +180,7 @@ type ControllerManager interface {
 	GetExtension(name string) Extension
 
 	GetClusterIdMigration() resources.ClusterIdMigration
+	GetGroupKindMigration() resources.GroupKindMigration
 }
 
 type Environment interface {

@@ -63,9 +63,17 @@ type ClusterIdMigrationProvider interface {
 	GetClusterIdMigration() ClusterIdMigration
 }
 
+type GroupKindMigrationProvider interface {
+	GetGroupKindMigration() GroupKindMigration
+}
+
 type ClusterIdMigration interface {
 	RequireMigration(id string) string
 	String() string
+}
+
+type GroupKindMigration interface {
+	RequireMigration(gk schema.GroupKind) *schema.GroupKind
 }
 
 /////////////////////////////////////////////////////////////////////////////////

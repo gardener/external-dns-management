@@ -26,6 +26,7 @@ type Configuration struct {
 
 	globalMinimalWatch  resources.GroupKindSet
 	clusterMinimalWatch map[string]resources.GroupKindSet
+	groupKindMigrations []schema.GroupKind
 }
 
 type configState struct {
@@ -80,6 +81,11 @@ func (this Configuration) GlobalMinimalWatch(groupKinds ...schema.GroupKind) Con
 	return this
 }
 
+func (this Configuration) GlobalGroupKindMigrations(groupKinds ...schema.GroupKind) Configuration {
+	this.groupKindMigrations = append(this.groupKindMigrations, groupKinds...)
+	return this
+}
+
 func (this Configuration) MinimalWatch(clusterName string, groupKinds ...schema.GroupKind) Configuration {
 	m, ok := this.clusterMinimalWatch[clusterName]
 	if !ok {
@@ -124,5 +130,6 @@ func (this Configuration) Definition() Definition {
 		description:  this.description,
 		extensions:   this.extension_reg.GetDefinitions(),
 		cluster_defs: cluster_defs,
+		gkMigrations: this.groupKindMigrations,
 	}
 }

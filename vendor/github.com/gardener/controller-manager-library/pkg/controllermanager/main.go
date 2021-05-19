@@ -30,8 +30,12 @@ const DeletionActivity = "DeletionActivity"
 
 var Version = "dev-version"
 
-func Start(use, short, long string) {
-	PrepareStart(use, long).Start(use, short)
+func Start(use, short, long string, modifiers ...ConfigurationModifier) {
+	c := PrepareStart(use, long)
+	for _, m := range modifiers {
+		c = m(c)
+	}
+	c.Start(use, short)
 }
 
 func PrepareStart(use, long string) Configuration {
