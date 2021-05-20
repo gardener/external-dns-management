@@ -54,11 +54,11 @@ func MigrateOwnerClusterIds(obj Object, migration ClusterIdMigration) error {
 	return nil
 }
 
-// MigrateOwnerClusterId switched the cluster id for a referenced object.
+// MigrateOwnerClusterId switch the cluster id for a referenced object.
 // the new cluster id MUST be the actual cluster id of the SAME cluster
 // formally denoted by the current id of the the ClusterObjectKey.
 // Meaning: namespace local references will be kept, there is no switch
-// to a cross namesapce of cross cluster reference.
+// to a cross namespace of cross cluster reference.
 func MigrateOwnerClusterId(data ObjectData, clusterid string, owner ClusterObjectKey, newid string) bool {
 	if owner.Namespace() == data.GetNamespace() && newid == clusterid {
 		return false
@@ -89,6 +89,61 @@ func MigrateOwnerClusterId(data ObjectData, clusterid string, owner ClusterObjec
 		}
 		if !found {
 			new = append(new, newref)
+		}
+		return SetAnnotation(data, owner_annotation, strings.Join(new, ","))
+	}
+}
+
+func MigrateGroupKinds(obj Object, migration GroupKindMigration) error {
+	_, err := obj.Modify(func(od ObjectData) (bool, error) {
+		mod := false
+		s, err := obj.GetResource().Wrap(od)
+		if err != nil {
+			return false, err
+		}
+		for o := range s.GetOwners() {
+			if new := migration.RequireMigration(o.GroupKind()); new != nil {
+				mod = MigrateOwnerGroupKind(od, obj.GetCluster(), o, *new) || mod
+			}
+		}
+		return mod, nil
+	})
+	if err != nil {
+		return fmt.Errorf("owner group kind migration failed for %s: %s", obj.ClusterKey(), err)
+	}
+	return nil
+}
+
+// MigrateOwnerGroupKind switch the GroupKind for a referenced object.
+func MigrateOwnerGroupKind(data ObjectData, cluster Cluster, owner ClusterObjectKey, new schema.GroupKind) bool {
+	if owner.Namespace() == data.GetNamespace() && owner.Cluster() == cluster.GetId() {
+		res, err := cluster.Resources().GetByGK(new)
+		if err != nil {
+			return false
+		}
+		ownerObj, err := res.Get(owner.ObjectName())
+		if err != nil {
+			return false
+		}
+		if RemoveOwnerReferenceByKey(data, owner.ObjectKey()) {
+			SetOwnerReference(data, ownerObj.GetOwnerReference())
+			return true
+		}
+		return false
+	} else {
+		// maintain foreign references via annotations
+
+		ref := owner.String()
+		newref := owner.ChangeGroupKind(new).String()
+		refs := GetAnnotatedOwners(data)
+		new := []string{}
+
+		for _, r := range refs {
+			if ref != r {
+				new = append(new, r)
+			} else {
+				new = append(new, newref)
+			}
 		}
 		return SetAnnotation(data, owner_annotation, strings.Join(new, ","))
 	}

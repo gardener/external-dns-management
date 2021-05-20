@@ -24,16 +24,13 @@ type entry struct {
 }
 
 type SlaveCache struct {
-	migration ClusterIdMigration
-	cache     SubObjectCache
+	migration   ClusterIdMigration
+	gkMigration GroupKindMigration
+	cache       SubObjectCache
 }
 
-func NewSlaveCache(migration ...ClusterIdMigration) *SlaveCache {
-	var mig ClusterIdMigration
-	if len(migration) > 0 {
-		mig = migration[0]
-	}
-	return &SlaveCache{mig, *NewSubObjectCache(func(o Object) ClusterObjectKeySet { return o.GetOwners() })}
+func NewSlaveCache(migration ClusterIdMigration, gkMigration GroupKindMigration) *SlaveCache {
+	return &SlaveCache{migration, gkMigration, *NewSubObjectCache(func(o Object) ClusterObjectKeySet { return o.GetOwners() })}
 }
 
 func (this *SlaveCache) AddOwnerFilter(filters ...KeyFilter) *SlaveCache {
@@ -60,6 +57,14 @@ func (this *SlaveCache) Setup(slaves []Object) {
 			err := MigrateOwnerClusterIds(s, this.migration)
 			if err != nil {
 				panic(fmt.Errorf("owner cluster id migration failed for %s: %s", s.ClusterKey(), err))
+			}
+		}
+	}
+	if this.gkMigration != nil {
+		for _, s := range slaves {
+			err := MigrateGroupKinds(s, this.gkMigration)
+			if err != nil {
+				panic(fmt.Errorf("owner GroupKind migration failed for %s: %s", s.ClusterKey(), err))
 			}
 		}
 	}

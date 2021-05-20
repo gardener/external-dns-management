@@ -74,7 +74,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 			annotations: annotations.GetOrCreateWatches(c),
 		}
 
-		reconciler.annotations.RegisterHandler(c, c.GetMainWatchResource().ResourceType().GroupKind(), reconciler)
+		reconciler.annotations.RegisterHandler(c, sourceType.GroupKind(), reconciler)
 		reconciler.state.source = source
 		reconciler.namespace, _ = c.GetStringOption(OPT_NAMESPACE)
 		reconciler.nameprefix, _ = c.GetStringOption(OPT_NAMEPREFIX)

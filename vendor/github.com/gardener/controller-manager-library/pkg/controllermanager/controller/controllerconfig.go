@@ -11,15 +11,16 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/config"
 	areacfg "github.com/gardener/controller-manager-library/pkg/controllermanager/controller/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
 )
 
 type ControllerConfig struct {
-	*config.GenericOptionSource
+	config.OptionSet
 }
 
 func NewControllerConfig(controller string) *ControllerConfig {
 	return &ControllerConfig{
-		GenericOptionSource: config.NewGenericOptionSource(controller, controller, func(desc string) string {
+		OptionSet: config.NewSharedOptionSet(controller, controller, func(desc string) string {
 			return fmt.Sprintf("%s of controller %s", desc, controller)
 		}),
 	}
@@ -36,7 +37,7 @@ func (this *_Definitions) ExtendConfig(cfg *areacfg.Config) {
 		ccfg := NewControllerConfig(name)
 		cfg.AddSource(name, ccfg)
 
-		set := ccfg.PrefixedShared()
+		set := ccfg.OptionSet
 
 		for pname, p := range def.Pools() {
 			localpname := pname
@@ -51,13 +52,6 @@ func (this *_Definitions) ExtendConfig(cfg *areacfg.Config) {
 			}
 		}
 
-		for oname, o := range def.ConfigOptions() {
-			set.AddOption(o.Type(), nil, oname, "", o.Default(), o.Description())
-		}
-		for oname, o := range def.ConfigOptionSources() {
-			if src := o.Create(); src != nil {
-				set.AddSource(CONTROLLER_SET_PREFIX+oname, src)
-			}
-		}
+		extension.AddElementConfigDefinitionToSet(def, CONTROLLER_SET_PREFIX, set)
 	}
 }

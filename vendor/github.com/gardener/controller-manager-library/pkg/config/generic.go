@@ -163,13 +163,16 @@ func (this *GenericOptionSource) PrefixedShared() OptionSet {
 	})
 }
 
-func (this *GenericOptionSource) VisitSources(f OptionSourceVisitor) {
-	this.call(func(set OptionSet) interface{} {
-		if !f(set.Name(), set) {
-			return false
+func (this *GenericOptionSource) VisitSources(f OptionSourceVisitor) bool {
+	r := this.call(func(set OptionSet) interface{} {
+		if s, ok := set.(OptionSourceSource); ok {
+			if !s.VisitSources(f) {
+				return false
+			}
 		}
 		return nil
 	})
+	return r == nil
 }
 
 func (this *GenericOptionSource) call(f func(OptionSet) interface{}) interface{} {

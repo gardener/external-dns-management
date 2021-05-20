@@ -9,15 +9,11 @@ package controller
 import (
 	"context"
 	"fmt"
-	"os"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/lease"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 
-	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/leaderelection"
-	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
 type leasestartupgroup struct {
@@ -37,23 +33,27 @@ func (this *leasestartupgroup) Startup() error {
 	}
 	msg += ")"
 
+	leasecfg := &this.extension.config.Lease
 	this.extension.Infof("leader election required for %s", msg)
 	runit := func() {
 		this.extension.Infof("Acquired leadership, starting controllers for %s.", msg)
+		for _, c := range this.controllers {
+			this.extension.setupController(c)
+		}
 		for _, c := range this.controllers {
 			this.extension.startController(c)
 		}
 	}
 
-	if this.extension.config.OmitLease {
+	if leasecfg.OmitLease {
 		this.extension.Infof("omitting lease %q for cluster %s in namespace %q",
 			this.extension.Name(), msg, this.extension.Namespace())
 		ctxutil.WaitGroupRun(this.extension.GetContext(), runit)
 	} else {
 		this.extension.Infof("requesting lease %q for cluster %s in namespace %q",
-			this.extension.config.LeaseName, msg, this.extension.Namespace())
-		leaderElectionConfig, err := makeLeaderElectionConfig(this.cluster,
-			this.extension.Namespace(), this.extension.config)
+			leasecfg.LeaseName, msg, this.extension.Namespace())
+		leaderElectionConfig, err := lease.MakeLeaderElectionConfig(this.cluster,
+			this.extension.Namespace(), &this.extension.config.Lease)
 		if err != nil {
 			return err
 		}
@@ -79,39 +79,4 @@ func (this *leasestartupgroup) Startup() error {
 	}
 
 	return nil
-}
-
-func makeLeaderElectionConfig(cluster cluster.Interface, namespace string, ctrlconfig *config.Config) (*leaderelection.LeaderElectionConfig, error) {
-	hostname, err := os.Hostname()
-	hostname = fmt.Sprintf("%s/%d", hostname, os.Getpid())
-	if err != nil {
-		return nil, fmt.Errorf("unable to get hostname: %v", err)
-	}
-
-	cfg := cluster.Config()
-	client, err := k8s.NewForConfig(&cfg)
-	if err != nil {
-		return nil, err
-	}
-	lock, err := resourcelock.New(
-		"configmaps",
-		namespace,
-		ctrlconfig.LeaseName,
-		client.CoreV1(),
-		client.CoordinationV1(),
-		resourcelock.ResourceLockConfig{
-			Identity:      hostname,
-			EventRecorder: cluster.Resources(),
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't create resources lock: %v", err)
-	}
-
-	return &leaderelection.LeaderElectionConfig{
-		Lock:          lock,
-		LeaseDuration: ctrlconfig.LeaseDuration,
-		RenewDeadline: ctrlconfig.LeaseRenewDeadline,
-		RetryPeriod:   ctrlconfig.LeaseRetryPeriod,
-	}, nil
 }

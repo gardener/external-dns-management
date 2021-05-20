@@ -12,7 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/sync"
@@ -57,7 +56,7 @@ type ExtensionDefinition struct {
 
 func NewExtensionDefinition(defs Definitions) *ExtensionDefinition {
 	return &ExtensionDefinition{
-		ExtensionDefinitionBase: extension.NewExtensionDefinitionBase(TYPE, []string{"webhooks"}),
+		ExtensionDefinitionBase: extension.NewExtensionDefinitionBase(TYPE, []string{"webhooks", "modules"}),
 		definitions:             defs,
 	}
 }
@@ -113,7 +112,6 @@ func (this clusterMapping) Map(name string) string {
 
 type Extension struct {
 	extension.Environment
-	sharedAttributes
 
 	config        *areacfg.Config
 	definitions   Definitions
@@ -132,24 +130,20 @@ type Extension struct {
 
 var _ Environment = &Extension{}
 
-type prepare interface {
-	Prepare() error
-}
-
 func NewExtension(defs Definitions, cm extension.ControllerManager) (*Extension, error) {
 	ctx := ctxutil.WaitGroupContext(cm.GetContext(), "controller extension")
 	ext := extension.NewDefaultEnvironment(ctx, TYPE, cm)
 
 	cfg := areacfg.GetConfig(cm.GetConfig())
 
-	if cfg.LeaseName == "" {
-		cfg.LeaseName = cm.GetName() + "-controllers"
+	if cfg.Lease.LeaseName == "" {
+		cfg.Lease.LeaseName = cm.GetName() + "-controllers"
 	}
 	groups := defs.Groups()
 	ext.Infof("configured groups: %s", groups.AllGroups())
 
 	active, err := groups.Members(ext, strings.Split(cfg.Controllers, ","))
-	if err != nil {
+	if err != nil || active.IsEmpty() {
 		return nil, err
 	}
 
@@ -175,33 +169,18 @@ func NewExtension(defs Definitions, cm extension.ControllerManager) (*Extension,
 		return nil, err
 	}
 
-	for n := range registrations {
-		var cerr error
-		options := cfg.GetSource(n).(*ControllerConfig)
-		options.PrefixedShared().VisitSources(func(n string, s config.OptionSource) bool {
-			if p, ok := s.(prepare); ok {
-				err := p.Prepare()
-				if err != nil {
-					cerr = err
-					return false
-				}
-			}
-			return true
-		})
-		if cerr != nil {
-			return nil, fmt.Errorf("invalid config for controller %q: %s", n, cerr)
-		}
+	err = extension.ValidateElementConfigs(TYPE, cfg, active)
+	if err != nil {
+		return nil, err
 	}
 
 	_, after, err := extension.Order(registrations)
 	if err != nil {
 		return nil, err
 	}
+
 	this := &Extension{
-		Environment: ext,
-		sharedAttributes: sharedAttributes{
-			LogContext: ext,
-		},
+		Environment:   ext,
 		config:        cfg,
 		definitions:   defs,
 		registrations: registrations,
@@ -305,11 +284,7 @@ func (this *Extension) checkController(cntr *controller) error {
 	return cntr.check()
 }
 
-// startController finally starts the controller
-// all error conditions MUST also be checked
-// in checkController, so after a successful checkController
-// startController MUST not return an error.
-func (this *Extension) startController(cntr *controller) error {
+func (this *Extension) setupController(cntr *controller) error {
 	for i, a := range this.after[cntr.GetName()] {
 		if i == 0 {
 			cntr.Infof("observing initialization requirements: %s", utils.Strings(this.after[cntr.GetName()]...))
@@ -317,7 +292,7 @@ func (this *Extension) startController(cntr *controller) error {
 		after := this.prepared[a]
 		if after != nil {
 			if !after.IsReached() {
-				cntr.Infof("  startup of %q waiting for %q", cntr.GetName(), a)
+				cntr.Infof("  setup of %q waiting for %q", cntr.GetName(), a)
 				if !after.Sync(this.GetContext()) {
 					return fmt.Errorf("setup aborted")
 				}
@@ -329,6 +304,20 @@ func (this *Extension) startController(cntr *controller) error {
 			cntr.Infof("  omittimg unused controller %q", a)
 		}
 	}
+	cntr.Infof("setup controller")
+	err := cntr.setup()
+	if err != nil {
+		return err
+	}
+	this.prepared[cntr.GetName()].Reach()
+	return nil
+}
+
+// startController finally starts the controller
+// all error conditions MUST also be checked
+// in checkController, so after a successful checkController
+// startController MUST not return an error.
+func (this *Extension) startController(cntr *controller) error {
 	cntr.Infof("starting controller")
 	err := cntr.prepare()
 	if err != nil {

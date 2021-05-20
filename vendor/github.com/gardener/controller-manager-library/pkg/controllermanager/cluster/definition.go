@@ -9,12 +9,15 @@ package cluster
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	areacfg "github.com/gardener/controller-manager-library/pkg/controllermanager/config"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const CLUSTERID_GROUP = "gardener.cloud"
@@ -24,7 +27,11 @@ type Definitions interface {
 	CreateClusters(ctx context.Context, logger logger.LogContext, cfg *areacfg.Config, cache SchemeCache, names utils.StringSet) (Clusters, error)
 	ExtendConfig(cfg *areacfg.Config)
 	GetScheme() *runtime.Scheme
+	ClusterNames() []string
+	Reconfigure(modifiers ...ConfigurationModifier) Definitions
 }
+
+type ConfigurationModifier func(c Configuration) Configuration
 
 var _ Definitions = &_Definitions{}
 
@@ -37,6 +44,9 @@ type Definition interface {
 
 	Definition() Definition
 	Configure() Configuration
+
+	IsMinimalWatchEnforced(schema.GroupKind) bool
+	MinimalWatches() []schema.GroupKind
 }
 
 type _Definition struct {
@@ -45,6 +55,7 @@ type _Definition struct {
 	configOptionName string
 	description      string
 	scheme           *runtime.Scheme
+	minimalWatches   resources.GroupKindSet
 }
 
 func copy(d Definition) *_Definition {
@@ -54,6 +65,7 @@ func copy(d Definition) *_Definition {
 		d.ConfigOptionName(),
 		d.Description(),
 		d.Scheme(),
+		resources.NewGroupKindSetByArray(d.MinimalWatches()),
 	}
 }
 
@@ -73,14 +85,38 @@ func (this *_Definition) Scheme() *runtime.Scheme {
 	return this.scheme
 }
 func (this *_Definition) Definition() Definition {
-	return this
+	copy := this.copy()
+	return &copy
+}
+
+func (this *_Definition) IsMinimalWatchEnforced(gk schema.GroupKind) bool {
+	return this.minimalWatches.Contains(gk)
+}
+
+func (this *_Definition) MinimalWatches() []schema.GroupKind {
+	return this.minimalWatches.AsArray()
 }
 
 func (this *_Definition) Configure() Configuration {
-	return Configuration{*this}
+	return Configuration{this.copy()}
+}
+
+func (this *_Definition) copy() _Definition {
+	copy := *this
+	copy.minimalWatches = resources.NewGroupKindSetByArray(this.MinimalWatches())
+	return copy
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+type _Definitions struct {
+	lock        sync.RWMutex
+	definitions Registrations
+	scheme      *runtime.Scheme
+}
+
+var _ Definition = &_Definition{}
+var _ Definitions = &_Definitions{}
 
 func (this *_Definitions) create(ctx context.Context, logger logger.LogContext, cfg *Config, req Definition) (Interface, error) {
 
@@ -91,7 +127,7 @@ func (this *_Definitions) create(ctx context.Context, logger logger.LogContext, 
 	if req.Scheme() == nil {
 		req = req.Configure().Scheme(this.scheme).Definition()
 	}
-	cluster, err := CreateCluster(ctx, logger, req, id, cfg.KubeConfig)
+	cluster, err := CreateCluster(ctx, logger, req, id, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +229,46 @@ func (this *_Definitions) ExtendConfig(cfg *areacfg.Config) {
 
 	for _, req := range this.definitions {
 		clusterCfg := NewConfig(req)
-		callExtensions(func(e Extension) error { e.ExtendConfig(req, clusterCfg); return nil })
 		cfg.AddSource(configTargetKey(req), clusterCfg)
 	}
+}
+
+func (this *_Definitions) ClusterNames() []string {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	names := []string{}
+	for k := range this.definitions {
+		names = append(names, k)
+	}
+	return names
+}
+
+func (this *_Definitions) Get(name string) Definition {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	if c, ok := this.definitions[name]; ok {
+		return c
+	}
+	return nil
+}
+
+func (this *_Definitions) GetScheme() *runtime.Scheme {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	return this.scheme
+}
+
+func (this *_Definitions) Reconfigure(modifiers ...ConfigurationModifier) Definitions {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+
+	definitions := &_Definitions{definitions: Registrations{}, scheme: this.scheme}
+	for _, name := range this.ClusterNames() {
+		configuration := this.Get(name).Configure()
+		for _, modifier := range modifiers {
+			configuration = modifier(configuration)
+		}
+		definitions.definitions[name] = configuration.Definition()
+	}
+	return definitions
 }

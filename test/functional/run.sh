@@ -188,7 +188,7 @@ if [ "$LOCAL_APISERVER" != "" ]; then
   echo using local kube-apiserver and etcd
 
   # download kube-apiserver, etcd, and kubectl executables from kubebuilder release
-  KUBEBUILDER_VERSION=1.0.8
+  KUBEBUILDER_VERSION=2.3.2
   ARCH=$(go env GOARCH)
   GOOS=$(go env GOOS)
   KUBEBUILDER_BIN_DIR=$(realpath -m kubebuilder_${KUBEBUILDER_VERSION}_${GOOS}_${ARCH}/bin)

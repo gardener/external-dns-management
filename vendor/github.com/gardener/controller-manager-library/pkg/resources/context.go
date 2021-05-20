@@ -11,7 +11,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 	"github.com/gardener/controller-manager-library/pkg/resources/errors"

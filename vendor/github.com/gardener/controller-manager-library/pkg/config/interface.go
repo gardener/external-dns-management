@@ -69,7 +69,7 @@ type OptionSourceVisitor func(string, OptionSource) bool
 // OptionSourceSource is a group of OptionSource
 type OptionSourceSource interface {
 	Name() string
-	VisitSources(OptionSourceVisitor)
+	VisitSources(OptionSourceVisitor) bool
 	GetSource(key string) OptionSource
 }
 

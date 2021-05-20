@@ -102,7 +102,7 @@ func (this *_Registry) RegisterController(reg Registerable, group ...string) err
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
-	if def.MainResource() == nil {
+	if def.MainWatchResource() == nil {
 		return fmt.Errorf("no main resource for controller %q", def.Name())
 	}
 	if d, ok := this.definitions[def.Name()]; ok && d != def {
@@ -197,4 +197,8 @@ func Register(reg Registerable, groups ...string) error {
 
 func MustRegister(reg Registerable, groups ...string) RegistrationInterface {
 	return registry.MustRegisterController(reg, groups...)
+}
+
+func ResetRegistryForTesting() {
+	registry.(*_Registry).definitions = map[string]Definition{}
 }

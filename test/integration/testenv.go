@@ -37,7 +37,7 @@ import (
 
 	api "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
-	extensions "k8s.io/api/extensions/v1beta1"
+	networking "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -88,7 +88,8 @@ func runControllerManager(args []string) {
 func waitForCluster(kubeconfig string, logger logger.LogContext) (cluster.Interface, error) {
 	req := cluster.DefaultRegistry().GetDefinitions().Get(cluster.DEFAULT)
 	ctx := context.Background()
-	cluster, err := cluster.CreateCluster(ctx, logger, req, "", kubeconfig)
+	cfg := &cluster.Config{KubeConfig: kubeconfig}
+	cluster, err := cluster.CreateCluster(ctx, logger, req, "", cfg)
 	if err != nil {
 		return nil, fmt.Errorf("CreateCluster failed: %s", err)
 	}
@@ -401,12 +402,12 @@ func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {
 }
 
 func (te *TestEnv) CreateIngressWithAnnotation(name, domainName string) (resources.Object, error) {
-	setter := func(e *extensions.Ingress) {
+	setter := func(e *networking.Ingress) {
 		e.Annotations = map[string]string{"dns.gardener.cloud/dnsnames": domainName}
-		e.Spec.Rules = []extensions.IngressRule{{Host: domainName}}
+		e.Spec.Rules = []networking.IngressRule{{Host: domainName}}
 	}
 
-	ingress := &extensions.Ingress{}
+	ingress := &networking.Ingress{}
 	ingress.SetName(name)
 	ingress.SetNamespace(te.Namespace)
 	setter(ingress)
@@ -422,8 +423,8 @@ func (te *TestEnv) CreateIngressWithAnnotation(name, domainName string) (resourc
 	return obj, err
 }
 
-func (te *TestEnv) GetIngress(name string) (resources.Object, *extensions.Ingress, error) {
-	ingress := extensions.Ingress{}
+func (te *TestEnv) GetIngress(name string) (resources.Object, *networking.Ingress, error) {
+	ingress := networking.Ingress{}
 	ingress.SetName(name)
 	ingress.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(&ingress)
@@ -431,7 +432,7 @@ func (te *TestEnv) GetIngress(name string) (resources.Object, *extensions.Ingres
 	if err != nil {
 		return nil, nil, err
 	}
-	return obj, obj.Data().(*extensions.Ingress), nil
+	return obj, obj.Data().(*networking.Ingress), nil
 }
 
 func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP string, ttl int) (resources.Object, error) {

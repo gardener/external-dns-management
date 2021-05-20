@@ -29,6 +29,9 @@ import (
 	"sigs.k8s.io/kind/pkg/cluster/nodeutils"
 	"sigs.k8s.io/kind/pkg/cmd"
 	"sigs.k8s.io/kind/pkg/log"
+
+	"sigs.k8s.io/kind/pkg/internal/cli"
+	"sigs.k8s.io/kind/pkg/internal/runtime"
 )
 
 type flagpole struct {
@@ -46,10 +49,11 @@ func NewCommand(logger log.Logger, streams cmd.IOStreams) *cobra.Command {
 			}
 			return nil
 		},
-		Use:   "image-archive",
+		Use:   "image-archive <IMAGE.tar>",
 		Short: "Loads docker image from archive into nodes",
 		Long:  "Loads docker image from archive into all or specified nodes by name",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cli.OverrideDefaultName(cmd.Flags())
 			return runE(logger, flags, args)
 		},
 	}
@@ -71,6 +75,7 @@ func NewCommand(logger log.Logger, streams cmd.IOStreams) *cobra.Command {
 func runE(logger log.Logger, flags *flagpole, args []string) error {
 	provider := cluster.NewProvider(
 		cluster.ProviderWithLogger(logger),
+		runtime.GetDefault(logger),
 	)
 
 	// Check if file exists

@@ -26,8 +26,10 @@ import (
 )
 
 // DNSOwnerLister helps list DNSOwners.
+// All objects returned here must be treated as read-only.
 type DNSOwnerLister interface {
 	// List lists all DNSOwners in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.DNSOwner, err error)
 	// DNSOwners returns an object that can list and get DNSOwners.
 	DNSOwners(namespace string) DNSOwnerNamespaceLister
@@ -58,10 +60,13 @@ func (s *dNSOwnerLister) DNSOwners(namespace string) DNSOwnerNamespaceLister {
 }
 
 // DNSOwnerNamespaceLister helps list and get DNSOwners.
+// All objects returned here must be treated as read-only.
 type DNSOwnerNamespaceLister interface {
 	// List lists all DNSOwners in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.DNSOwner, err error)
 	// Get retrieves the DNSOwner from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.DNSOwner, error)
 	DNSOwnerNamespaceListerExpansion
 }

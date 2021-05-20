@@ -11,11 +11,19 @@ metadata:
 rules:
 - apiGroups:
   - ""
-  - extensions
   resources:
   - services
   - services/finalizers
   - secrets
+  verbs:
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - extensions
+  - "networking.k8s.io"
+  resources:
   - ingresses
   verbs:
   - get

@@ -8,6 +8,7 @@ rm -f $GOPATH/bin/*-gen
 
 PROJECT_ROOT=$(dirname $0)/..
 
+echo "generating deepcopy, defaulter ($PWD)"
 bash "${PROJECT_ROOT}"/vendor/k8s.io/code-generator/generate-internal-groups.sh \
   deepcopy,defaulter \
   github.com/gardener/controller-manager-library/pkg/controllermanager/webhook/conversion/client \
@@ -16,6 +17,7 @@ bash "${PROJECT_ROOT}"/vendor/k8s.io/code-generator/generate-internal-groups.sh 
   ":v1,v1beta1" \
   --go-header-file "${PROJECT_ROOT}/hack/LICENSE_BOILERPLATE.txt"
 
+echo "generating conersion ($PWD)"
 bash "${PROJECT_ROOT}"/vendor/k8s.io/code-generator/generate-internal-groups.sh \
   conversion \
   github.com/gardener/controller-manager-library/pkg/controllermanager/webhook/conversion/client \
@@ -24,3 +26,5 @@ bash "${PROJECT_ROOT}"/vendor/k8s.io/code-generator/generate-internal-groups.sh 
   ":v1,v1beta1" \
   --extra-peer-dirs=github.com/gardener/controller-manager-library/pkg/controllermanager/webhook/conversion/api,github.com/gardener/controller-manager-library/pkg/controllermanager/webhook/conversion/api/v1,github.com/gardener/controller-manager-library/pkg/controllermanager/webhook/conversion/api/v1beta1,k8s.io/apimachinery/pkg/apis/meta/v1,k8s.io/apimachinery/pkg/conversion,k8s.io/apimachinery/pkg/runtime \
   --go-header-file "${PROJECT_ROOT}/hack/LICENSE_BOILERPLATE.txt"
+
+echo done

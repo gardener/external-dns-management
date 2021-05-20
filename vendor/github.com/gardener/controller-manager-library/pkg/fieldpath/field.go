@@ -13,6 +13,10 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
+type ValueGetter interface {
+	Get(obj interface{}) (interface{}, error)
+}
+
 type Field interface {
 	BaseType() reflect.Type
 	Type() reflect.Type

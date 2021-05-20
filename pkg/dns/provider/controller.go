@@ -39,8 +39,8 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 
-	// register 1.12
-	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.12"
+	// register 1.16
+	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.16"
 )
 
 const CONTROLLER_GROUP_DNS_CONTROLLERS = dns.CONTROLLER_GROUP_DNS_CONTROLLERS
@@ -93,7 +93,7 @@ func CreateFactoryOptionSource(factory DNSHandlerFactory, prefix string) config.
 	}
 	if required {
 		//set := &factoryOptionSet{config.NewSharedOptionSet(FACTORY_OPTIONS, prefix, nil)}
-		set := config.NewSharedOptionSet(FACTORY_OPTIONS, prefix, nil)
+		set := config.NewSharedOptionSet(FACTORY_OPTIONS, prefix)
 		set.AddSource(FACTORY_OPTIONS, src)
 		return set
 	}

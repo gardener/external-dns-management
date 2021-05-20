@@ -25,6 +25,9 @@ import (
 	"sigs.k8s.io/kind/pkg/cluster"
 	"sigs.k8s.io/kind/pkg/cmd"
 	"sigs.k8s.io/kind/pkg/log"
+
+	"sigs.k8s.io/kind/pkg/internal/cli"
+	"sigs.k8s.io/kind/pkg/internal/runtime"
 )
 
 type flagpole struct {
@@ -40,6 +43,7 @@ func NewCommand(logger log.Logger, streams cmd.IOStreams) *cobra.Command {
 		Short: "Lists existing kind nodes by their name",
 		Long:  "Lists existing kind nodes by their name",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cli.OverrideDefaultName(cmd.Flags())
 			return runE(logger, streams, flags)
 		},
 	}
@@ -56,6 +60,7 @@ func runE(logger log.Logger, streams cmd.IOStreams, flags *flagpole) error {
 	// List nodes by cluster context name
 	provider := cluster.NewProvider(
 		cluster.ProviderWithLogger(logger),
+		runtime.GetDefault(logger),
 	)
 	n, err := provider.ListNodes(flags.Name)
 	if err != nil {

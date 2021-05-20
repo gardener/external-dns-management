@@ -12,11 +12,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/resources/errors"
-
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/watch"
@@ -47,6 +45,7 @@ func (f *genericInformer) Lister() Lister {
 type SharedInformerFactory interface {
 	Structured() GenericFilteredInformerFactory
 	Unstructured() GenericFilteredInformerFactory
+	MinimalObject() GenericFilteredInformerFactory
 
 	InformerForObject(obj runtime.Object) (GenericInformer, error)
 	FilteredInformerForObject(obj runtime.Object, namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error)
@@ -56,6 +55,9 @@ type SharedInformerFactory interface {
 
 	UnstructuredInformerFor(gvk schema.GroupVersionKind) (GenericInformer, error)
 	FilteredUnstructuredInformerFor(gvk schema.GroupVersionKind, namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error)
+
+	MinimalObjectInformerFor(gvk schema.GroupVersionKind) (GenericInformer, error)
+	FilteredMinimalObjectInformerFor(gvk schema.GroupVersionKind, namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error)
 
 	Start(stopCh <-chan struct{})
 	WaitForCacheSync(stopCh <-chan struct{})
@@ -77,44 +79,60 @@ type GenericFilteredInformerFactory interface {
 //  informer factory
 
 type sharedInformerFactory struct {
-	context      *resourceContext
-	structured   *sharedFilteredInformerFactory
-	unstructured *unstructuredSharedFilteredInformerFactory
+	context       *resourceContext
+	structured    *sharedFilteredInformerFactory
+	unstructured  *sharedFilteredInformerFactory
+	minimalObject *sharedFilteredInformerFactory
 }
 
 func newSharedInformerFactory(rctx *resourceContext, defaultResync time.Duration) *sharedInformerFactory {
 	return &sharedInformerFactory{
-		context:      rctx,
-		structured:   newSharedFilteredInformerFactory(rctx, defaultResync),
-		unstructured: &unstructuredSharedFilteredInformerFactory{newSharedFilteredInformerFactory(rctx, defaultResync)},
+		context:       rctx,
+		structured:    newSharedFilteredInformerFactory(rctx, defaultResync, newStructuredListWatchFactory),
+		unstructured:  newSharedFilteredInformerFactory(rctx, defaultResync, newUnstructuredListWatchFactory),
+		minimalObject: newSharedFilteredInformerFactory(rctx, defaultResync, newMinimalObjectListWatchFactory),
 	}
 }
 
 func (f *sharedInformerFactory) Structured() GenericFilteredInformerFactory {
-	return f
+	return f.structured
 }
 
 func (f *sharedInformerFactory) Unstructured() GenericFilteredInformerFactory {
 	return f.unstructured
 }
 
+func (f *sharedInformerFactory) MinimalObject() GenericFilteredInformerFactory {
+	return f.minimalObject
+}
+
 // Start initializes all requested informers.
 func (f *sharedInformerFactory) Start(stopCh <-chan struct{}) {
 	f.structured.Start(stopCh)
 	f.unstructured.Start(stopCh)
+	f.minimalObject.Start(stopCh)
 }
 
 func (f *sharedInformerFactory) WaitForCacheSync(stopCh <-chan struct{}) {
 	f.structured.WaitForCacheSync(stopCh)
 	f.unstructured.WaitForCacheSync(stopCh)
+	f.minimalObject.WaitForCacheSync(stopCh)
 }
 
 func (f *sharedInformerFactory) UnstructuredInformerFor(gvk schema.GroupVersionKind) (GenericInformer, error) {
-	return f.unstructured.informerFor(unstructuredType, gvk, "", nil)
+	return f.FilteredUnstructuredInformerFor(gvk, "", nil)
 }
 
 func (f *sharedInformerFactory) FilteredUnstructuredInformerFor(gvk schema.GroupVersionKind, namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error) {
-	return f.unstructured.informerFor(unstructuredType, gvk, namespace, optionsFunc)
+	return f.unstructured.informerFor(gvk, namespace, optionsFunc)
+}
+
+func (f *sharedInformerFactory) MinimalObjectInformerFor(gvk schema.GroupVersionKind) (GenericInformer, error) {
+	return f.FilteredMinimalObjectInformerFor(gvk, "", nil)
+}
+
+func (f *sharedInformerFactory) FilteredMinimalObjectInformerFor(gvk schema.GroupVersionKind, namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error) {
+	return f.minimalObject.informerFor(gvk, namespace, optionsFunc)
 }
 
 func (f *sharedInformerFactory) InformerFor(gvk schema.GroupVersionKind) (GenericInformer, error) {
@@ -122,21 +140,11 @@ func (f *sharedInformerFactory) InformerFor(gvk schema.GroupVersionKind) (Generi
 }
 
 func (f *sharedInformerFactory) FilteredInformerFor(gvk schema.GroupVersionKind, namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error) {
-	informerType := f.context.KnownTypes(gvk.GroupVersion())[gvk.Kind]
-	if informerType == nil {
-		return nil, errors.ErrUnknownResource.New("group version kind", gvk)
-	}
-
-	return f.structured.informerFor(informerType, gvk, namespace, optionsFunc)
+	return f.structured.informerFor(gvk, namespace, optionsFunc)
 }
 
 func (f *sharedInformerFactory) LookupInformerFor(gvk schema.GroupVersionKind, namespace string) (GenericInformer, error) {
-	informerType := f.context.KnownTypes(gvk.GroupVersion())[gvk.Kind]
-	if informerType == nil {
-		return nil, errors.ErrUnknownResource.New("group version kind", gvk)
-	}
-
-	return f.structured.lookupInformerFor(informerType, gvk, namespace)
+	return f.structured.lookupInformerFor(gvk, namespace)
 }
 
 func (f *sharedInformerFactory) InformerForObject(obj runtime.Object) (GenericInformer, error) {
@@ -153,7 +161,7 @@ func (f *sharedInformerFactory) FilteredInformerForObject(obj runtime.Object, na
 	if err != nil {
 		return nil, err
 	}
-	return f.structured.informerFor(informerType, gvk, namespace, optionsFunc)
+	return f.FilteredInformerFor(gvk, namespace, optionsFunc)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -162,17 +170,19 @@ func (f *sharedInformerFactory) FilteredInformerForObject(obj runtime.Object, na
 type sharedFilteredInformerFactory struct {
 	lock sync.Mutex
 
-	context       *resourceContext
-	defaultResync time.Duration
-	filters       map[string]*genericInformerFactory
+	context                    *resourceContext
+	defaultResync              time.Duration
+	filters                    map[string]*genericInformerFactory
+	newListWatchFactoryFactory newListWatchFactoryFactory
 }
 
-func newSharedFilteredInformerFactory(rctx *resourceContext, defaultResync time.Duration) *sharedFilteredInformerFactory {
+func newSharedFilteredInformerFactory(rctx *resourceContext, defaultResync time.Duration, ff newListWatchFactoryFactory) *sharedFilteredInformerFactory {
 	return &sharedFilteredInformerFactory{
 		context:       rctx,
 		defaultResync: defaultResync,
 
-		filters: make(map[string]*genericInformerFactory),
+		filters:                    make(map[string]*genericInformerFactory),
+		newListWatchFactoryFactory: ff,
 	}
 }
 
@@ -192,7 +202,7 @@ func (f *sharedFilteredInformerFactory) WaitForCacheSync(stopCh <-chan struct{})
 func (f *sharedFilteredInformerFactory) getFactory(namespace string, optionsFunc TweakListOptionsFunc) *genericInformerFactory {
 	key := namespace
 	if optionsFunc != nil {
-		opts := v1.ListOptions{}
+		opts := metav1.ListOptions{}
 		optionsFunc(&opts)
 		key = namespace + opts.String()
 	}
@@ -216,14 +226,18 @@ func (f *sharedFilteredInformerFactory) queryFactory(namespace string) *genericI
 	return factory
 }
 
-func (f *sharedFilteredInformerFactory) informerFor(informerType reflect.Type, gvk schema.GroupVersionKind, namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error) {
-	return f.getFactory(namespace, optionsFunc).informerFor(informerType, gvk)
+func (f *sharedFilteredInformerFactory) informerFor(gvk schema.GroupVersionKind, namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error) {
+	lwFactory, err := f.newListWatchFactoryFactory(f.context, gvk)
+	if err != nil {
+		return nil, err
+	}
+	return f.getFactory(namespace, optionsFunc).informerFor(lwFactory)
 }
 
-func (f *sharedFilteredInformerFactory) lookupInformerFor(informerType reflect.Type, gvk schema.GroupVersionKind, namespace string) (GenericInformer, error) {
+func (f *sharedFilteredInformerFactory) lookupInformerFor(gvk schema.GroupVersionKind, namespace string) (GenericInformer, error) {
 	fac := f.queryFactory("")
 	if fac != nil {
-		i := fac.queryInformerFor(informerType, gvk)
+		i := fac.queryInformerFor(gvk)
 		if i != nil {
 			return i, nil
 		}
@@ -231,33 +245,34 @@ func (f *sharedFilteredInformerFactory) lookupInformerFor(informerType reflect.T
 	if namespace != "" {
 		fac := f.queryFactory(namespace)
 		if fac != nil {
-			i := fac.queryInformerFor(informerType, gvk)
+			i := fac.queryInformerFor(gvk)
 			if i != nil {
 				return i, nil
 			}
-			return fac.informerFor(informerType, gvk)
+			lwFactory, err := f.newListWatchFactoryFactory(f.context, gvk)
+			if err != nil {
+				return nil, err
+			}
+			return fac.informerFor(lwFactory)
 		}
 	}
-	return f.getFactory("", nil).informerFor(informerType, gvk)
+	lwFactory, err := f.newListWatchFactoryFactory(f.context, gvk)
+	if err != nil {
+		return nil, err
+	}
+	return f.getFactory("", nil).informerFor(lwFactory)
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// UnstructuredInformers
-
-type unstructuredSharedFilteredInformerFactory struct {
-	*sharedFilteredInformerFactory
+func (f *sharedFilteredInformerFactory) InformerFor(gvk schema.GroupVersionKind) (GenericInformer, error) {
+	return f.FilteredInformerFor(gvk, "", nil)
 }
 
-func (f *unstructuredSharedFilteredInformerFactory) InformerFor(gvk schema.GroupVersionKind) (GenericInformer, error) {
-	return f.informerFor(unstructuredType, gvk, "", nil)
+func (f *sharedFilteredInformerFactory) FilteredInformerFor(gvk schema.GroupVersionKind, namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error) {
+	return f.informerFor(gvk, namespace, optionsFunc)
 }
 
-func (f *unstructuredSharedFilteredInformerFactory) FilteredInformerFor(gvk schema.GroupVersionKind, namespace string, optionsFunc TweakListOptionsFunc) (GenericInformer, error) {
-	return f.informerFor(unstructuredType, gvk, namespace, optionsFunc)
-}
-
-func (f *unstructuredSharedFilteredInformerFactory) LookupInformerFor(gvk schema.GroupVersionKind, namespace string) (GenericInformer, error) {
-	return f.lookupInformerFor(unstructuredType, gvk, namespace)
+func (f *sharedFilteredInformerFactory) LookupInformerFor(gvk schema.GroupVersionKind, namespace string) (GenericInformer, error) {
+	return f.lookupInformerFor(gvk, namespace)
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -188,6 +188,26 @@ func RemoveOwnerReference(o ObjectData, ref *metav1.OwnerReference) bool {
 	return false
 }
 
+func RemoveOwnerReferenceByKey(o ObjectData, key ObjectKey) bool {
+	refs := o.GetOwnerReferences()
+	for i, r := range refs {
+		if r.Kind == key.Kind() && r.Name == key.Name() && matchGroup(r.APIVersion, key.Group()) {
+			refs = append(refs[:i], refs[i+1:]...)
+			o.SetOwnerReferences(refs)
+			return true
+		}
+	}
+	return false
+}
+
+func matchGroup(apiVersion, group string) bool {
+	gv, err := schema.ParseGroupVersion(apiVersion)
+	if err != nil {
+		return false
+	}
+	return gv.Group == group
+}
+
 func FilterKeysByGroupKinds(keys ClusterObjectKeySet, kinds ...schema.GroupKind) ClusterObjectKeySet {
 
 	if len(kinds) == 0 {

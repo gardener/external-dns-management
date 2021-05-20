@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/Masterminds/semver"
+	"github.com/Masterminds/semver/v3"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -72,10 +72,25 @@ type Interface interface {
 	EnforceExplicitClusterIdentity(logger logger.LogContext) error
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+// Extension is an interface to describe extensions to the
+// cluster access creation. The basis interface is used
+// to extend the cluster options, and tweak the
+// finally created cluster
 type Extension interface {
 	ExtendConfig(def Definition, cfg *Config)
-	Extend(cluster Interface, config *Config) error
+	Extend(cluster Interface, cfg *Config) error
 }
+
+// RestConfigExtension is an optional interface for a
+// config Extension used to tweak the rest config used
+// to access the cluster
+type RestConfigExtension interface {
+	TweakRestConfig(def Definition, cfg *Config, restcfg *restclient.Config) error
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 type _Cluster struct {
 	name       string
@@ -161,7 +176,7 @@ func (this *_Cluster) GetCachedObject(spec interface{}) (resources.Object, error
 }
 
 func (this *_Cluster) GetResource(groupKind schema.GroupKind) (resources.Interface, error) {
-	return this.resources.Get(groupKind)
+	return this.resources.GetByGK(groupKind)
 }
 
 func (this *_Cluster) GetServerVersion() *semver.Version {
@@ -194,7 +209,11 @@ func (this *_Cluster) EnforceExplicitClusterIdentity(logger logger.LogContext) e
 	return nil
 }
 
-func CreateCluster(ctx context.Context, logger logger.LogContext, def Definition, id string, kubeconfig string) (Interface, error) {
+func CreateCluster(ctx context.Context, logger logger.LogContext, def Definition, id string, cfg *Config) (Interface, error) {
+	kubeconfig := ""
+	if cfg != nil {
+		kubeconfig = cfg.KubeConfig
+	}
 	if kubeconfig == "IN-CLUSTER" {
 		kubeconfig = ""
 	} else {
@@ -216,6 +235,16 @@ func CreateCluster(ctx context.Context, logger logger.LogContext, def Definition
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cluster %q: %s", name, err)
 	}
+	err = callExtensions(func(e Extension) error {
+		if t, ok := e.(RestConfigExtension); ok {
+			return t.TweakRestConfig(def, cfg, kubeConfig)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
 	return CreateClusterForScheme(ctx, logger, def, id, kubeConfig, nil)
 }
 
@@ -228,6 +257,7 @@ func CreateClusterForScheme(ctx context.Context, logger logger.LogContext, def D
 	if scheme != nil && def.Scheme() != scheme {
 		def = def.Configure().Scheme(scheme).Definition()
 	}
+	scheme.KnownTypes(schema.GroupVersion{Group: "discovery.k8s.io", Version: "v1beta1"})
 	cluster.ctx = ctx
 	cluster.logctx = logger
 	cluster.definition = def

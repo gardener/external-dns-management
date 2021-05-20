@@ -7,21 +7,16 @@
 package config
 
 import (
-	"time"
-
 	"github.com/gardener/controller-manager-library/pkg/config"
 	areacfg "github.com/gardener/controller-manager-library/pkg/controllermanager/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/lease"
 )
 
 const OPTION_SOURCE = "controllers"
 
 type Config struct {
-	Controllers        string
-	OmitLease          bool
-	LeaseName          string
-	LeaseDuration      time.Duration
-	LeaseRenewDeadline time.Duration
-	LeaseRetryPeriod   time.Duration
+	Controllers string
+	Lease       lease.Config
 
 	config.OptionSet
 }
@@ -30,14 +25,10 @@ var _ config.OptionSource = (*Config)(nil)
 
 func NewConfig() *Config {
 	cfg := &Config{
-		OptionSet: config.NewDefaultOptionSet(OPTION_SOURCE, ""),
+		OptionSet: config.NewSharedOptionSet(OPTION_SOURCE, ""),
 	}
 	cfg.AddStringOption(&cfg.Controllers, "controllers", "c", "all", "comma separated list of controllers to start (<name>,<group>,all)")
-	cfg.AddStringOption(&cfg.LeaseName, "lease-name", "", "", "name for lease object")
-	cfg.AddBoolOption(&cfg.OmitLease, "omit-lease", "", false, "omit lease for development")
-	cfg.AddDurationOption(&cfg.LeaseDuration, "lease-duration", "", 15*time.Second, "lease duration")
-	cfg.AddDurationOption(&cfg.LeaseRenewDeadline, "lease-renew-deadline", "", 10*time.Second, "lease renew deadline")
-	cfg.AddDurationOption(&cfg.LeaseRetryPeriod, "lease-retry-period", "", 2*time.Second, "lease retry period")
+	cfg.Lease.AddOptionsToSet(cfg.OptionSet)
 	return cfg
 }
 

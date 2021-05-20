@@ -38,8 +38,6 @@ func toString(o interface{}) string {
 			s = fmt.Sprintf("%s%s%s", s, sep, toString(w))
 			sep = ", "
 		}
-	case Watch:
-		return fmt.Sprintf("%s in %s with %s", v.ResourceType(), v.PoolName(), v.Reconciler())
 
 	case Commands:
 		for n, c := range v {

@@ -19,11 +19,14 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 )
 
+type TLSTweakFunction func(tls *tls.Config)
+
 type HTTPServer struct {
 	name    string
 	servMux *http.ServeMux
 	ctx     context.Context
 
+	server *http.Server
 	logger.LogContext
 }
 
@@ -50,7 +53,7 @@ func (this *HTTPServer) RegisterHandler(pattern string, handler http.Handler) {
 }
 
 // Start starts an HTTP/S server.
-func (this *HTTPServer) Start(source certs.CertificateSource, bindAddress string, port int) {
+func (this *HTTPServer) Start(source certs.CertificateSource, bindAddress string, port int, tweak ...TLSTweakFunction) {
 	var tlscfg *tls.Config
 
 	listenAddress := fmt.Sprintf("%s:%d", bindAddress, port)
@@ -60,10 +63,13 @@ func (this *HTTPServer) Start(source certs.CertificateSource, bindAddress string
 			NextProtos:     []string{"h2"},
 			GetCertificate: source.GetCertificate,
 		}
+		for _, f := range tweak {
+			f(tlscfg)
+		}
 	} else {
 		this.Infof("starting %s as http server (serving on %s)", this.name, listenAddress)
 	}
-	server := &http.Server{
+	this.server = &http.Server{
 		Addr:      listenAddress,
 		Handler:   this.servMux,
 		TLSConfig: tlscfg,
@@ -74,16 +80,16 @@ func (this *HTTPServer) Start(source certs.CertificateSource, bindAddress string
 		<-this.ctx.Done()
 		this.Infof("shutting down server %q with timeout", this.name)
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-		server.Shutdown(ctx)
+		this.server.Shutdown(ctx)
 	}()
 
 	go func() {
 		var err error
 		this.Infof("server %q started", this.name)
 		if tlscfg != nil {
-			err = server.ListenAndServeTLS("", "")
+			err = this.server.ListenAndServeTLS("", "")
 		} else {
-			err = server.ListenAndServe()
+			err = this.server.ListenAndServe()
 		}
 		if err != nil && err != http.ErrServerClosed {
 			logger.Errorf("cannot start server %q: %s", this.name, err)

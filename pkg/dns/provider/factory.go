@@ -183,7 +183,7 @@ func HandlerStringMapper(name string) func(s string) string {
 
 func (this *CompoundFactory) CreateOptionSource() (config.OptionSource, *GenericFactoryOptions) {
 	found := false
-	compound := config.NewSharedOptionSet("compound", "", nil)
+	compound := config.NewSharedOptionSet("compound", "")
 	for n, f := range this.factories {
 		src := CreateFactoryOptionSource(f, n)
 		if src != nil {

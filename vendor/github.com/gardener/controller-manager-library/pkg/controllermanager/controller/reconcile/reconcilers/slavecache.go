@@ -103,6 +103,7 @@ type SlaveAccess struct {
 	master_resources *_resources
 	slavefilters     []resources.ObjectFilter
 	migration        resources.ClusterIdMigration
+	gkMigration      resources.GroupKindMigration
 	spec             SlaveAccessSpec
 }
 
@@ -112,15 +113,18 @@ type SlaveAccessSpec struct {
 	Slaves          Resources
 	Masters         Resources
 	RequeueDeleting bool
-	Migration       resources.ClusterIdMigrationProvider
+
+	ClusterIdMigration resources.ClusterIdMigration
+	GroupKindMigration resources.GroupKindMigration
 }
 
 func NewSlaveAccessSpec(c controller.Interface, name string, slave_func Resources, master_func Resources) SlaveAccessSpec {
 	return SlaveAccessSpec{
-		Name:      name,
-		Slaves:    slave_func,
-		Masters:   master_func,
-		Migration: c.GetEnvironment().ControllerManager(),
+		Name:               name,
+		Slaves:             slave_func,
+		Masters:            master_func,
+		ClusterIdMigration: c.GetEnvironment().ControllerManager().GetClusterIdMigration(),
+		GroupKindMigration: c.GetEnvironment().ControllerManager().GetGroupKindMigration(),
 	}
 }
 
@@ -129,20 +133,13 @@ func NewSlaveAccess(c controller.Interface, name string, slave_func Resources, m
 }
 
 func NewSlaveAccessBySpec(c controller.Interface, spec SlaveAccessSpec) *SlaveAccess {
-	var migration resources.ClusterIdMigration
-
-	if spec.Migration == nil {
-		spec.Migration = c.GetEnvironment().ControllerManager()
-	}
-	if spec.Migration != nil {
-		migration = spec.Migration.GetClusterIdMigration()
-	}
 	return &SlaveAccess{
 		Interface:        c,
 		name:             spec.Name,
 		slave_resources:  newResources(c, spec.Slaves),
 		master_resources: newResources(c, spec.Masters),
-		migration:        migration,
+		migration:        spec.ClusterIdMigration,
+		gkMigration:      spec.GroupKindMigration,
 		spec:             spec,
 	}
 }
@@ -174,7 +171,7 @@ func (this *SlaveAccess) AddSlaveFilter(filter ...resources.ObjectFilter) {
 }
 
 func (this *SlaveAccess) setupSlaveCache() interface{} {
-	cache := resources.NewSlaveCache(this.migration)
+	cache := resources.NewSlaveCache(this.migration, this.gkMigration)
 	cache.AddSlaveFilter(this.slavefilters...)
 	this.Infof("setup %s owner cache", this.name)
 	for _, r := range this.slave_resources.resources {

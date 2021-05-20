@@ -69,6 +69,10 @@ type StartInterface interface {
 	Start() error
 }
 
+type CleanupInterface interface {
+	Cleanup() error
+}
+
 type LegacyStartInterface interface {
 	Start()
 }

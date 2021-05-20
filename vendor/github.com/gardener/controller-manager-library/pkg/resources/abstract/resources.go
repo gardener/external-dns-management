@@ -11,17 +11,14 @@ import (
 	"sync"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
-	"github.com/gardener/controller-manager-library/pkg/resources/errors"
-
-	"github.com/gardener/controller-manager-library/pkg/kutil"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/controller-manager-library/pkg/kutil"
+	"github.com/gardener/controller-manager-library/pkg/resources/errors"
 )
 
 var unstructuredType = reflect.TypeOf(unstructured.Unstructured{})
-var unstructuredListType = reflect.TypeOf(unstructured.UnstructuredList{})
 
 type NewResource func(resources Resources, gvk schema.GroupVersionKind, otype reflect.Type, ltype reflect.Type) (Resource, error)
 
@@ -32,12 +29,10 @@ type AbstractResources struct {
 
 	self Resources
 
-	handlersByObjType          map[reflect.Type]Resource
-	handlersByGroupKind        map[schema.GroupKind]Resource
-	handlersByGroupVersionKind map[schema.GroupVersionKind]Resource
+	handlersByObjType map[reflect.Type]Resource
 
-	unstructuredHandlersByGroupKind        map[schema.GroupKind]Resource
-	unstructuredHandlersByGroupVersionKind map[schema.GroupVersionKind]Resource
+	structuredHandlers   handlersByGxK
+	unstructuredHandlers handlersByGxK
 
 	newResource NewResource
 }
@@ -46,18 +41,23 @@ var _ Resources = &AbstractResources{}
 
 func NewAbstractResources(ctx ResourceContext, self Resources, factory Factory) *AbstractResources {
 	this := &AbstractResources{
-		ctx:                        ctx,
-		factory:                    factory,
-		self:                       self,
-		handlersByObjType:          map[reflect.Type]Resource{},
-		handlersByGroupKind:        map[schema.GroupKind]Resource{},
-		handlersByGroupVersionKind: map[schema.GroupVersionKind]Resource{},
-
-		unstructuredHandlersByGroupKind:        map[schema.GroupKind]Resource{},
-		unstructuredHandlersByGroupVersionKind: map[schema.GroupVersionKind]Resource{},
+		ctx:               ctx,
+		factory:           factory,
+		self:              self,
+		handlersByObjType: map[reflect.Type]Resource{},
 
 		newResource: factory.NewResource,
 	}
+	this.structuredHandlers = newHandlersByGxK(func(gvk schema.GroupVersionKind) (Resource, error) {
+		informerType := this.ctx.Scheme().KnownTypes(gvk.GroupVersion())[gvk.Kind]
+		if informerType == nil {
+			return nil, errors.ErrUnknownResource.New("group version kind", gvk)
+		}
+		return this._newResource(gvk, informerType)
+	})
+	this.unstructuredHandlers = newHandlersByGxK(func(gvk schema.GroupVersionKind) (Resource, error) {
+		return this._newResource(gvk, nil)
+	})
 	return this
 }
 
@@ -136,54 +136,11 @@ func (this *AbstractResources) GetByExample(obj runtime.Object) (Resource, error
 }
 
 func (this *AbstractResources) GetByGK(gk schema.GroupKind) (Resource, error) {
-	this.Lock()
-	defer this.Unlock()
-
-	if handler, ok := this.handlersByGroupKind[gk]; ok {
-		return handler, nil
-	}
-
-	gvk, err := this.ctx.GetGVKForGK(gk)
-	if err != nil {
-		return nil, err
-	}
-	if handler, ok := this.handlersByGroupVersionKind[gvk]; ok {
-		this.handlersByGroupKind[gk] = handler
-		return handler, nil
-	}
-
-	h, err := this.getResource(gvk)
-	if err != nil {
-		return nil, err
-	}
-	this.handlersByGroupKind[gk] = h
-	this.handlersByGroupVersionKind[gvk] = h
-	return h, nil
+	return this.structuredHandlers.getByGK(this.ctx, gk)
 }
 
 func (this *AbstractResources) GetByGVK(gvk schema.GroupVersionKind) (Resource, error) {
-	this.Lock()
-	defer this.Unlock()
-
-	if handler, ok := this.handlersByGroupVersionKind[gvk]; ok {
-		return handler, nil
-	}
-
-	h, err := this.getResource(gvk)
-	if err != nil {
-		return nil, err
-	}
-	this.handlersByGroupVersionKind[gvk] = h
-	return h, nil
-}
-
-func (this *AbstractResources) getResource(gvk schema.GroupVersionKind) (Resource, error) {
-	informerType := this.ctx.Scheme().KnownTypes(gvk.GroupVersion())[gvk.Kind]
-	if informerType == nil {
-		return nil, errors.ErrUnknownResource.New("group version kind", gvk)
-	}
-
-	return this._newResource(gvk, informerType)
+	return this.structuredHandlers.getByGVK(gvk)
 }
 
 func (this *AbstractResources) GetUnstructured(spec interface{}) (Resource, error) {
@@ -217,46 +174,11 @@ func (this *AbstractResources) GetUnstructured(spec interface{}) (Resource, erro
 }
 
 func (this *AbstractResources) GetUnstructuredByGK(gk schema.GroupKind) (Resource, error) {
-	this.Lock()
-	defer this.Unlock()
-
-	if handler, ok := this.unstructuredHandlersByGroupKind[gk]; ok {
-		return handler, nil
-	}
-
-	gvk, err := this.ctx.GetGVKForGK(gk)
-	if err != nil {
-		return nil, err
-	}
-
-	if handler, ok := this.unstructuredHandlersByGroupVersionKind[gvk]; ok {
-		this.unstructuredHandlersByGroupKind[gk] = handler
-		return handler, nil
-	}
-
-	h, err := this._newResource(gvk, nil)
-	if err != nil {
-		return nil, err
-	}
-	this.unstructuredHandlersByGroupKind[gk] = h
-	this.unstructuredHandlersByGroupVersionKind[gvk] = h
-	return h, nil
+	return this.unstructuredHandlers.getByGK(this.ctx, gk)
 }
 
 func (this *AbstractResources) GetUnstructuredByGVK(gvk schema.GroupVersionKind) (Resource, error) {
-	this.Lock()
-	defer this.Unlock()
-
-	if handler, ok := this.unstructuredHandlersByGroupVersionKind[gvk]; ok {
-		return handler, nil
-	}
-
-	h, err := this._newResource(gvk, nil)
-	if err != nil {
-		return nil, err
-	}
-	this.unstructuredHandlersByGroupVersionKind[gvk] = h
-	return h, err
+	return this.unstructuredHandlers.getByGVK(gvk)
 }
 
 func (this *AbstractResources) _newResource(gvk schema.GroupVersionKind, otype reflect.Type) (Resource, error) {
@@ -270,4 +192,63 @@ func (this *AbstractResources) _newResource(gvk schema.GroupVersionKind, otype r
 	}
 
 	return this.newResource(this.self, gvk, otype, ltype)
+}
+
+type getResource func(gvk schema.GroupVersionKind) (Resource, error)
+
+type handlersByGxK struct {
+	lock                       sync.Mutex
+	handlersByGroupKind        map[schema.GroupKind]Resource
+	handlersByGroupVersionKind map[schema.GroupVersionKind]Resource
+	getResource                getResource
+}
+
+func newHandlersByGxK(getResource getResource) handlersByGxK {
+	return handlersByGxK{
+		handlersByGroupKind:        map[schema.GroupKind]Resource{},
+		handlersByGroupVersionKind: map[schema.GroupVersionKind]Resource{},
+		getResource:                getResource,
+	}
+}
+
+func (this *handlersByGxK) getByGK(ctx ResourceContext, gk schema.GroupKind) (Resource, error) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	if handler, ok := this.handlersByGroupKind[gk]; ok {
+		return handler, nil
+	}
+
+	gvk, err := ctx.GetGVKForGK(gk)
+	if err != nil {
+		return nil, err
+	}
+	if handler, ok := this.handlersByGroupVersionKind[gvk]; ok {
+		this.handlersByGroupKind[gk] = handler
+		return handler, nil
+	}
+
+	h, err := this.getResource(gvk)
+	if err != nil {
+		return nil, err
+	}
+	this.handlersByGroupKind[gk] = h
+	this.handlersByGroupVersionKind[gvk] = h
+	return h, nil
+}
+
+func (this *handlersByGxK) getByGVK(gvk schema.GroupVersionKind) (Resource, error) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	if handler, ok := this.handlersByGroupVersionKind[gvk]; ok {
+		return handler, nil
+	}
+
+	h, err := this.getResource(gvk)
+	if err != nil {
+		return nil, err
+	}
+	this.handlersByGroupVersionKind[gvk] = h
+	return h, nil
 }

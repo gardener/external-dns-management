@@ -30,9 +30,17 @@ const DeletionActivity = "DeletionActivity"
 
 var Version = "dev-version"
 
-func Start(use, short, long string) {
+func Start(use, short, long string, modifiers ...ConfigurationModifier) {
+	c := PrepareStart(use, long)
+	for _, m := range modifiers {
+		c = m(c)
+	}
+	c.Start(use, short)
+}
+
+func PrepareStart(use, long string) Configuration {
 	args := strings.Split(use, " ")
-	Configure(args[0], long, nil).ByDefault().Start(use, short)
+	return Configure(args[0], long, nil).ByDefault()
 }
 
 func (this Configuration) Start(use, short string) {
@@ -97,7 +105,7 @@ func (this Configuration) Start(use, short string) {
 	logger.Infof("%s exits.", use)
 }
 
-func NewCommand(ctx context.Context, use, short, long string, def *Definition) *cobra.Command {
+func NewCommand(ctx context.Context, use, short, long string, def Definition) *cobra.Command {
 	ctx, cfg := configmain.WithConfig(ctx, nil)
 	def.ExtendConfig(cfg)
 	fileName := ""
@@ -126,7 +134,7 @@ func NewCommand(ctx context.Context, use, short, long string, def *Definition) *
 	return cmd
 }
 
-func runCM(ctx context.Context, def *Definition) error {
+func runCM(ctx context.Context, def Definition) error {
 	return run.Run(ctx, func() error {
 		logger.Infof("starting controller manager")
 		controllerManager, err := NewControllerManager(ctx, def)

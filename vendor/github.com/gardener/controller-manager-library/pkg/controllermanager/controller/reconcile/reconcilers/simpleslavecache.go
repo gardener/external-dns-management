@@ -25,25 +25,24 @@ var slavesKey = ctxutil.SimpleKey("slaves")
 // GetSharedSimpleSlaveCache returns an instance of a usage cache unique for
 // the complete controller manager
 func GetSharedSimpleSlaveCache(controller controller.Interface) *SimpleSlaveCache {
-	mig := controller.GetEnvironment().ControllerManager().GetClusterIdMigration()
+	var clustermig = controller.GetEnvironment().ControllerManager().GetClusterIdMigration()
+	var gkmig = controller.GetEnvironment().ControllerManager().GetGroupKindMigration()
 	return controller.GetEnvironment().GetOrCreateSharedValue(slavesKey, func() interface{} {
-		return NewSimpleSlaveCache(mig)
+		return NewSimpleSlaveCache(clustermig, gkmig)
 	}).(*SimpleSlaveCache)
 }
 
 type SimpleSlaveCache struct {
-	migration resources.ClusterIdMigration
-	usages    *SimpleUsageCache
+	migration   resources.ClusterIdMigration
+	gkMigration resources.GroupKindMigration
+	usages      *SimpleUsageCache
 }
 
-func NewSimpleSlaveCache(migration ...resources.ClusterIdMigration) *SimpleSlaveCache {
-	var mig resources.ClusterIdMigration
-	if len(migration) > 0 {
-		mig = migration[0]
-	}
+func NewSimpleSlaveCache(clustermig resources.ClusterIdMigration, gkmig resources.GroupKindMigration) *SimpleSlaveCache {
 	return &SimpleSlaveCache{
-		migration: mig,
-		usages:    NewSimpleUsageCache(),
+		migration:   clustermig,
+		gkMigration: gkmig,
+		usages:      NewSimpleUsageCache(),
 	}
 }
 
@@ -76,6 +75,12 @@ func (this *SimpleSlaveCache) SetupFor(log logger.LogContext, resc resources.Int
 	return ProcessResource(log, "setup owners for", resc, func(log logger.LogContext, obj resources.Object) (bool, error) {
 		if this.migration != nil {
 			err := resources.MigrateOwnerClusterIds(obj, this.migration)
+			if err != nil {
+				return false, err
+			}
+		}
+		if this.gkMigration != nil {
+			err := resources.MigrateGroupKinds(obj, this.gkMigration)
 			if err != nil {
 				return false, err
 			}
@@ -131,7 +136,7 @@ type slaveReconciler struct {
 	ReconcilerSupport
 	cache       *SimpleSlaveCache
 	clusterId   string
-	responsible resources.GroupKindSet
+	responsible resources.ClusterGroupKindSet
 }
 
 var _ reconcile.Interface = &slaveReconciler{}
@@ -141,7 +146,7 @@ func (this *slaveReconciler) RejectResourceReconcilation(cluster cluster.Interfa
 	if cluster == nil || this.clusterId != cluster.GetId() {
 		return true
 	}
-	return !this.responsible.Contains(gk)
+	return !this.responsible.Contains(resources.NewClusterGroupKind(cluster.GetId(), gk))
 }
 
 func (this *slaveReconciler) Setup() error {
@@ -183,11 +188,15 @@ func CreateSimpleSlaveReconcilerTypeFor(clusterName string, gks ...schema.GroupK
 		if cluster == nil {
 			return nil, fmt.Errorf("cluster %s not found", clusterName)
 		}
+		cgks := resources.ClusterGroupKindSet{}
+		for _, gk := range gks {
+			cgks.Add(resources.NewClusterGroupKind(cluster.GetId(), gk))
+		}
 		this := &slaveReconciler{
 			ReconcilerSupport: NewReconcilerSupport(controller),
 			cache:             cache,
 			clusterId:         cluster.GetId(),
-			responsible:       cache.usages.reconcilerFor(cluster, gks...),
+			responsible:       cache.usages.reconcilerFor(cgks),
 		}
 		return this, nil
 	}

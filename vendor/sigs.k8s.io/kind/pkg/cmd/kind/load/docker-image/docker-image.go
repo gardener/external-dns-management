@@ -32,6 +32,9 @@ import (
 	"sigs.k8s.io/kind/pkg/exec"
 	"sigs.k8s.io/kind/pkg/fs"
 	"sigs.k8s.io/kind/pkg/log"
+
+	"sigs.k8s.io/kind/pkg/internal/cli"
+	"sigs.k8s.io/kind/pkg/internal/runtime"
 )
 
 type flagpole struct {
@@ -49,10 +52,11 @@ func NewCommand(logger log.Logger, streams cmd.IOStreams) *cobra.Command {
 			}
 			return nil
 		},
-		Use:   "docker-image",
+		Use:   "docker-image <IMAGE>",
 		Short: "Loads docker image from host into nodes",
 		Long:  "Loads docker image from host into all or specified nodes by name",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			cli.OverrideDefaultName(cmd.Flags())
 			return runE(logger, flags, args)
 		},
 	}
@@ -74,6 +78,7 @@ func NewCommand(logger log.Logger, streams cmd.IOStreams) *cobra.Command {
 func runE(logger log.Logger, flags *flagpole, args []string) error {
 	provider := cluster.NewProvider(
 		cluster.ProviderWithLogger(logger),
+		runtime.GetDefault(logger),
 	)
 
 	// Check that the image exists locally and gets its ID, if not return error
@@ -120,7 +125,7 @@ func runE(logger log.Logger, flags *flagpole, args []string) error {
 		id, err := nodeutils.ImageID(node, imageName)
 		if err != nil || id != imageID {
 			selectedNodes = append(selectedNodes, node)
-			logger.V(0).Infof("Image: %q with ID %q not present on node %q", imageName, imageID, node.String())
+			logger.V(0).Infof("Image: %q with ID %q not yet present on node %q, loading...", imageName, imageID, node.String())
 		}
 	}
 
@@ -175,7 +180,7 @@ func imageID(containerNameOrID string) (string, error) {
 		"-f", "{{ .Id }}",
 		containerNameOrID, // ... against the container
 	)
-	lines, err := exec.CombinedOutputLines(cmd)
+	lines, err := exec.OutputLines(cmd)
 	if err != nil {
 		return "", err
 	}

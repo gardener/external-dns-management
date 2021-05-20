@@ -69,6 +69,21 @@ func (w *worker) loggerForKey(key string) func() {
 	return func() { w.LogContext = w.logContext }
 }
 
+func catch(f func() reconcile.Status) (result reconcile.Status) {
+	defer func() {
+		if r := recover(); r != nil {
+			if res, ok := r.(reconcile.Status); ok {
+				result = res
+			} else {
+				panic(r)
+			}
+		}
+	}()
+	return f()
+}
+
+type reconcileFunction func() reconcile.Status
+
 func (w *worker) processNextWorkItem() bool {
 	obj, shutdown := w.workqueue.Get()
 	if shutdown {
@@ -104,7 +119,7 @@ func (w *worker) processNextWorkItem() bool {
 		reconcilers := w.pool.getReconcilers(cmd)
 		if reconcilers != nil && len(reconcilers) > 0 {
 			for _, reconciler := range reconcilers {
-				status := reconciler.Command(w, cmd)
+				status := catch(func() reconcile.Status { return reconciler.Command(w, cmd) })
 				if !status.Completed {
 					ok = false
 				}
@@ -131,26 +146,32 @@ func (w *worker) processNextWorkItem() bool {
 		}
 		reconcilers := w.pool.getReconcilers(rkey.GroupKind())
 
-		var f func(reconcile.Interface) reconcile.Status
+		var f func(p reconcile.Interface) reconcileFunction
 		switch {
 		case r == nil:
 			deleted = true
 			if w.pool.Owning().GroupKind() == (*rkey).GroupKind() {
 				ctxutil.Tick(w.ctx, DeletionActivity)
 			}
-			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Deleted(w, *rkey) }
+			f = func(reconciler reconcile.Interface) reconcileFunction {
+				return func() reconcile.Status { return reconciler.Deleted(w, *rkey) }
+			}
 		case r.IsDeleting():
 			deleted = true
 			if w.pool.Owning().GroupKind() == r.GroupKind() {
 				ctxutil.Tick(w.ctx, DeletionActivity)
 			}
-			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Delete(w, r) }
+			f = func(reconciler reconcile.Interface) reconcileFunction {
+				return func() reconcile.Status { return reconciler.Delete(w, r) }
+			}
 		default:
-			f = func(reconciler reconcile.Interface) reconcile.Status { return reconciler.Reconcile(w, r) }
+			f = func(reconciler reconcile.Interface) reconcileFunction {
+				return func() reconcile.Status { return reconciler.Reconcile(w, r) }
+			}
 		}
 
 		for _, reconciler := range reconcilers {
-			status := f(reconciler)
+			status := catch(f(reconciler))
 			w.pool.controller.requestHandled(w, reconciler, *rkey)
 			if !status.Completed {
 				ok = false
