@@ -180,17 +180,6 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			disableZoneStateCache: !state.config.ZoneStateCaching,
 		}
 
-		var err error
-		rateLimiter := AlwaysRateLimiter()
-		if this.options != nil {
-			rateLimiterConfig := this.options.GetRateLimiterConfig()
-			rateLimiter, err = rateLimiterConfig.NewRateLimiter()
-			if err != nil {
-				return nil, pkgerrors.Wrap(err, "invalid rate limiter")
-			}
-			logger.Infof("rate limiter for %s: %v", name, rateLimiterConfig)
-		}
-
 		cfg := DNSHandlerConfig{
 			Context:     state.GetContext().GetContext(),
 			Logger:      logger,
@@ -200,8 +189,8 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			CacheConfig: cacheConfig,
 			Options:     this.options,
 			Metrics:     a,
-			RateLimiter: rateLimiter,
 		}
+		var err error
 		a.handler, err = state.GetHandlerFactory().Create(provider.TypeCode(), &cfg)
 		if err != nil {
 			return nil, err

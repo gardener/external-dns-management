@@ -238,8 +238,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route
 
 		return true
 	}
-	h.config.RateLimiter.Accept()
-	err := h.r53.ListResourceRecordSetsPages(inp, aggr)
+	err := h.listResourceRecordSetsPages(inp, aggr)
 	return forwarded, err
 }
 
