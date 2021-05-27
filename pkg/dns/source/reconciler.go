@@ -185,7 +185,7 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 
 	current := []resources.Object{}
 
-	if len(info.Names) > 0 && requireFinalizer(obj, this.SlaveResoures()[0].GetCluster()) {
+	if len(info.Names) > 0 && RequireFinalizer(obj, this.SlaveResoures()[0].GetCluster()) {
 		err := this.SetFinalizer(obj)
 		if err != nil {
 			return reconcile.Delay(logger, fmt.Errorf("cannot set finalizer: %s", err))

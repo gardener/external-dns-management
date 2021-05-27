@@ -19,6 +19,7 @@ package dns
 
 const CONTROLLER_GROUP_DNS_CONTROLLERS = "dnscontrollers"
 const CONTROLLER_GROUP_DNS_SOURCES = "dnssources"
+const CONTROLLER_GROUP_REPLICATION = "replication"
 
 const DEFAULT_CLASS = "gardendns"
 const ANNOTATION_GROUP = "dns.gardener.cloud"
