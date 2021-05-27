@@ -23,7 +23,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
@@ -87,6 +86,10 @@ func (this *Factory) Name() string {
 
 func (this *Factory) Create(typecode string, config *DNSHandlerConfig) (DNSHandler, error) {
 	if typecode == this.typecode {
+		err := config.Complete()
+		if err != nil {
+			return nil, err
+		}
 		return this.create(config)
 	}
 	return nil, fmt.Errorf("not responsible for %q", typecode)

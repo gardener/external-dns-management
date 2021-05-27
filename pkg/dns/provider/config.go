@@ -23,6 +23,7 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	pkgerrors "github.com/pkg/errors"
 )
 
 // FactoryOptions is a set of generic options and
@@ -251,5 +252,20 @@ func (c *DNSHandlerConfig) checkNotDefinedInConfig(prop string, alt ...string) e
 	if value != "" {
 		return fmt.Errorf("property %s defined in secret and provider config", prop)
 	}
+	return nil
+}
+
+func (c *DNSHandlerConfig) Complete() error {
+	rateLimiter := AlwaysRateLimiter()
+	if c.Options != nil {
+		rateLimiterConfig := c.Options.GetRateLimiterConfig()
+		var err error
+		rateLimiter, err = rateLimiterConfig.NewRateLimiter()
+		if err != nil {
+			return pkgerrors.Wrap(err, "invalid rate limiter")
+		}
+		c.Logger.Infof("rate limiter: %v", rateLimiterConfig)
+	}
+	c.RateLimiter = rateLimiter
 	return nil
 }
