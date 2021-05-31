@@ -50,7 +50,10 @@ type AWSConfig struct {
 var _ provider.DNSHandler = &Handler{}
 
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
-	awsConfig := AWSConfig{BatchSize: 50}
+	advancedConfig := c.Options.AdvancedOptions.GetAdvancedConfig()
+	c.Logger.Infof("advanced options: %s", advancedConfig)
+
+	awsConfig := AWSConfig{BatchSize: advancedConfig.BatchSize}
 	if c.Config != nil {
 		err := json.Unmarshal(c.Config.Raw, &awsConfig)
 		if err != nil {
@@ -97,10 +100,13 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		endpoint = aws.String("route53.us-gov.amazonaws.com")
 	}
 
+	// change maxRetries to avoid paging stops because of throttling
+	maxRetries := advancedConfig.MaxRetries
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String(region),
 		Credentials: creds,
 		Endpoint:    endpoint, // temporary workaround for AWS problem
+		MaxRetries:  &maxRetries,
 	})
 	if err != nil {
 		return nil, err
@@ -235,10 +241,14 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route
 			}
 		}
 		rt = provider.M_PLISTRECORDS
+		if !lastPage {
+			h.config.RateLimiter.Accept()
+		}
 
 		return true
 	}
-	err := h.listResourceRecordSetsPages(inp, aggr)
+	h.config.RateLimiter.Accept()
+	err := h.r53.ListResourceRecordSetsPages(inp, aggr)
 	return forwarded, err
 }
 

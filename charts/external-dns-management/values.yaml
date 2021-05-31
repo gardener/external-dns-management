@@ -38,34 +38,54 @@ createCRDs: false
 
 configuration:
   # acceptedMaintainers: UNMANAGED
+  # advancedBatchSize:
+  # advancedMaxRetries:
+  # alicloudDNSAdvancedBatchSize:
+  # alicloudDNSAdvancedMaxRetries:
   # alicloudDNSRatelimiterBurst:
   # alicloudDNSRatelimiterEnabled:
   # alicloudDNSRatelimiterQps:
   # annotationDefaultPoolSize:
   # annotationPoolSize:
   # annotationSetup:
+  # awsRoute53AdvancedBatchSize:
+  # awsRoute53AdvancedMaxRetries:
   # awsRoute53RatelimiterBurst:
   # awsRoute53RatelimiterEnabled:
   # awsRoute53RatelimiterQps:
+  # azureDNSAdvancedBatchSize:
+  # azureDNSAdvancedMaxRetries:
   # azureDNSRatelimiterBurst:
   # azureDNSRatelimiterEnabled:
   # azureDNSRatelimiterQps:
   # bindAddressHttp:
   # cacheTtl: 120
+  # cloudflareDNSAdvancedBatchSize:
+  # cloudflareDNSAdvancedMaxRetries:
   # cloudflareDNSRatelimiterBurst:
   # cloudflareDNSRatelimiterEnabled:
   # cloudflareDNSRatelimiterQps:
+  # compoundAdvancedBatchSize:
+  # compoundAdvancedMaxRetries:
+  # compoundAlicloudDnsAdvancedBatchSize:
+  # compoundAlicloudDnsAdvancedMaxRetries:
   # compoundAlicloudDnsRatelimiterBurst:
   # compoundAlicloudDnsRatelimiterEnabled:
   # compoundAlicloudDnsRatelimiterQps:
+  # compoundAwsRoute53AdvancedBatchSize:
+  # compoundAwsRoute53AdvancedMaxRetries:
   # compoundAwsRoute53RatelimiterBurst:
   # compoundAwsRoute53RatelimiterEnabled:
   # compoundAwsRoute53RatelimiterQps:
+  # compoundAzureDnsAdvancedBatchSize:
+  # compoundAzureDnsAdvancedMaxRetries:
   # compoundAzureDnsRatelimiterBurst:
   # compoundAzureDnsRatelimiterEnabled:
   # compoundAzureDnsRatelimiterQps:
   # compoundCacheDir:
   # compoundCacheTtl: 120
+  # compoundCloudflareDnsAdvancedBatchSize:
+  # compoundCloudflareDnsAdvancedMaxRetries:
   # compoundCloudflareDnsRatelimiterBurst:
   # compoundCloudflareDnsRatelimiterEnabled:
   # compoundCloudflareDnsRatelimiterQps:
@@ -76,16 +96,24 @@ configuration:
   # compoundDnsPoolResyncPeriod: 30s
   # compoundDnsPoolSize: 1
   # compoundDryRun: false
+  # compoundGoogleClouddnsAdvancedBatchSize:
+  # compoundGoogleClouddnsAdvancedMaxRetries:
   # compoundGoogleClouddnsRatelimiterBurst:
   # compoundGoogleClouddnsRatelimiterEnabled:
   # compoundGoogleClouddnsRatelimiterQps:
   # compoundIdentifier: ""
+  # compoundInfobloxDnsAdvancedBatchSize:
+  # compoundInfobloxDnsAdvancedMaxRetries:
   # compoundInfobloxDnsRatelimiterBurst:
   # compoundInfobloxDnsRatelimiterEnabled:
   # compoundInfobloxDnsRatelimiterQps:
+  # compoundNetlifyDnsAdvancedBatchSize:
+  # compoundNetlifyDnsAdvancedMaxRetries:
   # compoundNetlifyDnsRatelimiterBurst:
   # compoundNetlifyDnsRatelimiterEnabled:
   # compoundNetlifyDnsRatelimiterQps:
+  # compoundOpenstackDesignateAdvancedBatchSize:
+  # compoundOpenstackDesignateAdvancedMaxRetries:
   # compoundOpenstackDesignateRatelimiterBurst:
   # compoundOpenstackDesignateRatelimiterEnabled:
   # compoundOpenstackDesignateRatelimiterQps:
@@ -133,10 +161,14 @@ configuration:
   # dnsentrySourceTargetsPoolSize: 2
   # excludeDomains: google.com
   # forceCrdUpdate: false
+  # googleCloudDNSAdvancedBatchSize:
+  # googleCloudDNSAdvancedMaxRetries:
   # googleCloudDNSRatelimiterBurst:
   # googleCloudDNSRatelimiterEnabled:
   # googleCloudDNSRatelimiterQps:
   # gracePeriod: 0
+  # infobloxDNSAdvancedBatchSize:
+  # infobloxDNSAdvancedMaxRetries:
   # infobloxDNSRatelimiterBurst:
   # infobloxDNSRatelimiterEnabled:
   # infobloxDNSRatelimiterQps:
@@ -169,29 +201,14 @@ configuration:
   # maintainer:
   # namespace: default
   # namespaceLocalAccessOnly: false
-  # netlifyDNSCacheTtl: 120
-  # netlifyDNSDefaultPoolSize: 2
-  # netlifyDNSDisableZoneStateCaching: false
-  # netlifyDNSDnsClass: "gardendns"
-  # netlifyDNSDnsDelay: 10s
-  # netlifyDNSDnsPoolResyncPeriod: 30s
-  # netlifyDNSDnsPoolSize: 1
-  # netlifyDNSDryRun: false
-  # netlifyDNSIdentifier: ""
-  # netlifyDNSOwneridsPoolSize: 1
-  # netlifyDNSPoolResyncPeriod:
-  # netlifyDNSPoolSize:
-  # netlifyDNSProvidersPoolResyncPeriod: 30s
-  # netlifyDNSProvidersPoolSize: 2
-  # netlifyDNSRatelimiterBurst:
-  # netlifyDNSRatelimiterEnabled:
-  # netlifyDNSRatelimiterQps:
-  # netlifyDNSRescheduleDelay: 120s
-  # netlifyDNSSecretsPoolSize: 2
-  # netlifyDNSSetup: 10
-  # netlifyDNSStatisticPoolSize:
-  # netlifyDNSTtl: 120
+  # netlifyDnsAdvancedBatchSize:
+  # netlifyDnsAdvancedMaxRetries:
+  # netlifyDnsRatelimiterBurst:
+  # netlifyDnsRatelimiterEnabled:
+  # netlifyDnsRatelimiterQps:
   # omitLease: false
+  # openstackDesignateAdvancedBatchSize:
+  # openstackDesignateAdvancedMaxRetries:
   # openstackDesignateRatelimiterBurst:
   # openstackDesignateRatelimiterEnabled:
   # openstackDesignateRatelimiterQps:

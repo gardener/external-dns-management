@@ -67,18 +67,26 @@ func (this *FactoryOptions) Evaluate() error {
 
 type GenericFactoryOptions struct {
 	RateLimiterOptions
+	AdvancedOptions
 }
 
 var GenericFactoryOptionDefaults = GenericFactoryOptions{
-	RateLimiterOptionDefaults,
+	RateLimiterOptions: RateLimiterOptionDefaults,
+	AdvancedOptions:    AdvancedOptionsDefaults,
 }
 
 func (this *GenericFactoryOptions) AddOptionsToSet(set config.OptionSet) {
 	this.RateLimiterOptions.AddOptionsToSet(set)
+	this.AdvancedOptions.AddOptionsToSet(set)
 }
 
 func (this GenericFactoryOptions) SetRateLimiterOptions(o RateLimiterOptions) GenericFactoryOptions {
 	this.RateLimiterOptions = o
+	return this
+}
+
+func (this GenericFactoryOptions) SetAdvancedOptions(o AdvancedOptions) GenericFactoryOptions {
+	this.AdvancedOptions = o
 	return this
 }
 

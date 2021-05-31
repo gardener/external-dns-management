@@ -43,6 +43,9 @@ const (
 	OPT_RATELIMITER_QPS     = "ratelimiter.qps"
 	OPT_RATELIMITER_BURST   = "ratelimiter.burst"
 
+	OPT_ADVANCED_BATCH_SIZE  = "advanced.batch-size"
+	OPT_ADVANCED_MAX_RETRIES = "advanced.max-retries"
+
 	CMD_HOSTEDZONE_PREFIX = "hostedzone:"
 	CMD_STATISTIC         = "statistic"
 )
