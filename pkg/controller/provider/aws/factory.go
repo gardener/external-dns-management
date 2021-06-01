@@ -29,8 +29,15 @@ var rateLimiterDefaults = provider.RateLimiterOptions{
 	Burst:   10,
 }
 
+var advancedDefaults = provider.AdvancedOptions{
+	BatchSize: 50,
+	MaxRetries:     7,
+}
+
+
 var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler).
-	SetGenericFactoryOptionDefaults(provider.GenericFactoryOptionDefaults.SetRateLimiterOptions(rateLimiterDefaults))
+	SetGenericFactoryOptionDefaults(provider.GenericFactoryOptionDefaults.
+		SetRateLimiterOptions(rateLimiterDefaults).SetAdvancedOptions(advancedDefaults))
 
 func init() {
 	compound.MustRegister(Factory)

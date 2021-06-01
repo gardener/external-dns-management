@@ -59,6 +59,18 @@ spec:
         {{- if .Values.configuration.acceptedMaintainers }}
         - --accepted-maintainers={{ .Values.configuration.acceptedMaintainers }}
         {{- end }}
+        {{- if .Values.configuration.advancedBatchSize }}
+        - --advanced.batch-size={{ .Values.configuration.advancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.advancedMaxRetries }}
+        - --advanced.max-retries={{ .Values.configuration.advancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSAdvancedBatchSize }}
+        - --alicloud-dns.advanced.batch-size={{ .Values.configuration.alicloudDNSAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.alicloudDNSAdvancedMaxRetries }}
+        - --alicloud-dns.advanced.max-retries={{ .Values.configuration.alicloudDNSAdvancedMaxRetries }}
+        {{- end }}
         {{- if .Values.configuration.alicloudDNSRatelimiterBurst }}
         - --alicloud-dns.ratelimiter.burst={{ .Values.configuration.alicloudDNSRatelimiterBurst }}
         {{- end }}
@@ -77,6 +89,12 @@ spec:
         {{- if .Values.configuration.annotationSetup }}
         - --annotation.setup={{ .Values.configuration.annotationSetup }}
         {{- end }}
+        {{- if .Values.configuration.awsRoute53AdvancedBatchSize }}
+        - --aws-route53.advanced.batch-size={{ .Values.configuration.awsRoute53AdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.awsRoute53AdvancedMaxRetries }}
+        - --aws-route53.advanced.max-retries={{ .Values.configuration.awsRoute53AdvancedMaxRetries }}
+        {{- end }}
         {{- if .Values.configuration.awsRoute53RatelimiterBurst }}
         - --aws-route53.ratelimiter.burst={{ .Values.configuration.awsRoute53RatelimiterBurst }}
         {{- end }}
@@ -85,6 +103,12 @@ spec:
         {{- end }}
         {{- if .Values.configuration.awsRoute53RatelimiterQps }}
         - --aws-route53.ratelimiter.qps={{ .Values.configuration.awsRoute53RatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSAdvancedBatchSize }}
+        - --azure-dns.advanced.batch-size={{ .Values.configuration.azureDNSAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.azureDNSAdvancedMaxRetries }}
+        - --azure-dns.advanced.max-retries={{ .Values.configuration.azureDNSAdvancedMaxRetries }}
         {{- end }}
         {{- if .Values.configuration.azureDNSRatelimiterBurst }}
         - --azure-dns.ratelimiter.burst={{ .Values.configuration.azureDNSRatelimiterBurst }}
@@ -101,6 +125,12 @@ spec:
         {{- if .Values.configuration.cacheTtl }}
         - --cache-ttl={{ .Values.configuration.cacheTtl }}
         {{- end }}
+        {{- if .Values.configuration.cloudflareDNSAdvancedBatchSize }}
+        - --cloudflare-dns.advanced.batch-size={{ .Values.configuration.cloudflareDNSAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.cloudflareDNSAdvancedMaxRetries }}
+        - --cloudflare-dns.advanced.max-retries={{ .Values.configuration.cloudflareDNSAdvancedMaxRetries }}
+        {{- end }}
         {{- if .Values.configuration.cloudflareDNSRatelimiterBurst }}
         - --cloudflare-dns.ratelimiter.burst={{ .Values.configuration.cloudflareDNSRatelimiterBurst }}
         {{- end }}
@@ -109,6 +139,18 @@ spec:
         {{- end }}
         {{- if .Values.configuration.cloudflareDNSRatelimiterQps }}
         - --cloudflare-dns.ratelimiter.qps={{ .Values.configuration.cloudflareDNSRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAdvancedBatchSize }}
+        - --compound.advanced.batch-size={{ .Values.configuration.compoundAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAdvancedMaxRetries }}
+        - --compound.advanced.max-retries={{ .Values.configuration.compoundAdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAlicloudDnsAdvancedBatchSize }}
+        - --compound.alicloud-dns.advanced.batch-size={{ .Values.configuration.compoundAlicloudDnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAlicloudDnsAdvancedMaxRetries }}
+        - --compound.alicloud-dns.advanced.max-retries={{ .Values.configuration.compoundAlicloudDnsAdvancedMaxRetries }}
         {{- end }}
         {{- if .Values.configuration.compoundAlicloudDnsRatelimiterBurst }}
         - --compound.alicloud-dns.ratelimiter.burst={{ .Values.configuration.compoundAlicloudDnsRatelimiterBurst }}
@@ -119,6 +161,12 @@ spec:
         {{- if .Values.configuration.compoundAlicloudDnsRatelimiterQps }}
         - --compound.alicloud-dns.ratelimiter.qps={{ .Values.configuration.compoundAlicloudDnsRatelimiterQps }}
         {{- end }}
+        {{- if .Values.configuration.compoundAwsRoute53AdvancedBatchSize }}
+        - --compound.aws-route53.advanced.batch-size={{ .Values.configuration.compoundAwsRoute53AdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAwsRoute53AdvancedMaxRetries }}
+        - --compound.aws-route53.advanced.max-retries={{ .Values.configuration.compoundAwsRoute53AdvancedMaxRetries }}
+        {{- end }}
         {{- if .Values.configuration.compoundAwsRoute53RatelimiterBurst }}
         - --compound.aws-route53.ratelimiter.burst={{ .Values.configuration.compoundAwsRoute53RatelimiterBurst }}
         {{- end }}
@@ -127,6 +175,12 @@ spec:
         {{- end }}
         {{- if .Values.configuration.compoundAwsRoute53RatelimiterQps }}
         - --compound.aws-route53.ratelimiter.qps={{ .Values.configuration.compoundAwsRoute53RatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAzureDnsAdvancedBatchSize }}
+        - --compound.azure-dns.advanced.batch-size={{ .Values.configuration.compoundAzureDnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAzureDnsAdvancedMaxRetries }}
+        - --compound.azure-dns.advanced.max-retries={{ .Values.configuration.compoundAzureDnsAdvancedMaxRetries }}
         {{- end }}
         {{- if .Values.configuration.compoundAzureDnsRatelimiterBurst }}
         - --compound.azure-dns.ratelimiter.burst={{ .Values.configuration.compoundAzureDnsRatelimiterBurst }}
@@ -142,6 +196,12 @@ spec:
         {{- end }}
         {{- if .Values.configuration.compoundCacheTtl }}
         - --compound.cache-ttl={{ .Values.configuration.compoundCacheTtl }}
+        {{- end }}
+        {{- if .Values.configuration.compoundCloudflareDnsAdvancedBatchSize }}
+        - --compound.cloudflare-dns.advanced.batch-size={{ .Values.configuration.compoundCloudflareDnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundCloudflareDnsAdvancedMaxRetries }}
+        - --compound.cloudflare-dns.advanced.max-retries={{ .Values.configuration.compoundCloudflareDnsAdvancedMaxRetries }}
         {{- end }}
         {{- if .Values.configuration.compoundCloudflareDnsRatelimiterBurst }}
         - --compound.cloudflare-dns.ratelimiter.burst={{ .Values.configuration.compoundCloudflareDnsRatelimiterBurst }}
@@ -173,6 +233,12 @@ spec:
         {{- if .Values.configuration.compoundDryRun }}
         - --compound.dry-run={{ .Values.configuration.compoundDryRun }}
         {{- end }}
+        {{- if .Values.configuration.compoundGoogleClouddnsAdvancedBatchSize }}
+        - --compound.google-clouddns.advanced.batch-size={{ .Values.configuration.compoundGoogleClouddnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundGoogleClouddnsAdvancedMaxRetries }}
+        - --compound.google-clouddns.advanced.max-retries={{ .Values.configuration.compoundGoogleClouddnsAdvancedMaxRetries }}
+        {{- end }}
         {{- if .Values.configuration.compoundGoogleClouddnsRatelimiterBurst }}
         - --compound.google-clouddns.ratelimiter.burst={{ .Values.configuration.compoundGoogleClouddnsRatelimiterBurst }}
         {{- end }}
@@ -185,6 +251,12 @@ spec:
         {{- if .Values.configuration.compoundIdentifier }}
         - --compound.identifier={{ .Values.configuration.compoundIdentifier }}
         {{- end }}
+        {{- if .Values.configuration.compoundInfobloxDnsAdvancedBatchSize }}
+        - --compound.infoblox-dns.advanced.batch-size={{ .Values.configuration.compoundInfobloxDnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundInfobloxDnsAdvancedMaxRetries }}
+        - --compound.infoblox-dns.advanced.max-retries={{ .Values.configuration.compoundInfobloxDnsAdvancedMaxRetries }}
+        {{- end }}
         {{- if .Values.configuration.compoundInfobloxDnsRatelimiterBurst }}
         - --compound.infoblox-dns.ratelimiter.burst={{ .Values.configuration.compoundInfobloxDnsRatelimiterBurst }}
         {{- end }}
@@ -194,6 +266,12 @@ spec:
         {{- if .Values.configuration.compoundInfobloxDnsRatelimiterQps }}
         - --compound.infoblox-dns.ratelimiter.qps={{ .Values.configuration.compoundInfobloxDnsRatelimiterQps }}
         {{- end }}
+        {{- if .Values.configuration.compoundNetlifyDnsAdvancedBatchSize }}
+        - --compound.netlify-dns.advanced.batch-size={{ .Values.configuration.compoundNetlifyDnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundNetlifyDnsAdvancedMaxRetries }}
+        - --compound.netlify-dns.advanced.max-retries={{ .Values.configuration.compoundNetlifyDnsAdvancedMaxRetries }}
+        {{- end }}
         {{- if .Values.configuration.compoundNetlifyDnsRatelimiterBurst }}
         - --compound.netlify-dns.ratelimiter.burst={{ .Values.configuration.compoundNetlifyDnsRatelimiterBurst }}
         {{- end }}
@@ -202,6 +280,12 @@ spec:
         {{- end }}
         {{- if .Values.configuration.compoundNetlifyDnsRatelimiterQps }}
         - --compound.netlify-dns.ratelimiter.qps={{ .Values.configuration.compoundNetlifyDnsRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundOpenstackDesignateAdvancedBatchSize }}
+        - --compound.openstack-designate.advanced.batch-size={{ .Values.configuration.compoundOpenstackDesignateAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundOpenstackDesignateAdvancedMaxRetries }}
+        - --compound.openstack-designate.advanced.max-retries={{ .Values.configuration.compoundOpenstackDesignateAdvancedMaxRetries }}
         {{- end }}
         {{- if .Values.configuration.compoundOpenstackDesignateRatelimiterBurst }}
         - --compound.openstack-designate.ratelimiter.burst={{ .Values.configuration.compoundOpenstackDesignateRatelimiterBurst }}
@@ -344,6 +428,12 @@ spec:
         {{- if .Values.configuration.forceCrdUpdate }}
         - --force-crd-update={{ .Values.configuration.forceCrdUpdate }}
         {{- end }}
+        {{- if .Values.configuration.googleCloudDNSAdvancedBatchSize }}
+        - --google-clouddns.advanced.batch-size={{ .Values.configuration.googleCloudDNSAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.googleCloudDNSAdvancedMaxRetries }}
+        - --google-clouddns.advanced.max-retries={{ .Values.configuration.googleCloudDNSAdvancedMaxRetries }}
+        {{- end }}
         {{- if .Values.configuration.googleCloudDNSRatelimiterBurst }}
         - --google-clouddns.ratelimiter.burst={{ .Values.configuration.googleCloudDNSRatelimiterBurst }}
         {{- end }}
@@ -355,6 +445,12 @@ spec:
         {{- end }}
         {{- if .Values.configuration.gracePeriod }}
         - --grace-period={{ .Values.configuration.gracePeriod }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSAdvancedBatchSize }}
+        - --infoblox-dns.advanced.batch-size={{ .Values.configuration.infobloxDNSAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.infobloxDNSAdvancedMaxRetries }}
+        - --infoblox-dns.advanced.max-retries={{ .Values.configuration.infobloxDNSAdvancedMaxRetries }}
         {{- end }}
         {{- if .Values.configuration.infobloxDNSRatelimiterBurst }}
         - --infoblox-dns.ratelimiter.burst={{ .Values.configuration.infobloxDNSRatelimiterBurst }}
@@ -452,6 +548,12 @@ spec:
         {{- if .Values.configuration.namespaceLocalAccessOnly }}
         - --namespace-local-access-only={{ .Values.configuration.namespaceLocalAccessOnly }}
         {{- end }}
+        {{- if .Values.configuration.netlifyDnsAdvancedBatchSize }}
+        - --netlify-dns.advanced.batch-size={{ .Values.configuration.netlifyDnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.netlifyDnsAdvancedMaxRetries }}
+        - --netlify-dns.advanced.max-retries={{ .Values.configuration.netlifyDnsAdvancedMaxRetries }}
+        {{- end }}
         {{- if .Values.configuration.netlifyDnsRatelimiterBurst }}
         - --netlify-dns.ratelimiter.burst={{ .Values.configuration.netlifyDnsRatelimiterBurst }}
         {{- end }}
@@ -463,6 +565,12 @@ spec:
         {{- end }}
         {{- if .Values.configuration.omitLease }}
         - --omit-lease={{ .Values.configuration.omitLease }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateAdvancedBatchSize }}
+        - --openstack-designate.advanced.batch-size={{ .Values.configuration.openstackDesignateAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.openstackDesignateAdvancedMaxRetries }}
+        - --openstack-designate.advanced.max-retries={{ .Values.configuration.openstackDesignateAdvancedMaxRetries }}
         {{- end }}
         {{- if .Values.configuration.openstackDesignateRatelimiterBurst }}
         - --openstack-designate.ratelimiter.burst={{ .Values.configuration.openstackDesignateRatelimiterBurst }}
