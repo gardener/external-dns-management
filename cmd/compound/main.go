@@ -42,6 +42,7 @@ import (
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/annotation/annotations"
 
+	_ "github.com/gardener/external-dns-management/pkg/controller/replication/dnsprovider"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/dnsentry"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"

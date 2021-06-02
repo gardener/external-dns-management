@@ -20,6 +20,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 )
 
-func requireFinalizer(src resources.Object, cluster resources.Cluster) bool {
+func RequireFinalizer(src resources.Object, cluster resources.Cluster) bool {
 	return src.GetCluster() != cluster
 }
