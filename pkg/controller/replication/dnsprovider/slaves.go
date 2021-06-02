@@ -27,6 +27,7 @@ import (
 	utils2 "github.com/gardener/controller-manager-library/pkg/utils"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
+	errors2 "github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -100,7 +101,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 				if mod.IsModified() {
 					err = o.UpdateStatus()
 					if err != nil {
-						logger.Infof("Cannot update status of %s: %s", o.ObjectName(), err)
+						return reconcile.DelayOnError(logger, errors2.Wrapf(err, "Cannot update status of %s", o.ObjectName()))
 					}
 				}
 			} else {
@@ -116,16 +117,6 @@ func secretSetAndProcessed(provider *api.DNSProvider) bool {
 		return false
 	}
 	return *provider.Status.Message != "no secret specified"
-}
-
-func (this *slaveReconciler) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
-	logger.Infof("delete slave %s", obj.ClusterKey())
-	return this.DefaultReconciler.Delete(logger, obj)
-}
-
-func (this *slaveReconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
-	logger.Infof("deleted slave %s", key)
-	return this.DefaultReconciler.Deleted(logger, key)
 }
 
 func assureDNSSelectionStatus(mod *utils2.ModificationState, t *api.DNSSelectionStatus, s api.DNSSelectionStatus) {

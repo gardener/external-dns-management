@@ -48,7 +48,7 @@ func init() {
 		StringOption(source.OPT_TARGET_CREATOR_LABEL_VALUE, "label value for creator label").
 		StringOption(source.OPT_TARGET_REALMS, "realm(s) to use for replicated DNS provider").
 		FinalizerDomain(api.GroupName).
-		Reconciler(DNSProviderReplicationReconciler()).
+		Reconciler(DNSProviderReplicationReconciler).
 		Cluster(cluster.DEFAULT).             // first one used as MAIN cluster
 		DefaultWorkerPool(2, 10*time.Minute). // period reconcile as provider secrets are not watched
 		MainResource(gkDNSProvider.Group, gkDNSProvider.Kind).

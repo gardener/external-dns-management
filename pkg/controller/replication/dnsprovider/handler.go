@@ -32,6 +32,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+	errors2 "github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
@@ -45,62 +46,59 @@ func NewSlaveAccessSpec(c controller.Interface) reconcilers.SlaveAccessSpec {
 	return spec
 }
 
-func DNSProviderReplicationReconciler() controller.ReconcilerType {
-	return func(c controller.Interface) (reconcile.Interface, error) {
-		opt, err := c.GetStringOption(source.OPT_TARGET_REALMS)
-		if err != nil {
-			opt = ""
-		}
-		realmtype := access.NewRealmType(dns.REALM_ANNOTATION)
-		realms := realmtype.NewRealms(opt)
-		c.Infof("target realm(s): %v", realms)
-		classes := controller.NewClassesByOption(c, source.OPT_CLASS, dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
-		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
-		targetclasses := controller.NewTargetClassesByOption(c, source.OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
-		slaves := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c))
-		gkSecret := resources.NewGroupKind("core", "Secret")
-		resMainSecrets, err := c.GetMainCluster().Resources().GetByGK(gkSecret)
-		if err != nil {
-			return nil, err
-		}
-		resTargetSecrets, err := c.GetCluster(source.TARGET_CLUSTER).Resources().GetByGK(gkSecret)
-		if err != nil {
-			return nil, err
-		}
-		resMainProviders, err := c.GetMainCluster().Resources().GetByGK(gkDNSProvider)
-		if err != nil {
-			return nil, err
-		}
-
-		reconciler := &sourceReconciler{
-			SlaveAccess:      slaves,
-			resMainSecrets:   resMainSecrets,
-			resTargetSecrets: resTargetSecrets,
-			resMainProviders: resMainProviders,
-			classes:          classes,
-			targetclasses:    targetclasses,
-			targetrealms:     realms,
-		}
-
-		//		reconciler.state.source = xsource
-		reconciler.namespace, _ = c.GetStringOption(source.OPT_NAMESPACE)
-		reconciler.nameprefix, _ = c.GetStringOption(source.OPT_NAMEPREFIX)
-		reconciler.creatorLabelName, _ = c.GetStringOption(source.OPT_TARGET_CREATOR_LABEL_NAME)
-		reconciler.creatorLabelValue, _ = c.GetStringOption(source.OPT_TARGET_CREATOR_LABEL_VALUE)
-
-		if c.GetMainCluster() == c.GetCluster(source.TARGET_CLUSTER) {
-			reconciler.namespace = ""
-			reconciler.nameprefix = ""
-		}
-		return reconciler, nil
+func DNSProviderReplicationReconciler(c controller.Interface) (reconcile.Interface, error) {
+	opt, err := c.GetStringOption(source.OPT_TARGET_REALMS)
+	if err != nil {
+		opt = ""
 	}
+	realmtype := access.NewRealmType(dns.REALM_ANNOTATION)
+	realms := realmtype.NewRealms(opt)
+	c.Infof("target realm(s): %v", realms)
+	classes := controller.NewClassesByOption(c, source.OPT_CLASS, dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
+	c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
+	targetclasses := controller.NewTargetClassesByOption(c, source.OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
+	slaves := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c))
+	gkSecret := resources.NewGroupKind("core", "Secret")
+	resMainProviders, err := c.GetMainCluster().Resources().GetByGK(gkDNSProvider)
+	if err != nil {
+		return nil, err
+	}
+	resMainSecrets, err := c.GetMainCluster().Resources().GetByGK(gkSecret)
+	if err != nil {
+		return nil, err
+	}
+	resTargetSecrets, err := c.GetCluster(source.TARGET_CLUSTER).Resources().GetByGK(gkSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	reconciler := &sourceReconciler{
+		SlaveAccess:      slaves,
+		resMainProviders: resMainProviders,
+		resMainSecrets:   resMainSecrets,
+		resTargetSecrets: resTargetSecrets,
+		classes:          classes,
+		targetclasses:    targetclasses,
+		targetrealms:     realms,
+	}
+
+	//		reconciler.state.source = xsource
+	reconciler.namespace, _ = c.GetStringOption(source.OPT_NAMESPACE)
+	reconciler.nameprefix, _ = c.GetStringOption(source.OPT_NAMEPREFIX)
+	reconciler.creatorLabelName, _ = c.GetStringOption(source.OPT_TARGET_CREATOR_LABEL_NAME)
+	reconciler.creatorLabelValue, _ = c.GetStringOption(source.OPT_TARGET_CREATOR_LABEL_VALUE)
+
+	if c.GetMainCluster() == c.GetCluster(source.TARGET_CLUSTER) {
+		return nil, fmt.Errorf("not supported if target cluster is same as default cluster")
+	}
+	return reconciler, nil
 }
 
 type sourceReconciler struct {
 	*reconcilers.SlaveAccess
+	resMainProviders  resources.Interface
 	resMainSecrets    resources.Interface
 	resTargetSecrets  resources.Interface
-	resMainProviders  resources.Interface
 	classes           *controller.Classes
 	targetclasses     *controller.Classes
 	targetrealms      *access.Realms
@@ -139,7 +137,7 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 		}
 	}
 
-	if spec != nil && source.RequireFinalizer(obj, this.SlaveResoures()[0].GetCluster()) {
+	if spec != nil {
 		if err := this.SetFinalizer(obj); err != nil {
 			return reconcile.Delay(logger, fmt.Errorf("cannot set finalizer: %s", err))
 		}
@@ -276,9 +274,11 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 		assureDNSSelection(mod, &targetSpec.Domains, sourceSpec.Domains)
 		assureDNSSelection(mod, &targetSpec.Zones, sourceSpec.Zones)
 
-		if this.updateSecretIfNeeded(logger, target, slave, obj) {
-			mod.Modify(true)
+		changed, err := this.updateSecretIfNeeded(logger, target, slave, obj)
+		if err != nil {
+			return false, errors2.Wrapf(err, "updating secret failed")
 		}
+		mod.Modify(changed)
 
 		if mod.IsModified() {
 			logger.Infof("update provider %s", slave.ObjectName())
@@ -303,7 +303,7 @@ func (this *sourceReconciler) deleteProvider(logger logger.LogContext, obj resou
 	return err
 }
 
-func (this *sourceReconciler) updateSecretIfNeeded(logger logger.LogContext, target *api.DNSProvider, slave, obj resources.Object) bool {
+func (this *sourceReconciler) updateSecretIfNeeded(logger logger.LogContext, target *api.DNSProvider, slave, obj resources.Object) (bool, error) {
 	source := dnsutils.DNSProvider(obj).DNSProvider()
 	if source.Spec.SecretRef == nil {
 		mod := resources.RemoveAnnotation(target, AnnotationSecretResourceVersion)
@@ -313,8 +313,11 @@ func (this *sourceReconciler) updateSecretIfNeeded(logger logger.LogContext, tar
 		}
 		msg := "no secret specified"
 		logger.Infof(msg)
-		this.updateSourceStatus(source, msg)
-		return mod
+		_, err := this.updateSourceStatus(source, msg)
+		if err != nil {
+			return false, err
+		}
+		return mod, nil
 	}
 
 	ns := source.Spec.SecretRef.Namespace
@@ -330,46 +333,51 @@ func (this *sourceReconciler) updateSecretIfNeeded(logger logger.LogContext, tar
 			msg = fmt.Sprintf("reading secret %s failed: %s", secret.Name, err)
 		}
 		logger.Infof(msg)
-		this.updateSourceStatus(source, msg)
+		_, err := this.updateSourceStatus(source, msg)
+		if err != nil {
+			return false, err
+		}
 		found := resources.RemoveAnnotation(target, AnnotationSecretResourceVersion)
 		if found {
-			// try to delete data of target secret
-			secret.Namespace = target.GetNamespace()
-			secret.Name = target.GetName()
+			// delete data of target secret
 			secret.Data = nil
-			_, err = this.resTargetSecrets.CreateOrUpdate(secret)
-			if err != nil {
-				logger.Infof("cannot clean secret %s for slave provider %s/%s", secret.Name, target.Namespace, target.Name)
+			if err := this.writeTargetSecret(logger, target, slave, secret); err != nil {
+				return false, err
 			}
 		}
-		return found
+		return found, nil
 	}
 	targetSecretResourceVersion, _ := resources.GetAnnotation(target, AnnotationSecretResourceVersion)
 	sourceSecretResourceVersion := secret.ResourceVersion
 	if targetSecretResourceVersion == sourceSecretResourceVersion {
-		return false
+		return false, nil
 	}
-	resources.SetOwnerReference(secret, slave.GetOwnerReference())
-	var sobj resources.Object
-	secret.ResourceVersion = ""
-	secret.UID = ""
-	secret.Namespace = target.GetNamespace()
-	secret.Name = target.GetName()
-	sobj, err = this.resTargetSecrets.CreateOrUpdate(secret)
-	if err != nil {
-		logger.Infof("cannot write secret %s for slave provider %s/%s", secret.Name, target.Namespace, target.Name)
-		return false
-	}
-	target.Spec.SecretRef = &core.SecretReference{
-		Name:      sobj.GetName(),
-		Namespace: sobj.GetNamespace(),
+	if err := this.writeTargetSecret(logger, target, slave, secret); err != nil {
+		return false, err
 	}
 	resources.SetAnnotation(target, AnnotationSecretResourceVersion, sourceSecretResourceVersion)
-	logger.Infof("written secret %s for slave provider %s/%s", sobj.ObjectName(), target.Namespace, target.Name)
-	return true
+	return true, nil
 }
 
-func (this *sourceReconciler) updateSourceStatus(source *api.DNSProvider, sourceMsg string) bool {
+func (this *sourceReconciler) writeTargetSecret(logger logger.LogContext, target *api.DNSProvider, slave resources.Object, secret *core.Secret) error {
+	secret.Namespace = target.Namespace
+	secret.Name = target.Name
+	secret.ResourceVersion = ""
+	secret.UID = ""
+	resources.SetOwnerReference(secret, slave.GetOwnerReference())
+	_, err := this.resTargetSecrets.CreateOrUpdate(secret)
+	if err != nil {
+		return errors2.Wrapf(err, "cannot write secret %s for slave provider %s/%s", secret.Name, target.Namespace, target.Name)
+	}
+	target.Spec.SecretRef = &core.SecretReference{
+		Name:      secret.Name,
+		Namespace: secret.Namespace,
+	}
+	logger.Infof("written secret %s for slave provider %s/%s", secret.Name, target.Namespace, target.Name)
+	return nil
+}
+
+func (this *sourceReconciler) updateSourceStatus(source *api.DNSProvider, sourceMsg string) (bool, error) {
 	_, mod, err := this.resMainProviders.ModifyStatus(source, func(o resources.ObjectData) (bool, error) {
 		s := o.(*api.DNSProvider)
 		mod := utils.ModificationState{}
@@ -378,9 +386,9 @@ func (this *sourceReconciler) updateSourceStatus(source *api.DNSProvider, source
 		return mod.IsModified(), nil
 	})
 	if err != nil {
-		logger.Infof("cannot update source DNS provider: %s", err)
+		return false, errors2.Wrapf(err, "cannot update source DNS provider")
 	}
-	return mod
+	return mod, nil
 }
 
 func assureDNSSelection(mod *utils.ModificationState, t **api.DNSSelection, s *api.DNSSelection) {
