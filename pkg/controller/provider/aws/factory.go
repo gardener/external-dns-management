@@ -30,10 +30,9 @@ var rateLimiterDefaults = provider.RateLimiterOptions{
 }
 
 var advancedDefaults = provider.AdvancedOptions{
-	BatchSize: 50,
-	MaxRetries:     7,
+	BatchSize:  50,
+	MaxRetries: 7,
 }
-
 
 var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler).
 	SetGenericFactoryOptionDefaults(provider.GenericFactoryOptionDefaults.

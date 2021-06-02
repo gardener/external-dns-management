@@ -19,10 +19,12 @@ package provider
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
@@ -33,6 +35,41 @@ import (
 ////////////////////////////////////////////////////////////////////////////////
 // state handling for OwnerIds
 ////////////////////////////////////////////////////////////////////////////////
+
+func delta(owner *dnsutils.DNSOwnerObject, changed, active utils.StringSet) string {
+	msg := ""
+	if owner != nil && owner.ValidUntil() != nil {
+		if owner.IsEnabled() {
+			if !owner.IsActive() {
+				msg = fmt.Sprintf(" (%s expired (%s))", owner.GetName(), owner.ValidUntil().Format(time.RFC3339))
+			} else {
+				d := owner.ValidUntil().Sub(time.Now())
+				msg = fmt.Sprintf(" (%s expires in %s)", owner.GetName(), d)
+			}
+		}
+	}
+
+	added := utils.NewStringSet()
+	deleted := utils.NewStringSet()
+	for k := range changed {
+		if active.Contains(k) {
+			added.Add(k)
+		} else {
+			deleted.Add(k)
+		}
+	}
+	s := ""
+	if len(added) > 0 {
+		s = fmt.Sprintf(" added: %s%s", added, msg)
+	}
+	if len(deleted) > 0 {
+		s = fmt.Sprintf("%s deleted: %s%s", s, deleted, msg)
+	}
+	if s == "" {
+		return fmt.Sprintf("no change%s", msg)
+	}
+	return s[1:]
+}
 
 func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwnerObject, setup bool) reconcile.Status {
 	if !setup && !this.ownerCache.IsResponsibleFor(owner.GetOwnerId()) && owner.IsActive() {
@@ -47,7 +84,7 @@ func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwne
 	this.lock.Lock()
 	changed, active := this.ownerCache.UpdateOwner(owner)
 	this.lock.Unlock()
-	logger.Infof("update: changed owner ids %s", changed)
+	logger.Infof("update: owner ids %s", delta(owner, changed, active))
 	logger.Debugf("       active owner ids %s", active)
 	if len(changed) > 0 {
 		this.TriggerEntriesByOwner(logger, changed)

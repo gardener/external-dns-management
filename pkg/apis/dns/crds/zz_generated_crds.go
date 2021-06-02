@@ -327,6 +327,11 @@ spec:
     - jsonPath: .status.entries.amount
       name: Usages
       type: integer
+    - description: expiration date
+      format: date-time
+      jsonPath: .spec.validUntil
+      name: Valid
+      type: string
     - description: creation timestamp
       jsonPath: .metadata.creationTimestamp
       name: AGE
@@ -350,6 +355,10 @@ spec:
                 type: boolean
               ownerId:
                 description: owner id used to tag entries in external DNS system
+                type: string
+              validUntil:
+                description: optional time this owner should be active if active flag is not false
+                format: date-time
                 type: string
             required:
             - ownerId

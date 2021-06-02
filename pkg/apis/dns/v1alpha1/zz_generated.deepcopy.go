@@ -352,6 +352,10 @@ func (in *DNSOwnerSpec) DeepCopyInto(out *DNSOwnerSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.ValidUntil != nil {
+		in, out := &in.ValidUntil, &out.ValidUntil
+		*out = (*in).DeepCopy()
+	}
 	return
 }
 

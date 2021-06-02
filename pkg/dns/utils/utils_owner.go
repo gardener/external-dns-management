@@ -17,7 +17,11 @@
 package utils
 
 import (
+	"time"
+
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
@@ -46,9 +50,21 @@ func (this *DNSOwnerObject) GetOwnerId() string {
 	return this.DNSOwner().Spec.OwnerId
 }
 
-func (this *DNSOwnerObject) IsActive() bool {
+func (this *DNSOwnerObject) IsEnabled() bool {
 	a := this.DNSOwner().Spec.Active
 	return a == nil || *a
+}
+
+func (this *DNSOwnerObject) IsActive() bool {
+	if this.IsEnabled() {
+		valid := this.DNSOwner().Spec.ValidUntil
+		return valid == nil || valid.After(time.Now())
+	}
+	return false
+}
+
+func (this *DNSOwnerObject) ValidUntil() *metav1.Time {
+	return this.DNSOwner().Spec.ValidUntil
 }
 
 func (this *DNSOwnerObject) GetCounts() map[string]int {
