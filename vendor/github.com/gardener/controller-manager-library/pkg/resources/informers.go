@@ -260,7 +260,7 @@ func (f *sharedFilteredInformerFactory) lookupInformerFor(gvk schema.GroupVersio
 	if err != nil {
 		return nil, err
 	}
-	return f.getFactory("", nil).informerFor(lwFactory)
+	return f.getFactory(namespace, nil).informerFor(lwFactory)
 }
 
 func (f *sharedFilteredInformerFactory) InformerFor(gvk schema.GroupVersionKind) (GenericInformer, error) {

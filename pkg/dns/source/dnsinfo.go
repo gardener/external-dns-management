@@ -45,7 +45,7 @@ func (this *sourceReconciler) exclude(dns string) bool {
 }
 
 func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources.Object, s DNSSource, current *DNSCurrentState) (*DNSInfo, bool, error) {
-	obj = this.enrichAnnotations(obj)
+	obj = this.enrichAnnotations(logger, obj)
 
 	if !this.classes.IsResponsibleFor(logger, obj) {
 		return nil, false, nil
@@ -96,7 +96,7 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 	return info, true, nil
 }
 
-func (this *sourceReconciler) enrichAnnotations(obj resources.Object) resources.Object {
+func (this *sourceReconciler) enrichAnnotations(logger logger.LogContext, obj resources.Object) resources.Object {
 	addons := this.annotations.GetInfoFor(obj.ClusterKey())
 	if len(addons) > 0 {
 		obj = obj.DeepCopy()
