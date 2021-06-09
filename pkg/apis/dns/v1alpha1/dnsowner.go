@@ -37,6 +37,7 @@ type DNSOwnerList struct {
 // +kubebuilder:printcolumn:name=OwnerId,JSONPath=".spec.ownerId",type=string
 // +kubebuilder:printcolumn:name=Active,JSONPath=".spec.active",type=boolean
 // +kubebuilder:printcolumn:name=Usages,JSONPath=".status.entries.amount",type=integer
+// +kubebuilder:printcolumn:name=Valid,JSONPath=".spec.validUntil",type=string,format=date-time,description="expiration date"
 // +kubebuilder:printcolumn:name=AGE,JSONPath=".metadata.creationTimestamp",type=date,description="creation timestamp"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -56,6 +57,9 @@ type DNSOwnerSpec struct {
 	// (default:true)
 	// +optional
 	Active *bool `json:"active,omitempty"`
+	// +optional
+	// optional time this owner should be active if active flag is not false
+	ValidUntil *metav1.Time `json:"validUntil,omitempty"`
 }
 
 type DNSOwnerStatus struct {

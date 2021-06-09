@@ -152,7 +152,7 @@ func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller
 		config:          config,
 		realms:          realms,
 		accountCache:    NewAccountCache(config.CacheTTL, config.CacheDir, config.Options),
-		ownerCache:      NewOwnerCache(&config),
+		ownerCache:      NewOwnerCache(ctx, &config),
 		foreign:         map[resources.ObjectName]*foreignProvider{},
 		providers:       map[resources.ObjectName]*dnsProviderVersion{},
 		deleting:        map[resources.ObjectName]*dnsProviderVersion{},

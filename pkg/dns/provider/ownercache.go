@@ -17,14 +17,23 @@
 package provider
 
 import (
+	"context"
 	"sync"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
+
+type ProviderCacheContext interface {
+	GetContext() context.Context
+	EnqueueKey(key resources.ClusterObjectKey) error
+
+	Infof(msg string, args ...interface{})
+}
 
 type ProviderTypeCounts map[string]int
 type OwnerCounts map[OwnerName]ProviderTypeCounts
@@ -52,18 +61,30 @@ func (this OwnerIDInfos) KeySet() utils.StringSet {
 
 type OwnerCache struct {
 	lock sync.RWMutex
+	ctx  ProviderCacheContext
 
 	owners     OwnerObjectInfos
 	ownerids   OwnerIDInfos
 	pendingids utils.StringSet
+
+	schedule *dnsutils.Schedule
 }
 
-func NewOwnerCache(config *Config) *OwnerCache {
-	return &OwnerCache{
+func NewOwnerCache(ctx ProviderCacheContext, config *Config) *OwnerCache {
+	this := &OwnerCache{
+		ctx:        ctx,
 		owners:     OwnerObjectInfos{},
 		ownerids:   OwnerIDInfos{config.Ident: {refcount: 1, entrycounts: ProviderTypeCounts{}}},
 		pendingids: utils.StringSet{},
 	}
+	this.schedule = dnsutils.NewSchedule(ctx.GetContext(), dnsutils.ScheduleExecutorFunction(this.expire))
+	return this
+}
+
+func (this *OwnerCache) expire(key dnsutils.ScheduleKey) {
+	id := key.(resources.ClusterObjectKey)
+	this.ctx.Infof("owner %s expired", id.Name())
+	this.ctx.EnqueueKey(id)
 }
 
 func (this *OwnerCache) IsResponsibleFor(id string) bool {
@@ -119,13 +140,16 @@ func (this *OwnerCache) checkCount(e *OwnerIDInfo, ptype string, count int) bool
 }
 
 func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changeset utils.StringSet, activeset utils.StringSet) {
-	return this.updateOwnerData(OwnerName(owner.GetName()), owner.GetOwnerId(), owner.IsActive(), owner.GetCounts())
+	return this.updateOwnerData(OwnerName(owner.GetName()), owner.ClusterKey(), owner.GetOwnerId(), owner.IsActive(), owner.GetCounts(), owner.ValidUntil())
 }
 
-func (this *OwnerCache) updateOwnerData(cachekey OwnerName, id string, active bool, counts ProviderTypeCounts) (changeset utils.StringSet, activeset utils.StringSet) {
+func (this *OwnerCache) updateOwnerData(cachekey OwnerName, key dnsutils.ScheduleKey, id string, active bool, counts ProviderTypeCounts, valid *metav1.Time) (changeset utils.StringSet, activeset utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
+	return this._updateOwnerData(cachekey, key, id, active, counts, valid)
+}
 
+func (this *OwnerCache) _updateOwnerData(cachekey OwnerName, key dnsutils.ScheduleKey, id string, active bool, counts ProviderTypeCounts, valid *metav1.Time) (changeset utils.StringSet, activeset utils.StringSet) {
 	changeset = utils.StringSet{}
 	old, ok := this.owners[cachekey]
 	if ok {
@@ -133,6 +157,13 @@ func (this *OwnerCache) updateOwnerData(cachekey OwnerName, id string, active bo
 			return changeset, this.ownerids.KeySet()
 		}
 		this.deactivate(cachekey, old, changeset)
+	}
+	if key != nil {
+		if active && valid != nil {
+			this.schedule.Schedule(key, (*valid).Time)
+		} else {
+			this.schedule.Delete(key)
+		}
 	}
 	this.activate(cachekey, id, active, changeset, counts)
 	return changeset, this.ownerids.KeySet()
@@ -145,6 +176,7 @@ func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changeset utils.St
 	cachekey := OwnerName(key.Name())
 	old, ok := this.owners[cachekey]
 	if ok {
+		this.schedule.Delete(key)
 		this.deactivate(cachekey, old, changeset)
 	}
 	return changeset, this.ownerids.KeySet()

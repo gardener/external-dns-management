@@ -4,6 +4,7 @@ bin/
 tmp/
 /local/
 /local
+/cmd/dns
 /dns-controller-manager
 /dns-controller-manager-compound
 /dns-controller-manager-dedicated

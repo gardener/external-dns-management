@@ -268,6 +268,11 @@ spec:
     - JSONPath: .status.entries.amount
       name: Usages
       type: integer
+    - JSONPath: .spec.validUntil
+      description: expiration date
+      format: date-time
+      name: Valid
+      type: string
     - JSONPath: .metadata.creationTimestamp
       description: creation timestamp
       name: AGE
