@@ -3,7 +3,7 @@ helper: (( merge ))
 settings:
   repokey: ""
   pipeline: external-dns-management
-  goVersion: 1.16.2
+  goVersion: 1.16.5
   branchsets:
     main: (( .helper.main_patch_branch("master") ))
     patch: (( .helper.patch_branch("patch") ))
