@@ -5,6 +5,7 @@ tmp/
 /local/
 /local
 /cmd/dns
+/cmd/compound/dns-controller-manager
 /dns-controller-manager
 /dns-controller-manager-compound
 /dns-controller-manager-dedicated

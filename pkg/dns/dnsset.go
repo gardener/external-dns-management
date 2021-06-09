@@ -16,7 +16,11 @@
 
 package dns
 
-import "github.com/gardener/controller-manager-library/pkg/utils"
+import (
+	"github.com/gardener/controller-manager-library/pkg/utils"
+
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+)
 
 ////////////////////////////////////////////////////////////////////////////////
 // A DNSSet contains Record sets for an DNS name. The name is given without
@@ -89,7 +93,7 @@ func (dnssets DNSSets) Clone() DNSSets {
 func (dnssets DNSSets) GetOwners() utils.StringSet {
 	owners := utils.NewStringSet()
 	for _, dnsset := range dnssets {
-		o := dnsset.GetAttr(ATTR_OWNER)
+		o := dnsset.GetMetaAttr(ATTR_OWNER)
 		if o != "" {
 			owners.Add(o)
 		}
@@ -101,6 +105,9 @@ const (
 	ATTR_OWNER  = "owner"
 	ATTR_PREFIX = "prefix"
 	ATTR_CNAMES = "cnames"
+	ATTR_KIND   = "kind"
+
+	ATTR_TIMESTAMP = "ts"
 )
 
 type DNSSet struct {
@@ -112,40 +119,87 @@ func (this *DNSSet) Clone() *DNSSet {
 	return &DNSSet{Name: this.Name, Sets: this.Sets.Clone()}
 }
 
-func (this *DNSSet) GetAttr(name string) string {
-	meta := this.Sets[RS_META]
-	if meta != nil {
-		return meta.GetAttr(name)
+func (this *DNSSet) getAttr(ty string, name string) string {
+	rset := this.Sets[ty]
+	if rset != nil {
+		return rset.GetAttr(name)
 	}
 	return ""
 }
 
-func (this *DNSSet) SetAttr(name string, value string) {
-	meta := this.Sets[RS_META]
-	if meta == nil {
-		meta = newMetaRecordSet(name, value)
-		this.Sets[meta.Type] = meta
+func (this *DNSSet) setAttr(ty string, name string, value string) {
+	rset := this.Sets[ty]
+	if rset == nil {
+		rset = newAttrRecordSet(ty, name, value)
+		this.Sets[rset.Type] = rset
 	} else {
-		meta.SetAttr(name, value)
+		rset.SetAttr(name, value)
 	}
 }
 
+func (this *DNSSet) deleteAttr(ty string, name string) {
+	rset := this.Sets[ty]
+	if rset != nil {
+		rset.DeleteAttr(name)
+	}
+}
+
+func (this *DNSSet) GetTxtAttr(name string) string {
+	return this.getAttr(RS_TXT, name)
+}
+
+func (this *DNSSet) SetTxtAttr(name string, value string) {
+	this.setAttr(RS_TXT, name, value)
+}
+
+func (this *DNSSet) DeleteTxtAttr(name string) {
+	this.deleteAttr(RS_TXT, name)
+}
+
+func (this *DNSSet) GetMetaAttr(name string) string {
+	return this.getAttr(RS_META, name)
+}
+
+func (this *DNSSet) SetMetaAttr(name string, value string) {
+	this.setAttr(RS_META, name, value)
+}
+
+func (this *DNSSet) DeleteMetaAttr(name string) {
+	this.deleteAttr(RS_META, name)
+}
+
 func (this *DNSSet) IsOwnedBy(owners utils.StringSet) bool {
-	o := this.GetAttr(ATTR_OWNER)
+	o := this.GetMetaAttr(ATTR_OWNER)
 	return o != "" && owners.Contains(o)
 }
 
 func (this *DNSSet) IsForeign(owners utils.StringSet) bool {
-	o := this.GetAttr(ATTR_OWNER)
+	o := this.GetMetaAttr(ATTR_OWNER)
 	return o != "" && !owners.Contains(o)
 }
 
 func (this *DNSSet) GetOwner() string {
-	return this.GetAttr(ATTR_OWNER)
+	return this.GetMetaAttr(ATTR_OWNER)
 }
 
 func (this *DNSSet) SetOwner(ownerid string) *DNSSet {
-	this.SetAttr(ATTR_OWNER, ownerid)
+	this.SetMetaAttr(ATTR_OWNER, ownerid)
+	return this
+}
+
+func (this *DNSSet) GetKind() string {
+	if k := this.GetMetaAttr(ATTR_KIND); k != "" {
+		return k
+	}
+	return api.DNSEntryKind
+}
+
+func (this *DNSSet) SetKind(t string) *DNSSet {
+	if t != api.DNSEntryKind {
+		this.SetMetaAttr(ATTR_KIND, t)
+	} else {
+		this.DeleteMetaAttr(ATTR_KIND)
+	}
 	return this
 }
 

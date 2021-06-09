@@ -30,6 +30,7 @@ const (
 	DNSOwnerKind            = "DNSOwner"
 	DNSProviderKind         = "DNSProvider"
 	DNSEntryKind            = "DNSEntry"
+	DNSLockKind   = "DNSLock"
 	DNSAnnotationKind       = "DNSAnnotation"
 	DNSHostedZonePolicyKind = "DNSHostedZonePolicy"
 )
@@ -62,6 +63,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&DNSEntry{},
 		&DNSEntryList{},
 		&DNSAnnotation{},
+		&DNSLock{},
+		&DNSLockList{},
 		&DNSAnnotationList{},
 		&DNSHostedZonePolicy{},
 		&DNSHostedZonePolicyList{},

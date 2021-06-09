@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 
@@ -76,17 +76,17 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 					if e.IsDeleting() {
 						model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
 					}
-					status := e.Object().Status()
+					status := e.Object().BaseStatus()
 					msg := MSG_PRESERVED
 					trigger := false
-					if status.State == v1alpha1.STATE_ERROR || status.State == v1alpha1.STATE_INVALID {
+					if status.State == api.STATE_ERROR || status.State == api.STATE_INVALID {
 						msg = msg + ": " + utils.StringValue(status.Message)
 						model.Infof("found stale set '%s': %s -> preserve unchanged", utils.StringValue(status.Message), s.Name)
 					} else {
 						model.Infof("found stale set '%s' -> preserve unchanged", s.Name)
 						trigger = true
 					}
-					upd, err := e.UpdateStatus(logger, v1alpha1.STATE_STALE, msg)
+					upd, err := e.UpdateStatus(logger, api.STATE_STALE, msg)
 					if trigger && (!upd || err != nil) {
 						e.Trigger(logger)
 					}
@@ -239,17 +239,19 @@ func (this *ChangeModel) Setup() error {
 	return err
 }
 
+/*
 func (this *ChangeModel) Check(name string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
 	return this.Exec(false, false, name, createdAt, done, targets...)
 }
-func (this *ChangeModel) Apply(name string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
-	return this.Exec(true, false, name, createdAt, done, targets...)
+*/
+func (this *ChangeModel) Apply(name string, createdAt time.Time, done DoneHandler, kind string, targets ...Target) ChangeResult {
+	return this.Exec(true, false, name, createdAt, done, kind, targets...)
 }
-func (this *ChangeModel) Delete(name string, createdAt time.Time, done DoneHandler) ChangeResult {
-	return this.Exec(true, true, name, createdAt, done)
+func (this *ChangeModel) Delete(name string, createdAt time.Time, done DoneHandler, kind string) ChangeResult {
+	return this.Exec(true, true, name, createdAt, done, kind)
 }
 
-func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
+func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt time.Time, done DoneHandler, kind string, targets ...Target) ChangeResult {
 	//this.Infof("%s: %v", name, targets)
 	if len(targets) == 0 && !delete {
 		return ChangeResult{}
@@ -275,12 +277,13 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt ti
 	view := this.getProviderView(p)
 	oldset := view.dnssets[name]
 	newset := dns.NewDNSSet(name)
+	newset.SetKind(kind)
 	if !delete {
 		this.AddTargets(newset, oldset, p, targets...)
 	}
 	mod := false
 	if oldset != nil {
-		if this.IsForeign(oldset) {
+		if this.IsForeign(oldset, newset) {
 			err := &perrs.AlreadyBusyForOwner{DNSName: name, EntryCreatedAt: createdAt, Owner: oldset.GetOwner()}
 			retry := p.ReportZoneStateConflict(this.context.zone.getZone(), err)
 			if done != nil {
@@ -423,10 +426,13 @@ func (this *changeModelDoneHandler) Succeeded() {
 // DNSSets
 
 func (this *ChangeModel) Owns(set *dns.DNSSet) bool {
-	return set.IsOwnedBy(this.owners)
+	return set.GetKind() != api.DNSLockKind && set.IsOwnedBy(this.owners)
 }
 
-func (this *ChangeModel) IsForeign(set *dns.DNSSet) bool {
+func (this *ChangeModel) IsForeign(set *dns.DNSSet, refset *dns.DNSSet) bool {
+	if set.GetKind() == api.DNSLockKind {
+		return set.GetOwner() != refset.GetOwner()
+	}
 	return set.IsForeign(this.owners)
 }
 
@@ -443,16 +449,9 @@ func (this *ChangeModel) setOwner(set *dns.DNSSet, targets []Target) bool {
 }
 
 func (this *ChangeModel) AddTargets(set *dns.DNSSet, base *dns.DNSSet, provider DNSProvider, targets ...Target) *dns.DNSSet {
-	//if base != nil {
-	//	meta := base.Sets[RS_META]
-	//	if meta != nil {
-	//		set.Sets[RS_META] = meta.Clone()
-	//	}
-	//}
-
-	if base == nil || !this.IsForeign(base) {
+	if base == nil || !this.IsForeign(base, set) {
 		if this.setOwner(set, targets) {
-			set.SetAttr(dns.ATTR_PREFIX, dns.TxtPrefix)
+			set.SetMetaAttr(dns.ATTR_PREFIX, dns.TxtPrefix)
 		}
 	}
 
@@ -480,7 +479,7 @@ func (this *ChangeModel) AddTargets(set *dns.DNSSet, base *dns.DNSSet, provider 
 	set.Sets = targetsets
 	if len(cnames) > 0 && this.Owns(set) {
 		sort.Strings(cnames)
-		set.SetAttr(dns.ATTR_CNAMES, strings.Join(cnames, ","))
+		set.SetMetaAttr(dns.ATTR_CNAMES, strings.Join(cnames, ","))
 	}
 	return set
 }

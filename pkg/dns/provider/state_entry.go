@@ -92,11 +92,11 @@ func (this *state) addBlockingEntries(logger logger.LogContext, entries Entries)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status {
+func (this *state) UpdateEntry(logger logger.LogContext, object dnsutils.DNSSpecification) reconcile.Status {
 	return this.HandleUpdateEntry(logger, "reconcile", object)
 }
 
-func (this *state) DeleteEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status {
+func (this *state) DeleteEntry(logger logger.LogContext, object dnsutils.DNSSpecification) reconcile.Status {
 	return this.HandleUpdateEntry(logger, "delete", object)
 }
 
@@ -150,12 +150,12 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				if old != nil {
 					logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
 				}
-				if !new.IsActive() || v.object.Status().Zone == nil {
+				if !new.IsActive() || v.object.BaseStatus().Zone == nil {
 					err = this.RemoveFinalizer(v.object)
 				}
 			}
 		} else {
-			if !new.IsActive() || v.object.Status().State != api.STATE_STALE {
+			if !new.IsActive() || v.object.BaseStatus().State != api.STATE_STALE {
 				this.smartInfof(logger, "deleting yet unmanaged or errorneous entry")
 				err = this.RemoveFinalizer(v.object)
 			} else {
@@ -236,7 +236,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	return new, status
 }
 
-func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, error) {
+func (this *state) EntryPremise(e dnsutils.DNSSpecification) (*EntryPremise, error) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
@@ -252,9 +252,9 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 		p.ptype = zone.ProviderType()
 		p.zoneid = zone.Id()
 		p.zonedomain = zone.Domain()
-	} else if provider != nil && !provider.IsValid() && e.Status().Zone != nil {
+	} else if provider != nil && !provider.IsValid() && e.BaseStatus().Zone != nil {
 		p.ptype = provider.TypeCode()
-		p.zoneid = *e.Status().Zone
+		p.zoneid = *e.BaseStatus().Zone
 	} else if p.fallback != nil {
 		zone = this.getProviderZoneForName(e.GetDNSName(), p.fallback)
 		if zone != nil {
@@ -266,7 +266,7 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 	return p, err
 }
 
-func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object *dnsutils.DNSEntryObject) reconcile.Status {
+func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object dnsutils.DNSSpecification) reconcile.Status {
 	old := this.GetEntry(object.ObjectName())
 	if old != nil {
 		old.lock.Lock()

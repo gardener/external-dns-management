@@ -47,10 +47,10 @@ func MapToProvider(rtype string, dnsset *DNSSet, base string) (string, *RecordSe
 	name := dnsset.Name
 	rs := dnsset.Sets[rtype]
 	if rtype == RS_META {
-		prefix := dnsset.GetAttr(ATTR_PREFIX)
+		prefix := dnsset.GetMetaAttr(ATTR_PREFIX)
 		if prefix == "" {
 			prefix = TxtPrefix
-			dnsset.SetAttr(ATTR_PREFIX, prefix)
+			dnsset.SetMetaAttr(ATTR_PREFIX, prefix)
 		}
 		new := *dnsset.Sets[rtype]
 		new.Type = RS_TXT

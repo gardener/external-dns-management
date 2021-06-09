@@ -128,7 +128,7 @@ func (this *RecordSet) Match(set *RecordSet) bool {
 
 func (this *RecordSet) GetAttr(name string) string {
 	if this.Type == RS_TXT || this.Type == RS_META {
-		prefix := newMetaKeyPrefix(name)
+		prefix := newAttrKeyPrefix(name)
 		for _, r := range this.Records {
 			if strings.HasPrefix(r.Value, prefix) {
 				return r.Value[len(prefix) : len(r.Value)-1]
@@ -139,15 +139,25 @@ func (this *RecordSet) GetAttr(name string) string {
 }
 
 func (this *RecordSet) SetAttr(name string, value string) {
-	prefix := newMetaKeyPrefix(name)
+	prefix := newAttrKeyPrefix(name)
 	for _, r := range this.Records {
 		if strings.HasPrefix(r.Value, prefix) {
-			r.Value = newMetaValue(name, value)
+			r.Value = newAttrValue(name, value)
 			return
 		}
 	}
-	r := newMetaRecord(name, value)
+	r := newAttrRecord(name, value)
 	this.Records = append(this.Records, r)
+}
+
+func (this *RecordSet) DeleteAttr(name string) {
+	prefix := newAttrKeyPrefix(name)
+	for i, r := range this.Records {
+		if strings.HasPrefix(r.Value, prefix) {
+			this.Records = append(this.Records[:i], this.Records[i+1:]...)
+			return
+		}
+	}
 }
 
 func (this *RecordSet) DiffTo(set *RecordSet) (new Records, update Records, delete Records) {
@@ -175,19 +185,19 @@ nextForeign:
 	return
 }
 
-func newMetaKeyPrefix(name string) string {
+func newAttrKeyPrefix(name string) string {
 	return fmt.Sprintf("\"%s=", name)
 }
 
-func newMetaValue(name, value string) string {
-	return fmt.Sprintf("%s%s\"", newMetaKeyPrefix(name), value)
+func newAttrValue(name, value string) string {
+	return fmt.Sprintf("%s%s\"", newAttrKeyPrefix(name), value)
 }
 
-func newMetaRecord(name, value string) *Record {
-	return &Record{Value: newMetaValue(name, value)}
+func newAttrRecord(name, value string) *Record {
+	return &Record{Value: newAttrValue(name, value)}
 }
 
-func newMetaRecordSet(name, value string) *RecordSet {
-	records := []*Record{newMetaRecord(name, value)}
-	return &RecordSet{RS_META, 600, false, records}
+func newAttrRecordSet(ty string, name, value string) *RecordSet {
+	records := []*Record{newAttrRecord(name, value)}
+	return &RecordSet{ty, 600, false, records}
 }

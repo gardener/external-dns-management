@@ -29,6 +29,7 @@ type DnsV1alpha1Interface interface {
 	DNSAnnotationsGetter
 	DNSEntriesGetter
 	DNSHostedZonePoliciesGetter
+	DNSLocksGetter
 	DNSOwnersGetter
 	DNSProvidersGetter
 }
@@ -48,6 +49,10 @@ func (c *DnsV1alpha1Client) DNSEntries(namespace string) DNSEntryInterface {
 
 func (c *DnsV1alpha1Client) DNSHostedZonePolicies(namespace string) DNSHostedZonePolicyInterface {
 	return newDNSHostedZonePolicies(c, namespace)
+}
+
+func (c *DnsV1alpha1Client) DNSLocks(namespace string) DNSLockInterface {
+	return newDNSLocks(c, namespace)
 }
 
 func (c *DnsV1alpha1Client) DNSOwners(namespace string) DNSOwnerInterface {
