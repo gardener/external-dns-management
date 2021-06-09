@@ -20,13 +20,14 @@ package utils
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
-const PERIOD = 500 * time.Millisecond
+const PERIOD = 50 * time.Millisecond
 
 type Execution struct {
 	d int
@@ -38,22 +39,28 @@ func (this Execution) String() string {
 }
 
 type Result struct {
+	lock   sync.Mutex
 	start  time.Time
 	result []Execution
 }
 
 func (this *Result) Execute(key ScheduleKey) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
 	d := time.Now().Sub(this.start) + (PERIOD / 2)
 	this.result = append(this.result, Execution{int(d / PERIOD), key})
 }
 
 func (this *Result) String() string {
+	this.lock.Lock()
+	defer this.lock.Unlock()
 	return fmt.Sprintf("%v", this.result)
 }
 
 var _ = Describe("Schedule", func() {
 	var sched *Schedule
 	var result *Result
+
 	BeforeEach(func() {
 		result = &Result{start: time.Now()}
 		sched = NewSchedule(context.Background(), result)
@@ -64,12 +71,12 @@ var _ = Describe("Schedule", func() {
 
 	It("dummy", func() {
 		timer := time.NewTimer(0 * time.Second)
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(PERIOD)
 		fmt.Printf("%t\n", timer.Stop())
-		timer.Reset(1 * time.Second)
+		timer.Reset(2 * PERIOD)
 		<-timer.C
 		fmt.Printf("first\n")
-		time.Sleep(1100 * time.Millisecond)
+		time.Sleep(3 * PERIOD)
 		select {
 		case <-timer.C:
 		default:
