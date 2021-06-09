@@ -122,7 +122,7 @@ github.com/fatih/color
 github.com/form3tech-oss/jwt-go
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
-# github.com/gardener/controller-manager-library v0.2.1-0.20210607091930-8604612e9405
+# github.com/gardener/controller-manager-library v0.2.1-0.20210609092345-72cb80f854d0
 ## explicit
 github.com/gardener/controller-manager-library/hack
 github.com/gardener/controller-manager-library/pkg/certmgmt
