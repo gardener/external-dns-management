@@ -209,6 +209,10 @@ func (this *state) Setup() {
 		p := dnsutils.DNSEntry(e)
 		this.UpdateEntry(this.context.NewContext("entry", p.ObjectName().String()), p)
 	}, processors)
+	this.setupFor(&api.DNSLock{}, "locks", func(e resources.Object) {
+		p := dnsutils.DNSLock(e)
+		this.UpdateEntry(this.context.NewContext("entry", p.ObjectName().String()), p)
+	}, processors)
 
 	this.triggerStatistic()
 	this.initialized = true
@@ -330,12 +334,12 @@ type providerMatch struct {
 	match int
 }
 
-func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, DNSProvider, error) {
+func (this *state) lookupProvider(e dnsutils.DNSSpecification) (DNSProvider, DNSProvider, error) {
 	handleMatch := func(match *providerMatch, p *dnsProviderVersion, n int, err error) error {
 		if match.match <= n {
 			err2 := access.CheckAccessWithRealms(e, "use", p.Object(), this.realms)
 			if err2 == nil {
-				if match.match < n || (e.Status().Provider != nil && *e.Status().Provider == p.object.ObjectName().String()) {
+				if match.match < n || (e.BaseStatus().Provider != nil && *e.BaseStatus().Provider == p.object.ObjectName().String()) {
 					match.found = p
 					match.match = n
 				}
@@ -451,7 +455,7 @@ loop:
 			}
 		} else {
 			if !e.IsDeleting() {
-				if utils.StringValue(e.object.Status().Provider) != "" {
+				if utils.StringValue(e.object.BaseStatus().Provider) != "" {
 					logger.Infof("invalid entry %q (%s): %s (%s)", e.ObjectName(), e.DNSName(), e.State(), e.Message())
 				}
 				if e.KeepRecords() {

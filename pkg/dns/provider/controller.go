@@ -135,6 +135,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		WorkerPool("ownerids", 1, 0).
 		Watches(
 			controller.NewResourceKey(api.GroupName, api.DNSOwnerKind),
+			controller.NewResourceKey(api.GroupName, api.DNSLockKind),
 		).
 		Cluster(PROVIDER_CLUSTER).
 		CustomResourceDefinitions(providerGroupKind).
@@ -253,6 +254,12 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 			return this.state.UpdateZonePolicy(logger, dnsutils.DNSHostedZonePolicy(obj))
 		} else {
 			return this.state.RemoveZonePolicy(logger, dnsutils.DNSHostedZonePolicy(obj))
+		}
+	case obj.IsA(&api.DNSLock{}):
+		if this.state.IsResponsibleFor(logger, obj) {
+			return this.state.UpdateEntry(logger, dnsutils.DNSLock(obj))
+		} else {
+			return this.state.EntryDeleted(logger, obj.ClusterKey())
 		}
 	case obj.IsA(&corev1.Secret{}):
 		return this.state.UpdateSecret(logger, obj)

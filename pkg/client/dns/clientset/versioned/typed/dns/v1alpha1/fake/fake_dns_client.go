@@ -40,6 +40,10 @@ func (c *FakeDnsV1alpha1) DNSHostedZonePolicies(namespace string) v1alpha1.DNSHo
 	return &FakeDNSHostedZonePolicies{c, namespace}
 }
 
+func (c *FakeDnsV1alpha1) DNSLocks(namespace string) v1alpha1.DNSLockInterface {
+	return &FakeDNSLocks{c, namespace}
+}
+
 func (c *FakeDnsV1alpha1) DNSOwners(namespace string) v1alpha1.DNSOwnerInterface {
 	return &FakeDNSOwners{c, namespace}
 }
