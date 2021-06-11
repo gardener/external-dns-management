@@ -19,14 +19,19 @@ package provider
 
 import (
 	"fmt"
+	"net"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
@@ -137,7 +142,9 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	if v.IsDeleting() {
 		var err error
 		if old != nil {
-			this.cleanupEntry(logger, old)
+			if old.Kind() != api.DNSLockKind { // TODO: why is cleanup called here
+				this.cleanupEntry(logger, old)
+			}
 		}
 		if new.valid {
 			if this.zones[new.activezone] != nil {
@@ -374,4 +381,75 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 		}
 		delete(this.dnsnames, e.DNSName())
 	}
+}
+
+func (this *state) UpdateLockStates(log logger.LogContext) {
+	this.lock.RLock()
+	entries := Entries{}
+	for _, e := range this.entries {
+		if e.Kind() == api.DNSLockKind {
+			entries.AddEntry(e)
+		}
+	}
+	this.lock.RUnlock()
+
+	for _, e := range entries {
+		ts := time.Time{}
+		attrs := map[string]string{}
+		records, err := net.LookupTXT(e.DNSName())
+		if err == nil {
+			log.Infof("found records %v", records)
+			for _, r := range records {
+				r = strings.Trim(r, "\"")
+				fields := strings.Split(r, "=")
+				if len(fields) != 2 {
+					continue
+				}
+				if fields[0] == dns.ATTR_TIMESTAMP {
+					i, err := strconv.ParseInt(fields[1], 10, 64)
+					if err != nil {
+						continue
+					}
+					ts = time.Unix(i, 0)
+				} else {
+					attrs[fields[0]] = fields[1]
+				}
+			}
+		} else {
+			log.Warnf("dns lookup failed for %q: %s", e.DNSName(), err)
+		}
+
+		e.object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
+			status := &data.(*api.DNSLock).Status
+			mod := false
+			if ts.IsZero() {
+				mod = status.Timestamp == nil
+				status.Timestamp = nil
+			} else {
+				if status.Timestamp == nil || !status.Timestamp.Time.Equal(ts) {
+					mod = true
+				}
+				t := metav1.NewTime(ts)
+				status.Timestamp = &t
+			}
+			mod = mod || !EqualAttrs(attrs, status.Attributes)
+			status.Attributes = attrs
+			return mod, nil
+		})
+	}
+}
+
+func EqualAttrs(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	for k, v := range a {
+		if f, ok := b[k]; !ok || f != v {
+			return false
+		}
+	}
+	return true
 }

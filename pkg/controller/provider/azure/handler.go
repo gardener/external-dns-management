@@ -176,8 +176,8 @@ func splitZoneid(zoneid string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
-	return h.cache.GetZoneState(zone)
+func (h *Handler) GetZoneState(zone provider.DNSHostedZone, forceUpdate bool) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone, forceUpdate)
 }
 
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {

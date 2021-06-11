@@ -35,6 +35,7 @@ const (
 	OPT_SETUP                      = dns.OPT_SETUP
 	OPT_DNSDELAY                   = "dns-delay"
 	OPT_RESCHEDULEDELAY            = "reschedule-delay"
+	OPT_LOCKSTATUSCHECKPERIOD      = "lock-status-check-period"
 	OPT_DISABLE_ZONE_STATE_CACHING = "disable-zone-state-caching"
 
 	OPT_PROVIDERTYPES = "provider-types"
@@ -48,4 +49,5 @@ const (
 
 	CMD_HOSTEDZONE_PREFIX = "hostedzone:"
 	CMD_STATISTIC         = "statistic"
+	CMD_DNSLOOKUP         = "dnslookup"
 )

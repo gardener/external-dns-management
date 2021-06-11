@@ -35,17 +35,18 @@ import (
 )
 
 type Config struct {
-	TTL              int64
-	CacheTTL         time.Duration
-	CacheDir         string
-	RescheduleDelay  time.Duration
-	Ident            string
-	Dryrun           bool
-	ZoneStateCaching bool
-	Delay            time.Duration
-	Enabled          utils.StringSet
-	Options          *FactoryOptions
-	Factory          DNSHandlerFactory
+	TTL               int64
+	CacheTTL          time.Duration
+	CacheDir          string
+	RescheduleDelay   time.Duration
+	StatusCheckPeriod time.Duration
+	Ident             string
+	Dryrun            bool
+	ZoneStateCaching  bool
+	Delay             time.Duration
+	Enabled           utils.StringSet
+	Options           *FactoryOptions
+	Factory           DNSHandlerFactory
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
@@ -71,7 +72,11 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 
 	rescheduleDelay, err := c.GetDurationOption(OPT_RESCHEDULEDELAY)
 	if err != nil {
-		delay = 120 * time.Second
+		rescheduleDelay = 120 * time.Second
+	}
+	statuscheckperiod, err := c.GetDurationOption(OPT_LOCKSTATUSCHECKPERIOD)
+	if err != nil {
+		statuscheckperiod = 120 * time.Second
 	}
 
 	disableZoneStateCaching, _ := c.GetBoolOption(OPT_DISABLE_ZONE_STATE_CACHING)
@@ -98,17 +103,18 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	fopts := GetFactoryOptions(osrc)
 
 	return &Config{
-		Ident:            ident,
-		TTL:              int64(ttl),
-		CacheTTL:         time.Duration(cttl) * time.Second,
-		CacheDir:         cdir,
-		RescheduleDelay:  rescheduleDelay,
-		Dryrun:           dryrun,
-		ZoneStateCaching: !disableZoneStateCaching,
-		Delay:            delay,
-		Enabled:          enabled,
-		Options:          fopts,
-		Factory:          factory,
+		Ident:             ident,
+		TTL:               int64(ttl),
+		CacheTTL:          time.Duration(cttl) * time.Second,
+		CacheDir:          cdir,
+		RescheduleDelay:   rescheduleDelay,
+		StatusCheckPeriod: statuscheckperiod,
+		Dryrun:            dryrun,
+		ZoneStateCaching:  !disableZoneStateCaching,
+		Delay:             delay,
+		Enabled:           enabled,
+		Options:           fopts,
+		Factory:           factory,
 	}, nil
 }
 
@@ -185,7 +191,7 @@ type Finalizers interface {
 type DNSHandler interface {
 	ProviderType() string
 	GetZones() (DNSHostedZones, error)
-	GetZoneState(DNSHostedZone) (DNSZoneState, error)
+	GetZoneState(DNSHostedZone, bool) (DNSZoneState, error)
 	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
 	MapTarget(t Target) Target
@@ -234,7 +240,7 @@ type DNSProvider interface {
 	GetZones() DNSHostedZones
 	IncludesZone(zoneID string) bool
 
-	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
+	GetZoneState(zone DNSHostedZone, forceUpdate bool) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
 
 	Match(dns string) int

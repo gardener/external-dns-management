@@ -111,8 +111,8 @@ func (this *DNSAccount) GetZones() (DNSHostedZones, error) {
 	return zones, err
 }
 
-func (this *DNSAccount) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
-	state, err := this.handler.GetZoneState(zone)
+func (this *DNSAccount) GetZoneState(zone DNSHostedZone, forceUpdate bool) (DNSZoneState, error) {
+	state, err := this.handler.GetZoneState(zone, forceUpdate)
 	if err == nil {
 		this.Succeeded()
 	} else {
@@ -559,8 +559,8 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	return reconcile.UpdateStatus(logger, mod)
 }
 
-func (this *dnsProviderVersion) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
-	return this.account.GetZoneState(zone)
+func (this *dnsProviderVersion) GetZoneState(zone DNSHostedZone, forceUpdate bool) (DNSZoneState, error) {
+	return this.account.GetZoneState(zone, forceUpdate)
 }
 
 func (this *dnsProviderVersion) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {

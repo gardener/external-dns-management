@@ -184,10 +184,11 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	for _, e := range req.entries {
 		// TODO: err handling
 		var changeResult ChangeResult
+		spec := e.object.GetTargetSpec(e)
 		if e.IsDeleting() {
-			changeResult = changes.Delete(e.DNSName(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), e.Kind())
+			changeResult = changes.Delete(e.DNSName(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), spec)
 		} else {
-			changeResult = changes.Apply(e.DNSName(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), e.Kind(), e.Targets()...)
+			changeResult = changes.Apply(e.DNSName(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), spec)
 			if changeResult.Error != nil && changeResult.Retry {
 				conflictErr = changeResult.Error
 			}
@@ -212,6 +213,12 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		}
 	}
 	if err == nil {
+		for _, e := range req.entries {
+			if e.refresh {
+				e.refresh = false
+				break
+			}
+		}
 		req.zone.Succeeded()
 		err = conflictErr
 	} else {

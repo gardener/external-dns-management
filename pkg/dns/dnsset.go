@@ -112,6 +112,7 @@ const (
 
 type DNSSet struct {
 	Name string
+	Kind string
 	Sets RecordSets
 }
 
@@ -188,15 +189,21 @@ func (this *DNSSet) SetOwner(ownerid string) *DNSSet {
 }
 
 func (this *DNSSet) GetKind() string {
-	if k := this.GetMetaAttr(ATTR_KIND); k != "" {
-		return k
+	if this.Kind == "" {
+		this.Kind = this.GetMetaAttr(ATTR_KIND)
 	}
-	return api.DNSEntryKind
+	if this.Kind == "" {
+		this.Kind = api.DNSEntryKind
+	}
+	return this.Kind
 }
 
-func (this *DNSSet) SetKind(t string) *DNSSet {
+func (this *DNSSet) SetKind(t string, prop ...bool) *DNSSet {
+	this.Kind = t
 	if t != api.DNSEntryKind {
-		this.SetMetaAttr(ATTR_KIND, t)
+		if len(prop) == 0 || prop[0] {
+			this.SetMetaAttr(ATTR_KIND, t)
+		}
 	} else {
 		this.DeleteMetaAttr(ATTR_KIND)
 	}

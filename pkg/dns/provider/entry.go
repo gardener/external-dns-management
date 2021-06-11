@@ -81,7 +81,6 @@ func (this *EntryPremise) NotifyChange(p *EntryPremise) string {
 
 type EntryVersion struct {
 	object       dnsutils.DNSSpecification
-	xobject      *dnsutils.DNSEntryObject
 	providername resources.ObjectName
 	dnsname      string
 	targets      Targets
@@ -116,7 +115,7 @@ func (this *EntryVersion) Kind() string {
 	return this.object.GroupKind().Kind
 }
 
-func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string) {
+func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string, refresh bool) {
 	if this.dnsname != e.dnsname {
 		reasons = append(reasons, "dnsname changed")
 	}
@@ -142,6 +141,11 @@ func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string) 
 	}
 	if this.obsolete != e.obsolete {
 		reasons = append(reasons, "provider responsibility changed")
+	}
+
+	if this.object.RefreshTime().Before(e.object.RefreshTime()) {
+		reasons = append(reasons, "refresh time changed")
+		refresh = true
 	}
 	return
 }
@@ -376,7 +380,7 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 			return
 		}
 		var new Target
-		new, err = NewTargetFromEntryVersion(t, entry)
+		new, err = NewHostTargetFromEntryVersion(t, entry)
 		if err != nil {
 			return
 		}
@@ -392,7 +396,7 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 			warnings = append(warnings, fmt.Sprintf("dns entry %q has empty text", entry.ObjectName()))
 			continue
 		}
-		new := NewText(t, entry)
+		new := dnsutils.NewText(t, entry.TTL())
 		if targets.Has(new) {
 			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate text %q", entry.ObjectName(), new))
 		} else {
@@ -596,17 +600,17 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	logger.Infof("%s: valid: %t, message: %s%s", this.status.State, this.valid, utils.StringValue(this.status.Message), errorValue(", err: %s", err))
 	logmsg := dnsutils.NewLogMessage("update entry status")
 	f := func(data resources.ObjectData) (bool, error) {
-		e := data.(*api.DNSEntry)
+		status := dnsutils.DNSObject(this.object.GetResource().Wrap(data)).BaseStatus()
 		mod := &utils.ModificationState{}
 		if p.zoneid != "" {
-			mod.AssureStringPtrValue(&e.Status.ProviderType, p.ptype)
+			mod.AssureStringPtrValue(&status.ProviderType, p.ptype)
 		}
-		mod.AssureStringValue(&e.Status.State, this.status.State).
-			AssureStringPtrPtr(&e.Status.Message, this.status.Message).
-			AssureStringPtrPtr(&e.Status.Zone, this.status.Zone).
-			AssureStringPtrPtr(&e.Status.Provider, this.status.Provider)
+		mod.AssureStringValue(&status.State, this.status.State).
+			AssureStringPtrPtr(&status.Message, this.status.Message).
+			AssureStringPtrPtr(&status.Zone, this.status.Zone).
+			AssureStringPtrPtr(&status.Provider, this.status.Provider)
 		if mod.IsModified() {
-			dnsutils.SetLastUpdateTime(&e.Status.LastUptimeTime)
+			dnsutils.SetLastUpdateTime(&status.LastUptimeTime)
 			logmsg.Infof(logger)
 		}
 		return mod.IsModified(), nil
@@ -618,22 +622,20 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg string, args ...interface{}) error {
 	logmsg := dnsutils.NewLogMessage(msg, args...)
 	f := func(data resources.ObjectData) (bool, error) {
-		e := data.(*api.DNSEntry)
+		o := dnsutils.DNSObject(this.object.GetResource().Wrap(data))
+		status := o.BaseStatus()
 		mod := (&utils.ModificationState{}).
-			AssureStringPtrPtr(&e.Status.ProviderType, this.status.ProviderType).
-			AssureStringValue(&e.Status.State, state).
-			AssureStringPtrValue(&e.Status.Message, logmsg.Get()).
-			AssureStringPtrPtr(&e.Status.Zone, this.status.Zone).
-			AssureStringPtrPtr(&e.Status.Provider, this.status.Provider).
-			AssureInt64PtrPtr(&e.Status.TTL, this.status.TTL)
-		if state != "" && e.Status.ObservedGeneration < this.object.GetGeneration() {
-			mod.AssureInt64Value(&e.Status.ObservedGeneration, this.object.GetGeneration())
+			AssureStringPtrPtr(&status.ProviderType, this.status.ProviderType).
+			AssureStringValue(&status.State, state).
+			AssureStringPtrValue(&status.Message, logmsg.Get()).
+			AssureStringPtrPtr(&status.Zone, this.status.Zone).
+			AssureStringPtrPtr(&status.Provider, this.status.Provider).
+			AssureInt64PtrPtr(&status.TTL, this.status.TTL)
+		if state != "" && status.ObservedGeneration < this.object.GetGeneration() {
+			mod.AssureInt64Value(&status.ObservedGeneration, this.object.GetGeneration())
 		}
 		if utils.StringValue(this.status.Provider) == "" {
-			if e.Status.Targets != nil {
-				e.Status.Targets = nil
-				mod.Modify(true)
-			}
+			mod.Modify(o.AcknowledgeTargets(nil))
 		}
 		if mod.IsModified() {
 			logmsg.Infof(logger)
@@ -723,7 +725,7 @@ func normalizeTargets(logger logger.LogContext, object dnsutils.DNSSpecification
 						continue outer
 					}
 				}
-				result = append(result, NewTarget(dns.RS_A, addr, t.GetEntry()))
+				result = append(result, dnsutils.NewTarget(dns.RS_A, addr, t.GetTTL()))
 			}
 		} else {
 			w := fmt.Sprintf("cannot lookup '%s': %s", t.GetHostName(), err)
@@ -759,6 +761,7 @@ type Entry struct {
 	key        string
 	createdAt  time.Time
 	modified   bool
+	refresh    bool
 	activezone string
 	state      *state
 
@@ -771,6 +774,7 @@ func NewEntry(v *EntryVersion, state *state) *Entry {
 		EntryVersion: v,
 		state:        state,
 		modified:     true,
+		refresh:      true,
 		createdAt:    time.Now(),
 		activezone:   utils.StringValue(v.status.Zone),
 	}
@@ -789,7 +793,7 @@ func (this *Entry) IsActive() bool {
 	if id == "" {
 		id = this.state.config.Ident
 	}
-	return this.state.ownerCache.IsResponsibleFor(id)
+	return this.Kind() == api.DNSLockKind || this.state.ownerCache.IsResponsibleFor(id)
 }
 
 func (this *Entry) IsModified() bool {
@@ -805,7 +809,7 @@ func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
 		return NewEntry(new, this.state)
 	}
 
-	reasons := this.RequiresUpdateFor(new)
+	reasons, refresh := this.RequiresUpdateFor(new)
 	if len(reasons) != 0 {
 		logger.Infof("update actual entry: valid: %t  %v", new.IsValid(), reasons)
 		if this.targets.DifferFrom(new.targets) && !new.IsDeleting() {
@@ -823,6 +827,7 @@ func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
 			logger.Infof("%s", msg)
 		}
 		this.modified = true
+		this.refresh = refresh || this.refresh
 	}
 	this.EntryVersion = new
 
@@ -856,6 +861,15 @@ func (this *Entry) updateStatistic(statistic *statistic.EntryStatistic) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type Entries map[resources.ObjectName]*Entry
+
+func (this Entries) RequireRefresh() bool {
+	for _, e := range this {
+		if e.refresh {
+			return true
+		}
+	}
+	return false
+}
 
 func (this Entries) AddResponsibleTo(list *EntryList) {
 	for _, e := range this {

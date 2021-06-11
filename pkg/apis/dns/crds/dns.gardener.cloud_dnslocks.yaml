@@ -75,13 +75,17 @@ spec:
               attributes:
                 additionalProperties:
                   type: string
-                description: attribute records, either text or targets must be specified
+                description: attribute values (must be compatible with DNS TXT records)
                 type: object
               dnsName:
                 description: full qualified domain name
                 type: string
               lockId:
                 description: owner group for collaboration of multiple controller
+                type: string
+              timestamp:
+                description: Activation time stamp
+                format: date-time
                 type: string
               ttl:
                 description: time to live for records in external DNS system
@@ -90,9 +94,15 @@ spec:
             required:
             - dnsName
             - lockId
+            - timestamp
             type: object
           status:
             properties:
+              attributes:
+                additionalProperties:
+                  type: string
+                description: attribute values found in DNS
+                type: object
               lastUpdateTime:
                 description: lastUpdateTime contains the timestamp of the last status update
                 format: date-time
@@ -111,6 +121,10 @@ spec:
                 type: string
               state:
                 description: entry state
+                type: string
+              timestamp:
+                description: Activation time stamp found in DNS
+                format: date-time
                 type: string
               ttl:
                 description: time to live used for the entry
