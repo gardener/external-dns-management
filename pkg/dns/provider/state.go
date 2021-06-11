@@ -104,7 +104,8 @@ func (this *setup) Start(context Context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type state struct {
-	lock sync.RWMutex
+	lock        sync.RWMutex
+	startupTime time.Time
 
 	setup *setup
 
@@ -233,6 +234,7 @@ func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.
 func (this *state) Start() {
 	this.setup.Start(this.context)
 	this.setup = nil
+	this.startupTime = time.Now()
 }
 
 func (this *state) HasFinalizer(obj resources.Object) bool {

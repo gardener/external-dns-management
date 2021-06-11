@@ -513,6 +513,7 @@ spec:
             - dnsName
             - lockId
             - timestamp
+            - ttl
             type: object
           status:
             properties:
@@ -521,6 +522,10 @@ spec:
                   type: string
                 description: attribute values found in DNS
                 type: object
+              firstFailedDNSLookup:
+                description: First failed DNS looup
+                format: date-time
+                type: string
               lastUpdateTime:
                 description: lastUpdateTime contains the timestamp of the last status update
                 format: date-time

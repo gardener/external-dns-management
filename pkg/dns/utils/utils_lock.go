@@ -83,7 +83,7 @@ func (this *DNSLockObject) GetOwnerId() *string {
 	return &this.DNSLock().Spec.LockId
 }
 func (this *DNSLockObject) GetTTL() *int64 {
-	return this.DNSLock().Spec.TTL
+	return &this.DNSLock().Spec.TTL
 }
 func (this *DNSLockObject) GetCNameLookupInterval() *int64 {
 	return nil

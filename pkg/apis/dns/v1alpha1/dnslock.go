@@ -60,8 +60,7 @@ type DNSLockSpec struct {
 	// owner group for collaboration of multiple controller
 	LockId string `json:"lockId"`
 	// time to live for records in external DNS system
-	// +optional
-	TTL *int64 `json:"ttl,omitempty"`
+	TTL int64 `json:"ttl"`
 	// Activation time stamp
 	Timestamp metav1.Time `json:"timestamp"`
 	// attribute values (must be compatible with DNS TXT records)
@@ -77,4 +76,8 @@ type DNSLockStatus struct {
 	// attribute values found in DNS
 	// +optional
 	Attributes map[string]string `json:"attributes,omitempty"`
+
+	// First failed DNS looup
+	// +optional
+	FirstFailedDNSLookup *metav1.Time `json:"firstFailedDNSLookup,omitempty"`
 }
