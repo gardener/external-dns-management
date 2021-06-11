@@ -394,6 +394,7 @@ func (this *state) UpdateLockStates(log logger.LogContext) {
 	this.lock.RUnlock()
 
 	for _, e := range entries {
+		firstfailed := time.Time{}
 		ts := time.Time{}
 		attrs := map[string]string{}
 		records, err := net.LookupTXT(e.DNSName())
@@ -417,26 +418,47 @@ func (this *state) UpdateLockStates(log logger.LogContext) {
 			}
 		} else {
 			log.Warnf("dns lookup failed for %q: %s", e.DNSName(), err)
+			now := time.Now()
+			status := e.object.StatusField().(*api.DNSLockStatus)
+			ttl := time.Duration(e.object.Data().(*api.DNSLock).Spec.TTL) * time.Second
+			if status.FirstFailedDNSLookup != nil && status.FirstFailedDNSLookup.After(this.startupTime) {
+				firstfailed = status.FirstFailedDNSLookup.Time
+				if now.Sub(firstfailed) > ttl*2 {
+					log.Infof("try to resurrect dns lock %q", e.object.ObjectName())
+					e.lock.Lock()
+					e.refresh = true
+					e.lock.Unlock()
+					this.context.Enqueue(e.object)
+				}
+			} else {
+				firstfailed = now
+			}
 		}
 
 		e.object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
 			status := &data.(*api.DNSLock).Status
-			mod := false
-			if ts.IsZero() {
-				mod = status.Timestamp == nil
-				status.Timestamp = nil
-			} else {
-				if status.Timestamp == nil || !status.Timestamp.Time.Equal(ts) {
-					mod = true
-				}
-				t := metav1.NewTime(ts)
-				status.Timestamp = &t
-			}
+			mod := AssureTimestamp(&status.Timestamp, ts)
+			mod = AssureTimestamp(&status.FirstFailedDNSLookup, firstfailed) || mod
 			mod = mod || !EqualAttrs(attrs, status.Attributes)
 			status.Attributes = attrs
 			return mod, nil
 		})
 	}
+}
+
+func AssureTimestamp(target **metav1.Time, ts time.Time) bool {
+	mod := false
+	if ts.IsZero() {
+		mod = *target == nil
+		*target = nil
+	} else {
+		if *target == nil || !(*target).Time.Equal(ts) {
+			mod = true
+		}
+		t := metav1.NewTime(ts)
+		*target = &t
+	}
+	return mod
 }
 
 func EqualAttrs(a, b map[string]string) bool {
