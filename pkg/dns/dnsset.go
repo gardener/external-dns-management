@@ -117,6 +117,7 @@ const (
 
 type DNSSet struct {
 	Name        string
+	Kind        string
 	UpdateGroup string
 	Sets        RecordSets
 }
@@ -141,16 +142,6 @@ func (this *DNSSet) setAttr(ty string, name string, value string) {
 	} else {
 		rset.SetAttr(name, value)
 	}
-}
-
-func (this *DNSSet) IsOwnedBy(ownership Ownership) bool {
-	o := this.GetAttr(ATTR_OWNER)
-	return o != "" && ownership.IsResponsibleFor(o)
-}
-
-func (this *DNSSet) IsForeign(ownership Ownership) bool {
-	o := this.GetAttr(ATTR_OWNER)
-	return o != "" && !ownership.IsResponsibleFor(o)
 }
 
 func (this *DNSSet) deleteAttr(ty string, name string) {
@@ -184,14 +175,14 @@ func (this *DNSSet) DeleteMetaAttr(name string) {
 	this.deleteAttr(RS_META, name)
 }
 
-func (this *DNSSet) IsOwnedBy(owners utils.StringSet) bool {
+func (this *DNSSet) IsOwnedBy(ownership Ownership) bool {
 	o := this.GetMetaAttr(ATTR_OWNER)
-	return o != "" && owners.Contains(o)
+	return o != "" && ownership.IsResponsibleFor(o)
 }
 
-func (this *DNSSet) IsForeign(owners utils.StringSet) bool {
+func (this *DNSSet) IsForeign(ownership Ownership) bool {
 	o := this.GetMetaAttr(ATTR_OWNER)
-	return o != "" && !owners.Contains(o)
+	return o != "" && !ownership.IsResponsibleFor(o)
 }
 
 func (this *DNSSet) GetOwner() string {
@@ -204,15 +195,21 @@ func (this *DNSSet) SetOwner(ownerid string) *DNSSet {
 }
 
 func (this *DNSSet) GetKind() string {
-	if k := this.GetMetaAttr(ATTR_KIND); k != "" {
-		return k
+	if this.Kind == "" {
+		this.Kind = this.GetMetaAttr(ATTR_KIND)
 	}
-	return api.DNSEntryKind
+	if this.Kind == "" {
+		this.Kind = api.DNSEntryKind
+	}
+	return this.Kind
 }
 
-func (this *DNSSet) SetKind(t string) *DNSSet {
+func (this *DNSSet) SetKind(t string, prop ...bool) *DNSSet {
+	this.Kind = t
 	if t != api.DNSEntryKind {
-		this.SetMetaAttr(ATTR_KIND, t)
+		if len(prop) == 0 || prop[0] {
+			this.SetMetaAttr(ATTR_KIND, t)
+		}
 	} else {
 		this.DeleteMetaAttr(ATTR_KIND)
 	}

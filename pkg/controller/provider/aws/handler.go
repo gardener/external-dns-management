@@ -32,6 +32,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
 type Handler struct {
@@ -169,7 +170,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), id, dns.NormalizeHostname(domain), aws.StringValue(z.Id), []string{}, isPrivateZone)
 
 		// call GetZoneState for side effect to calculate forwarded domains
-		_, err := cache.GetZoneState(hostedZone)
+		_, err := cache.GetZoneState(hostedZone, false)
 		if err == nil {
 			forwarded := cache.GetHandlerData().(*provider.ForwardedDomainsHandlerData).GetForwardedDomains(hostedZone.Id())
 			if forwarded != nil {
@@ -202,8 +203,8 @@ func buildRecordSet(r *route53.ResourceRecordSet) *dns.RecordSet {
 	return rs
 }
 
-func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
-	return h.cache.GetZoneState(zone)
+func (h *Handler) GetZoneState(zone provider.DNSHostedZone, forceUpdate bool) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone, forceUpdate)
 }
 
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
@@ -294,7 +295,7 @@ func (h *Handler) MapTarget(t provider.Target) provider.Target {
 	if t.GetRecordType() == dns.RS_CNAME {
 		hostedZone := canonicalHostedZone(t.GetHostName())
 		if hostedZone != "" {
-			return provider.NewTarget(dns.RS_ALIAS, t.GetHostName(), t.GetEntry())
+			return dnsutils.NewTarget(dns.RS_ALIAS, t.GetHostName(), t.GetTTL())
 		}
 	}
 	return t

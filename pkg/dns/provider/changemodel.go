@@ -25,6 +25,7 @@ import (
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -141,6 +142,8 @@ func (this *ChangeGroup) addChangeRequest(action string, old, new *dns.DNSSet, r
 	this.requests = append(this.requests, r)
 }
 
+type TargetSpec = dnsutils.TargetSpec
+
 ////////////////////////////////////////////////////////////////////////////////
 // Change Model
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,7 +219,7 @@ func (this *ChangeModel) Setup() error {
 		return fmt.Errorf("no provider found for zone %q", this.ZoneId())
 	}
 	this.context.dnsTicker.TickWhile(this, func() {
-		this.zonestate, err = provider.GetZoneState(this.context.zone.getZone())
+		this.zonestate, err = provider.GetZoneState(this.context.zone.getZone(), this.context.entries.RequireRefresh())
 	})
 	if err != nil {
 		return err
@@ -243,16 +246,16 @@ func (this *ChangeModel) Setup() error {
 	return err
 }
 
-func (this *ChangeModel) Apply(name, updateGroup string, createdAt time.Time, done DoneHandler, kind string, targets ...Target) ChangeResult {
-	return this.Exec(true, false, name, updateGroup, createdAt, done, kind, targets...)
+func (this *ChangeModel) Apply(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+	return this.Exec(true, false, name, updateGroup, createdAt, done, spec)
 }
-func (this *ChangeModel) Delete(name, updateGroup string, createdAt time.Time, done DoneHandler, kind string) ChangeResult {
-	return this.Exec(true, true, name, updateGroup, createdAt, done,  kind)
+func (this *ChangeModel) Delete(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+	return this.Exec(true, true, name, updateGroup, createdAt, done, spec)
 }
 
-func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string, createdAt time.Time, done DoneHandler, kind string, targets ...Target) ChangeResult {
+func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	//this.Infof("%s: %v", name, targets)
-	if len(targets) == 0 && !delete {
+	if len(spec.Targets()) == 0 && !delete {
 		return ChangeResult{}
 	}
 
@@ -277,13 +280,14 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 	oldset := view.dnssets[name]
 	newset := dns.NewDNSSet(name)
 	newset.UpdateGroup = updateGroup
-	newset.SetKind(kind)
+	newset.SetKind(spec.Kind())
 	if !delete {
-		this.AddTargets(newset, oldset, p, targets...)
+		this.ApplySpec(newset, oldset, p, spec)
 	}
 	mod := false
 	if oldset != nil {
-		if this.IsForeign(oldset, newset) {
+		this.Infof("found old for %s %q", oldset.GetKind(), oldset.Name)
+		if this.IsForeign(oldset) {
 			err := &perrs.AlreadyBusyForOwner{DNSName: name, EntryCreatedAt: createdAt, Owner: oldset.GetOwner()}
 			retry := p.ReportZoneStateConflict(this.context.zone.getZone(), err)
 			if done != nil {
@@ -295,7 +299,10 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 			}
 			return ChangeResult{Error: err, Retry: retry}
 		} else {
-			if !this.Owns(oldset) {
+			if !spec.Responsible(oldset, this.ownership) {
+				return ChangeResult{}
+			}
+			if oldset.GetOwner() == "" && !this.Owns(oldset) {
 				if delete {
 					return ChangeResult{}
 				}
@@ -343,8 +350,9 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 	} else {
 		if !delete {
 			this.Debugf("no existing entry found for %s", name)
+			this.Infof("no existing entry found for %s", name)
 			if apply {
-				this.setOwner(newset, targets)
+				this.setOwner(newset, spec.OwnerId())
 				for ty := range newset.Sets {
 					view.addCreateRequest(newset, ty, done)
 				}
@@ -432,15 +440,11 @@ func (this *ChangeModel) Owns(set *dns.DNSSet) bool {
 	return set.GetKind() != api.DNSLockKind && set.IsOwnedBy(this.ownership)
 }
 
-func (this *ChangeModel) IsForeign(set *dns.DNSSet, refset *dns.DNSSet) bool {
-	if set.GetKind() == api.DNSLockKind {
-		return set.GetOwner() != refset.GetOwner()
-	}
-	return set.IsForeign(this.ownership)
+func (this *ChangeModel) IsForeign(set *dns.DNSSet) bool {
+	return set.IsForeign(this.ownership) && set.GetKind() != api.DNSLockKind
 }
 
-func (this *ChangeModel) setOwner(set *dns.DNSSet, targets []Target) bool {
-	id := targets[0].GetEntry().OwnerId()
+func (this *ChangeModel) setOwner(set *dns.DNSSet, id string) bool {
 	if id == "" {
 		id = this.config.Ident
 	}
@@ -451,19 +455,20 @@ func (this *ChangeModel) setOwner(set *dns.DNSSet, targets []Target) bool {
 	return false
 }
 
-func (this *ChangeModel) AddTargets(set *dns.DNSSet, base *dns.DNSSet, provider DNSProvider, targets ...Target) *dns.DNSSet {
-	if base == nil || !this.IsForeign(base, set) {
-		if this.setOwner(set, targets) {
+func (this *ChangeModel) ApplySpec(set *dns.DNSSet, base *dns.DNSSet, provider DNSProvider, spec TargetSpec) *dns.DNSSet {
+	set.SetKind(spec.Kind())
+	if base == nil || !this.IsForeign(base) {
+		if this.setOwner(set, spec.OwnerId()) {
 			set.SetMetaAttr(dns.ATTR_PREFIX, dns.TxtPrefix)
 		}
 	}
 
 	targetsets := set.Sets
 	cnames := []string{}
-	for _, t := range targets {
+	for _, t := range spec.Targets() {
 		// use status calculated in entry
-		ttl := t.GetEntry().TTL()
-		if t.GetRecordType() == dns.RS_CNAME && len(targets) > 1 {
+		ttl := t.GetTTL()
+		if t.GetRecordType() == dns.RS_CNAME && len(spec.Targets()) > 1 {
 			cnames = append(cnames, t.GetHostName())
 			ipv4addrs, ipv6addrs, err := lookupHosts(t.GetHostName())
 			if err == nil {

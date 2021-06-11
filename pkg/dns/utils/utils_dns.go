@@ -17,10 +17,18 @@
 package utils
 
 import (
+	"time"
+
 	"github.com/gardener/controller-manager-library/pkg/resources"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
+
+type TargetProvider interface {
+	Targets() Targets
+	TTL() int64
+	OwnerId() string
+}
 
 type DNSSpecification interface {
 	resources.Object
@@ -33,13 +41,14 @@ type DNSSpecification interface {
 	GetReference() *api.EntryReference
 	BaseStatus() *api.DNSBaseStatus
 
+	GetTargetSpec(TargetProvider) TargetSpec
+
+	RefreshTime() time.Time
 	ValidateSpecial() error
 	AcknowledgeTargets(targets []string) bool
 }
 
-var _ DNSSpecification = (*DNSEntryObject)(nil)
-
-func DNSObject(data resources.Object) DNSSpecification {
+func DNSObject(data resources.Object, ign ...interface{}) DNSSpecification {
 	switch data.Data().(type) {
 	case *api.DNSEntry:
 		return DNSEntry(data)

@@ -51,7 +51,7 @@ type DNSLock struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 	Spec              DNSLockSpec `json:"spec"`
 	// +optional
-	Status DNSBaseStatus `json:"status,omitempty"`
+	Status DNSLockStatus `json:"status,omitempty"`
 }
 
 type DNSLockSpec struct {
@@ -63,8 +63,18 @@ type DNSLockSpec struct {
 	// +optional
 	TTL *int64 `json:"ttl,omitempty"`
 	// Activation time stamp
-	Timestamp metav1.Time
-	// attribute records, either text or targets must be specified
+	Timestamp metav1.Time `json:"timestamp"`
+	// attribute values (must be compatible with DNS TXT records)
+	// +optional
+	Attributes map[string]string `json:"attributes,omitempty"`
+}
+
+type DNSLockStatus struct {
+	DNSBaseStatus `json:",inline"`
+	// Activation time stamp found in DNS
+	// +optional
+	Timestamp *metav1.Time `json:"timestamp,omitempty"`
+	// attribute values found in DNS
 	// +optional
 	Attributes map[string]string `json:"attributes,omitempty"`
 }

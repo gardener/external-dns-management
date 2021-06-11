@@ -67,7 +67,7 @@ type ZoneCacheStateUpdater func(zone DNSHostedZone, cache ZoneCache) (DNSZoneSta
 
 type ZoneCache interface {
 	GetZones() (DNSHostedZones, error)
-	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
+	GetZoneState(zone DNSHostedZone, forceUpdate bool) (DNSZoneState, error)
 	ApplyRequests(logctx logger.LogContext, err error, zone DNSHostedZone, reqs []*ChangeRequest)
 	GetHandlerData() HandlerData
 	Release()
@@ -186,7 +186,7 @@ func (c *onlyZonesCache) GetZones() (DNSHostedZones, error) {
 	return zones, err
 }
 
-func (c *onlyZonesCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
+func (c *onlyZonesCache) GetZoneState(zone DNSHostedZone, forceUpdate bool) (DNSZoneState, error) {
 	state, err := c.stateUpdater(zone, c)
 	return state, err
 }
@@ -281,8 +281,8 @@ func (c *defaultZoneCache) clearBackoff() {
 	c.backoffOnError = 0
 }
 
-func (c *defaultZoneCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
-	state, cached, err := c.state.GetZoneState(zone, c)
+func (c *defaultZoneCache) GetZoneState(zone DNSHostedZone, forceUpdate bool) (DNSZoneState, error) {
+	state, cached, err := c.state.GetZoneState(zone, c, forceUpdate)
 	if cached {
 		c.metrics.AddZoneRequests(zone.Id(), M_CACHED_GETZONESTATE, 1)
 	} else {
@@ -497,7 +497,7 @@ type zoneState struct {
 	handlerData    HandlerData
 }
 
-func (s *zoneState) GetZoneState(zone DNSHostedZone, cache *defaultZoneCache) (DNSZoneState, bool, error) {
+func (s *zoneState) GetZoneState(zone DNSHostedZone, cache *defaultZoneCache, forceUpdate bool) (DNSZoneState, bool, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

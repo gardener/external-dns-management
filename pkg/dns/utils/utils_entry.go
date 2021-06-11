@@ -18,6 +18,7 @@ package utils
 
 import (
 	"reflect"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 
@@ -80,6 +81,11 @@ func (this *DNSEntryObject) GetCNameLookupInterval() *int64 {
 func (this *DNSEntryObject) GetReference() *api.EntryReference {
 	return this.DNSEntry().Spec.Reference
 }
+
+func (this *DNSEntryObject) RefreshTime() time.Time {
+	return time.Time{}
+}
+
 func (this *DNSEntryObject) ValidateSpecial() error {
 	return nil
 }
@@ -91,4 +97,8 @@ func (this *DNSEntryObject) AcknowledgeTargets(targets []string) bool {
 		return true
 	}
 	return false
+}
+
+func (this *DNSEntryObject) GetTargetSpec(p TargetProvider) TargetSpec {
+	return BaseTargetSpec(this, p)
 }

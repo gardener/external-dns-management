@@ -18,8 +18,11 @@ package utils
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -27,7 +30,7 @@ import (
 
 var _ DNSSpecification = (*DNSLockObject)(nil)
 
-var DNSLockType = (*api.DNSEntry)(nil)
+var DNSLockType = (*api.DNSLock)(nil)
 
 type DNSLockObject struct {
 	resources.Object
@@ -52,12 +55,12 @@ func (this *DNSLockObject) StatusField() interface{} {
 	return this.Status()
 }
 
-func (this *DNSLockObject) Status() *api.DNSBaseStatus {
+func (this *DNSLockObject) Status() *api.DNSLockStatus {
 	return &this.DNSLock().Status
 }
 
 func (this *DNSLockObject) BaseStatus() *api.DNSBaseStatus {
-	return &this.DNSLock().Status
+	return &this.DNSLock().Status.DNSBaseStatus
 }
 
 func (this *DNSLockObject) GetDNSName() string {
@@ -89,6 +92,10 @@ func (this *DNSLockObject) GetReference() *api.EntryReference {
 	return nil
 }
 
+func (this *DNSLockObject) RefreshTime() time.Time {
+	return this.Spec().Timestamp.Time
+}
+
 func (this *DNSLockObject) ValidateSpecial() error {
 	if len(this.Spec().Attributes) == 0 {
 		return fmt.Errorf("no attributes defined")
@@ -98,4 +105,38 @@ func (this *DNSLockObject) ValidateSpecial() error {
 
 func (this *DNSLockObject) AcknowledgeTargets(targets []string) bool {
 	return false
+}
+
+func (this *DNSLockObject) GetTargetSpec(p TargetProvider) TargetSpec {
+	return &lockTargetSpec{
+		TargetSpec:  BaseTargetSpec(this, p),
+		refreshTime: this.RefreshTime(),
+	}
+}
+
+type lockTargetSpec struct {
+	TargetSpec
+	refreshTime time.Time
+}
+
+func (this *lockTargetSpec) Responsible(set *dns.DNSSet, owners utils.StringSet) bool {
+	if set.GetKind() != api.DNSLockKind {
+		return false
+	}
+	if set.GetOwner() != this.OwnerId() {
+		fmt.Printf("found lock %q owner mismatch %q->%q\n", set.Name, set.GetOwner(), this.OwnerId())
+		return false
+	}
+
+	t, err := strconv.ParseInt(set.GetTxtAttr(dns.ATTR_TIMESTAMP), 10, 64)
+	if err != nil {
+		fmt.Printf("found lock %q ts parsing error: %s\n", set.Name, err)
+		return false
+	}
+	if time.Unix(t, 0).After(this.refreshTime) {
+		fmt.Printf("found lock %q timestamp mismatch %q->%q\n", set.Name, time.Unix(t, 0), this.refreshTime)
+		return false
+	}
+	fmt.Printf("found responsibility for lock %q\n", set.Name)
+	return true
 }
