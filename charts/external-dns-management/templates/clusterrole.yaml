@@ -41,6 +41,8 @@ rules:
   - dnsannotations/status
   - dnsowners
   - dnsowners/status
+  - dnshostedzonepolicies
+  - dnshostedzonepolicies/status
   verbs:
   - get
   - list

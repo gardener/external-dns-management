@@ -219,3 +219,21 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	}
 	return err
 }
+
+func (this *state) deleteZone(zoneid string) {
+	metrics.DeleteZone(zoneid)
+	delete(this.zones, zoneid)
+	this.triggerAllZonePolicies()
+}
+
+func (this *state) CreateStateTTLGetter(defaultStateTTL time.Duration) StateTTLGetter {
+	return func(zoneid string) time.Duration {
+		if value := this.zoneStateTTL.Load(); value != nil {
+			stateTTLMap := value.(map[string]time.Duration)
+			if ttl, ok := stateTTLMap[zoneid]; ok {
+				return ttl
+			}
+		}
+		return defaultStateTTL
+	}
+}

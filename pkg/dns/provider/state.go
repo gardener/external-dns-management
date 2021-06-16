@@ -20,20 +20,19 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
-
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	"k8s.io/apimachinery/pkg/labels"
 )
@@ -119,6 +118,8 @@ type state struct {
 	zoneproviders   map[string]resources.ObjectNameSet
 	providerzones   map[resources.ObjectName]map[string]*dnsHostedZone
 	providersecrets map[resources.ObjectName]resources.ObjectName
+	zonePolicies    map[string]*dnsHostedZonePolicy
+	zoneStateTTL    atomic.Value
 
 	entries         Entries
 	outdated        *synchronizedEntries
@@ -161,6 +162,7 @@ func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller
 		zoneproviders:   map[string]resources.ObjectNameSet{},
 		providerzones:   map[resources.ObjectName]map[string]*dnsHostedZone{},
 		providersecrets: map[resources.ObjectName]resources.ObjectName{},
+		zonePolicies:    map[string]*dnsHostedZonePolicy{},
 		entries:         Entries{},
 		outdated:        newSynchronizedEntries(),
 		blockingEntries: map[resources.ObjectName]time.Time{},
@@ -543,6 +545,7 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 				this.zones[z.Id()] = zone
 				logger.Infof("adding hosted zone %q (%s)", z.Id(), z.Domain())
 				this.triggerHostedZone(zone.Id())
+				this.triggerAllZonePolicies()
 			}
 			zone.update(z)
 
@@ -573,8 +576,7 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 					logger.Infof("removing provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain())
 					if !this.hasProvidersForZone(zoneid) {
 						logger.Infof("removing hosted zone %q (%s)", z.Id(), z.Domain())
-						metrics.DeleteZone(z.Id())
-						delete(this.zones, zoneid)
+						this.deleteZone(zoneid)
 					}
 				}
 			}
