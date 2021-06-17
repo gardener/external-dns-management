@@ -284,7 +284,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 	hostedZone, err := getDNSHostedZone(h, "z1")
 	Ω(err).Should(BeNil(), "Get Zone z1 failed")
 
-	zoneState, err := h.GetZoneState(hostedZone)
+	zoneState, err := h.GetZoneState(hostedZone, false)
 	Ω(err).Should(BeNil(), "Initial GetZoneState failed")
 	dnssets := zoneState.GetDNSSets()
 	Ω(len(dnssets)).Should(Equal(0), "dnssets should be empty initially")
@@ -350,7 +350,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 		},
 	}
 
-	zoneState2, err := h.GetZoneState(hostedZone)
+	zoneState2, err := h.GetZoneState(hostedZone, false)
 	Ω(err).Should(BeNil(), "GetZoneState failed")
 	actualDnssets := zoneState2.GetDNSSets()
 	Ω(actualDnssets).Should(Equal(expectedDnssets))
@@ -423,7 +423,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 		},
 	}
 
-	zoneState3, err := h.GetZoneState(hostedZone)
+	zoneState3, err := h.GetZoneState(hostedZone, false)
 	if err != nil {
 		t.Errorf("Second GetZoneState for z1 failed with: %v", err)
 		return

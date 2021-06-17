@@ -224,6 +224,7 @@ func (this *reconciler) Start() {
 func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.Status {
 	switch cmd {
 	case CMD_DNSLOOKUP:
+		this.state.ownerCache.TriggerDNSActivation(logger, this.controller)
 		this.state.UpdateLockStates(logger)
 		return reconcile.RescheduleAfter(logger, this.state.config.StatusCheckPeriod)
 	case CMD_STATISTIC:
