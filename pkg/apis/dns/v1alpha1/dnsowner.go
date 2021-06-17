@@ -57,9 +57,24 @@ type DNSOwnerSpec struct {
 	// (default:true)
 	// +optional
 	Active *bool `json:"active,omitempty"`
+	// Optional activation info for controlling the owner activation remotely via DNS TXT record
+	// +optional
+	DNSActivation *DNSActivation `json:"dnsActivation,omitempty"`
+
 	// +optional
 	// optional time this owner should be active if active flag is not false
 	ValidUntil *metav1.Time `json:"validUntil,omitempty"`
+}
+
+// DNSActivation carries the optinal informatio required to control the
+// activation of an owner id remotely via TXT records
+type DNSActivation struct {
+	// DNS name for controlling the owner activation remotely via DNS TXT record
+	DNSName string `json:"dnsName"`
+	// Optional value for the DNS activation record used to activate this owner
+	// The default is the id of the cluster used to read the owner object
+	// +optional
+	Value *string `json:"dnsActivationValue,omitempty"`
 }
 
 type DNSOwnerStatus struct {

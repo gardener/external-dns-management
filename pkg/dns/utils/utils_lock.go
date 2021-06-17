@@ -19,6 +19,7 @@ package utils
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -74,7 +75,11 @@ func (this *DNSLockObject) GetText() []string {
 	attrs = append(attrs, fmt.Sprintf("%s=%d", dns.ATTR_TIMESTAMP, this.Spec().Timestamp.Unix()))
 	if this.Spec().Attributes != nil {
 		for k, v := range this.Spec().Attributes {
-			attrs = append(attrs, fmt.Sprintf("%s=%s", k, v))
+			if strings.HasPrefix(k, "_") {
+				attrs = append(attrs, fmt.Sprintf("%s", v))
+			} else {
+				attrs = append(attrs, fmt.Sprintf("%s=%s", k, v))
+			}
 		}
 	}
 	return attrs

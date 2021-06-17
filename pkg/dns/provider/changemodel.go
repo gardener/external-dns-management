@@ -247,6 +247,7 @@ func (this *ChangeModel) Check(name string, createdAt time.Time, done DoneHandle
 	return this.Exec(false, false, name, createdAt, done, targets...)
 }
 */
+
 func (this *ChangeModel) Apply(name string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, false, name, createdAt, done, spec)
 }

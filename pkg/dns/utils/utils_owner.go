@@ -17,6 +17,7 @@
 package utils
 
 import (
+	"net"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -50,6 +51,10 @@ func (this *DNSOwnerObject) GetOwnerId() string {
 	return this.DNSOwner().Spec.OwnerId
 }
 
+func (this *DNSOwnerObject) GetDNSActivation() *api.DNSActivation {
+	return this.DNSOwner().Spec.DNSActivation
+}
+
 func (this *DNSOwnerObject) IsEnabled() bool {
 	a := this.DNSOwner().Spec.Active
 	return a == nil || *a
@@ -58,7 +63,10 @@ func (this *DNSOwnerObject) IsEnabled() bool {
 func (this *DNSOwnerObject) IsActive() bool {
 	if this.IsEnabled() {
 		valid := this.DNSOwner().Spec.ValidUntil
-		return valid == nil || valid.After(time.Now())
+		if valid != nil && !valid.After(time.Now()) {
+			return false
+		}
+		return CheckDNSActivation(this.GetCluster().GetId(), this.GetDNSActivation())
 	}
 	return false
 }
@@ -73,4 +81,24 @@ func (this *DNSOwnerObject) GetCounts() map[string]int {
 
 func (this *DNSOwnerObject) GetCount() int {
 	return this.DNSOwner().Status.Entries.Amount
+}
+
+func CheckDNSActivation(clusterid string, activation *api.DNSActivation) bool {
+	if activation == nil {
+		return true
+	}
+	records, err := net.LookupTXT(activation.DNSName)
+	if err != nil {
+		return false
+	}
+	value := clusterid
+	if activation.Value != nil && *activation.Value != "" {
+		value = *activation.Value
+	}
+	for _, r := range records {
+		if r == value {
+			return true
+		}
+	}
+	return false
 }

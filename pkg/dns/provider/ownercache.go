@@ -20,10 +20,13 @@ import (
 	"context"
 	"sync"
 
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
+	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
@@ -42,8 +45,22 @@ type OwnerObjectInfo struct {
 	active bool
 	id     string
 }
+
 type OwnerName string
+
 type OwnerObjectInfos map[OwnerName]OwnerObjectInfo
+
+type OwnerDNSActivation struct {
+	Key     resources.ClusterObjectKey
+	Current bool
+	api.DNSActivation
+}
+
+func (this *OwnerDNSActivation) IsActive() bool {
+	return dnsutils.CheckDNSActivation(this.Key.Cluster(), &this.DNSActivation)
+}
+
+type OwnerDNSActivations map[resources.ClusterObjectKey]*OwnerDNSActivation
 
 type OwnerIDInfo struct {
 	refcount    int
@@ -63,7 +80,9 @@ type OwnerCache struct {
 	lock sync.RWMutex
 	ctx  ProviderCacheContext
 
-	owners     OwnerObjectInfos
+	owners         OwnerObjectInfos
+	dnsactivations OwnerDNSActivations
+
 	ownerids   OwnerIDInfos
 	pendingids utils.StringSet
 
@@ -72,13 +91,33 @@ type OwnerCache struct {
 
 func NewOwnerCache(ctx ProviderCacheContext, config *Config) *OwnerCache {
 	this := &OwnerCache{
-		ctx:        ctx,
-		owners:     OwnerObjectInfos{},
-		ownerids:   OwnerIDInfos{config.Ident: {refcount: 1, entrycounts: ProviderTypeCounts{}}},
-		pendingids: utils.StringSet{},
+		ctx:            ctx,
+		owners:         OwnerObjectInfos{},
+		ownerids:       OwnerIDInfos{config.Ident: {refcount: 1, entrycounts: ProviderTypeCounts{}}},
+		dnsactivations: OwnerDNSActivations{},
+		pendingids:     utils.StringSet{},
 	}
 	this.schedule = dnsutils.NewSchedule(ctx.GetContext(), dnsutils.ScheduleExecutorFunction(this.expire))
 	return this
+}
+
+func (this *OwnerCache) GetDNSActivations() OwnerDNSActivations {
+	queries := OwnerDNSActivations{}
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+	for k, v := range this.dnsactivations {
+		queries[k] = v
+	}
+	return queries
+}
+
+func (this *OwnerCache) TriggerDNSActivation(logger logger.LogContext, cntr controller.Interface) {
+	for k, a := range this.GetDNSActivations() {
+		if active := a.IsActive(); active != a.Current {
+			logger.Infof("DNS activation changed for %s[%s] (%t)", k.ObjectName(), a.DNSName, active)
+			cntr.EnqueueKey(k)
+		}
+	}
 }
 
 func (this *OwnerCache) expire(key dnsutils.ScheduleKey) {
@@ -140,7 +179,15 @@ func (this *OwnerCache) checkCount(e *OwnerIDInfo, ptype string, count int) bool
 }
 
 func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changeset utils.StringSet, activeset utils.StringSet) {
-	return this.updateOwnerData(OwnerName(owner.GetName()), owner.ClusterKey(), owner.GetOwnerId(), owner.IsActive(), owner.GetCounts(), owner.ValidUntil())
+	active := owner.IsActive()
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	if activation := owner.GetDNSActivation(); activation != nil {
+		this.dnsactivations[owner.ClusterKey()] = &OwnerDNSActivation{Key: owner.ClusterKey(), Current: active, DNSActivation: *activation}
+	} else {
+		delete(this.dnsactivations, owner.ClusterKey())
+	}
+	return this._updateOwnerData(OwnerName(owner.GetName()), owner.ClusterKey(), owner.GetOwnerId(), active, owner.GetCounts(), owner.ValidUntil())
 }
 
 func (this *OwnerCache) updateOwnerData(cachekey OwnerName, key dnsutils.ScheduleKey, id string, active bool, counts ProviderTypeCounts, valid *metav1.Time) (changeset utils.StringSet, activeset utils.StringSet) {
@@ -151,6 +198,7 @@ func (this *OwnerCache) updateOwnerData(cachekey OwnerName, key dnsutils.Schedul
 
 func (this *OwnerCache) _updateOwnerData(cachekey OwnerName, key dnsutils.ScheduleKey, id string, active bool, counts ProviderTypeCounts, valid *metav1.Time) (changeset utils.StringSet, activeset utils.StringSet) {
 	changeset = utils.StringSet{}
+
 	old, ok := this.owners[cachekey]
 	if ok {
 		if old.id == id && old.active == active {
