@@ -1,0 +1,19 @@
+---
+type: landscaper.gardener.cloud/blueprint
+name: dns-controller-manager-controller-registration
+relation: local
+input:
+  type: "dir"
+  path: "./blueprint"
+  compress: true
+  mediaType: "application/vnd.gardener.landscaper.blueprint.v1.tar+gzip"
+---
+type: helm.io/chart
+name: dns-controller-manager-chart
+relation: local
+input:
+  type: "dir"
+  path: "../charts/external-dns-management"
+  compress: true
+  preserveDir: true
+---
