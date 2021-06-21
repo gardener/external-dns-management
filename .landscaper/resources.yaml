@@ -6,7 +6,7 @@ input:
   type: "dir"
   path: "./blueprint"
   compress: true
-  mediaType: "application/vnd.gardener.landscaper.blueprint.v1+tar+gzip"
+  mediaType: "application/vnd.gardener.landscaper.blueprint.v1.tar+gzip"
 ---
 type: helm.io/chart
 name: dns-controller-manager-chart
@@ -15,4 +15,5 @@ input:
   type: "dir"
   path: "../charts/external-dns-management"
   compress: true
+  preserveDir: true
 ---
