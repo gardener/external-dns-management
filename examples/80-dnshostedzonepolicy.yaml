@@ -1,0 +1,11 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSHostedZonePolicy
+metadata:
+  name: test-policy
+spec:
+  selector:
+    domainNames:
+    - domain.of.my.first.zone.com
+    - domain.of.my.second.zone.org
+  policy:
+    zoneStateCacheTTL: 2h # overwrites the default settings (uses value of command line option `--dns.pool.resync-period`)

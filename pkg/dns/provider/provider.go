@@ -176,7 +176,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 			logger:                logger,
 			persistDir:            persistDir,
 			zonesTTL:              this.ttl,
-			stateTTL:              *syncPeriod,
+			stateTTLGetter:        state.CreateStateTTLGetter(*syncPeriod),
 			disableZoneStateCache: !state.config.ZoneStateCaching,
 		}
 

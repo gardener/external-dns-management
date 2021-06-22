@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
@@ -34,6 +35,7 @@ type dnsHostedZone struct {
 	zone   DNSHostedZone
 	next   time.Time
 	owners utils.StringSet
+	policy *dnsHostedZonePolicy
 }
 
 func newDNSHostedZone(min time.Duration, zone DNSHostedZone) *dnsHostedZone {
@@ -124,10 +126,39 @@ func (this *dnsHostedZone) SetNext(next time.Time) {
 	this.next = next
 }
 
+func (this *dnsHostedZone) Policy() *dnsHostedZonePolicy {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	return this.policy
+}
+
+func (this *dnsHostedZone) SetPolicy(pol *dnsHostedZonePolicy) {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+	this.policy = pol
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *dnsHostedZone) update(zone DNSHostedZone) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	this.zone = zone
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+type dnsHostedZonePolicy struct {
+	name                   string
+	spec                   dnsv1alpha1.DNSHostedZonePolicySpec
+	zones                  []*dnsHostedZone
+	conflictingPolicyNames utils.StringSet
+}
+
+func newDNSHostedZonePolicy(name string, spec *dnsv1alpha1.DNSHostedZonePolicySpec) *dnsHostedZonePolicy {
+	return &dnsHostedZonePolicy{
+		name:                   name,
+		spec:                   *spec,
+		conflictingPolicyNames: utils.StringSet{},
+	}
 }

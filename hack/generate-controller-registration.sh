@@ -13,11 +13,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
 set -e
 set -o pipefail
-
-DIRNAME="$(echo "$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )")"
-source "$DIRNAME/common.sh"
 
 function usage {
     cat <<EOM
@@ -26,10 +24,11 @@ generate-controller-registration <name> <chart-dir> <dest> <kind-and-type> [kind
 
     <name>            Name of the controller registration to generate.
     <chart-dir>       Location of the chart directory.
+    <version-file>    Location of the VERSION file.
     <dest>            The destination file to write the registration YAML to.
     <kind-and-type>   A tuple of kind and type of the controller registration to generate.
                       Separated by ':'.
-                      Example: OperatingSystemConfig:os-coreos
+                      Example: OperatingSystemConfig:foobar
     <kinds-and-types> Further tuples of kind and type of the controller registration to generate.
                       Separated by ':'.
 EOM
@@ -38,13 +37,15 @@ EOM
 
 NAME="$1"
 CHART_DIR="$2"
-DEST="$3"
-KIND_AND_TYPE="$4"
+VERSION_FILE="$3"
+DEST="$4"
+KIND_AND_TYPE="$5"
 
-echo args: "$@"
 ( [[ -z "$NAME" ]] || [[ -z "$CHART_DIR" ]] || [[ -z "$DEST" ]] || [[ -z "$KIND_AND_TYPE" ]]) && usage
 
-KINDS_AND_TYPES=("$KIND_AND_TYPE" "${@:5}")
+VERSION="$(cat "$VERSION_FILE")"
+
+KINDS_AND_TYPES=("$KIND_AND_TYPE" "${@:6}")
 
 # The following code is to make `helm package` idempotent: Usually, everytime `helm package` is invoked,
 # it produces a different `.tgz` due to modification timestamps and some special shasums of gzip. We
@@ -61,7 +62,7 @@ function cleanup {
 trap cleanup EXIT ERR INT TERM
 
 export HELM_HOME="$temp_helm_home"
-helm init --client-only > /dev/null 2>&1
+[ "$(helm version --client --template "{{.Version}}" | head -c2 | tail -c1)" = "3" ] || helm init --client-only > /dev/null 2>&1
 helm package "$CHART_DIR" --version "$VERSION" --app-version "$VERSION" --destination "$temp_dir" > /dev/null
 tar -xzm -C "$temp_extract_dir" -f "$temp_dir"/*
 chart="$(tar --sort=name -c --owner=root:0 --group=root:0 --mtime='UTC 2019-01-01' -C "$temp_extract_dir" "$(basename "$temp_extract_dir"/*)" | gzip -n | base64 | tr -d '\n')"
@@ -71,10 +72,24 @@ mkdir -p "$(dirname "$DEST")"
 cat <<EOM > "$DEST"
 ---
 apiVersion: core.gardener.cloud/v1beta1
+kind: ControllerDeployment
+metadata:
+  name: $NAME
+type: helm
+providerConfig:
+  chart: $chart
+  values:
+    image:
+      tag: $VERSION
+---
+apiVersion: core.gardener.cloud/v1beta1
 kind: ControllerRegistration
 metadata:
   name: $NAME
 spec:
+  deployment:
+    deploymentRefs:
+    - name: $NAME
   resources:
 EOM
 
@@ -86,20 +101,5 @@ for kind_and_type in "${KINDS_AND_TYPES[@]}"; do
     type: $TYPE
 EOM
 done
-
-cat <<EOM >> "$DEST"
-  deployment:
-    type: helm
-    providerConfig:
-      chart: $chart
-      values:
-        createCRDs: false
-        image:
-          tag: $VERSION
-        configuration:
-          poolSize: 20
-          identifier: ""
-          serverPortHttp: 8080      
-EOM
 
 echo "Successfully generated controller registration at $DEST"

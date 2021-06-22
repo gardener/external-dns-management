@@ -18,8 +18,9 @@ package provider
 
 import (
 	"context"
-	corev1 "k8s.io/api/core/v1"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -51,6 +52,8 @@ type Context interface {
 
 	GetSecretPropertiesByRef(src resources.ResourcesSource, ref *corev1.SecretReference) (utils.Properties, *resources.SecretObject, error)
 	GetPoolPeriod(name string) *time.Duration
+
+	GetCluster(name string) resources.Cluster
 }
 
 type DefaultContext struct {
@@ -123,4 +126,8 @@ func (this *DefaultContext) GetPoolPeriod(name string) *time.Duration {
 	}
 	d := p.Period()
 	return &d
+}
+
+func (this *DefaultContext) GetCluster(name string) resources.Cluster {
+	return this.controller.GetCluster(name)
 }

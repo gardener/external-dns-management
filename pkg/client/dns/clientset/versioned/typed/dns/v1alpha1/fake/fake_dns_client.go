@@ -36,6 +36,10 @@ func (c *FakeDnsV1alpha1) DNSEntries(namespace string) v1alpha1.DNSEntryInterfac
 	return &FakeDNSEntries{c, namespace}
 }
 
+func (c *FakeDnsV1alpha1) DNSHostedZonePolicies(namespace string) v1alpha1.DNSHostedZonePolicyInterface {
+	return &FakeDNSHostedZonePolicies{c, namespace}
+}
+
 func (c *FakeDnsV1alpha1) DNSOwners(namespace string) v1alpha1.DNSOwnerInterface {
 	return &FakeDNSOwners{c, namespace}
 }

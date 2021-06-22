@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	. "github.com/onsi/gomega"
 
@@ -201,7 +202,8 @@ func newMockHandler(mockZones ...*zones.Zone) *Handler {
 		},
 	}
 
-	cache, _ := provider.NewZoneCache(provider.ZoneCacheConfig{}, mockMetrics, nil, h.getZones, h.getZoneState)
+	cacheConfig := provider.NewTestZoneCacheConfig(0 * time.Second)
+	cache, _ := provider.NewZoneCache(*cacheConfig, mockMetrics, nil, h.getZones, h.getZoneState)
 	h.cache = cache
 	return h
 }

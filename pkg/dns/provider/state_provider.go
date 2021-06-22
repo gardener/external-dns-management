@@ -27,7 +27,6 @@ import (
 
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -192,13 +191,13 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 	if cur != nil {
 		zones := this.providerzones[obj.ObjectName()]
 		logger.Infof("deleting PROVIDER with %d zones", len(zones))
-		for n, z := range zones {
-			if this.isProviderForZone(n, pname) {
-				providers := this.getProvidersForZone(n)
+		for zoneid, z := range zones {
+			if this.isProviderForZone(zoneid, pname) {
+				providers := this.getProvidersForZone(zoneid)
 				if len(providers) == 1 {
 					// if this is the last provider for this zone
 					// it must be cleanuped before the provider is gone
-					logger.Infof("provider is exclusively handling zone %q -> cleanup", n)
+					logger.Infof("provider is exclusively handling zone %q -> cleanup", zoneid)
 
 					done, err := this.StartZoneReconcilation(logger, &zoneReconciliation{
 						zone:      z,
@@ -218,17 +217,16 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 							return reconcile.Delay(logger, fmt.Errorf("zone reconcilation failed -> delay deletion"))
 						}
 					}
-					metrics.DeleteZone(n)
-					delete(this.zones, n)
+					this.deleteZone(zoneid)
 				} else {
 					// delete entries in hosted zone exclusively covered by this provider using
 					// other provider for this zone
-					logger.Infof("delegate zone cleanup of %q to other provider", n)
-					this.triggerHostedZone(n)
+					logger.Infof("delegate zone cleanup of %q to other provider", zoneid)
+					this.triggerHostedZone(zoneid)
 				}
-				this.removeProviderForZone(n, pname)
+				this.removeProviderForZone(zoneid, pname)
 			} else {
-				logger.Infof("not reponsible for zone %q", n)
+				logger.Infof("not reponsible for zone %q", zoneid)
 			}
 		}
 		logger.Infof("zone cleanup done -> trigger entries")

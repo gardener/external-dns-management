@@ -56,7 +56,6 @@ func (this *FactoryOptions) AddOptionsToSet(set config.OptionSet) {
 func (this *FactoryOptions) Evaluate() error {
 	if this.Options != nil {
 		if e, ok := this.Options.(config.OptionEvaluator); ok {
-			fmt.Printf("############## eval factory\n")
 			return e.Evaluate()
 		}
 	}

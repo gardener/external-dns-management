@@ -27,17 +27,11 @@ const (
 	Version   = "v1alpha1"
 	GroupName = dns.GroupName
 
-	DNSOwnerKind   = "DNSOwner"
-	DNSOwnerPlural = "dnsowners"
-
-	DNSProviderKind   = "DNSProvider"
-	DNSProviderPlural = "dnsproviders"
-
-	DNSEntryKind   = "DNSEntry"
-	DNSEntryPlural = "dnsentries"
-
-	DNSAnnotationKind   = "DNSAnnotation"
-	DNSAnnotationPlural = "dnsannotations"
+	DNSOwnerKind            = "DNSOwner"
+	DNSProviderKind         = "DNSProvider"
+	DNSEntryKind            = "DNSEntry"
+	DNSAnnotationKind       = "DNSAnnotation"
+	DNSHostedZonePolicyKind = "DNSHostedZonePolicy"
 )
 
 // SchemeGroupVersion is group version used to register these objects
@@ -69,6 +63,8 @@ func addKnownTypes(scheme *runtime.Scheme) error {
 		&DNSEntryList{},
 		&DNSAnnotation{},
 		&DNSAnnotationList{},
+		&DNSHostedZonePolicy{},
+		&DNSHostedZonePolicyList{},
 	)
 	metav1.AddToGroupVersion(scheme, SchemeGroupVersion)
 	return nil

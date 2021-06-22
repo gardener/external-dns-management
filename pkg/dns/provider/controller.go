@@ -55,6 +55,7 @@ const FACTORY_OPTIONS = "factory"
 var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
+var zonePolicyGroupKind = resources.NewGroupKind(api.GroupName, api.DNSHostedZonePolicyKind)
 
 func init() {
 	crds.AddToRegistry(apiextensions.DefaultRegistry())
@@ -142,6 +143,10 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		WorkerPool("secrets", 2, 0).
 		Watches(
 			controller.NewResourceKey("core", "Secret"),
+		).
+		WorkerPool("zonepolicies", 1, 0).
+		Watches(
+			controller.NewResourceKey(api.GroupName, api.DNSHostedZonePolicyKind),
 		).
 		WorkerPool("dns", 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
 		WorkerPool("statistic", 1, 0).Commands(CMD_STATISTIC).
@@ -242,6 +247,12 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 		} else {
 			return this.state.EntryDeleted(logger, obj.ClusterKey())
 		}
+	case obj.IsA(&api.DNSHostedZonePolicy{}):
+		if this.state.IsResponsibleFor(logger, obj) {
+			return this.state.UpdateZonePolicy(logger, dnsutils.DNSHostedZonePolicy(obj))
+		} else {
+			return this.state.RemoveZonePolicy(logger, dnsutils.DNSHostedZonePolicy(obj))
+		}
 	case obj.IsA(&corev1.Secret{}):
 		return this.state.UpdateSecret(logger, obj)
 	}
@@ -273,6 +284,8 @@ func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterO
 		return this.state.ProviderDeleted(logger, key.ObjectKey())
 	case entryGroupKind:
 		return this.state.EntryDeleted(logger, key)
+	case zonePolicyGroupKind:
+		return this.state.ZonePolicyDeleted(logger, key)
 	}
 	return reconcile.Succeeded(logger)
 }
