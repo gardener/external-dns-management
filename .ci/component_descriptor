@@ -6,7 +6,9 @@ set -o pipefail
 
 SOURCE_PATH="$(dirname $0)/.."
 
-"$SOURCE_PATH"/vendor/github.com/gardener/gardener/hack/.ci/component_descriptor "$SOURCE_PATH"
+
+# using copy of github.com/gardener/gardener/hack/.ci/component_descriptor
+"$SOURCE_PATH"/hack/.ci/component_descriptor "$SOURCE_PATH"
 
 echo "> building component dns-controller-manager"
 
