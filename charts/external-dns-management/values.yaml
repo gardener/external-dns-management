@@ -36,6 +36,20 @@ createCRDs: false
 #  annotkey1: annotvalue1
 #  annotkey2: annotvalue2
 
+## optionally deploy predefined DNSHostedZonePolicy
+#hostedZonePolicies:
+#  - name: policy1
+#    selector:
+#      domainNames:
+#      - domain.of.my.first.zone.com
+#      - domain.of.my.second.zone.org
+#      #providerTypes:
+#      #- aws-route53
+#      #zoneIDs:
+#      #- z12345
+#    policy:
+#      zoneStateCacheTTL: 2h
+
 configuration:
   # acceptedMaintainers: UNMANAGED
   # advancedBatchSize:

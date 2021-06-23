@@ -4,8 +4,13 @@ metadata:
   name: test-policy
 spec:
   selector:
+    # use any combination of domainNames, providerTypes, and zoneIDs (one value of each list must match)
     domainNames:
     - domain.of.my.first.zone.com
     - domain.of.my.second.zone.org
+    #providerTypes:
+    #- aws-route53
+    #zoneIDs:
+    #- z12345
   policy:
     zoneStateCacheTTL: 2h # overwrites the default settings (uses value of command line option `--dns.pool.resync-period`)

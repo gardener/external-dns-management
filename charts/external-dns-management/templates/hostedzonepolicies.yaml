@@ -1,0 +1,12 @@
+{{- range $.Values.hostedZonePolicies }}
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSHostedZonePolicy
+metadata:
+  name: {{ .name }}
+spec:
+  selector:
+    {{- toYaml .selector | nindent 6 }}
+  policy:
+    {{- toYaml .policy | nindent 6 }}
+{{- end }}
