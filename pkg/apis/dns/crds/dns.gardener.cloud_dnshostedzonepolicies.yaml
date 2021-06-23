@@ -1,0 +1,116 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: dnshostedzonepolicies.dns.gardener.cloud
+spec:
+  group: dns.gardener.cloud
+  names:
+    kind: DNSHostedZonePolicy
+    listKind: DNSHostedZonePolicyList
+    plural: dnshostedzonepolicies
+    shortNames:
+    - dnshzp
+    singular: dnshostedzonepolicy
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .status.count
+      name: Zone Count
+      type: integer
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              policy:
+                description: ZonePolicy specifies zone specific policy
+                properties:
+                  zoneStateCacheTTL:
+                    description: ZoneStateCacheTTL specifies the TTL for the zone state cache
+                    type: string
+                type: object
+              selector:
+                description: ZoneSelector specifies the selector for the DNS hosted zones
+                properties:
+                  domainNames:
+                    description: DomainNames selects by base domain name of hosted zone. Policy will be applied to zones with matching base domain
+                    items:
+                      type: string
+                    type: array
+                  providerTypes:
+                    description: ProviderTypes selects by provider types
+                    items:
+                      type: string
+                    type: array
+                  zoneIDs:
+                    description: ZoneIDs selects by provider dependent zone ID
+                    items:
+                      type: string
+                    type: array
+                type: object
+            required:
+            - policy
+            - selector
+            type: object
+          status:
+            properties:
+              count:
+                description: Number of zones this policy is applied to
+                type: integer
+              lastStatusUpdateTime:
+                description: LastStatusUpdateTime contains the timestamp of the last status update
+                format: date-time
+                type: string
+              message:
+                description: In case of a configuration problem this field describes the reason
+                type: string
+              zones:
+                description: Indicates that annotation is observed by a DNS sorce controller
+                items:
+                  properties:
+                    domainName:
+                      description: Domain name of the zone
+                      type: string
+                    providerType:
+                      description: Provider type of the zone
+                      type: string
+                    zoneID:
+                      description: ID of the zone
+                      type: string
+                  required:
+                  - domainName
+                  - providerType
+                  - zoneID
+                  type: object
+                type: array
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

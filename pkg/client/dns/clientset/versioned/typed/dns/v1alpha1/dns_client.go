@@ -28,6 +28,7 @@ type DnsV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	DNSAnnotationsGetter
 	DNSEntriesGetter
+	DNSHostedZonePoliciesGetter
 	DNSOwnersGetter
 	DNSProvidersGetter
 }
@@ -43,6 +44,10 @@ func (c *DnsV1alpha1Client) DNSAnnotations(namespace string) DNSAnnotationInterf
 
 func (c *DnsV1alpha1Client) DNSEntries(namespace string) DNSEntryInterface {
 	return newDNSEntries(c, namespace)
+}
+
+func (c *DnsV1alpha1Client) DNSHostedZonePolicies(namespace string) DNSHostedZonePolicyInterface {
+	return newDNSHostedZonePolicies(c, namespace)
 }
 
 func (c *DnsV1alpha1Client) DNSOwners(namespace string) DNSOwnerInterface {

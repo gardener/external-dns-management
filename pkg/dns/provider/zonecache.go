@@ -36,18 +36,29 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
+type StateTTLGetter func(zoneid string) time.Duration
+
 type ZoneCacheConfig struct {
 	context               context.Context
 	logger                logger.LogContext
+	zoneID                string
+	providerType          string
 	persistDir            string
 	zonesTTL              time.Duration
-	stateTTL              time.Duration
+	stateTTLGetter        StateTTLGetter
 	disableZoneStateCache bool
+}
+
+func NewTestZoneCacheConfig(stateTTL time.Duration) *ZoneCacheConfig {
+	return &ZoneCacheConfig{
+		stateTTLGetter: func(string) time.Duration { return stateTTL },
+	}
 }
 
 func (c *ZoneCacheConfig) CopyWithDisabledZoneStateCache() *ZoneCacheConfig {
 	return &ZoneCacheConfig{context: c.context, logger: c.logger,
-		persistDir: c.persistDir, zonesTTL: c.zonesTTL, stateTTL: c.stateTTL, disableZoneStateCache: true}
+		zoneID: c.zoneID, providerType: c.providerType,
+		persistDir: c.persistDir, zonesTTL: c.zonesTTL, stateTTLGetter: c.stateTTLGetter, disableZoneStateCache: true}
 }
 
 type ZoneCacheZoneUpdater func(cache ZoneCache) (DNSHostedZones, error)
@@ -210,11 +221,11 @@ var _ ZoneCache = &defaultZoneCache{}
 
 func newDefaultZoneCache(common abstractZonesCache, metrics Metrics, handlerData HandlerData) (*defaultZoneCache, error) {
 	state := &zoneState{
-		inMemory:    NewInMemory(),
-		ttl:         common.config.stateTTL,
-		persistDir:  common.config.persistDir,
-		next:        map[string]endOfLive{},
-		handlerData: handlerData,
+		inMemory:       NewInMemory(),
+		stateTTLGetter: common.config.stateTTLGetter,
+		persistDir:     common.config.persistDir,
+		next:           map[string]updateTimestamp{},
+		handlerData:    handlerData,
 	}
 	persist := common.config.persistDir != ""
 	cache := &defaultZoneCache{abstractZonesCache: common, logger: common.config.logger, metrics: metrics, state: state, persist: persist}
@@ -472,18 +483,18 @@ func (c *defaultZoneCache) restoreFromDisk() error {
 	return nil
 }
 
-type endOfLive struct {
+type updateTimestamp struct {
 	updateStart time.Time
-	eol         time.Time
+	updateEnd   time.Time
 }
 
 type zoneState struct {
-	lock        sync.Mutex
-	persistDir  string
-	ttl         time.Duration
-	inMemory    *InMemory
-	next        map[string]endOfLive
-	handlerData HandlerData
+	lock           sync.Mutex
+	persistDir     string
+	stateTTLGetter StateTTLGetter
+	inMemory       *InMemory
+	next           map[string]updateTimestamp
+	handlerData    HandlerData
 }
 
 func (s *zoneState) GetZoneState(zone DNSHostedZone, cache *defaultZoneCache) (DNSZoneState, bool, error) {
@@ -492,10 +503,11 @@ func (s *zoneState) GetZoneState(zone DNSHostedZone, cache *defaultZoneCache) (D
 
 	next, ok := s.next[zone.Id()]
 	start := time.Now()
-	if !ok || start.After(next.eol) {
+	ttl := s.stateTTLGetter(zone.Id())
+	if !ok || start.After(next.updateEnd.Add(ttl)) {
 		state, err := cache.stateUpdater(zone, cache)
 		if err == nil {
-			s.next[zone.Id()] = endOfLive{start, time.Now().Add(s.ttl)}
+			s.next[zone.Id()] = updateTimestamp{start, time.Now()}
 			s.inMemory.SetZone(zone, state)
 		} else {
 			s.deleteZoneState(zone)
@@ -656,7 +668,7 @@ func (s *zoneState) BuildPersistentZoneState(zoneid string) *PersistentZoneState
 	persistentState := &PersistentZoneState{
 		Version: "1",
 		Zone:    *NewPersistentZone(zone),
-		Valid:   s.next[zoneid].eol,
+		Valid:   s.next[zoneid].updateEnd,
 	}
 
 	state, err := s.inMemory.CloneZoneState(zone)
@@ -677,7 +689,8 @@ func (s *zoneState) RestoreZone(persistentState *PersistentZoneState) DNSHostedZ
 	zone := persistentState.Zone.ToDNSHostedZone()
 	zoneState := NewDNSZoneState(persistentState.DNSSets)
 	s.inMemory.SetZone(zone, zoneState)
-	s.next[zone.Id()] = endOfLive{persistentState.Valid.Add(-s.ttl), persistentState.Valid}
+	ttl := s.stateTTLGetter(zone.Id())
+	s.next[zone.Id()] = updateTimestamp{persistentState.Valid, persistentState.Valid.Add(ttl)}
 	if persistentState.HandlerData != nil && s.GetHandlerData() != nil {
 		_ = s.GetHandlerData().Unmarshal(zone.Id(), persistentState.HandlerData)
 	}
