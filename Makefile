@@ -93,3 +93,12 @@ cnudie-docker-push:
 .PHONY: cnudie-docker-all
 cnudie-docker-all: cnudie-docker-images cnudie-docker-push
 
+.PHONY: cnudie-cd-build-push
+cnudie-cd-build-push:
+	@EFFECTIVE_VERSION=$(EFFECTIVE_VERSION) ./hack/generate-cd.sh
+
+.PHONY: cnudie-create-installation
+cnudie-create-installation:
+	@EFFECTIVE_VERSION=$(EFFECTIVE_VERSION) ./hack/create-installation.sh
+
+
