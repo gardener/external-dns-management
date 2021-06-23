@@ -19,7 +19,7 @@ set -e
 
 # add full-fleshed tar and helm
 BASE_URL="https://get.helm.sh"
-HELM_VERSION=v2.17.0
+HELM_VERSION=v3.5.4
 TAR_FILE="helm-${HELM_VERSION}-linux-amd64.tar.gz"
 
 apk add --update --no-cache curl ca-certificates tar 
@@ -37,6 +37,7 @@ fi
 "${SOURCE_PATH}/hack/generate-controller-registration.sh" \
   dns-external \
   "${SOURCE_PATH}/charts/external-dns-management/" \
+  "${SOURCE_PATH}/VERSION" \
   "${SOURCE_PATH}/examples/controller-registration.yaml" \
   DNSProvider:aws-route53 DNSProvider:alicloud-dns DNSProvider:azure-dns DNSProvider:google-clouddns DNSProvider:openstack-designate DNSProvider:cloudflare-dns
 
