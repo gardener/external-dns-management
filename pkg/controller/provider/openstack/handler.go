@@ -74,13 +74,31 @@ func readAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-	username, err := c.GetRequiredProperty("OS_USERNAME", "username")
-	if err != nil {
-		return nil, err
-	}
-	password, err := c.GetRequiredProperty("OS_PASSWORD", "password")
-	if err != nil {
-		return nil, err
+
+	applicationCredentialID := c.GetProperty("OS_APPLICATION_CREDENTIAL_ID", "applicationCredentialID")
+	applicationCredentialName := c.GetProperty("OS_APPLICATION_CREDENTIAL_NAME", "applicationCredentialName")
+	applicationCredentialSecret := c.GetProperty("OS_APPLICATION_CREDENTIAL_SECRET", "applicationCredentialSecret")
+	username := c.GetProperty("OS_USERNAME", "username")
+	password := c.GetProperty("OS_PASSWORD", "password")
+	if applicationCredentialID != "" || applicationCredentialName != "" {
+		if applicationCredentialSecret == "" {
+			return nil, fmt.Errorf("'OS_APPLICATION_CREDENTIAL_SECRET' (or 'applicationCredentialSecret') is required if 'OS_APPLICATION_CREDENTIAL_ID' or 'OS_APPLICATION_CREDENTIAL_NAME' is given")
+		}
+		if applicationCredentialID == "" && applicationCredentialName != "" {
+			if username == "" {
+				return nil, fmt.Errorf("OS_USERNAME' (or 'username') is required if 'OS_APPLICATION_CREDENTIAL_NAME' is given")
+			}
+		}
+		if password != "" {
+			return nil, fmt.Errorf("'OS_PASSWORD' (or 'password)' is not allowed if application credentials are used")
+		}
+	} else {
+		if username == "" {
+			return nil, fmt.Errorf("'OS_USERNAME' (or 'username') is required if application credentials are not used")
+		}
+		if password == "" {
+			return nil, fmt.Errorf("'OS_PASSWORD' (or 'password') is required if application credentials are not used")
+		}
 	}
 
 	domainName := c.GetProperty("OS_DOMAIN_NAME", "domainName")
@@ -100,15 +118,18 @@ func readAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
 
 	authConfig := clientAuthConfig{
 		AuthInfo: clientconfig.AuthInfo{
-			AuthURL:        authURL,
-			Username:       username,
-			Password:       password,
-			DomainName:     domainName,
-			DomainID:       domainID,
-			ProjectName:    projectName,
-			ProjectID:      projectID,
-			UserDomainID:   userDomainID,
-			UserDomainName: userDomainName,
+			AuthURL:                     authURL,
+			ApplicationCredentialID:     applicationCredentialID,
+			ApplicationCredentialName:   applicationCredentialName,
+			ApplicationCredentialSecret: applicationCredentialSecret,
+			Username:                    username,
+			Password:                    password,
+			DomainName:                  domainName,
+			DomainID:                    domainID,
+			ProjectName:                 projectName,
+			ProjectID:                   projectID,
+			UserDomainID:                userDomainID,
+			UserDomainName:              userDomainName,
 		},
 		RegionName: regionName,
 		CACert:     caCert,
