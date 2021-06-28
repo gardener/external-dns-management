@@ -14,7 +14,7 @@ require (
 	github.com/gardener/controller-manager-library v0.2.1-0.20210609092345-72cb80f854d0
 	github.com/go-openapi/runtime v0.19.15
 	github.com/go-openapi/strfmt v0.19.5
-	github.com/gophercloud/gophercloud v0.2.0
+	github.com/gophercloud/gophercloud v0.18.0
 	github.com/gophercloud/utils v0.0.0-20190527093828-25f1b77b8c03
 	github.com/infobloxopen/infoblox-go-client v1.1.0
 	github.com/miekg/dns v1.1.14

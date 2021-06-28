@@ -4,12 +4,18 @@ This DNS provider allows you to create and manage DNS entries in [OpenStack Desi
 
 ## Credentials
 
-The authentication uses keystone with username and password.
+The authentication uses keystone either with username and password or with application credentials.
 
-See [Keystone username/password](https://docs.openstack.org/keystone/latest/user/supported_clients.html)
+See
+- [Keystone username/password](https://docs.openstack.org/keystone/latest/user/supported_clients.html)
+  
+  For user/password authentication at least `OS_USERNAME`, `OS_PASSWORD`, `OS_AUTH_URL`, and `OS_PROJECT_NAME` (or `OS_PROJECT_ID`) have to be
+  provided.
 
-At least `OS_USERNAME`, `OS_PASSWORD`, `OS_AUTH_URL`, and `OS_PROJECT_NAME` (or `OS_PROJECT_ID`) have to be
-provided.
+- [Keystone Application Credentials](https://docs.openstack.org/keystone/latest/user/application_credentials.html)
+  
+  For authentication with application credentils at least `OS_APPLICATION_CREDENTIAL_ID` (or `OS_APPLICATION_CREDENTIAL_NAME` and `OS_USERNAME`)
+`OS_AUTH_URL`, and `OS_PROJECT_NAME` (or `OS_PROJECT_ID`) have to be  provided.
 
 These are the supported keys:
 
@@ -20,6 +26,9 @@ These are the supported keys:
 - `OS_REGION_NAME` - Region name, optional.
 - `OS_USERNAME` - Username.
 - `OS_TENANT_NAME` - Tenant name (deprecated see `OS_PROJECT_NAME` and `OS_PROJECT_ID`).
+- `OS_APPLICATION_CREDENTIAL_ID` - Application Credential ID to login with.
+- `OS_APPLICATION_CREDENTIAL_NAME` - Application Credential name to login with (additionally needs `OS_USERNAME`)
+- `OS_APPLICATION_CREDENTIAL_SECRET` - Application Credential secret to login with
 - `OS_DOMAIN_NAME` - Name of the domain.
 - `OS_DOMAIN_ID` - Id of the domain.
 - `OS_USER_DOMAIN_NAME` - Name of the user’s domain.
@@ -53,8 +62,16 @@ data:
   # OS_DOMAIN_ID: ... (either name or ID has to be provided)
   OS_PROJECT_NAME: ...
   # OS_PROJECT_ID: ... (either name or ID has to be provided)
+
+  # Use user/password
   OS_USERNAME: ...
   OS_PASSWORD: ...
+
+  # ... or use application credentials
+  # OS_APPLICATION_CREDENTIAL_ID: ...
+  # OS_APPLICATION_CREDENTIAL_NAME: ... # need to specify OS_USERNAME if OS_APPLICATION_CREDENTIAL_ID not specified
+  # OS_APPLICATION_CREDENTIAL_SECRET: ...
+  
   # CACERT: ... (optional)
   # CLIENTCERT: (optional)
   # CLIENTKEY: (required for CLIENTCERT)
