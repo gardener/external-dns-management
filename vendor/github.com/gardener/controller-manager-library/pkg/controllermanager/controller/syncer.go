@@ -191,9 +191,9 @@ func (this *SyncRequest) update(log logger.LogContext, initiator resources.Objec
 		return false, nil
 	}
 	if this.resourceVersion == "" {
-		log.Infof("synchronizing %s(%s) for %s(%s)", this.name, this.resource, initiator, initiator.GetResourceVersion())
+		log.Infof("synchronizing %s(%s) for %s(%s)", this.name, this.resource, initiator.ClusterKey(), initiator.GetResourceVersion())
 	} else {
-		log.Infof("resynchronizing %s(%s) for %s(%s->%s)", this.name, this.resource, initiator, this.resourceVersion, initiator.GetResourceVersion())
+		log.Infof("resynchronizing %s(%s) for %s(%s->%s)", this.name, this.resource, initiator.ClusterKey(), this.resourceVersion, initiator.GetResourceVersion())
 	}
 	this.resourceVersion = initiator.GetResourceVersion()
 	reconcilers := this.controller.mappings.Get(this.cluster, this.resource.GroupKind())

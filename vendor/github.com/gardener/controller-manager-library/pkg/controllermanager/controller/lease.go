@@ -38,10 +38,16 @@ func (this *leasestartupgroup) Startup() error {
 	runit := func() {
 		this.extension.Infof("Acquired leadership, starting controllers for %s.", msg)
 		for _, c := range this.controllers {
-			this.extension.setupController(c)
+			err := this.extension.setupController(c)
+			if err != nil {
+				panic(err)
+			}
 		}
 		for _, c := range this.controllers {
-			this.extension.startController(c)
+			err := this.extension.startController(c)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 

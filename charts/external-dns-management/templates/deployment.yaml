@@ -338,6 +338,9 @@ spec:
         {{- if .Values.configuration.compoundTtl }}
         - --compound.ttl={{ .Values.configuration.compoundTtl }}
         {{- end }}
+        {{- if .Values.configuration.compoundZonepoliciesPoolSize }}
+        - --compound.zonepolicies.pool.size={{ .Values.configuration.compoundZonepoliciesPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.config }}
         - --config={{ .Values.configuration.config }}
         {{- end }}
@@ -421,6 +424,42 @@ spec:
         {{- end }}
         {{- if .Values.configuration.dnsentrySourceTargetsPoolSize }}
         - --dnsentry-source.targets.pool.size={{ .Values.configuration.dnsentrySourceTargetsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationDefaultPoolResyncPeriod }}
+        - --dnsprovider-replication.default.pool.resync-period={{ .Values.configuration.dnsproviderReplicationDefaultPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationDefaultPoolSize }}
+        - --dnsprovider-replication.default.pool.size={{ .Values.configuration.dnsproviderReplicationDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationDnsClass }}
+        - --dnsprovider-replication.dns-class={{ .Values.configuration.dnsproviderReplicationDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationDnsTargetClass }}
+        - --dnsprovider-replication.dns-target-class={{ .Values.configuration.dnsproviderReplicationDnsTargetClass }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationPoolResyncPeriod }}
+        - --dnsprovider-replication.pool.resync-period={{ .Values.configuration.dnsproviderReplicationPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationPoolSize }}
+        - --dnsprovider-replication.pool.size={{ .Values.configuration.dnsproviderReplicationPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationTargetCreatorLabelName }}
+        - --dnsprovider-replication.target-creator-label-name={{ .Values.configuration.dnsproviderReplicationTargetCreatorLabelName }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationTargetCreatorLabelValue }}
+        - --dnsprovider-replication.target-creator-label-value={{ .Values.configuration.dnsproviderReplicationTargetCreatorLabelValue }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationTargetNamePrefix }}
+        - --dnsprovider-replication.target-name-prefix={{ .Values.configuration.dnsproviderReplicationTargetNamePrefix }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationTargetNamespace }}
+        - --dnsprovider-replication.target-namespace={{ .Values.configuration.dnsproviderReplicationTargetNamespace }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationTargetRealms }}
+        - --dnsprovider-replication.target-realms={{ .Values.configuration.dnsproviderReplicationTargetRealms }}
+        {{- end }}
+        {{- if .Values.configuration.dnsproviderReplicationTargetsPoolSize }}
+        - --dnsprovider-replication.targets.pool.size={{ .Values.configuration.dnsproviderReplicationTargetsPoolSize }}
         {{- end }}
         {{- if .Values.configuration.excludeDomains }}
         - --exclude-domains={{ .Values.configuration.excludeDomains }}
@@ -532,6 +571,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.leaseRenewDeadline }}
         - --lease-renew-deadline={{ .Values.configuration.leaseRenewDeadline }}
+        {{- end }}
+        {{- if .Values.configuration.leaseResourceLock }}
+        - --lease-resource-lock={{ .Values.configuration.leaseResourceLock }}
         {{- end }}
         {{- if .Values.configuration.leaseRetryPeriod }}
         - --lease-retry-period={{ .Values.configuration.leaseRetryPeriod }}
@@ -727,6 +769,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.version }}
         - --version={{ .Values.configuration.version }}
+        {{- end }}
+        {{- if .Values.configuration.zonepoliciesPoolSize }}
+        - --zonepolicies.pool.size={{ .Values.configuration.zonepoliciesPoolSize }}
         {{- end }}
         ### end generated configuration
         {{- range $idx, $flag := .Values.additionalConfiguration }}

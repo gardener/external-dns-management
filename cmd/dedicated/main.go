@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"os"
 
+	coordinationv1 "k8s.io/api/coordination/v1"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
@@ -63,6 +65,7 @@ func init() {
 		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
 
 	resources.Register(v1alpha1.SchemeBuilder)
+	resources.Register(coordinationv1.SchemeBuilder)
 }
 
 func migrateExtensionsIngress(c controllermanager.Configuration) controllermanager.Configuration {

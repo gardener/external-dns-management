@@ -25,3 +25,19 @@ rules:
   - configmaps
   verbs:
   - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - create
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+   - leases
+  resourceNames:
+  - {{ include "external-dns-management.fullname" . }}-controllers
+  verbs:
+  - get
+  - watch
+  - update

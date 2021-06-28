@@ -106,6 +106,10 @@ func (this watchContext) Cluster() cluster.Interface {
 	return this.cluster
 }
 
+func (this watchContext) GetCluster(name string) cluster.Interface {
+	return this.controller.GetCluster(name)
+}
+
 func (this watchContext) Name() string {
 	return this.controller.GetName()
 }
@@ -689,7 +693,10 @@ func (this *controller) prepare() error {
 
 		for _, watch := range watches {
 			this.Infof("watching additional resources %q at cluster %q (reconciler %s)", watch.Key, h, watch.Reconciler)
-			this.registerWatch(h, watch)
+			err = this.registerWatch(h, watch)
+			if err != nil {
+				return err
+			}
 		}
 	}
 	this.Infof("setup watches done")
