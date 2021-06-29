@@ -145,6 +145,7 @@ configuration:
   # compoundSetup: 10
   # compoundStatisticPoolSize:
   # compoundTtl: 120
+  # compoundZonepoliciesPoolSize:
   # config:
   controllers: all
   # cpuprofile: ""
@@ -173,6 +174,18 @@ configuration:
   # dnsentrySourceTargetRealms: ""
   # dnsentrySourceTargetSetIgnoreOwners: false
   # dnsentrySourceTargetsPoolSize: 2
+  # dnsproviderReplicationDefaultPoolResyncPeriod:
+  # dnsproviderReplicationDefaultPoolSize:
+  # dnsproviderReplicationDnsClass:
+  # dnsproviderReplicationDnsTargetClass:
+  # dnsproviderReplicationPoolResyncPeriod:
+  # dnsproviderReplicationPoolSize:
+  # dnsproviderReplicationTargetCreatorLabelName:
+  # dnsproviderReplicationTargetCreatorLabelValue:
+  # dnsproviderReplicationTargetNamePrefix:
+  # dnsproviderReplicationTargetNamespace:
+  # dnsproviderReplicationTargetRealms:
+  # dnsproviderReplicationTargetsPoolSize:
   # excludeDomains: google.com
   # forceCrdUpdate: false
   # googleCloudDNSAdvancedBatchSize:
@@ -210,6 +223,7 @@ configuration:
   # leaseDuration:
   # leaseName:
   # leaseRenewDeadline:
+  # leaseResourceLock:
   # leaseRetryPeriod:
   # logLevel: info
   # maintainer:
@@ -227,9 +241,6 @@ configuration:
   # openstackDesignateRatelimiterEnabled:
   # openstackDesignateRatelimiterQps:
   # owneridsPoolSize:
-  persistentCache: false
-  persistentCacheStorageSize: 1Gi
-  persistentCacheStorageSizeAlicloud: 20Gi
   # pluginFile:
   # poolResyncPeriod: 30s
   # poolSize: 2
@@ -278,6 +289,8 @@ configuration:
   # targetsPoolSize:
   ttl: 120
   # version:
+  # zonepoliciesPoolSize:
+
 additionalConfiguration: []
 
 gardener:

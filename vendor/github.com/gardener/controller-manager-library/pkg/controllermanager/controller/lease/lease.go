@@ -31,7 +31,7 @@ func MakeLeaderElectionConfig(cluster cluster.Interface, namespace string, confi
 		return nil, err
 	}
 	lock, err := resourcelock.New(
-		"configmaps",
+		config.LeaseLeaderElectionResourceLock,
 		namespace,
 		config.LeaseName,
 		client.CoreV1(),

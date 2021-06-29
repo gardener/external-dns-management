@@ -29,18 +29,18 @@ func (this ConstraintFunction) Check(wctx WatchContext) bool {
 
 // FlagOption check a bool option to be set
 func FlagOption(name string) WatchConstraint {
-	return &constraintFunction{
-		ConstraintFunction: func(wctx WatchContext) bool {
+	return NewFunctionWatchConstraint(
+		func(wctx WatchContext) bool {
 			b, err := wctx.GetBoolOption(name)
 			return err == nil && b
 		},
-		desc: fmt.Sprintf("flag %s", name),
-	}
+		fmt.Sprintf("flag %s", name),
+	)
 }
 
 func StringOption(name string, values ...string) WatchConstraint {
-	return &constraintFunction{
-		ConstraintFunction: func(wctx WatchContext) bool {
+	return NewFunctionWatchConstraint(
+		func(wctx WatchContext) bool {
 			s, err := wctx.GetStringOption(name)
 			if err != nil {
 				return false
@@ -52,8 +52,13 @@ func StringOption(name string, values ...string) WatchConstraint {
 			}
 			return false
 		},
-		desc: fmt.Sprintf("option %s=%s", name, utils.Strings(values...)),
-	}
+		fmt.Sprintf("option %s=%s", name, utils.Strings(values...)),
+	)
+}
+
+// NewFunctionWatchConstraint creates a watch constraint using a `ConstraintFunction`
+func NewFunctionWatchConstraint(f ConstraintFunction, desc string) WatchConstraint {
+	return &constraintFunction{ConstraintFunction: f, desc: desc}
 }
 
 type constraintFunction struct {
@@ -67,24 +72,18 @@ func (this constraintFunction) String() string {
 
 // Not negates a constraint
 func Not(c WatchConstraint) WatchConstraint {
-	return &constraintFunction{
-		ConstraintFunction: func(wctx WatchContext) bool {
+	return NewFunctionWatchConstraint(
+		func(wctx WatchContext) bool {
 			return !c.Check(wctx)
 		},
-		desc: fmt.Sprintf("NOT(%s)", c),
-	}
+		fmt.Sprintf("NOT(%s)", c),
+	)
 }
 
 // And checks multiple constraints to be true
 func And(c ...WatchConstraint) WatchConstraint {
-	desc := "AND("
-	sep := ""
-	for _, e := range c {
-		desc = fmt.Sprintf("%s%s%s", desc, sep, e)
-		sep = ", "
-	}
-	return &constraintFunction{
-		ConstraintFunction: func(wctx WatchContext) bool {
+	return NewFunctionWatchConstraint(
+		func(wctx WatchContext) bool {
 			for _, e := range c {
 				if !e.Check(wctx) {
 					return false
@@ -92,20 +91,25 @@ func And(c ...WatchConstraint) WatchConstraint {
 			}
 			return true
 		},
-		desc: desc + ")",
-	}
+		buildDescription("AND", c...),
+	)
 }
 
-// Or checks multiple constraints to be not false
-func Or(c ...WatchConstraint) WatchConstraint {
-	desc := "OR("
+func buildDescription(op string, c ...WatchConstraint) string {
+	desc := op + "("
 	sep := ""
 	for _, e := range c {
 		desc = fmt.Sprintf("%s%s%s", desc, sep, e)
 		sep = ", "
 	}
-	return &constraintFunction{
-		ConstraintFunction: func(wctx WatchContext) bool {
+	desc += ")"
+	return desc
+}
+
+// Or checks multiple constraints to be not false
+func Or(c ...WatchConstraint) WatchConstraint {
+	return NewFunctionWatchConstraint(
+		func(wctx WatchContext) bool {
 			for _, e := range c {
 				if e.Check(wctx) {
 					return true
@@ -113,8 +117,8 @@ func Or(c ...WatchConstraint) WatchConstraint {
 			}
 			return false
 		},
-		desc: desc + ")",
-	}
+		buildDescription("OR", c...),
+	)
 }
 
 // APIServerVersion checks for a version constraint for the api server
@@ -123,10 +127,10 @@ func APIServerVersion(constraint string) WatchConstraint {
 	if err != nil {
 		panic(err)
 	}
-	return &constraintFunction{
-		ConstraintFunction: func(wctx WatchContext) bool {
+	return NewFunctionWatchConstraint(
+		func(wctx WatchContext) bool {
 			return c.Check(wctx.Cluster().GetServerVersion())
 		},
-		desc: fmt.Sprintf("(server version %s)", constraint),
-	}
+		fmt.Sprintf("(server version %s)", constraint),
+	)
 }

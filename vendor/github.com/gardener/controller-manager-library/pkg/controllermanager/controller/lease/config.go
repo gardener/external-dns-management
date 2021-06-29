@@ -11,18 +11,21 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/config"
+	"k8s.io/client-go/tools/leaderelection/resourcelock"
 )
 
 type Config struct {
-	OmitLease          bool
-	LeaseName          string
-	LeaseDuration      time.Duration
-	LeaseRenewDeadline time.Duration
-	LeaseRetryPeriod   time.Duration
+	OmitLease                       bool
+	LeaseName                       string
+	LeaseLeaderElectionResourceLock string
+	LeaseDuration                   time.Duration
+	LeaseRenewDeadline              time.Duration
+	LeaseRetryPeriod                time.Duration
 }
 
 func (this *Config) AddOptionsToSet(set config.OptionSet) {
 	set.AddStringOption(&this.LeaseName, "lease-name", "", "", "name for lease object")
+	set.AddStringOption(&this.LeaseLeaderElectionResourceLock, "lease-resource-lock", "", resourcelock.ConfigMapsLeasesResourceLock, "determines which resource lock to use for leader election, defaults to 'configmapsleases'")
 	set.AddBoolOption(&this.OmitLease, "omit-lease", "", false, "omit lease for development")
 	set.AddDurationOption(&this.LeaseDuration, "lease-duration", "", 15*time.Second, "lease duration")
 	set.AddDurationOption(&this.LeaseRenewDeadline, "lease-renew-deadline", "", 10*time.Second, "lease renew deadline")

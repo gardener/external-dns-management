@@ -25,6 +25,7 @@ type WatchContext interface {
 	Name() string
 	extension.ElementOptions
 	Cluster() cluster.Interface
+	GetCluster(name string) cluster.Interface
 	Namespace() string
 }
 

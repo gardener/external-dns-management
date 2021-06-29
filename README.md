@@ -397,235 +397,250 @@ Usage:
   dns-controller-manager [flags]
 
 Flags:
-      --accepted-maintainers string                             accepted maintainer key(s) for crds
-      --advanced.batch-size int                                 batch size for change requests (currently only used for aws-route53)
-      --advanced.max-retries int                                maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
-      --alicloud-dns.advanced.batch-size int                    batch size for change requests (currently only used for aws-route53)
-      --alicloud-dns.advanced.max-retries int                   maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
-      --alicloud-dns.ratelimiter.burst int                      number of burst requests for rate limiter
-      --alicloud-dns.ratelimiter.enabled                        enables rate limiter for DNS provider requests
-      --alicloud-dns.ratelimiter.qps int                        maximum requests/queries per second
-      --annotation.default.pool.size int                        Worker pool size for pool default of controller annotation
-      --annotation.pool.size int                                Worker pool size of controller annotation
-      --annotation.setup int                                    number of processors for controller setup of controller annotation
-      --aws-route53.advanced.batch-size int                     batch size for change requests (currently only used for aws-route53)
-      --aws-route53.advanced.max-retries int                    maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
-      --aws-route53.ratelimiter.burst int                       number of burst requests for rate limiter
-      --aws-route53.ratelimiter.enabled                         enables rate limiter for DNS provider requests
-      --aws-route53.ratelimiter.qps int                         maximum requests/queries per second
-      --azure-dns.advanced.batch-size int                       batch size for change requests (currently only used for aws-route53)
-      --azure-dns.advanced.max-retries int                      maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
-      --azure-dns.ratelimiter.burst int                         number of burst requests for rate limiter
-      --azure-dns.ratelimiter.enabled                           enables rate limiter for DNS provider requests
-      --azure-dns.ratelimiter.qps int                           maximum requests/queries per second
-      --bind-address-http string                                HTTP server bind address
-      --cache-dir string                                        Directory to store zone caches (for reload after restart)
-      --cache-ttl int                                           Time-to-live for provider hosted zone cache
-      --cloudflare-dns.advanced.batch-size int                  batch size for change requests (currently only used for aws-route53)
-      --cloudflare-dns.advanced.max-retries int                 maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
-      --cloudflare-dns.ratelimiter.burst int                    number of burst requests for rate limiter
-      --cloudflare-dns.ratelimiter.enabled                      enables rate limiter for DNS provider requests
-      --cloudflare-dns.ratelimiter.qps int                      maximum requests/queries per second
-      --compound.advanced.batch-size int                        batch size for change requests (currently only used for aws-route53) of controller compound
-      --compound.advanced.max-retries int                       maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
-      --compound.alicloud-dns.advanced.batch-size int           batch size for change requests (currently only used for aws-route53) of controller compound
-      --compound.alicloud-dns.advanced.max-retries int          maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
-      --compound.alicloud-dns.ratelimiter.burst int             number of burst requests for rate limiter of controller compound
-      --compound.alicloud-dns.ratelimiter.enabled               enables rate limiter for DNS provider requests of controller compound
-      --compound.alicloud-dns.ratelimiter.qps int               maximum requests/queries per second of controller compound
-      --compound.aws-route53.advanced.batch-size int            batch size for change requests (currently only used for aws-route53) of controller compound
-      --compound.aws-route53.advanced.max-retries int           maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
-      --compound.aws-route53.ratelimiter.burst int              number of burst requests for rate limiter of controller compound
-      --compound.aws-route53.ratelimiter.enabled                enables rate limiter for DNS provider requests of controller compound
-      --compound.aws-route53.ratelimiter.qps int                maximum requests/queries per second of controller compound
-      --compound.azure-dns.advanced.batch-size int              batch size for change requests (currently only used for aws-route53) of controller compound
-      --compound.azure-dns.advanced.max-retries int             maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
-      --compound.azure-dns.ratelimiter.burst int                number of burst requests for rate limiter of controller compound
-      --compound.azure-dns.ratelimiter.enabled                  enables rate limiter for DNS provider requests of controller compound
-      --compound.azure-dns.ratelimiter.qps int                  maximum requests/queries per second of controller compound
-      --compound.cache-dir string                               Directory to store zone caches (for reload after restart) of controller compound
-      --compound.cache-ttl int                                  Time-to-live for provider hosted zone cache of controller compound
-      --compound.cloudflare-dns.advanced.batch-size int         batch size for change requests (currently only used for aws-route53) of controller compound
-      --compound.cloudflare-dns.advanced.max-retries int        maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
-      --compound.cloudflare-dns.ratelimiter.burst int           number of burst requests for rate limiter of controller compound
-      --compound.cloudflare-dns.ratelimiter.enabled             enables rate limiter for DNS provider requests of controller compound
-      --compound.cloudflare-dns.ratelimiter.qps int             maximum requests/queries per second of controller compound
-      --compound.default.pool.size int                          Worker pool size for pool default of controller compound
-      --compound.disable-zone-state-caching                     disable use of cached dns zone state on changes of controller compound
-      --compound.dns-class string                               Class identifier used to differentiate responsible controllers for entry resources of controller compound
-      --compound.dns-delay duration                             delay between two dns reconciliations of controller compound
-      --compound.dns.pool.resync-period duration                Period for resynchronization for pool dns of controller compound
-      --compound.dns.pool.size int                              Worker pool size for pool dns of controller compound
-      --compound.dry-run                                        just check, don't modify of controller compound
-      --compound.google-clouddns.advanced.batch-size int        batch size for change requests (currently only used for aws-route53) of controller compound
-      --compound.google-clouddns.advanced.max-retries int       maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
-      --compound.google-clouddns.ratelimiter.burst int          number of burst requests for rate limiter of controller compound
-      --compound.google-clouddns.ratelimiter.enabled            enables rate limiter for DNS provider requests of controller compound
-      --compound.google-clouddns.ratelimiter.qps int            maximum requests/queries per second of controller compound
-      --compound.identifier string                              Identifier used to mark DNS entries in DNS system of controller compound
-      --compound.infoblox-dns.advanced.batch-size int           batch size for change requests (currently only used for aws-route53) of controller compound
-      --compound.infoblox-dns.advanced.max-retries int          maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
-      --compound.infoblox-dns.ratelimiter.burst int             number of burst requests for rate limiter of controller compound
-      --compound.infoblox-dns.ratelimiter.enabled               enables rate limiter for DNS provider requests of controller compound
-      --compound.infoblox-dns.ratelimiter.qps int               maximum requests/queries per second of controller compound
-      --compound.netlify-dns.advanced.batch-size int            batch size for change requests (currently only used for aws-route53) of controller compound
-      --compound.netlify-dns.advanced.max-retries int           maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
-      --compound.netlify-dns.ratelimiter.burst int              number of burst requests for rate limiter of controller compound
-      --compound.netlify-dns.ratelimiter.enabled                enables rate limiter for DNS provider requests of controller compound
-      --compound.netlify-dns.ratelimiter.qps int                maximum requests/queries per second of controller compound
-      --compound.openstack-designate.advanced.batch-size int    batch size for change requests (currently only used for aws-route53) of controller compound
-      --compound.openstack-designate.advanced.max-retries int   maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
-      --compound.openstack-designate.ratelimiter.burst int      number of burst requests for rate limiter of controller compound
-      --compound.openstack-designate.ratelimiter.enabled        enables rate limiter for DNS provider requests of controller compound
-      --compound.openstack-designate.ratelimiter.qps int        maximum requests/queries per second of controller compound
-      --compound.ownerids.pool.size int                         Worker pool size for pool ownerids of controller compound
-      --compound.pool.resync-period duration                    Period for resynchronization of controller compound
-      --compound.pool.size int                                  Worker pool size of controller compound
-      --compound.provider-types string                          comma separated list of provider types to enable of controller compound
-      --compound.providers.pool.resync-period duration          Period for resynchronization for pool providers of controller compound
-      --compound.providers.pool.size int                        Worker pool size for pool providers of controller compound
-      --compound.ratelimiter.burst int                          number of burst requests for rate limiter of controller compound
-      --compound.ratelimiter.enabled                            enables rate limiter for DNS provider requests of controller compound
-      --compound.ratelimiter.qps int                            maximum requests/queries per second of controller compound
-      --compound.reschedule-delay duration                      reschedule delay after losing provider of controller compound
-      --compound.secrets.pool.size int                          Worker pool size for pool secrets of controller compound
-      --compound.setup int                                      number of processors for controller setup of controller compound
-      --compound.statistic.pool.size int                        Worker pool size for pool statistic of controller compound
-      --compound.ttl int                                        Default time-to-live for DNS entries. Defines how long the record is kept in cache by DNS servers or resolvers. of controller compound
-      --config string                                           config file
-  -c, --controllers string                                      comma separated list of controllers to start (<name>,<group>,all)
-      --cpuprofile string                                       set file for cpu profiling
-      --default.pool.resync-period duration                     Period for resynchronization for pool default
-      --default.pool.size int                                   Worker pool size for pool default
-      --disable-namespace-restriction                           disable access restriction for namespace local access only
-      --disable-zone-state-caching                              disable use of cached dns zone state on changes
-      --dns-class string                                        Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for entries
-      --dns-delay duration                                      delay between two dns reconciliations
-      --dns-target-class string                                 identifier used to differentiate responsible dns controllers for target entries
-      --dns.pool.resync-period duration                         Period for resynchronization for pool dns
-      --dns.pool.size int                                       Worker pool size for pool dns
-      --dnsentry-source.default.pool.resync-period duration     Period for resynchronization for pool default of controller dnsentry-source
-      --dnsentry-source.default.pool.size int                   Worker pool size for pool default of controller dnsentry-source
-      --dnsentry-source.dns-class string                        identifier used to differentiate responsible controllers for entries of controller dnsentry-source
-      --dnsentry-source.dns-target-class string                 identifier used to differentiate responsible dns controllers for target entries of controller dnsentry-source
-      --dnsentry-source.exclude-domains stringArray             excluded domains of controller dnsentry-source
-      --dnsentry-source.key string                              selecting key for annotation of controller dnsentry-source
-      --dnsentry-source.pool.resync-period duration             Period for resynchronization of controller dnsentry-source
-      --dnsentry-source.pool.size int                           Worker pool size of controller dnsentry-source
-      --dnsentry-source.target-creator-label-name string        label name to store the creator for generated DNS entries of controller dnsentry-source
-      --dnsentry-source.target-creator-label-value string       label value for creator label of controller dnsentry-source
-      --dnsentry-source.target-name-prefix string               name prefix in target namespace for cross cluster generation of controller dnsentry-source
-      --dnsentry-source.target-namespace string                 target namespace for cross cluster generation of controller dnsentry-source
-      --dnsentry-source.target-owner-id string                  owner id to use for generated DNS entries of controller dnsentry-source
-      --dnsentry-source.target-realms string                    realm(s) to use for generated DNS entries of controller dnsentry-source
-      --dnsentry-source.target-set-ignore-owners                mark generated DNS entries to omit owner based access control of controller dnsentry-source
-      --dnsentry-source.targets.pool.size int                   Worker pool size for pool targets of controller dnsentry-source
-      --dry-run                                                 just check, don't modify
-      --exclude-domains stringArray                             excluded domains
-      --force-crd-update                                        enforce update of crds even they are unmanaged
-      --google-clouddns.advanced.batch-size int                 batch size for change requests (currently only used for aws-route53)
-      --google-clouddns.advanced.max-retries int                maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
-      --google-clouddns.ratelimiter.burst int                   number of burst requests for rate limiter
-      --google-clouddns.ratelimiter.enabled                     enables rate limiter for DNS provider requests
-      --google-clouddns.ratelimiter.qps int                     maximum requests/queries per second
-      --grace-period duration                                   inactivity grace period for detecting end of cleanup for shutdown
-  -h, --help                                                    help for dns-controller-manager
-      --identifier string                                       Identifier used to mark DNS entries in DNS system
-      --infoblox-dns.advanced.batch-size int                    batch size for change requests (currently only used for aws-route53)
-      --infoblox-dns.advanced.max-retries int                   maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
-      --infoblox-dns.ratelimiter.burst int                      number of burst requests for rate limiter
-      --infoblox-dns.ratelimiter.enabled                        enables rate limiter for DNS provider requests
-      --infoblox-dns.ratelimiter.qps int                        maximum requests/queries per second
-      --ingress-dns.default.pool.resync-period duration         Period for resynchronization for pool default of controller ingress-dns
-      --ingress-dns.default.pool.size int                       Worker pool size for pool default of controller ingress-dns
-      --ingress-dns.dns-class string                            identifier used to differentiate responsible controllers for entries of controller ingress-dns
-      --ingress-dns.dns-target-class string                     identifier used to differentiate responsible dns controllers for target entries of controller ingress-dns
-      --ingress-dns.exclude-domains stringArray                 excluded domains of controller ingress-dns
-      --ingress-dns.key string                                  selecting key for annotation of controller ingress-dns
-      --ingress-dns.pool.resync-period duration                 Period for resynchronization of controller ingress-dns
-      --ingress-dns.pool.size int                               Worker pool size of controller ingress-dns
-      --ingress-dns.target-creator-label-name string            label name to store the creator for generated DNS entries of controller ingress-dns
-      --ingress-dns.target-creator-label-value string           label value for creator label of controller ingress-dns
-      --ingress-dns.target-name-prefix string                   name prefix in target namespace for cross cluster generation of controller ingress-dns
-      --ingress-dns.target-namespace string                     target namespace for cross cluster generation of controller ingress-dns
-      --ingress-dns.target-owner-id string                      owner id to use for generated DNS entries of controller ingress-dns
-      --ingress-dns.target-realms string                        realm(s) to use for generated DNS entries of controller ingress-dns
-      --ingress-dns.target-set-ignore-owners                    mark generated DNS entries to omit owner based access control of controller ingress-dns
-      --ingress-dns.targets.pool.size int                       Worker pool size for pool targets of controller ingress-dns
-      --key string                                              selecting key for annotation
-      --kubeconfig string                                       default cluster access
-      --kubeconfig.disable-deploy-crds                          disable deployment of required crds for cluster default
-      --kubeconfig.id string                                    id for cluster default
-      --kubeconfig.migration-ids string                         migration id for cluster default
-      --lease-duration duration                                 lease duration
-      --lease-name string                                       name for lease object
-      --lease-renew-deadline duration                           lease renew deadline
-      --lease-retry-period duration                             lease retry period
-  -D, --log-level string                                        logrus log level
-      --maintainer string                                       maintainer key for crds (default "dns-controller-manager")
-      --name string                                             name used for controller manager (default "dns-controller-manager")
-      --namespace string                                        namespace for lease (default "kube-system")
-  -n, --namespace-local-access-only                             enable access restriction for namespace local access only (deprecated)
-      --netlify-dns.advanced.batch-size int                     batch size for change requests (currently only used for aws-route53)
-      --netlify-dns.advanced.max-retries int                    maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
-      --netlify-dns.ratelimiter.burst int                       number of burst requests for rate limiter
-      --netlify-dns.ratelimiter.enabled                         enables rate limiter for DNS provider requests
-      --netlify-dns.ratelimiter.qps int                         maximum requests/queries per second
-      --omit-lease                                              omit lease for development
-      --openstack-designate.advanced.batch-size int             batch size for change requests (currently only used for aws-route53)
-      --openstack-designate.advanced.max-retries int            maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
-      --openstack-designate.ratelimiter.burst int               number of burst requests for rate limiter
-      --openstack-designate.ratelimiter.enabled                 enables rate limiter for DNS provider requests
-      --openstack-designate.ratelimiter.qps int                 maximum requests/queries per second
-      --ownerids.pool.size int                                  Worker pool size for pool ownerids
-      --plugin-file string                                      directory containing go plugins
-      --pool.resync-period duration                             Period for resynchronization
-      --pool.size int                                           Worker pool size
-      --provider-types string                                   comma separated list of provider types to enable
-      --providers string                                        cluster to look for provider objects
-      --providers.disable-deploy-crds                           disable deployment of required crds for cluster provider
-      --providers.id string                                     id for cluster provider
-      --providers.migration-ids string                          migration id for cluster provider
-      --providers.pool.resync-period duration                   Period for resynchronization for pool providers
-      --providers.pool.size int                                 Worker pool size for pool providers
-      --ratelimiter.burst int                                   number of burst requests for rate limiter
-      --ratelimiter.enabled                                     enables rate limiter for DNS provider requests
-      --ratelimiter.qps int                                     maximum requests/queries per second
-      --reschedule-delay duration                               reschedule delay after losing provider
-      --secrets.pool.size int                                   Worker pool size for pool secrets
-      --server-port-http int                                    HTTP server port (serving /healthz, /metrics, ...)
-      --service-dns.default.pool.resync-period duration         Period for resynchronization for pool default of controller service-dns
-      --service-dns.default.pool.size int                       Worker pool size for pool default of controller service-dns
-      --service-dns.dns-class string                            identifier used to differentiate responsible controllers for entries of controller service-dns
-      --service-dns.dns-target-class string                     identifier used to differentiate responsible dns controllers for target entries of controller service-dns
-      --service-dns.exclude-domains stringArray                 excluded domains of controller service-dns
-      --service-dns.key string                                  selecting key for annotation of controller service-dns
-      --service-dns.pool.resync-period duration                 Period for resynchronization of controller service-dns
-      --service-dns.pool.size int                               Worker pool size of controller service-dns
-      --service-dns.target-creator-label-name string            label name to store the creator for generated DNS entries of controller service-dns
-      --service-dns.target-creator-label-value string           label value for creator label of controller service-dns
-      --service-dns.target-name-prefix string                   name prefix in target namespace for cross cluster generation of controller service-dns
-      --service-dns.target-namespace string                     target namespace for cross cluster generation of controller service-dns
-      --service-dns.target-owner-id string                      owner id to use for generated DNS entries of controller service-dns
-      --service-dns.target-realms string                        realm(s) to use for generated DNS entries of controller service-dns
-      --service-dns.target-set-ignore-owners                    mark generated DNS entries to omit owner based access control of controller service-dns
-      --service-dns.targets.pool.size int                       Worker pool size for pool targets of controller service-dns
-      --setup int                                               number of processors for controller setup
-      --statistic.pool.size int                                 Worker pool size for pool statistic
-      --target string                                           target cluster for dns requests
-      --target-creator-label-name string                        label name to store the creator for generated DNS entries
-      --target-creator-label-value string                       label value for creator label
-      --target-name-prefix string                               name prefix in target namespace for cross cluster generation
-      --target-namespace string                                 target namespace for cross cluster generation
-      --target-owner-id string                                  owner id to use for generated DNS entries
-      --target-realms string                                    realm(s) to use for generated DNS entries
-      --target-set-ignore-owners                                mark generated DNS entries to omit owner based access control
-      --target.disable-deploy-crds                              disable deployment of required crds for cluster target
-      --target.id string                                        id for cluster target
-      --target.migration-ids string                             migration id for cluster target
-      --targets.pool.size int                                   Worker pool size for pool targets
-      --ttl int                                                 Default time-to-live for DNS entries. Defines how long the record is kept in cache by DNS servers or resolvers.
-  -v, --version                                                 version for dns-controller-manager
+      --accepted-maintainers string                                   accepted maintainer key(s) for crds
+      --advanced.batch-size int                                       batch size for change requests (currently only used for aws-route53)
+      --advanced.max-retries int                                      maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --alicloud-dns.advanced.batch-size int                          batch size for change requests (currently only used for aws-route53)
+      --alicloud-dns.advanced.max-retries int                         maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --alicloud-dns.ratelimiter.burst int                            number of burst requests for rate limiter
+      --alicloud-dns.ratelimiter.enabled                              enables rate limiter for DNS provider requests
+      --alicloud-dns.ratelimiter.qps int                              maximum requests/queries per second
+      --annotation.default.pool.size int                              Worker pool size for pool default of controller annotation
+      --annotation.pool.size int                                      Worker pool size of controller annotation
+      --annotation.setup int                                          number of processors for controller setup of controller annotation
+      --aws-route53.advanced.batch-size int                           batch size for change requests (currently only used for aws-route53)
+      --aws-route53.advanced.max-retries int                          maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --aws-route53.ratelimiter.burst int                             number of burst requests for rate limiter
+      --aws-route53.ratelimiter.enabled                               enables rate limiter for DNS provider requests
+      --aws-route53.ratelimiter.qps int                               maximum requests/queries per second
+      --azure-dns.advanced.batch-size int                             batch size for change requests (currently only used for aws-route53)
+      --azure-dns.advanced.max-retries int                            maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --azure-dns.ratelimiter.burst int                               number of burst requests for rate limiter
+      --azure-dns.ratelimiter.enabled                                 enables rate limiter for DNS provider requests
+      --azure-dns.ratelimiter.qps int                                 maximum requests/queries per second
+      --bind-address-http string                                      HTTP server bind address
+      --cache-dir string                                              Directory to store zone caches (for reload after restart)
+      --cache-ttl int                                                 Time-to-live for provider hosted zone cache
+      --cloudflare-dns.advanced.batch-size int                        batch size for change requests (currently only used for aws-route53)
+      --cloudflare-dns.advanced.max-retries int                       maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --cloudflare-dns.ratelimiter.burst int                          number of burst requests for rate limiter
+      --cloudflare-dns.ratelimiter.enabled                            enables rate limiter for DNS provider requests
+      --cloudflare-dns.ratelimiter.qps int                            maximum requests/queries per second
+      --compound.advanced.batch-size int                              batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.advanced.max-retries int                             maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.alicloud-dns.advanced.batch-size int                 batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.alicloud-dns.advanced.max-retries int                maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.alicloud-dns.ratelimiter.burst int                   number of burst requests for rate limiter of controller compound
+      --compound.alicloud-dns.ratelimiter.enabled                     enables rate limiter for DNS provider requests of controller compound
+      --compound.alicloud-dns.ratelimiter.qps int                     maximum requests/queries per second of controller compound
+      --compound.aws-route53.advanced.batch-size int                  batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.aws-route53.advanced.max-retries int                 maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.aws-route53.ratelimiter.burst int                    number of burst requests for rate limiter of controller compound
+      --compound.aws-route53.ratelimiter.enabled                      enables rate limiter for DNS provider requests of controller compound
+      --compound.aws-route53.ratelimiter.qps int                      maximum requests/queries per second of controller compound
+      --compound.azure-dns.advanced.batch-size int                    batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.azure-dns.advanced.max-retries int                   maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.azure-dns.ratelimiter.burst int                      number of burst requests for rate limiter of controller compound
+      --compound.azure-dns.ratelimiter.enabled                        enables rate limiter for DNS provider requests of controller compound
+      --compound.azure-dns.ratelimiter.qps int                        maximum requests/queries per second of controller compound
+      --compound.cache-dir string                                     Directory to store zone caches (for reload after restart) of controller compound
+      --compound.cache-ttl int                                        Time-to-live for provider hosted zone cache of controller compound
+      --compound.cloudflare-dns.advanced.batch-size int               batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.cloudflare-dns.advanced.max-retries int              maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.cloudflare-dns.ratelimiter.burst int                 number of burst requests for rate limiter of controller compound
+      --compound.cloudflare-dns.ratelimiter.enabled                   enables rate limiter for DNS provider requests of controller compound
+      --compound.cloudflare-dns.ratelimiter.qps int                   maximum requests/queries per second of controller compound
+      --compound.default.pool.size int                                Worker pool size for pool default of controller compound
+      --compound.disable-zone-state-caching                           disable use of cached dns zone state on changes of controller compound
+      --compound.dns-class string                                     Class identifier used to differentiate responsible controllers for entry resources of controller compound
+      --compound.dns-delay duration                                   delay between two dns reconciliations of controller compound
+      --compound.dns.pool.resync-period duration                      Period for resynchronization for pool dns of controller compound
+      --compound.dns.pool.size int                                    Worker pool size for pool dns of controller compound
+      --compound.dry-run                                              just check, don't modify of controller compound
+      --compound.google-clouddns.advanced.batch-size int              batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.google-clouddns.advanced.max-retries int             maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.google-clouddns.ratelimiter.burst int                number of burst requests for rate limiter of controller compound
+      --compound.google-clouddns.ratelimiter.enabled                  enables rate limiter for DNS provider requests of controller compound
+      --compound.google-clouddns.ratelimiter.qps int                  maximum requests/queries per second of controller compound
+      --compound.identifier string                                    Identifier used to mark DNS entries in DNS system of controller compound
+      --compound.infoblox-dns.advanced.batch-size int                 batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.infoblox-dns.advanced.max-retries int                maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.infoblox-dns.ratelimiter.burst int                   number of burst requests for rate limiter of controller compound
+      --compound.infoblox-dns.ratelimiter.enabled                     enables rate limiter for DNS provider requests of controller compound
+      --compound.infoblox-dns.ratelimiter.qps int                     maximum requests/queries per second of controller compound
+      --compound.netlify-dns.advanced.batch-size int                  batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.netlify-dns.advanced.max-retries int                 maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.netlify-dns.ratelimiter.burst int                    number of burst requests for rate limiter of controller compound
+      --compound.netlify-dns.ratelimiter.enabled                      enables rate limiter for DNS provider requests of controller compound
+      --compound.netlify-dns.ratelimiter.qps int                      maximum requests/queries per second of controller compound
+      --compound.openstack-designate.advanced.batch-size int          batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.openstack-designate.advanced.max-retries int         maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.openstack-designate.ratelimiter.burst int            number of burst requests for rate limiter of controller compound
+      --compound.openstack-designate.ratelimiter.enabled              enables rate limiter for DNS provider requests of controller compound
+      --compound.openstack-designate.ratelimiter.qps int              maximum requests/queries per second of controller compound
+      --compound.ownerids.pool.size int                               Worker pool size for pool ownerids of controller compound
+      --compound.pool.resync-period duration                          Period for resynchronization of controller compound
+      --compound.pool.size int                                        Worker pool size of controller compound
+      --compound.provider-types string                                comma separated list of provider types to enable of controller compound
+      --compound.providers.pool.resync-period duration                Period for resynchronization for pool providers of controller compound
+      --compound.providers.pool.size int                              Worker pool size for pool providers of controller compound
+      --compound.ratelimiter.burst int                                number of burst requests for rate limiter of controller compound
+      --compound.ratelimiter.enabled                                  enables rate limiter for DNS provider requests of controller compound
+      --compound.ratelimiter.qps int                                  maximum requests/queries per second of controller compound
+      --compound.reschedule-delay duration                            reschedule delay after losing provider of controller compound
+      --compound.secrets.pool.size int                                Worker pool size for pool secrets of controller compound
+      --compound.setup int                                            number of processors for controller setup of controller compound
+      --compound.statistic.pool.size int                              Worker pool size for pool statistic of controller compound
+      --compound.ttl int                                              Default time-to-live for DNS entries. Defines how long the record is kept in cache by DNS servers or resolvers. of controller compound
+      --compound.zonepolicies.pool.size int                           Worker pool size for pool zonepolicies of controller compound
+      --config string                                                 config file
+  -c, --controllers string                                            comma separated list of controllers to start (<name>,<group>,all)
+      --cpuprofile string                                             set file for cpu profiling
+      --default.pool.resync-period duration                           Period for resynchronization for pool default
+      --default.pool.size int                                         Worker pool size for pool default
+      --disable-namespace-restriction                                 disable access restriction for namespace local access only
+      --disable-zone-state-caching                                    disable use of cached dns zone state on changes
+      --dns-class string                                              identifier used to differentiate responsible controllers for entries, Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers
+      --dns-delay duration                                            delay between two dns reconciliations
+      --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target entries, identifier used to differentiate responsible dns controllers for target providers
+      --dns.pool.resync-period duration                               Period for resynchronization for pool dns
+      --dns.pool.size int                                             Worker pool size for pool dns
+      --dnsentry-source.default.pool.resync-period duration           Period for resynchronization for pool default of controller dnsentry-source
+      --dnsentry-source.default.pool.size int                         Worker pool size for pool default of controller dnsentry-source
+      --dnsentry-source.dns-class string                              identifier used to differentiate responsible controllers for entries of controller dnsentry-source
+      --dnsentry-source.dns-target-class string                       identifier used to differentiate responsible dns controllers for target entries of controller dnsentry-source
+      --dnsentry-source.exclude-domains stringArray                   excluded domains of controller dnsentry-source
+      --dnsentry-source.key string                                    selecting key for annotation of controller dnsentry-source
+      --dnsentry-source.pool.resync-period duration                   Period for resynchronization of controller dnsentry-source
+      --dnsentry-source.pool.size int                                 Worker pool size of controller dnsentry-source
+      --dnsentry-source.target-creator-label-name string              label name to store the creator for generated DNS entries of controller dnsentry-source
+      --dnsentry-source.target-creator-label-value string             label value for creator label of controller dnsentry-source
+      --dnsentry-source.target-name-prefix string                     name prefix in target namespace for cross cluster generation of controller dnsentry-source
+      --dnsentry-source.target-namespace string                       target namespace for cross cluster generation of controller dnsentry-source
+      --dnsentry-source.target-owner-id string                        owner id to use for generated DNS entries of controller dnsentry-source
+      --dnsentry-source.target-realms string                          realm(s) to use for generated DNS entries of controller dnsentry-source
+      --dnsentry-source.target-set-ignore-owners                      mark generated DNS entries to omit owner based access control of controller dnsentry-source
+      --dnsentry-source.targets.pool.size int                         Worker pool size for pool targets of controller dnsentry-source
+      --dnsprovider-replication.default.pool.resync-period duration   Period for resynchronization for pool default of controller dnsprovider-replication
+      --dnsprovider-replication.default.pool.size int                 Worker pool size for pool default of controller dnsprovider-replication
+      --dnsprovider-replication.dns-class string                      identifier used to differentiate responsible controllers for providers of controller dnsprovider-replication
+      --dnsprovider-replication.dns-target-class string               identifier used to differentiate responsible dns controllers for target providers of controller dnsprovider-replication
+      --dnsprovider-replication.pool.resync-period duration           Period for resynchronization of controller dnsprovider-replication
+      --dnsprovider-replication.pool.size int                         Worker pool size of controller dnsprovider-replication
+      --dnsprovider-replication.target-creator-label-name string      label name to store the creator for replicated DNS providers of controller dnsprovider-replication
+      --dnsprovider-replication.target-creator-label-value string     label value for creator label of controller dnsprovider-replication
+      --dnsprovider-replication.target-name-prefix string             name prefix in target namespace for cross cluster replication of controller dnsprovider-replication
+      --dnsprovider-replication.target-namespace string               target namespace for cross cluster generation of controller dnsprovider-replication
+      --dnsprovider-replication.target-realms string                  realm(s) to use for replicated DNS provider of controller dnsprovider-replication
+      --dnsprovider-replication.targets.pool.size int                 Worker pool size for pool targets of controller dnsprovider-replication
+      --dry-run                                                       just check, don't modify
+      --exclude-domains stringArray                                   excluded domains
+      --force-crd-update                                              enforce update of crds even they are unmanaged
+      --google-clouddns.advanced.batch-size int                       batch size for change requests (currently only used for aws-route53)
+      --google-clouddns.advanced.max-retries int                      maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --google-clouddns.ratelimiter.burst int                         number of burst requests for rate limiter
+      --google-clouddns.ratelimiter.enabled                           enables rate limiter for DNS provider requests
+      --google-clouddns.ratelimiter.qps int                           maximum requests/queries per second
+      --grace-period duration                                         inactivity grace period for detecting end of cleanup for shutdown
+  -h, --help                                                          help for dns-controller-manager
+      --identifier string                                             Identifier used to mark DNS entries in DNS system
+      --infoblox-dns.advanced.batch-size int                          batch size for change requests (currently only used for aws-route53)
+      --infoblox-dns.advanced.max-retries int                         maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --infoblox-dns.ratelimiter.burst int                            number of burst requests for rate limiter
+      --infoblox-dns.ratelimiter.enabled                              enables rate limiter for DNS provider requests
+      --infoblox-dns.ratelimiter.qps int                              maximum requests/queries per second
+      --ingress-dns.default.pool.resync-period duration               Period for resynchronization for pool default of controller ingress-dns
+      --ingress-dns.default.pool.size int                             Worker pool size for pool default of controller ingress-dns
+      --ingress-dns.dns-class string                                  identifier used to differentiate responsible controllers for entries of controller ingress-dns
+      --ingress-dns.dns-target-class string                           identifier used to differentiate responsible dns controllers for target entries of controller ingress-dns
+      --ingress-dns.exclude-domains stringArray                       excluded domains of controller ingress-dns
+      --ingress-dns.key string                                        selecting key for annotation of controller ingress-dns
+      --ingress-dns.pool.resync-period duration                       Period for resynchronization of controller ingress-dns
+      --ingress-dns.pool.size int                                     Worker pool size of controller ingress-dns
+      --ingress-dns.target-creator-label-name string                  label name to store the creator for generated DNS entries of controller ingress-dns
+      --ingress-dns.target-creator-label-value string                 label value for creator label of controller ingress-dns
+      --ingress-dns.target-name-prefix string                         name prefix in target namespace for cross cluster generation of controller ingress-dns
+      --ingress-dns.target-namespace string                           target namespace for cross cluster generation of controller ingress-dns
+      --ingress-dns.target-owner-id string                            owner id to use for generated DNS entries of controller ingress-dns
+      --ingress-dns.target-realms string                              realm(s) to use for generated DNS entries of controller ingress-dns
+      --ingress-dns.target-set-ignore-owners                          mark generated DNS entries to omit owner based access control of controller ingress-dns
+      --ingress-dns.targets.pool.size int                             Worker pool size for pool targets of controller ingress-dns
+      --key string                                                    selecting key for annotation
+      --kubeconfig string                                             default cluster access
+      --kubeconfig.disable-deploy-crds                                disable deployment of required crds for cluster default
+      --kubeconfig.id string                                          id for cluster default
+      --kubeconfig.migration-ids string                               migration id for cluster default
+      --lease-duration duration                                       lease duration
+      --lease-name string                                             name for lease object
+      --lease-renew-deadline duration                                 lease renew deadline
+      --lease-resource-lock string                                    determines which resource lock to use for leader election, defaults to 'configmapsleases'
+      --lease-retry-period duration                                   lease retry period
+  -D, --log-level string                                              logrus log level
+      --maintainer string                                             maintainer key for crds (default "dns-controller-manager")
+      --name string                                                   name used for controller manager (default "dns-controller-manager")
+      --namespace string                                              namespace for lease (default "kube-system")
+  -n, --namespace-local-access-only                                   enable access restriction for namespace local access only (deprecated)
+      --netlify-dns.advanced.batch-size int                           batch size for change requests (currently only used for aws-route53)
+      --netlify-dns.advanced.max-retries int                          maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --netlify-dns.ratelimiter.burst int                             number of burst requests for rate limiter
+      --netlify-dns.ratelimiter.enabled                               enables rate limiter for DNS provider requests
+      --netlify-dns.ratelimiter.qps int                               maximum requests/queries per second
+      --omit-lease                                                    omit lease for development
+      --openstack-designate.advanced.batch-size int                   batch size for change requests (currently only used for aws-route53)
+      --openstack-designate.advanced.max-retries int                  maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --openstack-designate.ratelimiter.burst int                     number of burst requests for rate limiter
+      --openstack-designate.ratelimiter.enabled                       enables rate limiter for DNS provider requests
+      --openstack-designate.ratelimiter.qps int                       maximum requests/queries per second
+      --ownerids.pool.size int                                        Worker pool size for pool ownerids
+      --plugin-file string                                            directory containing go plugins
+      --pool.resync-period duration                                   Period for resynchronization
+      --pool.size int                                                 Worker pool size
+      --provider-types string                                         comma separated list of provider types to enable
+      --providers string                                              cluster to look for provider objects
+      --providers.disable-deploy-crds                                 disable deployment of required crds for cluster provider
+      --providers.id string                                           id for cluster provider
+      --providers.migration-ids string                                migration id for cluster provider
+      --providers.pool.resync-period duration                         Period for resynchronization for pool providers
+      --providers.pool.size int                                       Worker pool size for pool providers
+      --ratelimiter.burst int                                         number of burst requests for rate limiter
+      --ratelimiter.enabled                                           enables rate limiter for DNS provider requests
+      --ratelimiter.qps int                                           maximum requests/queries per second
+      --reschedule-delay duration                                     reschedule delay after losing provider
+      --secrets.pool.size int                                         Worker pool size for pool secrets
+      --server-port-http int                                          HTTP server port (serving /healthz, /metrics, ...)
+      --service-dns.default.pool.resync-period duration               Period for resynchronization for pool default of controller service-dns
+      --service-dns.default.pool.size int                             Worker pool size for pool default of controller service-dns
+      --service-dns.dns-class string                                  identifier used to differentiate responsible controllers for entries of controller service-dns
+      --service-dns.dns-target-class string                           identifier used to differentiate responsible dns controllers for target entries of controller service-dns
+      --service-dns.exclude-domains stringArray                       excluded domains of controller service-dns
+      --service-dns.key string                                        selecting key for annotation of controller service-dns
+      --service-dns.pool.resync-period duration                       Period for resynchronization of controller service-dns
+      --service-dns.pool.size int                                     Worker pool size of controller service-dns
+      --service-dns.target-creator-label-name string                  label name to store the creator for generated DNS entries of controller service-dns
+      --service-dns.target-creator-label-value string                 label value for creator label of controller service-dns
+      --service-dns.target-name-prefix string                         name prefix in target namespace for cross cluster generation of controller service-dns
+      --service-dns.target-namespace string                           target namespace for cross cluster generation of controller service-dns
+      --service-dns.target-owner-id string                            owner id to use for generated DNS entries of controller service-dns
+      --service-dns.target-realms string                              realm(s) to use for generated DNS entries of controller service-dns
+      --service-dns.target-set-ignore-owners                          mark generated DNS entries to omit owner based access control of controller service-dns
+      --service-dns.targets.pool.size int                             Worker pool size for pool targets of controller service-dns
+      --setup int                                                     number of processors for controller setup
+      --statistic.pool.size int                                       Worker pool size for pool statistic
+      --target string                                                 target cluster for dns requests
+      --target-creator-label-name string                              label name to store the creator for generated DNS entries, label name to store the creator for replicated DNS providers
+      --target-creator-label-value string                             label value for creator label
+      --target-name-prefix string                                     name prefix in target namespace for cross cluster generation, name prefix in target namespace for cross cluster replication
+      --target-namespace string                                       target namespace for cross cluster generation
+      --target-owner-id string                                        owner id to use for generated DNS entries
+      --target-realms string                                          realm(s) to use for generated DNS entries, realm(s) to use for replicated DNS provider
+      --target-set-ignore-owners                                      mark generated DNS entries to omit owner based access control
+      --target.disable-deploy-crds                                    disable deployment of required crds for cluster target
+      --target.id string                                              id for cluster target
+      --target.migration-ids string                                   migration id for cluster target
+      --targets.pool.size int                                         Worker pool size for pool targets
+      --ttl int                                                       Default time-to-live for DNS entries. Defines how long the record is kept in cache by DNS servers or resolvers.
+  -v, --version                                                       version for dns-controller-manager
+      --zonepolicies.pool.size int                                    Worker pool size for pool zonepolicies
 ```
 
 ## Extensions
