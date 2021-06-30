@@ -429,7 +429,7 @@ func (this *state) UpdateLockStates(log logger.LogContext) {
 				if now.Sub(firstfailed) > ttl*2 {
 					log.Infof("try to resurrect dns lock %q", e.object.ObjectName())
 					e.lock.Lock()
-					e.refresh = true
+					//TODO e.refresh = true
 					e.lock.Unlock()
 					this.context.Enqueue(e.object)
 				}

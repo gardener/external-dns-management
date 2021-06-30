@@ -216,12 +216,6 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		}
 	}
 	if err == nil {
-		for _, e := range req.entries {
-			if e.refresh {
-				e.refresh = false
-				break
-			}
-		}
 		req.zone.Succeeded()
 		err = conflictErr
 	} else {

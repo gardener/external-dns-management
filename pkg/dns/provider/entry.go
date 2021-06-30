@@ -764,7 +764,6 @@ type Entry struct {
 	key        string
 	createdAt  time.Time
 	modified   bool
-	refresh    bool
 	activezone string
 	state      *state
 
@@ -778,7 +777,6 @@ func NewEntry(v *EntryVersion, state *state) *Entry {
 		EntryVersion: v,
 		state:        state,
 		modified:     true,
-		refresh:      true,
 		createdAt:    time.Now(),
 		activezone:   utils.StringValue(v.status.Zone),
 	}
@@ -813,7 +811,7 @@ func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
 		return NewEntry(new, this.state)
 	}
 
-	reasons, refresh := this.RequiresUpdateFor(new)
+	reasons, _ := this.RequiresUpdateFor(new)
 	if len(reasons) != 0 {
 		logger.Infof("update actual entry: valid: %t  %v", new.IsValid(), reasons)
 		if this.targets.DifferFrom(new.targets) && !new.IsDeleting() {
@@ -831,7 +829,6 @@ func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
 			logger.Infof("%s", msg)
 		}
 		this.modified = true
-		this.refresh = refresh || this.refresh
 	}
 	this.EntryVersion = new
 
@@ -867,15 +864,6 @@ func (this *Entry) updateStatistic(statistic *statistic.EntryStatistic) {
 ////////////////////////////////////////////////////////////////////////////////
 
 type Entries map[resources.ObjectName]*Entry
-
-func (this Entries) RequireRefresh() bool {
-	for _, e := range this {
-		if e.refresh {
-			return true
-		}
-	}
-	return false
-}
 
 func (this Entries) AddResponsibleTo(list *EntryList) {
 	for _, e := range this {

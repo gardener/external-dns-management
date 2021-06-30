@@ -133,7 +133,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(z.DnsName), "", []string{}, false)
 
 		// call GetZoneState for side effect to calculate forwarded domains
-		_, err := cache.GetZoneState(hostedZone, false)
+		_, err := cache.GetZoneState(hostedZone)
 		if err == nil {
 			forwarded := cache.GetHandlerData().(*provider.ForwardedDomainsHandlerData).GetForwardedDomains(hostedZone.Id())
 			if forwarded != nil {
@@ -170,8 +170,8 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *google
 	return forwarded, err
 }
 
-func (h *Handler) GetZoneState(zone provider.DNSHostedZone, forceUpdate bool) (provider.DNSZoneState, error) {
-	return h.cache.GetZoneState(zone, forceUpdate)
+func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone)
 }
 
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {

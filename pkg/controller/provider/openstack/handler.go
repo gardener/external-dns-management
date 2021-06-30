@@ -198,8 +198,8 @@ func (h *Handler) collectForwardedSubzones(zone *zones.Zone) []string {
 }
 
 // GetZoneState returns the state for a given zone.
-func (h *Handler) GetZoneState(zone provider.DNSHostedZone, forceUpdate bool) (provider.DNSZoneState, error) {
-	return h.cache.GetZoneState(zone, forceUpdate)
+func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
+	return h.cache.GetZoneState(zone)
 }
 
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {

@@ -191,7 +191,7 @@ type Finalizers interface {
 type DNSHandler interface {
 	ProviderType() string
 	GetZones() (DNSHostedZones, error)
-	GetZoneState(DNSHostedZone, bool) (DNSZoneState, error)
+	GetZoneState(DNSHostedZone) (DNSZoneState, error)
 	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
 	MapTarget(t Target) Target
@@ -240,7 +240,7 @@ type DNSProvider interface {
 	GetZones() DNSHostedZones
 	IncludesZone(zoneID string) bool
 
-	GetZoneState(zone DNSHostedZone, forceUpdate bool) (DNSZoneState, error)
+	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
 
 	Match(dns string) int

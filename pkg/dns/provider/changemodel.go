@@ -219,7 +219,7 @@ func (this *ChangeModel) Setup() error {
 		return fmt.Errorf("no provider found for zone %q", this.ZoneId())
 	}
 	this.context.dnsTicker.TickWhile(this, func() {
-		this.zonestate, err = provider.GetZoneState(this.context.zone.getZone(), this.context.entries.RequireRefresh())
+		this.zonestate, err = provider.GetZoneState(this.context.zone.getZone())
 	})
 	if err != nil {
 		return err
