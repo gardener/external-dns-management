@@ -21,7 +21,7 @@ build:
 	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -o $(EXECUTABLE) \
 	    -mod=vendor \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
-	    ./cmd/dns
+	    ./cmd/compound
 
 .PHONY: build-local
 build-local:
