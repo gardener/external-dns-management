@@ -16,7 +16,7 @@ deployItems:
           apiVersion: core.gardener.cloud/v1beta1
           kind: ControllerDeployment
           metadata:
-            name: dns-controller-manager
+            name: dns-external
           type: helm
           providerConfig:
             {{- $chart := getResource .cd "name" "dns-controller-manager-chart" }}
@@ -37,11 +37,11 @@ deployItems:
           apiVersion: core.gardener.cloud/v1beta1
           kind: ControllerRegistration
           metadata:
-            name: dns-controller-manager
+            name: dns-external
           spec:
             deployment:
               deploymentRefs:
-                - name: dns-controller-manager
+                - name: dns-external
             resources:
             - kind: DNSProvider
               type: aws-route53
@@ -55,7 +55,3 @@ deployItems:
               type: openstack-designate
             - kind: DNSProvider
               type: cloudflare-dns
-            - kind: DNSProvider
-              type: infoblox-dns
-            - kind: DNSProvider
-              type: netlify-dns 
