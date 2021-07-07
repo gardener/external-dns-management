@@ -8,7 +8,7 @@ deployItems:
     apiVersion: manifest.deployer.landscaper.gardener.cloud/v1alpha2
     kind: ProviderConfiguration
 
-    updateStrategy: patch
+    updateStrategy: update
 
     manifests:
       - policy: manage
