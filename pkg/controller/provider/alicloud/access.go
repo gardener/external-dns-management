@@ -103,8 +103,16 @@ func (this *access) ListDomains(consume func(domain alidns.Domain) (bool, error)
 }
 
 func (this *access) ListRecords(zoneID, domain string, consume func(record alidns.Record) (bool, error)) error {
+	return this.listRecords(zoneID, domain, consume, nil)
+}
+
+func (this *access) listRecords(zoneID, domain string, consume func(record alidns.Record) (bool, error),
+	requestModifier func(request *alidns.DescribeDomainRecordsRequest)) error {
 	request := alidns.CreateDescribeDomainRecordsRequest()
 	request.DomainName = domain
+	if requestModifier != nil {
+		requestModifier(request)
+	}
 	request.PageSize = requests.NewInteger(defaultPageSize)
 	nextPage := 1
 	rt := provider.M_LISTRECORDS
@@ -163,6 +171,29 @@ func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) erro
 	this.rateLimiter.Accept()
 	_, err := this.client.DeleteDomainRecord(req)
 	return err
+}
+
+func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+	rr := GetRR(dnsName, zone.Domain())
+	requestModifier := func(request *alidns.DescribeDomainRecordsRequest) {
+		request.RRKeyWord = rr
+		request.TypeKeyWord = rtype
+	}
+
+	rs := raw.RecordSet{}
+	consume := func(record alidns.Record) (bool, error) {
+		a := (*Record)(&record)
+		if a.RR == rr {
+			rs = append(rs, a)
+		}
+		return true, nil
+	}
+
+	err := this.listRecords(zone.Id(), zone.Domain(), consume, requestModifier)
+	if err != nil {
+		return nil, err
+	}
+	return rs, nil
 }
 
 func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) raw.Record {
