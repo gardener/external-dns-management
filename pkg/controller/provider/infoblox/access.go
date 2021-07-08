@@ -103,6 +103,7 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 }
 
 func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+	this.metrics.AddZoneRequests(zone.Id(), provider.M_LISTRECORDS, 1)
 	c := this.IBConnector.(*ibclient.Connector)
 
 	if rtype != dns.RS_TXT {
