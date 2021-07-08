@@ -441,7 +441,7 @@ func (this *ChangeModel) Owns(set *dns.DNSSet) bool {
 }
 
 func (this *ChangeModel) IsForeign(set *dns.DNSSet) bool {
-	return set.IsForeign(this.ownership) && set.GetKind() != api.DNSLockKind
+	return set.IsForeign(this.ownership)
 }
 
 func (this *ChangeModel) setOwner(set *dns.DNSSet, id string) bool {

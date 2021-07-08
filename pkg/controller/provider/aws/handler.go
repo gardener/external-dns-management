@@ -26,9 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
-
 	"github.com/gardener/controller-manager-library/pkg/logger"
-
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
@@ -380,4 +378,57 @@ func (h *Handler) DeleteVPCAssociationAuthorization(hostedZoneId string, vpcId s
 		return nil, err
 	}
 	return out, nil
+}
+
+func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, dnsName, recordType string) (provider.DedicatedRecordSet, error) {
+	name := dns.AlignHostname(dnsName)
+	sets, err := h.r53.ListResourceRecordSets(&route53.ListResourceRecordSetsInput{
+		HostedZoneId:          aws.String(zone.Id()),
+		MaxItems:              aws.String("1"),
+		StartRecordIdentifier: nil,
+		StartRecordName:       &name,
+		StartRecordType:       &recordType,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	dnssets := dns.DNSSets{}
+	aggr := func(r *route53.ResourceRecordSet) {
+		if dns.SupportedRecordType(aws.StringValue(r.Type)) {
+			var rs *dns.RecordSet
+			if isAliasTarget(r) {
+				rs = buildRecordSetFromAliasTarget(r)
+			} else {
+				rs = buildRecordSet(r)
+			}
+			dnssets.AddRecordSetFromProvider(aws.StringValue(r.Name), rs)
+		}
+	}
+	for _, r := range sets.ResourceRecordSets {
+		if aws.StringValue(r.Name) == name && aws.StringValue(r.Type) == recordType {
+			aggr(r)
+		}
+	}
+	if set := dnssets[dnsName]; set != nil {
+		return provider.FromDedicatedRecordSet(dnsName, set.Sets[recordType]), nil
+	}
+	return nil, nil
+}
+
+func (h *Handler) CreateOrUpdateRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, old, new provider.DedicatedRecordSet) error {
+	return h.executeRecordSetChange(route53.ChangeActionUpsert, logger, zone, new)
+}
+
+func (h *Handler) DeleteRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, rs provider.DedicatedRecordSet) error {
+	return h.executeRecordSetChange(route53.ChangeActionDelete, logger, zone, rs)
+}
+
+func (h *Handler) executeRecordSetChange(action string, logger logger.LogContext, zone provider.DNSHostedZone, rawrs provider.DedicatedRecordSet) error {
+	exec := NewExecution(logger, h, zone)
+	dnsName, rs := provider.ToDedicatedRecordset(rawrs)
+	dnsset := dns.NewDNSSet(dnsName)
+	dnsset.Sets[rs.Type] = rs
+	exec.addChange(action, &provider.ChangeRequest{Type: rs.Type}, dnsset)
+	return exec.submitChanges(h.config.Metrics)
 }

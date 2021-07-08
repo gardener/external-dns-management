@@ -57,6 +57,7 @@ type Target interface {
 	GetHostName() string
 	GetRecordType() string
 	GetTTL() int64
+	AsRecord() *dns.Record
 }
 
 type target struct {
@@ -76,6 +77,10 @@ func NewTarget(ty string, ta string, ttl int64) Target {
 func (t *target) GetTTL() int64         { return t.ttl }
 func (t *target) GetHostName() string   { return t.host }
 func (t *target) GetRecordType() string { return t.rtype }
+
+func (t *target) AsRecord() *dns.Record {
+	return &dns.Record{Value: t.host}
+}
 
 func (t *target) String() string {
 	return fmt.Sprintf("%s(%s)", t.GetRecordType(), t.GetHostName())

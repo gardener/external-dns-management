@@ -589,25 +589,27 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		}
 	}
 
-	logger.Infof("%s: valid: %t, message: %s%s", this.status.State, this.valid, utils.StringValue(this.status.Message), errorValue(", err: %s", err))
-	logmsg := dnsutils.NewLogMessage("update entry status")
-	f := func(data resources.ObjectData) (bool, error) {
-		status := dnsutils.DNSObject(this.object.GetResource().Wrap(data)).BaseStatus()
-		mod := &utils.ModificationState{}
-		if p.zoneid != "" {
-			mod.AssureStringPtrValue(&status.ProviderType, p.ptype)
+	if this.Kind() != api.DNSLockKind {
+		logger.Infof("%s: valid: %t, message: %s%s", this.status.State, this.valid, utils.StringValue(this.status.Message), errorValue(", err: %s", err))
+		logmsg := dnsutils.NewLogMessage("update entry status")
+		f := func(data resources.ObjectData) (bool, error) {
+			status := dnsutils.DNSObject(this.object.GetResource().Wrap(data)).BaseStatus()
+			mod := &utils.ModificationState{}
+			if p.zoneid != "" {
+				mod.AssureStringPtrValue(&status.ProviderType, p.ptype)
+			}
+			mod.AssureStringValue(&status.State, this.status.State).
+				AssureStringPtrPtr(&status.Message, this.status.Message).
+				AssureStringPtrPtr(&status.Zone, this.status.Zone).
+				AssureStringPtrPtr(&status.Provider, this.status.Provider)
+			if mod.IsModified() {
+				dnsutils.SetLastUpdateTime(&status.LastUptimeTime)
+				logmsg.Infof(logger)
+			}
+			return mod.IsModified(), nil
 		}
-		mod.AssureStringValue(&status.State, this.status.State).
-			AssureStringPtrPtr(&status.Message, this.status.Message).
-			AssureStringPtrPtr(&status.Zone, this.status.Zone).
-			AssureStringPtrPtr(&status.Provider, this.status.Provider)
-		if mod.IsModified() {
-			dnsutils.SetLastUpdateTime(&status.LastUptimeTime)
-			logmsg.Infof(logger)
-		}
-		return mod.IsModified(), nil
+		_, err = this.object.ModifyStatus(f)
 	}
-	_, err = this.object.ModifyStatus(f)
 	return reconcile.DelayOnError(logger, err)
 }
 
@@ -760,12 +762,13 @@ func lookupHosts(hostname string) ([]string, []string, error) {
 ///////////////////////////////////////////////////////////////////////////////
 
 type Entry struct {
-	lock       *dnsutils.TryLock
-	key        string
-	createdAt  time.Time
-	modified   bool
-	activezone string
-	state      *state
+	lock           *dnsutils.TryLock
+	key            string
+	createdAt      time.Time
+	modified       bool
+	updateRequired bool
+	activezone     string
+	state          *state
 
 	*EntryVersion
 }

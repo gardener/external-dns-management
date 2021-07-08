@@ -30,7 +30,7 @@ const (
 	DNSOwnerKind            = "DNSOwner"
 	DNSProviderKind         = "DNSProvider"
 	DNSEntryKind            = "DNSEntry"
-	DNSLockKind   = "DNSLock"
+	DNSLockKind             = "DNSLock"
 	DNSAnnotationKind       = "DNSAnnotation"
 	DNSHostedZonePolicyKind = "DNSHostedZonePolicy"
 )

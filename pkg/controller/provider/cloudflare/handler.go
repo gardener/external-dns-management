@@ -21,7 +21,6 @@ import (
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/gardener/controller-manager-library/pkg/logger"
-
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
@@ -159,4 +158,43 @@ func checkAccessForbidden(err error) bool {
 		return true
 	}
 	return false
+}
+
+func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, dnsName, recordType string) (provider.DedicatedRecordSet, error) {
+	rs, err := h.access.GetRecordSet(dnsName, recordType, zone)
+	if err != nil {
+		return nil, err
+	}
+	d := provider.DedicatedRecordSet{}
+	for _, r := range rs {
+		d = append(d, r)
+	}
+	return d, nil
+}
+
+func (h *Handler) CreateOrUpdateRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, old, new provider.DedicatedRecordSet) error {
+	err := h.DeleteRecordSet(logger, zone, old)
+	if err != nil {
+		return err
+	}
+	for _, r := range new {
+		r0 := h.access.NewRecord(r.GetDNSName(), r.GetType(), r.GetValue(), zone, int64(r.GetTTL()))
+		err = h.access.CreateRecord(r0, zone)
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func (h *Handler) DeleteRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, rs provider.DedicatedRecordSet) error {
+	for _, r := range rs {
+		if r.(*Record).GetId() != "" {
+			err := h.access.DeleteRecord(r.(*Record), zone)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

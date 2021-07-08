@@ -594,3 +594,8 @@ func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zone D
 func (this *dnsProviderVersion) IncludesZone(zoneID string) bool {
 	return this.included_zones != nil && this.included_zones.Contains(zoneID)
 }
+
+func (this *dnsProviderVersion) GetDNSDirectHandler() DedicatedDNSAccess {
+	h, _ := this.account.handler.(DedicatedDNSAccess)
+	return h
+}

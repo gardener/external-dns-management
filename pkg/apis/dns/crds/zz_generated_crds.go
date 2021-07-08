@@ -511,7 +511,6 @@ spec:
                 type: integer
             required:
             - dnsName
-            - lockId
             - timestamp
             - ttl
             type: object
@@ -529,6 +528,9 @@ spec:
               lastUpdateTime:
                 description: lastUpdateTime contains the timestamp of the last status update
                 format: date-time
+                type: string
+              lockId:
+                description: owner group for collaboration of multiple controller found in DNS
                 type: string
               message:
                 description: message describing the reason for the state

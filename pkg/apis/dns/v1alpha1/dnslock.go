@@ -58,7 +58,8 @@ type DNSLockSpec struct {
 	// full qualified domain name
 	DNSName string `json:"dnsName"`
 	// owner group for collaboration of multiple controller
-	LockId string `json:"lockId"`
+	// +optional
+	LockId *string `json:"lockId,omitempty"`
 	// time to live for records in external DNS system
 	TTL int64 `json:"ttl"`
 	// Activation time stamp
@@ -73,6 +74,9 @@ type DNSLockStatus struct {
 	// Activation time stamp found in DNS
 	// +optional
 	Timestamp *metav1.Time `json:"timestamp,omitempty"`
+	// owner group for collaboration of multiple controller found in DNS
+	// +optional
+	LockId *string `json:"lockId,omitempty"`
 	// attribute values found in DNS
 	// +optional
 	Attributes map[string]string `json:"attributes,omitempty"`

@@ -423,6 +423,9 @@ func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, 
 	}
 loop:
 	for dns, e := range this.dnsnames {
+		if e.Kind() == api.DNSLockKind {
+			continue
+		}
 		if e.IsValid() {
 			provider, fallback, err := this.lookupProvider(e.Object())
 			if (provider == nil || !provider.IsValid()) && !e.IsDeleting() {

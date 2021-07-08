@@ -127,6 +127,19 @@ func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHosted
 	})
 }
 
+func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+	this.rateLimiter.Accept()
+	results, err := this.DNSRecords(zone.Id(), cloudflare.DNSRecord{Type: rtype, Name: dnsName})
+	if err != nil {
+		return nil, err
+	}
+	rs := raw.RecordSet{}
+	for _, r := range results {
+		rs = append(rs, (*Record)(&r))
+	}
+	return rs, nil
+}
+
 func testTTL(ttl *int) {
 	if *ttl < 120 {
 		*ttl = 1
