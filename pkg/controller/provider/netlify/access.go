@@ -138,6 +138,10 @@ func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHosted
 	})
 }
 
+func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+	return nil, nil // TODO
+}
+
 func testTTL(ttl *int) {
 	if *ttl < 1 {
 		*ttl = 1

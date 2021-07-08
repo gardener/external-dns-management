@@ -24,7 +24,6 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
@@ -67,11 +66,16 @@ func (this *DNSLockObject) BaseStatus() *api.DNSBaseStatus {
 func (this *DNSLockObject) GetDNSName() string {
 	return this.DNSLock().Spec.DNSName
 }
+
 func (this *DNSLockObject) GetTargets() []string {
 	return nil
 }
+
 func (this *DNSLockObject) GetText() []string {
 	attrs := []string{}
+	if s := utils.StringValue(this.Spec().LockId); s != "" {
+		attrs = append(attrs, fmt.Sprintf("%s=%s", dns.ATTR_LOCKID, s))
+	}
 	attrs = append(attrs, fmt.Sprintf("%s=%d", dns.ATTR_TIMESTAMP, this.Spec().Timestamp.Unix()))
 	if this.Spec().Attributes != nil {
 		for k, v := range this.Spec().Attributes {
@@ -84,15 +88,23 @@ func (this *DNSLockObject) GetText() []string {
 	}
 	return attrs
 }
-func (this *DNSLockObject) GetOwnerId() *string {
-	return &this.DNSLock().Spec.LockId
+
+func (this *DNSLockObject) GetTimestamp() time.Time {
+	return this.Spec().Timestamp.Time
 }
+
+func (this *DNSLockObject) GetOwnerId() *string {
+	return this.DNSLock().Spec.LockId
+}
+
 func (this *DNSLockObject) GetTTL() *int64 {
 	return &this.DNSLock().Spec.TTL
 }
+
 func (this *DNSLockObject) GetCNameLookupInterval() *int64 {
 	return nil
 }
+
 func (this *DNSLockObject) GetReference() *api.EntryReference {
 	return nil
 }

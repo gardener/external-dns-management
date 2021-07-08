@@ -26,7 +26,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
@@ -242,6 +241,8 @@ type DNSProvider interface {
 
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
+
+	GetDNSDirectHandler() DedicatedDNSAccess
 
 	Match(dns string) int
 	MatchZone(dns string) int

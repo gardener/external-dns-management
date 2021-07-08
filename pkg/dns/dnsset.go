@@ -108,6 +108,7 @@ const (
 	ATTR_KIND   = "kind"
 
 	ATTR_TIMESTAMP = "ts"
+	ATTR_LOCKID    = "lockid"
 )
 
 type DNSSet struct {

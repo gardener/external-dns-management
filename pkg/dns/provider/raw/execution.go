@@ -31,6 +31,7 @@ type Executor interface {
 	DeleteRecord(r Record, zone provider.DNSHostedZone) error
 
 	NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) Record
+	GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (RecordSet, error)
 }
 
 type result struct {
