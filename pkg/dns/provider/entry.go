@@ -319,8 +319,10 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 		}
 		var new Target
 		new, err = NewTargetFromEntryVersion(t, entry)
+		// we should ignore unsupported addresses since the user might not influence
+		// the provider assigned ip address type
 		if err != nil {
-			return
+			continue
 		}
 		if targets.Has(new) {
 			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate target %q", entry.ObjectName(), new))
@@ -655,16 +657,25 @@ func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject,
 		return result, true, false
 	}
 	for _, t := range targets {
-		addrs, err := lookupHostIPv4(t.GetHostName())
+		ipv4addrs, ipv6addrs, err := lookupHosts(t.GetHostName())
 		if err == nil {
-		outer:
-			for _, addr := range addrs {
+		outerV4:
+			for _, addr := range ipv4addrs {
 				for _, old := range result {
 					if old.GetHostName() == addr {
-						continue outer
+						continue outerV4
 					}
 				}
 				result = append(result, NewTarget(dns.RS_A, addr, t.GetEntry()))
+			}
+		outerV6:
+			for _, addr := range ipv6addrs {
+				for _, old := range result {
+					if old.GetHostName() == addr {
+						continue outerV6
+					}
+				}
+				result = append(result, NewTarget(dns.RS_AAAA, addr, t.GetEntry()))
 			}
 		} else {
 			w := fmt.Sprintf("cannot lookup '%s': %s", t.GetHostName(), err)
@@ -675,22 +686,24 @@ func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject,
 	return result, true, true
 }
 
-func lookupHostIPv4(hostname string) ([]string, error) {
+func lookupHosts(hostname string) ([]string, []string, error) {
 	ips, err := net.LookupIP(hostname)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	addrs := make([]string, 0, len(ips))
+	ipv4addrs := make([]string, 0, len(ips))
+	ipv6addrs := make([]string, 0, len(ips))
 	for _, ip := range ips {
-		if ip.To4() == nil {
-			continue
+		if ip.To4() != nil {
+			ipv4addrs = append(ipv4addrs, ip.String())
+		} else if ip.To16() != nil {
+			ipv6addrs = append(ipv6addrs, ip.String())
 		}
-		addrs = append(addrs, ip.String())
 	}
-	if len(addrs) == 0 {
-		return nil, fmt.Errorf("%s has no IPv4 address (of %d addresses)", hostname, len(ips))
+	if len(ipv4addrs) == 0 || len(ipv6addrs) == 0 {
+		return nil, nil, fmt.Errorf("%s has no IPv4/IPv6 address (of %d addresses)", hostname, len(ips))
 	}
-	return addrs, nil
+	return ipv4addrs, ipv6addrs, nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////

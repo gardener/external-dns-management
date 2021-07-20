@@ -18,6 +18,7 @@
 package infoblox
 
 import (
+	"log"
 	"strconv"
 	"strings"
 
@@ -71,6 +72,8 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 			//Zone:     zone.Key(),
 			View: this.view,
 		}))
+	case dns.RS_AAAA:
+		log.Printf("warning: aaaa records not supported on infoblox yet")
 	case dns.RS_CNAME:
 		record = (*RecordCNAME)(ibclient.NewRecordCNAME(ibclient.RecordCNAME{
 			Name:      fqdn,
