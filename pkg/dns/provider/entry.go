@@ -700,7 +700,7 @@ func lookupHosts(hostname string) ([]string, []string, error) {
 			ipv6addrs = append(ipv6addrs, ip.String())
 		}
 	}
-	if len(ipv4addrs) == 0 || len(ipv6addrs) == 0 {
+	if len(ipv4addrs) == 0 && len(ipv6addrs) == 0 {
 		return nil, nil, fmt.Errorf("%s has no IPv4/IPv6 address (of %d addresses)", hostname, len(ips))
 	}
 	return ipv4addrs, ipv6addrs, nil

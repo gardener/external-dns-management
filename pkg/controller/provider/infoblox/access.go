@@ -18,7 +18,7 @@
 package infoblox
 
 import (
-	"log"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -63,7 +63,7 @@ func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) erro
 	return err
 }
 
-func (this *access) NewRecord(fqdn string, rtype string, value string, zone provider.DNSHostedZone, ttl int64) (record raw.Record) {
+func (this *access) NewRecord(fqdn string, rtype string, value string, zone provider.DNSHostedZone, ttl int64) (record raw.Record, err error) {
 	switch rtype {
 	case dns.RS_A:
 		record = (*RecordA)(ibclient.NewRecordA(ibclient.RecordA{
@@ -73,7 +73,7 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 			View: this.view,
 		}))
 	case dns.RS_AAAA:
-		log.Printf("warning: aaaa records not supported on infoblox yet")
+		err = fmt.Errorf("warning: aaaa records not supported on infoblox yet")
 	case dns.RS_CNAME:
 		record = (*RecordCNAME)(ibclient.NewRecordCNAME(ibclient.RecordCNAME{
 			Name:      fqdn,
