@@ -33,7 +33,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
 
-	ibclient "github.com/infobloxopen/infoblox-go-client"
+	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 )
 
 type Handler struct {
@@ -183,7 +183,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	var raw []ibclient.ZoneAuth
 	h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
 	obj := ibclient.NewZoneAuth(ibclient.ZoneAuth{})
-	err := h.access.GetObject(obj, "", &raw)
+	err := h.access.GetObject(obj, "", &ibclient.QueryParams{}, &raw)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +198,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 				View: *h.infobloxConfig.View,
 			},
 		)
-		err = h.access.GetObject(objN, "", &resN)
+		err = h.access.GetObject(objN, "", &ibclient.QueryParams{}, &resN)
 		if err != nil {
 			return nil, fmt.Errorf("could not fetch NS records from zone '%s': %s", z.Fqdn, err)
 		}
@@ -220,34 +220,41 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
 	var resA []RecordA
-	objA := ibclient.NewRecordA(
-		ibclient.RecordA{
-			Zone: zone.Key(),
-			View: *h.infobloxConfig.View,
-		},
-	)
-	err := h.access.GetObject(objA, "", &resA)
+	objA := ibclient.NewEmptyRecordA()
+	objA.Zone = zone.Key()
+	objA.View = *h.infobloxConfig.View
+	err := h.access.GetObject(objA, "", &ibclient.QueryParams{}, &resA)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch A records from zone '%s': %s", zone.Key(), err)
 	}
 	for _, res := range resA {
-		state.AddRecord((*RecordA)(&res).Copy())
+		state.AddRecord((&res).Copy())
+	}
+
+	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
+	var resAAAA []RecordAAAA
+	objAAAA := ibclient.NewEmptyRecordAAAA()
+	objAAAA.Zone = zone.Key()
+	objAAAA.View = *h.infobloxConfig.View
+	err = h.access.GetObject(objAAAA, "", &ibclient.QueryParams{}, &resAAAA)
+	if err != nil {
+		return nil, fmt.Errorf("could not fetch AAAA records from zone '%s': %s", zone.Key(), err)
+	}
+	for _, res := range resAAAA {
+		state.AddRecord((&res).Copy())
 	}
 
 	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
 	var resC []RecordCNAME
-	objC := ibclient.NewRecordCNAME(
-		ibclient.RecordCNAME{
-			Zone: zone.Key(),
-			View: *h.infobloxConfig.View,
-		},
-	)
-	err = h.access.GetObject(objC, "", &resC)
+	objC := ibclient.NewEmptyRecordCNAME()
+	objC.Zone = zone.Key()
+	objC.View = *h.infobloxConfig.View
+	err = h.access.GetObject(objC, "", &ibclient.QueryParams{}, &resC)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch CNAME records from zone '%s': %s", zone.Key(), err)
 	}
 	for _, res := range resC {
-		state.AddRecord((*RecordCNAME)(&res).Copy())
+		state.AddRecord((&res).Copy())
 	}
 
 	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
@@ -258,12 +265,12 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 			View: *h.infobloxConfig.View,
 		},
 	)
-	err = h.access.GetObject(objT, "", &resT)
+	err = h.access.GetObject(objT, "", &ibclient.QueryParams{}, &resT)
 	if err != nil {
 		return nil, fmt.Errorf("could not fetch TXT records from zone '%s': %s", zone.Key(), err)
 	}
 	for _, res := range resT {
-		state.AddRecord((*RecordTXT)(&res).Copy())
+		state.AddRecord((&res).Copy())
 	}
 
 	state.CalculateDNSSets()

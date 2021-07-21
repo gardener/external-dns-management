@@ -128,14 +128,14 @@ func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) erro
 	return err
 }
 
-func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) (raw.Record, error) {
+func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) raw.Record {
 	return (*Record)(&models.DNSRecord{
 		Type:      rtype,
 		Hostname:  fqdn,
 		Value:     value,
 		TTL:       int64(ttl),
 		DNSZoneID: zone.Id(),
-	}), nil
+	})
 }
 
 func testTTL(ttl *int) {

@@ -21,7 +21,7 @@ import (
 	"net/http"
 	"strconv"
 
-	ibclient "github.com/infobloxopen/infoblox-go-client"
+	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 )
 
 // MaxResultsRequestBuilder implements a HttpRequestBuilder which sets the
@@ -42,7 +42,7 @@ func NewMaxResultsRequestBuilder(maxResults int, requestBuilder ibclient.HttpReq
 
 // BuildRequest prepares the api request. it uses BuildRequest of
 // WapiRequestBuilder and then add the _max_requests parameter
-func (mrb *MaxResultsRequestBuilder) BuildRequest(t ibclient.RequestType, obj ibclient.IBObject, ref string, queryParams ibclient.QueryParams) (req *http.Request, err error) {
+func (mrb *MaxResultsRequestBuilder) BuildRequest(t ibclient.RequestType, obj ibclient.IBObject, ref string, queryParams *ibclient.QueryParams) (req *http.Request, err error) {
 	req, err = mrb.HttpRequestBuilder.BuildRequest(t, obj, ref, queryParams)
 	if req.Method == "GET" {
 		query := req.URL.Query()

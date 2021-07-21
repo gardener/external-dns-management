@@ -46,15 +46,24 @@ type NetworkView struct {
 	IBBase `json:"-"`
 	Ref    string `json:"_ref,omitempty"`
 	Name   string `json:"name,omitempty"`
-	Ea     EA     `json:"extattrs,omitempty"`
+	Comment string `json:"comment"`
+	Ea     EA     `json:"extattrs"`
 }
 
-func NewNetworkView(nv NetworkView) *NetworkView {
-	res := nv
+func NewEmptyNetworkView() *NetworkView {
+	res := &NetworkView{}
 	res.objectType = "networkview"
-	res.returnFields = []string{"extattrs", "name"}
+	res.returnFields = []string{"extattrs", "name", "comment"}
+	return res
+}
 
-	return &res
+func NewNetworkView(name string, comment string, eas EA, ref string) *NetworkView {
+	res := NewEmptyNetworkView()
+	res.Name = name
+	res.Comment = comment
+	res.Ea = eas
+	res.Ref = ref
+	return res
 }
 
 // UpgradeStatus object representation
@@ -93,13 +102,22 @@ type Network struct {
 	Ref         string `json:"_ref,omitempty"`
 	NetviewName string `json:"network_view,omitempty"`
 	Cidr        string `json:"network,omitempty"`
-	Ea          EA     `json:"extattrs,omitempty"`
+	Ea          EA     `json:"extattrs"`
+	Comment     string `json:"comment"`
 }
 
-func NewNetwork(nw Network) *Network {
-	res := nw
-	res.objectType = "network"
-	res.returnFields = []string{"extattrs", "network", "network_view"}
+func NewNetwork(netview string, cidr string, isIPv6 bool, comment string, ea EA) *Network {
+	var res Network
+	res.NetviewName = netview
+	res.Cidr = cidr
+	res.Ea = ea
+	res.Comment = comment
+	if isIPv6 {
+		res.objectType = "ipv6network"
+	} else {
+		res.objectType = "network"
+	}
+	res.returnFields = []string{"extattrs", "network", "comment"}
 
 	return &res
 }
@@ -282,15 +300,26 @@ type NetworkContainer struct {
 	Ref         string `json:"_ref,omitempty"`
 	NetviewName string `json:"network_view,omitempty"`
 	Cidr        string `json:"network,omitempty"`
-	Ea          EA     `json:"extattrs,omitempty"`
+	Comment     string `json:"comment"`
+	Ea          EA     `json:"extattrs"`
 }
 
-func NewNetworkContainer(nc NetworkContainer) *NetworkContainer {
-	res := nc
-	res.objectType = "networkcontainer"
-	res.returnFields = []string{"extattrs", "network", "network_view"}
+func NewNetworkContainer(netview, cidr string, isIPv6 bool, comment string, ea EA) *NetworkContainer {
+	nc := NetworkContainer{
+		NetviewName: netview,
+		Cidr:        cidr,
+		Ea:          ea,
+		Comment:     comment,
+	}
 
-	return &res
+	if isIPv6 {
+		nc.objectType = "ipv6networkcontainer"
+	} else {
+		nc.objectType = "networkcontainer"
+	}
+	nc.returnFields = []string{"extattrs", "network", "network_view", "comment"}
+
+	return &nc
 }
 
 type FixedAddress struct {
@@ -298,30 +327,81 @@ type FixedAddress struct {
 	Ref         string `json:"_ref,omitempty"`
 	NetviewName string `json:"network_view,omitempty"`
 	Cidr        string `json:"network,omitempty"`
-	IPAddress   string `json:"ipv4addr,omitempty"`
+	Comment     string `json:"comment"`
+	IPv4Address string `json:"ipv4addr,omitempty"`
+	IPv6Address string `json:"ipv6addr,omitempty"`
+	Duid        string `json:"duid,omitempty"`
 	Mac         string `json:"mac,omitempty"`
 	Name        string `json:"name,omitempty"`
 	MatchClient string `json:"match_client,omitempty"`
-	Ea          EA     `json:"extattrs,omitempty"`
+	Ea          EA     `json:"extattrs"`
 }
 
 /*This is a general struct to add query params used in makeRequest*/
 type QueryParams struct {
 	forceProxy bool
+
+	searchFields map[string]string
 }
 
-func NewFixedAddress(fixedAddr FixedAddress) *FixedAddress {
-	res := fixedAddr
-	res.objectType = "fixedaddress"
-	res.returnFields = []string{"extattrs", "ipv4addr", "mac", "name", "network", "network_view"}
+func NewQueryParams(forceProxy bool, searchFields map[string]string) *QueryParams {
+	qp := QueryParams{forceProxy: forceProxy}
+	if searchFields != nil {
+		qp.searchFields = searchFields
+	} else {
+		qp.searchFields = make(map[string]string)
+	}
 
-	return &res
+	return &qp
+}
+
+func NewEmptyFixedAddress(isIPv6 bool) *FixedAddress {
+	res := &FixedAddress{}
+	res.Ea = make(EA)
+	if isIPv6 {
+		res.objectType = "ipv6fixedaddress"
+		res.returnFields = []string{"extattrs", "ipv6addr", "duid", "name", "network", "network_view", "comment"}
+	} else {
+		res.objectType = "fixedaddress"
+		res.returnFields = []string{"extattrs", "ipv4addr", "mac", "name", "network", "network_view", "comment"}
+	}
+	return res
+}
+
+func NewFixedAddress(
+	netView string,
+	name string,
+	ipAddr string,
+	cidr string,
+	macOrDuid string,
+	clients string,
+	eas EA,
+	ref string,
+	isIPv6 bool,
+	comment string) *FixedAddress {
+
+	res := NewEmptyFixedAddress(isIPv6)
+	res.NetviewName = netView
+	res.Name = name
+	res.Cidr = cidr
+	res.MatchClient = clients
+	res.Ea = eas
+	res.Ref = ref
+	res.Comment = comment
+	if isIPv6 {
+		res.IPv6Address = ipAddr
+		res.Duid = macOrDuid
+	} else {
+		res.IPv4Address = ipAddr
+		res.Mac = macOrDuid
+	}
+	return res
 }
 
 type EADefinition struct {
 	IBBase             `json:"-"`
 	Ref                string           `json:"_ref,omitempty"`
-	Comment            string           `json:"comment,omitempty"`
+	Comment            string           `json:"comment"`
 	Flags              string           `json:"flags,omitempty"`
 	ListValues         []EADefListValue `json:"list_values,omitempty"`
 	Name               string           `json:"name,omitempty"`
@@ -351,23 +431,130 @@ func NewUserProfile(userprofile UserProfile) *UserProfile {
 	return &res
 }
 
-type RecordPTR struct {
+type RecordA struct {
 	IBBase   `json:"-"`
 	Ref      string `json:"_ref,omitempty"`
 	Ipv4Addr string `json:"ipv4addr,omitempty"`
 	Name     string `json:"name,omitempty"`
+	View     string `json:"view,omitempty"`
+	Zone     string `json:"zone,omitempty"`
+	UseTtl   bool   `json:"use_ttl"`
+	Ttl      uint32 `json:"ttl"`
+	Comment  string `json:"comment"`
+	Ea       EA     `json:"extattrs"`
+}
+
+func NewEmptyRecordA() *RecordA {
+	res := &RecordA{}
+	res.objectType = "record:a"
+	res.returnFields = []string{
+		"extattrs", "ipv4addr", "name", "view", "zone", "comment", "ttl", "use_ttl"}
+
+	return res
+}
+
+func NewRecordA(
+	view string,
+	zone string,
+	name string,
+	ipAddr string,
+	ttl uint32,
+	useTTL bool,
+	comment string,
+	eas EA,
+	ref string) *RecordA {
+
+	res := NewEmptyRecordA()
+	res.View = view
+	res.Zone = zone
+	res.Name = name
+	res.Ipv4Addr = ipAddr
+	res.Ttl = ttl
+	res.UseTtl = useTTL
+	res.Comment = comment
+	res.Ea = eas
+	res.Ref = ref
+
+	return res
+}
+
+type RecordAAAA struct {
+	IBBase   `json:"-"`
+	Ref      string `json:"_ref,omitempty"`
+	Ipv6Addr string `json:"ipv6addr,omitempty"`
+	Name     string `json:"name,omitempty"`
+	View     string `json:"view,omitempty"`
+	Zone     string `json:"zone,omitempty"`
+	UseTtl   bool   `json:"use_ttl"`
+	Ttl      uint32 `json:"ttl"`
+	Comment  string `json:"comment"`
+	Ea       EA     `json:"extattrs"`
+}
+
+func NewEmptyRecordAAAA() *RecordAAAA {
+	res := &RecordAAAA{}
+	res.objectType = "record:aaaa"
+	res.returnFields = []string{"extattrs", "ipv6addr", "name", "view", "zone", "use_ttl", "ttl", "comment"}
+
+	return res
+}
+
+func NewRecordAAAA(
+	view string,
+	name string,
+	ipAddr string,
+	useTtl bool,
+	ttl uint32,
+	comment string,
+	eas EA,
+	ref string) *RecordAAAA {
+
+	res := NewEmptyRecordAAAA()
+	res.View = view
+	res.Name = name
+	res.Ipv6Addr = ipAddr
+	res.UseTtl = useTtl
+	res.Ttl = ttl
+	res.Comment = comment
+	res.Ea = eas
+	res.Ref = ref
+
+	return res
+}
+
+type RecordPTR struct {
+	IBBase   `json:"-"`
+	Ref      string `json:"_ref,omitempty"`
+	Ipv4Addr string `json:"ipv4addr,omitempty"`
+	Ipv6Addr string `json:"ipv6addr,omitempty"`
+	Name     string `json:"name,omitempty"`
 	PtrdName string `json:"ptrdname,omitempty"`
 	View     string `json:"view,omitempty"`
 	Zone     string `json:"zone,omitempty"`
-	Ea       EA     `json:"extattrs,omitempty"`
+	Ea       EA     `json:"extattrs"`
+	UseTtl   bool   `json:"use_ttl"`
+	Ttl      uint32 `json:"ttl"`
+	Comment  string `json:"comment,omitempty"`
 }
 
-func NewRecordPTR(rptr RecordPTR) *RecordPTR {
-	res := rptr
+func NewEmptyRecordPTR() *RecordPTR {
+	res := RecordPTR{}
 	res.objectType = "record:ptr"
-	res.returnFields = []string{"extattrs", "ipv4addr", "ptrdname", "view", "zone"}
+	res.returnFields = []string{"extattrs", "ipv4addr", "ipv6addr", "ptrdname", "view", "zone", "comment", "use_ttl", "ttl"}
 
 	return &res
+}
+
+func NewRecordPTR(dnsView string, ptrdname string, useTtl bool, ttl uint32, comment string, ea EA) *RecordPTR {
+	res := NewEmptyRecordPTR()
+	res.View = dnsView
+	res.PtrdName = ptrdname
+	res.UseTtl = useTtl
+	res.Ttl = ttl
+	res.Comment = comment
+	res.Ea = ea
+
+	return res
 }
 
 type RecordCNAME struct {
@@ -377,32 +564,103 @@ type RecordCNAME struct {
 	Name      string `json:"name,omitempty"`
 	View      string `json:"view,omitempty"`
 	Zone      string `json:"zone,omitempty"`
-	Ea        EA     `json:"extattrs,omitempty"`
-	Ttl       uint   `json:"ttl,omitempty"`
-	UseTtl    bool   `json:"use_ttl,omitempty"`
+	Ea        EA     `json:"extattrs"`
+	Comment   string `json:"comment"`
+	UseTtl    bool   `json:"use_ttl"`
+	Ttl       uint32 `json:"ttl"`
 }
 
-func NewRecordCNAME(rc RecordCNAME) *RecordCNAME {
-	res := rc
+func NewEmptyRecordCNAME() *RecordCNAME {
+	res := &RecordCNAME{}
 	res.objectType = "record:cname"
-	res.returnFields = []string{"extattrs", "canonical", "name", "view", "zone", "ttl", "use_ttl"}
+	res.returnFields = []string{"extattrs", "canonical", "name", "view", "zone", "comment", "ttl", "use_ttl"}
+	return res
+}
 
-	return &res
+func NewRecordCNAME(dnsView string,
+	canonical string,
+	recordName string,
+	useTtl bool,
+	ttl uint32,
+	comment string,
+	ea EA,
+	ref string) *RecordCNAME {
+
+	res := NewEmptyRecordCNAME()
+	res.View = dnsView
+	res.Canonical = canonical
+	res.Name = recordName
+	res.UseTtl = useTtl
+	res.Ttl = ttl
+	res.Comment = comment
+	res.Ea = ea
+	res.Ref = ref
+
+	return res
 }
 
 type HostRecordIpv4Addr struct {
-	IBBase   `json:"-"`
-	Ipv4Addr string `json:"ipv4addr,omitempty"`
-	Ref      string `json:"_ref,omitempty"`
-	Mac      string `json:"mac,omitempty"`
-	View     string `json:"view,omitempty"`
-	Cidr     string `json:"network,omitempty"`
+	IBBase     `json:"-"`
+	Ipv4Addr   string `json:"ipv4addr,omitempty"`
+	Ref        string `json:"_ref,omitempty"`
+	Mac        string `json:"mac,omitempty"`
+	View       string `json:"view,omitempty"`
+	Cidr       string `json:"network,omitempty"`
+	EnableDhcp bool   `json:"configure_for_dhcp"`
 }
 
-func NewHostRecordIpv4Addr(hostAddr HostRecordIpv4Addr) *HostRecordIpv4Addr {
-	res := hostAddr
+func NewEmptyHostRecordIpv4Addr() *HostRecordIpv4Addr {
+	res := &HostRecordIpv4Addr{}
 	res.objectType = "record:host_ipv4addr"
-	return &res
+
+	return res
+}
+
+func NewHostRecordIpv4Addr(
+	ipAddr string,
+	macAddr string,
+	enableDhcp bool,
+	ref string) *HostRecordIpv4Addr {
+
+	res := NewEmptyHostRecordIpv4Addr()
+	res.Ipv4Addr = ipAddr
+	res.Mac = macAddr
+	res.Ref = ref
+	res.EnableDhcp = enableDhcp
+
+	return res
+}
+
+type HostRecordIpv6Addr struct {
+	IBBase     `json:"-"`
+	Ipv6Addr   string `json:"ipv6addr,omitempty"`
+	Ref        string `json:"_ref,omitempty"`
+	Duid       string `json:"duid,omitempty"`
+	View       string `json:"view,omitempty"`
+	Cidr       string `json:"network,omitempty"`
+	EnableDhcp bool   `json:"configure_for_dhcp"`
+}
+
+func NewEmptyHostRecordIpv6Addr() *HostRecordIpv6Addr {
+	res := &HostRecordIpv6Addr{}
+	res.objectType = "record:host_ipv6addr"
+
+	return res
+}
+
+func NewHostRecordIpv6Addr(
+	ipAddr string,
+	duid string,
+	enableDhcp bool,
+	ref string) *HostRecordIpv6Addr {
+
+	res := NewEmptyHostRecordIpv6Addr()
+	res.Ipv6Addr = ipAddr
+	res.Duid = duid
+	res.Ref = ref
+	res.EnableDhcp = enableDhcp
+
+	return res
 }
 
 type HostRecord struct {
@@ -410,20 +668,63 @@ type HostRecord struct {
 	Ref         string               `json:"_ref,omitempty"`
 	Ipv4Addr    string               `json:"ipv4addr,omitempty"`
 	Ipv4Addrs   []HostRecordIpv4Addr `json:"ipv4addrs,omitempty"`
+	Ipv6Addr    string               `json:"ipv6addr,omitempty"`
+	Ipv6Addrs   []HostRecordIpv6Addr `json:"ipv6addrs,omitempty"`
 	Name        string               `json:"name,omitempty"`
 	View        string               `json:"view,omitempty"`
 	Zone        string               `json:"zone,omitempty"`
-	EnableDns   *bool                `json:"configure_for_dns,omitempty"`
+	EnableDns   bool                 `json:"configure_for_dns"`
 	NetworkView string               `json:"network_view,omitempty"`
-	Ea          EA                   `json:"extattrs,omitempty"`
+	Comment     string               `json:"comment"`
+	Ea          EA                   `json:"extattrs"`
+	UseTtl      bool                 `json:"use_ttl"`
+	Ttl         uint32               `json:"ttl"`
+	Aliases     []string             `json:"aliases,omitempty"`
 }
 
-func NewHostRecord(rh HostRecord) *HostRecord {
-	res := rh
+func NewEmptyHostRecord() *HostRecord {
+	res := &HostRecord{}
 	res.objectType = "record:host"
-	res.returnFields = []string{"extattrs", "ipv4addrs", "name", "view", "zone"}
+	res.returnFields = []string{"extattrs", "ipv4addrs", "ipv6addrs", "name", "view", "zone", "comment", "network_view", "aliases", "use_ttl", "ttl"}
 
-	return &res
+	return res
+}
+
+func NewHostRecord(
+	netView string,
+	name string,
+	ipv4Addr string,
+	ipv6Addr string,
+	ipv4AddrList []HostRecordIpv4Addr,
+	ipv6AddrList []HostRecordIpv6Addr,
+	eas EA,
+	enableDNS bool,
+	dnsView string,
+	zone string,
+	ref string,
+	useTtl bool,
+	ttl uint32,
+	comment string,
+	aliases []string) *HostRecord {
+
+	res := NewEmptyHostRecord()
+	res.NetworkView = netView
+	res.Name = name
+	res.Ea = eas
+	res.View = dnsView
+	res.Zone = zone
+	res.Ref = ref
+	res.Comment = comment
+	res.Ipv4Addr = ipv4Addr
+	res.Ipv6Addr = ipv6Addr
+	res.Ipv4Addrs = ipv4AddrList
+	res.Ipv6Addrs = ipv6AddrList
+	res.UseTtl = useTtl
+	res.Ttl = ttl
+	res.Aliases = aliases
+	res.EnableDns = enableDNS
+
+	return res
 }
 
 type RecordTXT struct {
@@ -451,7 +752,7 @@ type ZoneAuth struct {
 	Ref    string `json:"_ref,omitempty"`
 	Fqdn   string `json:"fqdn,omitempty"`
 	View   string `json:"view,omitempty"`
-	Ea     EA     `json:"extattrs,omitempty"`
+	Ea     EA     `json:"extattrs"`
 }
 
 func NewZoneAuth(za ZoneAuth) *ZoneAuth {
@@ -473,7 +774,7 @@ type ZoneDelegated struct {
 	Fqdn       string       `json:"fqdn,omitempty"`
 	DelegateTo []NameServer `json:"delegate_to,omitempty"`
 	View       string       `json:"view,omitempty"`
-	Ea         EA           `json:"extattrs,omitempty"`
+	Ea         EA           `json:"extattrs"`
 }
 
 func NewZoneDelegated(za ZoneDelegated) *ZoneDelegated {
@@ -482,6 +783,10 @@ func NewZoneDelegated(za ZoneDelegated) *ZoneDelegated {
 	res.returnFields = []string{"extattrs", "fqdn", "view", "delegate_to"}
 
 	return &res
+}
+
+func (ea EA) Count() int {
+	return len(ea)
 }
 
 func (ea EA) MarshalJSON() ([]byte, error) {
