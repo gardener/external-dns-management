@@ -23,7 +23,7 @@ import (
 
 func SupportedRecordType(t string) bool {
 	switch t {
-	case RS_CNAME, RS_A, RS_TXT:
+	case RS_CNAME, RS_A, RS_AAAA, RS_TXT:
 		return true
 	}
 	return false

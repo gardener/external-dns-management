@@ -463,15 +463,19 @@ func (this *ChangeModel) AddTargets(set *dns.DNSSet, base *dns.DNSSet, provider 
 		ttl := t.GetEntry().TTL()
 		if t.GetRecordType() == dns.RS_CNAME && len(targets) > 1 {
 			cnames = append(cnames, t.GetHostName())
-			addrs, err := lookupHostIPv4(t.GetHostName())
+			ipv4addrs, ipv6addrs, err := lookupHosts(t.GetHostName())
 			if err == nil {
-				for _, addr := range addrs {
+				for _, addr := range ipv4addrs {
 					AddRecord(targetsets, dns.RS_A, addr, ttl)
+				}
+				for _, addr := range ipv6addrs {
+					AddRecord(targetsets, dns.RS_AAAA, addr, ttl)
 				}
 			} else {
 				this.Errorf("cannot lookup '%s': %s", t.GetHostName(), err)
 			}
-			this.Debugf("mapping target '%s' to A records: %s", t.GetHostName(), strings.Join(addrs, ","))
+			this.Debugf("mapping target '%s' to A records: %s or AAAA records: %s",
+				t.GetHostName(), strings.Join(ipv4addrs, ","), strings.Join(ipv6addrs, ","))
 		} else {
 			t = provider.MapTarget(t)
 			AddRecord(targetsets, t.GetRecordType(), t.GetHostName(), ttl)

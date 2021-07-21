@@ -117,14 +117,14 @@ func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) erro
 	return err
 }
 
-func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) raw.Record {
+func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) (raw.Record, error) {
 	return (*Record)(&cloudflare.DNSRecord{
 		Type:    rtype,
 		Name:    fqdn,
 		Content: value,
 		TTL:     int(ttl),
 		ZoneID:  zone.Id(),
-	})
+	}), nil
 }
 
 func testTTL(ttl *int) {

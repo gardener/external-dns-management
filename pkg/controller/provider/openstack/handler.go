@@ -201,7 +201,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 	recordSetHandler := func(recordSet *recordsets.RecordSet) error {
 		switch recordSet.Type {
-		case dns.RS_A, dns.RS_CNAME, dns.RS_TXT:
+		case dns.RS_A, dns.RS_AAAA, dns.RS_CNAME, dns.RS_TXT:
 			rs := dns.NewRecordSet(recordSet.Type, int64(recordSet.TTL), nil)
 			for _, record := range recordSet.Records {
 				value := record

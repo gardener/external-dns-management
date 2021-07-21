@@ -18,8 +18,9 @@ package provider
 
 import (
 	"fmt"
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"net"
+
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,6 +78,8 @@ func NewTargetFromEntryVersion(name string, entry *EntryVersion) (Target, error)
 		return NewTarget(dns.RS_CNAME, name, entry), nil
 	} else if ip.To4() != nil {
 		return NewTarget(dns.RS_A, name, entry), nil
+	} else if ip.To16() != nil {
+		return NewTarget(dns.RS_AAAA, name, entry), nil
 	} else {
 		return nil, fmt.Errorf("IPv6 addresses are not supported yet: %s (%s)", ip.String(), name)
 	}

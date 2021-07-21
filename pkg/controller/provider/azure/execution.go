@@ -100,6 +100,13 @@ func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) (b
 			arecords = append(arecords, azure.ARecord{Ipv4Address: &r.Value})
 		}
 		properties.ARecords = &arecords
+	case dns.RS_AAAA:
+		recordType = azure.AAAA
+		aaaarecords := []azure.AaaaRecord{}
+		for _, r := range rset.Records {
+			aaaarecords = append(aaaarecords, azure.AaaaRecord{Ipv6Address: &r.Value})
+		}
+		properties.AaaaRecords = &aaaarecords
 	case dns.RS_CNAME:
 		recordType = azure.CNAME
 		properties.CnameRecord = &azure.CnameRecord{Cname: &rset.Records[0].Value}

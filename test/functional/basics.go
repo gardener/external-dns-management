@@ -69,6 +69,29 @@ spec:
 apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSEntry
 metadata:
+  name: {{.Prefix}}aaaa
+  namespace: {{.Namespace}}
+spec:
+  dnsName: {{.Prefix}}aaaa.{{.Domain}}
+  ttl: {{.TTL}}
+  targets:
+  - 20a0::1
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  name: {{.Prefix}}mixed
+  namespace: {{.Namespace}}
+spec:
+  dnsName: {{.Prefix}}mixed.{{.Domain}}
+  ttl: {{.TTL}}
+  targets:
+  - 20a0::2
+  - 11.11.0.11
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
   name: {{.Prefix}}txt
   namespace: {{.Namespace}}
 spec:
@@ -168,7 +191,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 			Ω(err).Should(BeNil())
 
 			entryNames := []string{}
-			for _, name := range []string{"a", "txt", "wildcard", "cname", "cname-multi"} {
+			for _, name := range []string{"a", "aaaa", "mixed", "txt", "wildcard", "cname", "cname-multi"} {
 				entryNames = append(entryNames, entryName(p, name))
 			}
 			if p.AliasTarget != "" {
@@ -195,6 +218,42 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 						"providerType": Equal(p.Type),
 						"state":        Equal("Ready"),
 						"targets":      And(HaveLen(1), ContainElement("11.11.11.11")),
+						"ttl":          Equal(float64(ttl)),
+						"zone":         Equal(p.ZoneID),
+					}),
+				}),
+				entryName(p, "aaaa"): MatchKeys(IgnoreExtras, Keys{
+					"metadata": MatchKeys(IgnoreExtras, Keys{
+						"finalizers": And(HaveLen(1), ContainElement("dns.gardener.cloud/"+p.FinalizerType)),
+					}),
+					"spec": MatchKeys(IgnoreExtras, Keys{
+						"dnsName": Equal(dnsName(p, "aaaa")),
+						"targets": And(HaveLen(1), ContainElement("20a0::2"), ContainElement("20a0::2")),
+					}),
+					"status": MatchKeys(IgnoreExtras, Keys{
+						"message":      Equal("dns entry active"),
+						"provider":     Equal(p.Namespace + "/" + p.Name),
+						"providerType": Equal(p.Type),
+						"state":        Equal("Ready"),
+						"targets":      And(HaveLen(1), ContainElement("20a0::1")),
+						"ttl":          Equal(float64(ttl)),
+						"zone":         Equal(p.ZoneID),
+					}),
+				}),
+				entryName(p, "mixed"): MatchKeys(IgnoreExtras, Keys{
+					"metadata": MatchKeys(IgnoreExtras, Keys{
+						"finalizers": And(HaveLen(1), ContainElement("dns.gardener.cloud/"+p.FinalizerType)),
+					}),
+					"spec": MatchKeys(IgnoreExtras, Keys{
+						"dnsName": Equal(dnsName(p, "aaaa")),
+						"targets": And(HaveLen(2), ContainElement("20a0::2"), ContainElement("11.11.0.11")),
+					}),
+					"status": MatchKeys(IgnoreExtras, Keys{
+						"message":      Equal("dns entry active"),
+						"provider":     Equal(p.Namespace + "/" + p.Name),
+						"providerType": Equal(p.Type),
+						"state":        Equal("Ready"),
+						"targets":      And(HaveLen(2), ContainElement("20a0::2"), ContainElement("11.11.0.11")),
 						"ttl":          Equal(float64(ttl)),
 						"zone":         Equal(p.ZoneID),
 					}),
@@ -272,6 +331,8 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 					u.AwaitLookupCName(dnsName(p, "alias"), p.AliasTarget)
 				}
 				u.AwaitLookup(dnsName(p, "a"), "11.11.11.11")
+				u.AwaitLookup(dnsName(p, "aaaa"), "20a0::1")
+				u.AwaitLookup(dnsName(p, "mixed"), "20a0::2", "11.11.0.11")
 				randname := config.RandStringBytes(6)
 				u.AwaitLookup(randname+"."+dnsName(p, "wildcard"), "44.44.44.44")
 				u.AwaitLookupCName(dnsName(p, "cname"), "google-public-dns-a.google.com")
