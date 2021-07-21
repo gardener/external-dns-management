@@ -319,10 +319,8 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 		}
 		var new Target
 		new, err = NewTargetFromEntryVersion(t, entry)
-		// we should ignore unsupported addresses since the user might not influence
-		// the provider assigned ip address type
 		if err != nil {
-			continue
+			return
 		}
 		if targets.Has(new) {
 			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate target %q", entry.ObjectName(), new))

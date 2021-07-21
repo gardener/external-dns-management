@@ -228,7 +228,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 					}),
 					"spec": MatchKeys(IgnoreExtras, Keys{
 						"dnsName": Equal(dnsName(p, "aaaa")),
-						"targets": And(HaveLen(1), ContainElement("20a0::2"), ContainElement("20a0::2")),
+						"targets": And(HaveLen(1), ContainElement("20a0::1")),
 					}),
 					"status": MatchKeys(IgnoreExtras, Keys{
 						"message":      Equal("dns entry active"),
@@ -245,7 +245,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 						"finalizers": And(HaveLen(1), ContainElement("dns.gardener.cloud/"+p.FinalizerType)),
 					}),
 					"spec": MatchKeys(IgnoreExtras, Keys{
-						"dnsName": Equal(dnsName(p, "aaaa")),
+						"dnsName": Equal(dnsName(p, "mixed")),
 						"targets": And(HaveLen(2), ContainElement("20a0::2"), ContainElement("11.11.0.11")),
 					}),
 					"status": MatchKeys(IgnoreExtras, Keys{
@@ -296,7 +296,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 					}),
 					"status": MatchKeys(IgnoreExtras, Keys{
 						"state":   Equal("Ready"),
-						"targets": And(HaveLen(2), ContainElement("8.8.8.8"), ContainElement("8.8.4.4")),
+						"targets": And(HaveLen(4), ContainElement("8.8.8.8"), ContainElement("8.8.4.4"), ContainElement("2001:4860:4860::8888"), ContainElement("2001:4860:4860::8844")),
 					}),
 				}),
 			}))

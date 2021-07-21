@@ -30,7 +30,7 @@ type Executor interface {
 	UpdateRecord(r Record, zone provider.DNSHostedZone) error
 	DeleteRecord(r Record, zone provider.DNSHostedZone) error
 
-	NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) (Record, error)
+	NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) Record
 }
 
 type result struct {
@@ -119,12 +119,8 @@ func (this *Execution) add(dnsname string, rset *dns.RecordSet, modonly bool, fo
 			}
 		} else {
 			if notfound != nil {
-				record, err := this.executor.NewRecord(dnsname, rset.Type, r.Value, this.zone, rset.TTL)
-				if err == nil {
-					*notfound = append(*notfound, record)
-				} else {
-					this.Errorf("Error adding record: %s (%s): %s", dnsname, rtype, err)
-				}
+				record := this.executor.NewRecord(dnsname, rset.Type, r.Value, this.zone, rset.TTL)
+				*notfound = append(*notfound, record)
 			}
 		}
 	}

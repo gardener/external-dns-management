@@ -165,7 +165,7 @@ func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) erro
 	return err
 }
 
-func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) (raw.Record, error) {
+func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) raw.Record {
 	rr := GetRR(fqdn, zone.Domain())
-	return (*Record)(&alidns.Record{RR: rr, Type: rtype, Value: value, DomainName: zone.Domain(), TTL: int(ttl)}), nil
+	return (*Record)(&alidns.Record{RR: rr, Type: rtype, Value: value, DomainName: zone.Domain(), TTL: int(ttl)})
 }

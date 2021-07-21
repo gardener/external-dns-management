@@ -1,12 +1,10 @@
 language: go
 
 go:
-  - 1.7.x
-  - 1.8
-  - 1.9
+  - 1.15
 
 env:
-  - GO111MODULE=on
+  - GO111MODULE=auto
 
 install: true
 

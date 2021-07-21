@@ -194,7 +194,8 @@ func (l *NetworkViewLock) Lock() error {
 	}
 
 	if _, ok := nw.Ea[l.LockEA]; !ok {
-		err = l.ObjMgr.UpdateNetworkViewEA(nw.Ref, EA{l.LockEA: freeLockVal}, nil)
+		nw.Ea[l.LockEA] = freeLockVal
+		_, err = l.ObjMgr.UpdateNetworkView(nw.Ref, "", "", nw.Ea)
 		if err != nil {
 			return fmt.Errorf("Failed to Update Network view with Lock EA")
 		}

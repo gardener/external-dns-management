@@ -18,11 +18,10 @@
 package infoblox
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
-	ibclient "github.com/infobloxopen/infoblox-go-client"
+	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -63,24 +62,26 @@ func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) erro
 	return err
 }
 
-func (this *access) NewRecord(fqdn string, rtype string, value string, zone provider.DNSHostedZone, ttl int64) (record raw.Record, err error) {
+func (this *access) NewRecord(fqdn string, rtype string, value string, zone provider.DNSHostedZone, ttl int64) (record raw.Record) {
 	switch rtype {
 	case dns.RS_A:
-		record = (*RecordA)(ibclient.NewRecordA(ibclient.RecordA{
-			Name:     fqdn,
-			Ipv4Addr: value,
-			//Zone:     zone.Key(),
-			View: this.view,
-		}))
+		r := ibclient.NewEmptyRecordA()
+		r.Name = fqdn
+		r.Ipv4Addr = value
+		r.View = this.view
+		record = (*RecordA)(r)
 	case dns.RS_AAAA:
-		err = fmt.Errorf("warning: aaaa records not supported on infoblox yet")
+		r := ibclient.NewEmptyRecordAAAA()
+		r.Name = fqdn
+		r.Ipv6Addr = value
+		r.View = this.view
+		record = (*RecordAAAA)(r)
 	case dns.RS_CNAME:
-		record = (*RecordCNAME)(ibclient.NewRecordCNAME(ibclient.RecordCNAME{
-			Name:      fqdn,
-			Canonical: value,
-			//Zone:      zone.Key(),
-			View: this.view,
-		}))
+		r := ibclient.NewEmptyRecordCNAME()
+		r.Name = fqdn
+		r.Canonical = value
+		r.View = this.view
+		record = (*RecordCNAME)(r)
 	case dns.RS_TXT:
 		if n, err := strconv.Unquote(value); err == nil && !strings.Contains(value, " ") {
 			value = n
@@ -88,7 +89,6 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 		record = (*RecordTXT)(ibclient.NewRecordTXT(ibclient.RecordTXT{
 			Name: fqdn,
 			Text: value,
-			//Zone: zone.Key(),
 			View: this.view,
 		}))
 	}
