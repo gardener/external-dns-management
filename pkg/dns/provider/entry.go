@@ -728,7 +728,7 @@ func normalizeTargets(logger logger.LogContext, object dnsutils.DNSSpecification
 						continue outerV6
 					}
 				}
-				result = append(result, NewTarget(dns.RS_AAAA, addr, t.GetEntry()))
+				result = append(result, dnsutils.NewTarget(dns.RS_AAAA, addr, t.GetTTL()))
 			}
 		} else {
 			w := fmt.Sprintf("cannot lookup '%s': %s", t.GetHostName(), err)

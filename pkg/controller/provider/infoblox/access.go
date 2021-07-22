@@ -112,7 +112,7 @@ func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZ
 
 	execRequest := func(forceProxy bool) ([]byte, error) {
 		rt := ibclient.NewRecordTXT(ibclient.RecordTXT{})
-		urlStr := c.RequestBuilder.BuildUrl(ibclient.GET, rt.ObjectType(), "", rt.ReturnFields(), ibclient.QueryParams{})
+		urlStr := c.RequestBuilder.BuildUrl(ibclient.GET, rt.ObjectType(), "", rt.ReturnFields(), &ibclient.QueryParams{})
 		urlStr += "&name=" + dnsName
 		if forceProxy {
 			urlStr += "&_proxy_search=GM"
