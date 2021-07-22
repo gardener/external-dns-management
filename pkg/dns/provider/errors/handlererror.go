@@ -17,7 +17,7 @@
 package errors
 
 import (
-	pkgerrors "github.com/pkg/errors"
+	"fmt"
 )
 
 type handlerError struct {
@@ -25,11 +25,12 @@ type handlerError struct {
 }
 
 func WrapAsHandlerError(err error, msg string) error {
-	return pkgerrors.Wrap(&handlerError{err: err}, msg)
+	return fmt.Errorf("%s: %w", msg, &handlerError{err: err})
 }
 
 func WrapfAsHandlerError(err error, msg string, args ...interface{}) error {
-	return pkgerrors.Wrapf(&handlerError{err: err}, msg, args...)
+	s := fmt.Sprintf(msg, args...)
+	return WrapAsHandlerError(err, s)
 }
 
 func IsHandlerError(err error) bool {

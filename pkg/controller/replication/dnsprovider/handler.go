@@ -32,7 +32,6 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-	errors2 "github.com/pkg/errors"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 )
@@ -276,7 +275,7 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 
 		changed, err := this.updateSecretIfNeeded(logger, target, slave, obj)
 		if err != nil {
-			return false, errors2.Wrapf(err, "updating secret failed")
+			return false, fmt.Errorf("updating secret failed: %w", err)
 		}
 		mod.Modify(changed)
 
@@ -367,7 +366,7 @@ func (this *sourceReconciler) writeTargetSecret(logger logger.LogContext, target
 	resources.SetOwnerReference(secret, slave.GetOwnerReference())
 	_, err := this.resTargetSecrets.CreateOrUpdate(secret)
 	if err != nil {
-		return errors2.Wrapf(err, "cannot write secret %s for slave provider %s/%s", secret.Name, target.Namespace, target.Name)
+		return fmt.Errorf("cannot write secret %s for slave provider %s/%s: %w", secret.Name, target.Namespace, target.Name, err)
 	}
 	target.Spec.SecretRef = &core.SecretReference{
 		Name:      secret.Name,
@@ -386,7 +385,7 @@ func (this *sourceReconciler) updateSourceStatus(source *api.DNSProvider, source
 		return mod.IsModified(), nil
 	})
 	if err != nil {
-		return false, errors2.Wrapf(err, "cannot update source DNS provider")
+		return false, fmt.Errorf("cannot update source DNS provider: %w", err)
 	}
 	return mod, nil
 }

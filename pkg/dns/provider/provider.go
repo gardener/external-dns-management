@@ -27,8 +27,6 @@ import (
 	"sync"
 	"time"
 
-	pkgerrors "github.com/pkg/errors"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -381,7 +379,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	zones, err := this.account.GetZones()
 	if err != nil {
 		this.zones = nil
-		return this, this.failed(logger, false, pkgerrors.Wrap(err, "cannot get hosted zones"), true)
+		return this, this.failed(logger, false, fmt.Errorf("cannot get hosted zones: %w", err), true)
 	}
 	if len(zones) == 0 {
 		empty := utils.StringSet{}

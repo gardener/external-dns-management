@@ -17,6 +17,7 @@
 package dnsprovider
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
@@ -27,7 +28,6 @@ import (
 	utils2 "github.com/gardener/controller-manager-library/pkg/utils"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
-	errors2 "github.com/pkg/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -101,7 +101,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 				if mod.IsModified() {
 					err = o.UpdateStatus()
 					if err != nil {
-						return reconcile.DelayOnError(logger, errors2.Wrapf(err, "Cannot update status of %s", o.ObjectName()))
+						return reconcile.DelayOnError(logger, fmt.Errorf("cannot update status of %s: %w", o.ObjectName(), err))
 					}
 				}
 			} else {

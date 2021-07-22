@@ -27,8 +27,6 @@ import (
 	"strconv"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/pkg/errors"
-
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
@@ -132,14 +130,14 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	if infobloxConfig.CaCert != nil && verify == "true" {
 		tmpfile, err := ioutil.TempFile("", "cacert")
 		if err != nil {
-			return nil, errors.Wrap(err, "cannot create temporary file for cacert")
+			return nil, fmt.Errorf("cannot create temporary file for cacert: %w", err)
 		}
 		defer os.Remove(tmpfile.Name())
 		if _, err := tmpfile.Write([]byte(*infobloxConfig.CaCert)); err != nil {
-			return nil, errors.Wrap(err, "cannot write temporary file for cacert")
+			return nil, fmt.Errorf("cannot write temporary file for cacert: %w", err)
 		}
 		if err := tmpfile.Close(); err != nil {
-			return nil, errors.Wrap(err, "cannot close temporary file for cacert")
+			return nil, fmt.Errorf("cannot close temporary file for cacert: %w", err)
 		}
 		verify = tmpfile.Name()
 	}
@@ -151,7 +149,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	if infobloxConfig.ProxyURL != nil && *infobloxConfig.ProxyURL != "" {
 		u, err := url.Parse(*infobloxConfig.ProxyURL)
 		if err != nil {
-			return nil, errors.Wrap(err, "parsing proxy url failed")
+			return nil, fmt.Errorf("parsing proxy url failed: %w", err)
 		}
 		transportConfig.ProxyUrl = u
 	}
