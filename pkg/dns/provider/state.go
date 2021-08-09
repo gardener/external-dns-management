@@ -37,7 +37,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-type DNSNames map[string]*Entry
+type ZonedDNSName struct {
+	ZoneID  string
+	DNSName string
+}
+type DNSNames map[ZonedDNSName]*Entry
 
 type zoneReconciliation struct {
 	zone      *dnsHostedZone
@@ -166,7 +170,7 @@ func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller
 		entries:         Entries{},
 		outdated:        newSynchronizedEntries(),
 		blockingEntries: map[resources.ObjectName]time.Time{},
-		dnsnames:        map[string]*Entry{},
+		dnsnames:        map[ZonedDNSName]*Entry{},
 		references:      NewReferenceCache(),
 	}
 }
@@ -417,15 +421,15 @@ loop:
 					}
 				}
 				if fallback == nil || !fallback.IncludesZone(zone.Id()) {
-					stale[e.DNSName()] = e
+					stale[e.ZonedDNSName()] = e
 					continue
 				}
-			} else if !provider.IncludesZone(zone.Id()) {
+			} else if provider == nil || !provider.IncludesZone(zone.Id()) {
 				continue
 			}
-			if zone.Match(dns) > 0 {
+			if dns.ZoneID == zone.Id() && zone.Match(dns.DNSName) > 0 {
 				for excl := range nested { // fallback if no forwarded domains are reported
-					if dnsutils.Match(dns, excl) {
+					if dnsutils.Match(dns.DNSName, excl) {
 						continue loop
 					}
 				}
@@ -442,7 +446,7 @@ loop:
 					logger.Infof("invalid entry %q (%s): %s (%s)", e.ObjectName(), e.DNSName(), e.State(), e.Message())
 				}
 				if e.KeepRecords() {
-					stale[e.DNSName()] = e
+					stale[e.ZonedDNSName()] = e
 				}
 			}
 		}

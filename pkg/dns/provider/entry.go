@@ -182,6 +182,10 @@ func (this *EntryVersion) DNSName() string {
 	return this.dnsname
 }
 
+func (this *EntryVersion) ZonedDNSName() ZonedDNSName {
+	return ZonedDNSName{ZoneID: this.ZoneId(), DNSName: this.dnsname}
+}
+
 func (this *EntryVersion) Targets() Targets {
 	return this.targets
 }

@@ -196,7 +196,8 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	}
 
 	dnsname := v.DNSName()
-	cur := this.dnsnames[dnsname]
+	zonedDNSName := v.ZonedDNSName()
+	cur := this.dnsnames[zonedDNSName]
 	if dnsname != "" {
 		if cur != nil {
 			if cur.ObjectName() != new.ObjectName() {
@@ -230,7 +231,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 			}
 		}
 
-		this.dnsnames[dnsname] = new
+		this.dnsnames[zonedDNSName] = new
 	}
 
 	return new, status
@@ -345,7 +346,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 	this.smartInfof(logger, "cleanup old entry (duplicate=%t)", e.duplicate)
 	this.entries.Delete(e)
-	if this.dnsnames[e.DNSName()] == e {
+	if this.dnsnames[e.ZonedDNSName()] == e {
 		var found *Entry
 		for _, a := range this.entries {
 			logger.Debugf("  checking %s(%s): dup:%t", a.ObjectName(), a.DNSName(), a.duplicate)
@@ -362,7 +363,7 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 		if found == nil {
 			logger.Infof("no duplicate found to reactivate")
 		} else {
-			old := this.dnsnames[found.DNSName()]
+			old := this.dnsnames[found.ZonedDNSName()]
 			msg := ""
 			if old != nil {
 				msg = fmt.Sprintf("reactivate duplicate for %s: %s replacing %s", found.DNSName(), found.ObjectName(), e.ObjectName())
@@ -372,6 +373,6 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 			logger.Info(msg)
 			found.Trigger(nil)
 		}
-		delete(this.dnsnames, e.DNSName())
+		delete(this.dnsnames, e.ZonedDNSName())
 	}
 }
