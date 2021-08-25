@@ -180,7 +180,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 
 	if old != nil && old != new {
 		// DNS name changed -> clean up old dns name
-		logger.Infof("dns name changed to %q", new.DNSName())
+		logger.Infof("dns name changed to %q", new.ZonedDNSName())
 		this.cleanupEntry(logger, old)
 		if old.activezone != "" && old.activezone != new.ZoneId() {
 			if this.zones[old.activezone] != nil {
@@ -223,7 +223,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 			}
 		}
 		if new.valid && new.status.State != api.STATE_READY && new.status.State != api.STATE_PENDING {
-			msg := fmt.Sprintf("activating for %s", new.DNSName())
+			msg := fmt.Sprintf("activating for %s", new.ZonedDNSName())
 			logger.Info(msg)
 			_, err := new.UpdateStatus(logger, api.STATE_PENDING, msg)
 			if err != nil {
@@ -334,7 +334,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 			logger.Infof("removing entry %q (%s[%s])", key.ObjectName(), old.DNSName(), zone.Id())
 			this.triggerHostedZone(zone.Id())
 		} else {
-			this.smartInfof(logger, "removing foreign entry %q (%s)", key.ObjectName(), old.DNSName())
+			this.smartInfof(logger, "removing foreign entry %q (%s)", key.ObjectName(), old.ZonedDNSName())
 		}
 		this.cleanupEntry(logger, old)
 	} else {
@@ -349,8 +349,8 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 	if this.dnsnames[e.ZonedDNSName()] == e {
 		var found *Entry
 		for _, a := range this.entries {
-			logger.Debugf("  checking %s(%s): dup:%t", a.ObjectName(), a.DNSName(), a.duplicate)
-			if a.duplicate && a.DNSName() == e.DNSName() {
+			logger.Debugf("  checking %s(%s): dup:%t", a.ObjectName(), a.ZonedDNSName(), a.duplicate)
+			if a.duplicate && a.ZonedDNSName() == e.ZonedDNSName() {
 				if found == nil {
 					found = a
 				} else {
@@ -366,9 +366,9 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 			old := this.dnsnames[found.ZonedDNSName()]
 			msg := ""
 			if old != nil {
-				msg = fmt.Sprintf("reactivate duplicate for %s: %s replacing %s", found.DNSName(), found.ObjectName(), e.ObjectName())
+				msg = fmt.Sprintf("reactivate duplicate for %s: %s replacing %s", found.ZonedDNSName(), found.ObjectName(), e.ObjectName())
 			} else {
-				msg = fmt.Sprintf("reactivate duplicate for %s: %s", found.DNSName(), found.ObjectName())
+				msg = fmt.Sprintf("reactivate duplicate for %s: %s", found.ZonedDNSName(), found.ObjectName())
 			}
 			logger.Info(msg)
 			found.Trigger(nil)

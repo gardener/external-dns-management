@@ -72,7 +72,7 @@ func (this *StatusUpdate) Succeeded() {
 		this.done = true
 		this.modified = false
 		if this.delete {
-			this.logger.Infof("removing finalizer for deleted entry %s", this.DNSName())
+			this.logger.Infof("removing finalizer for deleted entry %s", this.ZonedDNSName())
 			this.fhandler.RemoveFinalizer(this.Entry.Object())
 		} else {
 			this.Entry.activezone = this.ZoneId()

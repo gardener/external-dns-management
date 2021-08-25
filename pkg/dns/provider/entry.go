@@ -757,7 +757,7 @@ func (this *Entry) CreatedAt() time.Time {
 }
 
 func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
-	if this.DNSName() != new.DNSName() {
+	if this.ZonedDNSName() != new.ZonedDNSName() {
 		return NewEntry(new, this.state)
 	}
 

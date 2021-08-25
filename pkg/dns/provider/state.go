@@ -41,6 +41,11 @@ type ZonedDNSName struct {
 	ZoneID  string
 	DNSName string
 }
+
+func (z ZonedDNSName) String() string {
+	return fmt.Sprintf("%s[%s]", z.DNSName, z.ZoneID)
+}
+
 type DNSNames map[ZonedDNSName]*Entry
 
 type zoneReconciliation struct {
