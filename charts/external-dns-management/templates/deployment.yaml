@@ -36,7 +36,7 @@ spec:
         runAsUser: 65534
       containers:
       - name: dns-controller-manager
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        image: "{{ include "image" .Values.image }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
