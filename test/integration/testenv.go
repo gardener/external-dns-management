@@ -18,8 +18,10 @@ package integration
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -54,10 +56,13 @@ type FailOption int
 const (
 	FailGetZones FailOption = iota
 	FailDeleteEntry
+	FailSecondZoneWithSameBaseDomain
+	AlternativeMockName
 )
 
 type TestEnv struct {
 	Namespace      string
+	ZonePrefix     string
 	Cluster        cluster.Interface
 	Logger         logger.LogContext
 	defaultTimeout time.Duration
@@ -126,9 +131,29 @@ func NewTestEnv(kubeconfig string, namespace string) (*TestEnv, error) {
 	if err != nil {
 		return nil, err
 	}
-	te := &TestEnv{Cluster: cluster, Namespace: namespace, Logger: logger,
-		defaultTimeout: 30 * time.Second, resources: cluster.Resources()}
+	te := &TestEnv{
+		Cluster:        cluster,
+		Namespace:      namespace,
+		ZonePrefix:     namespace + ":",
+		Logger:         logger,
+		defaultTimeout: 30 * time.Second,
+		resources:      cluster.Resources(),
+	}
 	err = te.CreateNamespace(namespace)
+	return te, err
+}
+
+func NewTestEnvNamespace(first *TestEnv, namespace string) (*TestEnv, error) {
+	logger := logger.NewContext("", "TestEnv-"+namespace)
+	te := &TestEnv{
+		Cluster:        first.Cluster,
+		Namespace:      namespace,
+		ZonePrefix:     namespace + ":",
+		Logger:         logger,
+		defaultTimeout: 30 * time.Second,
+		resources:      first.Cluster.Resources(),
+	}
+	err := te.CreateNamespace(namespace)
 	return te, err
 }
 
@@ -164,18 +189,44 @@ func (te *TestEnv) CreateSecret(index int) (resources.Object, error) {
 	return obj, err
 }
 
-func BuildProviderConfig(domain, baseDomain string, failOptions ...FailOption) *runtime.RawExtension {
-	zones := fmt.Sprintf(`"zones": ["%s","x.%s"]`, domain, baseDomain)
-	fail := ""
+func (te *TestEnv) BuildProviderConfig(domain, baseDomain string, failOptions ...FailOption) *runtime.RawExtension {
+	name := te.Namespace
+	for _, opt := range failOptions {
+		switch opt {
+		case AlternativeMockName:
+			name = name + "-alt"
+		}
+	}
+	input := mock.MockConfig{
+		Name: name,
+		Zones: []mock.MockZone{
+			{ZonePrefix: te.ZonePrefix, DNSName: domain},
+			{ZonePrefix: te.ZonePrefix + "-base", DNSName: baseDomain},
+		},
+	}
+	return te.BuildProviderConfigEx(input, failOptions...)
+}
+
+func (te *TestEnv) BuildProviderConfigEx(input mock.MockConfig, failOptions ...FailOption) *runtime.RawExtension {
 	for _, opt := range failOptions {
 		switch opt {
 		case FailGetZones:
-			fail += `,"failGetZones": true`
+			input.FailGetZones = true
 		case FailDeleteEntry:
-			fail += `,"failDeleteEntry": true`
+			input.FailDeleteEntry = true
+		case FailSecondZoneWithSameBaseDomain:
+			input.Zones = append(input.Zones, mock.MockZone{
+				ZonePrefix: te.ZonePrefix + "-second",
+				DNSName:    input.Zones[0].DNSName,
+			})
 		}
 	}
-	return &runtime.RawExtension{Raw: []byte(fmt.Sprintf("{%s%s}", zones, fail))}
+
+	bytes, err := json.Marshal(&input)
+	if err != nil {
+		return nil
+	}
+	return &runtime.RawExtension{Raw: bytes}
 }
 
 func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretName string, failOptions ...FailOption) (resources.Object, string, error) {
@@ -184,7 +235,7 @@ func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretNa
 	setSpec := func(spec *v1alpha1.DNSProviderSpec) {
 		spec.Domains = &v1alpha1.DNSSelection{Include: []string{domain}}
 		spec.Type = "mock-inmemory"
-		spec.ProviderConfig = BuildProviderConfig(domain, baseDomain, failOptions...)
+		spec.ProviderConfig = te.BuildProviderConfig(domain, baseDomain, failOptions...)
 		spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: te.Namespace}
 	}
 	obj, err := te.CreateProviderEx(providerIndex, secretName, setSpec)
@@ -648,8 +699,12 @@ func (te *TestEnv) DeleteSecretByName(name string) error {
 }
 
 func (te *TestEnv) MockInMemoryHasEntry(e resources.Object) error {
+	return te.MockInMemoryHasEntryEx(te.Namespace, te.ZonePrefix, e)
+}
+
+func (te *TestEnv) MockInMemoryHasEntryEx(name, zonePrefix string, e resources.Object) error {
 	entry := e.Data().(*v1alpha1.DNSEntry)
-	dnsSet, err := te.MockInMemoryGetDNSSet(entry.Spec.DNSName)
+	dnsSet, err := te.MockInMemoryGetDNSSetEx(name, zonePrefix, entry.Spec.DNSName)
 	if err != nil {
 		return err
 	}
@@ -660,9 +715,17 @@ func (te *TestEnv) MockInMemoryHasEntry(e resources.Object) error {
 }
 
 func (te *TestEnv) MockInMemoryGetDNSSet(dnsName string) (*dns.DNSSet, error) {
-	for _, zone := range mock.TestMock.GetZones() {
-		if zone.Match(dnsName) > 0 {
-			state, err := mock.TestMock.CloneZoneState(zone)
+	return te.MockInMemoryGetDNSSetEx(te.Namespace, te.ZonePrefix, dnsName)
+}
+
+func (te *TestEnv) MockInMemoryGetDNSSetEx(name, zonePrefix, dnsName string) (*dns.DNSSet, error) {
+	testMock := mock.TestMock[name]
+	if testMock == nil {
+		return nil, nil
+	}
+	for _, zone := range testMock.GetZones() {
+		if strings.HasPrefix(zone.Id(), zonePrefix) && zone.Match(dnsName) > 0 {
+			state, err := testMock.CloneZoneState(zone)
 			if err != nil {
 				return nil, err
 			}
@@ -675,8 +738,12 @@ func (te *TestEnv) MockInMemoryGetDNSSet(dnsName string) (*dns.DNSSet, error) {
 }
 
 func (te *TestEnv) MockInMemoryHasNotEntry(e resources.Object) error {
+	return te.MockInMemoryHasNotEntryEx(te.Namespace, te.ZonePrefix, e)
+}
+
+func (te *TestEnv) MockInMemoryHasNotEntryEx(name, zonePrefix string, e resources.Object) error {
 	entry := e.Data().(*v1alpha1.DNSEntry)
-	dnsSet, err := te.MockInMemoryGetDNSSet(entry.Spec.DNSName)
+	dnsSet, err := te.MockInMemoryGetDNSSetEx(name, zonePrefix, entry.Spec.DNSName)
 	if err != nil {
 		return err
 	}

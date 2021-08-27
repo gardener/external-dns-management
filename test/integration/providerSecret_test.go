@@ -20,10 +20,10 @@ import (
 	"fmt"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func createAndDelete() {
@@ -63,12 +63,24 @@ var _ = Describe("ProviderSecret", func() {
 		_, err := testEnv.CreateSecret(0)
 		Ω(err).Should(BeNil())
 
+		var zonedata []mock.MockZone
+		for _, c := range []string{"a", "b", "c", "d", "e"} {
+			zonedata = append(zonedata, mock.MockZone{
+				ZonePrefix: testEnv.ZonePrefix,
+				DNSName:    fmt.Sprintf("pr1%s.mock.xx", c),
+			})
+		}
+
+		prefix := testEnv.ZonePrefix
 		setSpec := func(spec *v1alpha1.DNSProviderSpec) {
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"pr1a.mock.xx", "pr1b.mock.xx"}, Exclude: []string{"pr1d.mock.xx"}}
-			spec.Zones = &v1alpha1.DNSSelection{Include: []string{"pr1a.mock.xx", "pr1c.mock.xx"}, Exclude: []string{"pr1e.mock.xx"}}
+			spec.Zones = &v1alpha1.DNSSelection{Include: []string{prefix + "pr1a.mock.xx", prefix + "pr1c.mock.xx"}, Exclude: []string{prefix + "pr1e.mock.xx"}}
 			spec.Type = "mock-inmemory"
-			spec.ProviderConfig = &runtime.RawExtension{Raw: []byte(fmt.Sprintf("{\"zones\": [\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"]}",
-				"pr1a.mock.xx", "pr1b.mock.xx", "pr1c.mock.xx", "pr1d.mock.xx", "pr1e.mock.xx"))}
+			input := mock.MockConfig{
+				Name:  testEnv.Namespace,
+				Zones: zonedata,
+			}
+			spec.ProviderConfig = testEnv.BuildProviderConfigEx(input)
 			spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: testEnv.Namespace}
 		}
 
@@ -81,8 +93,8 @@ var _ = Describe("ProviderSecret", func() {
 		_, data, err := testEnv.GetProvider(pr.GetName())
 		Ω(err).Should(BeNil())
 
-		Ω(data.Status.Zones.Included).Should(ConsistOf("pr1a.mock.xx"))
-		Ω(data.Status.Zones.Excluded).Should(ConsistOf("pr1b.mock.xx", "pr1c.mock.xx", "pr1d.mock.xx", "pr1e.mock.xx"))
+		Ω(data.Status.Zones.Included).Should(ConsistOf(prefix + "pr1a.mock.xx"))
+		Ω(data.Status.Zones.Excluded).Should(ConsistOf(prefix+"pr1b.mock.xx", prefix+"pr1c.mock.xx", prefix+"pr1d.mock.xx", prefix+"pr1e.mock.xx"))
 		Ω(data.Status.Domains.Included).Should(ConsistOf("pr1a.mock.xx"))
 	})
 })

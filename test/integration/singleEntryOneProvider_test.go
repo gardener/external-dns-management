@@ -78,7 +78,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		Ω(err).Should(BeNil())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain, FailGetZones)
+			spec.ProviderConfig = testEnv.BuildProviderConfig(domain, baseDomain, FailGetZones)
 			return nil
 		})
 		Ω(err).Should(BeNil())
@@ -87,7 +87,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		Ω(err).Should(BeNil())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain)
+			spec.ProviderConfig = testEnv.BuildProviderConfig(domain, baseDomain)
 			return nil
 		})
 		Ω(err).Should(BeNil())
@@ -128,7 +128,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		Ω(err).Should(BeNil())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain)
+			spec.ProviderConfig = testEnv.BuildProviderConfig(domain, baseDomain)
 			return nil
 		})
 		Ω(err).Should(BeNil())
