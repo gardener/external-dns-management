@@ -101,11 +101,11 @@ func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, zones []LightDNSH
 	}
 
 	var err error
-	this.DomainSel.Include, err = filterByZones(this.SpecDomainSel.Include, this.Zones)
+	this.DomainSel.Include, err = filterByZones(normalizeDomains(this.SpecDomainSel.Include), this.Zones)
 	if err != nil {
 		this.Warnings = append(this.Warnings, err.Error())
 	}
-	this.DomainSel.Exclude, err = filterByZones(this.SpecDomainSel.Exclude, this.Zones)
+	this.DomainSel.Exclude, err = filterByZones(normalizeDomains(this.SpecDomainSel.Exclude), this.Zones)
 	if err != nil {
 		this.Warnings = append(this.Warnings, err.Error())
 	}
@@ -224,4 +224,17 @@ func collectForwardedSubdomains(includedDomains utils.StringSet, excludedDomains
 		}
 	}
 	return include, exclude
+}
+
+func normalizeDomains(domains utils.StringSet) utils.StringSet {
+	if len(domains) == 0 {
+		return domains
+	}
+
+	normalized := utils.NewStringSet()
+	for k := range domains {
+		k = strings.TrimSuffix(strings.ToLower(k), ".")
+		normalized.Add(k)
+	}
+	return normalized
 }
