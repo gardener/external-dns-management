@@ -22,6 +22,10 @@ spec:
     metadata:
       annotations:
         checksum/psp: {{ include (print $.Template.BasePath "/psp.yaml") . | sha256sum }}
+{{- if .Values.configuration.serverPortHttp }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{- .Values.configuration.serverPortHttp }}"
+{{- end }}
       labels:
         app.kubernetes.io/name: {{ include "external-dns-management.name" . }}
         app.kubernetes.io/instance: {{ .Release.Name }}
