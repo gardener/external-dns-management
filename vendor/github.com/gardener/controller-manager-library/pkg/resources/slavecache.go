@@ -9,6 +9,7 @@ package resources
 import (
 	"fmt"
 
+	"github.com/gardener/controller-manager-library/pkg/logger"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -64,7 +65,7 @@ func (this *SlaveCache) Setup(slaves []Object) {
 		for _, s := range slaves {
 			err := MigrateGroupKinds(s, this.gkMigration)
 			if err != nil {
-				panic(fmt.Errorf("owner GroupKind migration failed for %s: %s", s.ClusterKey(), err))
+				logger.Errorf("owner GroupKind migration failed for %s: %s", s.ClusterKey(), err)
 			}
 		}
 	}

@@ -18,12 +18,14 @@ package ingress
 
 import (
 	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
-	api "k8s.io/api/networking/v1beta1"
+	networkingv1 "k8s.io/api/networking/v1"
+	networkingv1beta1 "k8s.io/api/networking/v1beta1"
 )
 
 type IngressSource struct {
@@ -36,12 +38,15 @@ func NewIngressSource(controller.Interface) (source.DNSSource, error) {
 
 func (this *IngressSource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
 	info := &source.DNSInfo{Targets: this.GetTargets(obj)}
-	data := obj.Data().(*api.Ingress)
+	hosts, err := this.extractRuleHosts(obj)
+	if err != nil {
+		return nil, err
+	}
 	info.Names = utils.StringSet{}
 	all := current.AnnotatedNames.Contains("all") || current.AnnotatedNames.Contains("*")
-	for _, i := range data.Spec.Rules {
-		if i.Host != "" && (all || current.AnnotatedNames.Contains(i.Host)) {
-			info.Names.Add(i.Host)
+	for _, host := range hosts {
+		if host != "" && (all || current.AnnotatedNames.Contains(host)) {
+			info.Names.Add(host)
 		}
 	}
 	_, del := current.AnnotatedNames.DiffFrom(info.Names)
@@ -53,17 +58,48 @@ func (this *IngressSource) GetDNSInfo(logger logger.LogContext, obj resources.Ob
 	return info, nil
 }
 
+func (this *IngressSource) extractRuleHosts(obj resources.Object) ([]string, error) {
+	hosts := []string{}
+	switch data := obj.Data().(type) {
+	case *networkingv1beta1.Ingress:
+		for _, i := range data.Spec.Rules {
+			hosts = append(hosts, i.Host)
+		}
+		return hosts, nil
+	case *networkingv1.Ingress:
+		for _, i := range data.Spec.Rules {
+			hosts = append(hosts, i.Host)
+		}
+		return hosts, nil
+	default:
+		return nil, fmt.Errorf("unexpected ingress type: %#v", obj.Data())
+	}
+}
+
 func (this *IngressSource) GetTargets(obj resources.Object) utils.StringSet {
-	ing := obj.Data().(*api.Ingress)
 	set := utils.StringSet{}
-	for _, i := range ing.Status.LoadBalancer.Ingress {
-		if i.Hostname != "" && i.IP == "" {
-			set.Add(i.Hostname)
-		} else {
-			if i.IP != "" {
-				set.Add(i.IP)
+	switch data := obj.Data().(type) {
+	case *networkingv1beta1.Ingress:
+		for _, i := range data.Status.LoadBalancer.Ingress {
+			if i.Hostname != "" && i.IP == "" {
+				set.Add(i.Hostname)
+			} else {
+				if i.IP != "" {
+					set.Add(i.IP)
+				}
 			}
 		}
+	case *networkingv1.Ingress:
+		for _, i := range data.Status.LoadBalancer.Ingress {
+			if i.Hostname != "" && i.IP == "" {
+				set.Add(i.Hostname)
+			} else {
+				if i.IP != "" {
+					set.Add(i.IP)
+				}
+			}
+		}
+	default:
 	}
 	return set
 }

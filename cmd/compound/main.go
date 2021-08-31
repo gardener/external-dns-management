@@ -20,8 +20,6 @@ import (
 	"fmt"
 	"os"
 
-	coordinationv1 "k8s.io/api/coordination/v1"
-
 	"github.com/gardener/controller-manager-library/pkg/controllermanager"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
@@ -29,9 +27,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
-	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
-
+	_ "github.com/gardener/external-dns-management/pkg/controller/annotation/annotations"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/alicloud"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/aws"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/azure"
@@ -41,14 +37,15 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/infoblox"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/netlify"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
-
-	_ "github.com/gardener/external-dns-management/pkg/controller/annotation/annotations"
-
 	_ "github.com/gardener/external-dns-management/pkg/controller/replication/dnsprovider"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/dnsentry"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
+	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
+	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
 
+	coordinationv1 "k8s.io/api/coordination/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
@@ -67,6 +64,7 @@ func init() {
 
 	resources.Register(v1alpha1.SchemeBuilder)
 	resources.Register(coordinationv1.SchemeBuilder)
+	resources.Register(networkingv1.SchemeBuilder)
 }
 
 func migrateExtensionsIngress(c controllermanager.Configuration) controllermanager.Configuration {

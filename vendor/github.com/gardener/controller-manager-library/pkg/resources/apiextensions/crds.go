@@ -16,7 +16,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
-	"k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	k8serr "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/util/wait"
 
@@ -121,12 +122,12 @@ func (this *CustomResourceDefinition) DataFor(cluster resources.Cluster, cp Webh
 			}
 		}
 	}
-	if cluster.GetServerVersion().LessThan(v116) || len(crd.Spec.Versions) == 0 || crd.Spec.Versions[0].Schema == nil {
+	if cluster.GetServerVersion().LessThan(v122) && (cluster.GetServerVersion().LessThan(v116) || len(crd.Spec.Versions) == 0 || crd.Spec.Versions[0].Schema == nil) {
 		o, err := crd.ConvertTo(string(CRD_V1BETA1))
 		utils.Must(err)
 		// fix conversion problem for versions below 1.12
 		if cluster.GetServerVersion().LessThan(v112) {
-			spec := o.(*v1beta1.CustomResourceDefinition)
+			spec := o.(*apiextensionsv1beta1.CustomResourceDefinition)
 			if spec.Spec.Validation != nil && spec.Spec.Validation.OpenAPIV3Schema != nil {
 				if spec.Spec.Subresources != nil && spec.Spec.Subresources.Status != nil {
 					spec.Spec.Validation.OpenAPIV3Schema.Type = ""
@@ -212,19 +213,30 @@ func _CreateCRDFromObject(cluster resources.Cluster, crd resources.ObjectData) e
 
 func WaitCRDReady(cluster resources.Cluster, crdName string) error {
 	err := wait.PollImmediate(5*time.Second, 60*time.Second, func() (bool, error) {
-		crd := &v1beta1.CustomResourceDefinition{}
-		_, err := cluster.Resources().GetObjectInto(resources.NewObjectName(crdName), crd)
+		var versioned resources.ObjectData
+		if cluster.GetServerVersion().LessThan(v122) {
+			versioned = &apiextensionsv1beta1.CustomResourceDefinition{}
+		} else {
+			versioned = &apiextensionsv1.CustomResourceDefinition{}
+		}
+		_, err := cluster.Resources().GetObjectInto(resources.NewObjectName(crdName), versioned)
 		if err != nil {
 			return false, err
 		}
+		crd := &apiextensions.CustomResourceDefinition{}
+		err = cluster.Resources().Scheme().Convert(versioned, crd, nil)
+		if err != nil {
+			return false, err
+		}
+
 		for _, cond := range crd.Status.Conditions {
 			switch cond.Type {
-			case v1beta1.Established:
-				if cond.Status == v1beta1.ConditionTrue {
+			case apiextensions.Established:
+				if cond.Status == apiextensions.ConditionTrue {
 					return true, nil
 				}
-			case v1beta1.NamesAccepted:
-				if cond.Status == v1beta1.ConditionFalse {
+			case apiextensions.NamesAccepted:
+				if cond.Status == apiextensions.ConditionFalse {
 					return false, errors.New(errors.ERR_CONFLICT,
 						"CRD Name conflict for '%s': %v", crdName, cond.Reason)
 				}
