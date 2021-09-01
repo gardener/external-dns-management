@@ -74,6 +74,32 @@ var _ = Describe("Selection", func() {
 		}))
 	})
 
+	It("deals with uppercase domain selection and final dot", func() {
+		spec := v1alpha1.DNSProviderSpec{
+			Domains: &v1alpha1.DNSSelection{
+				Include: []string{"A.b."},
+				Exclude: []string{"O.P."},
+			},
+		}
+		result := CalcZoneAndDomainSelection(spec, allzones)
+		Expect(result).To(Equal(SelectionResult{
+			Zones:       []LightDNSHostedZone{zab, zcab},
+			SpecZoneSel: NewSubSelection(),
+			SpecDomainSel: SubSelection{
+				Include: utils.NewStringSet("A.b."),
+				Exclude: utils.NewStringSet("O.P."),
+			},
+			ZoneSel: SubSelection{
+				Include: utils.NewStringSet("ZAB", "ZCAB"),
+				Exclude: utils.NewStringSet("ZOP"),
+			},
+			DomainSel: SubSelection{
+				Include: utils.NewStringSet("a.b", "c.a.b"),
+				Exclude: utils.NewStringSet("d.a.b", "o.p"),
+			},
+		}))
+	})
+
 	It("handles no zones", func() {
 		spec := v1alpha1.DNSProviderSpec{}
 		result := CalcZoneAndDomainSelection(spec, nozones)
