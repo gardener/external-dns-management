@@ -714,7 +714,7 @@ func init() {
 ```
 
 This controller can be embedded into a controller manager just by using
-an [anonymous import](cmd/dns/main.go) of the controller package in the main package
+an [anonymous import](./cmd/dedicated/main.go) of the controller package in the main package
 of a dedicated controller manager.
 
 Complete examples are available in the sub packages of `pkg/controller/provider`.
@@ -761,7 +761,7 @@ in the previous section (see the [`controller`sub package](pkg/controller/provid
 ### Setting Up a Controller Manager
 
 One or multiple controller packages can be bundled into a controller manager,
-by implementing a main package like [this](cmd/dns/main.go):
+by implementing a main package like [this](./cmd/dedicated/main.go):
 
 ```go
 package main
@@ -782,7 +782,7 @@ func main() {
 
 If the standard *Compound Provisioning Controller* should be used it is required
 to additionally add the anonymous imports for the providers intended to be
-embedded into the compound factory like [this](cmd/compound/main.go):
+embedded into the compound factory like [this](./cmd/compound/main.go):
 
 <details>
 <summary><b>Example Coding</b></summary>
@@ -830,7 +830,7 @@ it can be configured to support three potential clusters with the
 source objects, the one for the entry objects and the one with provider
 objects using cluster mappings.
 
-This is shown in a complete [example](cmd/compound/main.go) using the dns
+This is shown in a complete [example](./cmd/compound/main.go) using the dns
 source controllers, the compound provisioning controller configured to
 support all the included DNS provider type factories:
 
