@@ -714,7 +714,7 @@ func init() {
 ```
 
 This controller can be embedded into a controller manager just by using
-an [anonymous import](./cmd/dedicated/main.go) of the controller package in the main package
+an [anonymous import](./cmd/compound/main.go) of the controller package in the main package
 of a dedicated controller manager.
 
 Complete examples are available in the sub packages of `pkg/controller/provider`.
@@ -761,7 +761,7 @@ in the previous section (see the [`controller`sub package](pkg/controller/provid
 ### Setting Up a Controller Manager
 
 One or multiple controller packages can be bundled into a controller manager,
-by implementing a main package like [this](./cmd/dedicated/main.go):
+by implementing a main package like [this](./cmd/compound/main.go):
 
 ```go
 package main
