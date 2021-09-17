@@ -18,6 +18,10 @@ package provider
 
 import (
 	"fmt"
+	"reflect"
+
+	"github.com/gardener/controller-manager-library/pkg/resources"
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
 type NullMetrics struct{}
@@ -54,4 +58,16 @@ func filterZoneByProvider(zones []*dnsHostedZone, provider DNSProvider) *dnsHost
 		}
 	}
 	return nil
+}
+
+func assureRateLimit(mod *resources.ModificationState, t **api.RateLimit, s *api.RateLimit) {
+	if s == nil && *t != nil {
+		*t = nil
+		mod.Modify(true)
+	} else if s != nil {
+		if *t == nil || !reflect.DeepEqual(**t, *s) {
+			*t = s
+			mod.Modify(true)
+		}
+	}
 }

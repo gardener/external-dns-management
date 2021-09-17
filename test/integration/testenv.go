@@ -59,6 +59,7 @@ const (
 	FailSecondZoneWithSameBaseDomain
 	AlternativeMockName
 	Domain2IsSubdomain
+	Quotas4PerMin
 )
 
 type TestEnv struct {
@@ -245,6 +246,15 @@ func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretNa
 		spec.Type = "mock-inmemory"
 		spec.ProviderConfig = te.BuildProviderConfig(domain, domain2, failOptions...)
 		spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: te.Namespace}
+		for _, opt := range failOptions {
+			switch opt {
+			case Quotas4PerMin:
+				spec.RateLimit = &v1alpha1.RateLimit{
+					RequestsPerDay: 24 * 60 * 4,
+					Burst:          1,
+				}
+			}
+		}
 	}
 	obj, err := te.CreateProviderEx(providerIndex, secretName, setSpec)
 	return obj, domain, domain2, err
@@ -377,13 +387,24 @@ func (te *TestEnv) UpdateEntryTargets(obj resources.Object, targets ...string) (
 }
 
 func (te *TestEnv) DeleteEntryAndWait(obj resources.Object) error {
-	err := obj.Delete()
-	if err != nil {
-		return err
+	return te.DeleteEntriesAndWait(obj)
+}
+
+func (te *TestEnv) DeleteEntriesAndWait(objs ...resources.Object) error {
+	for _, obj := range objs {
+		err := obj.Delete()
+		if err != nil {
+			return err
+		}
 	}
 
-	err = te.AwaitEntryDeletion(obj.GetName())
-	return err
+	for _, obj := range objs {
+		err := te.AwaitEntryDeletion(obj.GetName())
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (te *TestEnv) GetEntry(name string) (resources.Object, error) {

@@ -27,7 +27,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const PERIOD = 50 * time.Millisecond
+const PERIOD = 10 * time.Millisecond
 
 type Execution struct {
 	d int

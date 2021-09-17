@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -591,6 +592,10 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				}
 			}
 		}
+
+		if this.status.State == api.STATE_READY && this.object.BaseStatus() != nil && this.object.GetGeneration() != this.object.BaseStatus().ObservedGeneration {
+			this.status.State = api.STATE_PENDING
+		}
 	}
 
 	if this.Kind() != api.DNSLockKind {
@@ -615,6 +620,15 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		_, err = this.object.ModifyStatus(f)
 	}
 	return reconcile.DelayOnError(logger, err)
+}
+
+// NotRateLimited checks for annotation dns.gardener.cloud/not-rate-limited
+func (this *EntryVersion) NotRateLimited() bool {
+	value, ok := resources.GetAnnotation(this.object.Data(), dns.NOT_RATE_LIMITED_ANNOTATION)
+	if ok {
+		ok, _ = strconv.ParseBool(value)
+	}
+	return ok
 }
 
 func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg string, args ...interface{}) error {

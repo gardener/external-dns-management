@@ -20,24 +20,22 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/config"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
-	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
-
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
-	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/controller-manager-library/pkg/utils"
-
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
-	corev1 "k8s.io/api/core/v1"
+	"github.com/gardener/controller-manager-library/pkg/config"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/extension"
+	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	// register 1.16
 	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.16"

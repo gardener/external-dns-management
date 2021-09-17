@@ -24,6 +24,8 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"k8s.io/client-go/util/flowcontrol"
 
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -128,6 +130,31 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 		}
 	}
 	return status
+}
+
+func (this *state) updateProviderRateLimiter(logger logger.LogContext, obj *dnsutils.DNSProviderObject) *api.RateLimit {
+	this.prlock.Lock()
+	defer this.prlock.Unlock()
+
+	rateLimit := obj.Spec().RateLimit
+	if rateLimit != nil {
+		data, ok := this.providerRateLimiter[obj.ObjectName()]
+		if !ok || data.RateLimit.RequestsPerDay != rateLimit.RequestsPerDay || data.RateLimit.Burst != rateLimit.Burst {
+			qps := float32(rateLimit.RequestsPerDay) / 86400
+			data = &rateLimiterData{
+				RateLimit:   *rateLimit,
+				rateLimiter: flowcontrol.NewTokenBucketRateLimiter(qps, rateLimit.Burst),
+			}
+			this.providerRateLimiter[obj.ObjectName()] = data
+			logger.Infof("frontend rate limiter updated: requestsPerDay=%d, burst=%d", rateLimit.RequestsPerDay, rateLimit.Burst)
+		}
+	} else {
+		if _, ok := this.providerRateLimiter[obj.ObjectName()]; ok {
+			delete(this.providerRateLimiter, obj.ObjectName())
+			logger.Infof("frontend rate limiter deleted")
+		}
+	}
+	return rateLimit
 }
 
 func (this *state) _UpdateForeignProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status {

@@ -18,3 +18,6 @@ spec:
   #  exclude:
   #  - <ZONEID>
   #defaultTTL: 300
+  #rateLimit:
+  #  requestsPerDay: 240
+  #  burst: 20

@@ -17,7 +17,6 @@
 package utils
 
 import (
-	"fmt"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -125,19 +124,4 @@ func DNSProvider(o resources.Object) *DNSProviderObject {
 		return &DNSProviderObject{o}
 	}
 	return nil
-}
-
-func GetDNSProvider(src resources.ResourcesSource, namespace, name string) (*DNSProviderObject, error) {
-	resources := src.Resources()
-	o, err := resources.GetObject(DNSProviderKey(namespace, name))
-	if err != nil {
-		return nil, err
-	}
-
-	s := DNSProvider(o)
-
-	if s == nil {
-		return nil, fmt.Errorf("oops, unexpected type for DNSProvider: %T", o.Data())
-	}
-	return s, nil
 }

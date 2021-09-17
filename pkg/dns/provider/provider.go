@@ -268,8 +268,9 @@ type dnsProviderVersion struct {
 	included_zones utils.StringSet
 	excluded_zones utils.StringSet
 
-	included utils.StringSet
-	excluded utils.StringSet
+	included  utils.StringSet
+	excluded  utils.StringSet
+	rateLimit *api.RateLimit
 }
 
 var _ DNSProvider = &dnsProviderVersion{}
@@ -444,6 +445,8 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	}
 
 	this.valid = true
+	this.rateLimit = state.updateProviderRateLimiter(logger, provider)
+
 	return this, this.succeeded(logger, mod)
 }
 
@@ -573,6 +576,7 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	mod.AssureStringPtrValue(&status.Message, "provider operational")
 	mod.AssureInt64Value(&status.ObservedGeneration, this.object.DNSProvider().Generation)
 	mod.AssureInt64PtrValue(&status.DefaultTTL, this.defaultTTL)
+	assureRateLimit(mod, &status.RateLimit, this.rateLimit)
 	if mod.IsModified() {
 		dnsutils.SetLastUpdateTime(&this.object.Status().LastUptimeTime)
 	}

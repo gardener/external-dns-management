@@ -246,11 +246,17 @@ func (this *ChangeModel) Setup() error {
 	return err
 }
 
+func (this *ChangeModel) Check(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+	return this.Exec(false, false, name, updateGroup, createdAt, done, spec)
+}
 func (this *ChangeModel) Apply(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, false, name, updateGroup, createdAt, done, spec)
 }
 func (this *ChangeModel) Delete(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, true, name, updateGroup, createdAt, done, spec)
+}
+func (this *ChangeModel) PseudoApply(name string) {
+	this.applied[name] = dns.NewDNSSet(name)
 }
 
 func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
@@ -286,7 +292,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 	}
 	mod := false
 	if oldset != nil {
-		this.Infof("found old for %s %q", oldset.GetKind(), oldset.Name)
+		this.Debugf("found old for %s %q", oldset.GetKind(), oldset.Name)
 		if this.IsForeign(oldset) {
 			err := &perrs.AlreadyBusyForOwner{DNSName: name, EntryCreatedAt: createdAt, Owner: oldset.GetOwner()}
 			retry := p.ReportZoneStateConflict(this.context.zone.getZone(), err)
@@ -349,9 +355,8 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 		}
 	} else {
 		if !delete {
-			this.Debugf("no existing entry found for %s", name)
-			this.Infof("no existing entry found for %s", name)
 			if apply {
+				this.Infof("no existing entry found for %s", name)
 				this.setOwner(newset, spec.OwnerId())
 				for ty := range newset.Sets {
 					view.addCreateRequest(newset, ty, done)
