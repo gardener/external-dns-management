@@ -38,7 +38,7 @@ var _ = Describe("PrivateZones", func() {
 		var entries []resources.Object
 		var domains []string
 		for _, te := range envs {
-			pr, domain, err := te.CreateSecretAndProvider(baseDomain, 0)
+			pr, domain, _, err := te.CreateSecretAndProvider(baseDomain, 0)
 			Ω(err).Should(BeNil())
 			defer te.DeleteProviderAndSecret(pr)
 			providers = append(providers, pr)
@@ -94,6 +94,7 @@ var _ = Describe("PrivateZones", func() {
 			Ω(err).Should(BeNil())
 		}
 	})
+
 	It("should deal with provider with two different private zones, but the same base domain", func() {
 		secretName := testEnv.SecretName(0)
 		_, err := testEnv.CreateSecret(0)
@@ -170,11 +171,12 @@ var _ = Describe("PrivateZones", func() {
 		err = testEnv.DeleteProviderAndSecret(pr)
 		Ω(err).Should(BeNil())
 	})
+
 	It("should deal with two providers with different private zones", func() {
-		pr1, domain1, err := testEnv.CreateSecretAndProvider("mock.xx", 1)
+		pr1, domain1, _, err := testEnv.CreateSecretAndProvider("mock.xx", 1)
 		Ω(err).Should(BeNil())
 		defer testEnv.DeleteProviderAndSecret(pr1)
-		pr2, domain2, err := testEnv.CreateSecretAndProvider("mock.xx", 2, AlternativeMockName)
+		pr2, domain2, _, err := testEnv.CreateSecretAndProvider("mock.xx", 2, AlternativeMockName)
 		Ω(err).Should(BeNil())
 		defer testEnv.DeleteProviderAndSecret(pr2)
 
@@ -220,6 +222,32 @@ var _ = Describe("PrivateZones", func() {
 		err = testEnv.DeleteProviderAndSecret(pr1)
 		Ω(err).Should(BeNil())
 		err = testEnv.DeleteProviderAndSecret(pr2)
+		Ω(err).Should(BeNil())
+	})
+
+	It("should complain about a provider with overlapping domains from two private zones", func() {
+		secret, err := testEnv.CreateSecret(1)
+		Ω(err).Should(BeNil())
+
+		setSpec := func(spec *v1alpha1.DNSProviderSpec) {
+			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
+			spec.Type = "mock-inmemory"
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "a.mock.xx")
+			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
+		}
+
+		pr1, err := testEnv.CreateProviderEx(1, secret.GetName(), setSpec)
+		Ω(err).Should(BeNil())
+		defer testEnv.DeleteProviderAndSecret(pr1)
+
+		testEnv.AwaitProviderState(pr1.GetName(), "Error")
+
+		_, pr1b, err := testEnv.GetProvider(pr1.GetName())
+		Ω(err).Should(BeNil())
+		Ω(pr1b.Status.Message).ShouldNot(BeNil())
+		Ω(*pr1b.Status.Message).Should(ContainSubstring("duplicate or overlapping zones"))
+
+		err = testEnv.DeleteProviderAndSecret(pr1)
 		Ω(err).Should(BeNil())
 	})
 })

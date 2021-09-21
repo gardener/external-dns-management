@@ -28,7 +28,7 @@ import (
 
 func createAndDelete() {
 	secretName := testEnv.SecretName(0)
-	pr, _, err := testEnv.CreateProvider("inmemory.mock", 0, secretName)
+	pr, _, _, err := testEnv.CreateProvider("inmemory.mock", 0, secretName)
 	Ω(err).Should(BeNil())
 	defer testEnv.DeleteProviderAndSecret(pr)
 

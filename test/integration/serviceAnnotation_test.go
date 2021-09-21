@@ -24,7 +24,7 @@ import (
 
 var _ = Describe("ServiceAnnotation", func() {
 	It("creates DNS entry", func() {
-		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 		println(pr)
 		defer testEnv.DeleteProviderAndSecret(pr)

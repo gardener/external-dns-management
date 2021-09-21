@@ -33,7 +33,7 @@ var _ = Describe("ManyEntriesOneProvider", func() {
 		testEnv.defaultTimeout = oldTimeout * time.Duration(int64(math.Sqrt(entryCount)))
 		defer func() { testEnv.defaultTimeout = oldTimeout }()
 
-		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 		defer testEnv.DeleteProviderAndSecret(pr)
 

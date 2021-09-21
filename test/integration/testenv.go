@@ -189,7 +189,7 @@ func (te *TestEnv) CreateSecret(index int) (resources.Object, error) {
 	return obj, err
 }
 
-func (te *TestEnv) BuildProviderConfig(domain, baseDomain string, failOptions ...FailOption) *runtime.RawExtension {
+func (te *TestEnv) BuildProviderConfig(domain, domain2 string, failOptions ...FailOption) *runtime.RawExtension {
 	name := te.Namespace
 	for _, opt := range failOptions {
 		switch opt {
@@ -201,7 +201,7 @@ func (te *TestEnv) BuildProviderConfig(domain, baseDomain string, failOptions ..
 		Name: name,
 		Zones: []mock.MockZone{
 			{ZonePrefix: te.ZonePrefix, DNSName: domain},
-			{ZonePrefix: te.ZonePrefix + "-base", DNSName: baseDomain},
+			{ZonePrefix: te.ZonePrefix + "second:", DNSName: domain2},
 		},
 	}
 	return te.BuildProviderConfigEx(input, failOptions...)
@@ -216,7 +216,7 @@ func (te *TestEnv) BuildProviderConfigEx(input mock.MockConfig, failOptions ...F
 			input.FailDeleteEntry = true
 		case FailSecondZoneWithSameBaseDomain:
 			input.Zones = append(input.Zones, mock.MockZone{
-				ZonePrefix: te.ZonePrefix + "-second",
+				ZonePrefix: te.ZonePrefix + ":second",
 				DNSName:    input.Zones[0].DNSName,
 			})
 		}
@@ -229,17 +229,18 @@ func (te *TestEnv) BuildProviderConfigEx(input mock.MockConfig, failOptions ...F
 	return &runtime.RawExtension{Raw: bytes}
 }
 
-func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretName string, failOptions ...FailOption) (resources.Object, string, error) {
+func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretName string, failOptions ...FailOption) (resources.Object, string, string, error) {
 	domain := fmt.Sprintf("pr-%d.%s", providerIndex, baseDomain)
+	domain2 := fmt.Sprintf("pr-%d-2.%s", providerIndex, baseDomain)
 
 	setSpec := func(spec *v1alpha1.DNSProviderSpec) {
 		spec.Domains = &v1alpha1.DNSSelection{Include: []string{domain}}
 		spec.Type = "mock-inmemory"
-		spec.ProviderConfig = te.BuildProviderConfig(domain, baseDomain, failOptions...)
+		spec.ProviderConfig = te.BuildProviderConfig(domain, domain2, failOptions...)
 		spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: te.Namespace}
 	}
 	obj, err := te.CreateProviderEx(providerIndex, secretName, setSpec)
-	return obj, domain, err
+	return obj, domain, domain2, err
 }
 
 type ProviderSpecSetter func(p *v1alpha1.DNSProviderSpec)
@@ -262,10 +263,10 @@ func (te *TestEnv) CreateProviderEx(providerIndex int, secretName string, setSpe
 	return obj, err
 }
 
-func (te *TestEnv) CreateSecretAndProvider(baseDomain string, index int, failOptions ...FailOption) (resources.Object, string, error) {
+func (te *TestEnv) CreateSecretAndProvider(baseDomain string, index int, failOptions ...FailOption) (resources.Object, string, string, error) {
 	secret, err := te.CreateSecret(index)
 	if err != nil {
-		return nil, "", fmt.Errorf("Creation of secret failed with: %s", err.Error())
+		return nil, "", "", fmt.Errorf("Creation of secret failed with: %s", err.Error())
 	}
 	return te.CreateProvider(baseDomain, index, secret.GetName(), failOptions...)
 }

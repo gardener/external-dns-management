@@ -23,11 +23,11 @@ import (
 
 var _ = Describe("SingleEntryTwoProviders", func() {
 	It("has correct life cycle", func() {
-		pr, domain, err := testEnv.CreateSecretAndProvider("pr-1.inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("pr-1.inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 		defer testEnv.DeleteProviderAndSecret(pr)
 
-		pr2, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 1)
+		pr2, _, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 1)
 		Ω(err).Should(BeNil())
 		defer testEnv.DeleteProviderAndSecret(pr2)
 
