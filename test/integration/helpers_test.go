@@ -23,11 +23,19 @@ import (
 )
 
 func checkHasFinalizer(obj resources.Object) {
-	err := testEnv.AwaitFinalizers(obj, "dns.gardener.cloud/compound")
+	checkHasFinalizerEx(testEnv, obj)
+}
+
+func checkHasFinalizerEx(te *TestEnv, obj resources.Object) {
+	err := te.AwaitFinalizers(obj, "dns.gardener.cloud/compound")
 	Ω(err).ShouldNot(HaveOccurred())
 }
 
 func checkProvider(obj resources.Object) {
+	checkProviderEx(testEnv, obj)
+}
+
+func checkProviderEx(te *TestEnv, obj resources.Object) {
 	err := testEnv.AwaitProviderReady(obj.GetName())
 	Ω(err).Should(BeNil())
 
@@ -35,12 +43,16 @@ func checkProvider(obj resources.Object) {
 }
 
 func checkEntry(obj resources.Object, provider resources.Object) *v1alpha1.DNSEntry {
-	err := testEnv.AwaitEntryReady(obj.GetName())
+	return checkEntryEx(testEnv, obj, provider)
+}
+
+func checkEntryEx(te *TestEnv, obj resources.Object, provider resources.Object) *v1alpha1.DNSEntry {
+	err := te.AwaitEntryReady(obj.GetName())
 	Ω(err).Should(BeNil())
 
-	checkHasFinalizer(obj)
+	checkHasFinalizerEx(te, obj)
 
-	entryObj, err := testEnv.GetEntry(obj.GetName())
+	entryObj, err := te.GetEntry(obj.GetName())
 	Ω(err).Should(BeNil())
 	entry := UnwrapEntry(entryObj)
 	Ω(entry.Status.ProviderType).ShouldNot(BeNil(), "Missing provider type")

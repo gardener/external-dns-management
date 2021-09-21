@@ -25,8 +25,7 @@ import (
 
 var _ = Describe("SingleEntryOneProvider", func() {
 	It("should deal with included and excluded domains", func() {
-		baseDomain := "pr-1.inmemory.mock"
-		pr, domain, err := testEnv.CreateSecretAndProvider(baseDomain, 0)
+		pr, domain, domain2, err := testEnv.CreateSecretAndProvider("pr-1.inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 		defer testEnv.DeleteProviderAndSecret(pr)
 
@@ -38,7 +37,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		checkEntry(e, pr)
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.Domains.Include = []string{"x." + baseDomain}
+			spec.Domains.Include = []string{"x." + domain2}
 			spec.Domains.Exclude = []string{}
 			return nil
 		})
@@ -78,7 +77,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		Ω(err).Should(BeNil())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain, FailGetZones)
+			spec.ProviderConfig = testEnv.BuildProviderConfig(domain, domain2, FailGetZones)
 			return nil
 		})
 		Ω(err).Should(BeNil())
@@ -87,7 +86,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		Ω(err).Should(BeNil())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain)
+			spec.ProviderConfig = testEnv.BuildProviderConfig(domain, domain2)
 			return nil
 		})
 		Ω(err).Should(BeNil())
@@ -102,8 +101,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		Ω(err).Should(BeNil())
 	})
 	It("should not delete entry if delete request fails", func() {
-		baseDomain := "pr-1.inmemory.mock"
-		pr, domain, err := testEnv.CreateSecretAndProvider(baseDomain, 0, FailDeleteEntry)
+		pr, domain, domain2, err := testEnv.CreateSecretAndProvider("pr-1.inmemory.mock", 0, FailDeleteEntry)
 		Ω(err).Should(BeNil())
 		defer testEnv.DeleteProviderAndSecret(pr)
 
@@ -128,7 +126,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		Ω(err).Should(BeNil())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.ProviderConfig = BuildProviderConfig(domain, baseDomain)
+			spec.ProviderConfig = testEnv.BuildProviderConfig(domain, domain2)
 			return nil
 		})
 		Ω(err).Should(BeNil())

@@ -403,6 +403,20 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		return this, this.failedButRecheck(logger, fmt.Errorf(results.Error), mod)
 	}
 
+	foundZoneDomains := map[string]string{}
+	for zoneid := range this.included_zones {
+		for _, z := range this.zones {
+			if z.Id() == zoneid {
+				for domain, z2 := range foundZoneDomains {
+					if dnsutils.Match(domain, z.Domain()) || dnsutils.Match(z.Domain(), domain) {
+						return this, this.failedButRecheck(logger, fmt.Errorf("duplicate or overlapping zones %s(%s) and %s(%s)", zoneid, z.Domain(), z2, domain), mod)
+					}
+				}
+				foundZoneDomains[z.Domain()] = zoneid
+				break
+			}
+		}
+	}
 	if last == nil || !this.included.Equals(last.included) || !this.excluded.Equals(last.excluded) {
 		if len(this.included) > 0 {
 			logger.Infof("  included domains: %s", this.included)

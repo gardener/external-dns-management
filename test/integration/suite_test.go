@@ -33,6 +33,7 @@ import (
 )
 
 var testEnv *TestEnv
+var testEnv2 *TestEnv
 
 func TestIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -57,6 +58,8 @@ var _ = BeforeSuite(func() {
 	go runControllerManager(args)
 
 	testEnv, err = NewTestEnv(kubeconfig, "test")
+	Ω(err).Should(BeNil())
+	testEnv2, err = NewTestEnvNamespace(testEnv, "test2")
 	Ω(err).Should(BeNil())
 })
 

@@ -38,7 +38,7 @@ var _ = Describe("ManyEntriesManyProviders", func() {
 		domains := []string{}
 		entries := []resources.Object{}
 		for i := 0; i < count; i++ {
-			pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", i)
+			pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", i)
 			Ω(err).Should(BeNil())
 			//defer testEnv.DeleteProviderAndSecret(pr)
 			providers = append(providers, pr)

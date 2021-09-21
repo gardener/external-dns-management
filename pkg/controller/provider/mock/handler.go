@@ -37,20 +37,25 @@ type Handler struct {
 	rateLimiter flowcontrol.RateLimiter
 }
 
+type MockZone struct {
+	ZonePrefix string `json:"zonePrefix"`
+	DNSName    string `json:"dnsName"`
+}
+
 type MockConfig struct {
-	Zones           []string `json:"zones"`
-	FailGetZones    bool     `json:"failGetZones"`
-	FailDeleteEntry bool     `json:"failDeleteEntry"`
+	Name            string     `json:"name"`
+	Zones           []MockZone `json:"zones"`
+	FailGetZones    bool       `json:"failGetZones"`
+	FailDeleteEntry bool       `json:"failDeleteEntry"`
 }
 
 var _ provider.DNSHandler = &Handler{}
 
 // TestMock allows tests to access mocked DNSHosted Zones
-var TestMock *provider.InMemory
+var TestMock = map[string]*provider.InMemory{}
 
 func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	mock := provider.NewInMemory()
-	TestMock = mock
 
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
@@ -64,10 +69,13 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		return nil, fmt.Errorf("unmarshal mock providerConfig failed with: %s", err)
 	}
 
-	for _, dnsName := range h.mockConfig.Zones {
-		if dnsName != "" {
-			logger.Infof("Providing mock DNSZone %s", dnsName)
-			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), dnsName, dnsName, "", []string{}, false)
+	TestMock[h.mockConfig.Name] = mock
+
+	for _, mockZone := range h.mockConfig.Zones {
+		if mockZone.DNSName != "" {
+			zoneID := mockZone.ZonePrefix + mockZone.DNSName
+			logger.Infof("Providing mock DNSZone %s[%s]", mockZone.DNSName, zoneID)
+			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, mockZone.DNSName, "", []string{}, false)
 			mock.AddZone(hostedZone)
 		}
 	}

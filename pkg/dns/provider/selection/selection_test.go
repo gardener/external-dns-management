@@ -43,9 +43,19 @@ var _ = Describe("Selection", func() {
 		domain:           "a.b",
 		forwardedDomains: []string{"c.a.b", "d.a.b"},
 	}
+	zab2 := &lightDNSHostedZone{
+		id:               "ZAB2",
+		domain:           "a.b",
+		forwardedDomains: []string{},
+	}
 	zcab := &lightDNSHostedZone{
 		id:               "ZCAB",
 		domain:           "c.a.b",
+		forwardedDomains: nil,
+	}
+	zfab := &lightDNSHostedZone{
+		id:               "ZFAB",
+		domain:           "f.a.b",
 		forwardedDomains: nil,
 	}
 	zop := &lightDNSHostedZone{
@@ -281,4 +291,57 @@ var _ = Describe("Selection", func() {
 			},
 		}))
 	})
+
+	It("matches duplicate zones with same base domain by domain inclusion", func() {
+		spec := v1alpha1.DNSProviderSpec{
+			Domains: &v1alpha1.DNSSelection{
+				Include: []string{"f.a.b"},
+				Exclude: nil,
+			},
+		}
+		result := CalcZoneAndDomainSelection(spec, []LightDNSHostedZone{zab, zab2, zcab})
+		Expect(result).To(Equal(SelectionResult{
+			Zones:       []LightDNSHostedZone{zab, zab2},
+			SpecZoneSel: NewSubSelection(),
+			SpecDomainSel: SubSelection{
+				Include: utils.NewStringSet("f.a.b"),
+				Exclude: utils.NewStringSet(),
+			},
+			ZoneSel: SubSelection{
+				Include: utils.NewStringSet("ZAB", "ZAB2"),
+				Exclude: utils.NewStringSet("ZCAB"),
+			},
+			DomainSel: SubSelection{
+				Include: utils.NewStringSet("f.a.b"),
+				Exclude: utils.NewStringSet(),
+			},
+		}))
+	})
+
+	It("matches duplicate zones with overlapping base domain by domain inclusion", func() {
+		spec := v1alpha1.DNSProviderSpec{
+			Domains: &v1alpha1.DNSSelection{
+				Include: []string{"d.f.a.b"},
+				Exclude: nil,
+			},
+		}
+		result := CalcZoneAndDomainSelection(spec, []LightDNSHostedZone{zab, zfab})
+		Expect(result).To(Equal(SelectionResult{
+			Zones:       []LightDNSHostedZone{zab, zfab},
+			SpecZoneSel: NewSubSelection(),
+			SpecDomainSel: SubSelection{
+				Include: utils.NewStringSet("d.f.a.b"),
+				Exclude: utils.NewStringSet(),
+			},
+			ZoneSel: SubSelection{
+				Include: utils.NewStringSet("ZAB", "ZFAB"),
+				Exclude: utils.NewStringSet(),
+			},
+			DomainSel: SubSelection{
+				Include: utils.NewStringSet("d.f.a.b"),
+				Exclude: utils.NewStringSet(),
+			},
+		}))
+	})
+
 })

@@ -28,7 +28,7 @@ import (
 
 var _ = Describe("EntryLivecycle", func() {
 	It("has correct life cycle with provider", func() {
-		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
@@ -59,7 +59,7 @@ var _ = Describe("EntryLivecycle", func() {
 	})
 
 	It("has correct life cycle with provider for TXT record", func() {
-		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
@@ -90,7 +90,7 @@ var _ = Describe("EntryLivecycle", func() {
 	})
 
 	It("is handled only by owner", func() {
-		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
@@ -130,7 +130,7 @@ var _ = Describe("EntryLivecycle", func() {
 	})
 
 	It("handles an entry without targets as invalid and can delete it", func() {
-		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
@@ -160,7 +160,7 @@ var _ = Describe("EntryLivecycle", func() {
 	})
 
 	It("handles entry correctly from ready -> stale -> invalid -> ready", func() {
-		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
@@ -209,7 +209,7 @@ var _ = Describe("EntryLivecycle", func() {
 	})
 
 	It("is handled only by matching provider", func() {
-		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
@@ -240,7 +240,7 @@ var _ = Describe("EntryLivecycle", func() {
 	})
 
 	It("handles entry with multiple cname targets correctly (deduplication)", func() {
-		pr, domain, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).Should(BeNil())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
