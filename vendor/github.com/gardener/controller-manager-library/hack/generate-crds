@@ -11,7 +11,7 @@ loop()
     if [ -f "$f" ]; then
       cat <<EOF
 ${TAB}data = \`
-$(cat "$f")
+$(sed -E 's/`/`+"`"+`/g' $f)
   \`
 ${TAB}utils.Must(registry.RegisterCRD(data))
 EOF
