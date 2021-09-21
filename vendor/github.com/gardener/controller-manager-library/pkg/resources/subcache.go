@@ -98,7 +98,7 @@ func (this *SubObjectCache) GetSubObject(key ClusterObjectKey) Object {
 	if o == nil {
 		return nil
 	}
-	return o.object
+	return o.object.DeepCopy()
 }
 
 func (this *SubObjectCache) GetOwners(key ClusterObjectKey, kinds ...schema.GroupKind) ClusterObjectKeySet {
@@ -215,7 +215,7 @@ func (this *SubObjectCache) GetByOwnerKey(key ClusterObjectKey) []Object {
 	keys := this.byOwner[key]
 	result := []Object{}
 	for k := range keys {
-		result = append(result, this.subObjects[k].object)
+		result = append(result, this.subObjects[k].object.DeepCopy())
 	}
 	return result
 }
