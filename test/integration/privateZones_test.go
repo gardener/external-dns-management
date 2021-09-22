@@ -245,7 +245,54 @@ var _ = Describe("PrivateZones", func() {
 		_, pr1b, err := testEnv.GetProvider(pr1.GetName())
 		Ω(err).Should(BeNil())
 		Ω(pr1b.Status.Message).ShouldNot(BeNil())
-		Ω(*pr1b.Status.Message).Should(ContainSubstring("duplicate or overlapping zones"))
+		Ω(*pr1b.Status.Message).Should(ContainSubstring("overlapping zones"))
+
+		err = testEnv.DeleteProviderAndSecret(pr1)
+		Ω(err).Should(BeNil())
+	})
+
+	It("should complain about a provider with same domains from two private zones", func() {
+		secret, err := testEnv.CreateSecret(1)
+		Ω(err).Should(BeNil())
+
+		setSpec := func(spec *v1alpha1.DNSProviderSpec) {
+			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
+			spec.Type = "mock-inmemory"
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "mock.xx")
+			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
+		}
+
+		pr1, err := testEnv.CreateProviderEx(1, secret.GetName(), setSpec)
+		Ω(err).Should(BeNil())
+		defer testEnv.DeleteProviderAndSecret(pr1)
+
+		testEnv.AwaitProviderState(pr1.GetName(), "Error")
+
+		_, pr1b, err := testEnv.GetProvider(pr1.GetName())
+		Ω(err).Should(BeNil())
+		Ω(pr1b.Status.Message).ShouldNot(BeNil())
+		Ω(*pr1b.Status.Message).Should(ContainSubstring("duplicate zones"))
+
+		err = testEnv.DeleteProviderAndSecret(pr1)
+		Ω(err).Should(BeNil())
+	})
+
+	It("should not complain about a provider with zones forming domain and forwareded subdomain", func() {
+		secret, err := testEnv.CreateSecret(1)
+		Ω(err).Should(BeNil())
+
+		setSpec := func(spec *v1alpha1.DNSProviderSpec) {
+			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"mock.xx"}}
+			spec.Type = "mock-inmemory"
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "sub.mock.xx", Domain2IsSubdomain)
+			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
+		}
+
+		pr1, err := testEnv.CreateProviderEx(1, secret.GetName(), setSpec)
+		Ω(err).Should(BeNil())
+		defer testEnv.DeleteProviderAndSecret(pr1)
+
+		testEnv.AwaitProviderReady(pr1.GetName())
 
 		err = testEnv.DeleteProviderAndSecret(pr1)
 		Ω(err).Should(BeNil())

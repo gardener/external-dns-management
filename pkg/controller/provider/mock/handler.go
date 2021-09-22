@@ -38,8 +38,9 @@ type Handler struct {
 }
 
 type MockZone struct {
-	ZonePrefix string `json:"zonePrefix"`
-	DNSName    string `json:"dnsName"`
+	ZonePrefix       string   `json:"zonePrefix"`
+	DNSName          string   `json:"dnsName"`
+	ForwardedDomains []string `json:"forwardedDomains,omitempty"`
 }
 
 type MockConfig struct {
@@ -75,7 +76,11 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		if mockZone.DNSName != "" {
 			zoneID := mockZone.ZonePrefix + mockZone.DNSName
 			logger.Infof("Providing mock DNSZone %s[%s]", mockZone.DNSName, zoneID)
-			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, mockZone.DNSName, "", []string{}, false)
+			forwardedDomains := []string{}
+			if len(mockZone.ForwardedDomains) > 0 {
+				forwardedDomains = mockZone.ForwardedDomains
+			}
+			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, mockZone.DNSName, "", forwardedDomains, false)
 			mock.AddZone(hostedZone)
 		}
 	}
