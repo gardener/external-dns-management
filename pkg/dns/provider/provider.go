@@ -403,20 +403,28 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		return this, this.failedButRecheck(logger, fmt.Errorf(results.Error), mod)
 	}
 
-	foundZoneDomains := map[string]string{}
-	for zoneid := range this.included_zones {
-		for _, z := range this.zones {
-			if z.Id() == zoneid {
-				for domain, z2 := range foundZoneDomains {
-					if dnsutils.Match(domain, z.Domain()) || dnsutils.Match(z.Domain(), domain) {
-						return this, this.failedButRecheck(logger, fmt.Errorf("duplicate or overlapping zones %s(%s) and %s(%s)", zoneid, z.Domain(), z2, domain), mod)
-					}
-				}
-				foundZoneDomains[z.Domain()] = zoneid
-				break
+	allForwardedDomains := utils.NewStringSet()
+	for _, z := range this.zones {
+		if this.included_zones.Contains(z.Id()) {
+			if len(z.ForwardedDomains()) > 0 {
+				allForwardedDomains.AddAll(z.ForwardedDomains())
 			}
 		}
 	}
+	for _, z := range this.zones {
+		if this.included_zones.Contains(z.Id()) {
+			for _, z2 := range this.zones {
+				if this.included_zones.Contains(z2.Id()) && z.Id() != z2.Id() {
+					if z.Domain() == z2.Domain() {
+						return this, this.failedButRecheck(logger, fmt.Errorf("duplicate zones %s(%s) and %s(%s)", z.Id(), z.Domain(), z2.Id(), z2.Domain()), mod)
+					} else if dnsutils.Match(z2.Domain(), z.Domain()) && !allForwardedDomains.Contains(z2.Domain()) {
+						return this, this.failedButRecheck(logger, fmt.Errorf("overlapping zones %s(%s) and %s(%s)", z.Id(), z.Domain(), z2.Id(), z2.Domain()), mod)
+					}
+				}
+			}
+		}
+	}
+
 	if last == nil || !this.included.Equals(last.included) || !this.excluded.Equals(last.excluded) {
 		if len(this.included) > 0 {
 			logger.Infof("  included domains: %s", this.included)

@@ -58,6 +58,7 @@ const (
 	FailDeleteEntry
 	FailSecondZoneWithSameBaseDomain
 	AlternativeMockName
+	Domain2IsSubdomain
 )
 
 type TestEnv struct {
@@ -203,6 +204,12 @@ func (te *TestEnv) BuildProviderConfig(domain, domain2 string, failOptions ...Fa
 			{ZonePrefix: te.ZonePrefix, DNSName: domain},
 			{ZonePrefix: te.ZonePrefix + "second:", DNSName: domain2},
 		},
+	}
+	for _, opt := range failOptions {
+		switch opt {
+		case Domain2IsSubdomain:
+			input.Zones[0].ForwardedDomains = []string{domain2}
+		}
 	}
 	return te.BuildProviderConfigEx(input, failOptions...)
 }
