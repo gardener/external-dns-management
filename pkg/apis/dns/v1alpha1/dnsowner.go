@@ -35,7 +35,7 @@ type DNSOwnerList struct {
 // +kubebuilder:resource:scope=Cluster,path=dnsowners,shortName=dnso,singular=dnsowner
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name=OwnerId,JSONPath=".spec.ownerId",type=string
-// +kubebuilder:printcolumn:name=Active,JSONPath=".spec.active",type=boolean
+// +kubebuilder:printcolumn:name=Active,JSONPath=".status.active",type=boolean
 // +kubebuilder:printcolumn:name=Usages,JSONPath=".status.entries.amount",type=integer
 // +kubebuilder:printcolumn:name=Valid,JSONPath=".spec.validUntil",type=string,format=date-time,description="expiration date"
 // +kubebuilder:printcolumn:name=AGE,JSONPath=".metadata.creationTimestamp",type=date,description="creation timestamp"
@@ -78,6 +78,9 @@ type DNSActivation struct {
 }
 
 type DNSOwnerStatus struct {
+	// state of the ownerid for the DNS controller observing entry using this owner id
+	// +optional
+	Active *bool `json:"active,omitempty"`
 	// Entry statistic for this owner id
 	// +optional
 	Entries DNSOwnerStatusEntries `json:"entries,omitempty"`

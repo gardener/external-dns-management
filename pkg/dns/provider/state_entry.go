@@ -399,7 +399,7 @@ func (this *state) checkAndUpdateLock(logger logger.LogContext, entry *Entry, pr
 		return reconcile.Succeeded(logger)
 	}
 
-	handler := premise.provider.GetDNSDirectHandler()
+	handler := premise.provider.GetDedicatedDNSAccess()
 	if handler == nil {
 		return reconcile.Failed(logger, fmt.Errorf("provider type %s does not support DNS locks", premise.ptype))
 	}
@@ -512,7 +512,7 @@ func isLockOwned(obj *dnsutils.DNSLockObject, lockDNS, timestampDNS string) (own
 }
 
 func (this *state) checkAndDeleteLock(logger logger.LogContext, entry *Entry, premise *EntryPremise) reconcile.Status {
-	handler := premise.provider.GetDNSDirectHandler()
+	handler := premise.provider.GetDedicatedDNSAccess()
 	zone := this.zones[entry.ZoneId()]
 
 	rs, err := handler.GetRecordSet(zone, entry.DNSName(), dns.RS_TXT)

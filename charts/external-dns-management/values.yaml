@@ -120,6 +120,7 @@ configuration:
   # compoundInfobloxDnsRatelimiterBurst:
   # compoundInfobloxDnsRatelimiterEnabled:
   # compoundInfobloxDnsRatelimiterQps:
+  # compoundLockStatusCheckPeriod:
   # compoundNetlifyDnsAdvancedBatchSize:
   # compoundNetlifyDnsAdvancedMaxRetries:
   # compoundNetlifyDnsRatelimiterBurst:
@@ -224,6 +225,7 @@ configuration:
   # leaseRenewDeadline:
   # leaseResourceLock:
   # leaseRetryPeriod:
+  # lockStatusCheckPeriod:
   # logLevel: info
   # maintainer:
   # namespace: default

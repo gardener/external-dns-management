@@ -599,7 +599,7 @@ spec:
     - jsonPath: .spec.ownerId
       name: OwnerId
       type: string
-    - jsonPath: .spec.active
+    - jsonPath: .status.active
       name: Active
       type: boolean
     - jsonPath: .status.entries.amount
@@ -655,6 +655,9 @@ spec:
             type: object
           status:
             properties:
+              active:
+                description: state of the ownerid for the DNS controller observing entry using this owner id
+                type: boolean
               entries:
                 description: Entry statistic for this owner id
                 properties:

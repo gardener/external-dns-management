@@ -242,7 +242,7 @@ type DNSProvider interface {
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
 
-	GetDNSDirectHandler() DedicatedDNSAccess
+	GetDedicatedDNSAccess() DedicatedDNSAccess
 
 	Match(dns string) int
 	MatchZone(dns string) int

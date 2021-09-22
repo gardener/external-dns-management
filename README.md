@@ -480,6 +480,7 @@ Flags:
       --compound.infoblox-dns.ratelimiter.burst int                   number of burst requests for rate limiter of controller compound
       --compound.infoblox-dns.ratelimiter.enabled                     enables rate limiter for DNS provider requests of controller compound
       --compound.infoblox-dns.ratelimiter.qps int                     maximum requests/queries per second of controller compound
+      --compound.lock-status-check-period duration                    interval for dns lock status checks of controller compound
       --compound.netlify-dns.advanced.batch-size int                  batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.netlify-dns.advanced.max-retries int                 maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
       --compound.netlify-dns.blocked-zone zone-id                     Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
@@ -591,6 +592,7 @@ Flags:
       --lease-renew-deadline duration                                 lease renew deadline
       --lease-resource-lock string                                    determines which resource lock to use for leader election, defaults to 'configmapsleases'
       --lease-retry-period duration                                   lease retry period
+      --lock-status-check-period duration                             interval for dns lock status checks
   -D, --log-level string                                              logrus log level
       --maintainer string                                             maintainer key for crds (default "dns-controller-manager")
       --name string                                                   name used for controller manager (default "dns-controller-manager")

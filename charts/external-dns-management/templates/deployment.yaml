@@ -267,6 +267,9 @@ spec:
         {{- if .Values.configuration.compoundInfobloxDnsRatelimiterQps }}
         - --compound.infoblox-dns.ratelimiter.qps={{ .Values.configuration.compoundInfobloxDnsRatelimiterQps }}
         {{- end }}
+        { { - if .Values.configuration.compoundLockStatusCheckPeriod } }
+        - --compound.lock-status-check-period={{ .Values.configuration.compoundLockStatusCheckPeriod }}
+        { { - end } }
         {{- if .Values.configuration.compoundNetlifyDnsAdvancedBatchSize }}
         - --compound.netlify-dns.advanced.batch-size={{ .Values.configuration.compoundNetlifyDnsAdvancedBatchSize }}
         {{- end }}
@@ -579,6 +582,9 @@ spec:
         {{- if .Values.configuration.leaseRetryPeriod }}
         - --lease-retry-period={{ .Values.configuration.leaseRetryPeriod }}
         {{- end }}
+        { { - if .Values.configuration.lockStatusCheckPeriod } }
+        - --lock-status-check-period={{ .Values.configuration.lockStatusCheckPeriod }}
+        { { - end } }
         {{- if .Values.configuration.logLevel }}
         - --log-level={{ .Values.configuration.logLevel }}
         {{- end }}

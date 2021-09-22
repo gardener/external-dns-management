@@ -83,11 +83,22 @@ func (this *DNSOwnerObject) GetCount() int {
 	return this.DNSOwner().Status.Entries.Amount
 }
 
+func (this *DNSOwnerObject) Status() *api.DNSOwnerStatus {
+	return &this.DNSOwner().Status
+}
+
+// LookupTXTFunc is a type for looking up DNS TXT entries (or to mock it)
+type LookupTXTFunc func(string) ([]string, error)
+
+// DNSActivationLookupTXTFunc contains the actual LookupTXTFunc.
+// (can be overwritten for test purposes)
+var DNSActivationLookupTXTFunc LookupTXTFunc = net.LookupTXT
+
 func CheckDNSActivation(clusterid string, activation *api.DNSActivation) bool {
 	if activation == nil {
 		return true
 	}
-	records, err := net.LookupTXT(activation.DNSName)
+	records, err := DNSActivationLookupTXTFunc(activation.DNSName)
 	if err != nil {
 		return false
 	}

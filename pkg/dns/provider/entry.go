@@ -440,7 +440,11 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				return reconcile.Succeeded(logger).RescheduleAfter(config.RescheduleDelay)
 			}
 			hello.Infof(logger)
-			logger.Infof("probably no responsible controller found (%s) -> mark as error", err)
+			if err != nil {
+				logger.Infof("probably no responsible controller found (%s) -> mark as error", err)
+			} else {
+				logger.Info("probably no responsible controller found -> mark as error")
+			}
 			this.status.Provider = nil
 			this.status.ProviderType = nil
 			this.status.Zone = nil

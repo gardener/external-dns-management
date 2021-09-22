@@ -53,6 +53,7 @@ var _ = BeforeSuite(func() {
 		"--controllers", "dnscontrollers,dnssources",
 		"--omit-lease",
 		"--reschedule-delay", "15s",
+		"--lock-status-check-period", "5s",
 		"--pool.size", "10",
 	}
 	go runControllerManager(args)
