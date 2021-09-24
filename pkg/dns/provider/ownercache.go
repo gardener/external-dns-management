@@ -22,6 +22,7 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
@@ -69,6 +70,8 @@ type OwnerCache struct {
 
 	schedule *dnsutils.Schedule
 }
+
+var _ dns.Ownership = &OwnerCache{}
 
 func NewOwnerCache(ctx ProviderCacheContext, config *Config) *OwnerCache {
 	this := &OwnerCache{

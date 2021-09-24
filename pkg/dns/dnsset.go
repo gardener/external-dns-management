@@ -16,7 +16,9 @@
 
 package dns
 
-import "github.com/gardener/controller-manager-library/pkg/utils"
+import (
+	"github.com/gardener/controller-manager-library/pkg/utils"
+)
 
 ////////////////////////////////////////////////////////////////////////////////
 // A DNSSet contains Record sets for an DNS name. The name is given without
@@ -50,6 +52,11 @@ import "github.com/gardener/controller-manager-library/pkg/utils"
 // an effective set and dns name for the desired purpose.
 
 type DNSSets map[string]*DNSSet
+
+type Ownership interface {
+	IsResponsibleFor(id string) bool
+	GetIds() utils.StringSet
+}
 
 func (dnssets DNSSets) AddRecordSetFromProvider(dnsname string, rs *RecordSet) {
 	name := NormalizeHostname(dnsname)
@@ -130,14 +137,14 @@ func (this *DNSSet) SetAttr(name string, value string) {
 	}
 }
 
-func (this *DNSSet) IsOwnedBy(owners utils.StringSet) bool {
+func (this *DNSSet) IsOwnedBy(ownership Ownership) bool {
 	o := this.GetAttr(ATTR_OWNER)
-	return o != "" && owners.Contains(o)
+	return o != "" && ownership.IsResponsibleFor(o)
 }
 
-func (this *DNSSet) IsForeign(owners utils.StringSet) bool {
+func (this *DNSSet) IsForeign(ownership Ownership) bool {
 	o := this.GetAttr(ATTR_OWNER)
-	return o != "" && !owners.Contains(o)
+	return o != "" && !ownership.IsResponsibleFor(o)
 }
 
 func (this *DNSSet) GetOwner() string {
