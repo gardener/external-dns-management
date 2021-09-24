@@ -116,11 +116,13 @@ func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bo
 
 	reqs := this.requests
 	if len(reqs) > 0 {
-		err := this.provider.ExecuteRequests(logger, model.context.zone.getZone(), this.model.zonestate, reqs)
-		if err != nil {
-			model.Errorf("entry reconciliation failed for %s: %s", this.name, err)
-			ok = false
-		}
+		this.model.context.dnsTicker.TickWhile(logger, func() {
+			err := this.provider.ExecuteRequests(logger, model.context.zone.getZone(), this.model.zonestate, reqs)
+			if err != nil {
+				model.Errorf("entry reconciliation failed for %s: %s", this.name, err)
+				ok = false
+			}
+		})
 	}
 	return ok
 }
@@ -213,7 +215,9 @@ func (this *ChangeModel) Setup() error {
 	if provider == nil {
 		return fmt.Errorf("no provider found for zone %q", this.ZoneId())
 	}
-	this.zonestate, err = provider.GetZoneState(this.context.zone.getZone())
+	this.context.dnsTicker.TickWhile(this, func() {
+		this.zonestate, err = provider.GetZoneState(this.context.zone.getZone())
+	})
 	if err != nil {
 		return err
 	}

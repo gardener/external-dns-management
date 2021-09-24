@@ -270,7 +270,9 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object *dnsutils.DNSEntryObject) reconcile.Status {
 	old := this.GetEntry(object.ObjectName())
 	if old != nil {
-		old.lock.Lock()
+		if !old.lock.TryLockSpinning(200 * time.Millisecond) {
+			return reconcile.RescheduleAfter(logger, 15*time.Second)
+		}
 		defer old.lock.Unlock()
 	}
 

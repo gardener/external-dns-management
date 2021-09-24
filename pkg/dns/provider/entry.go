@@ -711,7 +711,7 @@ func lookupHosts(hostname string) ([]string, []string, error) {
 ///////////////////////////////////////////////////////////////////////////////
 
 type Entry struct {
-	lock       sync.Mutex
+	lock       *dnsutils.TryLock
 	key        string
 	createdAt  time.Time
 	modified   bool
@@ -723,6 +723,7 @@ type Entry struct {
 
 func NewEntry(v *EntryVersion, state *state) *Entry {
 	return &Entry{
+		lock:         dnsutils.NewTryLock(),
 		key:          v.ObjectName().String(),
 		EntryVersion: v,
 		state:        state,

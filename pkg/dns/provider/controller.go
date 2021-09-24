@@ -52,6 +52,8 @@ const SYNC_ENTRIES = "entries"
 
 const FACTORY_OPTIONS = "factory"
 
+const DNS_POOL = "dns"
+
 var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
@@ -148,8 +150,8 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		Watches(
 			controller.NewResourceKey(api.GroupName, api.DNSHostedZonePolicyKind),
 		).
-		WorkerPool("dns", 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
-		WorkerPool("statistic", 1, 0).Commands(CMD_STATISTIC).
+		WorkerPool(DNS_POOL, 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
+		WorkerPool("statistic", 2, 0).Commands(CMD_STATISTIC).
 		OptionSource(FACTORY_OPTIONS, FactoryOptionSourceCreator(factory))
 	return cfg
 }
@@ -210,7 +212,6 @@ func (this *reconciler) Setup() {
 }
 
 func (this *reconciler) Start() {
-	this.controller.GetPool("dns").StartTicker()
 	this.state.Start()
 }
 

@@ -37,7 +37,7 @@ type Environment interface {
 }
 
 type Pool interface {
-	StartTicker()
+	Tick()
 	EnqueueCommand(name string)
 	EnqueueCommandRateLimited(name string)
 	EnqueueCommandAfter(name string, duration time.Duration)
