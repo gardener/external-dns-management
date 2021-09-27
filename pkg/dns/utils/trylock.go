@@ -30,15 +30,25 @@ type TryLock struct {
 }
 
 // NewTryLock creates a lock based on a weighted semaphore.
-func NewTryLock() *TryLock {
-	return &TryLock{lock: semaphore.NewWeighted(1), ctx: context.TODO()}
+func NewTryLock(ctx ...context.Context) *TryLock {
+	var c context.Context
+	switch len(ctx) {
+	case 0:
+		c = context.TODO()
+	case 1:
+		c = ctx[0]
+	default:
+		panic("multiple context not allowed")
+	}
+	return &TryLock{lock: semaphore.NewWeighted(1), ctx: c}
 }
 
 // Lock acquires the lock blocking until resource is available
-func (l *TryLock) Lock() {
+func (l *TryLock) Lock() error {
 	if err := l.lock.Acquire(l.ctx, 1); err != nil {
-		panic(err)
+		return err
 	}
+	return nil
 }
 
 // TryLock tries to acquire the resource and returns true if successful.

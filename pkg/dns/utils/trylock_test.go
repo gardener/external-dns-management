@@ -18,6 +18,7 @@
 package utils
 
 import (
+	"context"
 	"sync/atomic"
 	"time"
 
@@ -25,18 +26,19 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const wait = 20 * time.Microsecond
-const tryLocked = 1000000
+const wait = 50 * time.Microsecond
 
 var _ = Describe("TryLock", func() {
 	It("deals correctly with lock/unlock", func() {
-		lock := NewTryLock()
-		lock.Lock()
+		lock := NewTryLock(context.Background())
+		err := lock.Lock()
+		Expect(err).To(BeNil())
 
 		var counter uint32
+		var err2 error
 		go func() {
 			atomic.AddUint32(&counter, 1)
-			lock.Lock()
+			err2 = lock.Lock()
 			atomic.AddUint32(&counter, 2)
 			lock.Unlock()
 		}()
@@ -47,6 +49,7 @@ var _ = Describe("TryLock", func() {
 		lock.Unlock()
 		time.Sleep(wait)
 		Expect(atomic.LoadUint32(&counter)).To(Equal(uint32(3)))
+		Expect(err2).To(BeNil())
 
 		first := lock.TryLockSpinning(wait)
 		Expect(first).To(BeTrue())
@@ -57,7 +60,8 @@ var _ = Describe("TryLock", func() {
 
 	It("deals correctly with mixture of lock/trylock", func() {
 		lock := NewTryLock()
-		lock.Lock()
+		err := lock.Lock()
+		Expect(err).To(BeNil())
 		secondLock := lock.TryLockSpinning(20 * time.Millisecond)
 		Expect(secondLock).To(BeFalse())
 
@@ -84,17 +88,19 @@ var _ = Describe("TryLock", func() {
 		}
 		lock.Unlock()
 
-		time.Sleep(2 * wait)
+		time.Sleep(wait)
 		var c2 uint32
+		var err2 error
 		go func() {
 			atomic.AddUint32(&c2, 1)
-			lock.Lock()
+			err2 = lock.Lock()
 			atomic.AddUint32(&c2, 2)
 			lock.Unlock()
 		}()
 
-		time.Sleep(20 * wait)
+		time.Sleep(15 * wait)
 		Expect(atomic.LoadUint32(&c2)).To(Equal(uint32(3)))
+		Expect(err2).To(BeNil())
 
 		for i := 0; i < len(counters); i++ {
 			for j := 0; j < len(counters); j++ {
