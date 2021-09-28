@@ -205,6 +205,9 @@ func newMockHandler(mockZones ...*zones.Zone) *Handler {
 	cacheConfig := provider.NewTestZoneCacheConfig(0 * time.Second)
 	cache, _ := provider.NewZoneCache(*cacheConfig, mockMetrics, nil, h.getZones, h.getZoneState)
 	h.cache = cache
+	h.config.Options = &provider.FactoryOptions{
+		GenericFactoryOptions: provider.GenericFactoryOptions{},
+	}
 	return h
 }
 

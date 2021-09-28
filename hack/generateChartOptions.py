@@ -28,14 +28,22 @@ def toCamelCase(name):
   str = str.replace("infobloxDns", "infobloxDNS")
   return str
 
-excluded = {"name", "help", "identifier", "dry-run",
-  "cache-dir", "alicloud-dns.cache-dir", "aws-route53.cache-dir", "azure-dns.cache-dir", "google-clouddns.cache-dir",
-  "openstack-designate.cache-dir", "cloudflare-dns.cache-dir", "infoblox-dns.cache-dir"}
+excluded = {"name", "help", "identifier", "dry-run"}
+excludedPattern = [re.compile(".*cache-dir$"), re.compile(".*blocked-zone$")]
+
+def isExcluded(name):
+  if name == "" or name in excluded:
+    return True
+  for prog in excludedPattern:
+    if prog.match(name):
+      return True
+  return False
+
 for line in options.split("\n"):
     m = re.match(r"\s+(?:-[^-]+)?--(\S+)\s", line)
     if m:
       name = m.group(1)
-      if name != "" and not name in excluded:
+      if not isExcluded(name):
         camelCase = toCamelCase(name)
         txt = """        {{- if .Values.configuration.%s }}
         - --%s={{ .Values.configuration.%s }}
@@ -56,7 +64,7 @@ for line in options.split("\n"):
     m = re.match(r"\s+(?:-[^-]+)?--(\S+)\s", line)
     if m:
       name = m.group(1)
-      if name != "" and not name in excluded:
+      if not isExcluded(name):
         camelCase = toCamelCase(name)
         if camelCase in defaultValues:
             txt = "  %s: %s" % (camelCase, defaultValues[camelCase])

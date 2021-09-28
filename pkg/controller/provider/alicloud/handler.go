@@ -77,10 +77,15 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 	raw := []alidns.Domain{}
 	{
 		f := func(zone alidns.Domain) (bool, error) {
-			raw = append(raw, zone)
+			if blockedZones.Contains(zone.DomainId) {
+				h.config.Logger.Infof("ignoring blocked zone id: %s", zone.DomainId)
+			} else {
+				raw = append(raw, zone)
+			}
 			return true, nil
 		}
 		err := h.access.ListDomains(f)

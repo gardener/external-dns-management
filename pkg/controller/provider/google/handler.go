@@ -104,10 +104,17 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
+
 	rt := provider.M_LISTZONES
 	raw := []*googledns.ManagedZone{}
 	f := func(resp *googledns.ManagedZonesListResponse) error {
 		for _, zone := range resp.ManagedZones {
+			zoneID := h.makeZoneID(zone.Name)
+			if blockedZones.Contains(zoneID) {
+				h.config.Logger.Infof("ignoring blocked zone id: %s", zoneID)
+				continue
+			}
 			raw = append(raw, zone)
 		}
 		h.config.Metrics.AddGenericRequests(rt, 1)

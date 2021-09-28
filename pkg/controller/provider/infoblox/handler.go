@@ -186,8 +186,14 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		return nil, err
 	}
 
+	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 	zones := provider.DNSHostedZones{}
 	for _, z := range raw {
+		if blockedZones.Contains(z.Ref) {
+			h.config.Logger.Infof("ignoring blocked zone id: %s", z.Ref)
+			continue
+		}
+
 		h.config.Metrics.AddZoneRequests(z.Ref, provider.M_LISTRECORDS, 1)
 		var resN []RecordNS
 		objN := ibclient.NewRecordNS(

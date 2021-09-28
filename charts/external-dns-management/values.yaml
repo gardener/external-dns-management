@@ -96,7 +96,6 @@ configuration:
   # compoundAzureDnsRatelimiterBurst:
   # compoundAzureDnsRatelimiterEnabled:
   # compoundAzureDnsRatelimiterQps:
-  # compoundCacheDir:
   # compoundCacheTtl: 120
   # compoundCloudflareDnsAdvancedBatchSize:
   # compoundCloudflareDnsAdvancedMaxRetries:

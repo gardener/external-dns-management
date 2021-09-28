@@ -132,10 +132,18 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
+
 	rt := provider.M_LISTZONES
 	raw := []*route53.HostedZone{}
 	aggr := func(resp *route53.ListHostedZonesOutput, lastPage bool) bool {
 		for _, zone := range resp.HostedZones {
+			comp := strings.Split(aws.StringValue(zone.Id), "/")
+			id := comp[len(comp)-1]
+			if blockedZones.Contains(id) {
+				h.config.Logger.Infof("ignoring blocked zone id: %s", id)
+				continue
+			}
 			raw = append(raw, zone)
 		}
 		h.config.Metrics.AddGenericRequests(rt, 1)
