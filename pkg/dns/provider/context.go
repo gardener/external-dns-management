@@ -54,6 +54,8 @@ type Context interface {
 	GetPoolPeriod(name string) *time.Duration
 
 	GetCluster(name string) resources.Cluster
+
+	GetPool(name string) controller.Pool
 }
 
 type DefaultContext struct {
@@ -130,4 +132,8 @@ func (this *DefaultContext) GetPoolPeriod(name string) *time.Duration {
 
 func (this *DefaultContext) GetCluster(name string) resources.Cluster {
 	return this.controller.GetCluster(name)
+}
+
+func (this *DefaultContext) GetPool(name string) controller.Pool {
+	return this.controller.GetPool(name)
 }

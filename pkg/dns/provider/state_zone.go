@@ -75,6 +75,7 @@ func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string)
 	}
 	req.entries, req.stale, req.deleting = this.addEntriesForZone(logger, nil, nil, zone)
 	req.providers = this.getProvidersForZone(zoneid)
+	req.dnsTicker = this.dnsTicker
 	return 0, hasProviders, req
 }
 
@@ -155,7 +156,10 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 			}
 		}
 		logger.Infof("locking %d entries for zone reconcilation", len(list))
-		list.Lock()
+		if err := list.Lock(); err != nil {
+			logger.Warnf("locking %d entries failed: %s", len(list), err)
+			return false, err
+		}
 		defer func() {
 			logger.Infof("unlocking %d entries", len(list))
 			list.Unlock()

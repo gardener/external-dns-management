@@ -57,6 +57,7 @@ type zoneReconciliation struct {
 	dedicated bool
 	deleting  bool
 	fhandler  FinalizerHandler
+	dnsTicker *Ticker
 }
 
 type setup struct {
@@ -138,6 +139,8 @@ type state struct {
 	references *References
 
 	initialized bool
+
+	dnsTicker *Ticker
 }
 
 func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller.Classes, config Config) *state {
@@ -185,6 +188,7 @@ func (this *state) IsResponsibleFor(logger logger.LogContext, obj resources.Obje
 }
 
 func (this *state) Setup() {
+	this.dnsTicker = NewTicker(this.context.GetPool(DNS_POOL).Tick)
 	this.ownerupd = startOwnerUpdater(this.context, this.ownerresc)
 	processors, err := this.context.GetIntOption(OPT_SETUP)
 	if err != nil || processors <= 0 {

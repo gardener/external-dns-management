@@ -711,7 +711,7 @@ func lookupHosts(hostname string) ([]string, []string, error) {
 ///////////////////////////////////////////////////////////////////////////////
 
 type Entry struct {
-	lock       sync.Mutex
+	lock       *dnsutils.TryLock
 	key        string
 	createdAt  time.Time
 	modified   bool
@@ -723,6 +723,7 @@ type Entry struct {
 
 func NewEntry(v *EntryVersion, state *state) *Entry {
 	return &Entry{
+		lock:         dnsutils.NewTryLock(state.GetContext().GetContext()),
 		key:          v.ObjectName().String(),
 		EntryVersion: v,
 		state:        state,
@@ -801,7 +802,9 @@ func (this *Entry) Before(e *Entry) bool {
 }
 
 func (this *Entry) updateStatistic(statistic *statistic.EntryStatistic) {
-	this.lock.Lock()
+	if err := this.lock.Lock(); err != nil {
+		return
+	}
 	defer this.lock.Unlock()
 	statistic.Owners.Inc(this.OwnerId(), this.ProviderType(), this.ProviderName())
 	statistic.Providers.Inc(this.ProviderType(), this.ProviderName())
@@ -903,11 +906,18 @@ func (this EntryList) Sort() {
 	sort.Sort(this)
 }
 
-func (this EntryList) Lock() {
+func (this EntryList) Lock() error {
 	this.Sort()
-	for _, e := range this {
-		e.lock.Lock()
+	for i := 0; i < len(this); i++ {
+		err := this[i].lock.Lock()
+		if err != nil {
+			for j := i - 1; j >= 0; j-- {
+				this[j].lock.Unlock()
+			}
+			return err
+		}
 	}
+	return nil
 }
 
 func (this EntryList) Unlock() {

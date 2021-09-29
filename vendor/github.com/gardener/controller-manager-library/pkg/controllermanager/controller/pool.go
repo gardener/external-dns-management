@@ -148,8 +148,8 @@ func (p *pool) Period() time.Duration {
 	return p.period
 }
 
-func (p *pool) StartTicker() {
-	// noop as periodic tick is always activated
+func (p *pool) Tick() {
+	healthz.Tick(p.Key())
 }
 
 func (p *pool) Run() {
