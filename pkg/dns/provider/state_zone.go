@@ -61,7 +61,7 @@ func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string)
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
-	req.ownerIds = this.ownerCache.GetIds()
+	req.ownership = this.ownerCache
 	hasProviders := this.hasProviders()
 	zone := this.zones[zoneid]
 	if zone == nil {
@@ -173,11 +173,10 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliation) error {
 	zoneid := req.zone.Id()
 	req.zone.SetNext(time.Now().Add(this.config.Delay))
-	ownerids := req.ownerIds
 	metrics.ReportZoneEntries(req.zone.ProviderType(), zoneid, len(req.entries), len(req.stale))
 	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", req.zone.Id(), req.zone.Domain(), len(req.entries), len(req.stale))
-	logger.Debugf("    ownerids: %s", ownerids)
-	changes := NewChangeModel(logger, ownerids, req, this.config)
+	logger.Debugf("    ownerids: %s", req.ownership.GetIds())
+	changes := NewChangeModel(logger, req.ownership, req, this.config)
 	err := changes.Setup()
 	if err != nil {
 		req.zone.Failed()

@@ -71,7 +71,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 	for _, s := range this.dnssets {
 		_, ok := model.applied[s.Name]
 		if !ok {
-			if s.IsOwnedBy(model.owners) {
+			if s.IsOwnedBy(model.ownership) {
 				if e := model.IsStale(ZonedDNSName{ZoneID: model.ZoneId(), DNSName: s.Name}); e != nil {
 					if e.IsDeleting() {
 						model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
@@ -148,7 +148,7 @@ func (this *ChangeGroup) addChangeRequest(action string, old, new *dns.DNSSet, r
 type ChangeModel struct {
 	logger.LogContext
 	config         Config
-	owners         utils.StringSet
+	ownership      dns.Ownership
 	context        *zoneReconciliation
 	applied        map[string]*dns.DNSSet
 	dangling       *ChangeGroup
@@ -163,11 +163,11 @@ type ChangeResult struct {
 	Error    error
 }
 
-func NewChangeModel(logger logger.LogContext, owners utils.StringSet, req *zoneReconciliation, config Config) *ChangeModel {
+func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zoneReconciliation, config Config) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
 		config:         config,
-		owners:         owners,
+		ownership:      ownership,
 		context:        req,
 		applied:        map[string]*dns.DNSSet{},
 		providergroups: map[string]*ChangeGroup{},
@@ -297,6 +297,9 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt ti
 			return ChangeResult{Error: err, Retry: retry}
 		} else {
 			if !this.Owns(oldset) {
+				if delete {
+					return ChangeResult{}
+				}
 				this.Infof("catch entry %q by reassigning owner", name)
 			}
 			for ty, rset := range newset.Sets {
@@ -427,11 +430,11 @@ func (this *changeModelDoneHandler) Succeeded() {
 // DNSSets
 
 func (this *ChangeModel) Owns(set *dns.DNSSet) bool {
-	return set.IsOwnedBy(this.owners)
+	return set.IsOwnedBy(this.ownership)
 }
 
 func (this *ChangeModel) IsForeign(set *dns.DNSSet) bool {
-	return set.IsForeign(this.owners)
+	return set.IsForeign(this.ownership)
 }
 
 func (this *ChangeModel) setOwner(set *dns.DNSSet, targets []Target) bool {
