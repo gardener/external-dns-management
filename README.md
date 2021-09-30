@@ -402,6 +402,7 @@ Flags:
       --advanced.max-retries int                                      maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
       --alicloud-dns.advanced.batch-size int                          batch size for change requests (currently only used for aws-route53)
       --alicloud-dns.advanced.max-retries int                         maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --alicloud-dns.blocked-zone zone-id                             Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
       --alicloud-dns.ratelimiter.burst int                            number of burst requests for rate limiter
       --alicloud-dns.ratelimiter.enabled                              enables rate limiter for DNS provider requests
       --alicloud-dns.ratelimiter.qps int                              maximum requests/queries per second
@@ -410,19 +411,23 @@ Flags:
       --annotation.setup int                                          number of processors for controller setup of controller annotation
       --aws-route53.advanced.batch-size int                           batch size for change requests (currently only used for aws-route53)
       --aws-route53.advanced.max-retries int                          maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --aws-route53.blocked-zone zone-id                              Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
       --aws-route53.ratelimiter.burst int                             number of burst requests for rate limiter
       --aws-route53.ratelimiter.enabled                               enables rate limiter for DNS provider requests
       --aws-route53.ratelimiter.qps int                               maximum requests/queries per second
       --azure-dns.advanced.batch-size int                             batch size for change requests (currently only used for aws-route53)
       --azure-dns.advanced.max-retries int                            maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --azure-dns.blocked-zone zone-id                                Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
       --azure-dns.ratelimiter.burst int                               number of burst requests for rate limiter
       --azure-dns.ratelimiter.enabled                                 enables rate limiter for DNS provider requests
       --azure-dns.ratelimiter.qps int                                 maximum requests/queries per second
       --bind-address-http string                                      HTTP server bind address
+      --blocked-zone zone-id                                          Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
       --cache-dir string                                              Directory to store zone caches (for reload after restart)
       --cache-ttl int                                                 Time-to-live for provider hosted zone cache
       --cloudflare-dns.advanced.batch-size int                        batch size for change requests (currently only used for aws-route53)
       --cloudflare-dns.advanced.max-retries int                       maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --cloudflare-dns.blocked-zone zone-id                           Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
       --cloudflare-dns.ratelimiter.burst int                          number of burst requests for rate limiter
       --cloudflare-dns.ratelimiter.enabled                            enables rate limiter for DNS provider requests
       --cloudflare-dns.ratelimiter.qps int                            maximum requests/queries per second
@@ -430,23 +435,28 @@ Flags:
       --compound.advanced.max-retries int                             maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
       --compound.alicloud-dns.advanced.batch-size int                 batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.alicloud-dns.advanced.max-retries int                maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.alicloud-dns.blocked-zone zone-id                    Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
       --compound.alicloud-dns.ratelimiter.burst int                   number of burst requests for rate limiter of controller compound
       --compound.alicloud-dns.ratelimiter.enabled                     enables rate limiter for DNS provider requests of controller compound
       --compound.alicloud-dns.ratelimiter.qps int                     maximum requests/queries per second of controller compound
       --compound.aws-route53.advanced.batch-size int                  batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.aws-route53.advanced.max-retries int                 maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.aws-route53.blocked-zone zone-id                     Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
       --compound.aws-route53.ratelimiter.burst int                    number of burst requests for rate limiter of controller compound
       --compound.aws-route53.ratelimiter.enabled                      enables rate limiter for DNS provider requests of controller compound
       --compound.aws-route53.ratelimiter.qps int                      maximum requests/queries per second of controller compound
       --compound.azure-dns.advanced.batch-size int                    batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.azure-dns.advanced.max-retries int                   maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.azure-dns.blocked-zone zone-id                       Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
       --compound.azure-dns.ratelimiter.burst int                      number of burst requests for rate limiter of controller compound
       --compound.azure-dns.ratelimiter.enabled                        enables rate limiter for DNS provider requests of controller compound
       --compound.azure-dns.ratelimiter.qps int                        maximum requests/queries per second of controller compound
+      --compound.blocked-zone zone-id                                 Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
       --compound.cache-dir string                                     Directory to store zone caches (for reload after restart) of controller compound
       --compound.cache-ttl int                                        Time-to-live for provider hosted zone cache of controller compound
       --compound.cloudflare-dns.advanced.batch-size int               batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.cloudflare-dns.advanced.max-retries int              maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.cloudflare-dns.blocked-zone zone-id                  Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
       --compound.cloudflare-dns.ratelimiter.burst int                 number of burst requests for rate limiter of controller compound
       --compound.cloudflare-dns.ratelimiter.enabled                   enables rate limiter for DNS provider requests of controller compound
       --compound.cloudflare-dns.ratelimiter.qps int                   maximum requests/queries per second of controller compound
@@ -459,22 +469,26 @@ Flags:
       --compound.dry-run                                              just check, don't modify of controller compound
       --compound.google-clouddns.advanced.batch-size int              batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.google-clouddns.advanced.max-retries int             maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.google-clouddns.blocked-zone zone-id                 Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
       --compound.google-clouddns.ratelimiter.burst int                number of burst requests for rate limiter of controller compound
       --compound.google-clouddns.ratelimiter.enabled                  enables rate limiter for DNS provider requests of controller compound
       --compound.google-clouddns.ratelimiter.qps int                  maximum requests/queries per second of controller compound
       --compound.identifier string                                    Identifier used to mark DNS entries in DNS system of controller compound
       --compound.infoblox-dns.advanced.batch-size int                 batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.infoblox-dns.advanced.max-retries int                maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.infoblox-dns.blocked-zone zone-id                    Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
       --compound.infoblox-dns.ratelimiter.burst int                   number of burst requests for rate limiter of controller compound
       --compound.infoblox-dns.ratelimiter.enabled                     enables rate limiter for DNS provider requests of controller compound
       --compound.infoblox-dns.ratelimiter.qps int                     maximum requests/queries per second of controller compound
       --compound.netlify-dns.advanced.batch-size int                  batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.netlify-dns.advanced.max-retries int                 maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.netlify-dns.blocked-zone zone-id                     Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
       --compound.netlify-dns.ratelimiter.burst int                    number of burst requests for rate limiter of controller compound
       --compound.netlify-dns.ratelimiter.enabled                      enables rate limiter for DNS provider requests of controller compound
       --compound.netlify-dns.ratelimiter.qps int                      maximum requests/queries per second of controller compound
       --compound.openstack-designate.advanced.batch-size int          batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.openstack-designate.advanced.max-retries int         maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.openstack-designate.blocked-zone zone-id             Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
       --compound.openstack-designate.ratelimiter.burst int            number of burst requests for rate limiter of controller compound
       --compound.openstack-designate.ratelimiter.enabled              enables rate limiter for DNS provider requests of controller compound
       --compound.openstack-designate.ratelimiter.qps int              maximum requests/queries per second of controller compound
@@ -500,9 +514,9 @@ Flags:
       --default.pool.size int                                         Worker pool size for pool default
       --disable-namespace-restriction                                 disable access restriction for namespace local access only
       --disable-zone-state-caching                                    disable use of cached dns zone state on changes
-      --dns-class string                                              identifier used to differentiate responsible controllers for entries, Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers
+      --dns-class string                                              identifier used to differentiate responsible controllers for providers, identifier used to differentiate responsible controllers for entries, Class identifier used to differentiate responsible controllers for entry resources
       --dns-delay duration                                            delay between two dns reconciliations
-      --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target entries, identifier used to differentiate responsible dns controllers for target providers
+      --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target providers, identifier used to differentiate responsible dns controllers for target entries
       --dns.pool.resync-period duration                               Period for resynchronization for pool dns
       --dns.pool.size int                                             Worker pool size for pool dns
       --dnsentry-source.default.pool.resync-period duration           Period for resynchronization for pool default of controller dnsentry-source
@@ -538,6 +552,7 @@ Flags:
       --force-crd-update                                              enforce update of crds even they are unmanaged
       --google-clouddns.advanced.batch-size int                       batch size for change requests (currently only used for aws-route53)
       --google-clouddns.advanced.max-retries int                      maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --google-clouddns.blocked-zone zone-id                          Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
       --google-clouddns.ratelimiter.burst int                         number of burst requests for rate limiter
       --google-clouddns.ratelimiter.enabled                           enables rate limiter for DNS provider requests
       --google-clouddns.ratelimiter.qps int                           maximum requests/queries per second
@@ -546,6 +561,7 @@ Flags:
       --identifier string                                             Identifier used to mark DNS entries in DNS system
       --infoblox-dns.advanced.batch-size int                          batch size for change requests (currently only used for aws-route53)
       --infoblox-dns.advanced.max-retries int                         maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --infoblox-dns.blocked-zone zone-id                             Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
       --infoblox-dns.ratelimiter.burst int                            number of burst requests for rate limiter
       --infoblox-dns.ratelimiter.enabled                              enables rate limiter for DNS provider requests
       --infoblox-dns.ratelimiter.qps int                              maximum requests/queries per second
@@ -582,12 +598,14 @@ Flags:
   -n, --namespace-local-access-only                                   enable access restriction for namespace local access only (deprecated)
       --netlify-dns.advanced.batch-size int                           batch size for change requests (currently only used for aws-route53)
       --netlify-dns.advanced.max-retries int                          maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --netlify-dns.blocked-zone zone-id                              Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
       --netlify-dns.ratelimiter.burst int                             number of burst requests for rate limiter
       --netlify-dns.ratelimiter.enabled                               enables rate limiter for DNS provider requests
       --netlify-dns.ratelimiter.qps int                               maximum requests/queries per second
       --omit-lease                                                    omit lease for development
       --openstack-designate.advanced.batch-size int                   batch size for change requests (currently only used for aws-route53)
       --openstack-designate.advanced.max-retries int                  maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --openstack-designate.blocked-zone zone-id                      Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
       --openstack-designate.ratelimiter.burst int                     number of burst requests for rate limiter
       --openstack-designate.ratelimiter.enabled                       enables rate limiter for DNS provider requests
       --openstack-designate.ratelimiter.qps int                       maximum requests/queries per second
@@ -627,12 +645,12 @@ Flags:
       --setup int                                                     number of processors for controller setup
       --statistic.pool.size int                                       Worker pool size for pool statistic
       --target string                                                 target cluster for dns requests
-      --target-creator-label-name string                              label name to store the creator for generated DNS entries, label name to store the creator for replicated DNS providers
+      --target-creator-label-name string                              label name to store the creator for replicated DNS providers, label name to store the creator for generated DNS entries
       --target-creator-label-value string                             label value for creator label
-      --target-name-prefix string                                     name prefix in target namespace for cross cluster generation, name prefix in target namespace for cross cluster replication
+      --target-name-prefix string                                     name prefix in target namespace for cross cluster replication, name prefix in target namespace for cross cluster generation
       --target-namespace string                                       target namespace for cross cluster generation
       --target-owner-id string                                        owner id to use for generated DNS entries
-      --target-realms string                                          realm(s) to use for generated DNS entries, realm(s) to use for replicated DNS provider
+      --target-realms string                                          realm(s) to use for replicated DNS provider, realm(s) to use for generated DNS entries
       --target-set-ignore-owners                                      mark generated DNS entries to omit owner based access control
       --target.disable-deploy-crds                                    disable deployment of required crds for cluster target
       --target.id string                                              id for cluster target

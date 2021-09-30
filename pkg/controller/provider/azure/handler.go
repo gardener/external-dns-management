@@ -120,6 +120,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		return nil, perrs.WrapAsHandlerError(err, "Listing DNS zones failed")
 	}
 
+	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 	for ; results.NotDone(); results.Next() {
 		item := results.Value()
 
@@ -129,11 +130,16 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 			continue
 		}
 		resourceGroup := submatches[1]
+		zoneID := makeZoneID(resourceGroup, *item.Name)
+		if blockedZones.Contains(zoneID) {
+			h.config.Logger.Infof("ignoring blocked zone id: %s", zoneID)
+			continue
+		}
 
 		forwarded := h.collectForwardedSubzones(resourceGroup, *item.Name)
 
 		// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), makeZoneID(resourceGroup, *item.Name), dns.NormalizeHostname(*item.Name), "", forwarded, false)
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(*item.Name), "", forwarded, false)
 
 		zones = append(zones, hostedZone)
 	}

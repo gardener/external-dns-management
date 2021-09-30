@@ -152,9 +152,15 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 	hostedZones := provider.DNSHostedZones{}
 
 	zoneHandler := func(zone *zones.Zone) error {
+		if blockedZones.Contains(zone.ID) {
+			h.config.Logger.Infof("ignoring blocked zone id: %s", zone.ID)
+			return nil
+		}
+
 		forwarded := h.collectForwardedSubzones(zone)
 
 		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zone.ID, dns.NormalizeHostname(zone.Name), "", forwarded, false)

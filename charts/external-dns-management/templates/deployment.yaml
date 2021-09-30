@@ -195,9 +195,6 @@ spec:
         {{- if .Values.configuration.compoundAzureDnsRatelimiterQps }}
         - --compound.azure-dns.ratelimiter.qps={{ .Values.configuration.compoundAzureDnsRatelimiterQps }}
         {{- end }}
-        {{- if .Values.configuration.compoundCacheDir }}
-        - --compound.cache-dir={{ .Values.configuration.compoundCacheDir }}
-        {{- end }}
         {{- if .Values.configuration.compoundCacheTtl }}
         - --compound.cache-ttl={{ .Values.configuration.compoundCacheTtl }}
         {{- end }}

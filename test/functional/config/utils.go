@@ -135,7 +135,7 @@ func (u *TestUtils) AwaitDNSEntriesDeleted(names ...string) error {
 func (u *TestUtils) AwaitState(resourceName, expectedState string, names ...string) error {
 	msg := fmt.Sprintf("%s not %s: %v", resourceName, expectedState, names)
 	return u.Await(msg, func() (bool, error) {
-		output, err := u.runKubeCtl("get " + resourceName + " \"-o=jsonpath={range .items[*]}{.metadata.name}={.status.state}{'\\n'}{end}\"")
+		output, err := u.runKubeCtl("get " + resourceName + " \"-o=jsonpath={range .items[?(@.status.state)]}{.metadata.name}={.status.state}{'\\n'}{end}\"")
 		if err != nil {
 			return false, err
 		}

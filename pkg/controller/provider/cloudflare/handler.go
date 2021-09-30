@@ -78,10 +78,15 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 	rawZones := []cloudflare.Zone{}
 	{
 		f := func(zone cloudflare.Zone) (bool, error) {
-			rawZones = append(rawZones, zone)
+			if blockedZones.Contains(zone.ID) {
+				h.config.Logger.Infof("ignoring blocked zone id: %s", zone.ID)
+			} else {
+				rawZones = append(rawZones, zone)
+			}
 			return true, nil
 		}
 		err := h.access.ListZones(f)
