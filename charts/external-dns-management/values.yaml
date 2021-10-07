@@ -302,3 +302,15 @@ gardener:
 security:
   apparmorEnabled: false
   seccompEnabled: false
+
+custom: {}
+# you may want to mount an additional volume if AWS_USE_CREDENTIALS_CHAIN is set
+#custom:
+#  volumes:
+#    - name: token
+#      secret:
+#        defaultMode: 420
+#        secretName: my-token
+#  volumeMounts:
+#    - name: token
+#      mountPath: /token

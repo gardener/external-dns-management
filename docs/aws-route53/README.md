@@ -96,3 +96,6 @@ data:
   # optionally specify the region
   #AWS_REGION: ...
 ```
+
+You may need to mount an additional volume as the AWS client expects environment variable with token path and volume mount with the token file.
+See Helm chart values `custom.volumes` and `custom.volumeMounts`.
