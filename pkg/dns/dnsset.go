@@ -111,8 +111,9 @@ const (
 )
 
 type DNSSet struct {
-	Name string
-	Sets RecordSets
+	Name        string
+	UpdateGroup string
+	Sets        RecordSets
 }
 
 func (this *DNSSet) Clone() *DNSSet {

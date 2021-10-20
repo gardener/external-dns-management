@@ -13,7 +13,7 @@
 # limitations under the License.
 
 #############      builder       #############
-FROM eu.gcr.io/gardener-project/3rd/golang:1.16.7 AS builder
+FROM eu.gcr.io/gardener-project/3rd/golang:1.16.9 AS builder
 
 WORKDIR /build
 COPY . .

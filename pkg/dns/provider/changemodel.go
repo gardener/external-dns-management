@@ -243,17 +243,17 @@ func (this *ChangeModel) Setup() error {
 	return err
 }
 
-func (this *ChangeModel) Check(name string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
-	return this.Exec(false, false, name, createdAt, done, targets...)
+func (this *ChangeModel) Check(name, updateGroup string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
+	return this.Exec(false, false, name, updateGroup, createdAt, done, targets...)
 }
-func (this *ChangeModel) Apply(name string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
-	return this.Exec(true, false, name, createdAt, done, targets...)
+func (this *ChangeModel) Apply(name, updateGroup string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
+	return this.Exec(true, false, name, updateGroup, createdAt, done, targets...)
 }
-func (this *ChangeModel) Delete(name string, createdAt time.Time, done DoneHandler) ChangeResult {
-	return this.Exec(true, true, name, createdAt, done)
+func (this *ChangeModel) Delete(name, updateGroup string, createdAt time.Time, done DoneHandler) ChangeResult {
+	return this.Exec(true, true, name, updateGroup, createdAt, done)
 }
 
-func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
+func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string, createdAt time.Time, done DoneHandler, targets ...Target) ChangeResult {
 	//this.Infof("%s: %v", name, targets)
 	if len(targets) == 0 && !delete {
 		return ChangeResult{}
@@ -279,6 +279,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name string, createdAt ti
 	view := this.getProviderView(p)
 	oldset := view.dnssets[name]
 	newset := dns.NewDNSSet(name)
+	newset.UpdateGroup = updateGroup
 	if !delete {
 		this.AddTargets(newset, oldset, p, targets...)
 	}

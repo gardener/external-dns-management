@@ -19,6 +19,7 @@ package utils
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -88,18 +89,19 @@ var _ = Describe("TryLock", func() {
 		}
 		lock.Unlock()
 
+		wg := &sync.WaitGroup{}
+		wg.Add(3)
 		time.Sleep(wait)
-		var c2 uint32
 		var err2 error
 		go func() {
-			atomic.AddUint32(&c2, 1)
+			wg.Done()
 			err2 = lock.Lock()
-			atomic.AddUint32(&c2, 2)
+			wg.Done()
 			lock.Unlock()
+			wg.Done()
 		}()
 
-		time.Sleep(15 * wait)
-		Expect(atomic.LoadUint32(&c2)).To(Equal(uint32(3)))
+		wg.Wait()
 		Expect(err2).To(BeNil())
 
 		for i := 0; i < len(counters); i++ {
