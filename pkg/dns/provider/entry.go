@@ -25,22 +25,19 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/resources/access"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/util/validation"
-
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
-
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 const MSG_PRESERVED = "errorneous entry preserved in provider"
@@ -283,18 +280,9 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 	targets = Targets{}
 	warnings = []string{}
 
-	check := entry.object.GetDNSName()
-	if strings.HasPrefix(check, "*.") {
-		check = check[2:]
-	} else if strings.HasPrefix(check, "_") {
-		check = check[1:]
-	}
-
-	if errs := validation.IsDNS1123Subdomain(check); errs != nil {
-		if werrs := validation.IsWildcardDNS1123Subdomain(check); werrs != nil {
-			err = fmt.Errorf("%q is no valid dns name (%v)", check, append(errs, werrs...))
-			return
-		}
+	name := entry.object.GetDNSName()
+	if err = dns.ValidateDomainName(name); err != nil {
+		return
 	}
 
 	err = complete(logger, state, &effspec, entry.object, "")

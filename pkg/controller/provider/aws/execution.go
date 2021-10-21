@@ -33,7 +33,8 @@ import (
 
 type Change struct {
 	*route53.Change
-	Done provider.DoneHandler
+	Done        provider.DoneHandler
+	UpdateGroup string
 }
 
 type Execution struct {
@@ -91,11 +92,11 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 	}
 
 	change := &route53.Change{Action: aws.String(action), ResourceRecordSet: rrs}
-	this.addRawChange(name, change, req.Done)
+	this.addRawChange(name, dnsset.UpdateGroup, change, req.Done)
 }
 
-func (this *Execution) addRawChange(name string, change *route53.Change, done provider.DoneHandler) {
-	this.changes[name] = append(this.changes[name], &Change{Change: change, Done: done})
+func (this *Execution) addRawChange(name, updateGroup string, change *route53.Change, done provider.DoneHandler) {
+	this.changes[name] = append(this.changes[name], &Change{Change: change, Done: done, UpdateGroup: updateGroup})
 }
 
 func (this *Execution) submitChanges(metrics provider.Metrics) error {
@@ -162,12 +163,17 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 func limitChangeSet(changesByName map[string][]*Change, max int) [][]*Change {
 	batches := [][]*Change{}
 
-	// add deleteion requests
+	updateChanges := map[string][]*Change{}
+	// add deletion requests
 	batch := make([]*Change, 0)
 	for _, changes := range changesByName {
 		for _, change := range changes {
 			if aws.StringValue(change.Change.Action) == route53.ChangeActionDelete {
 				batch, batches = addLimited(change, batch, batches, max)
+			} else {
+				arr := updateChanges[change.UpdateGroup]
+				arr = append(arr, change)
+				updateChanges[change.UpdateGroup] = arr
 			}
 		}
 	}
@@ -177,16 +183,13 @@ func limitChangeSet(changesByName map[string][]*Change, max int) [][]*Change {
 	}
 
 	// add non-deletion requests
-
-	for _, changes := range changesByName {
+	for _, changes := range updateChanges {
 		for _, change := range changes {
-			if aws.StringValue(change.Change.Action) != route53.ChangeActionDelete {
-				batch, batches = addLimited(change, batch, batches, max)
-			}
+			batch, batches = addLimited(change, batch, batches, max)
 		}
-	}
-	if len(batch) > 0 {
+		// new batch for every update group
 		batches = append(batches, batch)
+		batch = make([]*Change, 0)
 	}
 
 	return batches
