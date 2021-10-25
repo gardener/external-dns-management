@@ -17,8 +17,10 @@
 package source
 
 import (
+	"fmt"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/watches"
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
@@ -51,10 +53,12 @@ const OPT_NAMEPREFIX = "target-name-prefix"
 const OPT_TARGET_CREATOR_LABEL_NAME = "target-creator-label-name"
 const OPT_TARGET_CREATOR_LABEL_VALUE = "target-creator-label-value"
 const OPT_TARGET_OWNER_ID = "target-owner-id"
+const OPT_TARGET_OWNER_OBJECT = "target-owner-object"
 const OPT_TARGET_SET_IGNORE_OWNERS = "target-set-ignore-owners"
 const OPT_TARGET_REALMS = "target-realms"
 
-var ENTRY = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
+var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
+var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 
 const KEY_STATE = "source-state"
 
@@ -78,6 +82,7 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		DefaultedStringOption(OPT_TARGET_CREATOR_LABEL_NAME, "creator", "label name to store the creator for generated DNS entries").
 		StringOption(OPT_TARGET_CREATOR_LABEL_VALUE, "label value for creator label").
 		StringOption(OPT_TARGET_OWNER_ID, "owner id to use for generated DNS entries").
+		StringOption(OPT_TARGET_OWNER_OBJECT, "owner object to use for generated DNS entries").
 		BoolOption(OPT_TARGET_SET_IGNORE_OWNERS, "mark generated DNS entries to omit owner based access control").
 		StringOption(OPT_TARGET_REALMS, "realm(s) to use for generated DNS entries").
 		FinalizerDomain(api.GroupName).
@@ -86,13 +91,20 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		DefaultWorkerPool(2, 120*time.Second).
 		MainResource(gk.Group, gk.Kind).
 		Reconciler(reconcilers.SlaveReconcilerTypeByFunction(SlaveReconcilerType, SlaveAccessSpecCreatorForSource(source)), "entries").
+		Reconciler(OwnerReconciler, "owner").
 		Cluster(TARGET_CLUSTER, cluster.DEFAULT).
-		CustomResourceDefinitions(ENTRY).
+		CustomResourceDefinitions(entryGroupKind).
 		WorkerPool("targets", 2, 0).
-		ReconcilerSelectedWatchesByGK("entries", controller.NamespaceByOptionSelection(OPT_NAMESPACE), ENTRY)
+		ReconcilerSelectedWatchesByGK("entries", controller.NamespaceByOptionSelection(OPT_NAMESPACE), entryGroupKind).
+		FlavoredWatch(
+			watches.Conditional(
+				OptionIsSet(OPT_TARGET_OWNER_OBJECT),
+				watches.ResourceFlavorByGK(ownerGroupKind),
+			),
+		)
 }
 
-var SlaveResources = reconcilers.ClusterResources(TARGET_CLUSTER, ENTRY)
+var SlaveResources = reconcilers.ClusterResources(TARGET_CLUSTER, entryGroupKind)
 
 func MasterResourcesType(kind schema.GroupKind) reconcilers.Resources {
 	return func(c controller.Interface) []resources.Interface {
@@ -109,4 +121,14 @@ func SlaveAccessSpecCreatorForSource(sourceType DNSSourceType) reconcilers.Slave
 	return func(c controller.Interface) reconcilers.SlaveAccessSpec {
 		return NewSlaveAccessSpec(c, sourceType)
 	}
+}
+
+func OptionIsSet(name string) watches.WatchConstraint {
+	return watches.NewFunctionWatchConstraint(
+		func(wctx watches.WatchContext) bool {
+			s, err := wctx.GetStringOption(name)
+			return err == nil && s != ""
+		},
+		fmt.Sprintf("string option %s is set", name),
+	)
 }

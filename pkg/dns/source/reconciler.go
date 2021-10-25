@@ -61,6 +61,11 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
 		targetclasses := controller.NewTargetClassesByOption(c, OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
 		slaves := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c, sourceType))
+		ownerState, err := getOrCreateSharedOwnerState(c)
+		if err != nil {
+			return nil, err
+		}
+
 		reconciler := &sourceReconciler{
 			SlaveAccess:   slaves,
 			classes:       classes,
@@ -69,7 +74,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 
 			state: c.GetOrCreateSharedValue(KEY_STATE,
 				func() interface{} {
-					return NewState()
+					return NewState(ownerState)
 				}).(*state),
 			annotations: annotations.GetOrCreateWatches(c),
 		}
@@ -80,7 +85,6 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		reconciler.nameprefix, _ = c.GetStringOption(OPT_NAMEPREFIX)
 		reconciler.creatorLabelName, _ = c.GetStringOption(OPT_TARGET_CREATOR_LABEL_NAME)
 		reconciler.creatorLabelValue, _ = c.GetStringOption(OPT_TARGET_CREATOR_LABEL_VALUE)
-		reconciler.ownerid, _ = c.GetStringOption(OPT_TARGET_OWNER_ID)
 		reconciler.setIgnoreOwners, _ = c.GetBoolOption(OPT_TARGET_SET_IGNORE_OWNERS)
 
 		excluded, _ := c.GetStringArrayOption(OPT_EXCLUDE)
@@ -112,7 +116,6 @@ type sourceReconciler struct {
 	nameprefix        string
 	creatorLabelName  string
 	creatorLabelValue string
-	ownerid           string
 	setIgnoreOwners   bool
 
 	state       *state
@@ -125,6 +128,10 @@ func (this *sourceReconciler) ObjectUpdated(key resources.ClusterObjectKey) {
 }
 
 func (this *sourceReconciler) Setup() error {
+	err := this.state.ownerState.Setup(this)
+	if err != nil {
+		return err
+	}
 	this.SlaveAccess.Setup()
 	this.state.source.Setup()
 	return this.NestedReconciler.Setup()
@@ -158,7 +165,7 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 		}
 	}
 
-	feedback := this.state.GetFeedbackForObject(obj)
+	feedback := this.state.CreateFeedbackForObject(obj)
 
 	if info == nil {
 		if responsible {
@@ -377,7 +384,7 @@ func (this *sourceReconciler) usedRef(obj resources.Object, info *DNSInfo) *reso
 		if this.namespace == "" {
 			namespace = obj.GetNamespace()
 		}
-		ref := resources.NewClusterKey(obj.GetCluster().GetId(), ENTRY, namespace, info.OrigRef.Name)
+		ref := resources.NewClusterKey(obj.GetCluster().GetId(), entryGroupKind, namespace, info.OrigRef.Name)
 		return &ref
 	}
 	return nil
@@ -385,7 +392,7 @@ func (this *sourceReconciler) usedRef(obj resources.Object, info *DNSInfo) *reso
 
 func (this *sourceReconciler) mapRef(obj resources.Object, info *DNSInfo) {
 	if info.OrigRef != nil && info.TargetRef == nil {
-		key := resources.NewClusterKey(obj.GetCluster().GetId(), ENTRY, info.OrigRef.Namespace, info.OrigRef.Name)
+		key := resources.NewClusterKey(obj.GetCluster().GetId(), entryGroupKind, info.OrigRef.Namespace, info.OrigRef.Name)
 		slaves := this.LookupSlaves(key)
 		info.TargetRef = &api.EntryReference{}
 		if len(slaves) == 1 {
@@ -418,8 +425,8 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	if this.creatorLabelName != "" && this.creatorLabelValue != "" {
 		resources.SetLabel(entry, this.creatorLabelName, this.creatorLabelValue)
 	}
-	if this.ownerid != "" {
-		entry.Spec.OwnerId = &this.ownerid
+	if this.state.ownerState.ownerId != "" {
+		entry.Spec.OwnerId = &this.state.ownerState.ownerId
 	}
 	entry.Spec.DNSName = dnsname
 	this.mapRef(obj, info)
@@ -496,8 +503,8 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 			mod.Modify(changed)
 		}
 		var p *string
-		if this.ownerid != "" {
-			p = &this.ownerid
+		if this.state.ownerState.ownerId != "" {
+			p = &this.state.ownerState.ownerId
 		}
 		mod.AssureStringPtrPtr(&spec.OwnerId, p)
 		mod.AssureInt64PtrPtr(&spec.TTL, info.TTL)
