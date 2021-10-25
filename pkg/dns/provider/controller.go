@@ -216,7 +216,6 @@ func (this *reconciler) Setup() {
 }
 
 func (this *reconciler) Start() {
-	this.controller.GetPool(DNS_POOL).StartTicker()
 	this.state.setup.pending.Add(CMD_DNSLOOKUP)
 	this.state.Start()
 }

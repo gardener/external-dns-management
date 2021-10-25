@@ -136,7 +136,7 @@ type lockTargetSpec struct {
 	refreshTime time.Time
 }
 
-func (this *lockTargetSpec) Responsible(set *dns.DNSSet, owners utils.StringSet) bool {
+func (this *lockTargetSpec) Responsible(set *dns.DNSSet, ownership dns.Ownership) bool {
 	if set.GetKind() != api.DNSLockKind {
 		return false
 	}

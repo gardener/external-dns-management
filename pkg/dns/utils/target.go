@@ -20,8 +20,6 @@ package utils
 import (
 	"fmt"
 
-	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
@@ -94,7 +92,7 @@ type TargetSpec interface {
 	Kind() string
 	OwnerId() string
 	Targets() []Target
-	Responsible(set *dns.DNSSet, owners utils.StringSet) bool
+	Responsible(set *dns.DNSSet, ownership dns.Ownership) bool
 }
 
 type targetSpec struct {
@@ -124,6 +122,6 @@ func (this *targetSpec) Targets() []Target {
 	return this.targets
 }
 
-func (this *targetSpec) Responsible(set *dns.DNSSet, owners utils.StringSet) bool {
-	return !set.IsForeign(owners)
+func (this *targetSpec) Responsible(set *dns.DNSSet, ownership dns.Ownership) bool {
+	return !set.IsForeign(ownership)
 }
