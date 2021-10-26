@@ -96,7 +96,7 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		CustomResourceDefinitions(entryGroupKind).
 		WorkerPool("targets", 2, 0).
 		ReconcilerSelectedWatchesByGK("entries", controller.NamespaceByOptionSelection(OPT_NAMESPACE), entryGroupKind).
-		FlavoredWatch(
+		FlavoredReconcilerWatch("owner",
 			watches.Conditional(
 				OptionIsSet(OPT_TARGET_OWNER_OBJECT),
 				watches.ResourceFlavorByGK(ownerGroupKind),

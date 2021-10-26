@@ -61,7 +61,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
 		targetclasses := controller.NewTargetClassesByOption(c, OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
 		slaves := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c, sourceType))
-		ownerState, err := getOrCreateSharedOwnerState(c)
+		ownerState, err := getOrCreateSharedOwnerState(c, false)
 		if err != nil {
 			return nil, err
 		}
@@ -244,7 +244,7 @@ outer:
 		logger.Infof("found obsolete dns entries: %s", obsolete_dns)
 		for _, o := range obsolete {
 			dnsname := dnsutils.DNSEntry(o).DNSEntry().Spec.DNSName
-			err := this.deleteEntry(logger, obj, o)
+			err := this.deleteEntry(logger, obj, o, dnsname, feedback)
 			if err != nil {
 				notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot remove dns entry object %q(%s): %s", o.ClusterKey(), dnsname, err))
 			}
@@ -354,7 +354,7 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 
 	fb := this.state.GetFeedback(obj.ClusterKey())
 	if fb != nil {
-		fb.Deleted(logger, "", "deleting dns entries", nil)
+		fb.Deleted(logger, "", "deleting dns entries")
 		this.state.DeleteFeedback(obj.ClusterKey())
 	}
 	status := this.state.source.Delete(logger, obj)
@@ -460,8 +460,11 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 		}
 		return err
 	}
-	obj.Eventf(core.EventTypeNormal, "reconcile", "created dns entry object %s", e.ObjectName())
-	logger.Infof("created dns entry object %s", e.ObjectName())
+	if feedback != nil {
+		feedback.Created(logger, dnsname, e.ObjectName())
+	} else {
+		logger.Infof("created dns entry object %s", e.ObjectName())
+	}
 	if feedback != nil {
 		feedback.Pending(logger, dnsname, "", nil)
 	}
@@ -537,11 +540,15 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 	return slave.Modify(f)
 }
 
-func (this *sourceReconciler) deleteEntry(logger logger.LogContext, obj resources.Object, e resources.Object) error {
+func (this *sourceReconciler) deleteEntry(logger logger.LogContext, obj resources.Object, e resources.Object, dnsname string, feedback DNSFeedback) error {
 	err := e.Delete()
 	if err == nil {
-		obj.Eventf(core.EventTypeNormal, "reconcile", "deleted dns entry object %s", e.ObjectName())
-		logger.Infof("deleted dns entry object %s", e.ObjectName())
+		msg := fmt.Sprintf("deleted dns entry object %s", e.ObjectName())
+		if feedback != nil {
+			feedback.Deleted(logger, dnsname, msg)
+		} else {
+			logger.Info(msg)
+		}
 	} else {
 		if !errors.IsNotFound(err) {
 			logger.Errorf("cannot delete dns entry object %s: %s", e.ObjectName(), err)

@@ -634,11 +634,11 @@ spec:
               dnsActivation:
                 description: Optional activation info for controlling the owner activation remotely via DNS TXT record
                 properties:
-                  dnsActivationValue:
-                    description: Optional value for the DNS activation record used to activate this owner The default is the id of the cluster used to read the owner object
-                    type: string
                   dnsName:
                     description: DNS name for controlling the owner activation remotely via DNS TXT record
+                    type: string
+                  value:
+                    description: Optional value for the DNS activation record used to activate this owner The default is the id of the cluster used to read the owner object
                     type: string
                 required:
                 - dnsName

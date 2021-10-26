@@ -74,7 +74,7 @@ type DNSActivation struct {
 	// Optional value for the DNS activation record used to activate this owner
 	// The default is the id of the cluster used to read the owner object
 	// +optional
-	Value *string `json:"dnsActivationValue,omitempty"`
+	Value *string `json:"value,omitempty"`
 }
 
 type DNSOwnerStatus struct {

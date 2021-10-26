@@ -32,7 +32,7 @@ import (
 )
 
 func SlaveReconcilerType(c controller.Interface) (reconcile.Interface, error) {
-	ownerState, err := getOrCreateSharedOwnerState(c)
+	ownerState, err := getOrCreateSharedOwnerState(c, false)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (this *slaveReconciler) Delete(logger logger.LogContext, obj resources.Obje
 					continue
 				}
 				n := entry.Spec().DNSName
-				fb.Deleted(logger, n, "", nil)
+				fb.Deleted(logger, n, "")
 			}
 			this.events.Deleted(logger, k)
 		}
@@ -167,7 +167,7 @@ func (this *slaveReconciler) Deleted(logger logger.LogContext, key resources.Clu
 		if err == nil {
 			fb := this.state.GetFeedback(k)
 			if fb != nil {
-				fb.Deleted(logger, "", "", nil)
+				fb.Deleted(logger, "", "")
 			}
 		}
 		this.state.DeleteFeedback(k)

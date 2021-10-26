@@ -19,6 +19,7 @@ package source
 
 import (
 	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"k8s.io/api/core/v1"
@@ -65,7 +66,7 @@ func (this *EventFeedback) Invalid(logger logger.LogContext, dnsname string, msg
 	this.event(logger, dnsname, msg.Error())
 }
 
-func (this *EventFeedback) Deleted(logger logger.LogContext, dnsname string, msg string, state *DNSState) {
+func (this *EventFeedback) Deleted(logger logger.LogContext, dnsname string, msg string) {
 	if msg == "" {
 		msg = fmt.Sprintf("dns entry deleted")
 	}
@@ -88,4 +89,8 @@ func (this *EventFeedback) event(logger logger.LogContext, dnsname, msg string) 
 			this.source.Event(v1.EventTypeNormal, "dns-annotation", msg)
 		}
 	}
+}
+
+func (this *EventFeedback) Created(logger logger.LogContext, dnsname string, name resources.ObjectName) {
+	this.event(logger, dnsname, fmt.Sprintf("created dns entry object %s", name))
 }
