@@ -125,6 +125,10 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedDurationOption(OPT_DNSDELAY, 10*time.Second, "delay between two dns reconciliations").
 		DefaultedDurationOption(OPT_RESCHEDULEDELAY, 120*time.Second, "reschedule delay after losing provider").
 		DefaultedDurationOption(OPT_LOCKSTATUSCHECKPERIOD, 120*time.Second, "interval for dns lock status checks").
+		DefaultedIntOption(OPT_REMOTE_ACCESS_PORT, 0, "port of remote access server for remote-enabled providers").
+		DefaultedStringOption(OPT_REMOTE_ACCESS_CACERT, "", "CA who signed client certs file").
+		DefaultedStringOption(OPT_REMOTE_ACCESS_SERVERCERT, "", "remote access server's certificate file").
+		DefaultedStringOption(OPT_REMOTE_ACCESS_SERVERKEY, "", "remote access server's key file").
 		FinalizerDomain("dns.gardener.cloud").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).

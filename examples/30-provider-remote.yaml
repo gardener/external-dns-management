@@ -1,0 +1,12 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: remote
+  namespace: default
+spec:
+  type: remote
+  secretRef:
+    name: remote-credentials
+  domains:
+    include:
+    - my.own.domain.com

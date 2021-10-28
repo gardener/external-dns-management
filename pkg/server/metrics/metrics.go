@@ -17,6 +17,7 @@
 package metrics
 
 import (
+	"strconv"
 	"sync"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -37,6 +38,8 @@ func init() {
 	prometheus.MustRegister(Entries)
 	prometheus.MustRegister(StaleEntries)
 	prometheus.MustRegister(Owners)
+	prometheus.MustRegister(RemoteAccessLogins)
+	prometheus.MustRegister(RemoteAccessRequests)
 
 	server.RegisterHandler("/metrics", promhttp.Handler())
 }
@@ -96,6 +99,22 @@ var (
 			Help: "Total number of dns entries per owner",
 		},
 		[]string{"owner", "providertype", "provider"},
+	)
+
+	RemoteAccessLogins = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_remoteaccess_logins",
+			Help: "Total number of remote access logins",
+		},
+		[]string{"handler", "client", "success"},
+	)
+
+	RemoteAccessRequests = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_remoteaccess_requests",
+			Help: "Total number of remote access requests",
+		},
+		[]string{"handler", "client", "type", "zoneid"},
 	)
 )
 
@@ -184,6 +203,14 @@ func ReportZoneEntries(ptype, zone string, amount int, stale int) {
 	Entries.WithLabelValues(ptype, zone).Set(float64(amount))
 	StaleEntries.WithLabelValues(ptype, zone).Set(float64(stale))
 	zoneProviders.Add(ptype, zone)
+}
+
+func ReportRemoteAccessLogins(namespace, client string, success bool) {
+	RemoteAccessLogins.WithLabelValues(namespace, client, strconv.FormatBool(success)).Add(float64(1))
+}
+
+func ReportRemoteAccessRequests(namespace, client, requestType, zoneid string) {
+	RemoteAccessRequests.WithLabelValues(namespace, client, requestType, zoneid).Add(float64(1))
 }
 
 func DeleteZone(zone string) {

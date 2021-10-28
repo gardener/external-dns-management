@@ -12,6 +12,7 @@ It contains provisioning controllers for creating DNS records in one of the DNS 
   - [_Cloudflare DNS_](/docs/cloudflare/README.md),
   - [_Infoblox_](/docs/infoblox/README.md),
   - [_Netlify DNS_](docs/netlify/README.md),
+  - [_remote_](docs/remote/README.md),
 
 and source controllers for services and ingresses to create DNS entries by annotations.
 
@@ -382,6 +383,7 @@ The following provider types can be selected (comma separated):
 - `cloudflare-dns`: Cloudflare DNS provider
 - `infoblox-dns`: Infoblox DNS provider
 - `netlify-dns`: Netlify DNS provider
+- `remote`: Remote DNS provider (a dns-controller-manager with enabled remote access service)
 
 If the compound DNS Provisioning Controller is enabled it is important to specify a
 unique controller identity using the `--identifier` option.
@@ -514,6 +516,16 @@ Flags:
       --compound.ratelimiter.burst int                                number of burst requests for rate limiter of controller compound
       --compound.ratelimiter.enabled                                  enables rate limiter for DNS provider requests of controller compound
       --compound.ratelimiter.qps int                                  maximum requests/queries per second of controller compound
+      --compound.remote-access-cacert string                          CA who signed client certs file of controller compound
+      --compound.remote-access-port int                               port of remote access server for remote-enabled providers of controller compound
+      --compound.remote-access-servercert string                      remote access server's certificate file of controller compound
+      --compound.remote-access-serverkey string                       remote access server's key file of controller compound
+      --compound.remote.advanced.batch-size int                       batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.remote.advanced.max-retries int                      maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.remote.blocked-zone zone-id                          Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
+      --compound.remote.ratelimiter.burst int                         number of burst requests for rate limiter of controller compound
+      --compound.remote.ratelimiter.enabled                           enables rate limiter for DNS provider requests of controller compound
+      --compound.remote.ratelimiter.qps int                           maximum requests/queries per second of controller compound
       --compound.reschedule-delay duration                            reschedule delay after losing provider of controller compound
       --compound.secrets.pool.size int                                Worker pool size for pool secrets of controller compound
       --compound.setup int                                            number of processors for controller setup of controller compound
@@ -527,7 +539,7 @@ Flags:
       --default.pool.size int                                         Worker pool size for pool default
       --disable-namespace-restriction                                 disable access restriction for namespace local access only
       --disable-zone-state-caching                                    disable use of cached dns zone state on changes
-      --dns-class string                                              identifier used to differentiate responsible controllers for entries, Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers
+      --dns-class string                                              Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers, identifier used to differentiate responsible controllers for entries
       --dns-delay duration                                            delay between two dns reconciliations
       --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target entries, identifier used to differentiate responsible dns controllers for target providers
       --dns.pool.resync-period duration                               Period for resynchronization for pool dns
@@ -640,6 +652,16 @@ Flags:
       --ratelimiter.burst int                                         number of burst requests for rate limiter
       --ratelimiter.enabled                                           enables rate limiter for DNS provider requests
       --ratelimiter.qps int                                           maximum requests/queries per second
+      --remote-access-cacert string                                   CA who signed client certs file
+      --remote-access-port int                                        port of remote access server for remote-enabled providers
+      --remote-access-servercert string                               remote access server's certificate file
+      --remote-access-serverkey string                                remote access server's key file
+      --remote.advanced.batch-size int                                batch size for change requests (currently only used for aws-route53)
+      --remote.advanced.max-retries int                               maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --remote.blocked-zone zone-id                                   Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
+      --remote.ratelimiter.burst int                                  number of burst requests for rate limiter
+      --remote.ratelimiter.enabled                                    enables rate limiter for DNS provider requests
+      --remote.ratelimiter.qps int                                    maximum requests/queries per second
       --reschedule-delay duration                                     reschedule delay after losing provider
       --secrets.pool.size int                                         Worker pool size for pool secrets
       --server-port-http int                                          HTTP server port (serving /healthz, /metrics, ...)
@@ -669,7 +691,7 @@ Flags:
       --target-namespace string                                       target namespace for cross cluster generation
       --target-owner-id string                                        owner id to use for generated DNS entries
       --target-owner-object string                                    owner object to use for generated DNS entries
-      --target-realms string                                          realm(s) to use for generated DNS entries, realm(s) to use for replicated DNS provider
+      --target-realms string                                          realm(s) to use for replicated DNS provider, realm(s) to use for generated DNS entries
       --target-set-ignore-owners                                      mark generated DNS entries to omit owner based access control
       --target.disable-deploy-crds                                    disable deployment of required crds for cluster target
       --target.id string                                              id for cluster target

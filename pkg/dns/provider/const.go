@@ -37,6 +37,10 @@ const (
 	OPT_RESCHEDULEDELAY            = "reschedule-delay"
 	OPT_LOCKSTATUSCHECKPERIOD      = "lock-status-check-period"
 	OPT_DISABLE_ZONE_STATE_CACHING = "disable-zone-state-caching"
+	OPT_REMOTE_ACCESS_PORT         = "remote-access-port"
+	OPT_REMOTE_ACCESS_CACERT       = "remote-access-cacert"
+	OPT_REMOTE_ACCESS_SERVERCERT   = "remote-access-servercert"
+	OPT_REMOTE_ACCESS_SERVERKEY    = "remote-access-serverkey"
 
 	OPT_PROVIDERTYPES = "provider-types"
 
@@ -53,4 +57,8 @@ const (
 	CMD_DNSLOOKUP         = "dnslookup"
 
 	MSG_THROTTLING = "provider throttled"
+)
+
+const (
+	AnnotationRemoteAccess = dns.ANNOTATION_GROUP + "/remoteAccess"
 )

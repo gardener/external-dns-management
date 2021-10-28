@@ -1,0 +1,20 @@
+{{- if .Values.remoteaccess.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  {{- if .Values.remoteaccess.service.annotations }}
+  annotations:
+    {{- toYaml .Values.remoteaccess.service.annotations | nindent 4 }}
+  {{- end }}
+  name: {{ include "external-dns-management.fullname" . }}-remoteaccess
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: {{ .Values.remoteaccess.service.type | default "ClusterIP" }}
+  ports:
+    - name: service
+      port: {{ .Values.remoteaccess.port }}
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: {{ include "external-dns-management.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+{{- end }}

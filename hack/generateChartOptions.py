@@ -29,7 +29,7 @@ def toCamelCase(name):
   return str
 
 excluded = {"name", "help", "identifier", "dry-run"}
-excludedPattern = [re.compile(".*cache-dir$"), re.compile(".*blocked-zone$")]
+excludedPattern = [re.compile(".*cache-dir$"), re.compile(".*blocked-zone$"), re.compile(".*remote-access-.+")]
 
 def isExcluded(name):
   if name == "" or name in excluded:

@@ -65,6 +65,12 @@ spec:
         {{- if .Values.configuration.persistentCache }}
         - --cache-dir=/persistent-cache
         {{- end }}
+        {{- if .Values.remoteaccess.enabled }}
+        - --remote-access-port={{ .Values.remoteaccess.port }}
+        - --remote-access-cacert=/certs/cacert.pem
+        - --remote-access-servercert=/certs/servercert.pem
+        - --remote-access-serverkey=/certs/serverkey.pem
+        {{- end }}
         ### start generated configuration
         {{- if .Values.configuration.acceptedMaintainers }}
         - --accepted-maintainers={{ .Values.configuration.acceptedMaintainers }}
@@ -363,6 +369,21 @@ spec:
         {{- if .Values.configuration.compoundRatelimiterQps }}
         - --compound.ratelimiter.qps={{ .Values.configuration.compoundRatelimiterQps }}
         {{- end }}
+        {{- if .Values.configuration.compoundRemoteAdvancedBatchSize }}
+        - --compound.remote.advanced.batch-size={{ .Values.configuration.compoundRemoteAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRemoteAdvancedMaxRetries }}
+        - --compound.remote.advanced.max-retries={{ .Values.configuration.compoundRemoteAdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRemoteRatelimiterBurst }}
+        - --compound.remote.ratelimiter.burst={{ .Values.configuration.compoundRemoteRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRemoteRatelimiterEnabled }}
+        - --compound.remote.ratelimiter.enabled={{ .Values.configuration.compoundRemoteRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRemoteRatelimiterQps }}
+        - --compound.remote.ratelimiter.qps={{ .Values.configuration.compoundRemoteRatelimiterQps }}
+        {{- end }}
         {{- if .Values.configuration.compoundRescheduleDelay }}
         - --compound.reschedule-delay={{ .Values.configuration.compoundRescheduleDelay }}
         {{- end }}
@@ -455,6 +476,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.dnsentrySourceTargetOwnerId }}
         - --dnsentry-source.target-owner-id={{ .Values.configuration.dnsentrySourceTargetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.dnsentrySourceTargetOwnerObject }}
+        - --dnsentry-source.target-owner-object={{ .Values.configuration.dnsentrySourceTargetOwnerObject }}
         {{- end }}
         {{- if .Values.configuration.dnsentrySourceTargetRealms }}
         - --dnsentry-source.target-realms={{ .Values.configuration.dnsentrySourceTargetRealms }}
@@ -581,6 +605,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.ingressDNSTargetOwnerId }}
         - --ingress-dns.target-owner-id={{ .Values.configuration.ingressDNSTargetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.ingressDNSTargetOwnerObject }}
+        - --ingress-dns.target-owner-object={{ .Values.configuration.ingressDNSTargetOwnerObject }}
         {{- end }}
         {{- if .Values.configuration.ingressDNSTargetRealms }}
         - --ingress-dns.target-realms={{ .Values.configuration.ingressDNSTargetRealms }}
@@ -711,6 +738,21 @@ spec:
         {{- if .Values.configuration.ratelimiterQps }}
         - --ratelimiter.qps={{ .Values.configuration.ratelimiterQps }}
         {{- end }}
+        {{- if .Values.configuration.remoteAdvancedBatchSize }}
+        - --remote.advanced.batch-size={{ .Values.configuration.remoteAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.remoteAdvancedMaxRetries }}
+        - --remote.advanced.max-retries={{ .Values.configuration.remoteAdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.remoteRatelimiterBurst }}
+        - --remote.ratelimiter.burst={{ .Values.configuration.remoteRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.remoteRatelimiterEnabled }}
+        - --remote.ratelimiter.enabled={{ .Values.configuration.remoteRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.remoteRatelimiterQps }}
+        - --remote.ratelimiter.qps={{ .Values.configuration.remoteRatelimiterQps }}
+        {{- end }}
         {{- if .Values.configuration.rescheduleDelay }}
         - --reschedule-delay={{ .Values.configuration.rescheduleDelay }}
         {{- end }}
@@ -759,6 +801,9 @@ spec:
         {{- if .Values.configuration.serviceDNSTargetOwnerId }}
         - --service-dns.target-owner-id={{ .Values.configuration.serviceDNSTargetOwnerId }}
         {{- end }}
+        {{- if .Values.configuration.serviceDNSTargetOwnerObject }}
+        - --service-dns.target-owner-object={{ .Values.configuration.serviceDNSTargetOwnerObject }}
+        {{- end }}
         {{- if .Values.configuration.serviceDNSTargetRealms }}
         - --service-dns.target-realms={{ .Values.configuration.serviceDNSTargetRealms }}
         {{- end }}
@@ -791,6 +836,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.targetOwnerId }}
         - --target-owner-id={{ .Values.configuration.targetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.targetOwnerObject }}
+        - --target-owner-object={{ .Values.configuration.targetOwnerObject }}
         {{- end }}
         {{- if .Values.configuration.targetRealms }}
         - --target-realms={{ .Values.configuration.targetRealms }}
@@ -841,7 +889,7 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
-        {{- if or .Values.configuration.persistentCache .Values.custom.volumeMounts }}
+        {{- if or .Values.configuration.persistentCache .Values.custom.volumeMounts .Values.remoteaccess.enabled }}
         volumeMounts:
           {{- if or .Values.configuration.persistentCache }}
           - name: persistent-cache
@@ -850,13 +898,22 @@ spec:
           {{- if .Values.custom.volumeMounts }}
           {{- toYaml .Values.custom.volumeMounts | nindent 10 }}
           {{- end }}
+          {{- if .Values.remoteaccess.enabled }}
+          - mountPath: /certs
+            name: certs
+          {{- end }}
         {{- end }}
-      {{- if or .Values.configuration.persistentCache .Values.custom.volumes }}
+      {{- if or .Values.configuration.persistentCache .Values.custom.volumes .Values.remoteaccess.server }}
       volumes:
         {{- if or .Values.configuration.persistentCache }}
         - name: persistent-cache
           persistentVolumeClaim:
             claimName: {{ include "external-dns-management.fullname" . }}
+        {{- end }}
+        {{- if .Values.remoteaccess.server }}
+        - name: certs
+          secret:
+            secretName: remoteaccess-certs
         {{- end }}
         {{- if .Values.custom.volumes }}
         {{- toYaml .Values.custom.volumes | nindent 8 }}

@@ -49,8 +49,9 @@ type ZoneCacheConfig struct {
 	disableZoneStateCache bool
 }
 
-func NewTestZoneCacheConfig(stateTTL time.Duration) *ZoneCacheConfig {
+func NewTestZoneCacheConfig(zonesTTL, stateTTL time.Duration) *ZoneCacheConfig {
 	return &ZoneCacheConfig{
+		zonesTTL:       zonesTTL,
 		stateTTLGetter: func(string) time.Duration { return stateTTL },
 	}
 }
