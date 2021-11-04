@@ -58,6 +58,7 @@ var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 var zonePolicyGroupKind = resources.NewGroupKind(api.GroupName, api.DNSHostedZonePolicyKind)
+var lockGroupKind = resources.NewGroupKind(api.GroupName, api.DNSLockKind)
 
 func init() {
 	crds.AddToRegistry(apiextensions.DefaultRegistry())
@@ -125,6 +126,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedIntOption(OPT_SETUP, 10, "number of processors for controller setup").
 		DefaultedDurationOption(OPT_DNSDELAY, 10*time.Second, "delay between two dns reconciliations").
 		DefaultedDurationOption(OPT_RESCHEDULEDELAY, 120*time.Second, "reschedule delay after losing provider").
+		DefaultedDurationOption(OPT_LOCKSTATUSCHECKPERIOD, 120*time.Second, "interval for dns lock status checks").
 		FinalizerDomain("dns.gardener.cloud").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
@@ -135,6 +137,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		WorkerPool("ownerids", 1, 0).
 		Watches(
 			controller.NewResourceKey(api.GroupName, api.DNSOwnerKind),
+			controller.NewResourceKey(api.GroupName, api.DNSLockKind),
 		).
 		Cluster(PROVIDER_CLUSTER).
 		CustomResourceDefinitions(providerGroupKind).
@@ -151,6 +154,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 			controller.NewResourceKey(api.GroupName, api.DNSHostedZonePolicyKind),
 		).
 		WorkerPool(DNS_POOL, 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
+		Commands(CMD_DNSLOOKUP).
 		WorkerPool("statistic", 2, 0).Commands(CMD_STATISTIC).
 		OptionSource(FACTORY_OPTIONS, FactoryOptionSourceCreator(factory))
 	return cfg
@@ -212,13 +216,19 @@ func (this *reconciler) Setup() {
 }
 
 func (this *reconciler) Start() {
+	this.state.setup.pending.Add(CMD_DNSLOOKUP)
 	this.state.Start()
 }
 
 func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.Status {
-	if cmd == CMD_STATISTIC {
+	switch cmd {
+	case CMD_DNSLOOKUP:
+		this.state.ownerCache.TriggerDNSActivation(logger, this.controller)
+		this.state.UpdateLockStates(logger)
+		return reconcile.RescheduleAfter(logger, this.state.config.StatusCheckPeriod)
+	case CMD_STATISTIC:
 		this.state.UpdateOwnerCounts(logger)
-	} else {
+	default:
 		zoneid := this.state.DecodeZoneCommand(cmd)
 		if zoneid != "" {
 			return this.state.ReconcileZone(logger, zoneid)
@@ -254,6 +264,12 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 		} else {
 			return this.state.RemoveZonePolicy(logger, dnsutils.DNSHostedZonePolicy(obj))
 		}
+	case obj.IsA(&api.DNSLock{}):
+		if this.state.IsResponsibleFor(logger, obj) {
+			return this.state.UpdateEntry(logger, dnsutils.DNSLock(obj))
+		} else {
+			return this.state.EntryDeleted(logger, obj.ClusterKey())
+		}
 	case obj.IsA(&corev1.Secret{}):
 		return this.state.UpdateSecret(logger, obj)
 	}
@@ -269,6 +285,9 @@ func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) r
 		case obj.IsA(&api.DNSEntry{}):
 			obj.UpdateFromCache()
 			return this.state.DeleteEntry(logger, dnsutils.DNSEntry(obj))
+		case obj.IsA(&api.DNSLock{}):
+			obj.UpdateFromCache()
+			return this.state.DeleteEntry(logger, dnsutils.DNSLock(obj))
 		case obj.IsA(&corev1.Secret{}):
 			return this.state.UpdateSecret(logger, obj)
 		}
@@ -287,6 +306,8 @@ func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterO
 		return this.state.EntryDeleted(logger, key)
 	case zonePolicyGroupKind:
 		return this.state.ZonePolicyDeleted(logger, key)
+	case lockGroupKind:
+		return this.state.EntryDeleted(logger, key)
 	}
 	return reconcile.Succeeded(logger)
 }

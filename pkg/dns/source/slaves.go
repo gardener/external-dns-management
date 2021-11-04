@@ -32,13 +32,18 @@ import (
 )
 
 func SlaveReconcilerType(c controller.Interface) (reconcile.Interface, error) {
+	ownerState, err := getOrCreateSharedOwnerState(c, false)
+	if err != nil {
+		return nil, err
+	}
+
 	reconciler := &slaveReconciler{
 		controller: c,
 		slaves:     c.(*reconcilers.SlaveReconciler),
 		events:     NewEvents(),
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewState()
+				return NewState(ownerState)
 			}).(*state),
 	}
 	return reconciler, nil
@@ -50,6 +55,10 @@ type slaveReconciler struct {
 	slaves     *reconcilers.SlaveReconciler
 	events     *Events
 	state      *state
+}
+
+func (this *slaveReconciler) Setup() error {
+	return this.state.ownerState.Setup(this.controller)
 }
 
 func (this *slaveReconciler) Start() {
@@ -78,7 +87,10 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 			logger.Infof("found owner %s", k)
 			o, err := this.controller.GetObject(k)
 			if err == nil {
-				fb := this.state.GetFeedbackForObject(o)
+				fb := this.state.CreateFeedbackForObject(o)
+				if fb == nil {
+					continue
+				}
 				s := entry.Status()
 				n := entry.Spec().DNSName
 
@@ -134,9 +146,12 @@ func (this *slaveReconciler) Delete(logger logger.LogContext, obj resources.Obje
 			logger.Infof("found owner %s", k)
 			o, err := this.controller.GetObject(k)
 			if err == nil {
-				fb := this.state.GetFeedbackForObject(o)
+				fb := this.state.CreateFeedbackForObject(o)
+				if fb == nil {
+					continue
+				}
 				n := entry.Spec().DNSName
-				fb.Deleted(logger, n, "", nil)
+				fb.Deleted(logger, n, "")
 			}
 			this.events.Deleted(logger, k)
 		}
@@ -152,7 +167,7 @@ func (this *slaveReconciler) Deleted(logger logger.LogContext, key resources.Clu
 		if err == nil {
 			fb := this.state.GetFeedback(k)
 			if fb != nil {
-				fb.Deleted(logger, "", "", nil)
+				fb.Deleted(logger, "", "")
 			}
 		}
 		this.state.DeleteFeedback(k)

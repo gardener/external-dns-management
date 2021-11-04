@@ -44,7 +44,8 @@ type DNSFeedback interface {
 	Ready(logger logger.LogContext, dnsname string, msg string, dnsState *DNSState)
 	Invalid(logger logger.LogContext, dnsname string, err error, dnsState *DNSState)
 	Failed(logger logger.LogContext, dnsname string, err error, dnsState *DNSState)
-	Deleted(logger logger.LogContext, dnsname string, msg string, dnsState *DNSState)
+	Deleted(logger logger.LogContext, dnsname string, msg string)
+	Created(logger logger.LogContext, dnsname string, name resources.ObjectName)
 }
 
 type DNSSource interface {

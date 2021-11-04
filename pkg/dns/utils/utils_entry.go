@@ -17,10 +17,15 @@
 package utils
 
 import (
+	"reflect"
+	"time"
+
 	"github.com/gardener/controller-manager-library/pkg/resources"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
+
+var _ DNSSpecification = (*DNSEntryObject)(nil)
 
 var DNSEntryType = (*api.DNSEntry)(nil)
 
@@ -51,11 +56,18 @@ func (this *DNSEntryObject) Status() *api.DNSEntryStatus {
 	return &this.DNSEntry().Status
 }
 
+func (this *DNSEntryObject) BaseStatus() *api.DNSBaseStatus {
+	return &this.DNSEntry().Status.DNSBaseStatus
+}
+
 func (this *DNSEntryObject) GetDNSName() string {
 	return this.DNSEntry().Spec.DNSName
 }
 func (this *DNSEntryObject) GetTargets() []string {
 	return this.DNSEntry().Spec.Targets
+}
+func (this *DNSEntryObject) GetText() []string {
+	return this.DNSEntry().Spec.Text
 }
 func (this *DNSEntryObject) GetOwnerId() *string {
 	return this.DNSEntry().Spec.OwnerId
@@ -65,4 +77,28 @@ func (this *DNSEntryObject) GetTTL() *int64 {
 }
 func (this *DNSEntryObject) GetCNameLookupInterval() *int64 {
 	return this.DNSEntry().Spec.CNameLookupInterval
+}
+func (this *DNSEntryObject) GetReference() *api.EntryReference {
+	return this.DNSEntry().Spec.Reference
+}
+
+func (this *DNSEntryObject) RefreshTime() time.Time {
+	return time.Time{}
+}
+
+func (this *DNSEntryObject) ValidateSpecial() error {
+	return nil
+}
+
+func (this *DNSEntryObject) AcknowledgeTargets(targets []string) bool {
+	s := this.Status()
+	if !reflect.DeepEqual(s.Targets, targets) {
+		s.Targets = targets
+		return true
+	}
+	return false
+}
+
+func (this *DNSEntryObject) GetTargetSpec(p TargetProvider) TargetSpec {
+	return BaseTargetSpec(this, p)
 }

@@ -25,7 +25,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -89,6 +88,14 @@ func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwne
 	if len(changed) > 0 {
 		this.TriggerEntriesByOwner(logger, changed)
 		this.TriggerHostedZonesByChangedOwners(logger, changed)
+	}
+	if statusActive := owner.Status().Active; statusActive == nil || *statusActive != owner.IsActive() {
+		isActive := owner.IsActive()
+		owner.Status().Active = &isActive
+		err := owner.UpdateStatus()
+		if err != nil {
+			return reconcile.DelayOnError(logger, fmt.Errorf("cannot update status of %s: %w", owner.ObjectName(), err))
+		}
 	}
 	return reconcile.Succeeded(logger)
 }

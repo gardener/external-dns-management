@@ -138,6 +138,24 @@ func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHosted
 	})
 }
 
+func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+	rs := raw.RecordSet{}
+	consume := func(record models.DNSRecord) (bool, error) {
+		a := (*Record)(&record)
+		if a.Type == rtype && a.Hostname == dnsName {
+			rs = append(rs, a)
+		}
+		return true, nil
+	}
+
+	// no filtering provided by API, we have to list complete zone and filter
+	err := this.ListRecords(zone.Id(), consume)
+	if err != nil {
+		return nil, err
+	}
+	return rs, nil
+}
+
 func testTTL(ttl *int) {
 	if *ttl < 1 {
 		*ttl = 1

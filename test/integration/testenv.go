@@ -295,7 +295,7 @@ func (te *TestEnv) DeleteProviderAndSecret(pr resources.Object) error {
 	return err
 }
 
-type SpecSetter func(e *v1alpha1.DNSEntry)
+type EntrySpecSetter func(e *v1alpha1.DNSEntry)
 
 func (te *TestEnv) CreateEntry(index int, baseDomain string) (resources.Object, error) {
 	target := fmt.Sprintf("1.1.%d.%d", (index/256)%256, index%256)
@@ -321,7 +321,7 @@ func (te *TestEnv) CreateTXTEntry(index int, baseDomain string) (resources.Objec
 	return te.CreateEntryGeneric(index, setSpec)
 }
 
-func (te *TestEnv) CreateEntryGeneric(index int, specSetter SpecSetter) (resources.Object, error) {
+func (te *TestEnv) CreateEntryGeneric(index int, specSetter EntrySpecSetter) (resources.Object, error) {
 	name := fmt.Sprintf("mock-entry-%d", index)
 	entry := &v1alpha1.DNSEntry{}
 	entry.SetName(name)
@@ -428,9 +428,14 @@ func (te *TestEnv) CreateOwner(name, ownerId string) (resources.Object, error) {
 		e.Spec.OwnerId = ownerId
 	}
 
+	return te.CreateOwnerGeneric(name, setSpec)
+}
+
+type OwnerSpecSetter func(e *v1alpha1.DNSOwner)
+
+func (te *TestEnv) CreateOwnerGeneric(name string, setSpec OwnerSpecSetter) (resources.Object, error) {
 	owner := &v1alpha1.DNSOwner{}
 	owner.SetName(name)
-	owner.SetNamespace(te.Namespace)
 	setSpec(owner)
 	obj, err := te.resources.CreateObject(owner)
 	if errors.IsAlreadyExists(err) {
@@ -447,13 +452,16 @@ func (te *TestEnv) CreateOwner(name, ownerId string) (resources.Object, error) {
 func (te *TestEnv) GetOwner(name string) (resources.Object, error) {
 	owner := v1alpha1.DNSOwner{}
 	owner.SetName(name)
-	owner.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(&owner)
 
 	if err != nil {
 		return nil, err
 	}
 	return obj, nil
+}
+
+func (te *TestEnv) DeleteOwner(obj resources.Object) error {
+	return obj.Delete()
 }
 
 func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {

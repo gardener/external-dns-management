@@ -30,6 +30,8 @@ type Interface interface {
 	DNSEntries() DNSEntryInformer
 	// DNSHostedZonePolicies returns a DNSHostedZonePolicyInformer.
 	DNSHostedZonePolicies() DNSHostedZonePolicyInformer
+	// DNSLocks returns a DNSLockInformer.
+	DNSLocks() DNSLockInformer
 	// DNSOwners returns a DNSOwnerInformer.
 	DNSOwners() DNSOwnerInformer
 	// DNSProviders returns a DNSProviderInformer.
@@ -60,6 +62,11 @@ func (v *version) DNSEntries() DNSEntryInformer {
 // DNSHostedZonePolicies returns a DNSHostedZonePolicyInformer.
 func (v *version) DNSHostedZonePolicies() DNSHostedZonePolicyInformer {
 	return &dNSHostedZonePolicyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// DNSLocks returns a DNSLockInformer.
+func (v *version) DNSLocks() DNSLockInformer {
+	return &dNSLockInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // DNSOwners returns a DNSOwnerInformer.

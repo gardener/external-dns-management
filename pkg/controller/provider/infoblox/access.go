@@ -18,6 +18,10 @@
 package infoblox
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -96,4 +100,51 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 		record.SetTTL(int(ttl))
 	}
 	return
+}
+
+func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+	this.metrics.AddZoneRequests(zone.Id(), provider.M_LISTRECORDS, 1)
+	c := this.IBConnector.(*ibclient.Connector)
+
+	if rtype != dns.RS_TXT {
+		return nil, fmt.Errorf("record type %s not supported for GetRecord", rtype)
+	}
+
+	execRequest := func(forceProxy bool) ([]byte, error) {
+		rt := ibclient.NewRecordTXT(ibclient.RecordTXT{})
+		urlStr := c.RequestBuilder.BuildUrl(ibclient.GET, rt.ObjectType(), "", rt.ReturnFields(), &ibclient.QueryParams{})
+		urlStr += "&name=" + dnsName
+		if forceProxy {
+			urlStr += "&_proxy_search=GM"
+		}
+		req, err := http.NewRequest("GET", urlStr, new(bytes.Buffer))
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.SetBasicAuth(c.HostConfig.Username, c.HostConfig.Password)
+
+		return c.Requestor.SendRequest(req)
+	}
+
+	resp, err := execRequest(false)
+	if err != nil {
+		// Forcing the request to redirect to Grid Master by making forcedProxy=true
+		resp, err = execRequest(true)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	rs := []RecordTXT{}
+	err = json.Unmarshal(resp, &rs)
+	if err != nil {
+		return nil, err
+	}
+
+	rs2 := raw.RecordSet{}
+	for _, r := range rs {
+		rs2 = append(rs2, r.Copy())
+	}
+	return rs2, nil
 }

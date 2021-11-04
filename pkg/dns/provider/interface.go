@@ -26,7 +26,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
@@ -35,17 +34,18 @@ import (
 )
 
 type Config struct {
-	TTL              int64
-	CacheTTL         time.Duration
-	CacheDir         string
-	RescheduleDelay  time.Duration
-	Ident            string
-	Dryrun           bool
-	ZoneStateCaching bool
-	Delay            time.Duration
-	Enabled          utils.StringSet
-	Options          *FactoryOptions
-	Factory          DNSHandlerFactory
+	TTL               int64
+	CacheTTL          time.Duration
+	CacheDir          string
+	RescheduleDelay   time.Duration
+	StatusCheckPeriod time.Duration
+	Ident             string
+	Dryrun            bool
+	ZoneStateCaching  bool
+	Delay             time.Duration
+	Enabled           utils.StringSet
+	Options           *FactoryOptions
+	Factory           DNSHandlerFactory
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
@@ -71,7 +71,11 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 
 	rescheduleDelay, err := c.GetDurationOption(OPT_RESCHEDULEDELAY)
 	if err != nil {
-		delay = 120 * time.Second
+		rescheduleDelay = 120 * time.Second
+	}
+	statuscheckperiod, err := c.GetDurationOption(OPT_LOCKSTATUSCHECKPERIOD)
+	if err != nil {
+		statuscheckperiod = 120 * time.Second
 	}
 
 	disableZoneStateCaching, _ := c.GetBoolOption(OPT_DISABLE_ZONE_STATE_CACHING)
@@ -98,17 +102,18 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	fopts := GetFactoryOptions(osrc)
 
 	return &Config{
-		Ident:            ident,
-		TTL:              int64(ttl),
-		CacheTTL:         time.Duration(cttl) * time.Second,
-		CacheDir:         cdir,
-		RescheduleDelay:  rescheduleDelay,
-		Dryrun:           dryrun,
-		ZoneStateCaching: !disableZoneStateCaching,
-		Delay:            delay,
-		Enabled:          enabled,
-		Options:          fopts,
-		Factory:          factory,
+		Ident:             ident,
+		TTL:               int64(ttl),
+		CacheTTL:          time.Duration(cttl) * time.Second,
+		CacheDir:          cdir,
+		RescheduleDelay:   rescheduleDelay,
+		StatusCheckPeriod: statuscheckperiod,
+		Dryrun:            dryrun,
+		ZoneStateCaching:  !disableZoneStateCaching,
+		Delay:             delay,
+		Enabled:           enabled,
+		Options:           fopts,
+		Factory:           factory,
 	}, nil
 }
 
@@ -236,6 +241,8 @@ type DNSProvider interface {
 
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
+
+	GetDedicatedDNSAccess() DedicatedDNSAccess
 
 	Match(dns string) int
 	MatchZone(dns string) int

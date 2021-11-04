@@ -424,6 +424,165 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
+  name: dnslocks.dns.gardener.cloud
+spec:
+  group: dns.gardener.cloud
+  names:
+    kind: DNSLock
+    listKind: DNSLockList
+    plural: dnslocks
+    shortNames:
+    - dnsl
+    singular: dnslock
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - description: FQDN of DNS Entry
+      jsonPath: .spec.dnsName
+      name: DNS
+      type: string
+    - description: provider type
+      jsonPath: .status.providerType
+      name: TYPE
+      type: string
+    - description: assigned provider (namespace/name)
+      jsonPath: .status.provider
+      name: PROVIDER
+      type: string
+    - description: entry status
+      jsonPath: .status.state
+      name: STATUS
+      type: string
+    - description: entry creation timestamp
+      jsonPath: .metadata.creationTimestamp
+      name: AGE
+      type: date
+    - description: owner group id used to tag entries in external DNS system
+      jsonPath: .spec.ownerGroupId
+      name: OWNERID
+      type: string
+    - description: time to live
+      jsonPath: .status.ttl
+      name: TTL
+      priority: 2000
+      type: integer
+    - description: zone id
+      jsonPath: .status.zone
+      name: ZONE
+      priority: 2000
+      type: string
+    - description: message describing the reason for the state
+      jsonPath: .status.message
+      name: MESSAGE
+      priority: 2000
+      type: string
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            properties:
+              attributes:
+                additionalProperties:
+                  type: string
+                description: attribute values (must be compatible with DNS TXT records)
+                type: object
+              dnsName:
+                description: full qualified domain name
+                type: string
+              lockId:
+                description: owner group for collaboration of multiple controller
+                type: string
+              timestamp:
+                description: Activation time stamp
+                format: date-time
+                type: string
+              ttl:
+                description: time to live for records in external DNS system
+                format: int64
+                type: integer
+            required:
+            - dnsName
+            - timestamp
+            - ttl
+            type: object
+          status:
+            properties:
+              attributes:
+                additionalProperties:
+                  type: string
+                description: attribute values found in DNS
+                type: object
+              firstFailedDNSLookup:
+                description: First failed DNS looup
+                format: date-time
+                type: string
+              lastUpdateTime:
+                description: lastUpdateTime contains the timestamp of the last status update
+                format: date-time
+                type: string
+              lockId:
+                description: owner group for collaboration of multiple controller found in DNS
+                type: string
+              message:
+                description: message describing the reason for the state
+                type: string
+              observedGeneration:
+                format: int64
+                type: integer
+              provider:
+                description: assigned provider
+                type: string
+              providerType:
+                description: provider type used for the entry
+                type: string
+              state:
+                description: entry state
+                type: string
+              timestamp:
+                description: Activation time stamp found in DNS
+                format: date-time
+                type: string
+              ttl:
+                description: time to live used for the entry
+                format: int64
+                type: integer
+              zone:
+                description: zone used for the entry
+                type: string
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+  `
+	utils.Must(registry.RegisterCRD(data))
+	data = `
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
   name: dnsowners.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -440,7 +599,7 @@ spec:
     - jsonPath: .spec.ownerId
       name: OwnerId
       type: string
-    - jsonPath: .spec.active
+    - jsonPath: .status.active
       name: Active
       type: boolean
     - jsonPath: .status.entries.amount
@@ -472,6 +631,18 @@ spec:
               active:
                 description: state of the ownerid for the DNS controller observing entry using this owner id (default:true)
                 type: boolean
+              dnsActivation:
+                description: Optional activation info for controlling the owner activation remotely via DNS TXT record
+                properties:
+                  dnsName:
+                    description: DNS name for controlling the owner activation remotely via DNS TXT record
+                    type: string
+                  value:
+                    description: Optional value for the DNS activation record used to activate this owner The default is the id of the cluster used to read the owner object
+                    type: string
+                required:
+                - dnsName
+                type: object
               ownerId:
                 description: owner id used to tag entries in external DNS system
                 type: string
@@ -484,6 +655,9 @@ spec:
             type: object
           status:
             properties:
+              active:
+                description: state of the ownerid for the DNS controller observing entry using this owner id
+                type: boolean
               entries:
                 description: Entry statistic for this owner id
                 properties:

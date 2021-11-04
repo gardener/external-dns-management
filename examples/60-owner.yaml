@@ -6,3 +6,7 @@ metadata:
 spec:
   ownerId: second-owner-id
   active: true
+  #validUntil: "2020-06-10T14:51:00Z"   # After the specified time the owner object will be inactivated
+  #dnsActivation:                       # optional remote activation controlled by a DNS TXT record
+  #  dnsName:   any.domain.name         # DNS Name to lookup TXT records (always required if dnsActivation is specified)
+  #  value:     record-content          # optional value to lookup in records required for activation (defaulted by cluster id)

@@ -20,81 +20,22 @@ import (
 	"fmt"
 	"net"
 
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
-////////////////////////////////////////////////////////////////////////////////
-// DNS Target
-////////////////////////////////////////////////////////////////////////////////
+type Target = dnsutils.Target
+type Targets = dnsutils.Targets
 
-type Targets []Target
-
-func (this Targets) Has(target Target) bool {
-	for _, t := range this {
-		if t.GetRecordType() == target.GetRecordType() &&
-			t.GetHostName() == target.GetHostName() {
-			return true
-		}
-	}
-	return false
-}
-
-func (this Targets) DifferFrom(targets Targets) bool {
-	if len(this) != len(targets) {
-		return true
-	}
-	for _, t := range this {
-		if !targets.Has(t) {
-			return true
-		}
-	}
-	return false
-}
-
-type Target interface {
-	GetHostName() string
-	GetRecordType() string
-	GetEntry() *EntryVersion
-	Description() string
-}
-
-type target struct {
-	rtype string
-	host  string
-	entry *EntryVersion
-}
-
-func NewText(t string, entry *EntryVersion) Target {
-	return NewTarget(dns.RS_TXT, fmt.Sprintf("%q", t), entry)
-}
-
-func NewTarget(ty string, ta string, entry *EntryVersion) Target {
-	return &target{rtype: ty, host: ta, entry: entry}
-}
-
-func NewTargetFromEntryVersion(name string, entry *EntryVersion) (Target, error) {
+func NewHostTargetFromEntryVersion(name string, entry *EntryVersion) (Target, error) {
 	ip := net.ParseIP(name)
 	if ip == nil {
-		return NewTarget(dns.RS_CNAME, name, entry), nil
+		return dnsutils.NewTarget(dns.RS_CNAME, name, entry.TTL()), nil
 	} else if ip.To4() != nil {
-		return NewTarget(dns.RS_A, name, entry), nil
+		return dnsutils.NewTarget(dns.RS_A, name, entry.TTL()), nil
 	} else if ip.To16() != nil {
-		return NewTarget(dns.RS_AAAA, name, entry), nil
+		return dnsutils.NewTarget(dns.RS_AAAA, name, entry.TTL()), nil
 	} else {
-		return nil, fmt.Errorf("IPv6 addresses are not supported yet: %s (%s)", ip.String(), name)
+		return nil, fmt.Errorf("unexpected IP address (never ipv4 or ipv6): %s (%s)", ip.String(), name)
 	}
-}
-
-func (t *target) GetEntry() *EntryVersion { return t.entry }
-func (t *target) GetHostName() string     { return t.host }
-func (t *target) GetRecordType() string   { return t.rtype }
-func (t *target) Description() string {
-	if t.entry != nil {
-		return t.entry.Description()
-	}
-	return t.GetHostName()
-}
-
-func (t *target) String() string {
-	return fmt.Sprintf("%s(%s)", t.GetRecordType(), t.GetHostName())
 }

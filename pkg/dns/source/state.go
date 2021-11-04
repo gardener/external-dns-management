@@ -24,31 +24,40 @@ import (
 )
 
 type state struct {
-	lock     sync.Mutex
-	source   DNSSource
-	feedback map[resources.ClusterObjectKey]DNSFeedback
+	lock       sync.Mutex
+	source     DNSSource
+	feedback   map[resources.ClusterObjectKey]DNSFeedback
+	ownerState *ownerState
 
 	used map[resources.ClusterObjectKey]resources.ClusterObjectKeySet
 	deps map[resources.ClusterObjectKey]resources.ClusterObjectKey
 }
 
-func NewState() interface{} {
+func NewState(ownerState *ownerState) interface{} {
 	return &state{
-		source:   nil,
-		feedback: map[resources.ClusterObjectKey]DNSFeedback{},
+		source:     nil,
+		feedback:   map[resources.ClusterObjectKey]DNSFeedback{},
+		ownerState: ownerState,
 
 		used: map[resources.ClusterObjectKey]resources.ClusterObjectKeySet{},
 		deps: map[resources.ClusterObjectKey]resources.ClusterObjectKey{},
 	}
 }
 
-func (this *state) GetFeedbackForObject(obj resources.Object) DNSFeedback {
+func (this *state) CreateFeedbackForObject(obj resources.Object) DNSFeedback {
+	if !this.ownerState.GetActive() {
+		return nil
+	}
 	fb := this.source.CreateDNSFeedback(obj)
 	this.SetFeedback(obj.ClusterKey(), fb)
 	return fb
 }
 
 func (this *state) GetFeedback(key resources.ClusterObjectKey) DNSFeedback {
+	if !this.ownerState.GetActive() {
+		return nil
+	}
+
 	this.lock.Lock()
 	defer this.lock.Unlock()
 

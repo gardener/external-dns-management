@@ -187,10 +187,11 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	for _, e := range req.entries {
 		// TODO: err handling
 		var changeResult ChangeResult
+		spec := e.object.GetTargetSpec(e)
 		if e.IsDeleting() {
-			changeResult = changes.Delete(e.DNSName(), e.ObjectName().Namespace(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()))
+			changeResult = changes.Delete(e.DNSName(), e.ObjectName().Namespace(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), spec)
 		} else {
-			changeResult = changes.Apply(e.DNSName(), e.ObjectName().Namespace(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), e.Targets()...)
+			changeResult = changes.Apply(e.DNSName(), e.ObjectName().Namespace(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), spec)
 			if changeResult.Error != nil && changeResult.Retry {
 				conflictErr = changeResult.Error
 			}

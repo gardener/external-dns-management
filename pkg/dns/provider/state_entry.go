@@ -19,16 +19,20 @@ package provider
 
 import (
 	"fmt"
+	"net"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,11 +96,11 @@ func (this *state) addBlockingEntries(logger logger.LogContext, entries Entries)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *state) UpdateEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status {
+func (this *state) UpdateEntry(logger logger.LogContext, object dnsutils.DNSSpecification) reconcile.Status {
 	return this.HandleUpdateEntry(logger, "reconcile", object)
 }
 
-func (this *state) DeleteEntry(logger logger.LogContext, object *dnsutils.DNSEntryObject) reconcile.Status {
+func (this *state) DeleteEntry(logger logger.LogContext, object dnsutils.DNSSpecification) reconcile.Status {
 	return this.HandleUpdateEntry(logger, "delete", object)
 }
 
@@ -137,7 +141,9 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	if v.IsDeleting() {
 		var err error
 		if old != nil {
-			this.cleanupEntry(logger, old)
+			if old.Kind() != api.DNSLockKind { // TODO: why is cleanup called here
+				this.cleanupEntry(logger, old)
+			}
 		}
 		if new.valid {
 			if this.zones[new.activezone] != nil {
@@ -150,12 +156,12 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				if old != nil {
 					logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
 				}
-				if !new.IsActive() || v.object.Status().Zone == nil {
+				if !new.IsActive() || v.object.BaseStatus().Zone == nil {
 					err = this.RemoveFinalizer(v.object)
 				}
 			}
 		} else {
-			if !new.IsActive() || v.object.Status().State != api.STATE_STALE {
+			if !new.IsActive() || v.object.BaseStatus().State != api.STATE_STALE {
 				this.smartInfof(logger, "deleting yet unmanaged or errorneous entry")
 				err = this.RemoveFinalizer(v.object)
 			} else {
@@ -237,7 +243,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	return new, status
 }
 
-func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, error) {
+func (this *state) EntryPremise(e dnsutils.DNSSpecification) (*EntryPremise, error) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
@@ -253,9 +259,9 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 		p.ptype = zone.ProviderType()
 		p.zoneid = zone.Id()
 		p.zonedomain = zone.Domain()
-	} else if provider != nil && !provider.IsValid() && e.Status().Zone != nil {
+	} else if provider != nil && !provider.IsValid() && e.BaseStatus().Zone != nil {
 		p.ptype = provider.TypeCode()
-		p.zoneid = *e.Status().Zone
+		p.zoneid = *e.BaseStatus().Zone
 	} else if p.fallback != nil {
 		zone = this.getProviderZoneForName(e.GetDNSName(), p.fallback)
 		if zone != nil {
@@ -267,7 +273,7 @@ func (this *state) EntryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 	return p, err
 }
 
-func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object *dnsutils.DNSEntryObject) reconcile.Status {
+func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object dnsutils.DNSSpecification) reconcile.Status {
 	old := this.GetEntry(object.ObjectName())
 	if old != nil {
 		if !old.lock.TryLockSpinning(200 * time.Millisecond) {
@@ -295,11 +301,20 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	new, status := this.AddEntryVersion(logger, v, status)
 
 	if new != nil {
+		if new.Kind() == api.DNSLockKind {
+			if object.IsDeleting() {
+				return this.checkAndDeleteLock(logger, new, p)
+			} else {
+				return this.checkAndUpdateLock(logger, new, p)
+			}
+		}
+
 		if status.IsSucceeded() && new.IsValid() {
 			if new.Interval() > 0 {
 				status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
 			}
 		}
+
 		if new.IsModified() && new.ZoneId() != "" {
 			this.SmartInfof(logger, "trigger zone %q", new.ZoneId())
 			this.TriggerHostedZone(new.ZoneId())
@@ -377,4 +392,275 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 		}
 		delete(this.dnsnames, e.ZonedDNSName())
 	}
+}
+
+func (this *state) checkAndUpdateLock(logger logger.LogContext, entry *Entry, premise *EntryPremise) reconcile.Status {
+	if !entry.updateRequired && entry.object.BaseStatus().ObservedGeneration == entry.object.GetGeneration() {
+		return reconcile.Succeeded(logger)
+	}
+
+	handler := premise.provider.GetDedicatedDNSAccess()
+	if handler == nil {
+		return reconcile.Failed(logger, fmt.Errorf("provider type %s does not support DNS locks", premise.ptype))
+	}
+	zone := this.zones[entry.ZoneId()]
+
+	newTTL := entry.TTL()
+	records := dns.Records{}
+	for _, s := range entry.object.GetText() {
+		target := dnsutils.NewText(s, newTTL)
+		records = append(records, target.AsRecord())
+	}
+	newRS := FromDedicatedRecordSet(entry.DNSName(), dns.NewRecordSet(dns.RS_TXT, newTTL, records))
+
+	rs, err := handler.GetRecordSet(zone, entry.DNSName(), dns.RS_TXT)
+	if err != nil {
+		return reconcile.Delay(logger, err)
+	}
+	owned := true
+	ok := true
+	ownedMsg := ""
+	if len(rs) != 0 {
+		lockID := rs.GetAttr(dns.ATTR_LOCKID)
+		timestamp := rs.GetAttr(dns.ATTR_TIMESTAMP)
+		owned, ok, ownedMsg = isLockOwned(entry.object.(*dnsutils.DNSLockObject), lockID, timestamp)
+	}
+
+	if owned && hasLockRecordsetChanged(rs, newRS) {
+		err = handler.CreateOrUpdateRecordSet(logger, zone, rs, newRS)
+		if err != nil {
+			return reconcile.Delay(logger, err)
+		}
+		logger.Infof("lock created or updated")
+	}
+	entry.updateRequired = false
+
+	_, err = entry.object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
+		status := &data.(*api.DNSLock).Status
+		mod := utils.ModificationState{}
+		if status.FirstFailedDNSLookup != nil {
+			status.FirstFailedDNSLookup = nil
+			mod.Modify(true)
+		}
+
+		state := api.STATE_READY
+		msg := "DNS record is set."
+		if !ok {
+			state = api.STATE_INVALID
+			msg = ownedMsg
+		} else if !owned {
+			msg = ownedMsg
+		}
+
+		mod.AssureStringValue(&status.State, state)
+		mod.AssureStringPtrPtr(&status.Message, &msg)
+
+		mod.AssureStringPtrPtr(&status.Zone, &premise.zoneid)
+		provider := premise.provider.ObjectName().String()
+		mod.AssureStringPtrPtr(&status.Provider, &provider)
+		mod.AssureStringPtrPtr(&status.ProviderType, &premise.ptype)
+		mod.AssureInt64Value(&status.ObservedGeneration, entry.object.GetGeneration())
+		return mod.IsModified(), nil
+	})
+	if err != nil {
+		return reconcile.Delay(logger, err)
+	}
+
+	return reconcile.Succeeded(logger)
+}
+
+func hasLockRecordsetChanged(old, new DedicatedRecordSet) bool {
+	if len(new) != len(old) {
+		return true
+	}
+
+	oldRecords := utils.NewStringSet()
+	for _, s := range old {
+		oldRecords.Add(s.GetValue())
+	}
+
+	oldTTL := 120
+	if len(old) > 0 {
+		oldTTL = old[0].GetTTL()
+	}
+	for _, r := range new {
+		if !oldRecords.Contains(r.GetValue()) || oldTTL != r.GetTTL() {
+			return true
+		}
+	}
+	return false
+}
+
+func isLockOwned(obj *dnsutils.DNSLockObject, lockDNS, timestampDNS string) (owned, ok bool, msg string) {
+	if lockObj := utils.StringValue(obj.Spec().LockId); lockObj != lockDNS {
+		msg = fmt.Sprintf("mismatching lock ids %s != %s", lockObj, lockDNS)
+		return
+	}
+	i, err := strconv.ParseInt(timestampDNS, 10, 64)
+	if err != nil {
+		msg = fmt.Sprintf("invalid timestamp in DNS record: %s", timestampDNS)
+		return
+	}
+	ok = true
+	tsDNS := time.Unix(i, 0)
+	if tsObj := obj.GetTimestamp(); tsObj.Before(tsDNS) {
+		msg = fmt.Sprintf("skipping DNS update because of timestamp %s < %s", tsObj, tsDNS)
+		return
+	}
+	owned = true
+	return
+}
+
+func (this *state) checkAndDeleteLock(logger logger.LogContext, entry *Entry, premise *EntryPremise) reconcile.Status {
+	handler := premise.provider.GetDedicatedDNSAccess()
+	zone := this.zones[entry.ZoneId()]
+
+	rs, err := handler.GetRecordSet(zone, entry.DNSName(), dns.RS_TXT)
+	if err != nil {
+		return reconcile.Delay(logger, err)
+	}
+	if rs != nil {
+		lockID := rs.GetAttr(dns.ATTR_LOCKID)
+		timestamp := rs.GetAttr(dns.ATTR_TIMESTAMP)
+		owned, _, _ := isLockOwned(entry.object.(*dnsutils.DNSLockObject), lockID, timestamp)
+		if owned {
+			err = handler.DeleteRecordSet(logger, zone, rs)
+			if err != nil {
+				return reconcile.Delay(logger, err)
+			}
+			logger.Infof("lock deleted")
+		}
+	}
+	return reconcile.DelayOnError(logger, this.RemoveFinalizer(entry.object))
+}
+
+func (this *state) UpdateLockStates(log logger.LogContext) {
+	this.lock.RLock()
+	entries := map[string]*Entry{}
+	for _, e := range this.entries {
+		if e.Kind() == api.DNSLockKind {
+			entries[e.DNSName()] = e
+		}
+	}
+	this.lock.RUnlock()
+
+	for dnsName, e := range entries {
+		records, err := net.LookupTXT(dnsName)
+		this.updateLockState(log, dnsName, e, records, err)
+	}
+}
+
+func (this *state) updateLockState(log logger.LogContext, dnsName string, e *Entry, records []string, err error) {
+	e.lock.Lock()
+	defer e.lock.Unlock()
+
+	updateRequired := false
+	firstfailed := time.Time{}
+	ts := time.Time{}
+	timestampDNS := ""
+	lockDNS := ""
+	attrs := map[string]string{}
+	unnamed := 0
+
+	if err == nil {
+		log.Infof("found records %v", records)
+		for _, r := range records {
+			r = strings.Trim(r, "\"")
+			fields := strings.Split(r, "=")
+			if len(fields) != 2 {
+				fields = []string{fmt.Sprintf("_%d", unnamed), r}
+				unnamed++
+			}
+			switch fields[0] {
+			case dns.ATTR_TIMESTAMP:
+				timestampDNS = fields[1]
+				i, err := strconv.ParseInt(timestampDNS, 10, 64)
+				if err != nil {
+					continue
+				}
+				ts = time.Unix(i, 0)
+			case dns.ATTR_LOCKID:
+				lockDNS = fields[1]
+			default:
+				attrs[fields[0]] = fields[1]
+			}
+		}
+	} else {
+		log.Warnf("dns lookup failed for %q: %s", dnsName, err)
+		now := time.Now()
+		status := e.object.StatusField().(*api.DNSLockStatus)
+		ttl := time.Duration(e.object.Data().(*api.DNSLock).Spec.TTL) * time.Second
+		if status.FirstFailedDNSLookup != nil && status.FirstFailedDNSLookup.After(this.startupTime) {
+			firstfailed = status.FirstFailedDNSLookup.Time
+			if now.Sub(firstfailed) > ttl*2 {
+				log.Infof("try to resurrect dns lock %q", e.object.ObjectName())
+				updateRequired = true
+			}
+		} else {
+			firstfailed = now
+		}
+	}
+
+	owned, ok, ownedMsg := isLockOwned(e.object.(*dnsutils.DNSLockObject), lockDNS, timestampDNS)
+	e.object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
+		status := &data.(*api.DNSLock).Status
+		mod := utils.ModificationState{}
+		mod.Modify(AssureTimestamp(&status.Timestamp, ts))
+		state := api.STATE_READY
+		msg := "DNS record is set."
+		if !ok {
+			state = api.STATE_INVALID
+			msg = ownedMsg
+		} else if !owned {
+			msg = ownedMsg
+		}
+
+		if !firstfailed.IsZero() {
+			state = api.STATE_STALE
+			msg = "DNS record cannot be looked up"
+		}
+		mod.AssureStringValue(&status.State, state)
+		mod.AssureStringPtrPtr(&status.Message, &msg)
+		var pLockID *string
+		if lockDNS != "" {
+			pLockID = &lockDNS
+		}
+		mod.AssureStringPtrPtr(&status.LockId, pLockID)
+		mod.Modify(AssureTimestamp(&status.FirstFailedDNSLookup, firstfailed))
+		mod.Modify(!EqualAttrs(attrs, status.Attributes))
+		status.Attributes = attrs
+		return mod.IsModified(), nil
+	})
+
+	if updateRequired {
+		e.updateRequired = true
+		this.context.Enqueue(e.object)
+	}
+}
+
+func AssureTimestamp(target **metav1.Time, ts time.Time) bool {
+	mod := false
+	if ts.IsZero() {
+		mod = *target != nil
+		*target = nil
+	} else {
+		if *target == nil || !(*target).Time.Equal(ts) {
+			mod = true
+		}
+		t := metav1.NewTime(ts)
+		*target = &t
+	}
+	return mod
+}
+
+func EqualAttrs(a, b map[string]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k, v := range a {
+		if f, ok := b[k]; !ok || f != v {
+			return false
+		}
+	}
+	return true
 }

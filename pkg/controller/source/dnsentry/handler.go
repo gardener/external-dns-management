@@ -91,8 +91,12 @@ func (f *updateOriginalFeedback) Failed(logger logger.LogContext, dnsname string
 	f.chain.Failed(logger, dnsname, err, state)
 }
 
-func (f *updateOriginalFeedback) Deleted(logger logger.LogContext, dnsname string, msg string, state *source.DNSState) {
-	f.chain.Deleted(logger, dnsname, msg, state)
+func (f *updateOriginalFeedback) Deleted(logger logger.LogContext, dnsname string, msg string) {
+	f.chain.Deleted(logger, dnsname, msg)
+}
+
+func (f *updateOriginalFeedback) Created(logger logger.LogContext, dnsname string, name resources.ObjectName) {
+	f.chain.Created(logger, dnsname, name)
 }
 
 func (f *updateOriginalFeedback) setStatus(logger logger.LogContext, state string, msg string, dnsState *source.DNSState) {

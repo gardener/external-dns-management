@@ -61,9 +61,14 @@ func (this *access) ListZones(consume func(zone cloudflare.Zone) (bool, error)) 
 }
 
 func (this *access) ListRecords(zoneId string, consume func(record cloudflare.DNSRecord) (bool, error)) error {
+	return this.listRecords(zoneId, consume, cloudflare.DNSRecord{})
+}
+
+func (this *access) listRecords(zoneId string, consume func(record cloudflare.DNSRecord) (bool, error),
+	record cloudflare.DNSRecord) error {
 	this.metrics.AddZoneRequests(zoneId, provider.M_LISTRECORDS, 1)
 	this.rateLimiter.Accept()
-	results, err := this.DNSRecords(zoneId, cloudflare.DNSRecord{})
+	results, err := this.DNSRecords(zoneId, record)
 	if err != nil {
 		return err
 	}
@@ -125,6 +130,21 @@ func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHosted
 		TTL:     int(ttl),
 		ZoneID:  zone.Id(),
 	})
+}
+
+func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+	rs := raw.RecordSet{}
+	consume := func(record cloudflare.DNSRecord) (bool, error) {
+		a := (*Record)(&record)
+		rs = append(rs, a)
+		return true, nil
+	}
+
+	err := this.listRecords(zone.Id(), consume, cloudflare.DNSRecord{Type: rtype, Name: dnsName})
+	if err != nil {
+		return nil, err
+	}
+	return rs, nil
 }
 
 func testTTL(ttl *int) {
