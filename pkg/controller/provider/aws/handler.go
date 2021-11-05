@@ -234,7 +234,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route53.ResourceRecordSet)) ([]string, error) {
 	rt := provider.M_LISTRECORDS
-	inp := (&route53.ListResourceRecordSetsInput{}).SetHostedZoneId(zone.Id())
+	inp := (&route53.ListResourceRecordSetsInput{MaxItems: aws.String("300")}).SetHostedZoneId(zone.Id())
 	forwarded := []string{}
 	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
 		h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
