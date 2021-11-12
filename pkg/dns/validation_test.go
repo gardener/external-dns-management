@@ -40,6 +40,7 @@ func TestValidation(t *testing.T) {
 		{"\\052.a.b", true},
 		{"a-a.a9.a8.a7.a6.a5.a4.a3.a2.a1.a.b.c.d.e.f.g.h.i.j.k.l.m.n.o.p.q.r.s.t.u.v.w.x.y.z", true},
 		{"_a.b", true},
+		{"1.2-3.b", true},
 		{"a123456789012345678901234567890123456789012345678901234567890abc.b", false},   // label too long
 		{"a.a123456789012345678901234567890123456789012345678901234567890abc.b", false}, // label too long
 		{"a12345678901234567890123456789012345678901234567890abcd.b", true},
