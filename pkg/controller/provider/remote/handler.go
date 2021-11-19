@@ -21,7 +21,6 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -41,7 +40,6 @@ type Handler struct {
 	config          provider.DNSHandlerConfig
 	cache           provider.ZoneCache
 	remoteNamespace string
-	clientName      string
 	currentToken    string
 	connection      *grpc.ClientConn
 	client          common.RemoteProviderClient
@@ -55,11 +53,9 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	advancedConfig := c.Options.AdvancedOptions.GetAdvancedConfig()
 	c.Logger.Infof("advanced options: %s", advancedConfig)
 
-	hostname, _ := os.Hostname()
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *c,
-		clientName:        fmt.Sprintf("%s:%d", hostname, os.Getpid()),
 	}
 
 	serverEndpoint, err := c.GetRequiredProperty("REMOTE_ENDPOINT", "remoteEndpoint")
@@ -146,7 +142,6 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 func (h *Handler) login(ctx context.Context) error {
 	h.config.RateLimiter.Accept()
 	response, err := h.client.Login(ctx, &common.LoginRequest{
-		Client:    h.clientName,
 		Namespace: h.remoteNamespace,
 	})
 	if err != nil {

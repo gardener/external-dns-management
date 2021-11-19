@@ -51,8 +51,8 @@ type handlerState struct {
 }
 
 type tokenState struct {
-	client     string
-	validUntil time.Time
+	clientCommonName string
+	validUntil       time.Time
 }
 
 func newNamespaceState(namespace string) *namespaceState {
@@ -131,18 +131,18 @@ func (s *namespaceState) getToken(token string) (string, error) {
 		}
 		return "", fmt.Errorf("%s for namespace %s", common.InvalidToken, s.name)
 	}
-	return tstate.client, nil
+	return tstate.clientCommonName, nil
 }
 
-func (s *namespaceState) generateAndAddToken(tokenTTL time.Duration, rnd, client, server string) string {
+func (s *namespaceState) generateAndAddToken(tokenTTL time.Duration, rnd, clientCommonName, server string) string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	validUntil := time.Now().Add(tokenTTL).UTC()
-	token := fmt.Sprintf("%s|%s|%s|%s|%s", s.name, client, validUntil.Format(time.RFC3339), server, rnd)
+	token := fmt.Sprintf("%s|%s|%s|%s|%s", s.name, clientCommonName, validUntil.Format(time.RFC3339), server, rnd)
 	s.tokens[token] = &tokenState{
-		client:     client,
-		validUntil: validUntil,
+		clientCommonName: clientCommonName,
+		validUntil:       validUntil,
 	}
 	return token
 }

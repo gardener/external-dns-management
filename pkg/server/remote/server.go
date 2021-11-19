@@ -32,6 +32,10 @@ import (
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	"github.com/gardener/external-dns-management/pkg/server/remote/common"
 	"github.com/gardener/external-dns-management/pkg/server/remote/conversion"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/peer"
+	"google.golang.org/grpc/status"
 )
 
 type server struct {
@@ -117,41 +121,73 @@ func (s *server) ProviderRemovedEvent(logger logger.LogContext, objectName resou
 	}
 }
 
-func (s *server) checkAuth(token, requestType, zoneid string) (*namespaceState, string, error) {
+func (s *server) checkAuth(token, requestType, zoneid string) (*namespaceState, logger.LogContext, error) {
 	parts := strings.SplitN(token, "|", 2)
 	namespace := parts[0]
 	nsState := s.getNamespaceState(namespace, false)
 	if nsState == nil {
-		return nil, "", fmt.Errorf("namespace %s not found or no providers available", namespace)
+		return nil, s.logctx, fmt.Errorf("namespace %s not found or no providers available", namespace)
 	}
 
-	client, err := nsState.getToken(token)
+	commonName, err := nsState.getToken(token)
+	logctx := s.logctx.NewContext("namespace", nsState.name).NewContext("commonName", commonName)
 	if err != nil {
-		return nil, "", err
+		return nil, logctx, err
 	}
-	metrics.ReportRemoteAccessRequests(namespace, client, requestType, zoneid)
-	return nsState, client, nil
+	metrics.ReportRemoteAccessRequests(namespace, commonName, requestType, zoneid)
+	return nsState, logctx, nil
 }
 
-func (s *server) Login(_ context.Context, request *common.LoginRequest) (*common.LoginResponse, error) {
-	logctx := s.logctx.NewContext("client", request.Client).NewContext("namespace", request.Namespace)
-	logctx.Info("Login")
+func (s *server) Login(ctx context.Context, request *common.LoginRequest) (*common.LoginResponse, error) {
+	commonName, err := s.checkNamespaceAuthorization(ctx, request.Namespace)
+	logctx := s.logctx.NewContext("namespace", request.Namespace).NewContext("commonName", commonName)
+	if err != nil {
+		logctx.Warn("Login auth failed")
+		return nil, err
+	}
+	logctx.Info("Login auth successful")
 
 	nsState := s.getNamespaceState(request.Namespace, false)
 	if nsState == nil {
-		metrics.ReportRemoteAccessLogins(request.Namespace, request.Client, false)
+		metrics.ReportRemoteAccessLogins(request.Namespace, commonName, false)
+		logctx.Info("namespace %s not found or no providers available", request.Namespace)
 		return nil, fmt.Errorf("namespace %s not found or no providers available", request.Namespace)
 	}
 
-	metrics.ReportRemoteAccessLogins(request.Namespace, request.Client, true)
+	metrics.ReportRemoteAccessLogins(request.Namespace, commonName, true)
 
 	rnd, err := randonString(16)
 	if err != nil {
 		return nil, fmt.Errorf("random failed: %w", err)
 	}
 
-	token := nsState.generateAndAddToken(s.tokenTTL, rnd, request.Client, s.serverID)
+	token := nsState.generateAndAddToken(s.tokenTTL, rnd, commonName, s.serverID)
 	return &common.LoginResponse{Token: token}, nil
+}
+
+func (s *server) checkNamespaceAuthorization(ctx context.Context, namespace string) (string, error) {
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		return "", status.Error(codes.Unauthenticated, "no peer found")
+	}
+
+	tlsAuth, ok := p.AuthInfo.(credentials.TLSInfo)
+	if !ok {
+		return "", status.Error(codes.Unauthenticated, "unexpected peer transport credentials")
+	}
+
+	if len(tlsAuth.State.VerifiedChains) == 0 || len(tlsAuth.State.VerifiedChains[0]) == 0 {
+		return "", status.Error(codes.Unauthenticated, "could not verify peer certificate")
+	}
+
+	commonName := tlsAuth.State.VerifiedChains[0][0].Subject.CommonName
+	firstLabel := strings.SplitN(commonName, ".", 2)[0]
+	// Check subject common name against configured username
+	if firstLabel != "*" && firstLabel != namespace {
+		return commonName, status.Error(codes.Unauthenticated, "invalid subject common name")
+	}
+
+	return commonName, nil
 }
 
 func (s *server) cleanupTokens() {
@@ -167,13 +203,11 @@ func (s *server) cleanupTokens() {
 }
 
 func (s *server) GetZones(_ context.Context, request *common.GetZonesRequest) (*common.Zones, error) {
-	logctx := s.logctx
-	nsState, client, err := s.checkAuth(request.Token, "GetZones", "")
+	nsState, logctx, err := s.checkAuth(request.Token, "GetZones", "")
 	if err != nil {
 		logctx.Warn(err)
 		return nil, err
 	}
-	logctx = logctx.NewContext("client", client).NewContext("namespace", nsState.name)
 	logctx.Info("GetZones")
 
 	zones, err := nsState.getAllZones(s.spinning)
@@ -199,13 +233,12 @@ func (s *server) GetZones(_ context.Context, request *common.GetZonesRequest) (*
 }
 
 func (s *server) GetZoneState(_ context.Context, request *common.GetZoneStateRequest) (*common.ZoneState, error) {
-	logctx := s.logctx.NewContext("zoneid", request.Zoneid)
-	nsState, client, err := s.checkAuth(request.Token, "GetZoneState", request.Zoneid)
+	nsState, logctx, err := s.checkAuth(request.Token, "GetZoneState", request.Zoneid)
 	if err != nil {
 		logctx.Warn(err)
 		return nil, err
 	}
-	logctx = logctx.NewContext("client", client)
+	logctx = logctx.NewContext("zoneid", request.Zoneid)
 	logctx.Info("GetZoneState")
 
 	hstate, zone, err := nsState.lockupZone(s.spinning, request.Zoneid)
@@ -229,13 +262,12 @@ func (s *server) GetZoneState(_ context.Context, request *common.GetZoneStateReq
 }
 
 func (s *server) Execute(_ context.Context, request *common.ExecuteRequest) (*common.ExecuteResponse, error) {
-	logctx := s.logctx.NewContext("zoneid", request.Zoneid)
-	nsState, client, err := s.checkAuth(request.Token, "Execute", request.Zoneid)
+	nsState, logctx, err := s.checkAuth(request.Token, "Execute", request.Zoneid)
 	if err != nil {
 		logctx.Warn(err)
 		return nil, err
 	}
-	logctx = logctx.NewContext("client", client)
+	logctx = logctx.NewContext("zoneid", request.Zoneid)
 	logctx.Infof("Execute: %d changes", len(request.ChangeRequest))
 
 	hstate, zone, err := nsState.lockupZone(s.spinning, request.Zoneid)
