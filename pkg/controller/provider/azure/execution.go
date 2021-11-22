@@ -18,10 +18,10 @@ package azure
 
 import (
 	"strconv"
-	"strings"
 
 	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/azure/utils"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -55,15 +55,6 @@ const (
 	bs_invalidName buildStatus = 4
 )
 
-// Shorten DnsEntry-dnsName from record name + .DNSZone to record name only: e.g www2.test6227.ml to www2
-func dropZoneName(dnsName, zoneName string) (string, bool) {
-	end := len(dnsName) - len(zoneName) - 1
-	if end <= 0 || !strings.HasSuffix(dnsName, zoneName) || dnsName[end] != '.' {
-		return dnsName, false
-	}
-	return dnsName[:end], true
-}
-
 func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus, azure.RecordType, *azure.RecordSet) {
 	var dnsset *dns.DNSSet
 	switch req.Action {
@@ -74,7 +65,7 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 	}
 
 	name, rset := dns.MapToProvider(req.Type, dnsset, exec.zoneName)
-	name, ok := dropZoneName(name, exec.zoneName)
+	name, ok := utils.DropZoneName(name, exec.zoneName)
 	if !ok {
 		return bs_invalidName, "", &azure.RecordSet{Name: &name}
 	}
@@ -144,7 +135,7 @@ func (exec *Execution) update(recordType azure.RecordType, rset *azure.RecordSet
 	exec.handler.config.RateLimiter.Accept()
 	_, err := exec.handler.recordsClient.CreateOrUpdate(exec.handler.ctx, exec.resourceGroup, exec.zoneName, *rset.Name,
 		recordType, *rset, "", "")
-	zoneID := makeZoneID(exec.resourceGroup, exec.zoneName)
+	zoneID := utils.MakeZoneID(exec.resourceGroup, exec.zoneName)
 	metrics.AddZoneRequests(zoneID, provider.M_UPDATERECORDS, 1)
 	return err
 }
@@ -152,7 +143,7 @@ func (exec *Execution) update(recordType azure.RecordType, rset *azure.RecordSet
 func (exec *Execution) delete(recordType azure.RecordType, rset *azure.RecordSet, metrics provider.Metrics) error {
 	exec.handler.config.RateLimiter.Accept()
 	_, err := exec.handler.recordsClient.Delete(exec.handler.ctx, exec.resourceGroup, exec.zoneName, *rset.Name, recordType, "")
-	zoneID := makeZoneID(exec.resourceGroup, exec.zoneName)
+	zoneID := utils.MakeZoneID(exec.resourceGroup, exec.zoneName)
 	metrics.AddZoneRequests(zoneID, provider.M_DELETERECORDS, 1)
 	return err
 }

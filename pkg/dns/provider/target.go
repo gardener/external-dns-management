@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"net"
 
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
 type Target = dnsutils.Target

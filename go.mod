@@ -3,9 +3,10 @@ module github.com/gardener/external-dns-management
 go 1.16
 
 require (
-	github.com/Azure/azure-sdk-for-go v39.0.0+incompatible
-	github.com/Azure/go-autorest/autorest/azure/auth v0.4.2
-	github.com/Azure/go-autorest/autorest/to v0.3.0 // indirect
+	github.com/Azure/azure-sdk-for-go v59.3.0+incompatible
+	github.com/Azure/go-autorest/autorest v0.11.19
+	github.com/Azure/go-autorest/autorest/azure/auth v0.5.9
+	github.com/Azure/go-autorest/autorest/to v0.4.0 // indirect
 	github.com/ahmetb/gen-crd-api-reference-docs v0.2.0
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190603021944-12ad9f921c0b
 	github.com/aws/aws-sdk-go v1.38.43

@@ -123,6 +123,21 @@ spec:
         {{- if .Values.configuration.azureDNSRatelimiterQps }}
         - --azure-dns.ratelimiter.qps={{ .Values.configuration.azureDNSRatelimiterQps }}
         {{- end }}
+        {{- if .Values.configuration.azurePrivateDnsAdvancedBatchSize }}
+        - --azure-private-dns.advanced.batch-size={{ .Values.configuration.azurePrivateDnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.azurePrivateDnsAdvancedMaxRetries }}
+        - --azure-private-dns.advanced.max-retries={{ .Values.configuration.azurePrivateDnsAdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.azurePrivateDnsRatelimiterBurst }}
+        - --azure-private-dns.ratelimiter.burst={{ .Values.configuration.azurePrivateDnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.azurePrivateDnsRatelimiterEnabled }}
+        - --azure-private-dns.ratelimiter.enabled={{ .Values.configuration.azurePrivateDnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.azurePrivateDnsRatelimiterQps }}
+        - --azure-private-dns.ratelimiter.qps={{ .Values.configuration.azurePrivateDnsRatelimiterQps }}
+        {{- end }}
         {{- if .Values.configuration.bindAddressHttp }}
         - --bind-address-http={{ .Values.configuration.bindAddressHttp }}
         {{- end }}
@@ -194,6 +209,21 @@ spec:
         {{- end }}
         {{- if .Values.configuration.compoundAzureDnsRatelimiterQps }}
         - --compound.azure-dns.ratelimiter.qps={{ .Values.configuration.compoundAzureDnsRatelimiterQps }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAzurePrivateDnsAdvancedBatchSize }}
+        - --compound.azure-private-dns.advanced.batch-size={{ .Values.configuration.compoundAzurePrivateDnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAzurePrivateDnsAdvancedMaxRetries }}
+        - --compound.azure-private-dns.advanced.max-retries={{ .Values.configuration.compoundAzurePrivateDnsAdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAzurePrivateDnsRatelimiterBurst }}
+        - --compound.azure-private-dns.ratelimiter.burst={{ .Values.configuration.compoundAzurePrivateDnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAzurePrivateDnsRatelimiterEnabled }}
+        - --compound.azure-private-dns.ratelimiter.enabled={{ .Values.configuration.compoundAzurePrivateDnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundAzurePrivateDnsRatelimiterQps }}
+        - --compound.azure-private-dns.ratelimiter.qps={{ .Values.configuration.compoundAzurePrivateDnsRatelimiterQps }}
         {{- end }}
         {{- if .Values.configuration.compoundCacheTtl }}
         - --compound.cache-ttl={{ .Values.configuration.compoundCacheTtl }}

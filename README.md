@@ -7,7 +7,7 @@ It contains provisioning controllers for creating DNS records in one of the DNS 
   - [_Amazon Route53_](/docs/aws-route53/README.md),
   - [_Google CloudDNS_](/docs/google-cloud-dns/README.md),
   - [_AliCloud DNS_](/docs/alicloud-dns/README.md),
-  - [_Azure DNS_](/docs/azure-dns/README.md),
+  - [_Azure DNS_](/docs/azure-dns/README.md) and [_Azure Private_DNS_](/docs/azure-private-dns/README.md),
   - [_OpenStack Designate_](/docs/openstack-designate/README.md),
   - [_Cloudflare DNS_](/docs/cloudflare/README.md),
   - [_Infoblox_](/docs/infoblox/README.md),
@@ -421,6 +421,12 @@ Flags:
       --azure-dns.ratelimiter.burst int                               number of burst requests for rate limiter
       --azure-dns.ratelimiter.enabled                                 enables rate limiter for DNS provider requests
       --azure-dns.ratelimiter.qps int                                 maximum requests/queries per second
+      --azure-private-dns.advanced.batch-size int                     batch size for change requests (currently only used for aws-route53)
+      --azure-private-dns.advanced.max-retries int                    maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --azure-private-dns.blocked-zone zone-id                        Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
+      --azure-private-dns.ratelimiter.burst int                       number of burst requests for rate limiter
+      --azure-private-dns.ratelimiter.enabled                         enables rate limiter for DNS provider requests
+      --azure-private-dns.ratelimiter.qps int                         maximum requests/queries per second
       --bind-address-http string                                      HTTP server bind address
       --blocked-zone zone-id                                          Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
       --cache-dir string                                              Directory to store zone caches (for reload after restart)
@@ -451,6 +457,12 @@ Flags:
       --compound.azure-dns.ratelimiter.burst int                      number of burst requests for rate limiter of controller compound
       --compound.azure-dns.ratelimiter.enabled                        enables rate limiter for DNS provider requests of controller compound
       --compound.azure-dns.ratelimiter.qps int                        maximum requests/queries per second of controller compound
+      --compound.azure-private-dns.advanced.batch-size int            batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.azure-private-dns.advanced.max-retries int           maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.azure-private-dns.blocked-zone zone-id               Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
+      --compound.azure-private-dns.ratelimiter.burst int              number of burst requests for rate limiter of controller compound
+      --compound.azure-private-dns.ratelimiter.enabled                enables rate limiter for DNS provider requests of controller compound
+      --compound.azure-private-dns.ratelimiter.qps int                maximum requests/queries per second of controller compound
       --compound.blocked-zone zone-id                                 Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
       --compound.cache-dir string                                     Directory to store zone caches (for reload after restart) of controller compound
       --compound.cache-ttl int                                        Time-to-live for provider hosted zone cache of controller compound
@@ -515,9 +527,9 @@ Flags:
       --default.pool.size int                                         Worker pool size for pool default
       --disable-namespace-restriction                                 disable access restriction for namespace local access only
       --disable-zone-state-caching                                    disable use of cached dns zone state on changes
-      --dns-class string                                              identifier used to differentiate responsible controllers for providers, identifier used to differentiate responsible controllers for entries, Class identifier used to differentiate responsible controllers for entry resources
+      --dns-class string                                              identifier used to differentiate responsible controllers for entries, Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers
       --dns-delay duration                                            delay between two dns reconciliations
-      --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target providers, identifier used to differentiate responsible dns controllers for target entries
+      --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target entries, identifier used to differentiate responsible dns controllers for target providers
       --dns.pool.resync-period duration                               Period for resynchronization for pool dns
       --dns.pool.size int                                             Worker pool size for pool dns
       --dnsentry-source.default.pool.resync-period duration           Period for resynchronization for pool default of controller dnsentry-source
@@ -533,6 +545,7 @@ Flags:
       --dnsentry-source.target-name-prefix string                     name prefix in target namespace for cross cluster generation of controller dnsentry-source
       --dnsentry-source.target-namespace string                       target namespace for cross cluster generation of controller dnsentry-source
       --dnsentry-source.target-owner-id string                        owner id to use for generated DNS entries of controller dnsentry-source
+      --dnsentry-source.target-owner-object string                    owner object to use for generated DNS entries of controller dnsentry-source
       --dnsentry-source.target-realms string                          realm(s) to use for generated DNS entries of controller dnsentry-source
       --dnsentry-source.target-set-ignore-owners                      mark generated DNS entries to omit owner based access control of controller dnsentry-source
       --dnsentry-source.targets.pool.size int                         Worker pool size for pool targets of controller dnsentry-source
@@ -579,6 +592,7 @@ Flags:
       --ingress-dns.target-name-prefix string                         name prefix in target namespace for cross cluster generation of controller ingress-dns
       --ingress-dns.target-namespace string                           target namespace for cross cluster generation of controller ingress-dns
       --ingress-dns.target-owner-id string                            owner id to use for generated DNS entries of controller ingress-dns
+      --ingress-dns.target-owner-object string                        owner object to use for generated DNS entries of controller ingress-dns
       --ingress-dns.target-realms string                              realm(s) to use for generated DNS entries of controller ingress-dns
       --ingress-dns.target-set-ignore-owners                          mark generated DNS entries to omit owner based access control of controller ingress-dns
       --ingress-dns.targets.pool.size int                             Worker pool size for pool targets of controller ingress-dns
@@ -641,18 +655,20 @@ Flags:
       --service-dns.target-name-prefix string                         name prefix in target namespace for cross cluster generation of controller service-dns
       --service-dns.target-namespace string                           target namespace for cross cluster generation of controller service-dns
       --service-dns.target-owner-id string                            owner id to use for generated DNS entries of controller service-dns
+      --service-dns.target-owner-object string                        owner object to use for generated DNS entries of controller service-dns
       --service-dns.target-realms string                              realm(s) to use for generated DNS entries of controller service-dns
       --service-dns.target-set-ignore-owners                          mark generated DNS entries to omit owner based access control of controller service-dns
       --service-dns.targets.pool.size int                             Worker pool size for pool targets of controller service-dns
       --setup int                                                     number of processors for controller setup
       --statistic.pool.size int                                       Worker pool size for pool statistic
       --target string                                                 target cluster for dns requests
-      --target-creator-label-name string                              label name to store the creator for replicated DNS providers, label name to store the creator for generated DNS entries
+      --target-creator-label-name string                              label name to store the creator for generated DNS entries, label name to store the creator for replicated DNS providers
       --target-creator-label-value string                             label value for creator label
-      --target-name-prefix string                                     name prefix in target namespace for cross cluster replication, name prefix in target namespace for cross cluster generation
+      --target-name-prefix string                                     name prefix in target namespace for cross cluster generation, name prefix in target namespace for cross cluster replication
       --target-namespace string                                       target namespace for cross cluster generation
       --target-owner-id string                                        owner id to use for generated DNS entries
-      --target-realms string                                          realm(s) to use for replicated DNS provider, realm(s) to use for generated DNS entries
+      --target-owner-object string                                    owner object to use for generated DNS entries
+      --target-realms string                                          realm(s) to use for generated DNS entries, realm(s) to use for replicated DNS provider
       --target-set-ignore-owners                                      mark generated DNS entries to omit owner based access control
       --target.disable-deploy-crds                                    disable deployment of required crds for cluster target
       --target.id string                                              id for cluster target

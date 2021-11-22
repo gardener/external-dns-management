@@ -1,0 +1,20 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: azure
+  namespace: default
+spec:
+  type: azure-private-dns
+  secretRef:
+    name: azure-private-credentials
+  domains:
+    include:
+    - my.own.domain.com
+    #exclude:
+    #- my.excluded.domain.com
+  #zones:
+  #  include:
+  #  - myResourceGroup/own.domain.com
+  #  - <resourceGroup>/<dnszone>
+  #  exclude:
+  #  - <resourceGroup>/<dnszone>
