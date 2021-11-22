@@ -17,9 +17,10 @@
 package source
 
 import (
+	"sync"
+
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sync"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -92,7 +93,7 @@ func (this *DefaultDNSSource) CreateDNSFeedback(obj resources.Object) DNSFeedbac
 func (this *DefaultDNSSource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (*DNSInfo, error) {
 	info := &DNSInfo{}
 	info.Names = current.AnnotatedNames
-	tgts, txts, err := this.handler(logger, obj, current)
+	tgts, txts, err := this.handler(logger, obj, info.Names)
 	info.Targets = tgts
 	info.Text = txts
 	return info, err

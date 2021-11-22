@@ -18,20 +18,22 @@ package service
 
 import (
 	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"github.com/gardener/external-dns-management/pkg/dns/source"
-
 	api "k8s.io/api/core/v1"
 )
 
 // FakeTargetIP provides target for testing without load balancer
 var FakeTargetIP *string
 
-func GetTargets(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (utils.StringSet, utils.StringSet, error) {
+func GetTargets(logger logger.LogContext, obj resources.Object, names utils.StringSet) (utils.StringSet, utils.StringSet, error) {
 	svc := obj.Data().(*api.Service)
 	if svc.Spec.Type != api.ServiceTypeLoadBalancer {
+		if len(names) == 0 {
+			return nil, nil, nil
+		}
 		return nil, nil, fmt.Errorf("service is not of type LoadBalancer")
 	}
 	set := utils.StringSet{}
