@@ -19,14 +19,12 @@ package azure
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
 	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
-
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/azure/utils"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -52,27 +50,9 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	h.ctx = c.Context
 
-	subscriptionID, err := c.GetRequiredProperty("AZURE_SUBSCRIPTION_ID", "subscriptionID")
+	subscriptionID, authorizer, err := utils.GetSubscriptionIDAndAuthorizer(c)
 	if err != nil {
 		return nil, err
-	}
-	// see https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization
-	clientID, err := c.GetRequiredProperty("AZURE_CLIENT_ID", "clientID")
-	if err != nil {
-		return nil, err
-	}
-	clientSecret, err := c.GetRequiredProperty("AZURE_CLIENT_SECRET", "clientSecret")
-	if err != nil {
-		return nil, err
-	}
-	tenantID, err := c.GetRequiredProperty("AZURE_TENANT_ID", "tenantID")
-	if err != nil {
-		return nil, err
-	}
-
-	authorizer, err := auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID).Authorizer()
-	if err != nil {
-		return nil, perrs.WrapAsHandlerError(err, "Creating Azure authorizer with client credentials failed")
 	}
 
 	zonesClient := azure.NewZonesClient(subscriptionID)
@@ -101,8 +81,6 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	return h, nil
 }
 
-var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
-
 func (h *Handler) Release() {
 	h.cache.Release()
 }
@@ -124,13 +102,12 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	for ; results.NotDone(); results.Next() {
 		item := results.Value()
 
-		submatches := re.FindStringSubmatch(*item.ID)
-		if len(submatches) != 2 {
-			logger.Warnf("Unexpected DNS Zone ID: '%s'. Skipping zone", *item.ID)
+		resourceGroup, err := utils.ExtractResourceGroup(*item.ID)
+		if err != nil {
+			logger.Warnf("skipping zone: %s", err)
 			continue
 		}
-		resourceGroup := submatches[1]
-		zoneID := makeZoneID(resourceGroup, *item.Name)
+		zoneID := utils.MakeZoneID(resourceGroup, *item.Name)
 		if blockedZones.Contains(zoneID) {
 			h.config.Logger.Infof("ignoring blocked zone id: %s", zoneID)
 			continue
@@ -138,7 +115,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 
 		forwarded := h.collectForwardedSubzones(resourceGroup, *item.Name)
 
-		// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
+		// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling SplitZoneID().
 		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(*item.Name), "", forwarded, false)
 
 		zones = append(zones, hostedZone)
@@ -153,7 +130,7 @@ func (h *Handler) collectForwardedSubzones(resourceGroup, zoneName string) []str
 	var top int32 = 1000
 	h.config.RateLimiter.Accept()
 	result, err := h.recordsClient.ListByType(h.ctx, resourceGroup, zoneName, azure.NS, &top, "")
-	zoneID := makeZoneID(resourceGroup, zoneName)
+	zoneID := utils.MakeZoneID(resourceGroup, zoneName)
 	h.config.Metrics.AddZoneRequests(zoneID, provider.M_LISTRECORDS, 1)
 	if err != nil {
 		logger.Infof("Failed fetching NS records for %s: %s", zoneName, err.Error())
@@ -170,18 +147,6 @@ func (h *Handler) collectForwardedSubzones(resourceGroup, zoneName string) []str
 	return forwarded
 }
 
-func makeZoneID(resourceGroup, zoneName string) string {
-	return resourceGroup + "/" + zoneName
-}
-
-func splitZoneid(zoneid string) (string, string) {
-	parts := strings.Split(zoneid, "/")
-	if len(parts) != 2 {
-		return "", zoneid
-	}
-	return parts[0], parts[1]
-}
-
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
 	return h.cache.GetZoneState(zone)
 }
@@ -189,7 +154,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
-	resourceGroup, zoneName := splitZoneid(zone.Id())
+	resourceGroup, zoneName := utils.SplitZoneID(zone.Id())
 	h.config.RateLimiter.Accept()
 	results, err := h.recordsClient.ListAllByDNSZoneComplete(h.ctx, resourceGroup, zoneName, nil, "")
 	h.config.Metrics.AddZoneRequests(zone.Id(), provider.M_LISTRECORDS, 1)
@@ -249,7 +214,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 }
 
 func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	resourceGroup, zoneName := splitZoneid(zone.Id())
+	resourceGroup, zoneName := utils.SplitZoneID(zone.Id())
 	exec := NewExecution(logger, h, resourceGroup, zoneName)
 
 	var succeeded, failed int

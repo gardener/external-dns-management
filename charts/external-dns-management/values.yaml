@@ -72,6 +72,11 @@ configuration:
   # azureDNSRatelimiterBurst:
   # azureDNSRatelimiterEnabled:
   # azureDNSRatelimiterQps:
+  # azurePrivateDnsAdvancedBatchSize:
+  # azurePrivateDnsAdvancedMaxRetries:
+  # azurePrivateDnsRatelimiterBurst:
+  # azurePrivateDnsRatelimiterEnabled:
+  # azurePrivateDnsRatelimiterQps:
   # bindAddressHttp:
   # cacheTtl: 120
   # cloudflareDNSAdvancedBatchSize:
@@ -96,6 +101,11 @@ configuration:
   # compoundAzureDnsRatelimiterBurst:
   # compoundAzureDnsRatelimiterEnabled:
   # compoundAzureDnsRatelimiterQps:
+  # compoundAzurePrivateDnsAdvancedBatchSize:
+  # compoundAzurePrivateDnsAdvancedMaxRetries:
+  # compoundAzurePrivateDnsRatelimiterBurst:
+  # compoundAzurePrivateDnsRatelimiterEnabled:
+  # compoundAzurePrivateDnsRatelimiterQps:
   # compoundCacheTtl: 120
   # compoundCloudflareDnsAdvancedBatchSize:
   # compoundCloudflareDnsAdvancedMaxRetries:

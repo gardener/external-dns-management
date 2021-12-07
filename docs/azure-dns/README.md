@@ -1,6 +1,7 @@
 # Azure DNS Provider
 
 This DNS provider allows you to create and manage DNS entries in [Azure DNS](https://docs.microsoft.com/en-us/azure/dns/dns-overview). 
+For private DNS zones, please see use the provider type [azure-private-dns](../azure-private-dns/README.md).
 
 ## Create a service principal account
 
