@@ -438,6 +438,12 @@ func (this *changeModelDoneHandler) Succeeded() {
 	}
 }
 
+func (this *changeModelDoneHandler) Throttled() {
+	if this.inner != nil {
+		this.inner.Throttled()
+	}
+}
+
 /////////////////////////////////////////////////////////////////////////////////
 // DNSSets
 

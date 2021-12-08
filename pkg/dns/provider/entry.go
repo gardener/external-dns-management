@@ -701,6 +701,29 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 	return this.object.ModifyStatus(f)
 }
 
+func (this *EntryVersion) UpdateState(logger logger.LogContext, state, msg string) (bool, error) {
+	f := func(data resources.ObjectData) (bool, error) {
+		obj, err := this.object.GetResource().Wrap(data)
+		if err != nil {
+			return false, err
+		}
+		o := dnsutils.DNSObject(obj)
+		b := o.BaseStatus()
+		mod := &utils.ModificationState{}
+
+		mod.AssureStringPtrValue(&b.Message, msg)
+		this.status.Message = &msg
+		mod.AssureStringValue(&b.State, state)
+		this.status.State = state
+		if mod.IsModified() {
+			dnsutils.SetLastUpdateTime(&b.LastUptimeTime)
+			logger.Infof("update state of '%s/%s' to %s (%s)", o.GetNamespace(), o.GetName(), state, msg)
+		}
+		return mod.IsModified(), nil
+	}
+	return this.object.ModifyStatus(f)
+}
+
 func targetList(targets Targets) ([]string, string) {
 	list := []string{}
 	msg := "update effective targets: ["

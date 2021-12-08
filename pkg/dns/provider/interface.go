@@ -259,5 +259,6 @@ type DNSProvider interface {
 type DoneHandler interface {
 	SetInvalid(err error)
 	Failed(err error)
+	Throttled()
 	Succeeded()
 }

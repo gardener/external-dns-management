@@ -204,6 +204,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 						req.zone.nextTrigger = delay
 						changes.PseudoApply(e.DNSName())
 						logger.Infof("rate limited %s, delay %.1f s", e.ObjectName(), delay.Seconds())
+						statusUpdate.Throttled()
 						if delay.Seconds() > 2 {
 							e.object.Eventf(corev1.EventTypeNormal, "rate limit", "delayed for %1.fs", delay.Seconds())
 						}
