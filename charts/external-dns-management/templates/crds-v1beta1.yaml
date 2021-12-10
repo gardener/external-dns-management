@@ -422,12 +422,12 @@ spec:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
             of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#resources'
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
           type: string
         kind:
           description: 'Kind is a string value representing the REST resource this
             object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds'
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
           type: string
         metadata:
           type: object
@@ -438,22 +438,73 @@ spec:
               format: int64
               type: integer
             domains:
+              description: desired selection of usable domains (by default all zones
+                and domains in those zones will be served)
               properties:
                 exclude:
+                  description: values that should be ignored (domains or zones)
                   items:
                     type: string
                   type: array
                 include:
+                  description: values that should be observed (domains or zones)
                   items:
                     type: string
                   type: array
               type: object
             providerConfig:
+              description: optional additional provider specific configuration values
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+            rateLimit:
+              description: rate limit for create/update operations on DNSEntries assigned
+                to this provider
+              properties:
+                burst:
+                  description: Burst allows bursts of up to 'burst' to exceed the
+                    rate defined by 'RequestsPerDay', while still maintaining a smoothed
+                    rate of 'RequestsPerDay'
+                  type: integer
+                requestsPerDay:
+                  description: RequestsPerDay is create/update request rate per DNS
+                    entry given by requests per day
+                  type: integer
+              required:
+                - burst
+                - requestsPerDay
               type: object
             secretRef:
+              description: access credential for the external DNS system of the given
+                type
+              properties:
+                name:
+                  description: Name is unique within a namespace to reference a secret
+                    resource.
+                  type: string
+                namespace:
+                  description: Namespace defines the space within which the secret
+                    name must be unique.
+                  type: string
               type: object
             type:
+              description: type of the provider (selecting the responsible type of
+                DNS controller)
               type: string
+            zones:
+              description: desired selection of usable domains the domain selection
+                is used for served zones, only (by default all zones will be served)
+              properties:
+                exclude:
+                  description: values that should be ignored (domains or zones)
+                  items:
+                    type: string
+                  type: array
+                include:
+                  description: values that should be observed (domains or zones)
+                  items:
+                    type: string
+                  type: array
+              type: object
           type: object
         status:
           properties:
@@ -462,30 +513,52 @@ spec:
               format: int64
               type: integer
             domains:
+              description: actually served domain selection
               properties:
                 excluded:
+                  description: Excluded values (domains or zones)
                   items:
                     type: string
                   type: array
                 included:
+                  description: included values (domains or zones)
                   items:
                     type: string
                   type: array
               type: object
             lastUpdateTime:
-              description: lastUpdateTime contains the timestamp of the last status update
+              description: lastUpdateTime contains the timestamp of the last status
+                update
               format: date-time
               type: string
             message:
+              description: message describing the reason for the actual state of the
+                provider
               type: string
+            observedGeneration:
+              format: int64
+              type: integer
             state:
+              description: state of the provider
               type: string
-          required:
-            - state
-            - domains
+            zones:
+              description: actually served zones
+              properties:
+                excluded:
+                  description: Excluded values (domains or zones)
+                  items:
+                    type: string
+                  type: array
+                included:
+                  description: included values (domains or zones)
+                  items:
+                    type: string
+                  type: array
+              type: object
           type: object
       required:
         - spec
+      type: object
   version: v1alpha1
   versions:
     - name: v1alpha1

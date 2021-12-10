@@ -84,3 +84,9 @@ func (this *StatusUpdate) Succeeded() {
 		}
 	}
 }
+func (this *StatusUpdate) Throttled() {
+	_, err := this.UpdateState(this.logger, api.STATE_PENDING, MSG_THROTTLING)
+	if err != nil {
+		this.logger.Errorf("cannot update: %s", err)
+	}
+}

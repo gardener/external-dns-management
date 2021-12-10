@@ -26,6 +26,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
@@ -131,6 +132,9 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 			logger.Infof("zone reconcilation failed for %s: %s", req.zone.Id(), err)
 			return reconcile.Succeeded(logger).RescheduleAfter(req.zone.RateLimit())
 		}
+		if req.zone.nextTrigger > 0 {
+			return reconcile.Succeeded(logger).RescheduleAfter(req.zone.nextTrigger)
+		}
 		return reconcile.Succeeded(logger)
 	}
 	logger.Infof("reconciling zone %q (%s) already busy and skipped", zoneid, req.zone.Domain())
@@ -182,16 +186,33 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		req.zone.Failed()
 		return err
 	}
+	req.zone.nextTrigger = 0
 	modified := false
 	var conflictErr error
 	for _, e := range req.entries {
 		// TODO: err handling
 		var changeResult ChangeResult
 		spec := e.object.GetTargetSpec(e)
+		statusUpdate := NewStatusUpdate(logger, e, this.GetContext())
 		if e.IsDeleting() {
-			changeResult = changes.Delete(e.DNSName(), e.ObjectName().Namespace(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), spec)
+			changeResult = changes.Delete(e.DNSName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
 		} else {
-			changeResult = changes.Apply(e.DNSName(), e.ObjectName().Namespace(), e.CreatedAt(), NewStatusUpdate(logger, e, this.GetContext()), spec)
+			if !e.NotRateLimited() {
+				changeResult = changes.Check(e.DNSName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
+				if changeResult.Modified {
+					if accepted, delay := this.tryAcceptProviderRateLimiter(logger, e); !accepted {
+						req.zone.nextTrigger = delay
+						changes.PseudoApply(e.DNSName())
+						logger.Infof("rate limited %s, delay %.1f s", e.ObjectName(), delay.Seconds())
+						statusUpdate.Throttled()
+						if delay.Seconds() > 2 {
+							e.object.Eventf(corev1.EventTypeNormal, "rate limit", "delayed for %1.fs", delay.Seconds())
+						}
+						continue
+					}
+				}
+			}
+			changeResult = changes.Apply(e.DNSName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
 			if changeResult.Error != nil && changeResult.Retry {
 				conflictErr = changeResult.Error
 			}

@@ -90,6 +90,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 				mod.AssureStringValue(&ownerStatus.State, status.State)
 				assureDNSSelectionStatus(mod, &ownerStatus.Domains, status.Domains)
 				assureDNSSelectionStatus(mod, &ownerStatus.Zones, status.Zones)
+				assureRateLimit(mod, &ownerStatus.RateLimit, status.RateLimit)
 				mod.AssureInt64PtrPtr(&ownerStatus.DefaultTTL, status.DefaultTTL)
 				var msg *string
 				if status.Message != nil && *status.Message != "" {
@@ -123,6 +124,18 @@ func assureDNSSelectionStatus(mod *utils2.ModificationState, t *api.DNSSelection
 	if !reflect.DeepEqual(*t, s) {
 		*t = s
 		mod.Modify(true)
+	}
+}
+
+func assureRateLimit(mod *utils2.ModificationState, t **api.RateLimit, s *api.RateLimit) {
+	if s == nil && *t != nil {
+		*t = nil
+		mod.Modify(true)
+	} else if s != nil {
+		if *t == nil || !reflect.DeepEqual(**t, *s) {
+			*t = s
+			mod.Modify(true)
+		}
 	}
 }
 

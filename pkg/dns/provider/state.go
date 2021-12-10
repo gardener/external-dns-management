@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -136,12 +137,21 @@ type state struct {
 	outdated        *synchronizedEntries
 	blockingEntries map[resources.ObjectName]time.Time
 
+	providerRateLimiter map[resources.ObjectName]*rateLimiterData
+	prlock              sync.RWMutex
+
 	dnsnames   DNSNames
 	references *References
 
 	initialized bool
 
 	dnsTicker *Ticker
+}
+
+type rateLimiterData struct {
+	api.RateLimit
+	rateLimiter flowcontrol.RateLimiter
+	lastAccept  atomic.Value
 }
 
 func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller.Classes, config Config) *state {
@@ -159,28 +169,29 @@ func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller
 	realms := access.RealmTypes{"use": access.NewRealmType(dns.REALM_ANNOTATION)}
 
 	return &state{
-		setup:           newSetup(),
-		classes:         classes,
-		context:         ctx,
-		ownerresc:       ownerresc,
-		config:          config,
-		realms:          realms,
-		accountCache:    NewAccountCache(config.CacheTTL, config.CacheDir, config.Options),
-		ownerCache:      NewOwnerCache(ctx, &config),
-		foreign:         map[resources.ObjectName]*foreignProvider{},
-		providers:       map[resources.ObjectName]*dnsProviderVersion{},
-		deleting:        map[resources.ObjectName]*dnsProviderVersion{},
-		zones:           map[string]*dnsHostedZone{},
-		secrets:         map[resources.ObjectName]resources.ObjectNameSet{},
-		zoneproviders:   map[string]resources.ObjectNameSet{},
-		providerzones:   map[resources.ObjectName]map[string]*dnsHostedZone{},
-		providersecrets: map[resources.ObjectName]resources.ObjectName{},
-		zonePolicies:    map[string]*dnsHostedZonePolicy{},
-		entries:         Entries{},
-		outdated:        newSynchronizedEntries(),
-		blockingEntries: map[resources.ObjectName]time.Time{},
-		dnsnames:        map[ZonedDNSName]*Entry{},
-		references:      NewReferenceCache(),
+		setup:               newSetup(),
+		classes:             classes,
+		context:             ctx,
+		ownerresc:           ownerresc,
+		config:              config,
+		realms:              realms,
+		accountCache:        NewAccountCache(config.CacheTTL, config.CacheDir, config.Options),
+		ownerCache:          NewOwnerCache(ctx, &config),
+		foreign:             map[resources.ObjectName]*foreignProvider{},
+		providers:           map[resources.ObjectName]*dnsProviderVersion{},
+		deleting:            map[resources.ObjectName]*dnsProviderVersion{},
+		zones:               map[string]*dnsHostedZone{},
+		secrets:             map[resources.ObjectName]resources.ObjectNameSet{},
+		zoneproviders:       map[string]resources.ObjectNameSet{},
+		providerzones:       map[resources.ObjectName]map[string]*dnsHostedZone{},
+		providersecrets:     map[resources.ObjectName]resources.ObjectName{},
+		zonePolicies:        map[string]*dnsHostedZonePolicy{},
+		entries:             Entries{},
+		outdated:            newSynchronizedEntries(),
+		blockingEntries:     map[resources.ObjectName]time.Time{},
+		dnsnames:            map[ZonedDNSName]*Entry{},
+		references:          NewReferenceCache(),
+		providerRateLimiter: map[resources.ObjectName]*rateLimiterData{},
 	}
 }
 
@@ -618,4 +629,40 @@ func (this *state) RefineLogger(logger logger.LogContext, ptype string) logger.L
 		logger = logger.NewContext("type", ptype)
 	}
 	return logger
+}
+
+func (this *state) tryAcceptProviderRateLimiter(logger logger.LogContext, entry *Entry) (bool, time.Duration) {
+	delay := 0 * time.Second
+	if entry.providername == nil {
+		logger.Infof("missing providername for entry %s", entry.ObjectName())
+		return true, delay
+	}
+	this.prlock.Lock()
+	defer this.prlock.Unlock()
+
+	rt := this.providerRateLimiter[entry.providername]
+	if rt == nil {
+		// not rate limited
+		return true, delay
+	}
+	accepted := rt.rateLimiter.TryAccept()
+	if accepted {
+		rt.lastAccept.Store(time.Now())
+	} else {
+		delay = time.Duration(86400/rt.RequestsPerDay) * time.Second
+		value := rt.lastAccept.Load()
+		if value != nil {
+			lastAccept := value.(time.Time)
+			delay -= time.Now().Sub(lastAccept)
+		}
+		if delay < 100*time.Millisecond {
+			delay = 100 * time.Millisecond
+		}
+	}
+	return accepted, delay
+}
+
+func (this *state) ObjectUpdated(key resources.ClusterObjectKey) {
+	this.context.Infof("requeue %s because of change in annotation resource", key)
+	this.context.EnqueueKey(key)
 }

@@ -30,12 +30,13 @@ type dnsHostedZones map[string]*dnsHostedZone
 
 type dnsHostedZone struct {
 	*dnsutils.RateLimiter
-	lock   sync.Mutex
-	busy   bool
-	zone   DNSHostedZone
-	next   time.Time
-	owners utils.StringSet
-	policy *dnsHostedZonePolicy
+	lock        sync.Mutex
+	busy        bool
+	zone        DNSHostedZone
+	next        time.Time
+	nextTrigger time.Duration
+	owners      utils.StringSet
+	policy      *dnsHostedZonePolicy
 }
 
 func newDNSHostedZone(min time.Duration, zone DNSHostedZone) *dnsHostedZone {

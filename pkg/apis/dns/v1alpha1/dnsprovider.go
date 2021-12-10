@@ -75,6 +75,17 @@ type DNSProviderSpec struct {
 	// default TTL used for DNS entries if not specified explicitly
 	// +optional
 	DefaultTTL *int64 `json:"defaultTTL,omitempty"`
+	// rate limit for create/update operations on DNSEntries assigned to this provider
+	// +optional
+	RateLimit *RateLimit `json:"rateLimit,omitempty"`
+}
+
+type RateLimit struct {
+	// RequestsPerDay is create/update request rate per DNS entry given by requests per day
+	RequestsPerDay int `json:"requestsPerDay"`
+	// Burst allows bursts of up to 'burst' to exceed the rate defined by 'RequestsPerDay', while still maintaining a
+	// smoothed rate of 'RequestsPerDay'
+	Burst int `json:"burst"`
 }
 
 type DNSSelection struct {
@@ -106,6 +117,9 @@ type DNSProviderStatus struct {
 	// actually used default TTL for DNS entries
 	// +optional
 	DefaultTTL *int64 `json:"defaultTTL,omitempty"`
+	// actually used rate limit for create/update operations on DNSEntries assigned to this provider
+	// +optional
+	RateLimit *RateLimit `json:"rateLimit,omitempty"`
 }
 
 type DNSSelectionStatus struct {

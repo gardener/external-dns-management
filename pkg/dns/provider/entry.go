@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -591,6 +592,10 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				}
 			}
 		}
+
+		if this.status.State == api.STATE_READY && this.object.BaseStatus() != nil && this.object.GetGeneration() != this.object.BaseStatus().ObservedGeneration {
+			this.status.State = api.STATE_PENDING
+		}
 	}
 
 	if this.Kind() != api.DNSLockKind {
@@ -615,6 +620,15 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		_, err = this.object.ModifyStatus(f)
 	}
 	return reconcile.DelayOnError(logger, err)
+}
+
+// NotRateLimited checks for annotation dns.gardener.cloud/not-rate-limited
+func (this *EntryVersion) NotRateLimited() bool {
+	value, ok := resources.GetAnnotation(this.object.Data(), dns.NOT_RATE_LIMITED_ANNOTATION)
+	if ok {
+		ok, _ = strconv.ParseBool(value)
+	}
+	return ok
 }
 
 func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg string, args ...interface{}) error {
@@ -676,6 +690,29 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 			mod.AssureStringPtrValue(&b.Message, msg)
 			this.status.Message = &msg
 		}
+		mod.AssureStringValue(&b.State, state)
+		this.status.State = state
+		if mod.IsModified() {
+			dnsutils.SetLastUpdateTime(&b.LastUptimeTime)
+			logger.Infof("update state of '%s/%s' to %s (%s)", o.GetNamespace(), o.GetName(), state, msg)
+		}
+		return mod.IsModified(), nil
+	}
+	return this.object.ModifyStatus(f)
+}
+
+func (this *EntryVersion) UpdateState(logger logger.LogContext, state, msg string) (bool, error) {
+	f := func(data resources.ObjectData) (bool, error) {
+		obj, err := this.object.GetResource().Wrap(data)
+		if err != nil {
+			return false, err
+		}
+		o := dnsutils.DNSObject(obj)
+		b := o.BaseStatus()
+		mod := &utils.ModificationState{}
+
+		mod.AssureStringPtrValue(&b.Message, msg)
+		this.status.Message = &msg
 		mod.AssureStringValue(&b.State, state)
 		this.status.State = state
 		if mod.IsModified() {
