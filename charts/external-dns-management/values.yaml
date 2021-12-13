@@ -230,7 +230,7 @@ configuration:
   # kubeconfigDisableDeployCrds: false
   # kubeconfigId: ""
   # kubeconfigMigrationIds: ""
-  # leaseDuration:
+  leaseDuration: 25s
   # leaseName:
   # leaseRenewDeadline:
   # leaseResourceLock:

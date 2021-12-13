@@ -45,6 +45,7 @@ import (
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
 
+	_ "go.uber.org/automaxprocs"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"

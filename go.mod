@@ -24,6 +24,7 @@ require (
 	github.com/onsi/gomega v1.10.5
 	github.com/prometheus/client_golang v1.7.1
 	go.uber.org/atomic v1.6.0
+	go.uber.org/automaxprocs v1.4.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
