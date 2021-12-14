@@ -19,7 +19,6 @@ package pprof
 import (
 	"net/http"
 	"net/http/pprof"
-	_ "net/http/pprof"
 
 	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/configmain"

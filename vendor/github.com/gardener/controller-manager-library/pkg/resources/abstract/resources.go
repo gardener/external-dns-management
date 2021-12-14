@@ -191,7 +191,12 @@ func (this *AbstractResources) _newResource(gvk schema.GroupVersionKind, otype r
 		return nil, errors.New(errors.ERR_NO_LIST_TYPE, "cannot determine list type for %s", otype)
 	}
 
-	return this.newResource(this.self, gvk, otype, ltype)
+	resource, err := this.newResource(this.self, gvk, otype, ltype)
+	if err != nil {
+		return nil, err
+	}
+	this.handlersByObjType[otype] = resource
+	return resource, nil
 }
 
 type getResource func(gvk schema.GroupVersionKind) (Resource, error)

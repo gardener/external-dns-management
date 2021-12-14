@@ -198,12 +198,16 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 	if err != nil {
 		return nil, err
 	}
+	secretresc, err := c.GetCluster(TARGET_CLUSTER).Resources().GetByGK(resources.NewGroupKind("core", "Secret"))
+	if err != nil {
+		return nil, err
+	}
 
 	return &reconciler{
 		controller: c,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewDNSState(NewDefaultContext(c), ownerresc, classes, *config)
+				return NewDNSState(NewDefaultContext(c), ownerresc, secretresc, classes, *config)
 			}).(*state),
 	}, nil
 }
