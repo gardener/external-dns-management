@@ -21,7 +21,7 @@ resources:
 vpa:
   enabled: true
   minAllowed:
-    cpu: 20m
+    cpu: 50m
     memory: 50Mi
   updatePolicy:
     updateMode: "Auto"
@@ -196,6 +196,7 @@ configuration:
   # dnsproviderReplicationTargetNamespace:
   # dnsproviderReplicationTargetRealms:
   # dnsproviderReplicationTargetsPoolSize:
+  # enableProfiling:
   # excludeDomains: google.com
   # forceCrdUpdate: false
   # googleCloudDNSAdvancedBatchSize:
@@ -230,7 +231,7 @@ configuration:
   # kubeconfigDisableDeployCrds: false
   # kubeconfigId: ""
   # kubeconfigMigrationIds: ""
-  # leaseDuration:
+  leaseDuration: 30s
   # leaseName:
   # leaseRenewDeadline:
   # leaseResourceLock:

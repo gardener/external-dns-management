@@ -562,6 +562,7 @@ Flags:
       --dnsprovider-replication.target-realms string                  realm(s) to use for replicated DNS provider of controller dnsprovider-replication
       --dnsprovider-replication.targets.pool.size int                 Worker pool size for pool targets of controller dnsprovider-replication
       --dry-run                                                       just check, don't modify
+      --enable-profiling                                              enables profiling server at path /debug/pprof (needs option --server-port-http)
       --exclude-domains stringArray                                   excluded domains
       --force-crd-update                                              enforce update of crds even they are unmanaged
       --google-clouddns.advanced.batch-size int                       batch size for change requests (currently only used for aws-route53)

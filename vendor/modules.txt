@@ -124,7 +124,7 @@ github.com/fatih/color
 github.com/form3tech-oss/jwt-go
 # github.com/fsnotify/fsnotify v1.4.9
 github.com/fsnotify/fsnotify
-# github.com/gardener/controller-manager-library v0.2.1-0.20210924121813-c0a3928cfc8b
+# github.com/gardener/controller-manager-library v0.2.1-0.20211214150939-78d41dea001b
 ## explicit
 github.com/gardener/controller-manager-library/hack
 github.com/gardener/controller-manager-library/pkg/certmgmt
@@ -398,6 +398,12 @@ go.opencensus.io/trace/tracestate
 # go.uber.org/atomic v1.6.0
 ## explicit
 go.uber.org/atomic
+# go.uber.org/automaxprocs v1.4.0
+## explicit
+go.uber.org/automaxprocs
+go.uber.org/automaxprocs/internal/cgroups
+go.uber.org/automaxprocs/internal/runtime
+go.uber.org/automaxprocs/maxprocs
 # golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 golang.org/x/crypto/pkcs12
 golang.org/x/crypto/pkcs12/internal/rc2

@@ -114,6 +114,8 @@ type state struct {
 	ownerresc resources.Interface
 	ownerupd  chan OwnerCounts
 
+	secretresc resources.Interface
+
 	classes *controller.Classes
 	config  Config
 
@@ -154,7 +156,7 @@ type rateLimiterData struct {
 	lastAccept  atomic.Value
 }
 
-func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller.Classes, config Config) *state {
+func NewDNSState(ctx Context, ownerresc, secretresc resources.Interface, classes *controller.Classes, config Config) *state {
 	ctx.Infof("responsible for classes:     %s (%s)", classes, classes.Main())
 	ctx.Infof("availabled providers types   %s", config.Factory.TypeCodes())
 	ctx.Infof("enabled providers types:     %s", config.Enabled)
@@ -173,6 +175,7 @@ func NewDNSState(ctx Context, ownerresc resources.Interface, classes *controller
 		classes:             classes,
 		context:             ctx,
 		ownerresc:           ownerresc,
+		secretresc:          secretresc,
 		config:              config,
 		realms:              realms,
 		accountCache:        NewAccountCache(config.CacheTTL, config.CacheDir, config.Options),
@@ -206,6 +209,10 @@ func (this *state) Setup() {
 	if err != nil || processors <= 0 {
 		processors = 5
 	}
+
+	// enforce global informer for secrets
+	_, _ = this.secretresc.ListCached(labels.Nothing())
+
 	this.context.Infof("using %d parallel workers for initialization", processors)
 	this.setupFor(&api.DNSProvider{}, "providers", func(e resources.Object) {
 		p := dnsutils.DNSProvider(e)

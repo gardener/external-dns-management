@@ -495,6 +495,9 @@ spec:
         {{- if .Values.configuration.dnsproviderReplicationTargetsPoolSize }}
         - --dnsprovider-replication.targets.pool.size={{ .Values.configuration.dnsproviderReplicationTargetsPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.enableProfiling }}
+        - --enable-profiling={{ .Values.configuration.enableProfiling }}
+        {{- end }}
         {{- if .Values.configuration.excludeDomains }}
         - --exclude-domains={{ .Values.configuration.excludeDomains }}
         {{- end }}

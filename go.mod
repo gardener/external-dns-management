@@ -12,7 +12,7 @@ require (
 	github.com/aws/aws-sdk-go v1.38.43
 	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/emicklei/go-restful v2.9.6+incompatible // indirect
-	github.com/gardener/controller-manager-library v0.2.1-0.20210924121813-c0a3928cfc8b
+	github.com/gardener/controller-manager-library v0.2.1-0.20211214150939-78d41dea001b
 	github.com/go-openapi/runtime v0.19.15
 	github.com/go-openapi/strfmt v0.19.5
 	github.com/gophercloud/gophercloud v0.18.0
@@ -24,6 +24,7 @@ require (
 	github.com/onsi/gomega v1.10.5
 	github.com/prometheus/client_golang v1.7.1
 	go.uber.org/atomic v1.6.0
+	go.uber.org/automaxprocs v1.4.0
 	golang.org/x/lint v0.0.0-20200302205851-738671d3881b
 	golang.org/x/oauth2 v0.0.0-20200107190931-bf48bf16ab8d
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c

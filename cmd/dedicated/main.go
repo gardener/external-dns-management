@@ -25,7 +25,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	_ "github.com/gardener/external-dns-management/pkg/controller/annotation/annotations"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/alicloud/controller"
@@ -43,7 +42,9 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
+	_ "github.com/gardener/external-dns-management/pkg/server/pprof"
 
+	_ "go.uber.org/automaxprocs"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
