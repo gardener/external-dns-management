@@ -605,7 +605,7 @@ Flags:
       --lease-duration duration                                       lease duration
       --lease-name string                                             name for lease object
       --lease-renew-deadline duration                                 lease renew deadline
-      --lease-resource-lock string                                    determines which resource lock to use for leader election, defaults to 'configmapsleases'
+      --lease-resource-lock string                                    determines which resource lock to use for leader election, defaults to 'leases'
       --lease-retry-period duration                                   lease retry period
       --lock-status-check-period duration                             interval for dns lock status checks
   -D, --log-level string                                              logrus log level

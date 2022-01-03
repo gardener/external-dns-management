@@ -25,7 +25,7 @@ type Config struct {
 
 func (this *Config) AddOptionsToSet(set config.OptionSet) {
 	set.AddStringOption(&this.LeaseName, "lease-name", "", "", "name for lease object")
-	set.AddStringOption(&this.LeaseLeaderElectionResourceLock, "lease-resource-lock", "", resourcelock.ConfigMapsLeasesResourceLock, "determines which resource lock to use for leader election, defaults to 'configmapsleases'")
+	set.AddStringOption(&this.LeaseLeaderElectionResourceLock, "lease-resource-lock", "", resourcelock.LeasesResourceLock, "determines which resource lock to use for leader election, defaults to 'leases'")
 	set.AddBoolOption(&this.OmitLease, "omit-lease", "", false, "omit lease for development")
 	set.AddDurationOption(&this.LeaseDuration, "lease-duration", "", 15*time.Second, "lease duration")
 	set.AddDurationOption(&this.LeaseRenewDeadline, "lease-renew-deadline", "", 10*time.Second, "lease renew deadline")
