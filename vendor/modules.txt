@@ -146,7 +146,7 @@ github.com/form3tech-oss/jwt-go
 # github.com/fsnotify/fsnotify v1.4.9
 ## explicit; go 1.13
 github.com/fsnotify/fsnotify
-# github.com/gardener/controller-manager-library v0.2.1-0.20211214150939-78d41dea001b
+# github.com/gardener/controller-manager-library v0.2.1-0.20220103153255-cff2a133a1e6
 ## explicit; go 1.16
 github.com/gardener/controller-manager-library/hack
 github.com/gardener/controller-manager-library/pkg/certmgmt
