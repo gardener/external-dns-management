@@ -279,6 +279,8 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 					done.SetInvalid(fmt.Errorf("remote: %s", changeResponse.ErrorMessage))
 				case common.ChangeResponse_FAILED:
 					done.Failed(fmt.Errorf("remote: %s", changeResponse.ErrorMessage))
+				case common.ChangeResponse_THROTTLED:
+					done.Throttled()
 				}
 			}
 		}

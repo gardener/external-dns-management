@@ -112,6 +112,7 @@ message ChangeResponse {
   SUCCEEDED = 1;
   INVALID = 2;
   FAILED = 3;
+  THROTTLED= 4;
   }
   State state = 1;
   string error_message = 2;

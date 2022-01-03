@@ -337,3 +337,7 @@ func (dh *serverDoneHandler) Failed(err error) {
 	dh.response.State = common.ChangeResponse_FAILED
 	dh.response.ErrorMessage = err.Error()
 }
+
+func (dh *serverDoneHandler) Throttled() {
+	dh.response.State = common.ChangeResponse_THROTTLED
+}
