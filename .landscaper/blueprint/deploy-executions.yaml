@@ -50,6 +50,8 @@ deployItems:
             - kind: DNSProvider
               type: azure-dns
             - kind: DNSProvider
+              type: azure-private-dns
+            - kind: DNSProvider
               type: google-clouddns
             - kind: DNSProvider
               type: openstack-designate
