@@ -18,8 +18,6 @@ package remote
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/base64"
 	"fmt"
 	"strconv"
 	"strings"
@@ -121,21 +119,34 @@ func (s *server) ProviderRemovedEvent(logger logger.LogContext, objectName resou
 	}
 }
 
-func (s *server) checkAuth(token, requestType, zoneid string) (*namespaceState, logger.LogContext, error) {
+type reportFunc func(err error)
+
+func (s *server) checkAuth(token, requestType, zoneid string) (*namespaceState, logger.LogContext, reportFunc, error) {
+	start := time.Now()
 	parts := strings.SplitN(token, "|", 2)
 	namespace := parts[0]
 	nsState := s.getNamespaceState(namespace, false)
 	if nsState == nil {
-		return nil, s.logctx, fmt.Errorf("namespace %s not found or no providers available", namespace)
+		return nil, s.logctx, nil, fmt.Errorf("namespace %s not found or no providers available", namespace)
 	}
 
 	commonName, err := nsState.getToken(token)
 	logctx := s.logctx.NewContext("namespace", nsState.name).NewContext("commonName", commonName)
 	if err != nil {
-		return nil, logctx, err
+		return nil, logctx, nil, err
 	}
+
+	rf := func(err error) {
+		d := time.Now().Sub(start)
+		code := ""
+		if err != nil {
+			code = substr(err.Error(), 0, 40)
+		}
+		metrics.ReportRemoteAccessSeconds(namespace, commonName, requestType, zoneid, code, d)
+	}
+
 	metrics.ReportRemoteAccessRequests(namespace, commonName, requestType, zoneid)
-	return nsState, logctx, nil
+	return nsState, logctx, rf, nil
 }
 
 func (s *server) Login(ctx context.Context, request *common.LoginRequest) (*common.LoginResponse, error) {
@@ -203,13 +214,19 @@ func (s *server) cleanupTokens() {
 }
 
 func (s *server) GetZones(_ context.Context, request *common.GetZonesRequest) (*common.Zones, error) {
-	nsState, logctx, err := s.checkAuth(request.Token, "GetZones", "")
+	nsState, logctx, report, err := s.checkAuth(request.Token, "GetZones", "")
 	if err != nil {
 		logctx.Warn(err)
 		return nil, err
 	}
 	logctx.Info("GetZones")
 
+	res, err := s.getZones(nsState, logctx)
+	report(err)
+	return res, err
+}
+
+func (s *server) getZones(nsState *namespaceState, logctx logger.LogContext) (*common.Zones, error) {
 	zones, err := nsState.getAllZones(s.spinning)
 	if err != nil {
 		return nil, err
@@ -233,7 +250,7 @@ func (s *server) GetZones(_ context.Context, request *common.GetZonesRequest) (*
 }
 
 func (s *server) GetZoneState(_ context.Context, request *common.GetZoneStateRequest) (*common.ZoneState, error) {
-	nsState, logctx, err := s.checkAuth(request.Token, "GetZoneState", request.Zoneid)
+	nsState, logctx, report, err := s.checkAuth(request.Token, "GetZoneState", request.Zoneid)
 	if err != nil {
 		logctx.Warn(err)
 		return nil, err
@@ -241,7 +258,13 @@ func (s *server) GetZoneState(_ context.Context, request *common.GetZoneStateReq
 	logctx = logctx.NewContext("zoneid", request.Zoneid)
 	logctx.Info("GetZoneState")
 
-	hstate, zone, err := nsState.lockupZone(s.spinning, request.Zoneid)
+	res, err := s.getZoneState(nsState, logctx, request.Zoneid)
+	report(err)
+	return res, err
+}
+
+func (s *server) getZoneState(nsState *namespaceState, logctx logger.LogContext, zoneid string) (*common.ZoneState, error) {
+	hstate, zone, err := nsState.lockupZone(s.spinning, zoneid)
 	if err != nil {
 		return nil, err
 	}
@@ -262,7 +285,7 @@ func (s *server) GetZoneState(_ context.Context, request *common.GetZoneStateReq
 }
 
 func (s *server) Execute(_ context.Context, request *common.ExecuteRequest) (*common.ExecuteResponse, error) {
-	nsState, logctx, err := s.checkAuth(request.Token, "Execute", request.Zoneid)
+	nsState, logctx, report, err := s.checkAuth(request.Token, "Execute", request.Zoneid)
 	if err != nil {
 		logctx.Warn(err)
 		return nil, err
@@ -270,7 +293,13 @@ func (s *server) Execute(_ context.Context, request *common.ExecuteRequest) (*co
 	logctx = logctx.NewContext("zoneid", request.Zoneid)
 	logctx.Infof("Execute: %d changes", len(request.ChangeRequest))
 
-	hstate, zone, err := nsState.lockupZone(s.spinning, request.Zoneid)
+	res, err := s.execute(nsState, logctx, request.Zoneid, request.ChangeRequest)
+	report(err)
+	return res, err
+}
+
+func (s *server) execute(nsState *namespaceState, logctx logger.LogContext, zoneid string, changeRequests []*common.ChangeRequest) (*common.ExecuteResponse, error) {
+	hstate, zone, err := nsState.lockupZone(s.spinning, zoneid)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +318,7 @@ func (s *server) Execute(_ context.Context, request *common.ExecuteRequest) (*co
 	memLogger := newMemoryLogger(logctx)
 	var requests []*provider.ChangeRequest
 	var responses []*common.ChangeResponse
-	for _, request := range request.ChangeRequest {
+	for _, request := range changeRequests {
 		response := &common.ChangeResponse{}
 		responses = append(responses, response)
 		done := newDoneHandler(response)
@@ -304,16 +333,6 @@ func (s *server) Execute(_ context.Context, request *common.ExecuteRequest) (*co
 		ChangeResponse: responses,
 		LogMessage:     memLogger.entries,
 	}, err
-}
-
-func randonString(len int) (string, error) {
-	tokenRnd := make([]byte, len)
-	_, err := rand.Read(tokenRnd)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.StdEncoding.EncodeToString(tokenRnd), nil
 }
 
 func newDoneHandler(response *common.ChangeResponse) provider.DoneHandler {

@@ -19,6 +19,7 @@ package metrics
 import (
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/server"
@@ -40,6 +41,7 @@ func init() {
 	prometheus.MustRegister(Owners)
 	prometheus.MustRegister(RemoteAccessLogins)
 	prometheus.MustRegister(RemoteAccessRequests)
+	prometheus.MustRegister(RemoteAccessSeconds)
 
 	server.RegisterHandler("/metrics", promhttp.Handler())
 }
@@ -115,6 +117,15 @@ var (
 			Help: "Total number of remote access requests",
 		},
 		[]string{"handler", "client", "type", "zoneid"},
+	)
+
+	RemoteAccessSeconds = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "external_dns_management_remoteaccess_seconds",
+			Help:    "Duration in seconds of completed remote access requests",
+			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 25},
+		},
+		[]string{"handler", "client", "type", "zoneid", "error"},
 	)
 )
 
@@ -211,6 +222,10 @@ func ReportRemoteAccessLogins(namespace, client string, success bool) {
 
 func ReportRemoteAccessRequests(namespace, client, requestType, zoneid string) {
 	RemoteAccessRequests.WithLabelValues(namespace, client, requestType, zoneid).Add(float64(1))
+}
+
+func ReportRemoteAccessSeconds(namespace, client, requestType, zoneid, error string, duration time.Duration) {
+	RemoteAccessSeconds.WithLabelValues(namespace, client, requestType, zoneid, error).Observe(duration.Seconds())
 }
 
 func DeleteZone(zone string) {
