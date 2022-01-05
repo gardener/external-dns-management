@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/server/remote/common"
@@ -63,28 +64,33 @@ func newNamespaceState(namespace string) *namespaceState {
 	}
 }
 
-func (s *namespaceState) updateHandler(name string, handler provider.LightDNSHandler) bool {
+func (s *namespaceState) updateHandler(logger logger.LogContext, name string, handler provider.LightDNSHandler) bool {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	mod := false
-	if hstate := s.handlers[name]; hstate != nil {
+	zones, err := handler.GetZones()
+	if err != nil {
+		logger.Errorf("handler.GetZones failed: %w", err)
+	}
+	hstate := s.handlers[name]
+	if hstate != nil {
+		oldZones := hstate.getCachedZones()
 		hstate.lock.Lock()
-		defer hstate.lock.Unlock()
-
-		if hstate.handler != handler {
-			hstate.handler = handler
-			hstate.zones = atomic.Value{}
-			mod = true
-		}
+		hstate.handler = handler
+		hstate.zones.Store(zones)
+		hstate.lock.Unlock()
+		mod = !zones.EquivalentTo(oldZones)
 	} else {
 		ctx := context.TODO()
-		s.handlers[name] = &handlerState{
+		hstate = &handlerState{
 			lock:    dnsutils.NewTryLock(ctx),
 			name:    name,
 			handler: handler,
 			zones:   atomic.Value{},
 		}
+		hstate.zones.Store(zones)
+		s.handlers[name] = hstate
 		mod = true
 	}
 

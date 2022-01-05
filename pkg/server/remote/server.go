@@ -86,7 +86,7 @@ func (s *server) ProviderUpdatedEvent(logger logger.LogContext, objectName resou
 	}
 
 	nsState := s.getNamespaceState(objectName.Namespace(), true)
-	if nsState.updateHandler(objectName.Name(), handler) {
+	if nsState.updateHandler(logger, objectName.Name(), handler) {
 		logger.Infof("added/updated for remote access")
 	}
 }

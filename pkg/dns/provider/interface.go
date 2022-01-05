@@ -154,7 +154,7 @@ type DNSHostedZone interface {
 
 type DNSHostedZones []DNSHostedZone
 
-func (this DNSHostedZones) equivalentTo(infos DNSHostedZones) bool {
+func (this DNSHostedZones) EquivalentTo(infos DNSHostedZones) bool {
 	if len(this) != len(infos) {
 		return false
 	}

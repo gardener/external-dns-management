@@ -291,7 +291,7 @@ func (this *dnsProviderVersion) equivalentTo(v *dnsProviderVersion) bool {
 	if this.account != v.account {
 		return false
 	}
-	if !this.zones.equivalentTo(v.zones) {
+	if !this.zones.EquivalentTo(v.zones) {
 		return false
 	}
 	if !this.def_include.Equals(v.def_include) {

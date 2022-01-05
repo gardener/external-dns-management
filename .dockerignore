@@ -1,0 +1,23 @@
+# Ignore everything
+**
+
+# Exclude folders relevant for build
+!charts/
+!cmd/
+!docs/
+!example/
+!hack/
+!pkg/
+!test/
+!tools/
+!vendor/
+!local/remote/remoteclient/main.go
+
+!.gitignore
+!.golangci.yaml
+
+!go.mod
+!go.sum
+
+!VERSION
+!Makefile
