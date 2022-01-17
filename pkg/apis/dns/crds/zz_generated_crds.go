@@ -907,13 +907,13 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .metadata.spec.type
+    - jsonPath: .spec.type
       name: Type
       type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
-    - jsonPath: .status.creationTimestamp
+    - jsonPath: .status.notBefore
       name: SecretAge
       type: date
     name: v1alpha1

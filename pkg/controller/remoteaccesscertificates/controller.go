@@ -223,7 +223,7 @@ func (r *reconciler) createServerCertificate(cert *api.RemoteAccessCertificate) 
 	subject := createSubject(cert.Spec.DomainName)
 
 	cdata, err := createCertificate(r.clientCACert, r.clientCAPrivateKey, subject, cert.Namespace, cert.Spec.DomainName,
-		cert.Spec.Days, r.nextSerialNumber.Inc())
+		cert.Spec.Days, r.nextSerialNumber.Inc(), true)
 	if err != nil {
 		return err
 	}
@@ -236,7 +236,7 @@ func (r *reconciler) createClientCertificate(cert *api.RemoteAccessCertificate) 
 	subject := createSubject(commonName)
 
 	cdata, err := createCertificate(r.clientCACert, r.clientCAPrivateKey, subject, cert.Namespace, cert.Spec.DomainName,
-		cert.Spec.Days, r.nextSerialNumber.Inc())
+		cert.Spec.Days, r.nextSerialNumber.Inc(), false)
 	if err != nil {
 		return err
 	}

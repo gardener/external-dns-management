@@ -45,7 +45,7 @@ func createSubject(commonName string) pkix.Name {
 }
 
 func createCertificate(caCert *x509.Certificate, caPrivateKey *rsa.PrivateKey, subject pkix.Name, namespace, dnsName string,
-	days int, serialNumber int64) (*certData, error) {
+	days int, serialNumber int64, isServer bool) (*certData, error) {
 	key, _ := rsa.GenerateKey(rand.Reader, 1024)
 
 	csrTemplate := x509.CertificateRequest{
@@ -61,6 +61,10 @@ func createCertificate(caCert *x509.Certificate, caPrivateKey *rsa.PrivateKey, s
 		return nil, err
 	}
 
+	extKeyUsage := x509.ExtKeyUsageClientAuth
+	if isServer {
+		extKeyUsage = x509.ExtKeyUsageServerAuth
+	}
 	crtTemplate := x509.Certificate{
 		Signature:          csr.Signature,
 		SignatureAlgorithm: csr.SignatureAlgorithm,
@@ -74,7 +78,7 @@ func createCertificate(caCert *x509.Certificate, caPrivateKey *rsa.PrivateKey, s
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().Add(time.Duration(days) * 24 * time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
+		ExtKeyUsage:  []x509.ExtKeyUsage{extKeyUsage},
 		DNSNames:     []string{dnsName},
 	}
 

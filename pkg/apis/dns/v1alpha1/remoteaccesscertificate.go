@@ -34,9 +34,9 @@ type RemoteAccessCertificateList struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:resource:scope=Namespaced,path=remoteaccesscertificates,shortName=remotecert,singular=remoteaccesscertificate
 // +kubebuilder:subresource:status
-// +kubebuilder:printcolumn:name=Type,JSONPath=".metadata.spec.type",type=string
+// +kubebuilder:printcolumn:name=Type,JSONPath=".spec.type",type=string
 // +kubebuilder:printcolumn:name=Age,JSONPath=".metadata.creationTimestamp",type=date
-// +kubebuilder:printcolumn:name=SecretAge,JSONPath=".status.creationTimestamp",type=date
+// +kubebuilder:printcolumn:name=SecretAge,JSONPath=".status.notBefore",type=date
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
