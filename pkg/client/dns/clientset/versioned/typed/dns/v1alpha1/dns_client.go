@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+Copyright (c) 2022 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ type DnsV1alpha1Interface interface {
 	DNSLocksGetter
 	DNSOwnersGetter
 	DNSProvidersGetter
+	RemoteAccessCertificatesGetter
 }
 
 // DnsV1alpha1Client is used to interact with features provided by the dns.gardener.cloud group.
@@ -61,6 +62,10 @@ func (c *DnsV1alpha1Client) DNSOwners(namespace string) DNSOwnerInterface {
 
 func (c *DnsV1alpha1Client) DNSProviders(namespace string) DNSProviderInterface {
 	return newDNSProviders(c, namespace)
+}
+
+func (c *DnsV1alpha1Client) RemoteAccessCertificates(namespace string) RemoteAccessCertificateInterface {
+	return newRemoteAccessCertificates(c, namespace)
 }
 
 // NewForConfig creates a new DnsV1alpha1Client for the given config.

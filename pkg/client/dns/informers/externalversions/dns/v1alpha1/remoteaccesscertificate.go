@@ -32,59 +32,59 @@ import (
 	cache "k8s.io/client-go/tools/cache"
 )
 
-// DNSLockInformer provides access to a shared informer and lister for
-// DNSLocks.
-type DNSLockInformer interface {
+// RemoteAccessCertificateInformer provides access to a shared informer and lister for
+// RemoteAccessCertificates.
+type RemoteAccessCertificateInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.DNSLockLister
+	Lister() v1alpha1.RemoteAccessCertificateLister
 }
 
-type dNSLockInformer struct {
+type remoteAccessCertificateInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewDNSLockInformer constructs a new informer for DNSLock type.
+// NewRemoteAccessCertificateInformer constructs a new informer for RemoteAccessCertificate type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewDNSLockInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredDNSLockInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewRemoteAccessCertificateInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredRemoteAccessCertificateInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredDNSLockInformer constructs a new informer for DNSLock type.
+// NewFilteredRemoteAccessCertificateInformer constructs a new informer for RemoteAccessCertificate type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredDNSLockInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredRemoteAccessCertificateInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.DnsV1alpha1().DNSLocks(namespace).List(context.TODO(), options)
+				return client.DnsV1alpha1().RemoteAccessCertificates(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.DnsV1alpha1().DNSLocks(namespace).Watch(context.TODO(), options)
+				return client.DnsV1alpha1().RemoteAccessCertificates(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&dnsv1alpha1.DNSLock{},
+		&dnsv1alpha1.RemoteAccessCertificate{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *dNSLockInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredDNSLockInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *remoteAccessCertificateInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredRemoteAccessCertificateInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *dNSLockInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&dnsv1alpha1.DNSLock{}, f.defaultInformer)
+func (f *remoteAccessCertificateInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&dnsv1alpha1.RemoteAccessCertificate{}, f.defaultInformer)
 }
 
-func (f *dNSLockInformer) Lister() v1alpha1.DNSLockLister {
-	return v1alpha1.NewDNSLockLister(f.Informer().GetIndexer())
+func (f *remoteAccessCertificateInformer) Lister() v1alpha1.RemoteAccessCertificateLister {
+	return v1alpha1.NewRemoteAccessCertificateLister(f.Informer().GetIndexer())
 }

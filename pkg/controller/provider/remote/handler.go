@@ -33,6 +33,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/server/remote/conversion"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	corev1 "k8s.io/api/core/v1"
 )
 
 type Handler struct {
@@ -62,15 +63,15 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	serverCA_PEM, err := c.GetRequiredProperty("SERVER_CA_CERT")
+	serverCA_PEM, err := c.GetRequiredProperty("SERVER_CA_CERT", "ca.crt")
 	if err != nil {
 		return nil, err
 	}
-	clientCert_PEM, err := c.GetRequiredProperty("CLIENT_CERT")
+	clientCert_PEM, err := c.GetRequiredProperty("CLIENT_CERT", corev1.TLSCertKey)
 	if err != nil {
 		return nil, err
 	}
-	clientKey_PEM, err := c.GetRequiredProperty("CLIENT_KEY")
+	clientKey_PEM, err := c.GetRequiredProperty("CLIENT_KEY", corev1.TLSPrivateKeyKey)
 	if err != nil {
 		return nil, err
 	}

@@ -67,9 +67,9 @@ spec:
         {{- end }}
         {{- if .Values.remoteaccess.enabled }}
         - --remote-access-port={{ .Values.remoteaccess.port }}
-        - --remote-access-cacert=/certs/cacert.pem
-        - --remote-access-servercert=/certs/servercert.pem
-        - --remote-access-serverkey=/certs/serverkey.pem
+        - --remote-access-cacert=/servercert/ca.crt
+        - --remote-access-servercert=/servercert/tls.crt
+        - --remote-access-serverkey=/servercert/tls.key
         {{- end }}
         ### start generated configuration
         {{- if .Values.configuration.acceptedMaintainers }}
@@ -911,9 +911,9 @@ spec:
             claimName: {{ include "external-dns-management.fullname" . }}
         {{- end }}
         {{- if .Values.remoteaccess.server }}
-        - name: certs
+        - name: servercert
           secret:
-            secretName: remoteaccess-certs
+            secretName: remoteaccess-servercert
         {{- end }}
         {{- if .Values.custom.volumes }}
         {{- toYaml .Values.custom.volumes | nindent 8 }}

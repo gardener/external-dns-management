@@ -37,6 +37,7 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/netlify/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/remote/controller"
+	_ "github.com/gardener/external-dns-management/pkg/controller/remoteaccesscertificates"
 	_ "github.com/gardener/external-dns-management/pkg/controller/replication/dnsprovider"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/dnsentry"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
