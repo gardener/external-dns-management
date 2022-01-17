@@ -21,6 +21,12 @@ spec:
   template:
     metadata:
       annotations:
+      {{- if ne .Values.gardener.version "" }}
+      {{- if semverCompare ">= 1.37-0" .Values.gardener.version }}
+        # TODO(rfranzke): Remove in a future release.
+        security.gardener.cloud/trigger: rollout
+      {{- end }}
+      {{- end }}
         checksum/psp: {{ include (print $.Template.BasePath "/psp.yaml") . | sha256sum }}
 {{- if .Values.configuration.serverPortHttp }}
         prometheus.io/scrape: "true"

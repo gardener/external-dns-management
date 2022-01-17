@@ -306,6 +306,7 @@ configuration:
 additionalConfiguration: []
 
 gardener:
+  version: ""
   garden:
     clusterIdentity: garden
   seed:
