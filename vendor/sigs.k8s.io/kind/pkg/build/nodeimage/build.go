@@ -28,12 +28,10 @@ import (
 func Build(options ...Option) error {
 	// default options
 	ctx := &buildContext{
-		mode:      DefaultMode,
 		image:     DefaultImage,
 		baseImage: DefaultBaseImage,
 		logger:    log.NoopLogger{},
-		// TODO: only host arch supported. changing this will be tricky
-		arch: runtime.GOARCH,
+		arch:      runtime.GOARCH,
 	}
 
 	// apply user options
@@ -45,7 +43,7 @@ func Build(options ...Option) error {
 
 	// verify that we're using a supported arch
 	if !supportedArch(ctx.arch) {
-		return errors.Errorf("unsupported architecture %q", ctx.arch)
+		ctx.logger.Warnf("unsupported architecture %q", ctx.arch)
 	}
 
 	// locate sources if no kubernetes source was specified
@@ -58,7 +56,7 @@ func Build(options ...Option) error {
 	}
 
 	// initialize bits
-	builder, err := kube.NewNamedBuilder(ctx.logger, ctx.mode, ctx.kubeRoot, ctx.arch)
+	builder, err := kube.NewDockerBuilder(ctx.logger, ctx.kubeRoot, ctx.arch)
 	if err != nil {
 		return err
 	}
@@ -78,18 +76,4 @@ func supportedArch(arch string) bool {
 	case "ppc64le":
 	}
 	return true
-}
-
-// buildContext is used to build the kind node image, and contains
-// build configuration
-type buildContext struct {
-	// option fields
-	mode      string
-	image     string
-	baseImage string
-	logger    log.Logger
-	// non-option fields
-	arch     string // TODO(bentheelder): this should be an option
-	kubeRoot string
-	builder  kube.Builder
 }

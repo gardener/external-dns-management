@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/Masterminds/semver/v3"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources/errors"
@@ -83,6 +84,7 @@ func (this *Info) InfoString() string {
 
 type ResourceInfos struct {
 	lock              sync.RWMutex
+	wantedGroups      utils.StringSet
 	groupVersionKinds map[schema.GroupVersion]map[string]*Info
 	preferredVersions map[schema.GroupKind]string
 	cluster           Cluster
@@ -90,13 +92,14 @@ type ResourceInfos struct {
 	version           *semver.Version
 }
 
-func NewResourceInfos(c Cluster) (*ResourceInfos, error) {
+func NewResourceInfos(c Cluster, groups utils.StringSet) (*ResourceInfos, error) {
 	res := &ResourceInfos{
+		wantedGroups:      groups,
 		groupVersionKinds: map[schema.GroupVersion]map[string]*Info{},
 		preferredVersions: map[schema.GroupKind]string{},
 		cluster:           c,
 	}
-	err := res.update()
+	err := res.update(groups.Contains)
 	return res, err
 }
 
@@ -126,7 +129,11 @@ func (this *ResourceInfos) updateRestMapper() error {
 	return nil
 }
 
-func (this *ResourceInfos) update() error {
+func (this *ResourceInfos) updateForGroup(groupName string) error {
+	return this.update(func(group string) bool { return group == groupName })
+}
+
+func (this *ResourceInfos) update(includeGroup func(group string) bool) error {
 	cfg := this.cluster.Config()
 	dc, err := discovery.NewDiscoveryClientForConfig(&cfg)
 	if err != nil {
@@ -143,57 +150,77 @@ func (this *ResourceInfos) update() error {
 		return err
 	}
 
-	//list, err := discovery.ServerResources(dc)
-	_, list, err := dc.ServerGroupsAndResources()
+	groups, err := dc.ServerGroups()
 	if err != nil {
-		logger.Warnf("failed to get all server resources for cluster %s: %s", this.cluster.GetName(), err)
-		if len(list) == 0 {
-			return err
-		}
-		logger.Infof("found %d resources", len(list))
+		logger.Warnf("failed to get server groups for cluster %s (this might be an unexpected response from the kube-apiserver): %s", this.cluster.GetName(), err)
+		return err
 	}
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	for _, rl := range list {
-		gv, _ := schema.ParseGroupVersion(rl.GroupVersion)
-
-		m := this.groupVersionKinds[gv]
-		if m == nil {
-			m = map[string]*Info{}
-			this.groupVersionKinds[gv] = m
-		}
-		for _, r := range rl.APIResources {
-			if strings.Index(r.Name, "/") < 0 {
-				m[r.Kind] = &Info{groupVersion: &gv, resourcename: r.Name, kind: r.Kind, namespaced: r.Namespaced, subresources: utils.StringSet{}}
-			}
-		}
-		for _, r := range rl.APIResources {
-			if i := strings.Index(r.Name, "/"); i > 0 {
-				info := m[r.Kind]
-				if info != nil {
-					info.subresources.Add(r.Name[i+1:])
-				}
+	var lastErr error
+	total := 0
+	for _, group := range groups.Groups {
+		if includeGroup(group.Name) {
+			count, err := this.doUpdateGroup(dc, group)
+			total += count
+			if err != nil {
+				lastErr = err
+				logger.Warnf("failed to get all server resources for group %s of cluster %s: %s", group.Name, this.cluster.GetName(), err)
 			}
 		}
 	}
-
-	list, err = dc.ServerPreferredResources()
-	if err != nil {
-		logger.Warnf("*** failed to get all preferred server resources for cluster %s: %s", this.cluster.GetName(), err)
-		if len(list) == 0 {
-			return err
+	if lastErr != nil {
+		if total == 0 {
+			return lastErr
 		}
-		logger.Infof("found %d resources", len(list))
-	}
-	for _, rl := range list {
-		// fmt.Printf("# PREFERRED: %s\n", rl.GroupVersion)
-		gv, _ := schema.ParseGroupVersion(rl.GroupVersion)
-		for _, r := range rl.APIResources {
-			this.preferredVersions[NewGroupKind(gv.Group, r.Kind)] = gv.Version
-		}
+		logger.Infof("found %d resources", total)
 	}
 
 	return nil
+}
+
+func (this *ResourceInfos) doUpdateGroup(dc *discovery.DiscoveryClient, group v1.APIGroup) (int, error) {
+	var lastErr error
+	count := 0
+	for _, version := range group.Versions {
+		list, err := dc.ServerResourcesForGroupVersion(version.GroupVersion)
+		if err != nil {
+			lastErr = err
+		}
+		if list != nil {
+			count += len(list.APIResources)
+		}
+
+		func() {
+			this.lock.Lock()
+			defer this.lock.Unlock()
+			gv := schema.GroupVersion{Group: group.Name, Version: version.Version}
+			m := this.groupVersionKinds[gv]
+			if m == nil {
+				m = map[string]*Info{}
+				this.groupVersionKinds[gv] = m
+			}
+			for _, r := range list.APIResources {
+				if strings.Index(r.Name, "/") < 0 {
+					m[r.Kind] = &Info{groupVersion: &gv, resourcename: r.Name, kind: r.Kind, namespaced: r.Namespaced, subresources: utils.StringSet{}}
+				}
+			}
+			for _, r := range list.APIResources {
+				if i := strings.Index(r.Name, "/"); i > 0 {
+					info := m[r.Kind]
+					if info != nil {
+						info.subresources.Add(r.Name[i+1:])
+					}
+				}
+			}
+
+			for _, r := range list.APIResources {
+				gk := NewGroupKind(gv.Group, r.Kind)
+				if _, ok := this.preferredVersions[gk]; !ok || version.Version == group.PreferredVersion.Version {
+					this.preferredVersions[gk] = version.Version
+				}
+			}
+		}()
+	}
+	return count, lastErr
 }
 
 func (this *ResourceInfos) GetGroups() []schema.GroupVersion {
@@ -230,7 +257,7 @@ func (this *ResourceInfos) GetResourceInfos(gv schema.GroupVersion) []*Info {
 func (this *ResourceInfos) GetPreferred(gk schema.GroupKind) (*Info, error) {
 	i := this.getPreferred(gk)
 	if i == nil {
-		err := this.update()
+		err := this.updateForGroup(gk.Group)
 		if err != nil {
 			return nil, err
 		}
@@ -259,7 +286,7 @@ func (this *ResourceInfos) getPreferred(gk schema.GroupKind) *Info {
 func (this *ResourceInfos) Get(gvk schema.GroupVersionKind) (*Info, error) {
 	i := this.get(gvk)
 	if i == nil {
-		err := this.update()
+		err := this.updateForGroup(gvk.Group)
 		if err != nil {
 			return nil, err
 		}

@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/Masterminds/semver/v3"
-
 	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 	"github.com/gardener/controller-manager-library/pkg/resources/errors"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -47,8 +47,12 @@ type resourceContext struct {
 }
 
 func NewResourceContext(ctx context.Context, c Cluster, scheme *runtime.Scheme, defaultResync time.Duration) (ResourceContext, error) {
+	groups := utils.NewStringSet()
+	for gvk, _ := range scheme.AllKnownTypes() {
+		groups.Add(gvk.Group)
+	}
 
-	res, err := NewResourceInfos(c)
+	res, err := NewResourceInfos(c, groups)
 	if err != nil {
 		return nil, err
 	}
