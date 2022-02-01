@@ -96,13 +96,15 @@ func (s *server) getNamespaceState(ns string, createIfNeeded bool) *namespaceSta
 	defer s.lock.Unlock()
 
 	nsState := s.namespaceStates[ns]
-	if nsState == nil && createIfNeeded {
-		nsState = newNamespaceState(ns)
-		s.namespaceStates[ns] = nsState
+	if createIfNeeded {
+		if nsState == nil {
+			nsState = newNamespaceState(ns)
+			s.namespaceStates[ns] = nsState
+		}
 		return nsState
 	}
 
-	if nsState == nil || len(nsState.handlers) == 0 {
+	if nsState != nil && len(nsState.handlers) == 0 {
 		return nil
 	}
 	return nsState
