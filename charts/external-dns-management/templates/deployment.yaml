@@ -67,9 +67,12 @@ spec:
         {{- end }}
         {{- if .Values.remoteaccess.enabled }}
         - --remote-access-port={{ .Values.remoteaccess.port }}
-        - --remote-access-cacert=/servercert/ca.crt
-        - --remote-access-servercert=/servercert/tls.crt
-        - --remote-access-serverkey=/servercert/tls.key
+        - --remote-access-cacert=/certs/ca.crt
+        {{- if .Values.remoteaccess.certs.cakey }}
+        - --remote-access-cakey=/certs/ca.key
+        {{- end }}
+        - --remote-access-servercert=/certs/tls.crt
+        - --remote-access-serverkey=/certs/tls.key
         {{- end }}
         ### start generated configuration
         {{- if .Values.configuration.acceptedMaintainers }}
@@ -903,17 +906,17 @@ spec:
             name: certs
           {{- end }}
         {{- end }}
-      {{- if or .Values.configuration.persistentCache .Values.custom.volumes .Values.remoteaccess.server }}
+      {{- if or .Values.configuration.persistentCache .Values.custom.volumes .Values.remoteaccess.enabled }}
       volumes:
         {{- if or .Values.configuration.persistentCache }}
         - name: persistent-cache
           persistentVolumeClaim:
             claimName: {{ include "external-dns-management.fullname" . }}
         {{- end }}
-        {{- if .Values.remoteaccess.server }}
-        - name: servercert
+        {{- if .Values.remoteaccess.enabled }}
+        - name: certs
           secret:
-            secretName: remoteaccess-servercert
+            secretName: {{ include "external-dns-management.fullname" . }}-remoteaccess
         {{- end }}
         {{- if .Values.custom.volumes }}
         {{- toYaml .Values.custom.volumes | nindent 8 }}

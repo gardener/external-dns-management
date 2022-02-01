@@ -346,12 +346,13 @@ custom: {}
 remoteaccess:
 #  service:
 #    annotations:
-#      dns.gardener.cloud/class: garden
+#      #dns.gardener.cloud/class: garden
 #      dns.gardener.cloud/dnsnames: my.foo.bar.com
 #    type: LoadBalancer
   enabled: false
 #  certs:
 #    cacert: LS0t...
+#    cakey: LS0t...
 #    servercert: LS0t...
 #    serverkey: LS0t...
 #  port: 7777
