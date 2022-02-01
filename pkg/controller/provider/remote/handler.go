@@ -32,7 +32,9 @@ import (
 	"github.com/gardener/external-dns-management/pkg/server/remote/common"
 	"github.com/gardener/external-dns-management/pkg/server/remote/conversion"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -146,6 +148,13 @@ func (h *Handler) login(ctx context.Context) error {
 		Namespace: h.remoteNamespace,
 	})
 	if err != nil {
+		if s, ok := status.FromError(err); ok {
+			if s.Code() == codes.Unavailable {
+				if s.Message() == "connection closed before server preface received" {
+					return status.Error(s.Code(), s.Message()+" (hint: certificate not valid?)")
+				}
+			}
+		}
 		return err
 	}
 	h.currentToken = response.Token

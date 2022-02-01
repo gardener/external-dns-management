@@ -197,7 +197,8 @@ func (s *server) checkNamespaceAuthorization(ctx context.Context, namespace stri
 	firstLabel := strings.SplitN(commonName, ".", 2)[0]
 	// Check subject common name against configured username
 	if firstLabel != "*" && firstLabel != namespace {
-		return commonName, status.Error(codes.Unauthenticated, "invalid subject common name")
+		return commonName, status.Error(codes.Unauthenticated,
+			fmt.Sprintf("invalid subject common name %q: %q (first label) != %q (remote namespace)", commonName, firstLabel, namespace))
 	}
 
 	return commonName, nil
