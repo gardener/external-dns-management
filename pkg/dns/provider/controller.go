@@ -58,6 +58,9 @@ var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 var zonePolicyGroupKind = resources.NewGroupKind(api.GroupName, api.DNSHostedZonePolicyKind)
 var lockGroupKind = resources.NewGroupKind(api.GroupName, api.DNSLockKind)
 
+// RemoteAccessClientID stores the optional client ID for remote access
+var RemoteAccessClientID string
+
 func init() {
 	crds.AddToRegistry(apiextensions.DefaultRegistry())
 }
@@ -129,6 +132,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedStringOption(OPT_REMOTE_ACCESS_CACERT, "", "CA who signed client certs file").
 		DefaultedStringOption(OPT_REMOTE_ACCESS_SERVERCERT, "", "remote access server's certificate file").
 		DefaultedStringOption(OPT_REMOTE_ACCESS_SERVERKEY, "", "remote access server's key file").
+		DefaultedStringOption(OPT_REMOTE_ACCESS_CLIENT_ID, "", "identifier used for remote access").
 		FinalizerDomain("dns.gardener.cloud").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).

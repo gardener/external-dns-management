@@ -17,6 +17,7 @@ service RemoteProvider {
 
 message LoginRequest {
   string namespace = 1;
+  string cliendID = 2;
 }
 
 message LoginResponse {

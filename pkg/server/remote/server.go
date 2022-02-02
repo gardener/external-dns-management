@@ -132,8 +132,8 @@ func (s *server) checkAuth(token, requestType, zoneid string) (*namespaceState, 
 		return nil, s.logctx, nil, fmt.Errorf("namespace %s not found or no providers available", namespace)
 	}
 
-	commonName, err := nsState.getToken(token)
-	logctx := s.logctx.NewContext("namespace", nsState.name).NewContext("commonName", commonName)
+	clientID, err := nsState.getToken(token)
+	logctx := s.logctx.NewContext("namespace", nsState.name).NewContext("clientID", clientID)
 	if err != nil {
 		return nil, logctx, nil, err
 	}
@@ -144,37 +144,37 @@ func (s *server) checkAuth(token, requestType, zoneid string) (*namespaceState, 
 		if err != nil {
 			code = substr(err.Error(), 0, 40)
 		}
-		metrics.ReportRemoteAccessSeconds(namespace, commonName, requestType, zoneid, code, d)
+		metrics.ReportRemoteAccessSeconds(namespace, clientID, requestType, zoneid, code, d)
 	}
 
-	metrics.ReportRemoteAccessRequests(namespace, commonName, requestType, zoneid)
+	metrics.ReportRemoteAccessRequests(namespace, clientID, requestType, zoneid)
 	return nsState, logctx, rf, nil
 }
 
 func (s *server) Login(ctx context.Context, request *common.LoginRequest) (*common.LoginResponse, error) {
 	commonName, err := s.checkNamespaceAuthorization(ctx, request.Namespace)
-	logctx := s.logctx.NewContext("namespace", request.Namespace).NewContext("commonName", commonName)
+	logctx := s.logctx.NewContext("namespace", request.Namespace).NewContext("clientID", request.CliendID)
 	if err != nil {
 		logctx.Warn("Login auth failed")
 		return nil, err
 	}
-	logctx.Info("Login auth successful")
+	logctx.Info("Login auth successful: %s", commonName)
 
 	nsState := s.getNamespaceState(request.Namespace, false)
 	if nsState == nil {
-		metrics.ReportRemoteAccessLogins(request.Namespace, commonName, false)
+		metrics.ReportRemoteAccessLogins(request.Namespace, request.CliendID, false)
 		logctx.Info("namespace %s not found or no providers available", request.Namespace)
 		return nil, fmt.Errorf("namespace %s not found or no providers available", request.Namespace)
 	}
 
-	metrics.ReportRemoteAccessLogins(request.Namespace, commonName, true)
+	metrics.ReportRemoteAccessLogins(request.Namespace, request.CliendID, true)
 
 	rnd, err := randonString(16)
 	if err != nil {
 		return nil, fmt.Errorf("random failed: %w", err)
 	}
 
-	token := nsState.generateAndAddToken(s.tokenTTL, rnd, commonName, s.serverID)
+	token := nsState.generateAndAddToken(s.tokenTTL, rnd, request.CliendID, s.serverID)
 	return &common.LoginResponse{Token: token}, nil
 }
 

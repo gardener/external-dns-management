@@ -80,6 +80,11 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		statuscheckperiod = 120 * time.Second
 	}
 
+	RemoteAccessClientID, err = c.GetStringOption(OPT_REMOTE_ACCESS_CLIENT_ID)
+	if err != nil {
+		return nil, err
+	}
+
 	remoteAccessPort, err := c.GetIntOption(OPT_REMOTE_ACCESS_PORT)
 	if err != nil {
 		return nil, err

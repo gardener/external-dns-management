@@ -41,6 +41,7 @@ const (
 	OPT_REMOTE_ACCESS_CACERT       = "remote-access-cacert"
 	OPT_REMOTE_ACCESS_SERVERCERT   = "remote-access-servercert"
 	OPT_REMOTE_ACCESS_SERVERKEY    = "remote-access-serverkey"
+	OPT_REMOTE_ACCESS_CLIENT_ID    = "remote-access-client-id"
 
 	OPT_PROVIDERTYPES = "provider-types"
 

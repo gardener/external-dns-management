@@ -517,6 +517,7 @@ Flags:
       --compound.ratelimiter.enabled                                  enables rate limiter for DNS provider requests of controller compound
       --compound.ratelimiter.qps int                                  maximum requests/queries per second of controller compound
       --compound.remote-access-cacert string                          CA who signed client certs file of controller compound
+      --compound.remote-access-client-id string                       identifier used for remote access of controller compound
       --compound.remote-access-port int                               port of remote access server for remote-enabled providers of controller compound
       --compound.remote-access-servercert string                      remote access server's certificate file of controller compound
       --compound.remote-access-serverkey string                       remote access server's key file of controller compound
@@ -539,7 +540,7 @@ Flags:
       --default.pool.size int                                         Worker pool size for pool default
       --disable-namespace-restriction                                 disable access restriction for namespace local access only
       --disable-zone-state-caching                                    disable use of cached dns zone state on changes
-      --dns-class string                                              Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers, identifier used to differentiate responsible controllers for entries
+      --dns-class string                                              identifier used to differentiate responsible controllers for entries, Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers
       --dns-delay duration                                            delay between two dns reconciliations
       --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target entries, identifier used to differentiate responsible dns controllers for target providers
       --dns.pool.resync-period duration                               Period for resynchronization for pool dns
@@ -652,7 +653,9 @@ Flags:
       --ratelimiter.burst int                                         number of burst requests for rate limiter
       --ratelimiter.enabled                                           enables rate limiter for DNS provider requests
       --ratelimiter.qps int                                           maximum requests/queries per second
-      --remote-access-cacert string                                   CA who signed client certs file
+      --remote-access-cacert string                                   CA who signed client certs file, filename for certificate of client CA
+      --remote-access-cakey string                                    filename for private key of client CA
+      --remote-access-client-id string                                identifier used for remote access
       --remote-access-port int                                        port of remote access server for remote-enabled providers
       --remote-access-servercert string                               remote access server's certificate file
       --remote-access-serverkey string                                remote access server's key file
@@ -662,7 +665,13 @@ Flags:
       --remote.ratelimiter.burst int                                  number of burst requests for rate limiter
       --remote.ratelimiter.enabled                                    enables rate limiter for DNS provider requests
       --remote.ratelimiter.qps int                                    maximum requests/queries per second
+      --remoteaccesscertificates.default.pool.size int                Worker pool size for pool default of controller remoteaccesscertificates
+      --remoteaccesscertificates.pool.size int                        Worker pool size of controller remoteaccesscertificates
+      --remoteaccesscertificates.remote-access-cacert string          filename for certificate of client CA of controller remoteaccesscertificates
+      --remoteaccesscertificates.remote-access-cakey string           filename for private key of client CA of controller remoteaccesscertificates
+      --remoteaccesscertificates.secretHash string                    secure hash used for client certificates of controller remoteaccesscertificates
       --reschedule-delay duration                                     reschedule delay after losing provider
+      --secretHash string                                             secure hash used for client certificates
       --secrets.pool.size int                                         Worker pool size for pool secrets
       --server-port-http int                                          HTTP server port (serving /healthz, /metrics, ...)
       --service-dns.default.pool.resync-period duration               Period for resynchronization for pool default of controller service-dns
@@ -691,7 +700,7 @@ Flags:
       --target-namespace string                                       target namespace for cross cluster generation
       --target-owner-id string                                        owner id to use for generated DNS entries
       --target-owner-object string                                    owner object to use for generated DNS entries
-      --target-realms string                                          realm(s) to use for replicated DNS provider, realm(s) to use for generated DNS entries
+      --target-realms string                                          realm(s) to use for generated DNS entries, realm(s) to use for replicated DNS provider
       --target-set-ignore-owners                                      mark generated DNS entries to omit owner based access control
       --target.disable-deploy-crds                                    disable deployment of required crds for cluster target
       --target.id string                                              id for cluster target

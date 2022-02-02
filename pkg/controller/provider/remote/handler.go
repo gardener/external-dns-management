@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -42,6 +43,7 @@ type Handler struct {
 	provider.DefaultDNSHandler
 	config          provider.DNSHandlerConfig
 	cache           provider.ZoneCache
+	clientID        string
 	remoteNamespace string
 	currentToken    string
 	connection      *grpc.ClientConn
@@ -59,6 +61,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *c,
+		clientID:          getClientID(),
 	}
 
 	serverEndpoint, err := c.GetRequiredProperty("REMOTE_ENDPOINT", "remoteEndpoint")
@@ -109,6 +112,19 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	return h, nil
 }
 
+func getClientID() string {
+	if provider.RemoteAccessClientID != "" {
+		return provider.RemoteAccessClientID
+	}
+	if hostname := os.Getenv("HOSTNAME"); hostname != "" {
+		return hostname
+	}
+	if hostname, err := os.Hostname(); err == nil && hostname != "" {
+		return hostname
+	}
+	return fmt.Sprintf("pid-%d", os.Getpid())
+}
+
 // serverCA_PEM: certificate (PEM) of the CA who signed server's certificate
 func (h *Handler) loadTLSCredentials(serverCA_PEM, clientCert_PEM, clientKey_PEM []byte) (credentials.TransportCredentials, error) {
 	certPool := x509.NewCertPool()
@@ -146,6 +162,7 @@ func (h *Handler) login(ctx context.Context) error {
 	h.config.RateLimiter.Accept()
 	response, err := h.client.Login(ctx, &common.LoginRequest{
 		Namespace: h.remoteNamespace,
+		CliendID:  h.clientID,
 	})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
