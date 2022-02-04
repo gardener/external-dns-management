@@ -61,5 +61,5 @@ const (
 )
 
 const (
-	AnnotationRemoteAccess = dns.ANNOTATION_GROUP + "/remoteAccess"
+	AnnotationRemoteAccess = dns.ANNOTATION_GROUP + "/remote-access"
 )
