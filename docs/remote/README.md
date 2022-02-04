@@ -15,9 +15,9 @@ These are the supported keys:
 - `REMOTE_ENDPOINT` - "<host>:<port>" of the remote-access service running on the remote dns-controller-manager.
 - `NAMESPACE` - <namespace> of the remote cluster. All included zones of all namespace's DNSProvider objects annotated with 'dns.gardener.cloud/remoteAccess=true' are available. 
 - `OVERRIDE_SERVER_NAME` - optionally overrides server name as specified in the server certificate (if server cannot be accessed with the DNS name/IP address as specified in the TLS certificate)
-- `SERVER_CA_CERT` - CA used for the server certificate
-- `CLIENT_CERT` - client certificate
-- `CLIENT_KEY` - private key of the client certificate
+- `ca.crt` or `SERVER_CA_CERT` - CA used for the server certificate
+- `tls.crt` or `CLIENT_CERT` - client certificate
+- `tls.key` or `CLIENT_KEY` - private key of the client certificate
 
 ## Using the Credentials
 
@@ -36,7 +36,7 @@ data:
   REMOTE_ENDPOINT: ...  # "<host>:<port>" of the remote-access service running on the remote dns-controller-manager
   NAMESPACE: ... # <namespace> of the remote cluster. All included zones of all namespace's DNSProvider objects annotated with 'dns.gardener.cloud/remoteAccess=true' are available.
   #OVERRIDE_SERVER_NAME: ... # optional override server name as specified in the server certificate
-  SERVER_CA_CERT: ... # CA used for the server certificate
-  CLIENT_CERT: ... # client certificate
-  CLIENT_KEY: ... # client private key
+  ca.crt: ... # CA used for the server certificate
+  tls.crt: ... # client certificate
+  tls.key: ... # client private key
 ``` 
