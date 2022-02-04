@@ -101,7 +101,8 @@ var _ = Describe("PrivateZones", func() {
 		Ω(err).Should(BeNil())
 
 		domain := "pr1.mock.xx"
-		setSpec := func(spec *v1alpha1.DNSProviderSpec) {
+		setSpec := func(provider *v1alpha1.DNSProvider) {
+			spec := &provider.Spec
 			spec.Zones = &v1alpha1.DNSSelection{Include: []string{"z1:" + domain, "z2" + domain}}
 			spec.Type = "mock-inmemory"
 
@@ -229,7 +230,8 @@ var _ = Describe("PrivateZones", func() {
 		secret, err := testEnv.CreateSecret(1)
 		Ω(err).Should(BeNil())
 
-		setSpec := func(spec *v1alpha1.DNSProviderSpec) {
+		setSpec := func(provider *v1alpha1.DNSProvider) {
+			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
 			spec.Type = "mock-inmemory"
 			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "a.mock.xx")
@@ -255,7 +257,8 @@ var _ = Describe("PrivateZones", func() {
 		secret, err := testEnv.CreateSecret(1)
 		Ω(err).Should(BeNil())
 
-		setSpec := func(spec *v1alpha1.DNSProviderSpec) {
+		setSpec := func(provider *v1alpha1.DNSProvider) {
+			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
 			spec.Type = "mock-inmemory"
 			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "mock.xx")
@@ -281,7 +284,8 @@ var _ = Describe("PrivateZones", func() {
 		secret, err := testEnv.CreateSecret(1)
 		Ω(err).Should(BeNil())
 
-		setSpec := func(spec *v1alpha1.DNSProviderSpec) {
+		setSpec := func(provider *v1alpha1.DNSProvider) {
+			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"mock.xx"}}
 			spec.Type = "mock-inmemory"
 			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "sub.mock.xx", Domain2IsSubdomain)

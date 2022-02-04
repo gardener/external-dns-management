@@ -20,7 +20,6 @@ package remoteaccesscertificates
 import (
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"time"
@@ -28,7 +27,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"github.com/gardener/controller-manager-library/pkg/utils/pkiutil"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"go.uber.org/atomic"
 	corev1 "k8s.io/api/core/v1"
@@ -47,7 +45,6 @@ import (
 )
 
 const CONTROLLER = "remoteaccesscertificates"
-const OPT_SECURE_HASH = "secretHash"
 const OPT_REMOTE_ACCESS_CAKEY = "remote-access-cakey"
 
 func init() {
@@ -64,13 +61,11 @@ func init() {
 }
 
 type Config struct {
-	secureHash string
 	caKeyFile  string
 	caCertFile string
 }
 
 func (r *Config) AddOptionsToSet(set config.OptionSet) {
-	set.AddStringOption(&r.secureHash, OPT_SECURE_HASH, "", "sha256", "secure hash used for client certificates")
 	set.AddStringOption(&r.caKeyFile, OPT_REMOTE_ACCESS_CAKEY, "", "", "filename for private key of client CA")
 	set.AddStringOption(&r.caCertFile, provider.OPT_REMOTE_ACCESS_CACERT, "", "", "filename for certificate of client CA")
 }
@@ -101,8 +96,6 @@ func Create(controller controller.Interface) (reconcile.Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	controller.Infof("using %s hash", config.secureHash)
 
 	caCert, caPrivateKey, err := loadClientCA(config)
 	if err != nil {
@@ -135,16 +128,9 @@ func loadClientCA(config *Config) (*x509.Certificate, *rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot read client CA: %w", err)
 	}
-	block, _ := pem.Decode(pemClientCA)
-	if block == nil {
-		return nil, nil, fmt.Errorf("decoding client CA's certificate failed")
-	}
-	if block.Type != pkiutil.CertificateBlockType {
-		return nil, nil, fmt.Errorf("invalid block type %s for client CA's certificate", block.Type)
-	}
-	clientCA, err := x509.ParseCertificate(block.Bytes)
+	clientCA, err := DecodeCert(pemClientCA)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parsing client CA's certificate failed: %w", err)
+		return nil, nil, err
 	}
 
 	if config.caKeyFile == "" {
@@ -154,16 +140,9 @@ func loadClientCA(config *Config) (*x509.Certificate, *rsa.PrivateKey, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot read client CA key: %w", err)
 	}
-	keyBlock, _ := pem.Decode(keyPem)
-	if keyBlock == nil {
-		return nil, nil, fmt.Errorf("decoding client CA's private key failed")
-	}
-	if keyBlock.Type != pkiutil.RSAPrivateKeyBlockType {
-		return nil, nil, fmt.Errorf("invalid block type %s for client CA's private key", keyBlock.Type)
-	}
-	caPrivateKey, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	caPrivateKey, err := DecodePrivateKey(keyPem)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parsing client CA's key failed: %w", err)
+		return nil, nil, err
 	}
 
 	return clientCA, caPrivateKey, nil
@@ -220,9 +199,9 @@ func (r *reconciler) reconcile(logger logger.LogContext, obj resources.Object) e
 }
 
 func (r *reconciler) createServerCertificate(cert *api.RemoteAccessCertificate) error {
-	subject := createSubject(cert.Spec.DomainName)
+	subject := CreateSubject(cert.Spec.DomainName)
 
-	cdata, err := createCertificate(r.clientCACert, r.clientCAPrivateKey, subject, cert.Namespace, cert.Spec.DomainName,
+	cdata, err := CreateCertificate(r.clientCACert, r.clientCAPrivateKey, subject, cert.Spec.DomainName,
 		cert.Spec.Days, r.nextSerialNumber.Inc(), true)
 	if err != nil {
 		return err
@@ -233,9 +212,9 @@ func (r *reconciler) createServerCertificate(cert *api.RemoteAccessCertificate) 
 
 func (r *reconciler) createClientCertificate(cert *api.RemoteAccessCertificate) error {
 	commonName := cert.Namespace + "." + cert.Spec.DomainName
-	subject := createSubject(commonName)
+	subject := CreateSubject(commonName)
 
-	cdata, err := createCertificate(r.clientCACert, r.clientCAPrivateKey, subject, cert.Namespace, cert.Spec.DomainName,
+	cdata, err := CreateCertificate(r.clientCACert, r.clientCAPrivateKey, subject, cert.Spec.DomainName,
 		cert.Spec.Days, r.nextSerialNumber.Inc(), false)
 	if err != nil {
 		return err
@@ -248,11 +227,11 @@ func (r *reconciler) createClientCertificate(cert *api.RemoteAccessCertificate) 
 	return r.writeSecretAndStatus(cert, cdata, additionalData)
 }
 
-func (r *reconciler) writeSecretAndStatus(cert *api.RemoteAccessCertificate, cdata *certData, additionalData map[string][]byte) error {
+func (r *reconciler) writeSecretAndStatus(cert *api.RemoteAccessCertificate, cdata *CertData, additionalData map[string][]byte) error {
 	secretData := map[string][]byte{
-		corev1.TLSPrivateKeyKey: cdata.tlsKey,
-		corev1.TLSCertKey:       cdata.tlsCrt,
-		"ca.crt":                cdata.caCrt, // using same CA for client and server
+		corev1.TLSPrivateKeyKey: cdata.TLSKey,
+		corev1.TLSCertKey:       cdata.TLSCrt,
+		"ca.crt":                cdata.CACrt, // using same CA for client and server
 		"NAMESPACE":             []byte(cert.Namespace),
 	}
 	for k, v := range additionalData {
@@ -279,9 +258,9 @@ func (r *reconciler) writeSecretAndStatus(cert *api.RemoteAccessCertificate, cda
 	_, _, err = r.certResources.ModifyStatus(cert, func(data resources.ObjectData) (bool, error) {
 		o := data.(*api.RemoteAccessCertificate)
 		mod := utils.ModificationState{}
-		o.Status.NotAfter = &metav1.Time{Time: cdata.certificate.NotAfter}
-		o.Status.NotBefore = &metav1.Time{Time: cdata.certificate.NotBefore}
-		sn := cdata.certificate.SerialNumber.String()
+		o.Status.NotAfter = &metav1.Time{Time: cdata.Certificate.NotAfter}
+		o.Status.NotBefore = &metav1.Time{Time: cdata.Certificate.NotBefore}
+		sn := cdata.Certificate.SerialNumber.String()
 		o.Status.SerialNumber = &sn
 		mod.Modify(true)
 		mod.AssureStringValue(&o.Status.Message, "")

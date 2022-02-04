@@ -72,7 +72,8 @@ var _ = Describe("ProviderSecret", func() {
 		}
 
 		prefix := testEnv.ZonePrefix
-		setSpec := func(spec *v1alpha1.DNSProviderSpec) {
+		setSpec := func(provider *v1alpha1.DNSProvider) {
+			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"pr1a.mock.xx", "pr1b.mock.xx"}, Exclude: []string{"pr1d.mock.xx"}}
 			spec.Zones = &v1alpha1.DNSSelection{Include: []string{prefix + "pr1a.mock.xx", prefix + "pr1c.mock.xx"}, Exclude: []string{prefix + "pr1e.mock.xx"}}
 			spec.Type = "mock-inmemory"

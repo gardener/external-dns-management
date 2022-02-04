@@ -669,9 +669,7 @@ Flags:
       --remoteaccesscertificates.pool.size int                        Worker pool size of controller remoteaccesscertificates
       --remoteaccesscertificates.remote-access-cacert string          filename for certificate of client CA of controller remoteaccesscertificates
       --remoteaccesscertificates.remote-access-cakey string           filename for private key of client CA of controller remoteaccesscertificates
-      --remoteaccesscertificates.secretHash string                    secure hash used for client certificates of controller remoteaccesscertificates
       --reschedule-delay duration                                     reschedule delay after losing provider
-      --secretHash string                                             secure hash used for client certificates
       --secrets.pool.size int                                         Worker pool size for pool secrets
       --server-port-http int                                          HTTP server port (serving /healthz, /metrics, ...)
       --service-dns.default.pool.resync-period duration               Period for resynchronization for pool default of controller service-dns

@@ -22,20 +22,23 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/utils/pkiutil"
 )
 
-type certData struct {
-	certificate *x509.Certificate
-	caCrt       []byte
-	tlsKey      []byte
-	tlsCrt      []byte
+// CertData contains the created certificate
+type CertData struct {
+	Certificate *x509.Certificate
+	CACrt       []byte
+	TLSKey      []byte
+	TLSCrt      []byte
 }
 
-func createSubject(commonName string) pkix.Name {
+// CreateSubject is a helper to create a subject for a given common name
+func CreateSubject(commonName string) pkix.Name {
 	return pkix.Name{
 		Country:            []string{"DE"},
 		Organization:       []string{"SAP SE"},
@@ -44,8 +47,9 @@ func createSubject(commonName string) pkix.Name {
 	}
 }
 
-func createCertificate(caCert *x509.Certificate, caPrivateKey *rsa.PrivateKey, subject pkix.Name, namespace, dnsName string,
-	days int, serialNumber int64, isServer bool) (*certData, error) {
+// CreateCertificate creates a client or server TLS certificate.
+func CreateCertificate(caCert *x509.Certificate, caPrivateKey *rsa.PrivateKey, subject pkix.Name, dnsName string,
+	days int, serialNumber int64, isServer bool) (*CertData, error) {
 	key, _ := rsa.GenerateKey(rand.Reader, 1024)
 
 	csrTemplate := x509.CertificateRequest{
@@ -97,11 +101,44 @@ func createCertificate(caCert *x509.Certificate, caPrivateKey *rsa.PrivateKey, s
 	tlsCrt := pem.EncodeToMemory(&pem.Block{Type: pkiutil.CertificateBlockType, Bytes: crtBytes})
 	caCrt := pkiutil.EncodeCertPEM(caCert)
 
-	result := &certData{
-		certificate: certificate,
-		caCrt:       caCrt,
-		tlsKey:      tlsKey,
-		tlsCrt:      tlsCrt,
+	result := &CertData{
+		Certificate: certificate,
+		CACrt:       caCrt,
+		TLSKey:      tlsKey,
+		TLSCrt:      tlsCrt,
 	}
 	return result, nil
+}
+
+// DecodeCert decodes a certificate PEM.
+func DecodeCert(certPem []byte) (*x509.Certificate, error) {
+	block, _ := pem.Decode(certPem)
+	if block == nil {
+		return nil, fmt.Errorf("decoding client CA's certificate failed")
+	}
+	if block.Type != pkiutil.CertificateBlockType {
+		return nil, fmt.Errorf("invalid block type %s for client CA's certificate", block.Type)
+	}
+	cert, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parsing client CA's certificate failed: %w", err)
+	}
+	return cert, nil
+}
+
+// DecodePrivateKey decodes a certificate private key PEM.
+func DecodePrivateKey(keyPem []byte) (*rsa.PrivateKey, error) {
+	keyBlock, _ := pem.Decode(keyPem)
+	if keyBlock == nil {
+		return nil, fmt.Errorf("decoding client CA's private key failed")
+	}
+	if keyBlock.Type != pkiutil.RSAPrivateKeyBlockType {
+		return nil, fmt.Errorf("invalid block type %s for client CA's private key", keyBlock.Type)
+	}
+	privateKey, err := x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("parsing client CA's key failed: %w", err)
+	}
+
+	return privateKey, nil
 }
