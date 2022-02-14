@@ -69,12 +69,15 @@ spec:
         {{- end }}
         {{- if .Values.remoteaccess.enabled }}
         - --remote-access-port={{ .Values.remoteaccess.port }}
-        - --remote-access-cacert=/certs/ca.crt
-        {{- if .Values.remoteaccess.certs.cakey }}
-        - --remote-access-cakey=/certs/ca.key
+        - --remote-access-cacert=/certs/ca/ca.crt
+        {{- if .Values.remoteaccess.certs.ca.key }}
+        - --remote-access-cakey=/certs/ca/ca.key
         {{- end }}
-        - --remote-access-servercert=/certs/tls.crt
-        - --remote-access-serverkey=/certs/tls.key
+        {{- if .Values.remoteaccess.certs.server.secretName }}
+        - --remote-access-server-secret-name={{ .Release.Namespace }}/{{ .Values.remoteaccess.certs.server.secretName }}
+        {{- else }}
+        - --remote-access-server-secret-name={{ .Release.Namespace }}/{{ include "external-dns-management.fullname" . }}-remoteaccess-server
+        {{- end }}
         {{- end }}
         ### start generated configuration
         {{- if .Values.configuration.acceptedMaintainers }}
@@ -904,8 +907,8 @@ spec:
           {{- toYaml .Values.custom.volumeMounts | nindent 10 }}
           {{- end }}
           {{- if .Values.remoteaccess.enabled }}
-          - mountPath: /certs
-            name: certs
+          - mountPath: /certs/ca
+            name: certs-ca
           {{- end }}
         {{- end }}
       {{- if or .Values.configuration.persistentCache .Values.custom.volumes .Values.remoteaccess.enabled }}
@@ -916,9 +919,9 @@ spec:
             claimName: {{ include "external-dns-management.fullname" . }}
         {{- end }}
         {{- if .Values.remoteaccess.enabled }}
-        - name: certs
+        - name: certs-ca
           secret:
-            secretName: {{ include "external-dns-management.fullname" . }}-remoteaccess
+            secretName: {{ include "external-dns-management.fullname" . }}-remoteaccess-ca
         {{- end }}
         {{- if .Values.custom.volumes }}
         {{- toYaml .Values.custom.volumes | nindent 8 }}

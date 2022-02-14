@@ -37,11 +37,11 @@ const (
 	OPT_RESCHEDULEDELAY            = "reschedule-delay"
 	OPT_LOCKSTATUSCHECKPERIOD      = "lock-status-check-period"
 	OPT_DISABLE_ZONE_STATE_CACHING = "disable-zone-state-caching"
-	OPT_REMOTE_ACCESS_PORT         = "remote-access-port"
-	OPT_REMOTE_ACCESS_CACERT       = "remote-access-cacert"
-	OPT_REMOTE_ACCESS_SERVERCERT   = "remote-access-servercert"
-	OPT_REMOTE_ACCESS_SERVERKEY    = "remote-access-serverkey"
-	OPT_REMOTE_ACCESS_CLIENT_ID    = "remote-access-client-id"
+
+	OPT_REMOTE_ACCESS_PORT               = "remote-access-port"
+	OPT_REMOTE_ACCESS_CACERT             = "remote-access-cacert"
+	OPT_REMOTE_ACCESS_SERVER_SECRET_NAME = "remote-access-server-secret-name"
+	OPT_REMOTE_ACCESS_CLIENT_ID          = "remote-access-client-id"
 
 	OPT_PROVIDERTYPES = "provider-types"
 

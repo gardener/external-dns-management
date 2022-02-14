@@ -15,10 +15,10 @@ These are the supported keys:
 
 - `REMOTE_ENDPOINT` - "<host>:<port>" of the remote-access service running on the remote dns-controller-manager.
 - `NAMESPACE` - <namespace> of the remote cluster. All included zones of all namespace's DNSProvider objects annotated with 'dns.gardener.cloud/remote-access=true' are available. 
-- `OVERRIDE_SERVER_NAME` - optionally overrides server name as specified in the server certificate (if server cannot be accessed with the DNS name/IP address as specified in the TLS certificate)
-- `ca.crt` or `SERVER_CA_CERT` - CA used for the server certificate
 - `tls.crt` or `CLIENT_CERT` - client certificate
 - `tls.key` or `CLIENT_KEY` - private key of the client certificate
+- `ca.crt` or `SERVER_CA_CERT` - optional CA used for the server certificate
+- `OVERRIDE_SERVER_NAME` - optionally overrides server name as specified in the server certificate (if server cannot be accessed with the DNS name/IP address as specified in the TLS certificate)
 
 ### Using the Credentials
 
@@ -36,10 +36,10 @@ data:
   # Replace '...' with values encoded as base64.
   REMOTE_ENDPOINT: ...  # "<host>:<port>" of the remote-access service running on the remote dns-controller-manager
   NAMESPACE: ... # <namespace> of the remote cluster. All included zones of all namespace's DNSProvider objects annotated with 'dns.gardener.cloud/remoteAccess=true' are available.
-  #OVERRIDE_SERVER_NAME: ... # optional override server name as specified in the server certificate
-  ca.crt: ... # CA used for the server certificate
   tls.crt: ... # client certificate
   tls.key: ... # client private key
+  ca.crt: ... # CA used for the server certificate
+  #OVERRIDE_SERVER_NAME: ... # optional override server name as specified in the server certificate
 ``` 
 
 ## Server-side
@@ -50,17 +50,22 @@ If you use the Helm chart, see the `remoteaccess` section in the values file (e.
 
 ```yaml
 remoteaccess:
+  enabled: true
   service:
     annotations:
       #dns.gardener.cloud/class: garden
+      #cert.gardener.cloud/purpose: managed
+      #cert.gardener.cloud/secretname: remoteaccess-service
       dns.gardener.cloud/dnsnames: my.foo.bar.com
     type: LoadBalancer
-  enabled: true
   certs:
-    cacert: LS0t...
-#    cakey: LS0t... # only needed if remoteaccesscertificates controller is enabled
-    servercert: LS0t...
-    serverkey: LS0t...
+    ca:
+      cert: LS0t... # CA used for client certs
+      #key: LS0t... # only needed if remoteaccesscertificates controller is enabled
+    server:
+      #secretName: remoteaccess-service # if managed server certificate is used
+      cert: LS0t... # only needed if certificate is not managed
+      key: LS0t...  # only needed if certificate is not managed
   port: 7777
 ```
 

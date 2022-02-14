@@ -344,15 +344,20 @@ custom: {}
 #      mountPath: /token
 
 remoteaccess:
+  enabled: false
 #  service:
 #    annotations:
 #      #dns.gardener.cloud/class: garden
 #      dns.gardener.cloud/dnsnames: my.foo.bar.com
+#      #cert.gardener.cloud/purpose: managed
+#      #cert.gardener.cloud/secretname: remoteaccess-service
 #    type: LoadBalancer
-  enabled: false
 #  certs:
-#    cacert: LS0t...
-#    cakey: LS0t...
-#    servercert: LS0t...
-#    serverkey: LS0t...
+#    ca:
+#      cert: LS0t... # CA used for client certs
+#      #key: LS0t... # only needed if remoteaccesscertificates controller is enabled
+#    server:
+#      #secretName: remoteaccess-service # if managed server certificate is used
+#      cert: LS0t... # only needed if certificate is not managed
+#      key: LS0t...  # only needed if certificate is not managed
 #  port: 7777

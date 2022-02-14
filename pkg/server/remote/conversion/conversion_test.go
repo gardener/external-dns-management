@@ -26,8 +26,8 @@ import (
 
 func TestMarshalDNSSets(t *testing.T) {
 	sets1 := dns.DNSSets{}
-	rsb := dns.NewRecordSet(dns.RS_A, 100, []*dns.Record{&dns.Record{Value: "1.1.1.1"}, &dns.Record{Value: "1.1.1.2"}})
-	rsc := dns.NewRecordSet(dns.RS_TXT, 200, []*dns.Record{&dns.Record{Value: "foo"}, &dns.Record{Value: "bar"}})
+	rsb := dns.NewRecordSet(dns.RS_A, 100, []*dns.Record{{Value: "1.1.1.1"}, {Value: "1.1.1.2"}})
+	rsc := dns.NewRecordSet(dns.RS_TXT, 200, []*dns.Record{{Value: "foo"}, {Value: "bar"}})
 	sets1.AddRecordSet("b.a", rsb)
 	sets1.AddRecordSet("c.a", rsc)
 	table := []struct {

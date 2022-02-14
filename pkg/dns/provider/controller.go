@@ -53,6 +53,7 @@ const FACTORY_OPTIONS = "factory"
 const DNS_POOL = "dns"
 
 var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
+var secretGroupKind = resources.NewGroupKind("", "Secret")
 var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 var zonePolicyGroupKind = resources.NewGroupKind(api.GroupName, api.DNSHostedZonePolicyKind)
@@ -130,8 +131,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedDurationOption(OPT_LOCKSTATUSCHECKPERIOD, 120*time.Second, "interval for dns lock status checks").
 		DefaultedIntOption(OPT_REMOTE_ACCESS_PORT, 0, "port of remote access server for remote-enabled providers").
 		DefaultedStringOption(OPT_REMOTE_ACCESS_CACERT, "", "CA who signed client certs file").
-		DefaultedStringOption(OPT_REMOTE_ACCESS_SERVERCERT, "", "remote access server's certificate file").
-		DefaultedStringOption(OPT_REMOTE_ACCESS_SERVERKEY, "", "remote access server's key file").
+		DefaultedStringOption(OPT_REMOTE_ACCESS_SERVER_SECRET_NAME, "", "name of secret containing remote access server's certificate").
 		DefaultedStringOption(OPT_REMOTE_ACCESS_CLIENT_ID, "", "identifier used for remote access").
 		FinalizerDomain("dns.gardener.cloud").
 		Reconciler(DNSReconcilerType(factory)).
@@ -206,7 +206,7 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 	if err != nil {
 		return nil, err
 	}
-	secretresc, err := c.GetCluster(TARGET_CLUSTER).Resources().GetByGK(resources.NewGroupKind("core", "Secret"))
+	secretresc, err := c.GetCluster(TARGET_CLUSTER).Resources().GetByGK(secretGroupKind)
 	if err != nil {
 		return nil, err
 	}

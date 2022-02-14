@@ -85,26 +85,9 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		return nil, err
 	}
 
-	remoteAccessPort, err := c.GetIntOption(OPT_REMOTE_ACCESS_PORT)
+	remoteAccessConfig, err := createRemoteAccessConfig(c)
 	if err != nil {
 		return nil, err
-	}
-	var remoteAccessConfig *embed.RemoteAccessServerConfig
-	if remoteAccessPort != 0 {
-		files := map[string]string{}
-		for _, key := range []string{OPT_REMOTE_ACCESS_CACERT, OPT_REMOTE_ACCESS_SERVERCERT, OPT_REMOTE_ACCESS_SERVERKEY} {
-			value, _ := c.GetStringOption(key)
-			if value == "" {
-				return nil, fmt.Errorf("missing %s for activated remote access server", key)
-			}
-			files[key] = value
-		}
-		remoteAccessConfig = &embed.RemoteAccessServerConfig{
-			Port:               remoteAccessPort,
-			CACertFilename:     files[OPT_REMOTE_ACCESS_CACERT],
-			ServerCertFilename: files[OPT_REMOTE_ACCESS_SERVERCERT],
-			ServerKeyFilename:  files[OPT_REMOTE_ACCESS_SERVERKEY],
-		}
 	}
 
 	disableZoneStateCaching, _ := c.GetBoolOption(OPT_DISABLE_ZONE_STATE_CACHING)

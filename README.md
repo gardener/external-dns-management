@@ -519,8 +519,7 @@ Flags:
       --compound.remote-access-cacert string                          CA who signed client certs file of controller compound
       --compound.remote-access-client-id string                       identifier used for remote access of controller compound
       --compound.remote-access-port int                               port of remote access server for remote-enabled providers of controller compound
-      --compound.remote-access-servercert string                      remote access server's certificate file of controller compound
-      --compound.remote-access-serverkey string                       remote access server's key file of controller compound
+      --compound.remote-access-server-secret-name string              name of secret containing remote access server's certificate of controller compound
       --compound.remote.advanced.batch-size int                       batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.remote.advanced.max-retries int                      maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
       --compound.remote.blocked-zone zone-id                          Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
@@ -657,8 +656,7 @@ Flags:
       --remote-access-cakey string                                    filename for private key of client CA
       --remote-access-client-id string                                identifier used for remote access
       --remote-access-port int                                        port of remote access server for remote-enabled providers
-      --remote-access-servercert string                               remote access server's certificate file
-      --remote-access-serverkey string                                remote access server's key file
+      --remote-access-server-secret-name string                       name of secret containing remote access server's certificate
       --remote.advanced.batch-size int                                batch size for change requests (currently only used for aws-route53)
       --remote.advanced.max-retries int                               maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
       --remote.blocked-zone zone-id                                   Blocks a zone given in the format zone-id from a provider as if the zone is not existing.

@@ -23,6 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/flowcontrol"
@@ -220,7 +221,13 @@ func (this *state) Setup() error {
 	_, _ = this.secretresc.ListCached(labels.Nothing())
 
 	if this.config.RemoteAccessConfig != nil {
-		err := this.startRemoteAccessServer()
+		secret := &corev1.Secret{}
+		_, err := this.secretresc.GetInto(this.config.RemoteAccessConfig.SecretName, secret)
+		if err != nil {
+			secret = nil
+			this.context.Infof("remote access server secret not available: %s", err)
+		}
+		err = this.startRemoteAccessServer(secret)
 		if err != nil {
 			return err
 		}
@@ -252,11 +259,12 @@ func (this *state) Setup() error {
 	return nil
 }
 
-func (this *state) startRemoteAccessServer() error {
+func (this *state) startRemoteAccessServer(secret *corev1.Secret) error {
 	server, err := embed.StartDNSHandlerServer(this.context, this.config.RemoteAccessConfig)
 	if err != nil {
 		return err
 	}
+	this.config.RemoteAccessConfig.ServerSecretProvider.UpdateSecret(secret)
 
 	listener, ok := server.(ProviderEventListener)
 	if !ok {

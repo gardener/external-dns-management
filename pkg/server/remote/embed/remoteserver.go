@@ -17,7 +17,6 @@
 package embed
 
 import (
-	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"io/ioutil"
@@ -25,16 +24,27 @@ import (
 	"net"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/external-dns-management/pkg/server/remote/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	corev1 "k8s.io/api/core/v1"
 )
 
+// ServerSecretUpdateHandler is called on updated server secret
+type ServerSecretUpdateHandler func(secret *corev1.Secret)
+
+// ServerSecretProvider informs handlers on updated secret
+type ServerSecretProvider interface {
+	UpdateSecret(secret *corev1.Secret)
+	AddUpdateHandler(handler ServerSecretUpdateHandler)
+}
+
 type RemoteAccessServerConfig struct {
-	Port               int
-	CACertFilename     string
-	ServerCertFilename string
-	ServerKeyFilename  string
+	Port                 int
+	CACertFilename       string
+	SecretName           resources.ObjectName
+	ServerSecretProvider ServerSecretProvider
 }
 
 type CreateServerFunc func(logctx logger.LogContext) common.RemoteProviderServer
@@ -45,7 +55,7 @@ func RegisterCreateServerFunc(f CreateServerFunc) {
 	serverFunc = f
 }
 
-func loadTLSCredentials(cfg *RemoteAccessServerConfig) (credentials.TransportCredentials, error) {
+func loadTLSCredentials(logctx logger.LogContext, cfg *RemoteAccessServerConfig) (credentials.TransportCredentials, error) {
 	// Load certificate of the CA who signed client's certificate
 	pemClientCA, err := ioutil.ReadFile(cfg.CACertFilename)
 	if err != nil {
@@ -57,23 +67,12 @@ func loadTLSCredentials(cfg *RemoteAccessServerConfig) (credentials.TransportCre
 		return nil, fmt.Errorf("failed to add client CA's certificate")
 	}
 
-	// Load server's certificate and private key
-	serverCert, err := tls.LoadX509KeyPair(cfg.ServerCertFilename, cfg.ServerKeyFilename)
-	if err != nil {
-		return nil, err
-	}
-
-	config := &tls.Config{
-		Certificates: []tls.Certificate{serverCert},
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		ClientCAs:    certPool,
-	}
-
-	return credentials.NewTLS(config), nil
+	return newDynamicTransportCredentials(logctx, certPool, cfg.ServerSecretProvider), nil
 }
 
 func StartDNSHandlerServer(logctx logger.LogContext, config *RemoteAccessServerConfig) (common.RemoteProviderServer, error) {
-	creds, err := loadTLSCredentials(config)
+	logctx = logctx.NewContext("server", "remoteaccess")
+	creds, err := loadTLSCredentials(logctx, config)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +81,6 @@ func StartDNSHandlerServer(logctx logger.LogContext, config *RemoteAccessServerC
 		return nil, err
 	}
 	s := grpc.NewServer(grpc.Creds(creds))
-	logctx = logctx.NewContext("server", "remoteaccess")
 	server := serverFunc(logctx)
 	common.RegisterRemoteProviderServer(s, server)
 	logctx.Infof("DNSHandler server listening at %v", lis.Addr())

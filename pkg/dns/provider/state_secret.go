@@ -32,6 +32,12 @@ import (
 ////////////////////////////////////////////////////////////////////////////////
 
 func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) reconcile.Status {
+	if this.config.RemoteAccessConfig != nil &&
+		obj.ObjectName().Name() == this.config.RemoteAccessConfig.SecretName.Name() &&
+		obj.ObjectName().Namespace() == this.config.RemoteAccessConfig.SecretName.Namespace() {
+		this.config.RemoteAccessConfig.ServerSecretProvider.UpdateSecret(obj.Data().(*corev1.Secret))
+	}
+
 	providers := this.GetSecretUsage(obj.ObjectName())
 	if providers == nil || len(providers) == 0 {
 		return reconcile.DelayOnError(logger, this.RemoveFinalizer(obj))
