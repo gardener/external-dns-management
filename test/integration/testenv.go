@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gardener/external-dns-management/pkg/server/remote"
+	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -37,7 +39,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	api "k8s.io/api/core/v1"
 	corev1 "k8s.io/api/core/v1"
 	networking "k8s.io/api/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -51,15 +52,16 @@ import (
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
-type FailOption int
+type ProviderTestOption int
 
 const (
-	FailGetZones FailOption = iota
+	FailGetZones ProviderTestOption = iota
 	FailDeleteEntry
 	FailSecondZoneWithSameBaseDomain
 	AlternativeMockName
 	Domain2IsSubdomain
 	Quotas4PerMin
+	RemoveAccess
 )
 
 type TestEnv struct {
@@ -82,6 +84,8 @@ func doInit() {
 		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
 
 	resources.Register(v1alpha1.SchemeBuilder)
+
+	embed.RegisterCreateServerFunc(remote.CreateServer)
 }
 
 func runControllerManager(args []string) {
@@ -100,31 +104,34 @@ func waitForCluster(kubeconfig string, logger logger.LogContext) (cluster.Interf
 	if err != nil {
 		return nil, fmt.Errorf("CreateCluster failed: %s", err)
 	}
+	return cluster, nil
+}
 
+func (te *TestEnv) WaitForCRDs() error {
 	awaitCRD := func(max int, crdName string) error {
 		var err error
 		for i := 0; i < max; i++ {
-			err = apiextensions.WaitCRDReady(cluster, crdName)
+			err = apiextensions.WaitCRDReady(te.Cluster, crdName)
 			if err == nil {
 				break
 			}
 			time.Sleep(1 * time.Second)
 			if i%5 == 4 {
-				logger.Infof("Still waiting for CRD %s ...", crdName)
+				te.Logger.Infof("Still waiting for CRD %s ...", crdName)
 			}
 		}
 		return err
 	}
 
-	err = awaitCRD(30, "dnsproviders.dns.gardener.cloud")
+	err := awaitCRD(30, "dnsproviders.dns.gardener.cloud")
 	if err != nil {
-		return nil, fmt.Errorf("Wait for CRD failed: %s", err)
+		return fmt.Errorf("Wait for CRD failed: %s", err)
 	}
 	err = awaitCRD(30, "dnsentries.dns.gardener.cloud")
 	if err != nil {
-		return nil, fmt.Errorf("Wait for CRD failed: %s", err)
+		return fmt.Errorf("Wait for CRD failed: %s", err)
 	}
-	return cluster, nil
+	return nil
 }
 
 func NewTestEnv(kubeconfig string, namespace string) (*TestEnv, error) {
@@ -172,7 +179,7 @@ func (te *TestEnv) Errorf(msgfmt string, args ...interface{}) {
 }
 
 func (te *TestEnv) CreateNamespace(namespace string) error {
-	ns := api.Namespace{}
+	ns := corev1.Namespace{}
 	ns.SetName(namespace)
 	_, err := te.resources.CreateOrUpdateObject(&ns)
 	return err
@@ -184,14 +191,18 @@ func (te *TestEnv) SecretName(index int) string {
 
 func (te *TestEnv) CreateSecret(index int) (resources.Object, error) {
 	name := te.SecretName(index)
-	secret := api.Secret{}
+	secret := corev1.Secret{}
 	secret.SetName(name)
 	secret.SetNamespace(te.Namespace)
-	obj, err := te.resources.CreateOrUpdateObject(&secret)
+	return te.CreateSecretEx(&secret)
+}
+
+func (te *TestEnv) CreateSecretEx(secret *corev1.Secret) (resources.Object, error) {
+	obj, err := te.resources.CreateOrUpdateObject(secret)
 	return obj, err
 }
 
-func (te *TestEnv) BuildProviderConfig(domain, domain2 string, failOptions ...FailOption) *runtime.RawExtension {
+func (te *TestEnv) BuildProviderConfig(domain, domain2 string, failOptions ...ProviderTestOption) *runtime.RawExtension {
 	name := te.Namespace
 	for _, opt := range failOptions {
 		switch opt {
@@ -215,7 +226,7 @@ func (te *TestEnv) BuildProviderConfig(domain, domain2 string, failOptions ...Fa
 	return te.BuildProviderConfigEx(input, failOptions...)
 }
 
-func (te *TestEnv) BuildProviderConfigEx(input mock.MockConfig, failOptions ...FailOption) *runtime.RawExtension {
+func (te *TestEnv) BuildProviderConfigEx(input mock.MockConfig, failOptions ...ProviderTestOption) *runtime.RawExtension {
 	for _, opt := range failOptions {
 		switch opt {
 		case FailGetZones:
@@ -237,22 +248,25 @@ func (te *TestEnv) BuildProviderConfigEx(input mock.MockConfig, failOptions ...F
 	return &runtime.RawExtension{Raw: bytes}
 }
 
-func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretName string, failOptions ...FailOption) (resources.Object, string, string, error) {
+func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretName string, options ...ProviderTestOption) (resources.Object, string, string, error) {
 	domain := fmt.Sprintf("pr-%d.%s", providerIndex, baseDomain)
 	domain2 := fmt.Sprintf("pr-%d-2.%s", providerIndex, baseDomain)
 
-	setSpec := func(spec *v1alpha1.DNSProviderSpec) {
+	setSpec := func(provider *v1alpha1.DNSProvider) {
+		spec := &provider.Spec
 		spec.Domains = &v1alpha1.DNSSelection{Include: []string{domain}}
 		spec.Type = "mock-inmemory"
-		spec.ProviderConfig = te.BuildProviderConfig(domain, domain2, failOptions...)
+		spec.ProviderConfig = te.BuildProviderConfig(domain, domain2, options...)
 		spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: te.Namespace}
-		for _, opt := range failOptions {
+		for _, opt := range options {
 			switch opt {
 			case Quotas4PerMin:
 				spec.RateLimit = &v1alpha1.RateLimit{
 					RequestsPerDay: 24 * 60 * 4,
 					Burst:          1,
 				}
+			case RemoveAccess:
+				resources.SetAnnotation(provider, dnsprovider.AnnotationRemoteAccess, "true")
 			}
 		}
 	}
@@ -260,32 +274,39 @@ func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretNa
 	return obj, domain, domain2, err
 }
 
-type ProviderSpecSetter func(p *v1alpha1.DNSProviderSpec)
+type ProviderSpecSetter func(p *v1alpha1.DNSProvider)
 
 func (te *TestEnv) CreateProviderEx(providerIndex int, secretName string, setSpec ProviderSpecSetter) (resources.Object, error) {
 	name := fmt.Sprintf("mock-provider-%d", providerIndex)
 	provider := &v1alpha1.DNSProvider{}
 	provider.SetName(name)
 	provider.SetNamespace(te.Namespace)
-	setSpec(&provider.Spec)
+	setSpec(provider)
 	obj, err := te.resources.CreateObject(provider)
 	if errors.IsAlreadyExists(err) {
-		te.Infof("Provider %s already existing, updating...", name)
-		obj, provider, err = te.GetProvider(name)
-		if err == nil {
-			setSpec(&provider.Spec)
+		for i := 0; i < 10; i++ {
+			te.Infof("Provider %s already existing, updating...", name)
+			obj, provider, err = te.GetProvider(name)
+			if err != nil {
+				break
+			}
+			setSpec(provider)
 			err = obj.Update()
+			if err == nil || !errors.IsConflict(err) {
+				break
+			}
+			time.Sleep(50 * time.Millisecond)
 		}
 	}
 	return obj, err
 }
 
-func (te *TestEnv) CreateSecretAndProvider(baseDomain string, index int, failOptions ...FailOption) (resources.Object, string, string, error) {
+func (te *TestEnv) CreateSecretAndProvider(baseDomain string, index int, options ...ProviderTestOption) (resources.Object, string, string, error) {
 	secret, err := te.CreateSecret(index)
 	if err != nil {
 		return nil, "", "", fmt.Errorf("Creation of secret failed with: %s", err.Error())
 	}
-	return te.CreateProvider(baseDomain, index, secret.GetName(), failOptions...)
+	return te.CreateProvider(baseDomain, index, secret.GetName(), options...)
 }
 
 func (te *TestEnv) DeleteProviderAndSecret(pr resources.Object) error {
@@ -524,7 +545,7 @@ func (te *TestEnv) GetIngress(name string) (resources.Object, *networking.Ingres
 }
 
 func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP string, ttl int) (resources.Object, error) {
-	setter := func(e *api.Service) {
+	setter := func(e *corev1.Service) {
 		e.Annotations = map[string]string{"dns.gardener.cloud/dnsnames": domainName, "dns.gardener.cloud/ttl": fmt.Sprintf("%d", ttl)}
 		e.Spec.Type = corev1.ServiceTypeLoadBalancer
 		e.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(8080), Protocol: corev1.ProtocolTCP}}
@@ -532,7 +553,7 @@ func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP 
 
 	ip := "1.2.3.4"
 	service.FakeTargetIP = &ip
-	svc := &api.Service{}
+	svc := &corev1.Service{}
 	svc.SetName(name)
 	svc.SetNamespace(te.Namespace)
 	setter(svc)
@@ -548,8 +569,8 @@ func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP 
 	return obj, err
 }
 
-func (te *TestEnv) GetService(name string) (resources.Object, *api.Service, error) {
-	svc := api.Service{}
+func (te *TestEnv) GetService(name string) (resources.Object, *corev1.Service, error) {
+	svc := corev1.Service{}
 	svc.SetName(name)
 	svc.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(&svc)
@@ -557,7 +578,7 @@ func (te *TestEnv) GetService(name string) (resources.Object, *api.Service, erro
 	if err != nil {
 		return nil, nil, err
 	}
-	return obj, obj.Data().(*api.Service), nil
+	return obj, obj.Data().(*corev1.Service), nil
 }
 
 func (te *TestEnv) HasEntryState(name string, states ...string) (bool, error) {
@@ -603,7 +624,7 @@ func (te *TestEnv) UpdateProviderSpec(obj resources.Object, f func(spec *v1alpha
 }
 
 func (te *TestEnv) GetSecret(name string) (resources.Object, error) {
-	secret := &api.Secret{}
+	secret := &corev1.Secret{}
 	secret.SetName(name)
 	secret.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(secret)
@@ -729,7 +750,7 @@ func (te *TestEnv) AwaitServiceDeletion(name string) error {
 }
 
 func (te *TestEnv) DeleteSecretByName(name string) error {
-	secret := &api.Secret{}
+	secret := &corev1.Secret{}
 	secret.SetName(name)
 	secret.SetNamespace(te.Namespace)
 	return te.resources.DeleteObject(secret)

@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+Copyright (c) 2022 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -65,6 +65,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Dns().V1alpha1().DNSOwners().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("dnsproviders"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Dns().V1alpha1().DNSProviders().Informer()}, nil
+	case v1alpha1.SchemeGroupVersion.WithResource("remoteaccesscertificates"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Dns().V1alpha1().RemoteAccessCertificates().Informer()}, nil
 
 	}
 

@@ -150,6 +150,11 @@ configuration:
   # compoundRatelimiterBurst:
   # compoundRatelimiterEnabled:
   # compoundRatelimiterQps:
+  # compoundRemoteAdvancedBatchSize:
+  # compoundRemoteAdvancedMaxRetries:
+  # compoundRemoteRatelimiterBurst:
+  # compoundRemoteRatelimiterEnabled:
+  # compoundRemoteRatelimiterQps:
   # compoundRescheduleDelay: 120s
   # compoundSecretsPoolSize: 2
   # compoundSetup: 10
@@ -181,6 +186,7 @@ configuration:
   # dnsentrySourceTargetNamePrefix: ""
   # dnsentrySourceTargetNamespace: ""
   # dnsentrySourceTargetOwnerId: ""
+  # dnsentrySourceTargetOwnerObject:
   # dnsentrySourceTargetRealms: ""
   # dnsentrySourceTargetSetIgnoreOwners: false
   # dnsentrySourceTargetsPoolSize: 2
@@ -223,6 +229,7 @@ configuration:
   # ingressDNSTargetNamePrefix: ""
   # ingressDNSTargetNamespace: ""
   # ingressDNSTargetOwnerId: ""
+  # ingressDNSTargetOwnerObject:
   # ingressDNSTargetRealms: ""
   # ingressDNSTargetSetIgnoreOwners: false
   # ingressDNSTargetsPoolSize: 2
@@ -266,6 +273,11 @@ configuration:
   # ratelimiterBurst:
   # ratelimiterEnabled:
   # ratelimiterQps:
+  # remoteAdvancedBatchSize:
+  # remoteAdvancedMaxRetries:
+  # remoteRatelimiterBurst:
+  # remoteRatelimiterEnabled:
+  # remoteRatelimiterQps:
   # rescheduleDelay: 120s
   # secretsPoolSize:
   serverPortHttp: 8080
@@ -282,6 +294,7 @@ configuration:
   # serviceDNSTargetNamePrefix: ""
   # serviceDNSTargetNamespace: ""
   # serviceDNSTargetOwnerId: ""
+  # serviceDNSTargetOwnerObject:
   # serviceDNSTargetRealms: ""
   # serviceDNSTargetSetIgnoreOwners: false
   # serviceDNSTargetsPoolSize: 2
@@ -293,6 +306,7 @@ configuration:
   # targetNamePrefix: ""
   # targetNamespace: ""
   # targetOwnerId: ""
+  # targetOwnerObject:
   # targetRealms: ""
   # targetSetIgnoreOwners: false
   # targetDisableDeployCrds: false
@@ -328,3 +342,22 @@ custom: {}
 #  volumeMounts:
 #    - name: token
 #      mountPath: /token
+
+remoteaccess:
+  enabled: false
+#  service:
+#    annotations:
+#      #dns.gardener.cloud/class: garden
+#      dns.gardener.cloud/dnsnames: my.foo.bar.com
+#      #cert.gardener.cloud/purpose: managed
+#      #cert.gardener.cloud/secretname: remoteaccess-service
+#    type: LoadBalancer
+#  certs:
+#    ca:
+#      cert: LS0t... # CA used for client certs
+#      #key: LS0t... # only needed if remoteaccesscertificates controller is enabled
+#    server:
+#      #secretName: remoteaccess-service # if managed server certificate is used
+#      cert: LS0t... # only needed if certificate is not managed
+#      key: LS0t...  # only needed if certificate is not managed
+#  port: 7777

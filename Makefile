@@ -55,6 +55,13 @@ test:
 	@echo ----- Skipping long running integration tests, use \'make alltests\' to run all tests -----
 	test/integration/run.sh $(kindargs) -- -skip Many $(args)
 
+.PHONY: generate-proto
+generate-proto:
+	@protoc --go_out=. --go_opt=paths=source_relative \
+    --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+    --experimental_allow_proto3_optional \
+    pkg/server/remote/common/remote.proto
+
 .PHONY: generate
 generate:
 	@./hack/generate-code

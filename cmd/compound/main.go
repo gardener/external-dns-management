@@ -25,6 +25,9 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/external-dns-management/pkg/server/remote"
+	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
+
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	_ "github.com/gardener/external-dns-management/pkg/controller/annotation/annotations"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/alicloud"
@@ -37,6 +40,8 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/infoblox"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/netlify"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/remote"
+	_ "github.com/gardener/external-dns-management/pkg/controller/remoteaccesscertificates"
 	_ "github.com/gardener/external-dns-management/pkg/controller/replication/dnsprovider"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/dnsentry"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
@@ -67,6 +72,8 @@ func init() {
 	resources.Register(v1alpha1.SchemeBuilder)
 	resources.Register(coordinationv1.SchemeBuilder)
 	resources.Register(networkingv1.SchemeBuilder)
+
+	embed.RegisterCreateServerFunc(remote.CreateServer)
 }
 
 func migrateExtensionsIngress(c controllermanager.Configuration) controllermanager.Configuration {

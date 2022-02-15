@@ -46,7 +46,7 @@ func checkEntry(obj resources.Object, provider resources.Object) *v1alpha1.DNSEn
 	return checkEntryEx(testEnv, obj, provider)
 }
 
-func checkEntryEx(te *TestEnv, obj resources.Object, provider resources.Object) *v1alpha1.DNSEntry {
+func checkEntryEx(te *TestEnv, obj resources.Object, provider resources.Object, providerType ...string) *v1alpha1.DNSEntry {
 	err := te.AwaitEntryReady(obj.GetName())
 	Ω(err).Should(BeNil())
 
@@ -56,7 +56,11 @@ func checkEntryEx(te *TestEnv, obj resources.Object, provider resources.Object) 
 	Ω(err).Should(BeNil())
 	entry := UnwrapEntry(entryObj)
 	Ω(entry.Status.ProviderType).ShouldNot(BeNil(), "Missing provider type")
-	Ω(*entry.Status.ProviderType).Should(Equal("mock-inmemory"))
+	typ := "mock-inmemory"
+	if len(providerType) == 1 {
+		typ = providerType[0]
+	}
+	Ω(*entry.Status.ProviderType).Should(Equal(typ))
 	Ω(entry.Status.Provider).ShouldNot(BeNil(), "Missing provider")
 	providerName := provider.ObjectName().String()
 	Ω(*entry.Status.Provider).Should(Equal(providerName))

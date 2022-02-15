@@ -20,11 +20,13 @@ package nodeimage
 The default CNI manifest and images are our own tiny kindnet
 */
 
-var defaultCNIImages = []string{"kindest/kindnetd:v20210119-d5ef916d"}
+var defaultCNIImages = []string{"docker.io/kindest/kindnetd:v20210326-1e038dc5"}
 
+// TODO: migrate to fully patching and deprecate the template
 const defaultCNIManifest = `
 # kindnetd networking manifest
 # would you kindly template this file
+# would you kindly patch this file
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -89,11 +91,10 @@ spec:
       hostNetwork: true
       tolerations:
       - operator: Exists
-        effect: NoSchedule
       serviceAccountName: kindnet
       containers:
       - name: kindnet-cni
-        image: kindest/kindnetd:v20210119-d5ef916d
+        image: docker.io/kindest/kindnetd:v20210326-1e038dc5
         env:
         - name: HOST_IP
           valueFrom:

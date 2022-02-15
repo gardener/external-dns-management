@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2021 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+Copyright (c) 2022 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -65,3 +65,11 @@ type DNSProviderListerExpansion interface{}
 // DNSProviderNamespaceListerExpansion allows custom methods to be added to
 // DNSProviderNamespaceLister.
 type DNSProviderNamespaceListerExpansion interface{}
+
+// RemoteAccessCertificateListerExpansion allows custom methods to be added to
+// RemoteAccessCertificateLister.
+type RemoteAccessCertificateListerExpansion interface{}
+
+// RemoteAccessCertificateNamespaceListerExpansion allows custom methods to be added to
+// RemoteAccessCertificateNamespaceLister.
+type RemoteAccessCertificateNamespaceListerExpansion interface{}

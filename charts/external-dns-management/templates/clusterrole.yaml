@@ -45,6 +45,8 @@ rules:
   - dnshostedzonepolicies/status
   - dnslocks
   - dnslocks/status
+  - remoteaccesscertificates
+  - remoteaccesscertificates/status
   verbs:
   - get
   - list

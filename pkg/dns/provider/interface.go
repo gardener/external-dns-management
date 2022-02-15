@@ -28,24 +28,26 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/flowcontrol"
 )
 
 type Config struct {
-	TTL               int64
-	CacheTTL          time.Duration
-	CacheDir          string
-	RescheduleDelay   time.Duration
-	StatusCheckPeriod time.Duration
-	Ident             string
-	Dryrun            bool
-	ZoneStateCaching  bool
-	Delay             time.Duration
-	Enabled           utils.StringSet
-	Options           *FactoryOptions
-	Factory           DNSHandlerFactory
+	TTL                int64
+	CacheTTL           time.Duration
+	CacheDir           string
+	RescheduleDelay    time.Duration
+	StatusCheckPeriod  time.Duration
+	Ident              string
+	Dryrun             bool
+	ZoneStateCaching   bool
+	Delay              time.Duration
+	Enabled            utils.StringSet
+	Options            *FactoryOptions
+	Factory            DNSHandlerFactory
+	RemoteAccessConfig *embed.RemoteAccessServerConfig
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
@@ -78,6 +80,16 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		statuscheckperiod = 120 * time.Second
 	}
 
+	RemoteAccessClientID, err = c.GetStringOption(OPT_REMOTE_ACCESS_CLIENT_ID)
+	if err != nil {
+		return nil, err
+	}
+
+	remoteAccessConfig, err := createRemoteAccessConfig(c)
+	if err != nil {
+		return nil, err
+	}
+
 	disableZoneStateCaching, _ := c.GetBoolOption(OPT_DISABLE_ZONE_STATE_CACHING)
 
 	enabled := utils.StringSet{}
@@ -102,18 +114,19 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	fopts := GetFactoryOptions(osrc)
 
 	return &Config{
-		Ident:             ident,
-		TTL:               int64(ttl),
-		CacheTTL:          time.Duration(cttl) * time.Second,
-		CacheDir:          cdir,
-		RescheduleDelay:   rescheduleDelay,
-		StatusCheckPeriod: statuscheckperiod,
-		Dryrun:            dryrun,
-		ZoneStateCaching:  !disableZoneStateCaching,
-		Delay:             delay,
-		Enabled:           enabled,
-		Options:           fopts,
-		Factory:           factory,
+		Ident:              ident,
+		TTL:                int64(ttl),
+		CacheTTL:           time.Duration(cttl) * time.Second,
+		CacheDir:           cdir,
+		RescheduleDelay:    rescheduleDelay,
+		StatusCheckPeriod:  statuscheckperiod,
+		Dryrun:             dryrun,
+		ZoneStateCaching:   !disableZoneStateCaching,
+		Delay:              delay,
+		Enabled:            enabled,
+		Options:            fopts,
+		Factory:            factory,
+		RemoteAccessConfig: remoteAccessConfig,
 	}, nil
 }
 
@@ -129,7 +142,7 @@ type DNSHostedZone interface {
 
 type DNSHostedZones []DNSHostedZone
 
-func (this DNSHostedZones) equivalentTo(infos DNSHostedZones) bool {
+func (this DNSHostedZones) EquivalentTo(infos DNSHostedZones) bool {
 	if len(this) != len(infos) {
 		return false
 	}
@@ -261,4 +274,16 @@ type DoneHandler interface {
 	Failed(err error)
 	Throttled()
 	Succeeded()
+}
+
+type ProviderEventListener interface {
+	ProviderUpdatedEvent(logger logger.LogContext, name resources.ObjectName, annotations map[string]string, handler LightDNSHandler)
+	ProviderRemovedEvent(logger logger.LogContext, name resources.ObjectName)
+}
+
+type LightDNSHandler interface {
+	ProviderType() string
+	GetZones() (DNSHostedZones, error)
+	GetZoneState(DNSHostedZone) (DNSZoneState, error)
+	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
 }

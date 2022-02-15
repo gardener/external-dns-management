@@ -23,6 +23,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/flowcontrol"
 
@@ -31,11 +33,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-
-	"k8s.io/apimachinery/pkg/labels"
+	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
 )
 
 type ZonedDNSName struct {
@@ -148,6 +150,8 @@ type state struct {
 	initialized bool
 
 	dnsTicker *Ticker
+
+	providerEventListeners []ProviderEventListener
 }
 
 type rateLimiterData struct {
@@ -167,6 +171,9 @@ func NewDNSState(ctx Context, ownerresc, secretresc resources.Interface, classes
 	ctx.Infof("zone cache ttl for zones:    %v", config.CacheTTL)
 	ctx.Infof("zone cache persist dir:      %s", config.CacheDir)
 	ctx.Infof("disable zone state caching:  %t", !config.ZoneStateCaching)
+	if config.RemoteAccessConfig != nil {
+		ctx.Infof("remote access server port: %d", config.RemoteAccessConfig.Port)
+	}
 
 	realms := access.RealmTypes{"use": access.NewRealmType(dns.REALM_ANNOTATION)}
 
@@ -202,7 +209,7 @@ func (this *state) IsResponsibleFor(logger logger.LogContext, obj resources.Obje
 	return this.classes.IsResponsibleFor(logger, obj)
 }
 
-func (this *state) Setup() {
+func (this *state) Setup() error {
 	this.dnsTicker = NewTicker(this.context.GetPool(DNS_POOL).Tick)
 	this.ownerupd = startOwnerUpdater(this.context, this.ownerresc)
 	processors, err := this.context.GetIntOption(OPT_SETUP)
@@ -212,6 +219,19 @@ func (this *state) Setup() {
 
 	// enforce global informer for secrets
 	_, _ = this.secretresc.ListCached(labels.Nothing())
+
+	if this.config.RemoteAccessConfig != nil {
+		secret := &corev1.Secret{}
+		_, err := this.secretresc.GetInto(this.config.RemoteAccessConfig.SecretName, secret)
+		if err != nil {
+			secret = nil
+			this.context.Infof("remote access server secret not available: %s", err)
+		}
+		err = this.startRemoteAccessServer(secret)
+		if err != nil {
+			return err
+		}
+	}
 
 	this.context.Infof("using %d parallel workers for initialization", processors)
 	this.setupFor(&api.DNSProvider{}, "providers", func(e resources.Object) {
@@ -236,6 +256,23 @@ func (this *state) Setup() {
 	this.triggerStatistic()
 	this.initialized = true
 	this.context.Infof("setup done - starting reconciliation")
+	return nil
+}
+
+func (this *state) startRemoteAccessServer(secret *corev1.Secret) error {
+	server, err := embed.StartDNSHandlerServer(this.context, this.config.RemoteAccessConfig)
+	if err != nil {
+		return err
+	}
+	this.config.RemoteAccessConfig.ServerSecretProvider.UpdateSecret(secret)
+
+	listener, ok := server.(ProviderEventListener)
+	if !ok {
+		return fmt.Errorf("cannot cast server to ProviderEventListener")
+	}
+	this.providerEventListeners = append(this.providerEventListeners, listener)
+
+	return nil
 }
 
 func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.Object), processors int) {

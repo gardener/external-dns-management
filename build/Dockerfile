@@ -13,7 +13,7 @@
 # limitations under the License.
 
 #############      builder       #############
-FROM eu.gcr.io/gardener-project/3rd/golang:1.17.5 AS builder
+FROM golang:1.17.6 AS builder
 
 WORKDIR /build
 COPY . .
@@ -21,7 +21,7 @@ COPY . .
 RUN make release
 
 ############# base
-FROM eu.gcr.io/gardener-project/3rd/alpine:3.15.0 AS base
+FROM alpine:3.15.0 AS base
 
 #############      dns-controller-manager     #############
 FROM base AS dns-controller-manager

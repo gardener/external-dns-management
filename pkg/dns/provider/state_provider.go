@@ -81,6 +81,7 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 	this.providers[new.ObjectName()] = new
 	mod := this.updateZones(logger, last, new)
 	if !status.IsSucceeded() {
+		this.informProviderRemoved(logger, new.ObjectName())
 		logger.Infof("errorneous provider: %s", status.Error)
 		if last != nil {
 			logger.Infof("trigger entries for old zones")
@@ -99,6 +100,8 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 		}
 		return status
 	}
+
+	this.informProviderUpdated(logger, new)
 
 	if regerr != nil {
 		status = reconcile.Delay(logger, regerr)
@@ -157,6 +160,18 @@ func (this *state) updateProviderRateLimiter(logger logger.LogContext, obj *dnsu
 	return rateLimit
 }
 
+func (this *state) informProviderUpdated(logger logger.LogContext, new *dnsProviderVersion) {
+	for _, listener := range this.providerEventListeners {
+		listener.ProviderUpdatedEvent(logger, new.ObjectName(), new.Object().GetAnnotations(), handler(new))
+	}
+}
+
+func (this *state) informProviderRemoved(logger logger.LogContext, name resources.ObjectName) {
+	for _, listener := range this.providerEventListeners {
+		listener.ProviderRemovedEvent(logger, name)
+	}
+}
+
 func (this *state) _UpdateForeignProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status {
 	pname := obj.ObjectName()
 
@@ -190,10 +205,13 @@ func (this *state) ProviderDeleted(logger logger.LogContext, key resources.Objec
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
+	this.informProviderRemoved(logger, key.ObjectName())
 	return this.removeForeignProvider(logger, key.ObjectName())
 }
 
 func (this *state) RemoveProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status {
+	this.informProviderRemoved(logger, obj.ObjectName())
+
 	pname := obj.ObjectName()
 
 	this.lock.Lock()

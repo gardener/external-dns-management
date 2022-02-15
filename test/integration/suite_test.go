@@ -25,6 +25,7 @@ import (
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/remote"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
 
@@ -34,6 +35,7 @@ import (
 
 var testEnv *TestEnv
 var testEnv2 *TestEnv
+var testCerts *certFileAndSecret
 
 func TestIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -47,10 +49,19 @@ var _ = BeforeSuite(func() {
 	kubeconfig := os.Getenv("KUBECONFIG")
 	Ω(kubeconfig).ShouldNot(Equal(""))
 
+	testEnv, err = NewTestEnv(kubeconfig, "test")
+	Ω(err).Should(BeNil())
+
+	testCerts, err = newCertFileAndSecret(testEnv)
+	Ω(err).Should(BeNil())
+
 	args := []string{
 		"--kubeconfig", kubeconfig,
 		"--identifier", "integrationtest",
 		"--controllers", "dnscontrollers,dnssources",
+		"--remote-access-port", "50051",
+		"--remote-access-cacert", testCerts.caCert,
+		"--remote-access-server-secret-name", testCerts.secretName,
 		"--omit-lease",
 		"--reschedule-delay", "15s",
 		"--lock-status-check-period", "5s",
@@ -58,13 +69,17 @@ var _ = BeforeSuite(func() {
 	}
 	go runControllerManager(args)
 
-	testEnv, err = NewTestEnv(kubeconfig, "test")
+	err = testEnv.WaitForCRDs()
 	Ω(err).Should(BeNil())
+
 	testEnv2, err = NewTestEnvNamespace(testEnv, "test2")
 	Ω(err).Should(BeNil())
 })
 
 var _ = AfterSuite(func() {
+	if testCerts != nil {
+		testCerts.cleanup()
+	}
 	if testEnv != nil {
 		testEnv.Infof("AfterSuite")
 	}

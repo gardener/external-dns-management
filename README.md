@@ -12,6 +12,7 @@ It contains provisioning controllers for creating DNS records in one of the DNS 
   - [_Cloudflare DNS_](/docs/cloudflare/README.md),
   - [_Infoblox_](/docs/infoblox/README.md),
   - [_Netlify DNS_](docs/netlify/README.md),
+  - [_remote_](docs/remote/README.md),
 
 and source controllers for services and ingresses to create DNS entries by annotations.
 
@@ -382,6 +383,7 @@ The following provider types can be selected (comma separated):
 - `cloudflare-dns`: Cloudflare DNS provider
 - `infoblox-dns`: Infoblox DNS provider
 - `netlify-dns`: Netlify DNS provider
+- `remote`: Remote DNS provider (a dns-controller-manager with enabled remote access service)
 
 If the compound DNS Provisioning Controller is enabled it is important to specify a
 unique controller identity using the `--identifier` option.
@@ -514,6 +516,16 @@ Flags:
       --compound.ratelimiter.burst int                                number of burst requests for rate limiter of controller compound
       --compound.ratelimiter.enabled                                  enables rate limiter for DNS provider requests of controller compound
       --compound.ratelimiter.qps int                                  maximum requests/queries per second of controller compound
+      --compound.remote-access-cacert string                          CA who signed client certs file of controller compound
+      --compound.remote-access-client-id string                       identifier used for remote access of controller compound
+      --compound.remote-access-port int                               port of remote access server for remote-enabled providers of controller compound
+      --compound.remote-access-server-secret-name string              name of secret containing remote access server's certificate of controller compound
+      --compound.remote.advanced.batch-size int                       batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.remote.advanced.max-retries int                      maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.remote.blocked-zone zone-id                          Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
+      --compound.remote.ratelimiter.burst int                         number of burst requests for rate limiter of controller compound
+      --compound.remote.ratelimiter.enabled                           enables rate limiter for DNS provider requests of controller compound
+      --compound.remote.ratelimiter.qps int                           maximum requests/queries per second of controller compound
       --compound.reschedule-delay duration                            reschedule delay after losing provider of controller compound
       --compound.secrets.pool.size int                                Worker pool size for pool secrets of controller compound
       --compound.setup int                                            number of processors for controller setup of controller compound
@@ -640,6 +652,21 @@ Flags:
       --ratelimiter.burst int                                         number of burst requests for rate limiter
       --ratelimiter.enabled                                           enables rate limiter for DNS provider requests
       --ratelimiter.qps int                                           maximum requests/queries per second
+      --remote-access-cacert string                                   CA who signed client certs file, filename for certificate of client CA
+      --remote-access-cakey string                                    filename for private key of client CA
+      --remote-access-client-id string                                identifier used for remote access
+      --remote-access-port int                                        port of remote access server for remote-enabled providers
+      --remote-access-server-secret-name string                       name of secret containing remote access server's certificate
+      --remote.advanced.batch-size int                                batch size for change requests (currently only used for aws-route53)
+      --remote.advanced.max-retries int                               maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --remote.blocked-zone zone-id                                   Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
+      --remote.ratelimiter.burst int                                  number of burst requests for rate limiter
+      --remote.ratelimiter.enabled                                    enables rate limiter for DNS provider requests
+      --remote.ratelimiter.qps int                                    maximum requests/queries per second
+      --remoteaccesscertificates.default.pool.size int                Worker pool size for pool default of controller remoteaccesscertificates
+      --remoteaccesscertificates.pool.size int                        Worker pool size of controller remoteaccesscertificates
+      --remoteaccesscertificates.remote-access-cacert string          filename for certificate of client CA of controller remoteaccesscertificates
+      --remoteaccesscertificates.remote-access-cakey string           filename for private key of client CA of controller remoteaccesscertificates
       --reschedule-delay duration                                     reschedule delay after losing provider
       --secrets.pool.size int                                         Worker pool size for pool secrets
       --server-port-http int                                          HTTP server port (serving /healthz, /metrics, ...)

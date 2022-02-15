@@ -38,6 +38,11 @@ const (
 	OPT_LOCKSTATUSCHECKPERIOD      = "lock-status-check-period"
 	OPT_DISABLE_ZONE_STATE_CACHING = "disable-zone-state-caching"
 
+	OPT_REMOTE_ACCESS_PORT               = "remote-access-port"
+	OPT_REMOTE_ACCESS_CACERT             = "remote-access-cacert"
+	OPT_REMOTE_ACCESS_SERVER_SECRET_NAME = "remote-access-server-secret-name"
+	OPT_REMOTE_ACCESS_CLIENT_ID          = "remote-access-client-id"
+
 	OPT_PROVIDERTYPES = "provider-types"
 
 	OPT_RATELIMITER_ENABLED = "ratelimiter.enabled"
@@ -53,4 +58,8 @@ const (
 	CMD_DNSLOOKUP         = "dnslookup"
 
 	MSG_THROTTLING = "provider throttled"
+)
+
+const (
+	AnnotationRemoteAccess = dns.ANNOTATION_GROUP + "/remote-access"
 )

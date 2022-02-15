@@ -17,7 +17,9 @@
 package metrics
 
 import (
+	"strconv"
 	"sync"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/server"
@@ -37,6 +39,10 @@ func init() {
 	prometheus.MustRegister(Entries)
 	prometheus.MustRegister(StaleEntries)
 	prometheus.MustRegister(Owners)
+	prometheus.MustRegister(RemoteAccessLogins)
+	prometheus.MustRegister(RemoteAccessRequests)
+	prometheus.MustRegister(RemoteAccessSeconds)
+	prometheus.MustRegister(RemoteAccessCertificates)
 
 	server.RegisterHandler("/metrics", promhttp.Handler())
 }
@@ -96,6 +102,38 @@ var (
 			Help: "Total number of dns entries per owner",
 		},
 		[]string{"owner", "providertype", "provider"},
+	)
+
+	RemoteAccessLogins = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_remoteaccess_logins",
+			Help: "Total number of remote access logins",
+		},
+		[]string{"handler", "client", "success"},
+	)
+
+	RemoteAccessRequests = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_remoteaccess_requests",
+			Help: "Total number of remote access requests",
+		},
+		[]string{"handler", "client", "type", "zoneid"},
+	)
+
+	RemoteAccessSeconds = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "external_dns_management_remoteaccess_seconds",
+			Help:    "Duration in seconds of completed remote access requests",
+			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 25},
+		},
+		[]string{"handler", "client", "type", "zoneid", "error"},
+	)
+
+	RemoteAccessCertificates = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "external_dns_management_remoteaccess_transport_credentials",
+			Help: "Number of server-side transport credentials of remote access",
+		},
 	)
 )
 
@@ -184,6 +222,22 @@ func ReportZoneEntries(ptype, zone string, amount int, stale int) {
 	Entries.WithLabelValues(ptype, zone).Set(float64(amount))
 	StaleEntries.WithLabelValues(ptype, zone).Set(float64(stale))
 	zoneProviders.Add(ptype, zone)
+}
+
+func ReportRemoteAccessLogins(namespace, client string, success bool) {
+	RemoteAccessLogins.WithLabelValues(namespace, client, strconv.FormatBool(success)).Add(float64(1))
+}
+
+func ReportRemoteAccessRequests(namespace, client, requestType, zoneid string) {
+	RemoteAccessRequests.WithLabelValues(namespace, client, requestType, zoneid).Add(float64(1))
+}
+
+func ReportRemoteAccessSeconds(namespace, client, requestType, zoneid, error string, duration time.Duration) {
+	RemoteAccessSeconds.WithLabelValues(namespace, client, requestType, zoneid, error).Observe(duration.Seconds())
+}
+
+func ReportRemoteAccessCertificates(count int) {
+	RemoteAccessCertificates.Set(float64(count))
 }
 
 func DeleteZone(zone string) {

@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+option go_package = "github.com/gardener/external-dns-management/pkg/server/remote/common";
+
+package remote;
+
+// Interface exported by the server.
+service RemoteProvider {
+  rpc Login(LoginRequest) returns (LoginResponse) {}
+
+  rpc GetZones(GetZonesRequest) returns (Zones) {}
+
+  rpc GetZoneState(GetZoneStateRequest) returns (ZoneState) {}
+
+  rpc Execute(ExecuteRequest) returns (ExecuteResponse) {}
+}
+
+message LoginRequest {
+  string namespace = 1;
+  string cliendID = 2;
+}
+
+message LoginResponse {
+   string token = 1;
+}
+
+message GetZonesRequest {
+  string token = 1;
+}
+
+message Zones {
+   repeated Zone zone = 1;
+}
+
+message Zone {
+  string id = 1;
+  string provider_type = 2;
+  string key = 3;
+  string domain = 4;
+  repeated string forwarded_domain = 5;
+  bool private_zone = 6;
+}
+
+message GetZoneStateRequest {
+  string token = 1;
+  string zoneid = 2;
+}
+
+message RecordSet {
+  message Record {
+    string value = 1;
+  }
+
+  string type = 1;
+  int32 ttl = 2;
+  repeated Record record = 3;
+}
+
+message DNSSet {
+  string dns_name = 1;
+  string update_group = 2;
+  map<string, RecordSet> records = 3;
+}
+
+message PartialDNSSet {
+  string dns_name = 1;
+  string update_group = 2;
+  string record_type = 3;
+  RecordSet record_set = 4;
+}
+
+message ZoneState {
+  string key = 1;
+  map<string, DNSSet> dns_sets = 2;
+}
+
+message ExecuteRequest {
+    string token = 1;
+    string zoneid = 2;
+    repeated ChangeRequest change_request = 3;
+}
+
+message ChangeRequest {
+   enum ActionType {
+    CREATE = 0;
+    UPDATE = 1;
+    DELETE = 2;
+   }
+   ActionType action = 1;
+   PartialDNSSet change = 3;
+}
+
+message LogEntry {
+    int64 timestamp = 1;
+    enum Level {
+        DEBUG=0;
+        INFO=1;
+        WARN=2;
+        ERROR=3;
+    }
+    Level level = 2;
+    string message = 3;
+}
+
+message ExecuteResponse {
+  repeated ChangeResponse change_response = 1;
+  repeated LogEntry log_message = 2;
+}
+
+message ChangeResponse {
+  enum State {
+  NOT_PROCESSED = 0;
+  SUCCEEDED = 1;
+  INVALID = 2;
+  FAILED = 3;
+  THROTTLED= 4;
+  }
+  State state = 1;
+  string error_message = 2;
+}
