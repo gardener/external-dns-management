@@ -39,16 +39,15 @@ import (
 
 const filePrefix = "/tmp/"
 
-type certFiles struct {
+type certFileAndSecret struct {
 	caCert     string
-	serverCert string
-	serverKey  string
+	secretName string
 }
 
 var caCert *x509.Certificate
 var caKey *rsa.PrivateKey
 
-func newCertFiles() (*certFiles, error) {
+func newCertFileAndSecret(te *TestEnv) (*certFileAndSecret, error) {
 	caCertPem, caKeyPem, err := createCA()
 	if err != nil {
 		return nil, err
@@ -69,31 +68,30 @@ func newCertFiles() (*certFiles, error) {
 		return nil, err
 	}
 
-	result := &certFiles{}
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "remoteaccess-server-cert", Namespace: te.Namespace},
+		Data: map[string][]byte{
+			corev1.TLSCertKey:       serverData.TLSCrt,
+			corev1.TLSPrivateKeyKey: serverData.TLSKey,
+		},
+	}
+	_, err = te.CreateSecretEx(secret)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &certFileAndSecret{}
+	result.secretName = secret.Namespace + "/" + secret.Name
 	result.caCert, err = writeTempFile("ca.crt", serverData.CACrt)
-	if err != nil {
-		return result, err
-	}
-	result.serverCert, err = writeTempFile("tls.crt", serverData.TLSCrt)
-	if err != nil {
-		return result, err
-	}
-	result.serverKey, err = writeTempFile("tls.key", serverData.TLSKey)
 	if err != nil {
 		return result, err
 	}
 	return result, nil
 }
 
-func (c *certFiles) cleanup() {
+func (c *certFileAndSecret) cleanup() {
 	if c.caCert != "" {
 		_ = os.Remove(c.caCert)
-	}
-	if c.serverCert != "" {
-		_ = os.Remove(c.serverCert)
-	}
-	if c.serverKey != "" {
-		_ = os.Remove(c.serverKey)
 	}
 }
 

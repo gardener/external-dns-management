@@ -35,7 +35,7 @@ import (
 
 var testEnv *TestEnv
 var testEnv2 *TestEnv
-var testCerts *certFiles
+var testCerts *certFileAndSecret
 
 func TestIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -46,11 +46,14 @@ func TestIntegration(t *testing.T) {
 var _ = BeforeSuite(func() {
 	var err error
 
-	testCerts, err = newCertFiles()
-	Ω(err).Should(BeNil())
-
 	kubeconfig := os.Getenv("KUBECONFIG")
 	Ω(kubeconfig).ShouldNot(Equal(""))
+
+	testEnv, err = NewTestEnv(kubeconfig, "test")
+	Ω(err).Should(BeNil())
+
+	testCerts, err = newCertFileAndSecret(testEnv)
+	Ω(err).Should(BeNil())
 
 	args := []string{
 		"--kubeconfig", kubeconfig,
@@ -58,8 +61,7 @@ var _ = BeforeSuite(func() {
 		"--controllers", "dnscontrollers,dnssources",
 		"--remote-access-port", "50051",
 		"--remote-access-cacert", testCerts.caCert,
-		"--remote-access-servercert", testCerts.serverCert,
-		"--remote-access-serverkey", testCerts.serverKey,
+		"--remote-access-server-secret-name", testCerts.secretName,
 		"--omit-lease",
 		"--reschedule-delay", "15s",
 		"--lock-status-check-period", "5s",
@@ -67,8 +69,9 @@ var _ = BeforeSuite(func() {
 	}
 	go runControllerManager(args)
 
-	testEnv, err = NewTestEnv(kubeconfig, "test")
+	err = testEnv.WaitForCRDs()
 	Ω(err).Should(BeNil())
+
 	testEnv2, err = NewTestEnvNamespace(testEnv, "test2")
 	Ω(err).Should(BeNil())
 })

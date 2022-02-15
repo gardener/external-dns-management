@@ -104,31 +104,34 @@ func waitForCluster(kubeconfig string, logger logger.LogContext) (cluster.Interf
 	if err != nil {
 		return nil, fmt.Errorf("CreateCluster failed: %s", err)
 	}
+	return cluster, nil
+}
 
+func (te *TestEnv) WaitForCRDs() error {
 	awaitCRD := func(max int, crdName string) error {
 		var err error
 		for i := 0; i < max; i++ {
-			err = apiextensions.WaitCRDReady(cluster, crdName)
+			err = apiextensions.WaitCRDReady(te.Cluster, crdName)
 			if err == nil {
 				break
 			}
 			time.Sleep(1 * time.Second)
 			if i%5 == 4 {
-				logger.Infof("Still waiting for CRD %s ...", crdName)
+				te.Logger.Infof("Still waiting for CRD %s ...", crdName)
 			}
 		}
 		return err
 	}
 
-	err = awaitCRD(30, "dnsproviders.dns.gardener.cloud")
+	err := awaitCRD(30, "dnsproviders.dns.gardener.cloud")
 	if err != nil {
-		return nil, fmt.Errorf("Wait for CRD failed: %s", err)
+		return fmt.Errorf("Wait for CRD failed: %s", err)
 	}
 	err = awaitCRD(30, "dnsentries.dns.gardener.cloud")
 	if err != nil {
-		return nil, fmt.Errorf("Wait for CRD failed: %s", err)
+		return fmt.Errorf("Wait for CRD failed: %s", err)
 	}
-	return cluster, nil
+	return nil
 }
 
 func NewTestEnv(kubeconfig string, namespace string) (*TestEnv, error) {
