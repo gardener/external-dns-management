@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	atomic2 "go.uber.org/atomic"
 	"google.golang.org/grpc/credentials"
 	corev1 "k8s.io/api/core/v1"
@@ -94,22 +95,31 @@ func (d *dynamicTransportCredentials) createTLS(secret *corev1.Secret) (credenti
 		if err == nil {
 			ok = true
 			config.Certificates = append(config.Certificates, cert)
-			// keep old valid certs
-			for _, tlscert := range oldCredentials {
-				if !reflect.DeepEqual(cert.Certificate, tlscert.Certificate) {
-					c, err := x509.ParseCertificate(tlscert.Certificate[0])
-					if err == nil && c.NotAfter.After(time.Now()) {
-						config.Certificates = append(config.Certificates, tlscert)
-					}
-				}
-			}
-			d.oldCertificates.Store(config.Certificates[:])
+			config.Certificates = appendValidCertificates(config.Certificates, oldCredentials)
 		}
 	}
 	if !ok {
-		config.Certificates = oldCredentials
+		config.Certificates = appendValidCertificates(config.Certificates, oldCredentials)
 	}
+	metrics.ReportRemoteAccessCertificates(len(config.Certificates))
+	d.oldCertificates.Store(config.Certificates[:])
 	return credentials.NewTLS(config), ok
+}
+
+func appendValidCertificates(certs []tls.Certificate, oldCerts []tls.Certificate) []tls.Certificate {
+outer:
+	for _, tlscert := range oldCerts {
+		for _, cert := range certs {
+			if reflect.DeepEqual(cert.Certificate, tlscert.Certificate) {
+				continue outer
+			}
+		}
+		c, err := x509.ParseCertificate(tlscert.Certificate[0])
+		if err == nil && c.NotAfter.After(time.Now()) {
+			certs = append(certs, tlscert)
+		}
+	}
+	return certs
 }
 
 func (d *dynamicTransportCredentials) ClientHandshake(ctx context.Context, s string, conn net.Conn) (net.Conn, credentials.AuthInfo, error) {

@@ -42,6 +42,7 @@ func init() {
 	prometheus.MustRegister(RemoteAccessLogins)
 	prometheus.MustRegister(RemoteAccessRequests)
 	prometheus.MustRegister(RemoteAccessSeconds)
+	prometheus.MustRegister(RemoteAccessCertificates)
 
 	server.RegisterHandler("/metrics", promhttp.Handler())
 }
@@ -126,6 +127,13 @@ var (
 			Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10, 25},
 		},
 		[]string{"handler", "client", "type", "zoneid", "error"},
+	)
+
+	RemoteAccessCertificates = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "external_dns_management_remoteaccess_transport_credentials",
+			Help: "Number of server-side transport credentials of remote access",
+		},
 	)
 )
 
@@ -226,6 +234,10 @@ func ReportRemoteAccessRequests(namespace, client, requestType, zoneid string) {
 
 func ReportRemoteAccessSeconds(namespace, client, requestType, zoneid, error string, duration time.Duration) {
 	RemoteAccessSeconds.WithLabelValues(namespace, client, requestType, zoneid, error).Observe(duration.Seconds())
+}
+
+func ReportRemoteAccessCertificates(count int) {
+	RemoteAccessCertificates.Set(float64(count))
 }
 
 func DeleteZone(zone string) {
