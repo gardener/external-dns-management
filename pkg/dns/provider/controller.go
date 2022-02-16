@@ -220,9 +220,9 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 	}, nil
 }
 
-func (this *reconciler) Setup() {
+func (this *reconciler) Setup() error {
 	this.controller.Infof("*** state Setup ")
-	this.state.Setup()
+	return this.state.Setup()
 }
 
 func (this *reconciler) Start() {
