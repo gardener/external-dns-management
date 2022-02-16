@@ -229,7 +229,7 @@ func (this *state) Setup() error {
 		}
 		err = this.startRemoteAccessServer(secret)
 		if err != nil {
-			return err
+			return fmt.Errorf("startRemoteAccessServer failed with: %w", err)
 		}
 	}
 
@@ -260,6 +260,7 @@ func (this *state) Setup() error {
 }
 
 func (this *state) startRemoteAccessServer(secret *corev1.Secret) error {
+	this.context.Infof("starting RemoteAccessServer")
 	server, err := embed.StartDNSHandlerServer(this.context, this.config.RemoteAccessConfig)
 	if err != nil {
 		return err
