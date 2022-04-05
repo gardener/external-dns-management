@@ -67,13 +67,9 @@ func (d *dynamicTransportCredentials) updateTLS(secret *corev1.Secret) {
 	initial := d.currentTLS.Load() == nil
 	if initial || d.lastResourceVersion.Load() != resourceVersion {
 		d.lastResourceVersion.Store(resourceVersion)
-		var ok bool
-		if secret != nil {
-			var tls credentials.TransportCredentials
-			tls, ok = d.createTLS(secret)
-			if initial || ok {
-				d.currentTLS.Store(tls)
-			}
+		tls, ok := d.createTLS(secret)
+		if initial || ok {
+			d.currentTLS.Store(tls)
 		}
 		d.logctx.Infof("new credentials from secret: version %q (%t)", resourceVersion, ok)
 	}
@@ -102,7 +98,8 @@ func (d *dynamicTransportCredentials) createTLS(secret *corev1.Secret) (credenti
 		config.Certificates = appendValidCertificates(config.Certificates, oldCredentials)
 	}
 	metrics.ReportRemoteAccessCertificates(len(config.Certificates))
-	d.oldCertificates.Store(config.Certificates[:])
+	old := append([]tls.Certificate{}, config.Certificates...)
+	d.oldCertificates.Store(old)
 	return credentials.NewTLS(config), ok
 }
 

@@ -158,12 +158,12 @@ func (s *server) Login(ctx context.Context, request *common.LoginRequest) (*comm
 		logctx.Warn("Login auth failed")
 		return nil, err
 	}
-	logctx.Info("Login auth successful: %s", commonName)
+	logctx.Infof("Login auth successful: %s", commonName)
 
 	nsState := s.getNamespaceState(request.Namespace, false)
 	if nsState == nil {
 		metrics.ReportRemoteAccessLogins(request.Namespace, request.CliendID, false)
-		logctx.Info("namespace %s not found or no providers available", request.Namespace)
+		logctx.Infof("namespace %s not found or no providers available", request.Namespace)
 		return nil, fmt.Errorf("namespace %s not found or no providers available", request.Namespace)
 	}
 
