@@ -18,6 +18,7 @@ package aws
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -127,27 +128,37 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 
 		metrics.AddZoneRequests(this.zone.Id(), provider.M_UPDATERECORDS, 1)
 		this.rateLimiter.Accept()
-		if _, err := this.r53.ChangeResourceRecordSets(params); err != nil {
-			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)
+		var succeededChanges, failedChanges []*Change
+		_, err := this.r53.ChangeResourceRecordSets(params)
+		if err != nil {
+			failedChanges = changes
 			if b, ok := err.(awserr.BatchedErrors); ok {
-				if b.Code() == "Throttling" {
+				switch b.Code() {
+				case "Throttling":
 					throttlingErrCount++
+				case "InvalidChangeBatch":
+					succeededChanges, failedChanges, err = this.tryFixChanges(b.Message(), changes)
 				}
 			}
-			for _, c := range changes {
+		} else {
+			succeededChanges = changes
+		}
+		if len(failedChanges) > 0 {
+			for _, c := range failedChanges {
 				failed++
 				if c.Done != nil {
 					c.Done.Failed(err)
 				}
 			}
-			continue
-		} else {
-			for _, c := range changes {
+			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)
+		}
+		if len(succeededChanges) > 0 {
+			for _, c := range succeededChanges {
 				if c.Done != nil {
 					c.Done.Succeeded()
 				}
 			}
-			this.Infof("%d records in zone %s were successfully updated", len(changes), this.zone.Id())
+			this.Infof("%d records in zone %s were successfully updated", len(succeededChanges), this.zone.Id())
 		}
 	}
 	if failed > 0 {
@@ -158,6 +169,88 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		return err
 	}
 	return nil
+}
+
+var patternNotFound = regexp.MustCompile("Tried to delete resource record set \\[name='([^']+)', type='([^']+)'\\] but it was not found")
+var patternExists = regexp.MustCompile("Tried to create resource record set \\[name='([^']+)', type='([^']+)'\\] but it already exists")
+
+func (this *Execution) tryFixChanges(message string, changes []*Change) (succeeded []*Change, failed []*Change, err error) {
+	submatchNotFound := patternNotFound.FindAllStringSubmatch(message, -1)
+	submatchExists := patternExists.FindAllStringSubmatch(message, -1)
+	var unclear []*Change
+outer:
+	for _, change := range changes {
+		switch *change.Change.Action {
+		case route53.ChangeActionDelete:
+			for _, m := range submatchNotFound {
+				if m[1] == *change.Change.ResourceRecordSet.Name && m[2] == *change.Change.ResourceRecordSet.Type {
+					this.Infof("Ignoring already deleted record: %s (%s)",
+						*change.Change.ResourceRecordSet.Name, *change.Change.ResourceRecordSet.Type)
+					succeeded = append(succeeded, change)
+					continue outer
+				}
+			}
+		case route53.ChangeActionCreate:
+			for _, m := range submatchExists {
+				if m[1] == *change.Change.ResourceRecordSet.Name && m[2] == *change.Change.ResourceRecordSet.Type {
+					if this.isFetchedRecordSetEqual(change) {
+						this.Infof("Ignoring already created record: %s (%s)",
+							*change.Change.ResourceRecordSet.Name, *change.Change.ResourceRecordSet.Type)
+						succeeded = append(succeeded, change)
+						continue outer
+					}
+				}
+			}
+		}
+		unclear = append(unclear, change)
+	}
+
+	if len(unclear) > 0 {
+		params := &route53.ChangeResourceRecordSetsInput{
+			HostedZoneId: aws.String(this.zone.Id()),
+			ChangeBatch: &route53.ChangeBatch{
+				Changes: mapChanges(unclear),
+			},
+		}
+		_, err = this.r53.ChangeResourceRecordSets(params)
+		if err != nil {
+			failed = append(failed, unclear...)
+		} else {
+			succeeded = append(succeeded, unclear...)
+		}
+	}
+	return
+}
+
+func (this *Execution) isFetchedRecordSetEqual(change *Change) bool {
+	output, err := this.r53.ListResourceRecordSets(&route53.ListResourceRecordSetsInput{
+		HostedZoneId:          aws.String(this.zone.Id()),
+		MaxItems:              aws.String("1"),
+		StartRecordIdentifier: nil,
+		StartRecordName:       change.Change.ResourceRecordSet.Name,
+		StartRecordType:       change.Change.ResourceRecordSet.Type,
+	})
+	if err != nil || len(output.ResourceRecordSets) == 0 {
+		return false
+	}
+	crrs := change.Change.ResourceRecordSet
+	orrs := output.ResourceRecordSets[0]
+	if *crrs.Name != *orrs.Name || *crrs.Type != *orrs.Type || !safeCompareInt64(crrs.TTL, orrs.TTL) || len(crrs.ResourceRecords) != len(orrs.ResourceRecords) {
+		return false
+	}
+	for i := range crrs.ResourceRecords {
+		if *crrs.ResourceRecords[i].Value != *orrs.ResourceRecords[i].Value {
+			return false
+		}
+	}
+	return true
+}
+
+func safeCompareInt64(a, b *int64) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
 }
 
 func limitChangeSet(changesByName map[string][]*Change, max int) [][]*Change {
