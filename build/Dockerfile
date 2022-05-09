@@ -13,7 +13,7 @@
 # limitations under the License.
 
 #############      builder       #############
-FROM golang:1.17.8 AS builder
+FROM golang:1.17.9 AS builder
 
 WORKDIR /build
 COPY . .
@@ -21,7 +21,7 @@ COPY . .
 RUN make release
 
 ############# base
-FROM alpine:3.15.3 AS base
+FROM alpine:3.15.4 AS base
 
 #############      dns-controller-manager     #############
 FROM base AS dns-controller-manager
