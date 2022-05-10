@@ -183,7 +183,7 @@ outer:
 		switch *change.Change.Action {
 		case route53.ChangeActionDelete:
 			for _, m := range submatchNotFound {
-				if m[1] == *change.Change.ResourceRecordSet.Name && m[2] == *change.Change.ResourceRecordSet.Type {
+				if dns.NormalizeHostname(m[1]) == dns.NormalizeHostname(*change.Change.ResourceRecordSet.Name) && m[2] == *change.Change.ResourceRecordSet.Type {
 					this.Infof("Ignoring already deleted record: %s (%s)",
 						*change.Change.ResourceRecordSet.Name, *change.Change.ResourceRecordSet.Type)
 					succeeded = append(succeeded, change)
@@ -192,7 +192,7 @@ outer:
 			}
 		case route53.ChangeActionCreate:
 			for _, m := range submatchExists {
-				if m[1] == *change.Change.ResourceRecordSet.Name && m[2] == *change.Change.ResourceRecordSet.Type {
+				if dns.NormalizeHostname(m[1]) == dns.NormalizeHostname(*change.Change.ResourceRecordSet.Name) && m[2] == *change.Change.ResourceRecordSet.Type {
 					if this.isFetchedRecordSetEqual(change) {
 						this.Infof("Ignoring already created record: %s (%s)",
 							*change.Change.ResourceRecordSet.Name, *change.Change.ResourceRecordSet.Type)
@@ -235,7 +235,7 @@ func (this *Execution) isFetchedRecordSetEqual(change *Change) bool {
 	}
 	crrs := change.Change.ResourceRecordSet
 	orrs := output.ResourceRecordSets[0]
-	if *crrs.Name != *orrs.Name || *crrs.Type != *orrs.Type || !safeCompareInt64(crrs.TTL, orrs.TTL) || len(crrs.ResourceRecords) != len(orrs.ResourceRecords) {
+	if dns.NormalizeHostname(*crrs.Name) != dns.NormalizeHostname(*orrs.Name) || *crrs.Type != *orrs.Type || !safeCompareInt64(crrs.TTL, orrs.TTL) || len(crrs.ResourceRecords) != len(orrs.ResourceRecords) {
 		return false
 	}
 	for i := range crrs.ResourceRecords {
