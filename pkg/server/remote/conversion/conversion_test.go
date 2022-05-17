@@ -66,12 +66,12 @@ func TestMarshalChangeRequest(t *testing.T) {
 	for _, item := range table {
 		remote, err := MarshalChangeRequest(item.request)
 		if err != nil {
-			t.Errorf("MarshalChangeRequest failed: %v", err)
+			t.Errorf("MarshalChangeRequest failed: %s", err)
 			continue
 		}
 		copy, err := UnmarshalChangeRequest(remote, nil)
 		if err != nil {
-			t.Errorf("UnmarshalChangeRequest failed: %v", err)
+			t.Errorf("UnmarshalChangeRequest failed: %s", err)
 			continue
 		}
 
