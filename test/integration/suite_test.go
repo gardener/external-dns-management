@@ -20,8 +20,10 @@ import (
 	"os"
 	"testing"
 
+	"github.com/gardener/controller-manager-library/pkg/resources"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	networkingv1 "k8s.io/api/networking/v1"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
@@ -39,6 +41,8 @@ var testCerts *certFileAndSecret
 
 func TestIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
+
+	resources.Register(networkingv1.SchemeBuilder)
 
 	RunSpecs(t, "Integration Suite")
 }

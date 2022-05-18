@@ -240,8 +240,8 @@ func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.
 		this.state.UpdateOwnerCounts(logger)
 	default:
 		zoneid := this.state.DecodeZoneCommand(cmd)
-		if zoneid != "" {
-			return this.state.ReconcileZone(logger, zoneid)
+		if zoneid != nil {
+			return this.state.ReconcileZone(logger, *zoneid)
 		}
 		logger.Infof("got unhandled command %q", cmd)
 	}

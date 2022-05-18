@@ -29,6 +29,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	utils2 "github.com/gardener/controller-manager-library/pkg/utils"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -85,8 +86,8 @@ func (this *state) updateZonePolicyState(logger logger.LogContext, policy *dnsut
 		if zone.Policy() == pol {
 			pol.zones = append(pol.zones, zone)
 			zones = append(zones, api.ZoneInfo{
-				ZoneID:       zone.Id(),
-				ProviderType: zone.ProviderType(),
+				ZoneID:       zone.Id().ID,
+				ProviderType: zone.Id().ProviderType,
 				DomainName:   zone.Domain(),
 			})
 		}
@@ -96,7 +97,7 @@ func (this *state) updateZonePolicyState(logger logger.LogContext, policy *dnsut
 }
 
 func (this *state) updateStateTTLMap() {
-	new := map[string]time.Duration{}
+	new := map[dns.ZoneID]time.Duration{}
 	for _, zone := range this.zones {
 		if zpol := zone.Policy(); zpol != nil {
 			if zpol.spec.Policy.ZoneStateCacheTTL != nil {
@@ -166,8 +167,8 @@ func (this *state) updateZonePolicyStatus(policy *dnsutils.DNSHostedZonePolicyOb
 }
 
 func (this *state) triggerAllZonePolicies() {
-	for name := range this.zonePolicies {
-		key := this.createZonePolicyClusterKey(name)
+	for id := range this.zonePolicies {
+		key := this.createZonePolicyClusterKey(id)
 		this.triggerKey(key)
 	}
 }
@@ -179,8 +180,8 @@ func (this *state) createZonePolicyClusterKey(name string) resources.ClusterObje
 
 func matchesPolicySelector(pol *dnsHostedZonePolicy, zone *dnsHostedZone) bool {
 	selector := &pol.spec.Selector
-	found := findFullMatch(selector.ZoneIDs, zone.Id())
-	found = found && findFullMatch(selector.ProviderTypes, zone.ProviderType())
+	found := findFullMatch(selector.ZoneIDs, zone.Id().ID)
+	found = found && findFullMatch(selector.ProviderTypes, zone.Id().ProviderType)
 	found = found && findFullMatch(selector.DomainNames, zone.Domain())
 	return found
 }

@@ -118,7 +118,7 @@ func (s *namespaceState) _refreshZones() {
 	for _, hstate := range s.handlers {
 		zones := hstate.getCachedZones()
 		for _, zone := range zones {
-			s.zones[zone.Id()] = zonehandler{
+			s.zones[zone.Id().ID] = zonehandler{
 				zone:    zone,
 				handler: hstate,
 			}

@@ -222,7 +222,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	state := raw.NewState()
 	rt := provider.M_LISTRECORDS
 
-	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
+	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resA []RecordA
 	objA := ibclient.NewEmptyRecordA()
 	objA.Zone = zone.Key()
@@ -235,7 +235,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		state.AddRecord((&res).Copy())
 	}
 
-	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
+	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resAAAA []RecordAAAA
 	objAAAA := ibclient.NewEmptyRecordAAAA()
 	objAAAA.Zone = zone.Key()
@@ -248,7 +248,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		state.AddRecord((&res).Copy())
 	}
 
-	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
+	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resC []RecordCNAME
 	objC := ibclient.NewEmptyRecordCNAME()
 	objC.Zone = zone.Key()
@@ -261,7 +261,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		state.AddRecord((&res).Copy())
 	}
 
-	h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
+	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resT []RecordTXT
 	objT := ibclient.NewRecordTXT(
 		ibclient.RecordTXT{

@@ -30,11 +30,11 @@ type zonedata struct {
 
 type InMemory struct {
 	lock  sync.Mutex
-	zones map[string]zonedata
+	zones map[dns.ZoneID]zonedata
 }
 
 func NewInMemory() *InMemory {
-	return &InMemory{zones: map[string]zonedata{}}
+	return &InMemory{zones: map[dns.ZoneID]zonedata{}}
 }
 
 func (m *InMemory) GetZones() DNSHostedZones {
@@ -48,7 +48,7 @@ func (m *InMemory) GetZones() DNSHostedZones {
 	return zones
 }
 
-func (m *InMemory) FindHostedZone(zoneid string) DNSHostedZone {
+func (m *InMemory) FindHostedZone(zoneid dns.ZoneID) DNSHostedZone {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -99,7 +99,7 @@ func (m *InMemory) AddZone(zone DNSHostedZone) bool {
 	return true
 }
 
-func (m *InMemory) Apply(zoneID string, request *ChangeRequest, metrics Metrics) error {
+func (m *InMemory) Apply(zoneID dns.ZoneID, request *ChangeRequest, metrics Metrics) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -113,10 +113,10 @@ func (m *InMemory) Apply(zoneID string, request *ChangeRequest, metrics Metrics)
 	switch request.Action {
 	case R_CREATE, R_UPDATE:
 		data.dnssets.AddRecordSet(name, rset)
-		metrics.AddZoneRequests(zoneID, M_UPDATERECORDS, 1)
+		metrics.AddZoneRequests(zoneID.ID, M_UPDATERECORDS, 1)
 	case R_DELETE:
 		data.dnssets.RemoveRecordSet(name, rset.Type)
-		metrics.AddZoneRequests(zoneID, M_DELETERECORDS, 1)
+		metrics.AddZoneRequests(zoneID.ID, M_DELETERECORDS, 1)
 	}
 	return nil
 }
@@ -146,14 +146,14 @@ type ZoneDump struct {
 	DNSSets    dns.DNSSets
 }
 type FullDump struct {
-	InMemory map[string]*ZoneDump
+	InMemory map[dns.ZoneID]*ZoneDump
 }
 
 func (m *InMemory) BuildFullDump() *FullDump {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	all := FullDump{InMemory: map[string]*ZoneDump{}}
+	all := FullDump{InMemory: map[dns.ZoneID]*ZoneDump{}}
 
 	for zoneId := range m.zones {
 		all.InMemory[zoneId] = m.buildZoneDump(zoneId)
@@ -161,12 +161,12 @@ func (m *InMemory) BuildFullDump() *FullDump {
 	return &all
 }
 
-func (m *InMemory) buildZoneDump(zoneId string) *ZoneDump {
+func (m *InMemory) buildZoneDump(zoneId dns.ZoneID) *ZoneDump {
 	data, ok := m.zones[zoneId]
 	if !ok {
 		return nil
 	}
-	hostedZone := DumpDNSHostedZone{ProviderType: data.zone.ProviderType(), Id: data.zone.Id(), Domain: data.zone.Domain(),
+	hostedZone := DumpDNSHostedZone{ProviderType: data.zone.Id().ProviderType, Id: data.zone.Id().ID, Domain: data.zone.Domain(),
 		Key: data.zone.Key(), ForwardedDomains: data.zone.ForwardedDomains()}
 
 	return &ZoneDump{HostedZone: hostedZone, DNSSets: data.dnssets}

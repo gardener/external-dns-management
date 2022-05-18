@@ -234,8 +234,8 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	err := h.retryOnInvalidTokenError(ctx, func(token string) error {
 		var err error
 		h.config.RateLimiter.Accept()
-		remoteState, err = h.client.GetZoneState(ctx, &common.GetZoneStateRequest{Token: token, Zoneid: zone.Id()})
-		h.config.Metrics.AddZoneRequests(zone.Id(), provider.M_LISTRECORDS, 1)
+		remoteState, err = h.client.GetZoneState(ctx, &common.GetZoneStateRequest{Token: token, Zoneid: zone.Id().ID})
+		h.config.Metrics.AddZoneRequests(zone.Id().ID, provider.M_LISTRECORDS, 1)
 		return err
 	})
 	if err != nil {
@@ -274,9 +274,9 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 
 		switch change.Action {
 		case common.ChangeRequest_CREATE | common.ChangeRequest_UPDATE:
-			h.config.Metrics.AddZoneRequests(zone.Id(), provider.M_UPDATERECORDS, 1)
+			h.config.Metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
 		case common.ChangeRequest_DELETE:
-			h.config.Metrics.AddZoneRequests(zone.Id(), provider.M_DELETERECORDS, 1)
+			h.config.Metrics.AddZoneRequests(zone.Id().ID, provider.M_DELETERECORDS, 1)
 		}
 	}
 
@@ -286,7 +286,7 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 		h.config.RateLimiter.Accept()
 		executeRequest := &common.ExecuteRequest{
 			Token:         token,
-			Zoneid:        zone.Id(),
+			Zoneid:        zone.Id().ID,
 			ChangeRequest: changeRequests,
 		}
 		response, err = h.client.Execute(ctx, executeRequest)

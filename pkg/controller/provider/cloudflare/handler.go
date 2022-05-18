@@ -135,7 +135,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		state.AddRecord(a)
 		return true, nil
 	}
-	err := h.access.ListRecords(zone.Key(), f)
+	err := h.access.ListRecords(zone.Id().ID, f)
 	if err != nil {
 		return nil, err
 	}

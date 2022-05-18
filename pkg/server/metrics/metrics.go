@@ -21,13 +21,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/controller-manager-library/pkg/server"
-	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/server"
+	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 )
 
@@ -193,35 +193,33 @@ func AddRequests(ptype, account, requestType string, no int, zone *string) {
 	}
 }
 
-func AddZoneCacheDiscarding(ptype, zone string) {
-	ZoneCacheDiscardings.WithLabelValues(ptype, zone).Add(float64(1))
+func AddZoneCacheDiscarding(id dns.ZoneID) {
+	ZoneCacheDiscardings.WithLabelValues(id.ProviderType, id.ID).Add(float64(1))
 }
 
 type ZoneProviderTypes struct {
 	lock      sync.Mutex
-	providers map[string]string
+	providers map[dns.ZoneID]struct{}
 }
 
-func (this *ZoneProviderTypes) Add(ptype, zone string) {
+func (this *ZoneProviderTypes) Add(zone dns.ZoneID) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	this.providers[zone] = ptype
+	this.providers[zone] = struct{}{}
 }
 
-func (this *ZoneProviderTypes) Remove(zone string) string {
+func (this *ZoneProviderTypes) Remove(zone dns.ZoneID) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	ptype := this.providers[zone]
 	delete(this.providers, zone)
-	return ptype
 }
 
-var zoneProviders = &ZoneProviderTypes{providers: map[string]string{}}
+var zoneProviders = &ZoneProviderTypes{providers: map[dns.ZoneID]struct{}{}}
 
-func ReportZoneEntries(ptype, zone string, amount int, stale int) {
-	Entries.WithLabelValues(ptype, zone).Set(float64(amount))
-	StaleEntries.WithLabelValues(ptype, zone).Set(float64(stale))
-	zoneProviders.Add(ptype, zone)
+func ReportZoneEntries(zoneid dns.ZoneID, amount int, stale int) {
+	Entries.WithLabelValues(zoneid.ProviderType, zoneid.ID).Set(float64(amount))
+	StaleEntries.WithLabelValues(zoneid.ProviderType, zoneid.ID).Set(float64(stale))
+	zoneProviders.Add(zoneid)
 }
 
 func ReportRemoteAccessLogins(namespace, client string, success bool) {
@@ -240,11 +238,9 @@ func ReportRemoteAccessCertificates(count int) {
 	RemoteAccessCertificates.Set(float64(count))
 }
 
-func DeleteZone(zone string) {
-	ptype := zoneProviders.Remove(zone)
-	if ptype != "" {
-		Entries.DeleteLabelValues(ptype, zone)
-	}
+func DeleteZone(zoneid dns.ZoneID) {
+	zoneProviders.Remove(zoneid)
+	Entries.DeleteLabelValues(zoneid.ProviderType, zoneid.ID)
 }
 
 var currentStatistic = statistic.NewEntryStatistic()

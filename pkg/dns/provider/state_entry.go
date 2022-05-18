@@ -146,7 +146,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 			}
 		}
 		if new.valid {
-			if this.zones[new.activezone] != nil {
+			if !new.activezone.IsEmpty() && this.zones[new.activezone] != nil {
 				if this.HasFinalizer(new.Object()) {
 					logger.Infof("deleting delayed until entry deleted in provider")
 					this.outdated.AddEntry(new)
@@ -188,7 +188,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 		// DNS name changed -> clean up old dns name
 		logger.Infof("dns name changed to %q", new.ZonedDNSName())
 		this.cleanupEntry(logger, old)
-		if old.activezone != "" && old.activezone != new.ZoneId() {
+		if !old.activezone.IsEmpty() && old.activezone != new.ZoneId() {
 			if this.zones[old.activezone] != nil {
 				logger.Infof("dns zone changed -> trigger old zone '%s'", old.ZoneId())
 				this.triggerHostedZone(old.activezone)
@@ -256,8 +256,8 @@ func (this *state) EntryPremise(e dnsutils.DNSSpecification) (*EntryPremise, err
 	zone := this.getProviderZoneForName(e.GetDNSName(), provider)
 
 	if zone != nil {
-		p.ptype = zone.ProviderType()
-		p.zoneid = zone.Id()
+		p.ptype = zone.Id().ProviderType
+		p.zoneid = zone.Id().ID
 		p.zonedomain = zone.Domain()
 	} else if provider != nil && !provider.IsValid() && e.BaseStatus().Zone != nil {
 		p.ptype = provider.TypeCode()
@@ -265,8 +265,8 @@ func (this *state) EntryPremise(e dnsutils.DNSSpecification) (*EntryPremise, err
 	} else if p.fallback != nil {
 		zone = this.getProviderZoneForName(e.GetDNSName(), p.fallback)
 		if zone != nil {
-			p.ptype = zone.ProviderType()
-			p.zoneid = zone.Id()
+			p.ptype = zone.Id().ProviderType
+			p.zoneid = zone.Id().ID
 			p.zonedomain = zone.Domain()
 		}
 	}
@@ -315,7 +315,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 			}
 		}
 
-		if new.IsModified() && new.ZoneId() != "" {
+		if new.IsModified() && !new.ZoneId().IsEmpty() {
 			this.SmartInfof(logger, "trigger zone %q", new.ZoneId())
 			this.TriggerHostedZone(new.ZoneId())
 		} else {

@@ -49,19 +49,19 @@ func NewAccess(client ibclient.IBConnector, view string, metrics provider.Metric
 }
 
 func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) error {
-	this.metrics.AddZoneRequests(zone.Id(), provider.M_CREATERECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_CREATERECORDS, 1)
 	_, err := this.CreateObject(r.(ibclient.IBObject))
 	return err
 }
 
 func (this *access) UpdateRecord(r raw.Record, zone provider.DNSHostedZone) error {
-	this.metrics.AddZoneRequests(zone.Id(), provider.M_CREATERECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_CREATERECORDS, 1)
 	_, err := this.UpdateObject(r.(Record).PrepareUpdate().(ibclient.IBObject), r.GetId())
 	return err
 }
 
 func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
-	this.metrics.AddZoneRequests(zone.Id(), provider.M_DELETERECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_DELETERECORDS, 1)
 	_, err := this.DeleteObject(r.GetId())
 	return err
 }
@@ -103,7 +103,7 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 }
 
 func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
-	this.metrics.AddZoneRequests(zone.Id(), provider.M_LISTRECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_LISTRECORDS, 1)
 	c := this.IBConnector.(*ibclient.Connector)
 
 	if rtype != dns.RS_TXT {

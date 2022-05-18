@@ -238,8 +238,8 @@ func (s *server) getZones(nsState *namespaceState, logctx logger.LogContext) (*c
 	result := &common.Zones{}
 	for _, zone := range zones {
 		z := &common.Zone{
-			Id:              zone.Id(),
-			ProviderType:    zone.ProviderType(),
+			Id:              zone.Id().ID,
+			ProviderType:    zone.Id().ProviderType,
 			Key:             zone.Key(),
 			Domain:          zone.Domain(),
 			ForwardedDomain: zone.ForwardedDomains(),

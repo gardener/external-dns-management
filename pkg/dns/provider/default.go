@@ -46,27 +46,22 @@ func (this *DefaultDNSZoneState) Clone() DNSZoneState {
 ////////////////////////////////////////////////////////////////////////////////
 
 type DefaultDNSHostedZone struct {
-	providerType string   // provider type
-	id           string   // identifying id for provider api
-	domain       string   // base domain for zone
-	forwarded    []string // forwarded sub domains
-	key          string   // internal key used by provider (not used by this lib)
-	isPrivate    bool     // indicates a private zone
+	zoneid    dns.ZoneID // qualified zone id
+	domain    string     // base domain for zone
+	forwarded []string   // forwarded sub domains
+	key       string     // internal key used by provider (not used by this lib)
+	isPrivate bool       // indicates a private zone
 }
 
 func (this *DefaultDNSHostedZone) Key() string {
 	if this.key != "" {
 		return this.key
 	}
-	return this.id
+	return this.zoneid.ID
 }
 
-func (this *DefaultDNSHostedZone) ProviderType() string {
-	return this.providerType
-}
-
-func (this *DefaultDNSHostedZone) Id() string {
-	return this.id
+func (this *DefaultDNSHostedZone) Id() dns.ZoneID {
+	return this.zoneid
 }
 
 func (this *DefaultDNSHostedZone) Domain() string {
@@ -97,11 +92,11 @@ func Match(zone DNSHostedZone, dnsname string) int {
 	return 0
 }
 
-func NewDNSHostedZone(ptype string, id, domain, key string, forwarded []string, isPrivate bool) DNSHostedZone {
-	return &DefaultDNSHostedZone{providerType: ptype, id: id, key: key, domain: domain, forwarded: forwarded, isPrivate: isPrivate}
+func NewDNSHostedZone(providerType, id, domain, key string, forwarded []string, isPrivate bool) DNSHostedZone {
+	return &DefaultDNSHostedZone{zoneid: dns.NewZoneID(providerType, id), key: key, domain: domain, forwarded: forwarded, isPrivate: isPrivate}
 }
 
 func CopyDNSHostedZone(zone DNSHostedZone, forwardedDomains []string) DNSHostedZone {
-	return &DefaultDNSHostedZone{providerType: zone.ProviderType(), id: zone.Id(), key: zone.Key(),
+	return &DefaultDNSHostedZone{zoneid: zone.Id(), key: zone.Key(),
 		domain: zone.Domain(), forwarded: forwardedDomains, isPrivate: zone.IsPrivate()}
 }

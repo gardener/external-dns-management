@@ -36,7 +36,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
-type StateTTLGetter func(zoneid string) time.Duration
+type StateTTLGetter func(zoneid dns.ZoneID) time.Duration
 
 type ZoneCacheConfig struct {
 	context               context.Context
@@ -52,7 +52,7 @@ type ZoneCacheConfig struct {
 func NewTestZoneCacheConfig(zonesTTL, stateTTL time.Duration) *ZoneCacheConfig {
 	return &ZoneCacheConfig{
 		zonesTTL:       zonesTTL,
-		stateTTLGetter: func(string) time.Duration { return stateTTL },
+		stateTTLGetter: func(id dns.ZoneID) time.Duration { return stateTTL },
 	}
 }
 
@@ -76,9 +76,9 @@ type ZoneCache interface {
 }
 
 type HandlerData interface {
-	Marshal(zoneID string) (*PersistentHandlerData, error)
-	Unmarshal(zoneID string, data *PersistentHandlerData) error
-	DeleteZone(zoneID string)
+	Marshal(zoneID dns.ZoneID) (*PersistentHandlerData, error)
+	Unmarshal(zoneID dns.ZoneID, data *PersistentHandlerData) error
+	DeleteZone(zoneID dns.ZoneID)
 }
 
 func NewZoneCache(config ZoneCacheConfig, metrics Metrics, handlerData HandlerData,
@@ -94,22 +94,22 @@ func NewZoneCache(config ZoneCacheConfig, metrics Metrics, handlerData HandlerDa
 
 type ForwardedDomainsHandlerData struct {
 	lock             sync.Mutex
-	forwardedDomains map[string][]string
+	forwardedDomains map[dns.ZoneID][]string
 }
 
 func NewForwardedDomainsHandlerData() *ForwardedDomainsHandlerData {
-	return &ForwardedDomainsHandlerData{forwardedDomains: map[string][]string{}}
+	return &ForwardedDomainsHandlerData{forwardedDomains: map[dns.ZoneID][]string{}}
 }
 
 var _ HandlerData = &ForwardedDomainsHandlerData{}
 
-func (hd *ForwardedDomainsHandlerData) GetForwardedDomains(zoneid string) []string {
+func (hd *ForwardedDomainsHandlerData) GetForwardedDomains(zoneid dns.ZoneID) []string {
 	hd.lock.Lock()
 	defer hd.lock.Unlock()
 	return hd.forwardedDomains[zoneid]
 }
 
-func (hd *ForwardedDomainsHandlerData) SetForwardedDomains(zoneid string, value []string) {
+func (hd *ForwardedDomainsHandlerData) SetForwardedDomains(zoneid dns.ZoneID, value []string) {
 	hd.lock.Lock()
 	defer hd.lock.Unlock()
 
@@ -120,7 +120,7 @@ func (hd *ForwardedDomainsHandlerData) SetForwardedDomains(zoneid string, value 
 	}
 }
 
-func (hd *ForwardedDomainsHandlerData) Marshal(zoneID string) (*PersistentHandlerData, error) {
+func (hd *ForwardedDomainsHandlerData) Marshal(zoneID dns.ZoneID) (*PersistentHandlerData, error) {
 	hd.lock.Lock()
 	defer hd.lock.Unlock()
 
@@ -135,7 +135,7 @@ func (hd *ForwardedDomainsHandlerData) Marshal(zoneID string) (*PersistentHandle
 	return &PersistentHandlerData{Name: "ForwardedDomains", Version: "1", Value: &runtime.RawExtension{Raw: bytes}}, nil
 }
 
-func (hd *ForwardedDomainsHandlerData) Unmarshal(zoneID string, data *PersistentHandlerData) error {
+func (hd *ForwardedDomainsHandlerData) Unmarshal(zoneID dns.ZoneID, data *PersistentHandlerData) error {
 	hd.lock.Lock()
 	defer hd.lock.Unlock()
 
@@ -158,7 +158,7 @@ func (hd *ForwardedDomainsHandlerData) Unmarshal(zoneID string, data *Persistent
 	return nil
 }
 
-func (hd *ForwardedDomainsHandlerData) DeleteZone(zoneID string) {
+func (hd *ForwardedDomainsHandlerData) DeleteZone(zoneID dns.ZoneID) {
 	hd.lock.Lock()
 	defer hd.lock.Unlock()
 
@@ -213,7 +213,7 @@ type defaultZoneCache struct {
 	metrics  Metrics
 	state    *zoneState
 	persist  bool
-	persistC chan string
+	persistC chan dns.ZoneID
 
 	backoffOnError time.Duration
 }
@@ -225,7 +225,7 @@ func newDefaultZoneCache(common abstractZonesCache, metrics Metrics, handlerData
 		inMemory:       NewInMemory(),
 		stateTTLGetter: common.config.stateTTLGetter,
 		persistDir:     common.config.persistDir,
-		next:           map[string]updateTimestamp{},
+		next:           map[dns.ZoneID]updateTimestamp{},
 		handlerData:    handlerData,
 	}
 	persist := common.config.persistDir != ""
@@ -240,7 +240,7 @@ func newDefaultZoneCache(common abstractZonesCache, metrics Metrics, handlerData
 		if err != nil {
 			return nil, fmt.Errorf("restoring zone cache from persistent directory %s failed with %s", common.config.persistDir, err)
 		}
-		cache.persistC = make(chan string)
+		cache.persistC = make(chan dns.ZoneID)
 		go cache.backgroundWriter()
 	}
 	return cache, nil
@@ -285,7 +285,7 @@ func (c *defaultZoneCache) clearBackoff() {
 func (c *defaultZoneCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
 	state, cached, err := c.state.GetZoneState(zone, c)
 	if cached {
-		c.metrics.AddZoneRequests(zone.Id(), M_CACHED_GETZONESTATE, 1)
+		c.metrics.AddZoneRequests(zone.Id().ID, M_CACHED_GETZONESTATE, 1)
 	} else {
 		c.persistZone(zone)
 	}
@@ -315,7 +315,7 @@ func (c *defaultZoneCache) ApplyRequests(logctx logger.LogContext, err error, zo
 		if !errors.IsThrottlingError(err) {
 			logctx.Infof("zone cache discarded because of error during ExecuteRequests")
 			c.deleteZoneState(zone)
-			metrics.AddZoneCacheDiscarding(zone.ProviderType(), zone.Id())
+			metrics.AddZoneCacheDiscarding(zone.Id())
 		} else {
 			logctx.Infof("zone cache untouched (only throttling during ExecuteRequests)")
 		}
@@ -333,9 +333,9 @@ func (c *defaultZoneCache) Release() {
 func (c *defaultZoneCache) backgroundWriter() {
 	ticker := time.NewTicker(3 * time.Second)
 
-	written := make(chan string)
-	zonesToWrite := map[string]bool{}
-	zonesWriting := map[string]bool{}
+	written := make(chan dns.ZoneID)
+	zonesToWrite := map[dns.ZoneID]bool{}
+	zonesWriting := map[dns.ZoneID]bool{}
 	for {
 		select {
 		case zoneid := <-c.persistC:
@@ -378,8 +378,8 @@ func (z *PersistentZone) ToDNSHostedZone() DNSHostedZone {
 
 func NewPersistentZone(zone DNSHostedZone) *PersistentZone {
 	return &PersistentZone{
-		ProviderType:     zone.ProviderType(),
-		Id:               zone.Id(),
+		ProviderType:     zone.Id().ProviderType,
+		Id:               zone.Id().ID,
 		Key:              zone.Key(),
 		Domain:           zone.Domain(),
 		ForwardedDomains: zone.ForwardedDomains(),
@@ -403,7 +403,7 @@ type PersistentHandlerData struct {
 
 const TempSuffix = ".~.tmp"
 
-func (c *defaultZoneCache) writeZone(zoneid string, written chan<- string) {
+func (c *defaultZoneCache) writeZone(zoneid dns.ZoneID, written chan<- dns.ZoneID) {
 	c.logger.Infof("writing zone cache for %s", zoneid)
 
 	err := c.state.WriteZone(zoneid)
@@ -494,7 +494,7 @@ type zoneState struct {
 	persistDir     string
 	stateTTLGetter StateTTLGetter
 	inMemory       *InMemory
-	next           map[string]updateTimestamp
+	next           map[dns.ZoneID]updateTimestamp
 	handlerData    HandlerData
 }
 
@@ -582,7 +582,7 @@ func (s *zoneState) RestrictCacheToZones(zones DNSHostedZones) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	obsoleteZoneIds := map[string]DNSHostedZone{}
+	obsoleteZoneIds := map[dns.ZoneID]DNSHostedZone{}
 	for _, zone := range s.inMemory.GetZones() {
 		obsoleteZoneIds[zone.Id()] = zone
 	}
@@ -622,11 +622,11 @@ func (s *zoneState) ReadZone(filename string) (DNSHostedZone, error) {
 	return s.RestoreZone(persistentState), nil
 }
 
-func (s *zoneState) buildFilename(zoneid string) string {
-	return filepath.Join(s.persistDir, strings.Replace(zoneid, "/", "_", -1))
+func (s *zoneState) buildFilename(zoneid dns.ZoneID) string {
+	return filepath.Join(s.persistDir, strings.Replace(zoneid.ProviderType+"--"+zoneid.ID, "/", "_", -1))
 }
 
-func (s *zoneState) WriteZone(zoneid string) error {
+func (s *zoneState) WriteZone(zoneid dns.ZoneID) error {
 	state := s.BuildPersistentZoneState(zoneid)
 	if state == nil {
 		s.deletePersistedZone(zoneid)
@@ -653,12 +653,12 @@ func (s *zoneState) WriteZone(zoneid string) error {
 	return nil
 }
 
-func (s *zoneState) deletePersistedZone(zoneid string) error {
+func (s *zoneState) deletePersistedZone(zoneid dns.ZoneID) error {
 	filename := s.buildFilename(zoneid)
 	return os.Remove(filename)
 }
 
-func (s *zoneState) BuildPersistentZoneState(zoneid string) *PersistentZoneState {
+func (s *zoneState) BuildPersistentZoneState(zoneid dns.ZoneID) *PersistentZoneState {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

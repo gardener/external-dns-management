@@ -21,8 +21,8 @@ import (
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
@@ -53,14 +53,14 @@ func NewSubSelection() SubSelection {
 
 // LightDNSHostedZone contains the info of a DNSHostedZone needed for selection
 type LightDNSHostedZone interface {
-	Id() string
+	Id() dns.ZoneID
 	Domain() string
 	ForwardedDomains() []string
 }
 
 // CalcZoneAndDomainSelection calculates the effective included/excluded domains and zones for the given spec and
 // zones supported by a provider.
-func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, zones []LightDNSHostedZone) SelectionResult {
+func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, allzones []LightDNSHostedZone) SelectionResult {
 	this := SelectionResult{
 		SpecDomainSel: PrepareSelection(spec.Domains),
 		SpecZoneSel:   PrepareSelection(spec.Zones),
@@ -68,17 +68,24 @@ func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, zones []LightDNSH
 		DomainSel:     NewSubSelection(),
 	}
 
+	var zones []LightDNSHostedZone
+	for _, z := range allzones {
+		if z.Id().ProviderType == spec.Type {
+			zones = append(zones, z)
+		}
+	}
+
 	if len(this.SpecZoneSel.Include) > 0 {
 		for _, z := range zones {
-			if this.SpecZoneSel.Include.Contains(z.Id()) {
-				this.ZoneSel.Include.Add(z.Id())
+			if this.SpecZoneSel.Include.Contains(z.Id().ID) {
+				this.ZoneSel.Include.Add(z.Id().ID)
 			} else {
-				this.ZoneSel.Exclude.Add(z.Id())
+				this.ZoneSel.Exclude.Add(z.Id().ID)
 			}
 		}
 	} else {
 		for _, z := range zones {
-			this.ZoneSel.Include.Add(z.Id())
+			this.ZoneSel.Include.Add(z.Id().ID)
 		}
 	}
 	if len(this.SpecZoneSel.Exclude) > 0 {
@@ -90,7 +97,7 @@ func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, zones []LightDNSH
 		}
 	}
 	for _, z := range zones {
-		if this.ZoneSel.Include.Contains(z.Id()) {
+		if this.ZoneSel.Include.Contains(z.Id().ID) {
 			this.Zones = append(this.Zones, z)
 		}
 	}
@@ -153,14 +160,14 @@ outer:
 				}
 			}
 		}
-		this.ZoneSel.Include.Remove(zone.Id())
-		this.ZoneSel.Exclude.Add(zone.Id())
+		this.ZoneSel.Include.Remove(zone.Id().ID)
+		this.ZoneSel.Exclude.Add(zone.Id().ID)
 	}
 
 	if len(this.ZoneSel.Include) != len(this.Zones) {
 		this.Zones = nil
 		for _, z := range zones {
-			if this.ZoneSel.Include.Contains(z.Id()) {
+			if this.ZoneSel.Include.Contains(z.Id().ID) {
 				this.Zones = append(this.Zones, z)
 			}
 		}

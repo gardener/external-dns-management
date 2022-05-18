@@ -131,9 +131,8 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 }
 
 type DNSHostedZone interface {
-	ProviderType() string
 	Key() string
-	Id() string
+	Id() dns.ZoneID
 	Domain() string
 	ForwardedDomains() []string
 	Match(dnsname string) int
@@ -192,8 +191,8 @@ const (
 )
 
 type Metrics interface {
-	AddGenericRequests(request_type string, n int)
-	AddZoneRequests(zoneID, request_type string, n int)
+	AddGenericRequests(requestType string, n int)
+	AddZoneRequests(zoneID, requestType string, n int)
 }
 
 type Finalizers interface {
@@ -250,7 +249,7 @@ type DNSProvider interface {
 	DefaultTTL() int64
 
 	GetZones() DNSHostedZones
-	IncludesZone(zoneID string) bool
+	IncludesZone(zoneID dns.ZoneID) bool
 
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error
