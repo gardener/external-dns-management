@@ -83,9 +83,10 @@ var _ = ginkgo.Describe("Owner cache", func() {
 	config := &Config{
 		Ident: ident,
 	}
-	key1 := resources.NewKey(resources.NewGroupKind("", "test"), "test", "o1")
+	resources.NewClusterObjectKeySet()
+	key1 := resources.NewClusterKeyForObject("test-cluster", resources.NewKey(resources.NewGroupKind("", "test"), "test", "o1"))
 	name1 := OwnerName(key1.Name())
-	key2 := resources.NewKey(resources.NewGroupKind("", "test"), "test", "o2")
+	key2 := resources.NewClusterKeyForObject("test-cluster", resources.NewKey(resources.NewGroupKind("", "test"), "test", "o2"))
 	name2 := OwnerName(key2.Name())
 
 	var cache *TestOwnerCacheContext

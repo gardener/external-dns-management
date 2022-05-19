@@ -100,7 +100,7 @@ func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwne
 	return reconcile.Succeeded(logger)
 }
 
-func (this *state) OwnerDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
+func (this *state) OwnerDeleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
 	this.lock.Lock()
 	changed, active := this.ownerCache.DeleteOwner(key)
 	this.lock.Unlock()

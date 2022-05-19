@@ -254,7 +254,7 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 		if this.state.IsResponsibleFor(logger, obj) {
 			return this.state.UpdateOwner(logger, dnsutils.DNSOwner(obj), false)
 		} else {
-			return this.state.OwnerDeleted(logger, obj.Key())
+			return this.state.OwnerDeleted(logger, obj.ClusterKey())
 		}
 	case obj.IsA(&api.DNSProvider{}):
 		if this.state.IsResponsibleFor(logger, obj) {
@@ -309,7 +309,7 @@ func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterO
 	logger.Debugf("deleted %s", key)
 	switch key.GroupKind() {
 	case ownerGroupKind:
-		return this.state.OwnerDeleted(logger, key.ObjectKey())
+		return this.state.OwnerDeleted(logger, key)
 	case providerGroupKind:
 		return this.state.ProviderDeleted(logger, key.ObjectKey())
 	case entryGroupKind:

@@ -220,9 +220,10 @@ func (this *OwnerCache) _updateOwnerData(cachekey OwnerName, key dnsutils.Schedu
 	return changeset, this.ownerids.KeySet()
 }
 
-func (this *OwnerCache) DeleteOwner(key resources.ObjectKey) (changeset utils.StringSet, activeset utils.StringSet) {
+func (this *OwnerCache) DeleteOwner(key resources.ClusterObjectKey) (changeset utils.StringSet, activeset utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
+	delete(this.dnsactivations, key)
 	changeset = utils.StringSet{}
 	cachekey := OwnerName(key.Name())
 	old, ok := this.owners[cachekey]
