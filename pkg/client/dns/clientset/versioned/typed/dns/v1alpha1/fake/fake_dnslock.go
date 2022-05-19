@@ -117,7 +117,7 @@ func (c *FakeDNSLocks) UpdateStatus(ctx context.Context, dNSLock *v1alpha1.DNSLo
 // Delete takes name of the dNSLock and deletes it. Returns an error if one occurs.
 func (c *FakeDNSLocks) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(dnslocksResource, c.ns, name), &v1alpha1.DNSLock{})
+		Invokes(testing.NewDeleteActionWithOptions(dnslocksResource, c.ns, name, opts), &v1alpha1.DNSLock{})
 
 	return err
 }

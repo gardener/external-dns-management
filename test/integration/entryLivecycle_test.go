@@ -22,7 +22,7 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

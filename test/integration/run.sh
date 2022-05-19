@@ -151,10 +151,10 @@ fi
 kubectl cluster-info
 
 # install ginkgo
-go install -mod=vendor github.com/onsi/ginkgo/ginkgo
+go install -mod=vendor github.com/onsi/ginkgo/v2/ginkgo
 
 # run test suite
-GOFLAGS="-mod=vendor" ginkgo -failFast -trace "$@"
+GOFLAGS="-mod=vendor" ginkgo -fail-fast -trace "$@"
 RETCODE=$?
 
 cd -

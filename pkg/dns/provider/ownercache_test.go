@@ -23,7 +23,7 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"github.com/onsi/ginkgo"
+	ginkgov2 "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -79,7 +79,7 @@ func (this *TestOwnerCacheContext) _updateOwnerData(cachekey OwnerName, id strin
 ////////////////////////////////////////////////////////////////////////////////
 // tests
 
-var _ = ginkgo.Describe("Owner cache", func() {
+var _ = ginkgov2.Describe("Owner cache", func() {
 	config := &Config{
 		Ident: ident,
 	}
@@ -91,55 +91,55 @@ var _ = ginkgo.Describe("Owner cache", func() {
 
 	var cache *TestOwnerCacheContext
 
-	ginkgo.BeforeEach(func() {
+	ginkgov2.BeforeEach(func() {
 		cache = &TestOwnerCacheContext{ids: map[OwnerName]owner{}}
 		cache.OwnerCache = NewOwnerCache(cache, config)
 	})
 
-	ginkgo.It("initializes the cache correctly", func() {
+	ginkgov2.It("initializes the cache correctly", func() {
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
 	})
 
-	ginkgo.It("adds active owner", func() {
+	ginkgov2.It("adds active owner", func() {
 		cache.updateOwnerData(name1, "id1", true)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident, "id1")))
 	})
 
-	ginkgo.It("adds inactive owner", func() {
+	ginkgov2.It("adds inactive owner", func() {
 		cache.updateOwnerData(name1, "id1", false)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
 	})
 
-	ginkgo.It("activate inactive owner", func() {
+	ginkgov2.It("activate inactive owner", func() {
 		cache.updateOwnerData(name1, "id1", false)
 		cache.updateOwnerData(name1, "id1", true)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident, "id1")))
 	})
 
-	ginkgo.It("deactivate active owner", func() {
+	ginkgov2.It("deactivate active owner", func() {
 		cache.updateOwnerData(name1, "id1", true)
 		cache.updateOwnerData(name1, "id1", false)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
 	})
 
-	ginkgo.It("readd inactive owner", func() {
+	ginkgov2.It("readd inactive owner", func() {
 		cache.updateOwnerData(name1, ident, false)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
 	})
 
-	ginkgo.It("delete readded inactive owner", func() {
+	ginkgov2.It("delete readded inactive owner", func() {
 		cache.updateOwnerData(name1, ident, false)
 		cache.DeleteOwner(key1)
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
 	})
 
-	ginkgo.It("delete inactive owner", func() {
+	ginkgov2.It("delete inactive owner", func() {
 		cache.updateOwnerData(name1, "id1", false)
 		cache.updateOwnerData(name2, "id1", true)
 		changed, _ := cache.DeleteOwner(key1)
@@ -153,7 +153,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
 	})
 
-	ginkgo.It("delete readdednil, inactive owner twice", func() {
+	ginkgov2.It("delete readdednil, inactive owner twice", func() {
 		cache.updateOwnerData(name1, ident, false)
 		cache.DeleteOwner(key1)
 		cache.DeleteOwner(key1)
@@ -161,7 +161,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
 	})
 
-	ginkgo.It("activate and deactivate two active owner", func() {
+	ginkgov2.It("activate and deactivate two active owner", func() {
 		cache.updateOwnerData(name1, ident, false)
 		cache.updateOwnerData(name2, ident, true)
 		cache.updateOwnerData(name1, ident, true)
@@ -172,7 +172,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 		Expect(changed).To(Equal(utils.NewStringSet()))
 	})
 
-	ginkgo.It("activate and deactivate two active owner", func() {
+	ginkgov2.It("activate and deactivate two active owner", func() {
 		changed, _ := cache.updateOwnerData(name1, "id1", false)
 		Expect(changed).To(Equal(utils.NewStringSet()))
 		changed, _ = cache.updateOwnerData(name2, "id1", true)
@@ -185,7 +185,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident, "id1")))
 	})
 
-	ginkgo.It("activate and deactivate two active owner", func() {
+	ginkgov2.It("activate and deactivate two active owner", func() {
 		cache.updateOwnerData(name1, "id1", false)
 		cache.updateOwnerData(name2, "id1", true)
 		cache.updateOwnerData(name1, "id1", true)
@@ -196,7 +196,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
 	})
 
-	ginkgo.It("activate and delete active owner", func() {
+	ginkgov2.It("activate and delete active owner", func() {
 		changed, _ := cache.updateOwnerData(name1, "id1", true)
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
 		changed, _ = cache.DeleteOwner(key1)
@@ -205,7 +205,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
 	})
 
-	ginkgo.It("activate and delete (one) active two owner2", func() {
+	ginkgov2.It("activate and delete (one) active two owner2", func() {
 		changed, _ := cache.updateOwnerData(name1, "id1", true)
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
 		changed, _ = cache.updateOwnerData(name2, "id1", true)
@@ -216,7 +216,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident, "id1")))
 	})
-	ginkgo.It("activate and delete (all) active two owner2", func() {
+	ginkgov2.It("activate and delete (all) active two owner2", func() {
 		changed, _ := cache.updateOwnerData(name1, "id1", true)
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
 		changed, _ = cache.updateOwnerData(name2, "id1", true)
@@ -230,7 +230,7 @@ var _ = ginkgo.Describe("Owner cache", func() {
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
 	})
 
-	ginkgo.It("activate and observe expiration date", func() {
+	ginkgov2.It("activate and observe expiration date", func() {
 		changed, _ := cache.updateOwnerDataExpiration(name1, "id1", true, 1*time.Second)
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
 		changed, _ = cache.updateOwnerData(name2, "id2", true)

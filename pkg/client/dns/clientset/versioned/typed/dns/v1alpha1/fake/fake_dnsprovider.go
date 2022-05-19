@@ -117,7 +117,7 @@ func (c *FakeDNSProviders) UpdateStatus(ctx context.Context, dNSProvider *v1alph
 // Delete takes name of the dNSProvider and deletes it. Returns an error if one occurs.
 func (c *FakeDNSProviders) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(dnsprovidersResource, c.ns, name), &v1alpha1.DNSProvider{})
+		Invokes(testing.NewDeleteActionWithOptions(dnsprovidersResource, c.ns, name, opts), &v1alpha1.DNSProvider{})
 
 	return err
 }

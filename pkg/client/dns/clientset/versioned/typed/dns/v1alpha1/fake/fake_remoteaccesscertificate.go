@@ -117,7 +117,7 @@ func (c *FakeRemoteAccessCertificates) UpdateStatus(ctx context.Context, remoteA
 // Delete takes name of the remoteAccessCertificate and deletes it. Returns an error if one occurs.
 func (c *FakeRemoteAccessCertificates) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(remoteaccesscertificatesResource, c.ns, name), &v1alpha1.RemoteAccessCertificate{})
+		Invokes(testing.NewDeleteActionWithOptions(remoteaccesscertificatesResource, c.ns, name, opts), &v1alpha1.RemoteAccessCertificate{})
 
 	return err
 }

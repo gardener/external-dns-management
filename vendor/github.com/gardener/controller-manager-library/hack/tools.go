@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 // SPDX-FileCopyrightText: 2019 SAP SE or an SAP affiliate company and Gardener contributors
@@ -8,7 +9,7 @@
 package hack
 
 import (
-	_ "github.com/onsi/ginkgo/ginkgo"
+	_ "github.com/onsi/ginkgo/v2/ginkgo"
 	_ "github.com/onsi/gomega"
 	_ "golang.org/x/lint/golint"
 	_ "k8s.io/code-generator"

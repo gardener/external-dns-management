@@ -70,7 +70,7 @@ generate:
 
 .PHONY: install-requirements
 install-requirements:
-	@go install -mod=vendor github.com/onsi/ginkgo/ginkgo
+	@go install -mod=vendor github.com/onsi/ginkgo/v2/ginkgo
 	@GO111MODULE=off go get golang.org/x/tools/cmd/goimports
 	@./hack/install-requirements.sh
 

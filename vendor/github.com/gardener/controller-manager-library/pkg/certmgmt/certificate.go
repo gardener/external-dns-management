@@ -20,7 +20,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/pkg/errors"
 	"k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
 
@@ -273,10 +272,10 @@ func NewSignedCert(cfg *cert.Config, key crypto.Signer, caCert *x509.Certificate
 		return nil, err
 	}
 	if len(cfg.CommonName) == 0 {
-		return nil, errors.New("must specify a CommonName")
+		return nil, fmt.Errorf("must specify a CommonName")
 	}
 	if len(cfg.Usages) == 0 {
-		return nil, errors.New("must specify at least one ExtKeyUsage")
+		return nil, fmt.Errorf("must specify at least one ExtKeyUsage")
 	}
 
 	certTmpl := x509.Certificate{

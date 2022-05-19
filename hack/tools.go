@@ -1,3 +1,4 @@
+//go:build tools
 // +build tools
 
 // Copyright (c) 2019 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
@@ -19,7 +20,7 @@ package tools
 
 import (
 	_ "github.com/ahmetb/gen-crd-api-reference-docs"
-	_ "github.com/onsi/ginkgo/ginkgo"
+	_ "github.com/onsi/ginkgo/v2/ginkgo"
 	_ "github.com/onsi/gomega"
 	_ "golang.org/x/lint/golint"
 	_ "k8s.io/code-generator/cmd/client-gen"
@@ -29,8 +30,8 @@ import (
 	_ "k8s.io/code-generator/cmd/informer-gen"
 	_ "k8s.io/code-generator/cmd/lister-gen"
 	_ "k8s.io/kube-openapi/cmd/openapi-gen"
-	_ "sigs.k8s.io/kind"
 	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
+	_ "sigs.k8s.io/kind"
 
 	_ "github.com/gardener/controller-manager-library/hack"
 )

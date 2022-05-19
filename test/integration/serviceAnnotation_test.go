@@ -18,7 +18,7 @@ package integration
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
