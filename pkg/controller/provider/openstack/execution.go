@@ -109,7 +109,7 @@ func (exec *Execution) create(rset *recordsets.RecordSet) error {
 		Records: rset.Records,
 	}
 	exec.handler.config.RateLimiter.Accept()
-	_, err := exec.handler.client.CreateRecordSet(exec.zone.Id(), opts)
+	_, err := exec.handler.client.CreateRecordSet(exec.zone.Id().ID, opts)
 	return err
 }
 
@@ -120,7 +120,7 @@ func (exec *Execution) lookupRecordSetID(rset *recordsets.RecordSet) (string, er
 		return nil
 	}
 	exec.handler.config.RateLimiter.Accept()
-	err := exec.handler.client.ForEachRecordSetFilterByTypeAndName(exec.zone.Id(), rset.Type, dns.AlignHostname(rset.Name), handler)
+	err := exec.handler.client.ForEachRecordSetFilterByTypeAndName(exec.zone.Id().ID, rset.Type, dns.AlignHostname(rset.Name), handler)
 	if err != nil {
 		return "", fmt.Errorf("RecordSet lookup for %s %s failed with: %s", rset.Type, rset.Name, err)
 	}
@@ -141,7 +141,7 @@ func (exec *Execution) update(rset *recordsets.RecordSet) error {
 		Records: rset.Records,
 	}
 	exec.handler.config.RateLimiter.Accept()
-	err = exec.handler.client.UpdateRecordSet(exec.zone.Id(), recordSetID, opts)
+	err = exec.handler.client.UpdateRecordSet(exec.zone.Id().ID, recordSetID, opts)
 	return err
 }
 
@@ -151,6 +151,6 @@ func (exec *Execution) delete(rset *recordsets.RecordSet) error {
 		return err
 	}
 	exec.handler.config.RateLimiter.Accept()
-	err = exec.handler.client.DeleteRecordSet(exec.zone.Id(), recordSetID)
+	err = exec.handler.client.DeleteRecordSet(exec.zone.Id().ID, recordSetID)
 	return err
 }

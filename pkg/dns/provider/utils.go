@@ -22,19 +22,20 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 type NullMetrics struct{}
 
 var _ Metrics = &NullMetrics{}
 
-func (m *NullMetrics) AddGenericRequests(request_type string, n int) {
+func (m *NullMetrics) AddGenericRequests(requestType string, n int) {
 }
 
-func (m *NullMetrics) AddZoneRequests(zon, request_type string, n int) {
+func (m *NullMetrics) AddZoneRequests(zoneid, requestType string, n int) {
 }
 
-func copyZones(src map[string]*dnsHostedZone) dnsHostedZones {
+func copyZones(src map[dns.ZoneID]*dnsHostedZone) dnsHostedZones {
 	dst := dnsHostedZones{}
 	for k, v := range src {
 		dst[k] = v

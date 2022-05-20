@@ -160,12 +160,12 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *google
 				}
 			}
 		}
-		h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
+		h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 		rt = provider.M_PLISTRECORDS
 		return nil
 	}
 	h.config.RateLimiter.Accept()
-	projectID, zoneName := SplitZoneID(zone.Id())
+	projectID, zoneName := SplitZoneID(zone.Id().ID)
 	err := h.service.ResourceRecordSets.List(projectID, zoneName).Pages(h.ctx, aggr)
 	return forwarded, err
 }

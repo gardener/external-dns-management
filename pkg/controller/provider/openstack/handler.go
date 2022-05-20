@@ -222,7 +222,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	}
 
 	h.config.RateLimiter.Accept()
-	if err := h.client.ForEachRecordSet(zone.Id(), recordSetHandler); err != nil {
+	if err := h.client.ForEachRecordSet(zone.Id().ID, recordSetHandler); err != nil {
 		return nil, fmt.Errorf("Listing DNS zones failed for %s. Details: %s", zone.Id(), err.Error())
 	}
 

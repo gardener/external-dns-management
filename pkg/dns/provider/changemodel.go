@@ -56,11 +56,12 @@ func NewChangeRequest(action string, rtype string, del, add *dns.DNSSet, done Do
 }
 
 type ChangeGroup struct {
-	name     string
-	provider DNSProvider
-	dnssets  dns.DNSSets
-	requests ChangeRequests
-	model    *ChangeModel
+	name          string
+	provider      DNSProvider
+	dnssets       dns.DNSSets
+	requests      ChangeRequests
+	model         *ChangeModel
+	providerCount int
 }
 
 func newChangeGroup(name string, provider DNSProvider, model *ChangeModel) *ChangeGroup {
@@ -185,13 +186,15 @@ func (this *ChangeModel) IsStale(dns ZonedDNSName) *Entry {
 func (this *ChangeModel) getProviderView(p DNSProvider) *ChangeGroup {
 	v := this.providergroups[p.AccountHash()]
 	if v == nil {
-		v = newChangeGroup(p.ObjectName().String(), p, this)
+		name := fmt.Sprintf("%s[%s]", p.ObjectName().String(), atMost(p.AccountHash(), 8))
+		v = newChangeGroup(name, p, this)
 		this.providergroups[p.AccountHash()] = v
 	}
+	v.providerCount++
 	return v
 }
 
-func (this *ChangeModel) ZoneId() string {
+func (this *ChangeModel) ZoneId() dns.ZoneID {
 	return this.context.zone.Id()
 }
 
@@ -199,12 +202,15 @@ func (this *ChangeModel) Domain() string {
 	return this.context.zone.Domain()
 }
 
+// getDefaultProvider returns a provider of the change group with the most providers.
 func (this *ChangeModel) getDefaultProvider() DNSProvider {
-	var provider DNSProvider
-	for _, provider = range this.context.providers {
-		break
+	var oldest DNSProvider
+	for _, p := range this.context.providers {
+		if oldest == nil || oldest.Object().GetCreationTimestamp().Time.After(p.Object().GetCreationTimestamp().Time) {
+			oldest = p
+		}
 	}
-	return provider
+	return oldest
 }
 
 func (this *ChangeModel) dumpf(fmt string, args ...interface{}) {
@@ -514,4 +520,11 @@ func AddRecord(targetsets dns.RecordSets, ty string, host string, ttl int64) {
 		targetsets[ty] = rs
 	}
 	rs.Records = append(rs.Records, &dns.Record{Value: host})
+}
+
+func atMost(s string, maxlen int) string {
+	if len(s) < maxlen {
+		return s
+	}
+	return s[:maxlen]
 }

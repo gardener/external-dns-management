@@ -40,7 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	corev1 "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1beta1"
+	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -782,7 +782,7 @@ func (te *TestEnv) MockInMemoryGetDNSSetEx(name, zonePrefix, dnsName string) (*d
 		return nil, nil
 	}
 	for _, zone := range testMock.GetZones() {
-		if strings.HasPrefix(zone.Id(), zonePrefix) && zone.Match(dnsName) > 0 {
+		if strings.HasPrefix(zone.Id().ID, zonePrefix) && zone.Match(dnsName) > 0 {
 			state, err := testMock.CloneZoneState(zone)
 			if err != nil {
 				return nil, err

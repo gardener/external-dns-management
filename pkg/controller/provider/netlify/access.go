@@ -98,7 +98,7 @@ func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) erro
 		Value:    r.GetValue(),
 		TTL:      int64(ttl),
 	}
-	this.metrics.AddZoneRequests(zone.Id(), provider.M_CREATERECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_CREATERECORDS, 1)
 	this.rateLimiter.Accept()
 	createParams := operations.NewCreateDNSRecordParams()
 	createParams.SetZoneID(a.DNSZoneID)
@@ -122,7 +122,7 @@ func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) erro
 	deleteParams := operations.NewDeleteDNSRecordParams()
 	deleteParams.SetZoneID(a.DNSZoneID)
 	deleteParams.SetDNSRecordID(a.ID)
-	this.metrics.AddZoneRequests(zone.Id(), provider.M_DELETERECORDS, 1)
+	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_DELETERECORDS, 1)
 	this.rateLimiter.Accept()
 	_, err := this.client.DeleteDNSRecord(deleteParams, this.authInfo)
 	return err
@@ -134,7 +134,7 @@ func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHosted
 		Hostname:  fqdn,
 		Value:     value,
 		TTL:       int64(ttl),
-		DNSZoneID: zone.Id(),
+		DNSZoneID: zone.Id().ID,
 	})
 }
 
@@ -149,7 +149,7 @@ func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZ
 	}
 
 	// no filtering provided by API, we have to list complete zone and filter
-	err := this.ListRecords(zone.Id(), consume)
+	err := this.ListRecords(zone.Id().ID, consume)
 	if err != nil {
 		return nil, err
 	}

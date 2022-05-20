@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/selection"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
@@ -406,16 +407,16 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 
 	allForwardedDomains := utils.NewStringSet()
 	for _, z := range this.zones {
-		if this.included_zones.Contains(z.Id()) {
+		if z.Id().ProviderType == this.TypeCode() && this.included_zones.Contains(z.Id().ID) {
 			if len(z.ForwardedDomains()) > 0 {
 				allForwardedDomains.AddAll(z.ForwardedDomains())
 			}
 		}
 	}
 	for _, z := range this.zones {
-		if this.included_zones.Contains(z.Id()) {
+		if z.Id().ProviderType == this.TypeCode() && this.included_zones.Contains(z.Id().ID) {
 			for _, z2 := range this.zones {
-				if this.included_zones.Contains(z2.Id()) && z.Id() != z2.Id() {
+				if z2.Id().ProviderType == this.TypeCode() && this.included_zones.Contains(z2.Id().ID) && z.Id() != z2.Id() {
 					if z.Domain() == z2.Domain() {
 						return this, this.failedButRecheck(logger, fmt.Errorf("duplicate zones %s(%s) and %s(%s)", z.Id(), z.Domain(), z2.Id(), z2.Domain()), mod)
 					} else if dnsutils.Match(z2.Domain(), z.Domain()) && !allForwardedDomains.Contains(z2.Domain()) {
@@ -595,8 +596,8 @@ func (this *dnsProviderVersion) ExecuteRequests(logger logger.LogContext, zone D
 	return this.account.ExecuteRequests(logger, zone, state, reqs)
 }
 
-func (this *dnsProviderVersion) IncludesZone(zoneID string) bool {
-	return this.included_zones != nil && this.included_zones.Contains(zoneID)
+func (this *dnsProviderVersion) IncludesZone(zoneID dns.ZoneID) bool {
+	return this.TypeCode() == zoneID.ProviderType && this.included_zones != nil && this.included_zones.Contains(zoneID.ID)
 }
 
 func (this *dnsProviderVersion) GetDedicatedDNSAccess() DedicatedDNSAccess {

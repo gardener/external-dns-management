@@ -17,6 +17,7 @@
 package selection_test
 
 import (
+	"github.com/gardener/external-dns-management/pkg/dns"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -28,38 +29,38 @@ import (
 )
 
 type lightDNSHostedZone struct {
-	id               string
+	id               dns.ZoneID
 	domain           string
 	forwardedDomains []string
 }
 
-func (z *lightDNSHostedZone) Id() string                 { return z.id }
+func (z *lightDNSHostedZone) Id() dns.ZoneID             { return z.id }
 func (z *lightDNSHostedZone) Domain() string             { return z.domain }
 func (z *lightDNSHostedZone) ForwardedDomains() []string { return z.forwardedDomains }
 
 var _ = Describe("Selection", func() {
 	zab := &lightDNSHostedZone{
-		id:               "ZAB",
+		id:               dns.NewZoneID("test", "ZAB"),
 		domain:           "a.b",
 		forwardedDomains: []string{"c.a.b", "d.a.b"},
 	}
 	zab2 := &lightDNSHostedZone{
-		id:               "ZAB2",
+		id:               dns.NewZoneID("test", "ZAB2"),
 		domain:           "a.b",
 		forwardedDomains: []string{},
 	}
 	zcab := &lightDNSHostedZone{
-		id:               "ZCAB",
+		id:               dns.NewZoneID("test", "ZCAB"),
 		domain:           "c.a.b",
 		forwardedDomains: nil,
 	}
 	zfab := &lightDNSHostedZone{
-		id:               "ZFAB",
+		id:               dns.NewZoneID("test", "ZFAB"),
 		domain:           "f.a.b",
 		forwardedDomains: nil,
 	}
 	zop := &lightDNSHostedZone{
-		id:               "ZOP",
+		id:               dns.NewZoneID("test", "ZOP"),
 		domain:           "o.p",
 		forwardedDomains: nil,
 	}
@@ -67,7 +68,9 @@ var _ = Describe("Selection", func() {
 	allzones := []LightDNSHostedZone{zab, zcab, zop}
 
 	It("uses all zones if no spec given", func() {
-		spec := v1alpha1.DNSProviderSpec{}
+		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
+		}
 		result := CalcZoneAndDomainSelection(spec, allzones)
 		Expect(result).To(Equal(SelectionResult{
 			Zones:         allzones,
@@ -86,6 +89,7 @@ var _ = Describe("Selection", func() {
 
 	It("deals with uppercase domain selection and final dot", func() {
 		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
 			Domains: &v1alpha1.DNSSelection{
 				Include: []string{"A.b."},
 				Exclude: []string{"O.P."},
@@ -111,7 +115,9 @@ var _ = Describe("Selection", func() {
 	})
 
 	It("handles no zones", func() {
-		spec := v1alpha1.DNSProviderSpec{}
+		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
+		}
 		result := CalcZoneAndDomainSelection(spec, nozones)
 		Expect(result).To(Equal(SelectionResult{
 			Zones:         nil,
@@ -131,6 +137,7 @@ var _ = Describe("Selection", func() {
 
 	It("handles zones exclusion", func() {
 		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
 			Zones: &v1alpha1.DNSSelection{
 				Include: nil,
 				Exclude: []string{"ZOP", "ZAB"},
@@ -157,6 +164,7 @@ var _ = Describe("Selection", func() {
 
 	It("handles zones inclusion", func() {
 		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
 			Zones: &v1alpha1.DNSSelection{
 				Include: []string{"ZAB"},
 				Exclude: []string{"ZOP"},
@@ -183,6 +191,7 @@ var _ = Describe("Selection", func() {
 
 	It("handles simple domain inclusion", func() {
 		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
 			Domains: &v1alpha1.DNSSelection{
 				Include: []string{"a.b"},
 				Exclude: nil,
@@ -209,6 +218,7 @@ var _ = Describe("Selection", func() {
 
 	It("handles domain inclusion with exclusion of domain of sub hosted zone", func() {
 		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
 			Domains: &v1alpha1.DNSSelection{
 				Include: []string{"a.b"},
 				Exclude: []string{"c.a.b"},
@@ -235,6 +245,7 @@ var _ = Describe("Selection", func() {
 
 	It("handles complex domain inclusion", func() {
 		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
 			Domains: &v1alpha1.DNSSelection{
 				Include: []string{"c.a.b", "x.o.p"},
 				Exclude: []string{"d.a.b", "e.a.b", "y.x.o.p"},
@@ -264,6 +275,7 @@ var _ = Describe("Selection", func() {
 
 	It("handles foreign domain inclusion", func() {
 		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
 			Domains: &v1alpha1.DNSSelection{
 				Include: []string{"y.z"},
 				Exclude: nil,
@@ -294,6 +306,7 @@ var _ = Describe("Selection", func() {
 
 	It("matches duplicate zones with same base domain by domain inclusion", func() {
 		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
 			Domains: &v1alpha1.DNSSelection{
 				Include: []string{"f.a.b"},
 				Exclude: nil,
@@ -320,6 +333,7 @@ var _ = Describe("Selection", func() {
 
 	It("matches duplicate zones with overlapping base domain by domain inclusion", func() {
 		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
 			Domains: &v1alpha1.DNSSelection{
 				Include: []string{"d.f.a.b"},
 				Exclude: nil,

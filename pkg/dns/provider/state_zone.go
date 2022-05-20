@@ -29,6 +29,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
+	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
@@ -37,10 +38,10 @@ import (
 // state handling for zone reconcilation
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *state) TriggerHostedZone(name string) {
+func (this *state) TriggerHostedZone(zoneid dns.ZoneID) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	this.triggerHostedZone(name)
+	this.triggerHostedZone(zoneid)
 }
 
 func (this *state) TriggerHostedZonesByChangedOwners(logger logger.LogContext, changed utils.StringSet) {
@@ -54,7 +55,7 @@ func (this *state) TriggerHostedZonesByChangedOwners(logger logger.LogContext, c
 	}
 }
 
-func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid string) (time.Duration, bool, *zoneReconciliation) {
+func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid dns.ZoneID) (time.Duration, bool, *zoneReconciliation) {
 	req := &zoneReconciliation{
 		fhandler: this.context,
 	}
@@ -97,7 +98,7 @@ func (this *state) reconcileZoneBlockingEntries(logger logger.LogContext) int {
 	return len(this.blockingEntries)
 }
 
-func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconcile.Status {
+func (this *state) ReconcileZone(logger logger.LogContext, zoneid dns.ZoneID) reconcile.Status {
 	logger.Infof("Initiate reconcilation of zone %s", zoneid)
 	defer logger.Infof("zone %s done", zoneid)
 
@@ -114,7 +115,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid string) reconc
 		}
 		return reconcile.Failed(logger, fmt.Errorf("zone %s not used anymore -> stop reconciling", zoneid))
 	}
-	logger = this.RefineLogger(logger, req.zone.ProviderType())
+	logger = this.RefineLogger(logger, zoneid.ProviderType)
 	if delay > 0 {
 		logger.Infof("too early (required delay between two reconcilations: %s) -> skip and reschedule", this.config.Delay)
 		return reconcile.Succeeded(logger).RescheduleAfter(delay)
@@ -177,7 +178,7 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliation) error {
 	zoneid := req.zone.Id()
 	req.zone.SetNext(time.Now().Add(this.config.Delay))
-	metrics.ReportZoneEntries(req.zone.ProviderType(), zoneid, len(req.entries), len(req.stale))
+	metrics.ReportZoneEntries(zoneid, len(req.entries), len(req.stale))
 	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", req.zone.Id(), req.zone.Domain(), len(req.entries), len(req.stale))
 	logger.Debugf("    ownerids: %s", req.ownership.GetIds())
 	changes := NewChangeModel(logger, req.ownership, req, this.config)
@@ -245,16 +246,16 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	return err
 }
 
-func (this *state) deleteZone(zoneid string) {
+func (this *state) deleteZone(zoneid dns.ZoneID) {
 	metrics.DeleteZone(zoneid)
 	delete(this.zones, zoneid)
 	this.triggerAllZonePolicies()
 }
 
 func (this *state) CreateStateTTLGetter(defaultStateTTL time.Duration) StateTTLGetter {
-	return func(zoneid string) time.Duration {
+	return func(zoneid dns.ZoneID) time.Duration {
 		if value := this.zoneStateTTL.Load(); value != nil {
-			stateTTLMap := value.(map[string]time.Duration)
+			stateTTLMap := value.(map[dns.ZoneID]time.Duration)
 			if ttl, ok := stateTTLMap[zoneid]; ok {
 				return ttl
 			}

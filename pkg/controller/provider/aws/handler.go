@@ -222,7 +222,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	forwarded, err := h.handleRecordSets(zone, aggr)
 	if err != nil {
 		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "NoSuchHostedZone" {
-			err = &errors.NoSuchHostedZone{ZoneId: zone.Id(), Err: err}
+			err = &errors.NoSuchHostedZone{ZoneId: zone.Id().ID, Err: err}
 		}
 		return nil, err
 	}
@@ -234,10 +234,10 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route53.ResourceRecordSet)) ([]string, error) {
 	rt := provider.M_LISTRECORDS
-	inp := (&route53.ListResourceRecordSetsInput{MaxItems: aws.String("300")}).SetHostedZoneId(zone.Id())
+	inp := (&route53.ListResourceRecordSetsInput{MaxItems: aws.String("300")}).SetHostedZoneId(zone.Id().ID)
 	forwarded := []string{}
 	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
-		h.config.Metrics.AddZoneRequests(zone.Id(), rt, 1)
+		h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 		for _, r := range resp.ResourceRecordSets {
 			f(r)
 			if aws.StringValue(r.Type) == dns.RS_NS {
@@ -383,7 +383,7 @@ func (h *Handler) DeleteVPCAssociationAuthorization(hostedZoneId string, vpcId s
 func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, dnsName, recordType string) (provider.DedicatedRecordSet, error) {
 	name := dns.AlignHostname(dnsName)
 	sets, err := h.r53.ListResourceRecordSets(&route53.ListResourceRecordSetsInput{
-		HostedZoneId:          aws.String(zone.Id()),
+		HostedZoneId:          aws.String(zone.Id().ID),
 		MaxItems:              aws.String("1"),
 		StartRecordIdentifier: nil,
 		StartRecordName:       &name,

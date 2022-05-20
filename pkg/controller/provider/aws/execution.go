@@ -120,13 +120,13 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		}
 
 		params := &route53.ChangeResourceRecordSetsInput{
-			HostedZoneId: aws.String(this.zone.Id()),
+			HostedZoneId: aws.String(this.zone.Id().ID),
 			ChangeBatch: &route53.ChangeBatch{
 				Changes: mapChanges(changes),
 			},
 		}
 
-		metrics.AddZoneRequests(this.zone.Id(), provider.M_UPDATERECORDS, 1)
+		metrics.AddZoneRequests(this.zone.Id().ID, provider.M_UPDATERECORDS, 1)
 		this.rateLimiter.Accept()
 		var succeededChanges, failedChanges []*Change
 		_, err := this.r53.ChangeResourceRecordSets(params)
@@ -207,7 +207,7 @@ outer:
 
 	if len(unclear) > 0 {
 		params := &route53.ChangeResourceRecordSetsInput{
-			HostedZoneId: aws.String(this.zone.Id()),
+			HostedZoneId: aws.String(this.zone.Id().ID),
 			ChangeBatch: &route53.ChangeBatch{
 				Changes: mapChanges(unclear),
 			},
@@ -224,7 +224,7 @@ outer:
 
 func (this *Execution) isFetchedRecordSetEqual(change *Change) bool {
 	output, err := this.r53.ListResourceRecordSets(&route53.ListResourceRecordSetsInput{
-		HostedZoneId:          aws.String(this.zone.Id()),
+		HostedZoneId:          aws.String(this.zone.Id().ID),
 		MaxItems:              aws.String("1"),
 		StartRecordIdentifier: nil,
 		StartRecordName:       change.Change.ResourceRecordSet.Name,

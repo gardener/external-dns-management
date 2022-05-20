@@ -168,8 +168,12 @@ func (this *EntryVersion) Message() string {
 	return utils.StringValue(this.status.Message)
 }
 
-func (this *EntryVersion) ZoneId() string {
-	return utils.StringValue(this.status.Zone)
+func (this *EntryVersion) ZoneId() dns.ZoneID {
+	var zoneid dns.ZoneID
+	if this.status.ProviderType != nil && this.status.Zone != nil {
+		zoneid = dns.NewZoneID(*this.status.ProviderType, *this.status.Zone)
+	}
+	return zoneid
 }
 
 func (this *EntryVersion) State() string {
@@ -808,22 +812,25 @@ type Entry struct {
 	createdAt      time.Time
 	modified       bool
 	updateRequired bool
-	activezone     string
+	activezone     dns.ZoneID
 	state          *state
 
 	*EntryVersion
 }
 
 func NewEntry(v *EntryVersion, state *state) *Entry {
-	return &Entry{
+	e := &Entry{
 		lock:         dnsutils.NewTryLock(state.GetContext().GetContext()),
 		key:          v.ObjectName().String(),
 		EntryVersion: v,
 		state:        state,
 		modified:     true,
 		createdAt:    time.Now(),
-		activezone:   utils.StringValue(v.status.Zone),
 	}
+	if v.status.ProviderType != nil && v.status.Zone != nil {
+		e.activezone = dns.NewZoneID(*v.status.ProviderType, *v.status.Zone)
+	}
+	return e
 }
 
 func (this *Entry) RemoveFinalizer() error {
@@ -917,7 +924,7 @@ func (this Entries) AddResponsibleTo(list *EntryList) {
 	}
 }
 
-func (this Entries) AddActiveZoneTo(zoneid string, list *EntryList) {
+func (this Entries) AddActiveZoneTo(zoneid dns.ZoneID, list *EntryList) {
 	for _, e := range this {
 		if e.activezone == zoneid {
 			*list = append(*list, e)
@@ -959,7 +966,7 @@ func (this *synchronizedEntries) AddResponsibleTo(list *EntryList) {
 	this.entries.AddResponsibleTo(list)
 }
 
-func (this *synchronizedEntries) AddActiveZoneTo(zoneid string, list *EntryList) {
+func (this *synchronizedEntries) AddActiveZoneTo(zoneid dns.ZoneID, list *EntryList) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	this.entries.AddActiveZoneTo(zoneid, list)

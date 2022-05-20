@@ -43,10 +43,6 @@ type testzone struct {
 
 var _ provider.DNSHostedZone = &testzone{}
 
-func (tz *testzone) ProviderType() string {
-	return "test"
-}
-
 func (tz *testzone) buildNextId() string {
 	d := fmt.Sprintf("rs-%04d", tz.nextID)
 	tz.nextID++
@@ -57,8 +53,8 @@ func (tz *testzone) Key() string {
 	return tz.zone.ID
 }
 
-func (tz *testzone) Id() string {
-	return tz.zone.ID
+func (tz *testzone) Id() dns.ZoneID {
+	return dns.NewZoneID("test", tz.zone.ID)
 }
 
 func (tz *testzone) Domain() string {
@@ -243,17 +239,17 @@ func TestGetZones(t *testing.T) {
 		t.Errorf("Excepted 2 zones, but got %d", len(hostedZones))
 	}
 	sort.Slice(hostedZones, func(i, j int) bool {
-		return strings.Compare(hostedZones[i].Id(), hostedZones[j].Id()) < 0
+		return strings.Compare(hostedZones[i].Id().ID, hostedZones[j].Id().ID) < 0
 	})
 	z1 := hostedZones[0]
 	z2 := hostedZones[1]
-	if z1.Id() != "z1" || z1.Domain() != "z1.test" {
+	if z1.Id().ID != "z1" || z1.Domain() != "z1.test" {
 		t.Errorf("Zone z1 not found: %v", z1)
 	}
 	if len(z1.ForwardedDomains()) != 0 {
 		t.Errorf("Zone z1: unexpected forwarded domains: %v", z1.ForwardedDomains())
 	}
-	if z2.Id() != "z2" || z2.Domain() != "z2.test" {
+	if z2.Id().ID != "z2" || z2.Domain() != "z2.test" {
 		t.Errorf("Zone z2 not found: %v", z2)
 	}
 	if len(z2.ForwardedDomains()) != 1 || z2.ForwardedDomains()[0] != "excluded.z2.test" {

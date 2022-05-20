@@ -136,7 +136,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		//fmt.Printf("**** found %s %s: %s\n", a.GetType(), a.GetDNSName(), a.GetValue() )
 		return true, nil
 	}
-	err := h.access.ListRecords(zone.Id(), zone.Key(), f)
+	err := h.access.ListRecords(zone.Id().ID, zone.Key(), f)
 	if err != nil {
 		return nil, perrs.WrapAsHandlerError(err, "list records failed")
 	}

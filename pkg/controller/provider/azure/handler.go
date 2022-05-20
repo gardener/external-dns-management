@@ -154,10 +154,10 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
-	resourceGroup, zoneName := utils.SplitZoneID(zone.Id())
+	resourceGroup, zoneName := utils.SplitZoneID(zone.Id().ID)
 	h.config.RateLimiter.Accept()
 	results, err := h.recordsClient.ListAllByDNSZoneComplete(h.ctx, resourceGroup, zoneName, nil, "")
-	h.config.Metrics.AddZoneRequests(zone.Id(), provider.M_LISTRECORDS, 1)
+	h.config.Metrics.AddZoneRequests(zone.Id().ID, provider.M_LISTRECORDS, 1)
 	if err != nil {
 		return nil, perrs.WrapfAsHandlerError(err, "Listing DNS zone state for zone %s failed", zoneName)
 	}
@@ -198,7 +198,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	}
 	pages := count / 100
 	if pages > 0 {
-		h.config.Metrics.AddZoneRequests(zone.Id(), provider.M_PLISTRECORDS, count/100)
+		h.config.Metrics.AddZoneRequests(zone.Id().ID, provider.M_PLISTRECORDS, count/100)
 	}
 	return provider.NewDNSZoneState(dnssets), nil
 }
@@ -214,7 +214,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 }
 
 func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	resourceGroup, zoneName := utils.SplitZoneID(zone.Id())
+	resourceGroup, zoneName := utils.SplitZoneID(zone.Id().ID)
 	exec := NewExecution(logger, h, resourceGroup, zoneName)
 
 	var succeeded, failed int
