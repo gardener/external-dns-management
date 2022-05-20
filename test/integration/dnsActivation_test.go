@@ -23,7 +23,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

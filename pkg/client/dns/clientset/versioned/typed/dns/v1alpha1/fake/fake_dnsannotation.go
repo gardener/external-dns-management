@@ -117,7 +117,7 @@ func (c *FakeDNSAnnotations) UpdateStatus(ctx context.Context, dNSAnnotation *v1
 // Delete takes name of the dNSAnnotation and deletes it. Returns an error if one occurs.
 func (c *FakeDNSAnnotations) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(dnsannotationsResource, c.ns, name), &v1alpha1.DNSAnnotation{})
+		Invokes(testing.NewDeleteActionWithOptions(dnsannotationsResource, c.ns, name, opts), &v1alpha1.DNSAnnotation{})
 
 	return err
 }

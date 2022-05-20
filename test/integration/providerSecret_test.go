@@ -21,41 +21,41 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 )
 
-func createAndDelete() {
-	secretName := testEnv.SecretName(0)
-	pr, _, _, err := testEnv.CreateProvider("inmemory.mock", 0, secretName)
-	Ω(err).Should(BeNil())
-	defer testEnv.DeleteProviderAndSecret(pr)
-
-	checkHasFinalizer(pr)
-
-	err = testEnv.AwaitProviderState(pr.GetName(), "Error")
-	Ω(err).Should(BeNil())
-
-	// create secret after provider
-	secret, err := testEnv.CreateSecret(0)
-	Ω(err).Should(BeNil())
-
-	// provider should be ready now
-	checkProvider(pr)
-
-	checkHasFinalizer(secret)
-}
-
 var _ = Describe("ProviderSecret", func() {
+	createAndDelete := func() {
+		secretName := testEnv.SecretName(0)
+		pr, _, _, err := testEnv.CreateProvider("inmemory.mock", 0, secretName)
+		Ω(err).Should(BeNil())
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		checkHasFinalizer(pr)
+
+		err = testEnv.AwaitProviderState(pr.GetName(), "Error")
+		Ω(err).Should(BeNil())
+
+		// create secret after provider
+		secret, err := testEnv.CreateSecret(0)
+		Ω(err).Should(BeNil())
+
+		// provider should be ready now
+		checkProvider(pr)
+
+		checkHasFinalizer(secret)
+	}
+
 	It("works if secret is created after provider", func() {
-		Context("first round", createAndDelete)
+		By("first round", createAndDelete)
 
 		secretName := testEnv.SecretName(0)
 		err := testEnv.AwaitSecretDeletion(secretName)
 		Ω(err).Should(BeNil())
 
-		Context("second round", createAndDelete)
+		By("second round", createAndDelete)
 	})
 
 	It("takes into account includes and excludes of domain names and zone ids", func() {

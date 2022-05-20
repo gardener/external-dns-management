@@ -17,15 +17,13 @@
 package selection_test
 
 import (
-	"github.com/gardener/external-dns-management/pkg/dns"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	. "github.com/gardener/external-dns-management/pkg/dns/provider/selection"
-
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
+	. "github.com/gardener/external-dns-management/pkg/dns/provider/selection"
 )
 
 type lightDNSHostedZone struct {

@@ -117,7 +117,7 @@ func (c *FakeDNSEntries) UpdateStatus(ctx context.Context, dNSEntry *v1alpha1.DN
 // Delete takes name of the dNSEntry and deletes it. Returns an error if one occurs.
 func (c *FakeDNSEntries) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(dnsentriesResource, c.ns, name), &v1alpha1.DNSEntry{})
+		Invokes(testing.NewDeleteActionWithOptions(dnsentriesResource, c.ns, name, opts), &v1alpha1.DNSEntry{})
 
 	return err
 }

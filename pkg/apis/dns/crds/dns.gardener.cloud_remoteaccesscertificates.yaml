@@ -1,10 +1,9 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
+    controller-gen.kubebuilder.io/version: v0.8.0
   creationTimestamp: null
   name: remoteaccesscertificates.dns.gardener.cloud
 spec:
@@ -33,10 +32,14 @@ spec:
       openAPIV3Schema:
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -49,7 +52,8 @@ spec:
                 description: Domain name, used for building subject and DNS name
                 type: string
               recreate:
-                description: Indicates if certificate should be recreated and replaced in the secret
+                description: Indicates if certificate should be recreated and replaced
+                  in the secret
                 type: boolean
               secretName:
                 description: Name of the secret to store the client certificate
@@ -66,7 +70,8 @@ spec:
           status:
             properties:
               message:
-                description: In case of a configuration problem this field describes the reason
+                description: In case of a configuration problem this field describes
+                  the reason
                 type: string
               notAfter:
                 description: Expiration timestamp of the certificate
@@ -77,7 +82,8 @@ spec:
                 format: date-time
                 type: string
               recreating:
-                description: Indicates if certificate should be recreated and replaced in the secret
+                description: Indicates if certificate should be recreated and replaced
+                  in the secret
                 type: boolean
               serialNumber:
                 description: Serial number of the certificate

@@ -33,7 +33,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
@@ -161,7 +161,7 @@ var _ = Describe("RemoteAccess", func() {
 		err = testEnv2.DeleteProviderAndSecret(prLocal)
 		Ω(err).Should(BeNil())
 
-		Context("provider with invalid certificate should have state error", func() {
+		By("provider with invalid certificate should have state error", func() {
 			// outdated certificate
 			pr2 := createRemoteProvider(1, testEnv.Namespace, testEnv2.Namespace, "sub2"+domain, -1)
 			defer testEnv2.DeleteProviderAndSecret(pr2)

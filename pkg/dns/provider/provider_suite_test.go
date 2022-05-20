@@ -11,11 +11,11 @@ package provider
 import (
 	"testing"
 
-	"github.com/onsi/ginkgo"
+	ginkgov2 "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 func TestUtilsSuite(t *testing.T) {
-	RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "Provider Suite")
+	RegisterFailHandler(ginkgov2.Fail)
+	ginkgov2.RunSpecs(t, "Provider Suite")
 }
