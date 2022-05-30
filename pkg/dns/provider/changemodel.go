@@ -74,6 +74,9 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 		_, ok := model.applied[s.Name]
 		if !ok {
 			if s.IsOwnedBy(model.ownership) {
+				if model.ExistsInEquivalentZone(s.Name) {
+					continue
+				}
 				if e := model.IsStale(ZonedDNSName{ZoneID: model.ZoneId(), DNSName: s.Name}); e != nil {
 					if e.IsDeleting() {
 						model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
@@ -181,6 +184,10 @@ func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zone
 
 func (this *ChangeModel) IsStale(dns ZonedDNSName) *Entry {
 	return this.context.stale[dns]
+}
+
+func (this *ChangeModel) ExistsInEquivalentZone(dnsName string) bool {
+	return this.context.equivEntries != nil && this.context.equivEntries.Contains(dnsName)
 }
 
 func (this *ChangeModel) getProviderView(p DNSProvider) *ChangeGroup {
