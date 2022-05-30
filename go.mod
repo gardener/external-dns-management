@@ -13,8 +13,8 @@ require (
 	github.com/gardener/controller-manager-library v0.2.1-0.20220520072134-36826977dd83
 	github.com/go-openapi/runtime v0.24.1
 	github.com/go-openapi/strfmt v0.21.2
-	github.com/gophercloud/gophercloud v0.18.0
-	github.com/gophercloud/utils v0.0.0-20190527093828-25f1b77b8c03
+	github.com/gophercloud/gophercloud v0.24.0
+	github.com/gophercloud/utils v0.0.0-20220307143606-8e7800759d16
 	github.com/infobloxopen/infoblox-go-client/v2 v2.0.0
 	github.com/miekg/dns v1.1.44
 	github.com/netlify/open-api v1.1.0
@@ -124,7 +124,7 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/apiextensions-apiserver v0.23.3 // indirect
 	k8s.io/gengo v0.0.0-20210813121822-485abfe95c7c // indirect
 	k8s.io/klog v1.0.0 // indirect
