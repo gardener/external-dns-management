@@ -7,7 +7,7 @@ See https://docs.openstack.org/os-client-config/latest for details.
 Example to Create a Provider Client From clouds.yaml
 
 	opts := &clientconfig.ClientOpts{
-		Name: "hawaii",
+		Cloud: "hawaii",
 	}
 
 	pClient, err := clientconfig.AuthenticatedClient(opts)
@@ -37,7 +37,7 @@ Example to Manually Create a Provider Client
 Example to Create a Service Client from clouds.yaml
 
 	opts := &clientconfig.ClientOpts{
-		Name: "hawaii",
+		Cloud: "hawaii",
 	}
 
 	computeClient, err := clientconfig.NewServiceClient("compute", opts)

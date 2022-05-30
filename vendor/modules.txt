@@ -283,8 +283,8 @@ github.com/googleapis/gnostic/compiler
 github.com/googleapis/gnostic/extensions
 github.com/googleapis/gnostic/jsonschema
 github.com/googleapis/gnostic/openapiv2
-# github.com/gophercloud/gophercloud v0.18.0
-## explicit; go 1.13
+# github.com/gophercloud/gophercloud v0.24.0
+## explicit; go 1.14
 github.com/gophercloud/gophercloud
 github.com/gophercloud/gophercloud/openstack
 github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets
@@ -296,8 +296,11 @@ github.com/gophercloud/gophercloud/openstack/identity/v3/extensions/oauth1
 github.com/gophercloud/gophercloud/openstack/identity/v3/tokens
 github.com/gophercloud/gophercloud/openstack/utils
 github.com/gophercloud/gophercloud/pagination
-# github.com/gophercloud/utils v0.0.0-20190527093828-25f1b77b8c03
-## explicit
+# github.com/gophercloud/utils v0.0.0-20220307143606-8e7800759d16
+## explicit; go 1.15
+github.com/gophercloud/utils/env
+github.com/gophercloud/utils/gnocchi
+github.com/gophercloud/utils/internal
 github.com/gophercloud/utils/openstack/clientconfig
 # github.com/imdario/mergo v0.3.12
 ## explicit; go 1.13
@@ -695,7 +698,7 @@ gopkg.in/ini.v1
 # gopkg.in/yaml.v2 v2.4.0
 ## explicit; go 1.15
 gopkg.in/yaml.v2
-# gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+# gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
 # k8s.io/api v0.23.3
