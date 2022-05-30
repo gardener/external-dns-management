@@ -51,16 +51,19 @@ func (z ZonedDNSName) String() string {
 
 type DNSNames map[ZonedDNSName]*Entry
 
+type DNSNameSet = utils.StringSet
+
 type zoneReconciliation struct {
-	zone      *dnsHostedZone
-	providers DNSProviders
-	entries   Entries
-	ownership dns.Ownership
-	stale     DNSNames
-	dedicated bool
-	deleting  bool
-	fhandler  FinalizerHandler
-	dnsTicker *Ticker
+	zone         *dnsHostedZone
+	providers    DNSProviders
+	entries      Entries
+	equivEntries DNSNameSet
+	ownership    dns.Ownership
+	stale        DNSNames
+	dedicated    bool
+	deleting     bool
+	fhandler     FinalizerHandler
+	dnsTicker    *Ticker
 }
 
 type setup struct {
@@ -456,18 +459,20 @@ func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid dns.ZoneID
 	entries := Entries{}
 	zone := this.zones[zoneid]
 	if zone != nil {
-		return this.addEntriesForZone(logger, entries, DNSNames{}, zone)
+		entries, _, stale, deleting := this.addEntriesForZone(logger, entries, DNSNames{}, zone)
+		return entries, stale, deleting
 	}
 	return entries, nil, false
 }
 
-func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale DNSNames, zone DNSHostedZone) (Entries, DNSNames, bool) {
+func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale DNSNames, zone DNSHostedZone) (Entries, DNSNameSet, DNSNames, bool) {
 	if entries == nil {
 		entries = Entries{}
 	}
 	if stale == nil {
 		stale = DNSNames{}
 	}
+	equivEntries := DNSNameSet{}
 	deleting := true // TODO check
 	domain := zone.Domain()
 	// fallback if no forwarded domains are reported
@@ -477,7 +482,6 @@ func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, 
 			nested.Add(z.Domain())
 		}
 	}
-loop:
 	for dns, e := range this.dnsnames {
 		if e.Kind() == api.DNSLockKind {
 			continue
@@ -498,15 +502,15 @@ loop:
 					stale[e.ZonedDNSName()] = e
 					continue
 				}
-			} else if provider == nil || !provider.IncludesZone(zone.Id()) {
+			} else if provider == nil {
+				continue
+			} else if !provider.IncludesZone(zone.Id()) {
+				if provider.HasEquivalentZone(zone.Id()) && e.IsActive() && !forwarded(nested, dns.DNSName) {
+					equivEntries.Add(dns.DNSName)
+				}
 				continue
 			}
-			if dns.ZoneID == zone.Id() && zone.Match(dns.DNSName) > 0 {
-				for excl := range nested { // fallback if no forwarded domains are reported
-					if dnsutils.Match(dns.DNSName, excl) {
-						continue loop
-					}
-				}
+			if dns.ZoneID == zone.Id() && zone.Match(dns.DNSName) > 0 && !forwarded(nested, dns.DNSName) {
 				if e.IsActive() {
 					deleting = deleting || e.IsDeleting()
 					entries[e.ObjectName()] = e
@@ -525,7 +529,7 @@ loop:
 			}
 		}
 	}
-	return entries, stale, deleting
+	return entries, equivEntries, stale, deleting
 }
 
 func (this *state) GetZoneForEntry(e *Entry) *dns.ZoneID {
@@ -715,4 +719,13 @@ func (this *state) tryAcceptProviderRateLimiter(logger logger.LogContext, entry 
 func (this *state) ObjectUpdated(key resources.ClusterObjectKey) {
 	this.context.Infof("requeue %s because of change in annotation resource", key)
 	this.context.EnqueueKey(key)
+}
+
+func forwarded(nested utils.StringSet, dnsname string) bool {
+	for excl := range nested {
+		if dnsutils.Match(dnsname, excl) {
+			return true
+		}
+	}
+	return false
 }

@@ -250,6 +250,7 @@ type DNSProvider interface {
 
 	GetZones() DNSHostedZones
 	IncludesZone(zoneID dns.ZoneID) bool
+	HasEquivalentZone(zoneID dns.ZoneID) bool
 
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, requests []*ChangeRequest) error

@@ -75,7 +75,7 @@ func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid dns.Zon
 	if now.Before(next) {
 		return next.Sub(now), hasProviders, req
 	}
-	req.entries, req.stale, req.deleting = this.addEntriesForZone(logger, nil, nil, zone)
+	req.entries, req.equivEntries, req.stale, req.deleting = this.addEntriesForZone(logger, nil, nil, zone)
 	req.providers = this.getProvidersForZone(zoneid)
 	req.dnsTicker = this.dnsTicker
 	return 0, hasProviders, req

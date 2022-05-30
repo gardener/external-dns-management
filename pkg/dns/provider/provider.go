@@ -600,6 +600,14 @@ func (this *dnsProviderVersion) IncludesZone(zoneID dns.ZoneID) bool {
 	return this.TypeCode() == zoneID.ProviderType && this.included_zones != nil && this.included_zones.Contains(zoneID.ID)
 }
 
+// HasEquivalentZone returns true for same provider specific zone id but different provider type and
+// one zoneid has provider type "remote".
+func (this *dnsProviderVersion) HasEquivalentZone(zoneID dns.ZoneID) bool {
+	return this.TypeCode() != zoneID.ProviderType &&
+		(this.TypeCode() == "remote" || zoneID.ProviderType == "remote") &&
+		this.included_zones != nil && this.included_zones.Contains(zoneID.ID)
+}
+
 func (this *dnsProviderVersion) GetDedicatedDNSAccess() DedicatedDNSAccess {
 	h, _ := this.account.handler.(DedicatedDNSAccess)
 	return h
