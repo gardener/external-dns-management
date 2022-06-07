@@ -136,12 +136,14 @@ func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, allzones []LightD
 			this.Zones = nil
 			this.Error = fmt.Sprintf("no domain matching hosting zones. Need to be a (sub)domain of [%s]",
 				strings.Join(zoneDomains, ", "))
+			for _, z := range allzones {
+				this.DomainSel.Exclude.Add(z.Domain())
+			}
 			return this
 		}
 	}
 
-	includedSubdomains, excludedSubdomains := collectForwardedSubdomains(this.DomainSel.Include, this.DomainSel.Exclude, this.Zones)
-	this.DomainSel.Include.AddSet(includedSubdomains)
+	excludedSubdomains := excludeForwardedSubdomains(this.DomainSel.Include, this.Zones)
 	this.DomainSel.Exclude.AddSet(excludedSubdomains)
 
 outer:
@@ -164,6 +166,11 @@ outer:
 		this.ZoneSel.Exclude.Add(zone.Id().ID)
 	}
 
+	for _, z := range allzones {
+		if !this.ZoneSel.Include.Contains(z.Id().ID) && !this.DomainSel.Include.Contains(z.Domain()) {
+			this.DomainSel.Exclude.Add(z.Domain())
+		}
+	}
 	if len(this.ZoneSel.Include) != len(this.Zones) {
 		this.Zones = nil
 		for _, z := range zones {
@@ -207,30 +214,21 @@ func filterByZones(domains utils.StringSet, zones []LightDNSHostedZone) (result 
 	return result, err
 }
 
-// collectForwardedSubdomains excluded all forwarded subdomains
-// but keeps accessible sub hosted zones
-func collectForwardedSubdomains(includedDomains utils.StringSet, excludedDomains utils.StringSet,
-	zones []LightDNSHostedZone) (utils.StringSet, utils.StringSet) {
-	include := utils.StringSet{}
+// excludeForwardedSubdomains excludes all forwarded subdomains
+func excludeForwardedSubdomains(includedDomains utils.StringSet, zones []LightDNSHostedZone) utils.StringSet {
 	exclude := utils.StringSet{}
 	for d := range includedDomains {
 		for _, z := range zones {
-			if d == z.Domain() {
+			if dnsutils.Match(d, z.Domain()) {
 				for _, sub := range z.ForwardedDomains() {
-					if !includedDomains.Contains(sub) {
+					if dnsutils.Match(sub, d) && !includedDomains.Contains(sub) {
 						exclude.Add(sub)
 					}
 				}
 			}
 		}
 	}
-	for _, z := range zones {
-		if !excludedDomains.Contains(z.Domain()) && exclude.Contains(z.Domain()) {
-			exclude.Remove(z.Domain())
-			include.Add(z.Domain())
-		}
-	}
-	return include, exclude
+	return exclude
 }
 
 func normalizeDomains(domains utils.StringSet) utils.StringSet {
