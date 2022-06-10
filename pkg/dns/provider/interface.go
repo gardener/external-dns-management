@@ -155,15 +155,15 @@ outer:
 }
 
 type DNSHandlerConfig struct {
-	Logger      logger.LogContext
-	Properties  utils.Properties
-	Config      *runtime.RawExtension
-	DryRun      bool
-	Context     context.Context
-	CacheConfig ZoneCacheConfig
-	Options     *FactoryOptions
-	Metrics     Metrics
-	RateLimiter flowcontrol.RateLimiter
+	Logger           logger.LogContext
+	Properties       utils.Properties
+	Config           *runtime.RawExtension
+	DryRun           bool
+	Context          context.Context
+	ZoneCacheFactory ZoneCacheFactory
+	Options          *FactoryOptions
+	Metrics          Metrics
+	RateLimiter      flowcontrol.RateLimiter
 }
 
 type DNSZoneState interface {

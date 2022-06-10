@@ -163,23 +163,23 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 		if syncPeriod == nil {
 			return nil, fmt.Errorf("Pool dns not found")
 		}
-		cacheConfig := ZoneCacheConfig{
+		cacheFactory := ZoneCacheFactory{
 			context:               state.GetContext().GetContext(),
 			logger:                logger,
 			zonesTTL:              this.ttl,
-			stateTTLGetter:        state.CreateStateTTLGetter(*syncPeriod),
+			zoneStates:            state.zoneStates,
 			disableZoneStateCache: !state.config.ZoneStateCaching,
 		}
 
 		cfg := DNSHandlerConfig{
-			Context:     state.GetContext().GetContext(),
-			Logger:      logger,
-			Properties:  props,
-			Config:      provider.Spec().ProviderConfig,
-			DryRun:      state.GetConfig().Dryrun,
-			CacheConfig: cacheConfig,
-			Options:     this.options,
-			Metrics:     a,
+			Context:          state.GetContext().GetContext(),
+			Logger:           logger,
+			Properties:       props,
+			Config:           provider.Spec().ProviderConfig,
+			DryRun:           state.GetConfig().Dryrun,
+			ZoneCacheFactory: cacheFactory,
+			Options:          this.options,
+			Metrics:          a,
 		}
 		var err error
 		a.handler, err = state.GetHandlerFactory().Create(provider.TypeCode(), &cfg)

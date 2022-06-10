@@ -128,6 +128,7 @@ type state struct {
 
 	accountCache *AccountCache
 	ownerCache   *OwnerCache
+	zoneStates   *zoneStates
 
 	foreign         map[resources.ObjectName]*foreignProvider
 	providers       map[resources.ObjectName]*dnsProviderVersion
@@ -212,6 +213,11 @@ func (this *state) IsResponsibleFor(logger logger.LogContext, obj resources.Obje
 }
 
 func (this *state) Setup() error {
+	syncPeriod := this.context.GetPoolPeriod(DNS_POOL)
+	if syncPeriod == nil {
+		return fmt.Errorf("Pool %s not found", DNS_POOL)
+	}
+	this.zoneStates = newZoneStates(this.CreateStateTTLGetter(*syncPeriod))
 	this.dnsTicker = NewTicker(this.context.GetPool(DNS_POOL).Tick)
 	this.ownerupd = startOwnerUpdater(this.context, this.ownerresc)
 	processors, err := this.context.GetIntOption(OPT_SETUP)
