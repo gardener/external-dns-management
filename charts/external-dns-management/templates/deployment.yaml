@@ -58,9 +58,6 @@ spec:
         - --identifier=seed.gardener.cloud/{{ .Values.gardener.garden.clusterIdentity }}/{{ .Values.gardener.seed.identity }}
         - --remote-access-client-id={{ .Values.gardener.seed.identity }}
         {{- end }}
-        {{- if .Values.configuration.persistentCache }}
-        - --cache-dir=/persistent-cache
-        {{- end }}
         {{- if .Values.remoteaccess.enabled }}
         - --remote-access-port={{ .Values.remoteaccess.port }}
         - --remote-access-cacert=/certs/ca/ca.crt
@@ -755,6 +752,12 @@ spec:
         {{- if .Values.configuration.remoteRatelimiterQps }}
         - --remote.ratelimiter.qps={{ .Values.configuration.remoteRatelimiterQps }}
         {{- end }}
+        {{- if .Values.configuration.remoteaccesscertificatesDefaultPoolSize }}
+        - --remoteaccesscertificates.default.pool.size={{ .Values.configuration.remoteaccesscertificatesDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.remoteaccesscertificatesPoolSize }}
+        - --remoteaccesscertificates.pool.size={{ .Values.configuration.remoteaccesscertificatesPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.rescheduleDelay }}
         - --reschedule-delay={{ .Values.configuration.rescheduleDelay }}
         {{- end }}
@@ -891,12 +894,8 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
-        {{- if or .Values.configuration.persistentCache .Values.custom.volumeMounts .Values.remoteaccess.enabled }}
+        {{- if or .Values.custom.volumeMounts .Values.remoteaccess.enabled }}
         volumeMounts:
-          {{- if or .Values.configuration.persistentCache }}
-          - name: persistent-cache
-            mountPath: /persistent-cache
-          {{- end }}
           {{- if .Values.custom.volumeMounts }}
           {{- toYaml .Values.custom.volumeMounts | nindent 10 }}
           {{- end }}
@@ -905,13 +904,8 @@ spec:
             name: certs-ca
           {{- end }}
         {{- end }}
-      {{- if or .Values.configuration.persistentCache .Values.custom.volumes .Values.remoteaccess.enabled }}
+      {{- if or .Values.custom.volumes .Values.remoteaccess.enabled }}
       volumes:
-        {{- if or .Values.configuration.persistentCache }}
-        - name: persistent-cache
-          persistentVolumeClaim:
-            claimName: {{ include "external-dns-management.fullname" . }}
-        {{- end }}
         {{- if .Values.remoteaccess.enabled }}
         - name: certs-ca
           secret:

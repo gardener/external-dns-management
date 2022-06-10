@@ -37,7 +37,6 @@ import (
 type Config struct {
 	TTL                int64
 	CacheTTL           time.Duration
-	CacheDir           string
 	RescheduleDelay    time.Duration
 	StatusCheckPeriod  time.Duration
 	Ident              string
@@ -63,7 +62,6 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	if err != nil {
 		cttl = 60
 	}
-	cdir, _ := c.GetStringOption(OPT_CACHE_DIR)
 	dryrun, _ := c.GetBoolOption(OPT_DRYRUN)
 
 	delay, err := c.GetDurationOption(OPT_DNSDELAY)
@@ -117,7 +115,6 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		Ident:              ident,
 		TTL:                int64(ttl),
 		CacheTTL:           time.Duration(cttl) * time.Second,
-		CacheDir:           cdir,
 		RescheduleDelay:    rescheduleDelay,
 		StatusCheckPeriod:  statuscheckperiod,
 		Dryrun:             dryrun,

@@ -278,6 +278,8 @@ configuration:
   # remoteRatelimiterBurst:
   # remoteRatelimiterEnabled:
   # remoteRatelimiterQps:
+  # remoteaccesscertificatesDefaultPoolSize:
+  # remoteaccesscertificatesPoolSize:
   # rescheduleDelay: 120s
   # secretsPoolSize:
   serverPortHttp: 8080

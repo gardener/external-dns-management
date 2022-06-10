@@ -135,7 +135,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		// call GetZoneState for side effect to calculate forwarded domains
 		_, err := cache.GetZoneState(hostedZone)
 		if err == nil {
-			forwarded := cache.GetHandlerData().(*provider.ForwardedDomainsHandlerData).GetForwardedDomains(hostedZone.Id())
+			forwarded := cache.GetHandlerData().GetForwardedDomains(hostedZone.Id())
 			if forwarded != nil {
 				hostedZone = provider.CopyDNSHostedZone(hostedZone, forwarded)
 			}
@@ -191,7 +191,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	if err != nil {
 		return nil, err
 	}
-	cache.GetHandlerData().(*provider.ForwardedDomainsHandlerData).SetForwardedDomains(zone.Id(), forwarded)
+	cache.GetHandlerData().SetForwardedDomains(zone.Id(), forwarded)
 
 	return provider.NewDNSZoneState(dnssets), nil
 }

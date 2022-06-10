@@ -172,7 +172,6 @@ func NewDNSState(ctx Context, ownerresc, secretresc resources.Interface, classes
 	ctx.Infof("dry run mode:                %t", config.Dryrun)
 	ctx.Infof("reschedule delay:            %v", config.RescheduleDelay)
 	ctx.Infof("zone cache ttl for zones:    %v", config.CacheTTL)
-	ctx.Infof("zone cache persist dir:      %s", config.CacheDir)
 	ctx.Infof("disable zone state caching:  %t", !config.ZoneStateCaching)
 	if config.RemoteAccessConfig != nil {
 		ctx.Infof("remote access server port: %d", config.RemoteAccessConfig.Port)
@@ -188,7 +187,7 @@ func NewDNSState(ctx Context, ownerresc, secretresc resources.Interface, classes
 		secretresc:          secretresc,
 		config:              config,
 		realms:              realms,
-		accountCache:        NewAccountCache(config.CacheTTL, config.CacheDir, config.Options),
+		accountCache:        NewAccountCache(config.CacheTTL, config.Options),
 		ownerCache:          NewOwnerCache(ctx, &config),
 		foreign:             map[resources.ObjectName]*foreignProvider{},
 		providers:           map[resources.ObjectName]*dnsProviderVersion{},

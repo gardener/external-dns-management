@@ -431,7 +431,6 @@ Flags:
       --azure-private-dns.ratelimiter.qps int                         maximum requests/queries per second
       --bind-address-http string                                      HTTP server bind address
       --blocked-zone zone-id                                          Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
-      --cache-dir string                                              Directory to store zone caches (for reload after restart)
       --cache-ttl int                                                 Time-to-live for provider hosted zone cache
       --cloudflare-dns.advanced.batch-size int                        batch size for change requests (currently only used for aws-route53)
       --cloudflare-dns.advanced.max-retries int                       maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
@@ -466,7 +465,6 @@ Flags:
       --compound.azure-private-dns.ratelimiter.enabled                enables rate limiter for DNS provider requests of controller compound
       --compound.azure-private-dns.ratelimiter.qps int                maximum requests/queries per second of controller compound
       --compound.blocked-zone zone-id                                 Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
-      --compound.cache-dir string                                     Directory to store zone caches (for reload after restart) of controller compound
       --compound.cache-ttl int                                        Time-to-live for provider hosted zone cache of controller compound
       --compound.cloudflare-dns.advanced.batch-size int               batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.cloudflare-dns.advanced.max-retries int              maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
