@@ -102,11 +102,43 @@ func (this *DNSAccount) Hash() string {
 func (this *DNSAccount) GetZones() (DNSHostedZones, error) {
 	zones, err := this.handler.GetZones()
 	if err == nil {
+		zones = addObviousForwardedDomains(zones)
 		this.Succeeded()
 	} else {
 		this.Failed()
 	}
 	return zones, err
+}
+
+func addObviousForwardedDomains(zones DNSHostedZones) DNSHostedZones {
+	result := make(DNSHostedZones, len(zones))
+	for i, zone := range zones {
+		result[i] = zone
+		if zone.IsPrivate() {
+			continue
+		}
+		changed := false
+		forwarded := zone.ForwardedDomains()
+	otherloop:
+		for j, other := range zones {
+			if i == j || other.IsPrivate() || zone.Domain() == other.Domain() {
+				continue
+			}
+			if Match(zone, other.Domain()) > 0 {
+				for _, domain := range forwarded {
+					if domain == other.Domain() {
+						continue otherloop
+					}
+				}
+				changed = true
+				forwarded = append(forwarded, other.Domain())
+			}
+		}
+		if changed {
+			result[i] = CopyDNSHostedZone(zone, forwarded)
+		}
+	}
+	return result
 }
 
 func (this *DNSAccount) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
