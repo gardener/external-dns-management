@@ -128,6 +128,7 @@ type state struct {
 
 	accountCache *AccountCache
 	ownerCache   *OwnerCache
+	zoneStates   *zoneStates
 
 	foreign         map[resources.ObjectName]*foreignProvider
 	providers       map[resources.ObjectName]*dnsProviderVersion
@@ -172,7 +173,6 @@ func NewDNSState(ctx Context, ownerresc, secretresc resources.Interface, classes
 	ctx.Infof("dry run mode:                %t", config.Dryrun)
 	ctx.Infof("reschedule delay:            %v", config.RescheduleDelay)
 	ctx.Infof("zone cache ttl for zones:    %v", config.CacheTTL)
-	ctx.Infof("zone cache persist dir:      %s", config.CacheDir)
 	ctx.Infof("disable zone state caching:  %t", !config.ZoneStateCaching)
 	if config.RemoteAccessConfig != nil {
 		ctx.Infof("remote access server port: %d", config.RemoteAccessConfig.Port)
@@ -188,7 +188,7 @@ func NewDNSState(ctx Context, ownerresc, secretresc resources.Interface, classes
 		secretresc:          secretresc,
 		config:              config,
 		realms:              realms,
-		accountCache:        NewAccountCache(config.CacheTTL, config.CacheDir, config.Options),
+		accountCache:        NewAccountCache(config.CacheTTL, config.Options),
 		ownerCache:          NewOwnerCache(ctx, &config),
 		foreign:             map[resources.ObjectName]*foreignProvider{},
 		providers:           map[resources.ObjectName]*dnsProviderVersion{},
@@ -213,6 +213,11 @@ func (this *state) IsResponsibleFor(logger logger.LogContext, obj resources.Obje
 }
 
 func (this *state) Setup() error {
+	syncPeriod := this.context.GetPoolPeriod(DNS_POOL)
+	if syncPeriod == nil {
+		return fmt.Errorf("Pool %s not found", DNS_POOL)
+	}
+	this.zoneStates = newZoneStates(this.CreateStateTTLGetter(*syncPeriod))
 	this.dnsTicker = NewTicker(this.context.GetPool(DNS_POOL).Tick)
 	this.ownerupd = startOwnerUpdater(this.context, this.ownerresc)
 	processors, err := this.context.GetIntOption(OPT_SETUP)

@@ -20,7 +20,6 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -139,15 +138,13 @@ func (this *DNSAccount) Release() {
 type AccountCache struct {
 	lock    sync.Mutex
 	ttl     time.Duration
-	dir     string
 	cache   map[string]*DNSAccount
 	options *FactoryOptions
 }
 
-func NewAccountCache(ttl time.Duration, dir string, opts *FactoryOptions) *AccountCache {
+func NewAccountCache(ttl time.Duration, opts *FactoryOptions) *AccountCache {
 	return &AccountCache{
 		ttl:   ttl,
-		dir:   dir,
 		cache: map[string]*DNSAccount{},
 
 		options: opts,
@@ -166,28 +163,23 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 		if syncPeriod == nil {
 			return nil, fmt.Errorf("Pool dns not found")
 		}
-		persistDir := ""
-		if this.dir != "" {
-			persistDir = filepath.Join(this.dir, ZoneCachePrefix+hash)
-		}
-		cacheConfig := ZoneCacheConfig{
+		cacheFactory := ZoneCacheFactory{
 			context:               state.GetContext().GetContext(),
 			logger:                logger,
-			persistDir:            persistDir,
 			zonesTTL:              this.ttl,
-			stateTTLGetter:        state.CreateStateTTLGetter(*syncPeriod),
+			zoneStates:            state.zoneStates,
 			disableZoneStateCache: !state.config.ZoneStateCaching,
 		}
 
 		cfg := DNSHandlerConfig{
-			Context:     state.GetContext().GetContext(),
-			Logger:      logger,
-			Properties:  props,
-			Config:      provider.Spec().ProviderConfig,
-			DryRun:      state.GetConfig().Dryrun,
-			CacheConfig: cacheConfig,
-			Options:     this.options,
-			Metrics:     a,
+			Context:          state.GetContext().GetContext(),
+			Logger:           logger,
+			Properties:       props,
+			Config:           provider.Spec().ProviderConfig,
+			DryRun:           state.GetConfig().Dryrun,
+			ZoneCacheFactory: cacheFactory,
+			Options:          this.options,
+			Metrics:          a,
 		}
 		var err error
 		a.handler, err = state.GetHandlerFactory().Create(provider.TypeCode(), &cfg)

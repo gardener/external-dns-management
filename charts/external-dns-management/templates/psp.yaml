@@ -27,9 +27,6 @@ spec:
   - ALL
   volumes:
   - secret
-{{- if .Values.configuration.persistentCache }}
-  - persistentVolumeClaim
-{{- end }}
   hostNetwork: false
   hostIPC: false
   hostPID: false

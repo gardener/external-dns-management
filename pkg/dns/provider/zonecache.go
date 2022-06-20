@@ -18,19 +18,15 @@ package provider
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
+	"reflect"
+	"sort"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
-	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
@@ -38,28 +34,46 @@ import (
 
 type StateTTLGetter func(zoneid dns.ZoneID) time.Duration
 
-type ZoneCacheConfig struct {
+type ZoneCacheFactory struct {
 	context               context.Context
 	logger                logger.LogContext
-	zoneID                string
-	providerType          string
-	persistDir            string
 	zonesTTL              time.Duration
-	stateTTLGetter        StateTTLGetter
+	zoneStates            *zoneStates
 	disableZoneStateCache bool
 }
 
-func NewTestZoneCacheConfig(zonesTTL, stateTTL time.Duration) *ZoneCacheConfig {
-	return &ZoneCacheConfig{
-		zonesTTL:       zonesTTL,
-		stateTTLGetter: func(id dns.ZoneID) time.Duration { return stateTTL },
+func (c ZoneCacheFactory) CreateZoneCache(cacheType ZoneCacheType, metrics Metrics, zonesUpdater ZoneCacheZoneUpdater, stateUpdater ZoneCacheStateUpdater) (ZoneCache, error) {
+	common := abstractZonesCache{zonesTTL: c.zonesTTL, logger: c.logger, zonesUpdater: zonesUpdater, stateUpdater: stateUpdater}
+	switch cacheType {
+	case CacheZonesOnly:
+		cache := &onlyZonesCache{abstractZonesCache: common}
+		return cache, nil
+	case CacheZoneState:
+		if c.disableZoneStateCache {
+			cache := &onlyZonesCache{abstractZonesCache: common}
+			return cache, nil
+		}
+		return newDefaultZoneCache(c.zoneStates, common, metrics)
+	default:
+		return nil, fmt.Errorf("unknown zone cache type: %v", cacheType)
 	}
 }
 
-func (c *ZoneCacheConfig) CopyWithDisabledZoneStateCache() *ZoneCacheConfig {
-	return &ZoneCacheConfig{context: c.context, logger: c.logger,
-		zoneID: c.zoneID, providerType: c.providerType,
-		persistDir: c.persistDir, zonesTTL: c.zonesTTL, stateTTLGetter: c.stateTTLGetter, disableZoneStateCache: true}
+// ZoneCacheType is the zone cache type.
+type ZoneCacheType int
+
+const (
+	// CacheZonesOnly only caches the zones of the account, but not the zone state itself.
+	CacheZonesOnly ZoneCacheType = iota
+	// CacheZoneState caches both zones of the account and the zone states as needed.
+	CacheZoneState
+)
+
+func NewTestZoneCacheFactory(zonesTTL, stateTTL time.Duration) *ZoneCacheFactory {
+	return &ZoneCacheFactory{
+		zonesTTL:   zonesTTL,
+		zoneStates: newZoneStates(func(id dns.ZoneID) time.Duration { return stateTTL }),
+	}
 }
 
 type ZoneCacheZoneUpdater func(cache ZoneCache) (DNSHostedZones, error)
@@ -70,46 +84,32 @@ type ZoneCache interface {
 	GetZones() (DNSHostedZones, error)
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ApplyRequests(logctx logger.LogContext, err error, zone DNSHostedZone, reqs []*ChangeRequest)
-	GetHandlerData() HandlerData
+	ForwardedDomainsCache() ForwardedDomainsCache
 	Release()
 	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
 }
 
-type HandlerData interface {
-	Marshal(zoneID dns.ZoneID) (*PersistentHandlerData, error)
-	Unmarshal(zoneID dns.ZoneID, data *PersistentHandlerData) error
-	DeleteZone(zoneID dns.ZoneID)
+type ForwardedDomainsCache interface {
+	Get(zoneid dns.ZoneID) []string
+	Set(zoneid dns.ZoneID, value []string)
 }
 
-func NewZoneCache(config ZoneCacheConfig, metrics Metrics, handlerData HandlerData,
-	zonesUpdater ZoneCacheZoneUpdater, stateUpdater ZoneCacheStateUpdater) (ZoneCache, error) {
-	common := abstractZonesCache{config: config, zonesUpdater: zonesUpdater, stateUpdater: stateUpdater}
-	if config.disableZoneStateCache {
-		cache := &onlyZonesCache{abstractZonesCache: common, handlerData: handlerData}
-		return cache, nil
-	} else {
-		return newDefaultZoneCache(common, metrics, handlerData)
-	}
-}
-
-type ForwardedDomainsHandlerData struct {
+type forwardedDomainsCacheImpl struct {
 	lock             sync.Mutex
 	forwardedDomains map[dns.ZoneID][]string
 }
 
-func NewForwardedDomainsHandlerData() *ForwardedDomainsHandlerData {
-	return &ForwardedDomainsHandlerData{forwardedDomains: map[dns.ZoneID][]string{}}
+func newForwardedDomainsCacheImpl() *forwardedDomainsCacheImpl {
+	return &forwardedDomainsCacheImpl{forwardedDomains: map[dns.ZoneID][]string{}}
 }
 
-var _ HandlerData = &ForwardedDomainsHandlerData{}
-
-func (hd *ForwardedDomainsHandlerData) GetForwardedDomains(zoneid dns.ZoneID) []string {
+func (hd *forwardedDomainsCacheImpl) Get(zoneid dns.ZoneID) []string {
 	hd.lock.Lock()
 	defer hd.lock.Unlock()
 	return hd.forwardedDomains[zoneid]
 }
 
-func (hd *ForwardedDomainsHandlerData) SetForwardedDomains(zoneid dns.ZoneID, value []string) {
+func (hd *forwardedDomainsCacheImpl) Set(zoneid dns.ZoneID, value []string) {
 	hd.lock.Lock()
 	defer hd.lock.Unlock()
 
@@ -120,45 +120,7 @@ func (hd *ForwardedDomainsHandlerData) SetForwardedDomains(zoneid dns.ZoneID, va
 	}
 }
 
-func (hd *ForwardedDomainsHandlerData) Marshal(zoneID dns.ZoneID) (*PersistentHandlerData, error) {
-	hd.lock.Lock()
-	defer hd.lock.Unlock()
-
-	data := hd.forwardedDomains[zoneID]
-	if data == nil {
-		return nil, nil
-	}
-	bytes, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-	return &PersistentHandlerData{Name: "ForwardedDomains", Version: "1", Value: &runtime.RawExtension{Raw: bytes}}, nil
-}
-
-func (hd *ForwardedDomainsHandlerData) Unmarshal(zoneID dns.ZoneID, data *PersistentHandlerData) error {
-	hd.lock.Lock()
-	defer hd.lock.Unlock()
-
-	if data == nil {
-		return nil
-	}
-	if data.Name != "ForwardedDomains" || data.Version != "1" {
-		return fmt.Errorf("unexpected HandlerData: %s %s", data.Name, data.Version)
-	}
-	if data.Value == nil {
-		return fmt.Errorf("missing value in HandlerData: %s %s", data.Name, data.Version)
-	}
-
-	var value []string
-	err := json.Unmarshal([]byte(data.Value.Raw), &value)
-	if err != nil {
-		return err
-	}
-	hd.forwardedDomains[zoneID] = value
-	return nil
-}
-
-func (hd *ForwardedDomainsHandlerData) DeleteZone(zoneID dns.ZoneID) {
+func (hd *forwardedDomainsCacheImpl) DeleteZone(zoneID dns.ZoneID) {
 	hd.lock.Lock()
 	defer hd.lock.Unlock()
 
@@ -166,7 +128,8 @@ func (hd *ForwardedDomainsHandlerData) DeleteZone(zoneID dns.ZoneID) {
 }
 
 type abstractZonesCache struct {
-	config       ZoneCacheConfig
+	logger       logger.LogContext
+	zonesTTL     time.Duration
 	zones        DNSHostedZones
 	zonesErr     error
 	zonesNext    time.Time
@@ -176,8 +139,8 @@ type abstractZonesCache struct {
 
 type onlyZonesCache struct {
 	abstractZonesCache
-	lock        sync.Mutex
-	handlerData HandlerData
+	lock                  sync.Mutex
+	forwardedDomainsCache ForwardedDomainsCache
 }
 
 var _ ZoneCache = &onlyZonesCache{}
@@ -195,8 +158,13 @@ func (c *onlyZonesCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) 
 func (c *onlyZonesCache) ApplyRequests(logctx logger.LogContext, err error, zone DNSHostedZone, reqs []*ChangeRequest) {
 }
 
-func (c *onlyZonesCache) GetHandlerData() HandlerData {
-	return c.handlerData
+func (c *onlyZonesCache) ForwardedDomainsCache() ForwardedDomainsCache {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if c.forwardedDomainsCache == nil {
+		c.forwardedDomainsCache = newForwardedDomainsCacheImpl()
+	}
+	return c.forwardedDomainsCache
 }
 
 func (c *onlyZonesCache) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
@@ -208,41 +176,18 @@ func (c *onlyZonesCache) Release() {
 
 type defaultZoneCache struct {
 	abstractZonesCache
-	lock     sync.Mutex
-	logger   logger.LogContext
-	metrics  Metrics
-	state    *zoneState
-	persist  bool
-	persistC chan dns.ZoneID
+	lock       sync.Mutex
+	logger     logger.LogContext
+	metrics    Metrics
+	zoneStates *zoneStates
 
 	backoffOnError time.Duration
 }
 
 var _ ZoneCache = &defaultZoneCache{}
 
-func newDefaultZoneCache(common abstractZonesCache, metrics Metrics, handlerData HandlerData) (*defaultZoneCache, error) {
-	state := &zoneState{
-		inMemory:       NewInMemory(),
-		stateTTLGetter: common.config.stateTTLGetter,
-		persistDir:     common.config.persistDir,
-		next:           map[dns.ZoneID]updateTimestamp{},
-		handlerData:    handlerData,
-	}
-	persist := common.config.persistDir != ""
-	cache := &defaultZoneCache{abstractZonesCache: common, logger: common.config.logger, metrics: metrics, state: state, persist: persist}
-	if persist {
-		err := os.MkdirAll(common.config.persistDir, 0777)
-		if err != nil {
-			return nil, fmt.Errorf("creating persistent directory for zone cache at %s failed with %s", common.config.persistDir, err)
-		}
-
-		err = cache.restoreFromDisk()
-		if err != nil {
-			return nil, fmt.Errorf("restoring zone cache from persistent directory %s failed with %s", common.config.persistDir, err)
-		}
-		cache.persistC = make(chan dns.ZoneID)
-		go cache.backgroundWriter()
-	}
+func newDefaultZoneCache(zoneStates *zoneStates, common abstractZonesCache, metrics Metrics) (*defaultZoneCache, error) {
+	cache := &defaultZoneCache{abstractZonesCache: common, logger: common.logger, metrics: metrics, zoneStates: zoneStates}
 	return cache, nil
 }
 
@@ -259,9 +204,9 @@ func (c *defaultZoneCache) GetZones() (DNSHostedZones, error) {
 			c.zonesNext = updateTime.Add(backoff)
 		} else {
 			c.clearBackoff()
-			c.zonesNext = updateTime.Add(c.config.zonesTTL)
+			c.zonesNext = updateTime.Add(c.zonesTTL)
 		}
-		c.state.RestrictCacheToZones(c.zones)
+		c.zoneStates.UpdateUsedZones(c, toSortedZoneIDs(c.zones))
 	} else {
 		c.metrics.AddGenericRequests(M_CACHED_GETZONES, 1)
 	}
@@ -270,7 +215,7 @@ func (c *defaultZoneCache) GetZones() (DNSHostedZones, error) {
 
 func (c *defaultZoneCache) nextBackoff() time.Duration {
 	next := c.backoffOnError*5/4 + 2*time.Second
-	maxBackoff := c.config.zonesTTL / 4
+	maxBackoff := c.zonesTTL / 4
 	if next > maxBackoff {
 		next = maxBackoff
 	}
@@ -283,38 +228,28 @@ func (c *defaultZoneCache) clearBackoff() {
 }
 
 func (c *defaultZoneCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
-	state, cached, err := c.state.GetZoneState(zone, c)
+	state, cached, err := c.zoneStates.GetZoneState(zone, c)
 	if cached {
 		c.metrics.AddZoneRequests(zone.Id().ID, M_CACHED_GETZONESTATE, 1)
-	} else {
-		c.persistZone(zone)
 	}
 	return state, err
 }
 
 func (c *defaultZoneCache) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
-	return c.state.ReportZoneStateConflict(zone, err)
+	return c.zoneStates.ReportZoneStateConflict(zone.Id(), err)
 }
 
-func (c *defaultZoneCache) persistZone(zone DNSHostedZone) {
-	if c.persist {
-		c.persistC <- zone.Id()
-	}
-}
-
-func (c *defaultZoneCache) deleteZoneState(zone DNSHostedZone) {
-	c.state.DeleteZoneState(zone)
-	c.persistZone(zone)
+func (c *defaultZoneCache) cleanZoneState(zoneID dns.ZoneID) {
+	c.zoneStates.CleanZoneState(zoneID)
 }
 
 func (c *defaultZoneCache) ApplyRequests(logctx logger.LogContext, err error, zone DNSHostedZone, reqs []*ChangeRequest) {
 	if err == nil {
-		c.state.ExecuteRequests(zone, reqs)
-		c.persistZone(zone)
+		c.zoneStates.ExecuteRequests(zone.Id(), reqs)
 	} else {
 		if !errors.IsThrottlingError(err) {
 			logctx.Infof("zone cache discarded because of error during ExecuteRequests")
-			c.deleteZoneState(zone)
+			c.cleanZoneState(zone.Id())
 			metrics.AddZoneCacheDiscarding(zone.Id())
 		} else {
 			logctx.Infof("zone cache untouched (only throttling during ExecuteRequests)")
@@ -322,217 +257,89 @@ func (c *defaultZoneCache) ApplyRequests(logctx logger.LogContext, err error, zo
 	}
 }
 
-func (c *defaultZoneCache) GetHandlerData() HandlerData {
-	return c.state.GetHandlerData()
+func (c *defaultZoneCache) ForwardedDomainsCache() ForwardedDomainsCache {
+	return c.zoneStates.ForwardedDomainsCache()
 }
 
 func (c *defaultZoneCache) Release() {
-	c.state.RestrictCacheToZones(DNSHostedZones{})
+	c.zoneStates.UpdateUsedZones(c, nil)
 }
 
-func (c *defaultZoneCache) backgroundWriter() {
-	ticker := time.NewTicker(3 * time.Second)
+type zoneStateProxy struct {
+	lock            sync.Mutex
+	lastUpdateStart time.Time
+	lastUpdateEnd   time.Time
+}
 
-	written := make(chan dns.ZoneID)
-	zonesToWrite := map[dns.ZoneID]bool{}
-	zonesWriting := map[dns.ZoneID]bool{}
-	for {
-		select {
-		case zoneid := <-c.persistC:
-			zonesToWrite[zoneid] = true
-		case zoneid := <-written:
-			zonesWriting[zoneid] = false
-		case <-c.config.context.Done():
-			for zoneid := range zonesToWrite {
-				if !zonesWriting[zoneid] {
-					zonesWriting[zoneid] = true
-					go c.writeZone(zoneid, written)
-				}
-			}
-			ticker.Stop()
-			return
-		case <-ticker.C:
-			for zoneid := range zonesToWrite {
-				if !zonesWriting[zoneid] {
-					zonesWriting[zoneid] = true
-					go c.writeZone(zoneid, written)
-					delete(zonesToWrite, zoneid)
-				}
-			}
-		}
+type zoneStates struct {
+	lock                  sync.Mutex
+	stateTTLGetter        StateTTLGetter
+	inMemory              *InMemory
+	proxies               map[dns.ZoneID]*zoneStateProxy
+	usedZones             map[ZoneCache][]dns.ZoneID
+	forwardedDomainsCache *forwardedDomainsCacheImpl
+}
+
+func newZoneStates(stateTTLGetter StateTTLGetter) *zoneStates {
+	return &zoneStates{
+		inMemory:              NewInMemory(),
+		stateTTLGetter:        stateTTLGetter,
+		proxies:               map[dns.ZoneID]*zoneStateProxy{},
+		usedZones:             map[ZoneCache][]dns.ZoneID{},
+		forwardedDomainsCache: newForwardedDomainsCacheImpl(),
 	}
 }
 
-type PersistentZone struct {
-	ProviderType     string   `json:"providerType"`
-	Key              string   `json:"key"`
-	Id               string   `json:"id"`
-	Domain           string   `json:"domain"`
-	ForwardedDomains []string `json:"forwardedDomains"`
-	IsPrivate        bool     `json:"isPrivate"`
-}
-
-func (z *PersistentZone) ToDNSHostedZone() DNSHostedZone {
-	return NewDNSHostedZone(z.ProviderType, z.Id, z.Domain, z.Key, z.ForwardedDomains, z.IsPrivate)
-}
-
-func NewPersistentZone(zone DNSHostedZone) *PersistentZone {
-	return &PersistentZone{
-		ProviderType:     zone.Id().ProviderType,
-		Id:               zone.Id().ID,
-		Key:              zone.Key(),
-		Domain:           zone.Domain(),
-		ForwardedDomains: zone.ForwardedDomains(),
-		IsPrivate:        zone.IsPrivate(),
-	}
-}
-
-type PersistentZoneState struct {
-	Version     string                 `json:"version"`
-	Valid       time.Time              `json:"valid"`
-	Zone        PersistentZone         `json:"zone"`
-	DNSSets     dns.DNSSets            `json:"dnssets,omitempty"`
-	HandlerData *PersistentHandlerData `json:"handlerData,omitempty"`
-}
-
-type PersistentHandlerData struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-	Value   *runtime.RawExtension
-}
-
-const TempSuffix = ".~.tmp"
-
-func (c *defaultZoneCache) writeZone(zoneid dns.ZoneID, written chan<- dns.ZoneID) {
-	c.logger.Infof("writing zone cache for %s", zoneid)
-
-	err := c.state.WriteZone(zoneid)
-	if err != nil {
-		c.logger.Warn(err)
-	}
-	written <- zoneid
-}
-
-var alreadyCleanedupOutdated int32
-
-func zoneCacheCleanupOutdated(logger logger.LogContext, dir, prefix string) {
-	// only perform cleanup once and only if cache dir is set
-	if !atomic.CompareAndSwapInt32(&alreadyCleanedupOutdated, 0, 1) || dir == "" {
-		return
-	}
-
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		logger.Warnf("reading cache dir %s failed with %s", dir, err)
-		return
-	}
-	outdated := time.Now().Add(-24 * time.Hour)
-
-outer:
-	for _, file := range files {
-		if file.IsDir() && strings.HasPrefix(file.Name(), prefix) && file.ModTime().Before(outdated) {
-			subDir := filepath.Join(dir, file.Name())
-			subdirFiles, err := ioutil.ReadDir(subDir)
-			if err != nil {
-				continue
-			}
-			for _, subfile := range subdirFiles {
-				if subfile.IsDir() || !subfile.ModTime().Before(outdated) {
-					continue outer
-				}
-				err = os.Remove(filepath.Join(subDir, subfile.Name()))
-			}
-			err = os.Remove(subDir)
-			if err != nil {
-				logger.Warnf("deleting outdated cache dir %s failed with %s", subDir, err)
-			} else {
-				logger.Infof("deleted outdated cache dir %s", subDir)
-			}
-		}
-	}
-}
-
-func (c *defaultZoneCache) restoreFromDisk() error {
-	dir := c.config.persistDir
-	files, err := ioutil.ReadDir(dir)
-	if err != nil {
-		return fmt.Errorf("restoring zone cache from %s failed with %s", dir, err)
-	}
-
-	zones := DNSHostedZones{}
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		if strings.HasSuffix(file.Name(), TempSuffix) ||
-			file.ModTime().Add(24*time.Hour).Before(time.Now()) {
-			_ = os.Remove(filepath.Join(dir, file.Name()))
-			continue
-		}
-		zone, err := c.state.ReadZone(file.Name())
-		if err != nil {
-			c.logger.Info(err)
-		}
-		if zone == nil {
-			_ = os.Remove(filepath.Join(dir, file.Name()))
-			continue
-		}
-		zones = append(zones, zone)
-		c.zonesNext = time.Time{} // enforces sync of zones
-		c.zones = zones
-	}
-	return nil
-}
-
-type updateTimestamp struct {
-	updateStart time.Time
-	updateEnd   time.Time
-}
-
-type zoneState struct {
-	lock           sync.Mutex
-	persistDir     string
-	stateTTLGetter StateTTLGetter
-	inMemory       *InMemory
-	next           map[dns.ZoneID]updateTimestamp
-	handlerData    HandlerData
-}
-
-func (s *zoneState) GetZoneState(zone DNSHostedZone, cache *defaultZoneCache) (DNSZoneState, bool, error) {
+func (s *zoneStates) getProxy(zoneID dns.ZoneID) *zoneStateProxy {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+	proxy := s.proxies[zoneID]
+	if proxy == nil {
+		proxy = &zoneStateProxy{}
+		s.proxies[zoneID] = proxy
+	}
+	return proxy
+}
 
-	next, ok := s.next[zone.Id()]
+func (s *zoneStates) GetZoneState(zone DNSHostedZone, cache *defaultZoneCache) (DNSZoneState, bool, error) {
+	proxy := s.getProxy(zone.Id())
+	proxy.lock.Lock()
+	defer proxy.lock.Unlock()
+
 	start := time.Now()
 	ttl := s.stateTTLGetter(zone.Id())
-	if !ok || start.After(next.updateEnd.Add(ttl)) {
+	if start.After(proxy.lastUpdateEnd.Add(ttl)) {
 		state, err := cache.stateUpdater(zone, cache)
 		if err == nil {
-			s.next[zone.Id()] = updateTimestamp{start, time.Now()}
+			proxy.lastUpdateStart = start
+			proxy.lastUpdateEnd = time.Now()
 			s.inMemory.SetZone(zone, state)
 		} else {
-			s.deleteZoneState(zone)
+			s.cleanZoneState(zone.Id(), proxy)
 		}
 		return state, false, err
 	}
 
-	state, _ := s.inMemory.CloneZoneState(zone)
+	state, err := s.inMemory.CloneZoneState(zone)
+	if err != nil {
+		return nil, true, err
+	}
 	return state, true, nil
 }
 
-func (s *zoneState) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (s *zoneStates) ReportZoneStateConflict(zoneID dns.ZoneID, err error) bool {
+	proxy := s.getProxy(zoneID)
+	proxy.lock.Lock()
+	defer proxy.lock.Unlock()
 
-	next, found := s.next[zone.Id()]
-	if found {
+	if !proxy.lastUpdateStart.IsZero() {
 		ownerConflict, ok := err.(*errors.AlreadyBusyForOwner)
 		if ok {
-			if ownerConflict.EntryCreatedAt.After(next.updateStart) {
+			if ownerConflict.EntryCreatedAt.After(proxy.lastUpdateStart) {
 				// If a DNSEntry ownership is moved to another DNS controller manager (e.g. shoot recreation on another seed)
 				// the zone cache may have stale owner information. In this case the cache is invalidated
 				// if the entry is newer than the last cache refresh.
-				s.deleteZoneState(zone)
+				s.cleanZoneState(zoneID, proxy)
 				return true
 			}
 		}
@@ -540,160 +347,97 @@ func (s *zoneState) ReportZoneStateConflict(zone DNSHostedZone, err error) bool 
 	return false
 }
 
-func (s *zoneState) ExecuteRequests(zone DNSHostedZone, reqs []*ChangeRequest) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (s *zoneStates) ExecuteRequests(zoneID dns.ZoneID, reqs []*ChangeRequest) {
+	proxy := s.getProxy(zoneID)
+	proxy.lock.Lock()
+	defer proxy.lock.Unlock()
 
 	var err error
 	nullMetrics := &NullMetrics{}
 	for _, req := range reqs {
-		err = s.inMemory.Apply(zone.Id(), req, nullMetrics)
+		err = s.inMemory.Apply(zoneID, req, nullMetrics)
 		if err != nil {
 			break
 		}
 	}
 
 	if err != nil {
-		s.deleteZoneState(zone)
+		s.cleanZoneState(zoneID, proxy)
 	}
 }
 
-func (s *zoneState) GetHandlerData() HandlerData {
-	return s.handlerData
+func (s *zoneStates) ForwardedDomainsCache() ForwardedDomainsCache {
+	return s.forwardedDomainsCache
 }
 
-func (s *zoneState) DeleteZoneState(zone DNSHostedZone) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (s *zoneStates) CleanZoneState(zoneID dns.ZoneID) {
+	control := s.getProxy(zoneID)
+	control.lock.Lock()
+	defer control.lock.Unlock()
 
-	s.deleteZoneState(zone)
+	s.cleanZoneState(zoneID, control)
 }
 
-func (s *zoneState) deleteZoneState(zone DNSHostedZone) {
-	delete(s.next, zone.Id())
-	s.inMemory.DeleteZone(zone)
-	if s.handlerData != nil {
-		s.handlerData.DeleteZone(zone.Id())
+func (s *zoneStates) cleanZoneState(zoneID dns.ZoneID, proxy *zoneStateProxy) {
+	s.inMemory.DeleteZone(zoneID)
+	if s.forwardedDomainsCache != nil {
+		s.forwardedDomainsCache.DeleteZone(zoneID)
 	}
-	go s.deletePersistedZone(zone.Id())
+	if proxy != nil {
+		var zero time.Time
+		proxy.lastUpdateStart = zero
+		proxy.lastUpdateEnd = zero
+	}
 }
 
-func (s *zoneState) RestrictCacheToZones(zones DNSHostedZones) {
+func (s *zoneStates) UpdateUsedZones(cache ZoneCache, zoneids []dns.ZoneID) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	obsoleteZoneIds := map[dns.ZoneID]DNSHostedZone{}
+	oldids := s.usedZones[cache]
+	if len(zoneids) == 0 {
+		if len(oldids) == 0 {
+			return
+		}
+		delete(s.usedZones, cache)
+	} else {
+		if reflect.DeepEqual(oldids, zoneids) {
+			return
+		}
+		s.usedZones[cache] = zoneids
+	}
+
+	allUsed := map[dns.ZoneID]struct{}{}
+	for _, zoneids := range s.usedZones {
+		for _, id := range zoneids {
+			allUsed[id] = struct{}{}
+		}
+	}
+
 	for _, zone := range s.inMemory.GetZones() {
-		obsoleteZoneIds[zone.Id()] = zone
+		if _, ok := allUsed[zone.Id()]; !ok {
+			s.cleanZoneState(zone.Id(), nil)
+		}
 	}
-
-	for _, zone := range zones {
-		delete(obsoleteZoneIds, zone.Id())
-	}
-
-	for _, zone := range obsoleteZoneIds {
-		s.deleteZoneState(zone)
+	for id := range s.proxies {
+		if _, ok := allUsed[id]; !ok {
+			delete(s.proxies, id)
+		}
 	}
 }
 
-func (s *zoneState) ReadZone(filename string) (DNSHostedZone, error) {
-	jsonFile, err := os.Open(filepath.Join(s.persistDir, filename))
-	if err != nil {
-		return nil, fmt.Errorf("opening zone cache file %s failed with %s", filename, err)
-	}
-	bytes, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		return nil, fmt.Errorf("reading zone cache file %s failed with %s", filename, err)
-	}
-
-	persistentState := &PersistentZoneState{}
-	err = json.Unmarshal(bytes, persistentState)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshalling zone cache from file %s failed with %s", filename, err)
-	}
-
-	if persistentState.Version != "1" {
-		return nil, fmt.Errorf("invalid version %s for zone cache from file %s", persistentState.Version, filename)
-	}
-	if time.Now().After(persistentState.Valid) {
-		return nil, nil
-	}
-
-	return s.RestoreZone(persistentState), nil
-}
-
-func (s *zoneState) buildFilename(zoneid dns.ZoneID) string {
-	return filepath.Join(s.persistDir, strings.Replace(zoneid.ProviderType+"--"+zoneid.ID, "/", "_", -1))
-}
-
-func (s *zoneState) WriteZone(zoneid dns.ZoneID) error {
-	state := s.BuildPersistentZoneState(zoneid)
-	if state == nil {
-		s.deletePersistedZone(zoneid)
+func toSortedZoneIDs(zones DNSHostedZones) []dns.ZoneID {
+	if len(zones) == 0 {
 		return nil
 	}
-
-	data, err := json.MarshalIndent(state, "", " ")
-	if err != nil {
-		return fmt.Errorf("marshalling zone cache for %s failed with %s", zoneid, err)
+	zoneids := make([]dns.ZoneID, len(zones))
+	for i, zone := range zones {
+		zoneids[i] = zone.Id()
 	}
-
-	filename := s.buildFilename(zoneid)
-	tmpName := filename + TempSuffix
-	err = ioutil.WriteFile(tmpName, data, 0644)
-	if err != nil {
-		return fmt.Errorf("writing zone cache for %s failed with %s", zoneid, err)
-	}
-
-	err = os.Rename(tmpName, filename)
-	if err != nil {
-		return fmt.Errorf("renaming zone cache for %s failed with %s", zoneid, err)
-	}
-
-	return nil
-}
-
-func (s *zoneState) deletePersistedZone(zoneid dns.ZoneID) error {
-	filename := s.buildFilename(zoneid)
-	return os.Remove(filename)
-}
-
-func (s *zoneState) BuildPersistentZoneState(zoneid dns.ZoneID) *PersistentZoneState {
-	s.lock.Lock()
-	defer s.lock.Unlock()
-
-	zone := s.inMemory.FindHostedZone(zoneid)
-	if zone == nil {
-		return nil
-	}
-	persistentState := &PersistentZoneState{
-		Version: "1",
-		Zone:    *NewPersistentZone(zone),
-		Valid:   s.next[zoneid].updateEnd,
-	}
-
-	state, err := s.inMemory.CloneZoneState(zone)
-	if err == nil {
-		persistentState.DNSSets = state.GetDNSSets()
-	}
-
-	hd := s.GetHandlerData()
-	if hd != nil {
-		value, _ := hd.Marshal(zone.Id())
-		persistentState.HandlerData = value
-	}
-
-	return persistentState
-}
-
-func (s *zoneState) RestoreZone(persistentState *PersistentZoneState) DNSHostedZone {
-	zone := persistentState.Zone.ToDNSHostedZone()
-	zoneState := NewDNSZoneState(persistentState.DNSSets)
-	s.inMemory.SetZone(zone, zoneState)
-	ttl := s.stateTTLGetter(zone.Id())
-	s.next[zone.Id()] = updateTimestamp{persistentState.Valid, persistentState.Valid.Add(ttl)}
-	if persistentState.HandlerData != nil && s.GetHandlerData() != nil {
-		_ = s.GetHandlerData().Unmarshal(zone.Id(), persistentState.HandlerData)
-	}
-	return zone
+	sort.Slice(zoneids, func(i, j int) bool {
+		cmp1 := strings.Compare(zoneids[i].ProviderType, zoneids[j].ProviderType)
+		cmp2 := strings.Compare(zoneids[i].ID, zoneids[j].ID)
+		return cmp1 < 0 || cmp1 == 0 && cmp2 < 0
+	})
+	return zoneids
 }

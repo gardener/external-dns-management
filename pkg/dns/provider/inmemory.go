@@ -80,10 +80,10 @@ func (m *InMemory) SetZone(zone DNSHostedZone, zoneState DNSZoneState) {
 	m.zones[zone.Id()] = zonedata{zone: zone, dnssets: clone}
 }
 
-func (m *InMemory) DeleteZone(zone DNSHostedZone) {
+func (m *InMemory) DeleteZone(zoneID dns.ZoneID) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
-	delete(m.zones, zone.Id())
+	delete(m.zones, zoneID)
 }
 
 func (m *InMemory) AddZone(zone DNSHostedZone) bool {
