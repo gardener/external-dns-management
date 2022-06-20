@@ -103,11 +103,11 @@ var _ = Describe("PrivateZones", func() {
 		domain := "pr1.mock.xx"
 		setSpec := func(provider *v1alpha1.DNSProvider) {
 			spec := &provider.Spec
-			spec.Zones = &v1alpha1.DNSSelection{Include: []string{"z1:" + domain, "z2" + domain}}
+			spec.Zones = &v1alpha1.DNSSelection{Include: []string{"z1:private:" + domain, "z2:private:" + domain}}
 			spec.Type = "mock-inmemory"
 
 			var zonedata []mock.MockZone
-			for _, prefix := range []string{"z1:", "z2:"} {
+			for _, prefix := range []string{"z1:private:", "z2:private:"} {
 				zonedata = append(zonedata, mock.MockZone{
 					ZonePrefix: prefix,
 					DNSName:    domain,
@@ -130,7 +130,7 @@ var _ = Describe("PrivateZones", func() {
 
 		// should be ok to include only one zone
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.Zones.Include = []string{"z2:pr1.mock.xx"}
+			spec.Zones.Include = []string{"z2:private:pr1.mock.xx"}
 			return nil
 		})
 		Ω(err).Should(BeNil())
@@ -139,11 +139,11 @@ var _ = Describe("PrivateZones", func() {
 		e, err := testEnv.CreateEntry(0, domain)
 		Ω(err).Should(BeNil())
 		testEnv.AwaitEntryReady(e.GetName())
-		err = testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, "z2", e)
+		err = testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, "z2:private:", e)
 		Ω(err).Should(BeNil())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
-			spec.Zones.Include = []string{"z1:pr1.mock.xx"}
+			spec.Zones.Include = []string{"z1:private:pr1.mock.xx"}
 			return nil
 		})
 		Ω(err).Should(BeNil())
@@ -153,7 +153,7 @@ var _ = Describe("PrivateZones", func() {
 			var data *v1alpha1.DNSProvider
 			pr, data, err = testEnv.GetProvider(pr.GetName())
 			Ω(err).Should(BeNil())
-			if data.Status.Zones.Included[0] == "z1:pr1.mock.xx" {
+			if data.Status.Zones.Included[0] == "z1:private:pr1.mock.xx" {
 				found = true
 				break
 			}
@@ -164,7 +164,7 @@ var _ = Describe("PrivateZones", func() {
 
 		time.Sleep(100 * time.Millisecond)
 		testEnv.AwaitEntryReady(e.GetName())
-		err = testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, "z1", e)
+		err = testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, "z1:private:", e)
 		Ω(err).Should(BeNil())
 
 		err = testEnv.DeleteEntryAndWait(e)
@@ -234,7 +234,7 @@ var _ = Describe("PrivateZones", func() {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
 			spec.Type = "mock-inmemory"
-			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "a.mock.xx")
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "a.mock.xx", PrivateZones)
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
 
@@ -261,7 +261,7 @@ var _ = Describe("PrivateZones", func() {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
 			spec.Type = "mock-inmemory"
-			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "mock.xx")
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "mock.xx", PrivateZones)
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
 
@@ -288,7 +288,7 @@ var _ = Describe("PrivateZones", func() {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"mock.xx"}}
 			spec.Type = "mock-inmemory"
-			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "sub.mock.xx", Domain2IsSubdomain)
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "sub.mock.xx", Domain2IsSubdomain, PrivateZones)
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
 

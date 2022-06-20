@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"k8s.io/client-go/util/flowcontrol"
@@ -80,7 +81,8 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 			if len(mockZone.ForwardedDomains) > 0 {
 				forwardedDomains = mockZone.ForwardedDomains
 			}
-			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, mockZone.DNSName, "", forwardedDomains, false)
+			isPrivate := strings.Contains(mockZone.ZonePrefix, ":private:")
+			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, mockZone.DNSName, "", forwardedDomains, isPrivate)
 			mock.AddZone(hostedZone)
 		}
 	}
