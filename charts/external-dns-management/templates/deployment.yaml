@@ -25,6 +25,7 @@ spec:
 {{- if .Values.configuration.serverPortHttp }}
         prometheus.io/scrape: "true"
         prometheus.io/port: "{{- .Values.configuration.serverPortHttp }}"
+        prometheus.io/scheme: http
 {{- end }}
       labels:
         app.kubernetes.io/name: {{ include "external-dns-management.name" . }}
