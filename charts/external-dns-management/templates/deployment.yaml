@@ -917,7 +917,7 @@ spec:
         {{- end }}
       {{- end }}
       serviceAccountName: {{ include "external-dns-management.fullname" . }}
-      {{- if Values.gardener.seed.identity }}
+      {{- if .Values.gardener.seed.identity }}
       priorityClassName: gardener-system-900
       {{- end }}
       {{- with .Values.nodeSelector }}

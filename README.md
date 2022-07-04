@@ -37,8 +37,7 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
       [last release](https://github.com/gardener/external-dns-management/releases), so that Helm
       values reference the newest released container image for the deployment.
 
-    - Make sure, that you have installed Helm client (`helm`) locally and Helm server (`tiller`) on
-      the Kubernetes cluster. See e.g. [Helm installation](https://helm.sh/docs/install/) for more details.
+    - Make sure, that you have installed Helm client (`helm`) locally. See e.g. [Helm installation](https://helm.sh/docs/install/) for more details.
 
 2. Install the DNS controller manager
 
@@ -48,7 +47,7 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
     Then install the DNS controller manager with
 
     ```bash
-    helm install charts/external-dns-management --name dns-controller --namespace=<my-namespace> --set configuration.identifier=<my-identifier>
+    helm install dns-controller charts/external-dns-management --namespace=<my-namespace> --set configuration.identifier=<my-identifier>
     ```
 
     This will use the default configuration with all source and provisioning controllers enabled.
@@ -58,6 +57,9 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
 
     By default, the DNS controller looks for custom resources in all namespaces. The choosen namespace is
     only relevant for the deployment itself.
+
+    You may need to install [VerticalPodAutoscaler CRDs](https://raw.githubusercontent.com/kubernetes/autoscaler/master/vertical-pod-autoscaler/deploy/vpa-v1-crd-gen.yaml)
+    or set `vpa.enabled=false` to disable VPA.
 
 3. Create a `DNSProvider`
 
