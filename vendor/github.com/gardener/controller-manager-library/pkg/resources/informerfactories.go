@@ -9,6 +9,7 @@ package resources
 import (
 	"context"
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
@@ -133,7 +134,16 @@ func (f *genericInformerFactory) newInformer(lw listWatchFactory) (GenericInform
 	}
 	informer := cache.NewSharedIndexInformer(listWatch, lw.ExampleObject(), resyncPeriod(lw.Resync())(),
 		cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	informer.SetWatchErrorHandler(cache.WatchErrorHandler(panicWatchErrorHandler))
 	return &genericInformer{informer, lw.Info()}, nil
+}
+
+// panic if watched resource version has vanished (eg. CRD has been deleted or kube-apiserver has been updated)
+func panicWatchErrorHandler(r *cache.Reflector, err error) {
+	if strings.Contains(err.Error(), "failed to list") && strings.Contains(err.Error(), "the server could not find the requested resource") {
+		panic(err)
+	}
+	cache.DefaultWatchErrorHandler(r, err)
 }
 
 // resyncPeriod returns a function which generates a duration each time it is

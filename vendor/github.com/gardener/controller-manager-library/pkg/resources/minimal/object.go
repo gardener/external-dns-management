@@ -134,11 +134,11 @@ func (o *MinimalObject) GetOwnerReferences() []metav1.OwnerReference {
 func (o *MinimalObject) SetOwnerReferences([]metav1.OwnerReference) {
 	o.unsupported()
 }
-func (o *MinimalObject) GetClusterName() string {
+func (o *MinimalObject) GetZZZ_DeprecatedClusterName() string {
 	o.unsupported()
 	return ""
 }
-func (o *MinimalObject) SetClusterName(clusterName string) {
+func (o *MinimalObject) SetZZZ_DeprecatedClusterName(clusterName string) {
 	o.unsupported()
 }
 func (o *MinimalObject) GetManagedFields() []metav1.ManagedFieldsEntry {
