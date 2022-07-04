@@ -1,7 +1,0 @@
-apiVersion: {{ include "priorityclassversion" . }}
-kind: PriorityClass
-metadata:
-  name: {{ include "external-dns-management.fullname" . }}
-value: 1000000000
-globalDefault: false
-description: "Priority class for dns-controller-manager."
