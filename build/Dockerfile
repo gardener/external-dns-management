@@ -13,7 +13,7 @@
 # limitations under the License.
 
 #############      builder       #############
-FROM golang:1.18.2 AS builder
+FROM golang:1.18.3 AS builder
 
 WORKDIR /build
 COPY . .
@@ -21,13 +21,11 @@ COPY . .
 RUN make release
 
 ############# base
-FROM alpine:3.15.4 AS base
+FROM gcr.io/distroless/static-debian11:nonroot AS base
 
 #############      dns-controller-manager     #############
 FROM base AS dns-controller-manager
-
-RUN apk add --update bash curl tzdata
-RUN mkdir /plugins
+WORKDIR /
 
 COPY --from=builder /build/dns-controller-manager /dns-controller-manager
 
