@@ -114,13 +114,16 @@ func (exec *Execution) create(rset *recordsets.RecordSet) error {
 }
 
 func (exec *Execution) lookupRecordSetID(rset *recordsets.RecordSet) (string, error) {
+	name := dns.AlignHostname(rset.Name)
 	recordSetID := ""
 	handler := func(recordSet *recordsets.RecordSet) error {
-		recordSetID = recordSet.ID
+		if recordSet.Name == name {
+			recordSetID = recordSet.ID
+		}
 		return nil
 	}
 	exec.handler.config.RateLimiter.Accept()
-	err := exec.handler.client.ForEachRecordSetFilterByTypeAndName(exec.zone.Id().ID, rset.Type, dns.AlignHostname(rset.Name), handler)
+	err := exec.handler.client.ForEachRecordSetFilterByTypeAndName(exec.zone.Id().ID, rset.Type, name, handler)
 	if err != nil {
 		return "", fmt.Errorf("RecordSet lookup for %s %s failed with: %s", rset.Type, rset.Name, err)
 	}
