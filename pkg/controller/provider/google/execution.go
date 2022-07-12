@@ -17,6 +17,8 @@
 package google
 
 import (
+	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	googledns "google.golang.org/api/dns/v1"
@@ -63,6 +65,13 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 		name, oldset = dns.MapToProvider(req.Type, req.Deletion, this.zone.Domain())
 	}
 	if name == "" || (newset.Length() == 0 && oldset.Length() == 0) {
+		return
+	}
+	if req.RoutingPolicy != nil {
+		err := fmt.Errorf("Routing policies unsupported for " + TYPE_CODE)
+		if req.Done != nil {
+			req.Done.SetInvalid(err)
+		}
 		return
 	}
 	name = dns.AlignHostname(name)

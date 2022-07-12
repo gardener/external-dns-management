@@ -27,9 +27,19 @@ import (
 func TestMarshalDNSSets(t *testing.T) {
 	sets1 := dns.DNSSets{}
 	rsb := dns.NewRecordSet(dns.RS_A, 100, []*dns.Record{{Value: "1.1.1.1"}, {Value: "1.1.1.2"}})
-	rsc := dns.NewRecordSet(dns.RS_TXT, 200, []*dns.Record{{Value: "foo"}, {Value: "bar"}})
-	sets1.AddRecordSet("b.a", rsb)
-	sets1.AddRecordSet("c.a", rsc)
+	rsc1 := dns.NewRecordSet(dns.RS_TXT, 200, []*dns.Record{{Value: "foo"}, {Value: "bar"}})
+	rsc1.RoutingPolicy = &dns.RoutingPolicy{
+		Type:       "weighted",
+		Parameters: map[string]string{"weight": "1"},
+	}
+	rsc2 := dns.NewRecordSet(dns.RS_TXT, 200, []*dns.Record{{Value: "foo"}, {Value: "bla"}})
+	rsc2.RoutingPolicy = &dns.RoutingPolicy{
+		Type:       "weighted",
+		Parameters: map[string]string{"weight": "2"},
+	}
+	sets1.AddRecordSet(dns.RecordSetName{DNSName: "b.a"}, rsb)
+	sets1.AddRecordSet(dns.RecordSetName{DNSName: "c.a", SetIdentifier: "id1"}, rsc1)
+	sets1.AddRecordSet(dns.RecordSetName{DNSName: "c.a", SetIdentifier: "id2"}, rsc2)
 	table := []struct {
 		name string
 		sets dns.DNSSets
@@ -49,18 +59,35 @@ func TestMarshalDNSSets(t *testing.T) {
 }
 
 func TestMarshalChangeRequest(t *testing.T) {
-	set := dns.NewDNSSet("a.b")
+	doTestMarshalChangeRequest(t, false)
+}
+
+func TestMarshalChangeRequestWithRoutingPolicy(t *testing.T) {
+	doTestMarshalChangeRequest(t, false)
+}
+
+func doTestMarshalChangeRequest(t *testing.T, withPolicy bool) {
+	var routingPolicy *dns.RoutingPolicy
+	setIdentifier := ""
+	if withPolicy {
+		setIdentifier = "id1"
+		routingPolicy = &dns.RoutingPolicy{
+			Type:       dns.RoutingPolicyWeighted,
+			Parameters: map[string]string{"weight": "100"},
+		}
+	}
+	set := dns.NewDNSSet(dns.RecordSetName{DNSName: "b.a", SetIdentifier: setIdentifier})
 	set.UpdateGroup = "group1"
-	set.SetMetaAttr(dns.ATTR_OWNER, "owner1")
-	set.SetMetaAttr(dns.ATTR_PREFIX, "comment-")
-	set.SetRecordSet(dns.RS_A, 100, "1.1.1.1", "1.1.1.2")
+	set.SetMetaAttr(dns.ATTR_OWNER, "owner1", routingPolicy)
+	set.SetMetaAttr(dns.ATTR_PREFIX, "comment-", routingPolicy)
+	set.SetRecordSet(dns.RS_A, 100, routingPolicy, "1.1.1.1", "1.1.1.2")
 	table := []struct {
 		name    string
 		request *provider.ChangeRequest
 	}{
-		{"create", provider.NewChangeRequest(provider.R_CREATE, dns.RS_A, nil, set, nil)},
-		{"update", provider.NewChangeRequest(provider.R_UPDATE, dns.RS_META, nil, set, nil)},
-		{"delete", provider.NewChangeRequest(provider.R_DELETE, dns.RS_A, set, nil, nil)},
+		{"create", provider.NewChangeRequest(provider.R_CREATE, dns.RS_A, nil, set, nil, routingPolicy)},
+		{"update", provider.NewChangeRequest(provider.R_UPDATE, dns.RS_META, nil, set, nil, routingPolicy)},
+		{"delete", provider.NewChangeRequest(provider.R_DELETE, dns.RS_A, set, nil, nil, routingPolicy)},
 	}
 
 	for _, item := range table {
@@ -84,7 +111,8 @@ func TestMarshalChangeRequest(t *testing.T) {
 			del = item.request.Deletion.Clone()
 			del.Sets = map[string]*dns.RecordSet{item.request.Type: del.Sets[item.request.Type]}
 		}
-		expected := provider.NewChangeRequest(item.request.Action, item.request.Type, del, add, item.request.Done)
+		expected := provider.NewChangeRequest(item.request.Action, item.request.Type, del, add, item.request.Done, routingPolicy)
+		expected.Done = nil
 		if !reflect.DeepEqual(expected, copy) {
 			t.Errorf("change request mismatch: %s", item.name)
 		}

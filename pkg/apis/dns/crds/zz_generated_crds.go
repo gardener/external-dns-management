@@ -240,6 +240,26 @@ spec:
                 required:
                 - name
                 type: object
+              routingPolicy:
+                description: optional routing policy like weighted, geolocation,...
+                properties:
+                  parameters:
+                    additionalProperties:
+                      type: string
+                    description: Policy specific parameters
+                    type: object
+                  setIdentifier:
+                    description: SetIdentifier is the identifier of the record set
+                    type: string
+                  type:
+                    description: Policy is the policy type. Allowed values are provider
+                      dependent, e.g. `+"`"+`weighted`+"`"+`
+                    type: string
+                required:
+                - parameters
+                - setIdentifier
+                - type
+                type: object
               targets:
                 description: target records (CNAME or A records), either text or targets
                   must be specified
@@ -277,6 +297,26 @@ spec:
               providerType:
                 description: provider type used for the entry
                 type: string
+              routingPolicy:
+                description: effective routing policy
+                properties:
+                  parameters:
+                    additionalProperties:
+                      type: string
+                    description: Policy specific parameters
+                    type: object
+                  setIdentifier:
+                    description: SetIdentifier is the identifier of the record set
+                    type: string
+                  type:
+                    description: Policy is the policy type. Allowed values are provider
+                      dependent, e.g. `+"`"+`weighted`+"`"+`
+                    type: string
+                required:
+                - parameters
+                - setIdentifier
+                - type
+                type: object
               state:
                 description: entry state
                 type: string
@@ -830,11 +870,11 @@ spec:
                   given type
                 properties:
                   name:
-                    description: Name is unique within a namespace to reference a
+                    description: name is unique within a namespace to reference a
                       secret resource.
                     type: string
                   namespace:
-                    description: Namespace defines the space within which the secret
+                    description: namespace defines the space within which the secret
                       name must be unique.
                     type: string
                 type: object

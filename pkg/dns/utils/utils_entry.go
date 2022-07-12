@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/external-dns-management/pkg/dns"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
@@ -63,6 +64,12 @@ func (this *DNSEntryObject) BaseStatus() *api.DNSBaseStatus {
 func (this *DNSEntryObject) GetDNSName() string {
 	return this.DNSEntry().Spec.DNSName
 }
+func (this *DNSEntryObject) GetSetIdentifier() string {
+	if policy := this.DNSEntry().Spec.RoutingPolicy; policy != nil {
+		return policy.SetIdentifier
+	}
+	return ""
+}
 func (this *DNSEntryObject) GetTargets() []string {
 	return this.DNSEntry().Spec.Targets
 }
@@ -81,6 +88,15 @@ func (this *DNSEntryObject) GetCNameLookupInterval() *int64 {
 func (this *DNSEntryObject) GetReference() *api.EntryReference {
 	return this.DNSEntry().Spec.Reference
 }
+func (this *DNSEntryObject) GetRoutingPolicy() *dns.RoutingPolicy {
+	if policy := this.DNSEntry().Spec.RoutingPolicy; policy != nil {
+		return &dns.RoutingPolicy{
+			Type:       policy.Type,
+			Parameters: policy.Parameters,
+		}
+	}
+	return nil
+}
 
 func (this *DNSEntryObject) RefreshTime() time.Time {
 	return time.Time{}
@@ -94,6 +110,27 @@ func (this *DNSEntryObject) AcknowledgeTargets(targets []string) bool {
 	s := this.Status()
 	if !reflect.DeepEqual(s.Targets, targets) {
 		s.Targets = targets
+		return true
+	}
+	return false
+}
+
+func (this *DNSEntryObject) AcknowledgeRoutingPolicy(policy *dns.RoutingPolicy) bool {
+	s := this.Status()
+	if s.RoutingPolicy == nil && policy == nil {
+		return false
+	}
+	if policy == nil {
+		s.RoutingPolicy = nil
+		return true
+	}
+	statusPolicy := &api.RoutingPolicy{
+		Type:          policy.Type,
+		SetIdentifier: this.GetSetIdentifier(),
+		Parameters:    policy.Parameters,
+	}
+	if !reflect.DeepEqual(s.RoutingPolicy, statusPolicy) {
+		s.RoutingPolicy = statusPolicy
 		return true
 	}
 	return false

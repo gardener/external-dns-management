@@ -76,6 +76,9 @@ type DNSEntrySpec struct {
 	// target records (CNAME or A records), either text or targets must be specified
 	// +optional
 	Targets []string `json:"targets,omitempty"`
+	// optional routing policy
+	// +optional
+	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
 }
 
 type DNSEntryStatus struct {
@@ -83,6 +86,9 @@ type DNSEntryStatus struct {
 	// effective targets generated for the entry
 	// +optional
 	Targets []string `json:"targets,omitempty"`
+	// effective routing policy
+	// +optional
+	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
 }
 
 type DNSBaseStatus struct {
@@ -117,4 +123,13 @@ type EntryReference struct {
 	// namespace of the referenced DNSEntry object
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
+}
+
+type RoutingPolicy struct {
+	// Policy is the policy type. Allowed values are provider dependent, e.g. `weighted`
+	Type string `json:"type"`
+	// SetIdentifier is the identifier of the record set
+	SetIdentifier string `json:"setIdentifier"`
+	// Policy specific parameters
+	Parameters map[string]string `json:"parameters"`
 }

@@ -44,20 +44,25 @@ func NormalizeHostname(host string) string {
 }
 
 func MapToProvider(rtype string, dnsset *DNSSet, base string) (string, *RecordSet) {
-	name := dnsset.Name
+	rsName, rs := MapToProviderEx(rtype, dnsset, base, nil)
+	return rsName.DNSName, rs
+}
+
+func MapToProviderEx(rtype string, dnsset *DNSSet, base string, policy *RoutingPolicy) (RecordSetName, *RecordSet) {
+	dnsName := dnsset.Name.DNSName
 	rs := dnsset.Sets[rtype]
 	if rtype == RS_META {
 		prefix := dnsset.GetMetaAttr(ATTR_PREFIX)
 		if prefix == "" {
 			prefix = TxtPrefix
-			dnsset.SetMetaAttr(ATTR_PREFIX, prefix)
+			dnsset.SetMetaAttr(ATTR_PREFIX, prefix, policy)
 		}
-		metaName := calcMetaRecordDomainName(name, prefix, base)
+		metaName := calcMetaRecordDomainName(dnsName, prefix, base)
 		new := *dnsset.Sets[rtype]
 		new.Type = RS_TXT
-		return metaName, &new
+		return dnsset.Name.WithDNSName(metaName), &new
 	}
-	return name, rs
+	return dnsset.Name, rs
 }
 
 func calcMetaRecordDomainName(name, prefix, base string) string {
@@ -78,7 +83,8 @@ func CalcMetaRecordDomainNameForValidation(name string) string {
 	return calcMetaRecordDomainName(name, TxtPrefix, "")
 }
 
-func MapFromProvider(dns string, rs *RecordSet) (string, *RecordSet) {
+func MapFromProvider(name RecordSetName, rs *RecordSet) (RecordSetName, *RecordSet) {
+	dns := name.DNSName
 	if rs.Type == RS_TXT {
 		prefix := rs.GetAttr(ATTR_PREFIX)
 		if prefix != "" {
@@ -97,11 +103,11 @@ func MapFromProvider(dns string, rs *RecordSet) (string, *RecordSet) {
 					// for backwards compatibility of form *.comment-.basedomain
 					dns = dns[1:]
 				}
-				return add + dns, &new
+				return name.WithDNSName(add + dns), &new
 			} else {
-				return add + dns, rs
+				return name.WithDNSName(add + dns), rs
 			}
 		}
 	}
-	return dns, rs
+	return name.WithDNSName(dns), rs
 }

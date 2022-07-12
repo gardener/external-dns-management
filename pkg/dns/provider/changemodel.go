@@ -44,15 +44,49 @@ const (
 type ChangeRequests []*ChangeRequest
 
 type ChangeRequest struct {
-	Action   string
-	Type     string
-	Addition *dns.DNSSet
-	Deletion *dns.DNSSet
-	Done     DoneHandler
+	Action        string
+	Type          string
+	Addition      *dns.DNSSet
+	Deletion      *dns.DNSSet
+	Done          DoneHandler
+	Applied       bool
+	RoutingPolicy *dns.RoutingPolicy
 }
 
-func NewChangeRequest(action string, rtype string, del, add *dns.DNSSet, done DoneHandler) *ChangeRequest {
-	return &ChangeRequest{Action: action, Type: rtype, Addition: add, Deletion: del, Done: done}
+func NewChangeRequest(action string, rtype string, del, add *dns.DNSSet, done DoneHandler, policy *dns.RoutingPolicy) *ChangeRequest {
+	r := &ChangeRequest{Action: action, Type: rtype, Addition: add, Deletion: del, RoutingPolicy: policy}
+	r.Done = &applyingDoneHandler{changeRequest: r, inner: done}
+	return r
+}
+
+type applyingDoneHandler struct {
+	changeRequest *ChangeRequest
+	inner         DoneHandler
+}
+
+func (h *applyingDoneHandler) SetInvalid(err error) {
+	if h.inner != nil {
+		h.inner.SetInvalid(err)
+	}
+}
+
+func (h *applyingDoneHandler) Failed(err error) {
+	if h.inner != nil {
+		h.inner.Failed(err)
+	}
+}
+
+func (h *applyingDoneHandler) Throttled() {
+	if h.inner != nil {
+		h.inner.Throttled()
+	}
+}
+
+func (h *applyingDoneHandler) Succeeded() {
+	h.changeRequest.Applied = true
+	if h.inner != nil {
+		h.inner.Succeeded()
+	}
 }
 
 type ChangeGroup struct {
@@ -77,7 +111,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 				if model.ExistsInEquivalentZone(s.Name) {
 					continue
 				}
-				if e := model.IsStale(ZonedDNSName{ZoneID: model.ZoneId(), DNSName: s.Name}); e != nil {
+				if e := model.IsStale(ZonedRecordSetName{ZoneID: model.ZoneId(), RecordSetName: s.Name}); e != nil {
 					if e.IsDeleting() {
 						model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
 					}
@@ -99,7 +133,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 					model.Infof("found unapplied managed set '%s'", s.Name)
 					var done DoneHandler
 					for _, e := range model.context.entries {
-						if e.dnsname == s.Name {
+						if e.rsname == s.Name {
 							done = NewStatusUpdate(logger, e, model.context.fhandler)
 							break
 						}
@@ -132,17 +166,17 @@ func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bo
 	return ok
 }
 
-func (this *ChangeGroup) addCreateRequest(dnsset *dns.DNSSet, rtype string, done DoneHandler) {
-	this.addChangeRequest(R_CREATE, nil, dnsset, rtype, done)
+func (this *ChangeGroup) addCreateRequest(dnsset *dns.DNSSet, rtype string, done DoneHandler, policy *dns.RoutingPolicy) {
+	this.addChangeRequest(R_CREATE, nil, dnsset, rtype, done, policy)
 }
-func (this *ChangeGroup) addUpdateRequest(old, new *dns.DNSSet, rtype string, done DoneHandler) {
-	this.addChangeRequest(R_UPDATE, old, new, rtype, done)
+func (this *ChangeGroup) addUpdateRequest(old, new *dns.DNSSet, rtype string, done DoneHandler, policy *dns.RoutingPolicy) {
+	this.addChangeRequest(R_UPDATE, old, new, rtype, done, policy)
 }
 func (this *ChangeGroup) addDeleteRequest(dnsset *dns.DNSSet, rtype string, done DoneHandler) {
-	this.addChangeRequest(R_DELETE, dnsset, nil, rtype, done)
+	this.addChangeRequest(R_DELETE, dnsset, nil, rtype, done, nil)
 }
-func (this *ChangeGroup) addChangeRequest(action string, old, new *dns.DNSSet, rtype string, done DoneHandler) {
-	r := NewChangeRequest(action, rtype, old, new, done)
+func (this *ChangeGroup) addChangeRequest(action string, old, new *dns.DNSSet, rtype string, done DoneHandler, policy *dns.RoutingPolicy) {
+	r := NewChangeRequest(action, rtype, old, new, done, policy)
 	this.requests = append(this.requests, r)
 }
 
@@ -157,11 +191,11 @@ type ChangeModel struct {
 	config         Config
 	ownership      dns.Ownership
 	context        *zoneReconciliation
-	applied        map[string]*dns.DNSSet
+	applied        map[dns.RecordSetName]*dns.DNSSet
 	dangling       *ChangeGroup
 	providergroups map[string]*ChangeGroup
 	zonestate      DNSZoneState
-	failedDNSNames utils.StringSet
+	failedDNSNames RecordSetNameSet
 }
 
 type ChangeResult struct {
@@ -176,18 +210,18 @@ func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zone
 		config:         config,
 		ownership:      ownership,
 		context:        req,
-		applied:        map[string]*dns.DNSSet{},
+		applied:        map[dns.RecordSetName]*dns.DNSSet{},
 		providergroups: map[string]*ChangeGroup{},
-		failedDNSNames: utils.StringSet{},
+		failedDNSNames: RecordSetNameSet{},
 	}
 }
 
-func (this *ChangeModel) IsStale(dns ZonedDNSName) *Entry {
+func (this *ChangeModel) IsStale(dns ZonedRecordSetName) *Entry {
 	return this.context.stale[dns]
 }
 
-func (this *ChangeModel) ExistsInEquivalentZone(dnsName string) bool {
-	return this.context.equivEntries != nil && this.context.equivEntries.Contains(dnsName)
+func (this *ChangeModel) ExistsInEquivalentZone(name dns.RecordSetName) bool {
+	return this.context.equivEntries != nil && this.context.equivEntries.Contains(name)
 }
 
 func (this *ChangeModel) getProviderView(p DNSProvider) *ChangeGroup {
@@ -240,17 +274,17 @@ func (this *ChangeModel) Setup() error {
 	sets := this.zonestate.GetDNSSets()
 	this.context.zone.SetOwners(sets.GetOwners())
 	this.dangling = newChangeGroup("dangling entries", provider, this)
-	for dnsName, set := range sets {
+	for rsName, set := range sets {
 		var view *ChangeGroup
-		provider = this.context.providers.LookupFor(dnsName)
+		provider = this.context.providers.LookupFor(rsName.DNSName)
 		if provider != nil {
-			this.dumpf("  %s: %d types (provider %s)", dnsName, len(set.Sets), provider.ObjectName())
+			this.dumpf("  %s: %d types (provider %s)", rsName, len(set.Sets), provider.ObjectName())
 			view = this.getProviderView(provider)
 		} else {
-			this.dumpf("  %s: %d types (no provider)", dnsName, len(set.Sets))
+			this.dumpf("  %s: %d types (no provider)", rsName, len(set.Sets))
 			view = this.dangling
 		}
-		view.dnssets[dnsName] = set
+		view.dnssets[rsName] = set
 		for t, r := range set.Sets {
 			this.dumpf("    %s: %d records: %s", t, len(r.Records), r.RecordString())
 		}
@@ -259,20 +293,20 @@ func (this *ChangeModel) Setup() error {
 	return err
 }
 
-func (this *ChangeModel) Check(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Check(name dns.RecordSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(false, false, name, updateGroup, createdAt, done, spec)
 }
-func (this *ChangeModel) Apply(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Apply(name dns.RecordSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, false, name, updateGroup, createdAt, done, spec)
 }
-func (this *ChangeModel) Delete(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Delete(name dns.RecordSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, true, name, updateGroup, createdAt, done, spec)
 }
-func (this *ChangeModel) PseudoApply(name string) {
+func (this *ChangeModel) PseudoApply(name dns.RecordSetName) {
 	this.applied[name] = dns.NewDNSSet(name)
 }
 
-func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Exec(apply bool, delete bool, name dns.RecordSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	//this.Infof("%s: %v", name, targets)
 	if len(spec.Targets()) == 0 && !delete {
 		return ChangeResult{}
@@ -282,7 +316,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 		this.applied[name] = nil
 		done = this.wrappedDoneHandler(name, done)
 	}
-	p := this.context.providers.LookupFor(name)
+	p := this.context.providers.LookupFor(name.DNSName)
 	if p == nil {
 		err := fmt.Errorf("no provider found for %q", name)
 		if done != nil {
@@ -307,7 +341,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 	if oldset != nil {
 		this.Debugf("found old for %s %q", oldset.GetKind(), oldset.Name)
 		if this.IsForeign(oldset) {
-			err := &perrs.AlreadyBusyForOwner{DNSName: name, EntryCreatedAt: createdAt, Owner: oldset.GetOwner()}
+			err := &perrs.AlreadyBusyForOwner{Name: name, EntryCreatedAt: createdAt, Owner: oldset.GetOwner()}
 			retry := p.ReportZoneStateConflict(this.context.zone.getZone(), err)
 			if done != nil {
 				if apply && !retry {
@@ -331,16 +365,16 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 				curset := oldset.Sets[ty]
 				if curset == nil {
 					if apply {
-						view.addCreateRequest(newset, ty, done)
+						view.addCreateRequest(newset, ty, done, spec.RoutingPolicy())
 					}
 					mod = true
 				} else {
-					olddns, _ := dns.MapToProvider(ty, oldset, this.Domain())
-					newdns, _ := dns.MapToProvider(ty, newset, this.Domain())
+					olddns, _ := dns.MapToProviderEx(ty, oldset, this.Domain(), spec.RoutingPolicy())
+					newdns, _ := dns.MapToProviderEx(ty, newset, this.Domain(), spec.RoutingPolicy())
 					if olddns == newdns {
 						if !curset.Match(rset) {
 							if apply {
-								view.addUpdateRequest(oldset, newset, ty, done)
+								view.addUpdateRequest(oldset, newset, ty, done, spec.RoutingPolicy())
 							}
 							mod = true
 						} else {
@@ -350,7 +384,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 						}
 					} else {
 						if apply {
-							view.addCreateRequest(newset, ty, done)
+							view.addCreateRequest(newset, ty, done, spec.RoutingPolicy())
 							view.addDeleteRequest(oldset, ty, this.wrappedDoneHandler(name, nil))
 						}
 						mod = true
@@ -370,9 +404,9 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 		if !delete {
 			if apply {
 				this.Infof("no existing entry found for %s", name)
-				this.setOwner(newset, spec.OwnerId())
+				this.setOwner(newset, spec.OwnerId(), spec.RoutingPolicy())
 				for ty := range newset.Sets {
-					view.addCreateRequest(newset, ty, done)
+					view.addCreateRequest(newset, ty, done, spec.RoutingPolicy())
 				}
 			}
 			mod = true
@@ -411,15 +445,15 @@ func (this *ChangeModel) Update(logger logger.LogContext) error {
 	return nil
 }
 
-func (this *ChangeModel) IsFailed(dnsName string) bool {
-	return this.failedDNSNames.Contains(dnsName)
+func (this *ChangeModel) IsFailed(name dns.RecordSetName) bool {
+	return this.failedDNSNames.Contains(name)
 }
 
-func (this *ChangeModel) wrappedDoneHandler(dnsName string, done DoneHandler) DoneHandler {
+func (this *ChangeModel) wrappedDoneHandler(rsName dns.RecordSetName, done DoneHandler) DoneHandler {
 	return &changeModelDoneHandler{
 		changeModel: this,
 		inner:       done,
-		dnsName:     dnsName,
+		rsName:      rsName,
 	}
 }
 
@@ -429,7 +463,7 @@ func (this *ChangeModel) wrappedDoneHandler(dnsName string, done DoneHandler) Do
 type changeModelDoneHandler struct {
 	changeModel *ChangeModel
 	inner       DoneHandler
-	dnsName     string
+	rsName      dns.RecordSetName
 }
 
 func (this *changeModelDoneHandler) SetInvalid(err error) {
@@ -439,7 +473,7 @@ func (this *changeModelDoneHandler) SetInvalid(err error) {
 }
 
 func (this *changeModelDoneHandler) Failed(err error) {
-	this.changeModel.failedDNSNames.Add(this.dnsName)
+	this.changeModel.failedDNSNames.Add(this.rsName)
 	if this.inner != nil {
 		this.inner.Failed(err)
 	}
@@ -468,12 +502,12 @@ func (this *ChangeModel) IsForeign(set *dns.DNSSet) bool {
 	return set.IsForeign(this.ownership)
 }
 
-func (this *ChangeModel) setOwner(set *dns.DNSSet, id string) bool {
+func (this *ChangeModel) setOwner(set *dns.DNSSet, id string, policy *dns.RoutingPolicy) bool {
 	if id == "" {
 		id = this.config.Ident
 	}
 	if id != "" {
-		set.SetOwner(id)
+		set.SetOwner(id, policy)
 		return true
 	}
 	return false
@@ -482,8 +516,8 @@ func (this *ChangeModel) setOwner(set *dns.DNSSet, id string) bool {
 func (this *ChangeModel) ApplySpec(set *dns.DNSSet, base *dns.DNSSet, provider DNSProvider, spec TargetSpec) *dns.DNSSet {
 	set.SetKind(spec.Kind())
 	if base == nil || !this.IsForeign(base) {
-		if this.setOwner(set, spec.OwnerId()) {
-			set.SetMetaAttr(dns.ATTR_PREFIX, dns.TxtPrefix)
+		if this.setOwner(set, spec.OwnerId(), spec.RoutingPolicy()) {
+			set.SetMetaAttr(dns.ATTR_PREFIX, dns.TxtPrefix, spec.RoutingPolicy())
 		}
 	}
 
@@ -497,10 +531,10 @@ func (this *ChangeModel) ApplySpec(set *dns.DNSSet, base *dns.DNSSet, provider D
 			ipv4addrs, ipv6addrs, err := lookupHosts(t.GetHostName())
 			if err == nil {
 				for _, addr := range ipv4addrs {
-					AddRecord(targetsets, dns.RS_A, addr, ttl)
+					AddRecord(targetsets, dns.RS_A, addr, ttl, spec.RoutingPolicy())
 				}
 				for _, addr := range ipv6addrs {
-					AddRecord(targetsets, dns.RS_AAAA, addr, ttl)
+					AddRecord(targetsets, dns.RS_AAAA, addr, ttl, spec.RoutingPolicy())
 				}
 			} else {
 				this.Errorf("cannot lookup '%s': %s", t.GetHostName(), err)
@@ -509,21 +543,21 @@ func (this *ChangeModel) ApplySpec(set *dns.DNSSet, base *dns.DNSSet, provider D
 				t.GetHostName(), strings.Join(ipv4addrs, ","), strings.Join(ipv6addrs, ","))
 		} else {
 			t = provider.MapTarget(t)
-			AddRecord(targetsets, t.GetRecordType(), t.GetHostName(), ttl)
+			AddRecord(targetsets, t.GetRecordType(), t.GetHostName(), ttl, spec.RoutingPolicy())
 		}
 	}
 	set.Sets = targetsets
 	if len(cnames) > 0 && this.Owns(set) {
 		sort.Strings(cnames)
-		set.SetMetaAttr(dns.ATTR_CNAMES, strings.Join(cnames, ","))
+		set.SetMetaAttr(dns.ATTR_CNAMES, strings.Join(cnames, ","), spec.RoutingPolicy())
 	}
 	return set
 }
 
-func AddRecord(targetsets dns.RecordSets, ty string, host string, ttl int64) {
+func AddRecord(targetsets dns.RecordSets, ty string, host string, ttl int64, policy *dns.RoutingPolicy) {
 	rs := targetsets[ty]
 	if rs == nil {
-		rs = dns.NewRecordSet(ty, ttl, nil)
+		rs = dns.NewRecordSetEx(ty, ttl, policy, nil)
 		targetsets[ty] = rs
 	}
 	rs.Records = append(rs.Records, &dns.Record{Value: host})

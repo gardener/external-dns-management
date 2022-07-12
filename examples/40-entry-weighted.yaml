@@ -1,0 +1,39 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: instance-a
+  namespace: default
+spec:
+  dnsName: "my.service.example.com"
+  ttl: 120
+  targets:
+    - instance-a.service.example.com
+  # routingPolicy is current only supported for AWS Route53
+  routingPolicy:
+    type: weighted
+    setIdentifier: instance-a
+    parameters:
+      weight: "90"
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: instance-a
+  namespace: default
+spec:
+  dnsName: "my.service.example.com"
+  ttl: 120
+  targets:
+    - instance-b.service.example.com
+  # routingPolicy is current only supported for AWS Route53
+  routingPolicy:
+    type: weighted
+    setIdentifier: instance-b
+    parameters:
+      weight: "10"

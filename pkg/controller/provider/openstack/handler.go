@@ -249,6 +249,13 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 		if status == bsEmpty || status == bsDryRun {
 			continue
 		}
+		if status == bsInvalidRoutingPolicy {
+			err := fmt.Errorf("Routing policies unsupported for " + TYPE_CODE)
+			if r.Done != nil {
+				r.Done.SetInvalid(err)
+			}
+			continue
+		}
 
 		err := exec.apply(r.Action, rset)
 		if err != nil {

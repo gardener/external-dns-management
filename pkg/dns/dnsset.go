@@ -17,6 +17,8 @@
 package dns
 
 import (
+	"fmt"
+
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -53,21 +55,25 @@ import (
 // or writing a record set, respectively. The map the given set to
 // an effective set and dns name for the desired purpose.
 
-type DNSSets map[string]*DNSSet
+type DNSSets map[RecordSetName]*DNSSet
 
 type Ownership interface {
 	IsResponsibleFor(id string) bool
 	GetIds() utils.StringSet
 }
 
-func (dnssets DNSSets) AddRecordSetFromProvider(dnsname string, rs *RecordSet) {
-	name := NormalizeHostname(dnsname)
+func (dnssets DNSSets) AddRecordSetFromProvider(dnsName string, rs *RecordSet) {
+	dnssets.AddRecordSetFromProviderEx(RecordSetName{DNSName: dnsName}, rs)
+}
+
+func (dnssets DNSSets) AddRecordSetFromProviderEx(rsName RecordSetName, rs *RecordSet) {
+	name := rsName.Normalize()
 	name, rs = MapFromProvider(name, rs)
 
 	dnssets.AddRecordSet(name, rs)
 }
 
-func (dnssets DNSSets) AddRecordSet(name string, rs *RecordSet) {
+func (dnssets DNSSets) AddRecordSet(name RecordSetName, rs *RecordSet) {
 	dnsset := dnssets[name]
 	if dnsset == nil {
 		dnsset = NewDNSSet(name)
@@ -76,7 +82,7 @@ func (dnssets DNSSets) AddRecordSet(name string, rs *RecordSet) {
 	dnsset.Sets[rs.Type] = rs
 }
 
-func (dnssets DNSSets) RemoveRecordSet(name string, recordSetType string) {
+func (dnssets DNSSets) RemoveRecordSet(name RecordSetName, recordSetType string) {
 	dnsset := dnssets[name]
 	if dnsset != nil {
 		delete(dnsset.Sets, recordSetType)
@@ -116,8 +122,82 @@ const (
 	ATTR_LOCKID    = "lockid"
 )
 
+type RecordSetName struct {
+	// domain name of the record
+	DNSName string
+	// optional set identifier (used for record with routing policy)
+	SetIdentifier string
+}
+
+func (n RecordSetName) WithDNSName(dnsName string) RecordSetName {
+	return RecordSetName{DNSName: dnsName, SetIdentifier: n.SetIdentifier}
+}
+
+func (n RecordSetName) String() string {
+	if n.SetIdentifier == "" {
+		return n.DNSName
+	}
+	return n.DNSName + "#" + n.SetIdentifier
+}
+
+func (n RecordSetName) Align() RecordSetName {
+	return n.WithDNSName(AlignHostname(n.DNSName))
+}
+
+func (n RecordSetName) Normalize() RecordSetName {
+	return n.WithDNSName(NormalizeHostname(n.DNSName))
+}
+
+const (
+	RoutingPolicyWeighted = "weighted"
+)
+
+type RoutingPolicy struct {
+	Type       string
+	Parameters map[string]string
+}
+
+func NewRoutingPolicy(typ string, keyvalues ...string) *RoutingPolicy {
+	policy := &RoutingPolicy{Type: typ, Parameters: map[string]string{}}
+	for i := 0; i < len(keyvalues)-1; i += 2 {
+		policy.Parameters[keyvalues[i]] = keyvalues[i+1]
+	}
+	return policy
+}
+
+func (p *RoutingPolicy) Clone() *RoutingPolicy {
+	if p == nil {
+		return nil
+	}
+	copy := &RoutingPolicy{Type: p.Type, Parameters: map[string]string{}}
+	for k, v := range p.Parameters {
+		copy.Parameters[k] = v
+	}
+	return copy
+}
+
+func (p *RoutingPolicy) CheckParameterKeys(keys []string) error {
+	for _, k := range keys {
+		if _, ok := p.Parameters[k]; !ok {
+			return fmt.Errorf("Missing parameter key %s", k)
+		}
+	}
+	if len(keys) != len(p.Parameters) {
+	outer:
+		for k := range p.Parameters {
+			for _, k2 := range keys {
+				if k == k2 {
+					continue outer
+				}
+			}
+			return fmt.Errorf("Unsupported parameter key %s", k)
+		}
+	}
+	return nil
+}
+
 type DNSSet struct {
-	Name        string
+	Name        RecordSetName
 	Kind        string
 	UpdateGroup string
 	Sets        RecordSets
@@ -135,10 +215,10 @@ func (this *DNSSet) getAttr(ty string, name string) string {
 	return ""
 }
 
-func (this *DNSSet) setAttr(ty string, name string, value string) {
+func (this *DNSSet) setAttr(ty string, name string, value string, policy *RoutingPolicy) {
 	rset := this.Sets[ty]
 	if rset == nil {
-		rset = newAttrRecordSet(ty, name, value)
+		rset = newAttrRecordSet(ty, name, value, policy)
 		this.Sets[rset.Type] = rset
 	} else {
 		rset.SetAttr(name, value)
@@ -156,8 +236,8 @@ func (this *DNSSet) GetTxtAttr(name string) string {
 	return this.getAttr(RS_TXT, name)
 }
 
-func (this *DNSSet) SetTxtAttr(name string, value string) {
-	this.setAttr(RS_TXT, name, value)
+func (this *DNSSet) SetTxtAttr(name string, value string, policy *RoutingPolicy) {
+	this.setAttr(RS_TXT, name, value, policy)
 }
 
 func (this *DNSSet) DeleteTxtAttr(name string) {
@@ -168,8 +248,8 @@ func (this *DNSSet) GetMetaAttr(name string) string {
 	return this.getAttr(RS_META, name)
 }
 
-func (this *DNSSet) SetMetaAttr(name string, value string) {
-	this.setAttr(RS_META, name, value)
+func (this *DNSSet) SetMetaAttr(name string, value string, policy *RoutingPolicy) {
+	this.setAttr(RS_META, name, value, policy)
 }
 
 func (this *DNSSet) DeleteMetaAttr(name string) {
@@ -190,8 +270,8 @@ func (this *DNSSet) GetOwner() string {
 	return this.GetMetaAttr(ATTR_OWNER)
 }
 
-func (this *DNSSet) SetOwner(ownerid string) *DNSSet {
-	this.SetMetaAttr(ATTR_OWNER, ownerid)
+func (this *DNSSet) SetOwner(ownerid string, policy *RoutingPolicy) *DNSSet {
+	this.SetMetaAttr(ATTR_OWNER, ownerid, policy)
 	return this
 }
 
@@ -209,7 +289,7 @@ func (this *DNSSet) SetKind(t string, prop ...bool) *DNSSet {
 	this.Kind = t
 	if t != api.DNSEntryKind {
 		if len(prop) == 0 || prop[0] {
-			this.SetMetaAttr(ATTR_KIND, t)
+			this.SetMetaAttr(ATTR_KIND, t, nil)
 		}
 	} else {
 		this.DeleteMetaAttr(ATTR_KIND)
@@ -217,14 +297,14 @@ func (this *DNSSet) SetKind(t string, prop ...bool) *DNSSet {
 	return this
 }
 
-func (this *DNSSet) SetRecordSet(rtype string, ttl int64, values ...string) {
+func (this *DNSSet) SetRecordSet(rtype string, ttl int64, routingPolicy *RoutingPolicy, values ...string) {
 	records := make([]*Record, len(values))
 	for i, r := range values {
 		records[i] = &Record{Value: r}
 	}
-	this.Sets[rtype] = &RecordSet{rtype, ttl, false, records}
+	this.Sets[rtype] = &RecordSet{Type: rtype, TTL: ttl, IgnoreTTL: false, RoutingPolicy: routingPolicy, Records: records}
 }
 
-func NewDNSSet(name string) *DNSSet {
+func NewDNSSet(name RecordSetName) *DNSSet {
 	return &DNSSet{Name: name, Sets: map[string]*RecordSet{}}
 }

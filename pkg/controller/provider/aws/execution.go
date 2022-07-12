@@ -44,7 +44,7 @@ type Execution struct {
 	rateLimiter flowcontrol.RateLimiter
 	zone        provider.DNSHostedZone
 
-	changes   map[string][]*Change
+	changes   map[dns.RecordSetName][]*Change
 	batchSize int
 }
 
@@ -54,14 +54,14 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 		r53:         h.r53,
 		rateLimiter: h.config.RateLimiter,
 		zone:        zone,
-		changes:     map[string][]*Change{},
+		changes:     map[dns.RecordSetName][]*Change{},
 		batchSize:   h.awsConfig.BatchSize,
 	}
 }
 
-func buildResourceRecordSet(name string, rset *dns.RecordSet) *route53.ResourceRecordSet {
+func buildResourceRecordSet(name dns.RecordSetName, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
 	rrs := &route53.ResourceRecordSet{}
-	rrs.Name = aws.String(name)
+	rrs.Name = aws.String(name.DNSName)
 	rrs.Type = aws.String(rset.Type)
 	rrs.TTL = aws.Int64(rset.TTL)
 	rrs.ResourceRecords = make([]*route53.ResourceRecord, len(rset.Records))
@@ -70,33 +70,38 @@ func buildResourceRecordSet(name string, rset *dns.RecordSet) *route53.ResourceR
 			Value: aws.String(r.Value),
 		}
 	}
-	return rrs
+	if err := addRoutingPolicy(rrs, name, rset.RoutingPolicy); err != nil {
+		return nil, err
+	}
+	return rrs, nil
 }
 
-func (this *Execution) addChange(action string, req *provider.ChangeRequest, dnsset *dns.DNSSet) {
-	name, rset := dns.MapToProvider(req.Type, dnsset, this.zone.Domain())
-	name = dns.AlignHostname(name)
+func (this *Execution) addChange(action string, req *provider.ChangeRequest, dnsset *dns.DNSSet) error {
+	name, rset := dns.MapToProviderEx(req.Type, dnsset, this.zone.Domain(), req.RoutingPolicy)
+	name = name.Align()
 	if len(rset.Records) == 0 {
-		return
+		return nil
 	}
 	this.Infof("%s %s record set %s[%s]: %s(%d)", action, rset.Type, name, this.zone.Id(), rset.RecordString(), rset.TTL)
 
+	var err error
 	var rrs *route53.ResourceRecordSet
 	if rset.Type == dns.RS_ALIAS {
-		rrs = buildResourceRecordSetForAliasTarget(name, rset)
-		if rrs == nil {
-			this.Errorf("Corrupted alias record set %s[%s]", name, this.zone.Id())
-			return
-		}
+		rrs, err = buildResourceRecordSetForAliasTarget(name, rset)
 	} else {
-		rrs = buildResourceRecordSet(name, rset)
+		rrs, err = buildResourceRecordSet(name, rset)
+	}
+	if err != nil {
+		this.Errorf("addChange failed for %s[%s]: %s", name, this.zone.Id(), err)
+		return err
 	}
 
 	change := &route53.Change{Action: aws.String(action), ResourceRecordSet: rrs}
 	this.addRawChange(name, dnsset.UpdateGroup, change, req.Done)
+	return nil
 }
 
-func (this *Execution) addRawChange(name, updateGroup string, change *route53.Change, done provider.DoneHandler) {
+func (this *Execution) addRawChange(name dns.RecordSetName, updateGroup string, change *route53.Change, done provider.DoneHandler) {
 	this.changes[name] = append(this.changes[name], &Change{Change: change, Done: done, UpdateGroup: updateGroup})
 }
 
@@ -253,7 +258,7 @@ func safeCompareInt64(a, b *int64) bool {
 	return *a == *b
 }
 
-func limitChangeSet(changesByName map[string][]*Change, max int) [][]*Change {
+func limitChangeSet(changesByName map[dns.RecordSetName][]*Change, max int) [][]*Change {
 	batches := [][]*Change{}
 
 	updateChanges := map[string][]*Change{}

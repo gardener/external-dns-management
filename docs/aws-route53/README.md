@@ -99,3 +99,120 @@ data:
 
 You may need to mount an additional volume as the AWS client expects environment variable with token path and volume mount with the token file.
 See Helm chart values `custom.volumes` and `custom.volumeMounts`.
+
+## Routing Policy
+
+The AWS Route53 provider supports currently only the `weighted` routing policy.
+
+### Weighted Routing Policy
+
+Each weighted record set is defined by a separate `DNSEntry`. In this way it is possible to use different dns-controller-manager deployments
+acting on the same domain names. Every record set needs a `SetIdentifier` which must be unique for all used identifier of the domain name.
+Weighted routing policy is supported for all record types, i.e. `A`, `AAAA`, `CNAME`, and `TXT`.
+All entries of the same domain name must have the same record type and TTL.
+
+#### Example for A/B testing
+
+You want to perform an A/B testing for a service using the domain name `my.service.example.com`.
+You want that 90% goes to instance A and 10% to instance B.
+You can create these two `DNSEntries` using the same domain name, but different set identifiers
+
+```yaml
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+    #dns.gardener.cloud/class: garden
+  name: instance-a
+  namespace: default
+spec:
+  dnsName: "my.service.example.com"
+  ttl: 120
+  targets:
+    - instance-a.service.example.com
+  routingPolicy:
+    type: weighted
+    setIdentifier: instance-a
+    parameters:
+      weight: "90"
+```
+
+```yaml
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+    #dns.gardener.cloud/class: garden  
+  name: instance-a
+  namespace: default
+spec:
+  dnsName: "my.service.example.com"
+  ttl: 120
+  targets:
+    - instance-b.service.example.com
+  routingPolicy:
+    type: weighted
+    setIdentifier: instance-b
+    parameters:
+      weight: "10"
+```
+
+### Example for a blue/green Deployment
+
+You want to use a blue/green deployment for your service.
+Initially you want to activate the `blue` deployment.
+Blue and green deployment are located on different clusters, maybe even using different dns-controller-managers (seeds in case of Gardener)
+
+On the blue cluster create a `DNSEntry` with weight 1:
+
+```yaml
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+    #dns.gardener.cloud/class: garden
+  name: blue
+  namespace: default
+spec:
+  dnsName: "ha.service.example.com"
+  ttl: 60
+  targets:
+    - 1.2.3.4
+  routingPolicy:
+    type: weighted
+    setIdentifier: blue
+    parameters:
+      weight: "1"
+```
+
+On the green cluster create a `DNSEntry` with weight 0:
+
+```yaml
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+    #dns.gardener.cloud/class: garden
+  name: green
+  namespace: default
+spec:
+  dnsName: "ha.service.example.com"
+  ttl: 60
+  targets:
+    - 6.7.8.9
+  routingPolicy:
+    type: weighted
+    setIdentifier: green
+    parameters:
+      weight: "0"
+```
+
+The DNS resolution will return the IP address of the `blue` deployment with this configuration.
+
+To switch the service from `blue` to `green`, first change the weight of the `green` `DNSEntry` to `"1"`.
+Wait for DNS propagation according to the TTL (here 60 seconds), then change the weight of the `blue` `DNSEntry` to `"0"`.
+After a second wait round for DNS propagation, all DNS resolution should now only return the IP address of the `green`  deployment.

@@ -48,11 +48,12 @@ func NewExecution(logger logger.LogContext, h *Handler, resourceGroup string, zo
 type buildStatus int
 
 const (
-	bs_ok          buildStatus = 0
-	bs_invalidType buildStatus = 1
-	bs_empty       buildStatus = 2
-	bs_dryrun      buildStatus = 3
-	bs_invalidName buildStatus = 4
+	bs_ok                   buildStatus = 0
+	bs_invalidType          buildStatus = 1
+	bs_empty                buildStatus = 2
+	bs_dryrun               buildStatus = 3
+	bs_invalidName          buildStatus = 4
+	bs_invalidRoutingPolicy buildStatus = 5
 )
 
 func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus, azure.RecordType, *azure.RecordSet) {
@@ -72,6 +73,10 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 
 	if len(rset.Records) == 0 {
 		return bs_empty, "", nil
+	}
+
+	if req.RoutingPolicy != nil {
+		return bs_invalidRoutingPolicy, "", nil
 	}
 
 	exec.Infof("Desired %s: %s record set %s[%s] with TTL %d: %s", req.Action, rset.Type, name, exec.zoneName, rset.TTL, rset.RecordString())

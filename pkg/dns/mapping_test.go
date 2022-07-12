@@ -76,20 +76,20 @@ func TestMapToFromProvider(t *testing.T) {
 			wantedRecords = append(inputRecords, &Record{"\"prefix=comment-\""})
 		}
 		dnsset := DNSSet{
-			Name: entry.domainName,
+			Name: RecordSetName{DNSName: entry.domainName},
 			Sets: RecordSets{RS_META: &RecordSet{Type: RS_META, TTL: 600, Records: inputRecords}},
 		}
 
-		actualName, actualRecordSet := MapToProvider(rtype, &dnsset, base)
+		actualName, actualRecordSet := MapToProviderEx(rtype, &dnsset, base, nil)
 
-		Ω(actualName).Should(Equal(entry.wantedName), "Name should match")
+		Ω(actualName).Should(Equal(RecordSetName{DNSName: entry.wantedName}), "Name should match")
 		Ω(actualRecordSet.Type).Should(Equal(RS_TXT), "Type mismatch")
 		Ω(actualRecordSet.TTL).Should(Equal(int64(600)), "TTL mismatch")
 		Ω(actualRecordSet.Records).Should(Equal(wantedRecords))
 
 		reversedName, reversedRecordSet := MapFromProvider(actualName, actualRecordSet)
 
-		Ω(reversedName).Should(Equal(entry.domainName), "Reversed name should match")
+		Ω(reversedName).Should(Equal(RecordSetName{DNSName: entry.domainName}), "Reversed name should match")
 		Ω(reversedRecordSet.Type).Should(Equal(RS_META), "Reversed RecordSet.Type should match")
 		Ω(reversedRecordSet.TTL).Should(Equal(int64(600)), "TTL mismatch")
 		Ω(reversedRecordSet.Records).Should(Equal(wantedRecords))

@@ -46,9 +46,10 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 type buildStatus int
 
 const (
-	bsOk     buildStatus = 0
-	bsEmpty  buildStatus = 2
-	bsDryRun buildStatus = 3
+	bsOk                   buildStatus = 0
+	bsEmpty                buildStatus = 2
+	bsDryRun               buildStatus = 3
+	bsInvalidRoutingPolicy buildStatus = 4
 )
 
 func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus, *recordsets.RecordSet) {
@@ -64,6 +65,10 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 
 	if len(rset.Records) == 0 {
 		return bsEmpty, nil
+	}
+
+	if req.RoutingPolicy != nil {
+		return bsInvalidRoutingPolicy, nil
 	}
 
 	exec.Infof("Desired %s: %s record set %s[%s]: %s", req.Action, rset.Type, name, exec.zone.Domain(), rset.RecordString())

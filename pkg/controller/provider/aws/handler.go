@@ -33,6 +33,8 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
+const ()
+
 type Handler struct {
 	provider.DefaultDNSHandler
 	config    provider.DNSHandlerConfig
@@ -194,6 +196,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 
 func buildRecordSet(r *route53.ResourceRecordSet) *dns.RecordSet {
 	rs := dns.NewRecordSet(aws.StringValue(r.Type), aws.Int64Value(r.TTL), nil)
+	rs.RoutingPolicy = extractRoutingPolicy(r)
 	for _, rr := range r.ResourceRecords {
 		rs.Add(&dns.Record{Value: aws.StringValue(rr.Value)})
 	}
@@ -215,7 +218,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 			} else {
 				rs = buildRecordSet(r)
 			}
-			dnssets.AddRecordSetFromProvider(aws.StringValue(r.Name), rs)
+			dnssets.AddRecordSetFromProviderEx(dns.RecordSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}, rs)
 		}
 	}
 	forwarded, err := h.handleRecordSets(zone, aggr)
@@ -272,13 +275,19 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 	exec := NewExecution(logger, h, zone)
 
 	for _, r := range reqs {
+		var err error
 		switch r.Action {
 		case provider.R_CREATE:
-			exec.addChange(route53.ChangeActionCreate, r, r.Addition)
+			err = exec.addChange(route53.ChangeActionCreate, r, r.Addition)
 		case provider.R_UPDATE:
-			exec.addChange(route53.ChangeActionUpsert, r, r.Addition)
+			err = exec.addChange(route53.ChangeActionUpsert, r, r.Addition)
 		case provider.R_DELETE:
-			exec.addChange(route53.ChangeActionDelete, r, r.Deletion)
+			err = exec.addChange(route53.ChangeActionDelete, r, r.Deletion)
+		}
+		if err != nil {
+			if r.Done != nil {
+				r.Done.SetInvalid(err)
+			}
 		}
 	}
 	if h.config.DryRun {
@@ -379,13 +388,17 @@ func (h *Handler) DeleteVPCAssociationAuthorization(hostedZoneId string, vpcId s
 	return out, nil
 }
 
-func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, dnsName, recordType string) (provider.DedicatedRecordSet, error) {
-	name := dns.AlignHostname(dnsName)
+func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, rsName dns.RecordSetName, recordType string) (provider.DedicatedRecordSet, error) {
+	name := rsName.Align()
+	var recordIdentifier *string
+	if rsName.SetIdentifier != "" {
+		recordIdentifier = &rsName.SetIdentifier
+	}
 	sets, err := h.r53.ListResourceRecordSets(&route53.ListResourceRecordSetsInput{
 		HostedZoneId:          aws.String(zone.Id().ID),
 		MaxItems:              aws.String("1"),
-		StartRecordIdentifier: nil,
-		StartRecordName:       &name,
+		StartRecordIdentifier: recordIdentifier,
+		StartRecordName:       &name.DNSName,
 		StartRecordType:       &recordType,
 	})
 	if err != nil {
@@ -401,16 +414,17 @@ func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, dnsName, recordType 
 			} else {
 				rs = buildRecordSet(r)
 			}
-			dnssets.AddRecordSetFromProvider(aws.StringValue(r.Name), rs)
+			rsName := dns.RecordSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}
+			dnssets.AddRecordSetFromProviderEx(rsName, rs)
 		}
 	}
 	for _, r := range sets.ResourceRecordSets {
-		if aws.StringValue(r.Name) == name && aws.StringValue(r.Type) == recordType {
+		if aws.StringValue(r.Name) == name.DNSName && aws.StringValue(r.SetIdentifier) == name.SetIdentifier && aws.StringValue(r.Type) == recordType {
 			aggr(r)
 		}
 	}
-	if set := dnssets[dnsName]; set != nil {
-		return provider.FromDedicatedRecordSet(dnsName, set.Sets[recordType]), nil
+	if set := dnssets[rsName]; set != nil {
+		return provider.FromDedicatedRecordSet(rsName, set.Sets[recordType]), nil
 	}
 	return nil, nil
 }
@@ -428,6 +442,8 @@ func (h *Handler) executeRecordSetChange(action string, logger logger.LogContext
 	dnsName, rs := provider.ToDedicatedRecordset(rawrs)
 	dnsset := dns.NewDNSSet(dnsName)
 	dnsset.Sets[rs.Type] = rs
-	exec.addChange(action, &provider.ChangeRequest{Type: rs.Type}, dnsset)
+	if err := exec.addChange(action, &provider.ChangeRequest{Type: rs.Type}, dnsset); err != nil {
+		return err
+	}
 	return exec.submitChanges(h.config.Metrics)
 }

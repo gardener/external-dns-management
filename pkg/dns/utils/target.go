@@ -92,20 +92,23 @@ type TargetSpec interface {
 	Kind() string
 	OwnerId() string
 	Targets() []Target
+	RoutingPolicy() *dns.RoutingPolicy
 	Responsible(set *dns.DNSSet, ownership dns.Ownership) bool
 }
 
 type targetSpec struct {
-	kind    string
-	ownerId string
-	targets []Target
+	kind          string
+	ownerId       string
+	targets       []Target
+	routingPolicy *dns.RoutingPolicy
 }
 
 func BaseTargetSpec(entry DNSSpecification, p TargetProvider) TargetSpec {
 	spec := &targetSpec{
-		kind:    entry.GroupKind().Kind,
-		ownerId: p.OwnerId(),
-		targets: p.Targets(),
+		kind:          entry.GroupKind().Kind,
+		ownerId:       p.OwnerId(),
+		targets:       p.Targets(),
+		routingPolicy: p.RoutingPolicy(),
 	}
 	return spec
 }
@@ -124,4 +127,8 @@ func (this *targetSpec) Targets() []Target {
 
 func (this *targetSpec) Responsible(set *dns.DNSSet, ownership dns.Ownership) bool {
 	return !set.IsForeign(ownership)
+}
+
+func (this *targetSpec) RoutingPolicy() *dns.RoutingPolicy {
+	return this.routingPolicy
 }

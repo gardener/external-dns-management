@@ -67,6 +67,10 @@ func (this *DNSLockObject) GetDNSName() string {
 	return this.DNSLock().Spec.DNSName
 }
 
+func (this *DNSLockObject) GetSetIdentifier() string {
+	return ""
+}
+
 func (this *DNSLockObject) GetTargets() []string {
 	return nil
 }
@@ -109,6 +113,10 @@ func (this *DNSLockObject) GetReference() *api.EntryReference {
 	return nil
 }
 
+func (this *DNSLockObject) GetRoutingPolicy() *dns.RoutingPolicy {
+	return nil
+}
+
 func (this *DNSLockObject) RefreshTime() time.Time {
 	return this.Spec().Timestamp.Time
 }
@@ -121,6 +129,10 @@ func (this *DNSLockObject) ValidateSpecial() error {
 }
 
 func (this *DNSLockObject) AcknowledgeTargets(targets []string) bool {
+	return false
+}
+
+func (this *DNSLockObject) AcknowledgeRoutingPolicy(policy *dns.RoutingPolicy) bool {
 	return false
 }
 

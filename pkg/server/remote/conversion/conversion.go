@@ -18,6 +18,7 @@ package conversion
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -27,16 +28,33 @@ import (
 func MarshalDNSSets(local dns.DNSSets) common.DNSSets {
 	result := common.DNSSets{}
 	for name, dnsset := range local {
-		result[name] = MarshalDNSSet(dnsset)
+		result[marshalRecordSetName(name)] = MarshalDNSSet(dnsset)
 	}
 	return result
 }
 
+func marshalRecordSetName(name dns.RecordSetName) string {
+	if name.SetIdentifier == "" {
+		return name.DNSName
+	}
+	return name.DNSName + "\t" + name.SetIdentifier
+}
+
+func unmarshalRecordSetName(marshalledName string) dns.RecordSetName {
+	parts := strings.Split(marshalledName, "\t")
+	setIdentifier := ""
+	if len(parts) == 2 {
+		setIdentifier = parts[1]
+	}
+	return dns.RecordSetName{DNSName: parts[0], SetIdentifier: setIdentifier}
+}
+
 func MarshalDNSSet(local *dns.DNSSet) *common.DNSSet {
 	remote := &common.DNSSet{
-		DnsName:     local.Name,
-		UpdateGroup: local.UpdateGroup,
-		Records:     map[string]*common.RecordSet{},
+		DnsName:       local.Name.DNSName,
+		SetIdentifier: local.Name.SetIdentifier,
+		UpdateGroup:   local.UpdateGroup,
+		Records:       map[string]*common.RecordSet{},
 	}
 	for typ, rs := range local.Sets {
 		remote.Records[typ] = MarshalRecordSet(rs)
@@ -46,8 +64,9 @@ func MarshalDNSSet(local *dns.DNSSet) *common.DNSSet {
 
 func MarshalRecordSet(local *dns.RecordSet) *common.RecordSet {
 	remote := &common.RecordSet{
-		Type: local.Type,
-		Ttl:  int32(local.TTL),
+		Type:          local.Type,
+		Ttl:           int32(local.TTL),
+		RoutingPolicy: MarshalRoutingPolicy(local.RoutingPolicy),
 	}
 	for _, v := range local.Records {
 		remote.Record = append(remote.Record, &common.RecordSet_Record{Value: v.Value})
@@ -55,25 +74,40 @@ func MarshalRecordSet(local *dns.RecordSet) *common.RecordSet {
 	return remote
 }
 
+func MarshalRoutingPolicy(local *dns.RoutingPolicy) *common.RecordSet_RoutingPolicy {
+	if local == nil {
+		return nil
+	}
+	params := map[string]string{}
+	for k, v := range local.Parameters {
+		params[k] = v
+	}
+	return &common.RecordSet_RoutingPolicy{
+		Type:       local.Type,
+		Parameters: params,
+	}
+}
+
 func MarshalPartialDNSSet(local *dns.DNSSet, recordType string) *common.PartialDNSSet {
 	return &common.PartialDNSSet{
-		DnsName:     local.Name,
-		UpdateGroup: local.UpdateGroup,
-		RecordType:  recordType,
-		RecordSet:   MarshalRecordSet(local.Sets[recordType]),
+		DnsName:       local.Name.DNSName,
+		SetIdentifier: local.Name.SetIdentifier,
+		UpdateGroup:   local.UpdateGroup,
+		RecordType:    recordType,
+		RecordSet:     MarshalRecordSet(local.Sets[recordType]),
 	}
 }
 
 func UnmarshalDNSSets(remote common.DNSSets) dns.DNSSets {
 	local := dns.DNSSets{}
 	for name, set := range remote {
-		local[name] = UnmarshalDNSSet(set)
+		local[unmarshalRecordSetName(name)] = UnmarshalDNSSet(set)
 	}
 	return local
 }
 
 func UnmarshalDNSSet(remote *common.DNSSet) *dns.DNSSet {
-	local := dns.NewDNSSet(remote.DnsName)
+	local := dns.NewDNSSet(dns.RecordSetName{DNSName: remote.DnsName, SetIdentifier: remote.SetIdentifier})
 	local.UpdateGroup = remote.UpdateGroup
 
 	for typ, rs := range remote.Records {
@@ -84,14 +118,29 @@ func UnmarshalDNSSet(remote *common.DNSSet) *dns.DNSSet {
 
 func UnmarshalRecordSet(rs *common.RecordSet) *dns.RecordSet {
 	local := dns.NewRecordSet(rs.Type, int64(rs.Ttl), nil)
+	local.RoutingPolicy = UnmarshalRoutingPolicy(rs.RoutingPolicy)
 	for _, v := range rs.Record {
 		local.Add(&dns.Record{Value: v.Value})
 	}
 	return local
 }
 
+func UnmarshalRoutingPolicy(policy *common.RecordSet_RoutingPolicy) *dns.RoutingPolicy {
+	if policy == nil {
+		return nil
+	}
+	params := map[string]string{}
+	for k, v := range policy.Parameters {
+		params[k] = v
+	}
+	return &dns.RoutingPolicy{
+		Type:       policy.Type,
+		Parameters: params,
+	}
+}
+
 func UnmarshalPartialDNSSet(remote *common.PartialDNSSet) *dns.DNSSet {
-	local := dns.NewDNSSet(remote.DnsName)
+	local := dns.NewDNSSet(dns.RecordSetName{DNSName: remote.DnsName, SetIdentifier: remote.SetIdentifier})
 	local.UpdateGroup = remote.UpdateGroup
 
 	local.Sets[remote.RecordType] = UnmarshalRecordSet(remote.RecordSet)

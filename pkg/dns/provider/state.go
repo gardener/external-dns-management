@@ -40,26 +40,35 @@ import (
 	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
 )
 
-type ZonedDNSName struct {
-	ZoneID  dns.ZoneID
-	DNSName string
+type ZonedRecordSetName struct {
+	dns.RecordSetName
+	ZoneID dns.ZoneID
 }
 
-func (z ZonedDNSName) String() string {
-	return fmt.Sprintf("%s[%s]", z.DNSName, z.ZoneID)
+func (z ZonedRecordSetName) String() string {
+	return fmt.Sprintf("%s[%s]", z.RecordSetName, z.ZoneID)
 }
 
-type DNSNames map[ZonedDNSName]*Entry
+type RecordSetNames map[ZonedRecordSetName]*Entry
 
-type DNSNameSet = utils.StringSet
+type RecordSetNameSet map[dns.RecordSetName]struct{}
+
+func (s RecordSetNameSet) Add(name dns.RecordSetName) {
+	s[name] = struct{}{}
+}
+
+func (s RecordSetNameSet) Contains(name dns.RecordSetName) bool {
+	_, ok := s[name]
+	return ok
+}
 
 type zoneReconciliation struct {
 	zone         *dnsHostedZone
 	providers    DNSProviders
 	entries      Entries
-	equivEntries DNSNameSet
+	equivEntries RecordSetNameSet
 	ownership    dns.Ownership
-	stale        DNSNames
+	stale        RecordSetNames
 	dedicated    bool
 	deleting     bool
 	fhandler     FinalizerHandler
@@ -148,7 +157,7 @@ type state struct {
 	providerRateLimiter map[resources.ObjectName]*rateLimiterData
 	prlock              sync.RWMutex
 
-	dnsnames   DNSNames
+	dnsnames   RecordSetNames
 	references *References
 
 	initialized bool
@@ -202,7 +211,7 @@ func NewDNSState(ctx Context, ownerresc, secretresc resources.Interface, classes
 		entries:             Entries{},
 		outdated:            newSynchronizedEntries(),
 		blockingEntries:     map[resources.ObjectName]time.Time{},
-		dnsnames:            map[ZonedDNSName]*Entry{},
+		dnsnames:            map[ZonedRecordSetName]*Entry{},
 		references:          NewReferenceCache(),
 		providerRateLimiter: map[resources.ObjectName]*rateLimiterData{},
 	}
@@ -458,26 +467,26 @@ func (this *state) GetZonesForProvider(name resources.ObjectName) dnsHostedZones
 	return copyZones(this.providerzones[name])
 }
 
-func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid dns.ZoneID) (Entries, DNSNames, bool) {
+func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid dns.ZoneID) (Entries, RecordSetNames, bool) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 	entries := Entries{}
 	zone := this.zones[zoneid]
 	if zone != nil {
-		entries, _, stale, deleting := this.addEntriesForZone(logger, entries, DNSNames{}, zone)
+		entries, _, stale, deleting := this.addEntriesForZone(logger, entries, RecordSetNames{}, zone)
 		return entries, stale, deleting
 	}
 	return entries, nil, false
 }
 
-func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale DNSNames, zone DNSHostedZone) (Entries, DNSNameSet, DNSNames, bool) {
+func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale RecordSetNames, zone DNSHostedZone) (Entries, RecordSetNameSet, RecordSetNames, bool) {
 	if entries == nil {
 		entries = Entries{}
 	}
 	if stale == nil {
-		stale = DNSNames{}
+		stale = RecordSetNames{}
 	}
-	equivEntries := DNSNameSet{}
+	equivEntries := RecordSetNameSet{}
 	deleting := true // TODO check
 	domain := zone.Domain()
 	// fallback if no forwarded domains are reported
@@ -511,7 +520,7 @@ func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, 
 				continue
 			} else if !provider.IncludesZone(zone.Id()) {
 				if provider.HasEquivalentZone(zone.Id()) && e.IsActive() && !forwarded(nested, dns.DNSName) {
-					equivEntries.Add(dns.DNSName)
+					equivEntries.Add(dns.RecordSetName)
 				}
 				continue
 			}

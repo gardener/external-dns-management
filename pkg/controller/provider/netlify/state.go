@@ -25,9 +25,12 @@ import (
 
 type Record models.DNSRecord
 
-func (r *Record) GetType() string    { return r.Type }
-func (r *Record) GetId() string      { return r.ID }
-func (r *Record) GetDNSName() string { return r.Hostname }
+var _ raw.Record = &Record{}
+
+func (r *Record) GetType() string          { return r.Type }
+func (r *Record) GetId() string            { return r.ID }
+func (r *Record) GetDNSName() string       { return r.Hostname }
+func (r *Record) GetSetIdentifier() string { return "" }
 func (r *Record) GetValue() string {
 	if r.Type == dns.RS_TXT {
 		return raw.EnsureQuotedText(r.Value)
