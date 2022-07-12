@@ -103,7 +103,7 @@ spec:
                 - name
                 type: object
               routingPolicy:
-                description: optional routing policy like weighted, geolocation,...
+                description: optional routing policy
                 properties:
                   parameters:
                     additionalProperties:

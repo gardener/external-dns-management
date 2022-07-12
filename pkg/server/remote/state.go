@@ -52,8 +52,9 @@ type handlerState struct {
 }
 
 type tokenState struct {
-	clientID   string
-	validUntil time.Time
+	clientID              string
+	validUntil            time.Time
+	clientProtocolVersion int32
 }
 
 func newNamespaceState(namespace string) *namespaceState {
@@ -126,7 +127,7 @@ func (s *namespaceState) _refreshZones() {
 	}
 }
 
-func (s *namespaceState) getToken(token string) (string, error) {
+func (s *namespaceState) getToken(token string) (string, int32, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -135,20 +136,21 @@ func (s *namespaceState) getToken(token string) (string, error) {
 		if tstate != nil {
 			delete(s.tokens, token)
 		}
-		return "", fmt.Errorf("%s for namespace %s", common.InvalidToken, s.name)
+		return "", 0, fmt.Errorf("%s for namespace %s", common.InvalidToken, s.name)
 	}
-	return tstate.clientID, nil
+	return tstate.clientID, tstate.clientProtocolVersion, nil
 }
 
-func (s *namespaceState) generateAndAddToken(tokenTTL time.Duration, rnd, clientID, server string) string {
+func (s *namespaceState) generateAndAddToken(tokenTTL time.Duration, rnd, clientID, server string, clientProtocolVersion int32) string {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	validUntil := time.Now().Add(tokenTTL).UTC()
 	token := fmt.Sprintf("%s|%s|%s|%s|%s", s.name, clientID, validUntil.Format(time.RFC3339), server, rnd)
 	s.tokens[token] = &tokenState{
-		clientID:   clientID,
-		validUntil: validUntil,
+		clientID:              clientID,
+		validUntil:            validUntil,
+		clientProtocolVersion: clientProtocolVersion,
 	}
 	return token
 }

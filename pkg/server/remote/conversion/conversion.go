@@ -25,10 +25,13 @@ import (
 	"github.com/gardener/external-dns-management/pkg/server/remote/common"
 )
 
-func MarshalDNSSets(local dns.DNSSets) common.DNSSets {
+func MarshalDNSSets(local dns.DNSSets, protocolVersion int32) common.DNSSets {
 	result := common.DNSSets{}
 	for name, dnsset := range local {
-		result[marshalRecordSetName(name)] = MarshalDNSSet(dnsset)
+		if name.SetIdentifier == "" || protocolVersion == common.ProtocolVersion1 {
+			// don't return recordsets with routing policy for protocol version 0
+			result[marshalRecordSetName(name)] = MarshalDNSSet(dnsset)
+		}
 	}
 	return result
 }

@@ -22,6 +22,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/server/remote/common"
 )
 
 func TestMarshalDNSSets(t *testing.T) {
@@ -41,15 +42,24 @@ func TestMarshalDNSSets(t *testing.T) {
 	sets1.AddRecordSet(dns.RecordSetName{DNSName: "c.a", SetIdentifier: "id1"}, rsc1)
 	sets1.AddRecordSet(dns.RecordSetName{DNSName: "c.a", SetIdentifier: "id2"}, rsc2)
 	table := []struct {
-		name string
-		sets dns.DNSSets
+		name                 string
+		sets                 dns.DNSSets
+		expectedSizeVersion1 int
+		expectedSizeVersion0 int
 	}{
-		{"empty", dns.DNSSets{}},
-		{"sets1", sets1},
+		{"empty", dns.DNSSets{}, 0, 0},
+		{"sets1", sets1, 3, 1},
 	}
 
 	for _, item := range table {
-		remote := MarshalDNSSets(item.sets)
+		remote0 := MarshalDNSSets(item.sets, common.ProtocolVersion0)
+		if len(remote0) != item.expectedSizeVersion0 {
+			t.Errorf("version 0 size mismatch: %d != %d", len(remote0), item.expectedSizeVersion0)
+		}
+		remote := MarshalDNSSets(item.sets, common.ProtocolVersion1)
+		if len(remote) != item.expectedSizeVersion1 {
+			t.Errorf("version 0 size mismatch: %d != %d", len(remote), item.expectedSizeVersion1)
+		}
 		copy := UnmarshalDNSSets(remote)
 
 		if !reflect.DeepEqual(item.sets, copy) {

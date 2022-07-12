@@ -18,10 +18,12 @@ service RemoteProvider {
 message LoginRequest {
   string namespace = 1;
   string cliendID = 2;
+  int32 clientProtocolVersion = 3;
 }
 
 message LoginResponse {
-   string token = 1;
+  string token = 1;
+  int32 serverProtocolVersion = 2;
 }
 
 message GetZonesRequest {
