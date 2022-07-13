@@ -24,7 +24,7 @@ metadata:
   annotations:
   # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
   #dns.gardener.cloud/class: garden
-  name: instance-a
+  name: instance-b
   namespace: default
 spec:
   dnsName: "my.service.example.com"

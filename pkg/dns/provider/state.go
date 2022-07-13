@@ -51,22 +51,11 @@ func (z ZonedRecordSetName) String() string {
 
 type RecordSetNames map[ZonedRecordSetName]*Entry
 
-type RecordSetNameSet map[dns.RecordSetName]struct{}
-
-func (s RecordSetNameSet) Add(name dns.RecordSetName) {
-	s[name] = struct{}{}
-}
-
-func (s RecordSetNameSet) Contains(name dns.RecordSetName) bool {
-	_, ok := s[name]
-	return ok
-}
-
 type zoneReconciliation struct {
 	zone         *dnsHostedZone
 	providers    DNSProviders
 	entries      Entries
-	equivEntries RecordSetNameSet
+	equivEntries dns.RecordSetNameSet
 	ownership    dns.Ownership
 	stale        RecordSetNames
 	dedicated    bool
@@ -479,14 +468,16 @@ func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid dns.ZoneID
 	return entries, nil, false
 }
 
-func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale RecordSetNames, zone DNSHostedZone) (Entries, RecordSetNameSet, RecordSetNames, bool) {
+func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale RecordSetNames,
+	zone DNSHostedZone) (Entries, dns.RecordSetNameSet, RecordSetNames, bool) {
+
 	if entries == nil {
 		entries = Entries{}
 	}
 	if stale == nil {
 		stale = RecordSetNames{}
 	}
-	equivEntries := RecordSetNameSet{}
+	equivEntries := dns.RecordSetNameSet{}
 	deleting := true // TODO check
 	domain := zone.Domain()
 	// fallback if no forwarded domains are reported

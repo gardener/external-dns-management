@@ -23,6 +23,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
@@ -42,19 +43,20 @@ func (this *IngressSource) GetDNSInfo(logger logger.LogContext, obj resources.Ob
 	if err != nil {
 		return nil, err
 	}
-	info.Names = utils.StringSet{}
+	names := utils.StringSet{}
 	all := current.AnnotatedNames.Contains("all") || current.AnnotatedNames.Contains("*")
 	for _, host := range hosts {
 		if host != "" && (all || current.AnnotatedNames.Contains(host)) {
-			info.Names.Add(host)
+			names.Add(host)
 		}
 	}
-	_, del := current.AnnotatedNames.DiffFrom(info.Names)
+	_, del := current.AnnotatedNames.DiffFrom(names)
 	del.Remove("all")
 	del.Remove("*")
 	if len(del) > 0 {
 		return info, fmt.Errorf("annotated dns names %s not declared by ingress", del)
 	}
+	info.Names = dns.NewRecordSetNameSetFromStringSet(names, current.SetIdentifier())
 	return info, nil
 }
 

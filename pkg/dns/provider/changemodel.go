@@ -195,7 +195,7 @@ type ChangeModel struct {
 	dangling       *ChangeGroup
 	providergroups map[string]*ChangeGroup
 	zonestate      DNSZoneState
-	failedDNSNames RecordSetNameSet
+	failedDNSNames dns.RecordSetNameSet
 }
 
 type ChangeResult struct {
@@ -212,7 +212,7 @@ func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zone
 		context:        req,
 		applied:        map[dns.RecordSetName]*dns.DNSSet{},
 		providergroups: map[string]*ChangeGroup{},
-		failedDNSNames: RecordSetNameSet{},
+		failedDNSNames: dns.RecordSetNameSet{},
 	}
 }
 

@@ -194,6 +194,21 @@ spec:
       name: ZONE
       priority: 2000
       type: string
+    - description: routing policy type
+      jsonPath: .status.routingPolicy.type
+      name: POLICY_TYPE
+      priority: 2000
+      type: string
+    - description: routing policy set identifier
+      jsonPath: .status.routingPolicy.setIdentifier
+      name: POLICY_SETID
+      priority: 2000
+      type: string
+    - description: routing policy parameters
+      jsonPath: .status.routingPolicy.parameters
+      name: POLICY_PARAMS
+      priority: 2000
+      type: string
     - description: message describing the reason for the state
       jsonPath: .status.message
       name: MESSAGE

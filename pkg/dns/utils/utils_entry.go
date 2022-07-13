@@ -139,3 +139,20 @@ func (this *DNSEntryObject) AcknowledgeRoutingPolicy(policy *dns.RoutingPolicy) 
 func (this *DNSEntryObject) GetTargetSpec(p TargetProvider) TargetSpec {
 	return BaseTargetSpec(this, p)
 }
+
+func (this *DNSEntryObject) RecordSetName() dns.RecordSetName {
+	setIdentifier := ""
+	if this.Spec().RoutingPolicy != nil {
+		setIdentifier = this.Spec().RoutingPolicy.SetIdentifier
+	}
+	return dns.RecordSetName{
+		DNSName:       this.GetDNSName(),
+		SetIdentifier: setIdentifier,
+	}
+}
+
+func RecordSetNameMatcher(name dns.RecordSetName) resources.ObjectMatcher {
+	return func(o resources.Object) bool {
+		return DNSEntry(o).RecordSetName() == name
+	}
+}

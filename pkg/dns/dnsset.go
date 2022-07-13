@@ -17,8 +17,6 @@
 package dns
 
 import (
-	"fmt"
-
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -121,80 +119,6 @@ const (
 	ATTR_TIMESTAMP = "ts"
 	ATTR_LOCKID    = "lockid"
 )
-
-type RecordSetName struct {
-	// domain name of the record
-	DNSName string
-	// optional set identifier (used for record with routing policy)
-	SetIdentifier string
-}
-
-func (n RecordSetName) WithDNSName(dnsName string) RecordSetName {
-	return RecordSetName{DNSName: dnsName, SetIdentifier: n.SetIdentifier}
-}
-
-func (n RecordSetName) String() string {
-	if n.SetIdentifier == "" {
-		return n.DNSName
-	}
-	return n.DNSName + "#" + n.SetIdentifier
-}
-
-func (n RecordSetName) Align() RecordSetName {
-	return n.WithDNSName(AlignHostname(n.DNSName))
-}
-
-func (n RecordSetName) Normalize() RecordSetName {
-	return n.WithDNSName(NormalizeHostname(n.DNSName))
-}
-
-const (
-	RoutingPolicyWeighted = "weighted"
-)
-
-type RoutingPolicy struct {
-	Type       string
-	Parameters map[string]string
-}
-
-func NewRoutingPolicy(typ string, keyvalues ...string) *RoutingPolicy {
-	policy := &RoutingPolicy{Type: typ, Parameters: map[string]string{}}
-	for i := 0; i < len(keyvalues)-1; i += 2 {
-		policy.Parameters[keyvalues[i]] = keyvalues[i+1]
-	}
-	return policy
-}
-
-func (p *RoutingPolicy) Clone() *RoutingPolicy {
-	if p == nil {
-		return nil
-	}
-	copy := &RoutingPolicy{Type: p.Type, Parameters: map[string]string{}}
-	for k, v := range p.Parameters {
-		copy.Parameters[k] = v
-	}
-	return copy
-}
-
-func (p *RoutingPolicy) CheckParameterKeys(keys []string) error {
-	for _, k := range keys {
-		if _, ok := p.Parameters[k]; !ok {
-			return fmt.Errorf("Missing parameter key %s", k)
-		}
-	}
-	if len(keys) != len(p.Parameters) {
-	outer:
-		for k := range p.Parameters {
-			for _, k2 := range keys {
-				if k == k2 {
-					continue outer
-				}
-			}
-			return fmt.Errorf("Unsupported parameter key %s", k)
-		}
-	}
-	return nil
-}
 
 type DNSSet struct {
 	Name        RecordSetName

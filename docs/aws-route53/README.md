@@ -111,6 +111,45 @@ acting on the same domain names. Every record set needs a `SetIdentifier` which 
 Weighted routing policy is supported for all record types, i.e. `A`, `AAAA`, `CNAME`, and `TXT`.
 All entries of the same domain name must have the same record type and TTL.
 
+#### Annotating Ingress or Service Resources with Routing Policy
+
+To specify the routing policy, add an annotation `dns.gardener.cloud/routing-policy`
+containing the routing policy section in JSON format to the `Ingress` or `Service` resource.
+E.g. for an ingress resource:
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    dns.gardener.cloud/dnsnames: '*'
+    # If you are delegating the DNS management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
+    #dns.gardener.cloud/class: garden
+    # If you are delegating the certificate management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/x509_certificates/)
+    #cert.gardener.cloud/purpose: managed
+    # routing-policy annotation provides the `.spec.routingPolicy` section as JSON
+    # Note: Currently only supported for aws-route53 (see https://github.com/gardener/external-dns-management/tree/master/docs/aws-route53#weighted-routing-policy)
+    dns.gardener.cloud/routing-policy: '{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}'
+  name: test-ingress-weighted-routing-policy
+  namespace: default
+spec:
+  rules:
+    - host: test.ingress.my-dns-domain.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: my-service
+                port:
+                  number: 9000
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - test.ingress.my-dns-domain.com
+      #secretName: my-cert-secret-name
+```
+
 #### Example for A/B testing
 
 You want to perform an A/B testing for a service using the domain name `my.service.example.com`.

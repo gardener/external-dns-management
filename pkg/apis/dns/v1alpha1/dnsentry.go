@@ -43,6 +43,9 @@ type DNSEntryList struct {
 // +kubebuilder:printcolumn:name=OWNERID,JSONPath=".spec.ownerId",type=string,description="owner id used to tag entries in external DNS system"
 // +kubebuilder:printcolumn:name=TTL,JSONPath=".status.ttl",type=integer,priority=2000,description="time to live"
 // +kubebuilder:printcolumn:name=ZONE,JSONPath=".status.zone",type=string,priority=2000,description="zone id"
+// +kubebuilder:printcolumn:name=POLICY_TYPE,JSONPath=".status.routingPolicy.type",type=string,priority=2000,description="routing policy type"
+// +kubebuilder:printcolumn:name=POLICY_SETID,JSONPath=".status.routingPolicy.setIdentifier",type=string,priority=2000,description="routing policy set identifier"
+// +kubebuilder:printcolumn:name=POLICY_PARAMS,JSONPath=".status.routingPolicy.parameters",type=string,priority=2000,description="routing policy parameters"
 // +kubebuilder:printcolumn:name=MESSAGE,JSONPath=".status.message",type=string,priority=2000,description="message describing the reason for the state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
