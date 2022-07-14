@@ -196,14 +196,14 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		spec := e.object.GetTargetSpec(e)
 		statusUpdate := NewStatusUpdate(logger, e, this.GetContext())
 		if e.IsDeleting() {
-			changeResult = changes.Delete(e.RecordSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
+			changeResult = changes.Delete(e.DNSSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
 		} else {
 			if !e.NotRateLimited() {
-				changeResult = changes.Check(e.RecordSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
+				changeResult = changes.Check(e.DNSSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
 				if changeResult.Modified {
 					if accepted, delay := this.tryAcceptProviderRateLimiter(logger, e); !accepted {
 						req.zone.nextTrigger = delay
-						changes.PseudoApply(e.RecordSetName())
+						changes.PseudoApply(e.DNSSetName())
 						logger.Infof("rate limited %s, delay %.1f s", e.ObjectName(), delay.Seconds())
 						statusUpdate.Throttled()
 						if delay.Seconds() > 2 {
@@ -213,7 +213,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 					}
 				}
 			}
-			changeResult = changes.Apply(e.RecordSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
+			changeResult = changes.Apply(e.DNSSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
 			if changeResult.Error != nil && changeResult.Retry {
 				conflictErr = changeResult.Error
 			}
@@ -228,7 +228,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	outdatedEntries := EntryList{}
 	this.outdated.AddActiveZoneTo(zoneid, &outdatedEntries)
 	for _, e := range outdatedEntries {
-		if changes.IsFailed(e.RecordSetName()) {
+		if changes.IsFailed(e.DNSSetName()) {
 			continue
 		}
 		logger.Infof("cleanup outdated entry %q", e.ObjectName())

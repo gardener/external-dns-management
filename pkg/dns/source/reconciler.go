@@ -140,13 +140,13 @@ func (this *sourceReconciler) Setup() error {
 
 func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	slaves := this.LookupSlaves(obj.ClusterKey())
-	names := dns.RecordSetNameSet{}
+	names := dns.DNSNameSet{}
 	for _, s := range slaves {
-		names.Add(dnsutils.DNSEntry(s).RecordSetName())
+		names.Add(dnsutils.DNSEntry(s).DNSSetName())
 	}
-	found := &DNSCurrentState{Names: map[dns.RecordSetName]*DNSState{}, Targets: utils.StringSet{}}
+	found := &DNSCurrentState{Names: map[dns.DNSSetName]*DNSState{}, Targets: utils.StringSet{}}
 	for n := range names {
-		s := this.AssertSingleSlave(logger, obj.ClusterKey(), slaves, dnsutils.RecordSetNameMatcher(n))
+		s := this.AssertSingleSlave(logger, obj.ClusterKey(), slaves, dnsutils.DNSSetNameMatcher(n))
 		e := dnsutils.DNSEntry(s).DNSEntry()
 		found.Names[n] = &DNSState{DNSEntryStatus: e.Status, CreationTimestamp: e.CreationTimestamp}
 		found.Targets.AddAll(e.Spec.Targets)
@@ -186,9 +186,9 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 			return reconcile.Delay(logger, err)
 		}
 	}
-	missing := dns.RecordSetNameSet{}
+	missing := dns.DNSNameSet{}
 	obsolete := []resources.Object{}
-	obsolete_dns := dns.RecordSetNameSet{}
+	obsolete_dns := dns.DNSNameSet{}
 
 	current := []resources.Object{}
 
@@ -207,7 +207,7 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 outer:
 	for name := range info.Names {
 		for _, s := range slaves {
-			slaveName := dnsutils.DNSEntry(s).RecordSetName()
+			slaveName := dnsutils.DNSEntry(s).DNSSetName()
 			if slaveName == name {
 				continue outer
 			}
@@ -216,7 +216,7 @@ outer:
 	}
 
 	for _, s := range slaves {
-		slaveName := dnsutils.DNSEntry(s).RecordSetName()
+		slaveName := dnsutils.DNSEntry(s).DNSSetName()
 		if !info.Names.Contains(slaveName) {
 			obsolete = append(obsolete, s)
 			obsolete_dns.Add(slaveName)
@@ -226,7 +226,7 @@ outer:
 	}
 
 	var notifiedErrors []string
-	modified := map[dns.RecordSetName]bool{}
+	modified := map[dns.DNSSetName]bool{}
 	if len(missing) > 0 {
 		if len(info.Targets) > 0 || len(info.Text) > 0 || info.OrigRef != nil {
 			logger.Infof("found missing dns entries: %s", missing)
@@ -243,7 +243,7 @@ outer:
 	if len(obsolete_dns) > 0 {
 		logger.Infof("found obsolete dns entries: %s", obsolete_dns)
 		for _, o := range obsolete {
-			name := dnsutils.DNSEntry(o).RecordSetName()
+			name := dnsutils.DNSEntry(o).DNSSetName()
 			err := this.deleteEntry(logger, o, name, feedback)
 			if err != nil {
 				notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot remove dns entry object %q(%s): %s", o.ClusterKey(), name, err))
@@ -253,7 +253,7 @@ outer:
 	}
 	if len(current) > 0 {
 		for _, o := range current {
-			name := dnsutils.DNSEntry(o).RecordSetName()
+			name := dnsutils.DNSEntry(o).DNSSetName()
 			mod, err := this.updateEntryFor(logger, obj, info, o)
 			modified[name] = mod
 			if err != nil {
@@ -410,7 +410,7 @@ func (this *sourceReconciler) mapRef(obj resources.Object, info *DNSInfo) {
 	}
 }
 
-func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, name dns.RecordSetName, info *DNSInfo, feedback DNSFeedback) error {
+func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, name dns.DNSSetName, info *DNSInfo, feedback DNSFeedback) error {
 	entry := &api.DNSEntry{}
 	entry.GenerateName = strings.ToLower(this.nameprefix + obj.GetName() + "-" + obj.GroupKind().Kind + "-")
 	if !this.targetclasses.IsDefault() {
@@ -545,7 +545,7 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 	return slave.Modify(f)
 }
 
-func (this *sourceReconciler) deleteEntry(logger logger.LogContext, e resources.Object, name dns.RecordSetName, feedback DNSFeedback) error {
+func (this *sourceReconciler) deleteEntry(logger logger.LogContext, e resources.Object, name dns.DNSSetName, feedback DNSFeedback) error {
 	err := e.Delete()
 	if err == nil {
 		msg := fmt.Sprintf("deleted dns entry object %s", e.ObjectName())

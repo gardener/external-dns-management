@@ -26,7 +26,7 @@ import (
 )
 
 type DedicatedDNSAccess interface {
-	GetRecordSet(zone DNSHostedZone, rsName dns.RecordSetName, recordType string) (DedicatedRecordSet, error)
+	GetRecordSet(zone DNSHostedZone, rsName dns.DNSSetName, recordType string) (DedicatedRecordSet, error)
 	CreateOrUpdateRecordSet(logger logger.LogContext, zone DNSHostedZone, old, new DedicatedRecordSet) error
 	DeleteRecordSet(logger logger.LogContext, zone DNSHostedZone, rs DedicatedRecordSet) error
 }
@@ -42,7 +42,7 @@ type DedicatedRecord interface {
 type DedicatedRecordSet []DedicatedRecord
 
 type dedicatedRecord struct {
-	dns.RecordSetName
+	dns.DNSSetName
 	Type  string
 	TTL   int
 	Value string
@@ -58,22 +58,22 @@ func (r *dedicatedRecord) GetDNSName() string { return r.DNSName }
 
 func (r *dedicatedRecord) GetTTL() int { return r.TTL }
 
-func FromDedicatedRecordSet(setName dns.RecordSetName, rs *dns.RecordSet) DedicatedRecordSet {
+func FromDedicatedRecordSet(setName dns.DNSSetName, rs *dns.RecordSet) DedicatedRecordSet {
 	recordset := DedicatedRecordSet{}
 	for _, r := range rs.Records {
 		recordset = append(recordset, &dedicatedRecord{
-			RecordSetName: setName,
-			Type:          rs.Type,
-			TTL:           int(rs.TTL),
-			Value:         r.Value,
+			DNSSetName: setName,
+			Type:       rs.Type,
+			TTL:        int(rs.TTL),
+			Value:      r.Value,
 		})
 	}
 	return recordset
 }
 
-func ToDedicatedRecordset(rawrs DedicatedRecordSet) (dns.RecordSetName, *dns.RecordSet) {
+func ToDedicatedRecordset(rawrs DedicatedRecordSet) (dns.DNSSetName, *dns.RecordSet) {
 	if len(rawrs) == 0 {
-		return dns.RecordSetName{}, nil
+		return dns.DNSSetName{}, nil
 	}
 	dnsName := rawrs[0].GetDNSName()
 	setIdentifier := rawrs[0].GetSetIdentifier()
@@ -83,7 +83,7 @@ func ToDedicatedRecordset(rawrs DedicatedRecordSet) (dns.RecordSetName, *dns.Rec
 	for _, r := range rawrs {
 		records = append(records, &dns.Record{Value: r.GetValue()})
 	}
-	return dns.RecordSetName{DNSName: dnsName, SetIdentifier: setIdentifier}, dns.NewRecordSet(rtype, ttl, records)
+	return dns.DNSSetName{DNSName: dnsName, SetIdentifier: setIdentifier}, dns.NewRecordSet(rtype, ttl, records)
 }
 
 func (rs DedicatedRecordSet) GetAttr(name string) string {

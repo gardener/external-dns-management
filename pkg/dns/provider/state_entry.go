@@ -411,9 +411,9 @@ func (this *state) checkAndUpdateLock(logger logger.LogContext, entry *Entry, pr
 		target := dnsutils.NewText(s, newTTL)
 		records = append(records, target.AsRecord())
 	}
-	newRS := FromDedicatedRecordSet(entry.RecordSetName(), dns.NewRecordSet(dns.RS_TXT, newTTL, records))
+	newRS := FromDedicatedRecordSet(entry.DNSSetName(), dns.NewRecordSet(dns.RS_TXT, newTTL, records))
 
-	rs, err := handler.GetRecordSet(zone, entry.RecordSetName(), dns.RS_TXT)
+	rs, err := handler.GetRecordSet(zone, entry.DNSSetName(), dns.RS_TXT)
 	if err != nil {
 		return reconcile.Delay(logger, err)
 	}
@@ -515,7 +515,7 @@ func (this *state) checkAndDeleteLock(logger logger.LogContext, entry *Entry, pr
 	handler := premise.provider.GetDedicatedDNSAccess()
 	zone := this.zones[entry.ZoneId()]
 
-	rs, err := handler.GetRecordSet(zone, entry.RecordSetName(), dns.RS_TXT)
+	rs, err := handler.GetRecordSet(zone, entry.DNSSetName(), dns.RS_TXT)
 	if err != nil {
 		return reconcile.Delay(logger, err)
 	}

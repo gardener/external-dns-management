@@ -57,13 +57,13 @@ func (this DNSSet) Clone() DNSSet {
 
 type ZoneState struct {
 	dnssets dns.DNSSets
-	records map[dns.RecordSetName]DNSSet
+	records map[dns.DNSSetName]DNSSet
 }
 
 var _ provider.DNSZoneState = &ZoneState{}
 
 func NewState() *ZoneState {
-	return &ZoneState{records: map[dns.RecordSetName]DNSSet{}}
+	return &ZoneState{records: map[dns.DNSSetName]DNSSet{}}
 }
 
 func (this *ZoneState) GetDNSSets() dns.DNSSets {
@@ -73,7 +73,7 @@ func (this *ZoneState) GetDNSSets() dns.DNSSets {
 func (this *ZoneState) Clone() provider.DNSZoneState {
 	clone := NewState()
 	clone.dnssets = this.dnssets.Clone()
-	clone.records = map[dns.RecordSetName]DNSSet{}
+	clone.records = map[dns.DNSSetName]DNSSet{}
 	for k, v := range this.records {
 		clone.records[k] = v.Clone()
 	}
@@ -82,7 +82,7 @@ func (this *ZoneState) Clone() provider.DNSZoneState {
 
 func (this *ZoneState) AddRecord(r Record) {
 	if dns.SupportedRecordType(r.GetType()) {
-		name := dns.RecordSetName{DNSName: r.GetDNSName(), SetIdentifier: r.GetSetIdentifier()}
+		name := dns.DNSSetName{DNSName: r.GetDNSName(), SetIdentifier: r.GetSetIdentifier()}
 		t := r.GetType()
 		e := this.records[name]
 		if e == nil {
@@ -93,7 +93,7 @@ func (this *ZoneState) AddRecord(r Record) {
 	}
 }
 
-func (this *ZoneState) GetRecord(dnsname dns.RecordSetName, rtype, value string) Record {
+func (this *ZoneState) GetRecord(dnsname dns.DNSSetName, rtype, value string) Record {
 	e := this.records[dnsname]
 	if e != nil {
 		for _, r := range e[rtype] {

@@ -30,26 +30,26 @@ func MarshalDNSSets(local dns.DNSSets, protocolVersion int32) common.DNSSets {
 	for name, dnsset := range local {
 		if name.SetIdentifier == "" || protocolVersion == common.ProtocolVersion1 {
 			// don't return recordsets with routing policy for protocol version 0
-			result[marshalRecordSetName(name)] = MarshalDNSSet(dnsset)
+			result[marshalDNSSetName(name)] = MarshalDNSSet(dnsset)
 		}
 	}
 	return result
 }
 
-func marshalRecordSetName(name dns.RecordSetName) string {
+func marshalDNSSetName(name dns.DNSSetName) string {
 	if name.SetIdentifier == "" {
 		return name.DNSName
 	}
 	return name.DNSName + "\t" + name.SetIdentifier
 }
 
-func unmarshalRecordSetName(marshalledName string) dns.RecordSetName {
+func unmarshalDNSSetName(marshalledName string) dns.DNSSetName {
 	parts := strings.Split(marshalledName, "\t")
 	setIdentifier := ""
 	if len(parts) == 2 {
 		setIdentifier = parts[1]
 	}
-	return dns.RecordSetName{DNSName: parts[0], SetIdentifier: setIdentifier}
+	return dns.DNSSetName{DNSName: parts[0], SetIdentifier: setIdentifier}
 }
 
 func MarshalDNSSet(local *dns.DNSSet) *common.DNSSet {
@@ -104,13 +104,13 @@ func MarshalPartialDNSSet(local *dns.DNSSet, recordType string) *common.PartialD
 func UnmarshalDNSSets(remote common.DNSSets) dns.DNSSets {
 	local := dns.DNSSets{}
 	for name, set := range remote {
-		local[unmarshalRecordSetName(name)] = UnmarshalDNSSet(set)
+		local[unmarshalDNSSetName(name)] = UnmarshalDNSSet(set)
 	}
 	return local
 }
 
 func UnmarshalDNSSet(remote *common.DNSSet) *dns.DNSSet {
-	local := dns.NewDNSSet(dns.RecordSetName{DNSName: remote.DnsName, SetIdentifier: remote.SetIdentifier})
+	local := dns.NewDNSSet(dns.DNSSetName{DNSName: remote.DnsName, SetIdentifier: remote.SetIdentifier})
 	local.UpdateGroup = remote.UpdateGroup
 
 	for typ, rs := range remote.Records {
@@ -143,7 +143,7 @@ func UnmarshalRoutingPolicy(policy *common.RecordSet_RoutingPolicy) *dns.Routing
 }
 
 func UnmarshalPartialDNSSet(remote *common.PartialDNSSet) *dns.DNSSet {
-	local := dns.NewDNSSet(dns.RecordSetName{DNSName: remote.DnsName, SetIdentifier: remote.SetIdentifier})
+	local := dns.NewDNSSet(dns.DNSSetName{DNSName: remote.DnsName, SetIdentifier: remote.SetIdentifier})
 	local.UpdateGroup = remote.UpdateGroup
 
 	local.Sets[remote.RecordType] = UnmarshalRecordSet(remote.RecordSet)

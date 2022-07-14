@@ -18,67 +18,67 @@ package dns
 
 import "github.com/gardener/controller-manager-library/pkg/utils"
 
-type RecordSetName struct {
+type DNSSetName struct {
 	// domain name of the record
 	DNSName string
 	// optional set identifier (used for record with routing policy)
 	SetIdentifier string
 }
 
-func (n RecordSetName) WithDNSName(dnsName string) RecordSetName {
-	return RecordSetName{DNSName: dnsName, SetIdentifier: n.SetIdentifier}
+func (n DNSSetName) WithDNSName(dnsName string) DNSSetName {
+	return DNSSetName{DNSName: dnsName, SetIdentifier: n.SetIdentifier}
 }
 
-func (n RecordSetName) String() string {
+func (n DNSSetName) String() string {
 	if n.SetIdentifier == "" {
 		return n.DNSName
 	}
 	return n.DNSName + "#" + n.SetIdentifier
 }
 
-func (n RecordSetName) Align() RecordSetName {
+func (n DNSSetName) Align() DNSSetName {
 	return n.WithDNSName(AlignHostname(n.DNSName))
 }
 
-func (n RecordSetName) Normalize() RecordSetName {
+func (n DNSSetName) Normalize() DNSSetName {
 	return n.WithDNSName(NormalizeHostname(n.DNSName))
 }
 
-type RecordSetNameSet map[RecordSetName]struct{}
+type DNSNameSet map[DNSSetName]struct{}
 
-func NewRecordNameSet(names ...RecordSetName) RecordSetNameSet {
-	set := RecordSetNameSet{}
+func NewDNSNameSet(names ...DNSSetName) DNSNameSet {
+	set := DNSNameSet{}
 	set.AddAll(names...)
 	return set
 }
 
-func (s RecordSetNameSet) AddAll(names ...RecordSetName) {
+func (s DNSNameSet) AddAll(names ...DNSSetName) {
 	for _, name := range names {
 		s.Add(name)
 	}
 }
 
-func (s RecordSetNameSet) Add(name RecordSetName) {
+func (s DNSNameSet) Add(name DNSSetName) {
 	s[name] = struct{}{}
 }
 
-func (s RecordSetNameSet) Contains(name RecordSetName) bool {
+func (s DNSNameSet) Contains(name DNSSetName) bool {
 	_, ok := s[name]
 	return ok
 }
 
-func (s RecordSetNameSet) IsEmpty() bool {
+func (s DNSNameSet) IsEmpty() bool {
 	return len(s) == 0
 }
 
-func (s RecordSetNameSet) Remove(name RecordSetName) {
+func (s DNSNameSet) Remove(name DNSSetName) {
 	delete(s, name)
 }
 
-func NewRecordSetNameSetFromStringSet(dnsNames utils.StringSet, setIdentifier string) RecordSetNameSet {
-	set := RecordSetNameSet{}
+func NewDNSNameSetFromStringSet(dnsNames utils.StringSet, setIdentifier string) DNSNameSet {
+	set := DNSNameSet{}
 	for dnsname := range dnsNames {
-		set.Add(RecordSetName{
+		set.Add(DNSSetName{
 			DNSName:       dnsname,
 			SetIdentifier: setIdentifier,
 		})

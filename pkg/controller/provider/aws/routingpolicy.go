@@ -25,7 +25,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
-func addRoutingPolicy(rrset *route53.ResourceRecordSet, name dns.RecordSetName, routingPolicy *dns.RoutingPolicy) error {
+func addRoutingPolicy(rrset *route53.ResourceRecordSet, name dns.DNSSetName, routingPolicy *dns.RoutingPolicy) error {
 	if name.SetIdentifier == "" && routingPolicy == nil {
 		return nil
 	}

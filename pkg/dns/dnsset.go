@@ -53,7 +53,7 @@ import (
 // or writing a record set, respectively. The map the given set to
 // an effective set and dns name for the desired purpose.
 
-type DNSSets map[RecordSetName]*DNSSet
+type DNSSets map[DNSSetName]*DNSSet
 
 type Ownership interface {
 	IsResponsibleFor(id string) bool
@@ -61,17 +61,17 @@ type Ownership interface {
 }
 
 func (dnssets DNSSets) AddRecordSetFromProvider(dnsName string, rs *RecordSet) {
-	dnssets.AddRecordSetFromProviderEx(RecordSetName{DNSName: dnsName}, rs)
+	dnssets.AddRecordSetFromProviderEx(DNSSetName{DNSName: dnsName}, rs)
 }
 
-func (dnssets DNSSets) AddRecordSetFromProviderEx(rsName RecordSetName, rs *RecordSet) {
+func (dnssets DNSSets) AddRecordSetFromProviderEx(rsName DNSSetName, rs *RecordSet) {
 	name := rsName.Normalize()
 	name, rs = MapFromProvider(name, rs)
 
 	dnssets.AddRecordSet(name, rs)
 }
 
-func (dnssets DNSSets) AddRecordSet(name RecordSetName, rs *RecordSet) {
+func (dnssets DNSSets) AddRecordSet(name DNSSetName, rs *RecordSet) {
 	dnsset := dnssets[name]
 	if dnsset == nil {
 		dnsset = NewDNSSet(name)
@@ -80,7 +80,7 @@ func (dnssets DNSSets) AddRecordSet(name RecordSetName, rs *RecordSet) {
 	dnsset.Sets[rs.Type] = rs
 }
 
-func (dnssets DNSSets) RemoveRecordSet(name RecordSetName, recordSetType string) {
+func (dnssets DNSSets) RemoveRecordSet(name DNSSetName, recordSetType string) {
 	dnsset := dnssets[name]
 	if dnsset != nil {
 		delete(dnsset.Sets, recordSetType)
@@ -121,7 +121,7 @@ const (
 )
 
 type DNSSet struct {
-	Name        RecordSetName
+	Name        DNSSetName
 	Kind        string
 	UpdateGroup string
 	Sets        RecordSets
@@ -229,6 +229,6 @@ func (this *DNSSet) SetRecordSet(rtype string, ttl int64, routingPolicy *Routing
 	this.Sets[rtype] = &RecordSet{Type: rtype, TTL: ttl, IgnoreTTL: false, RoutingPolicy: routingPolicy, Records: records}
 }
 
-func NewDNSSet(name RecordSetName) *DNSSet {
+func NewDNSSet(name DNSSetName) *DNSSet {
 	return &DNSSet{Name: name, Sets: map[string]*RecordSet{}}
 }

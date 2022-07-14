@@ -792,7 +792,7 @@ func (te *TestEnv) MockInMemoryGetDNSSetEx(name, zonePrefix, dnsName string) (*d
 			if err != nil {
 				return nil, err
 			}
-			if set := state.GetDNSSets()[dns.RecordSetName{DNSName: dnsName}]; set != nil {
+			if set := state.GetDNSSets()[dns.DNSSetName{DNSName: dnsName}]; set != nil {
 				return set, nil
 			}
 		}

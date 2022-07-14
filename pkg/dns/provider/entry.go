@@ -81,7 +81,7 @@ func (this *EntryPremise) NotifyChange(p *EntryPremise) string {
 type EntryVersion struct {
 	object        dnsutils.DNSSpecification
 	providername  resources.ObjectName
-	rsname        dns.RecordSetName
+	rsname        dns.DNSSetName
 	targets       Targets
 	routingPolicy *dns.RoutingPolicy
 	mappings      map[string][]string
@@ -99,7 +99,7 @@ type EntryVersion struct {
 func NewEntryVersion(object dnsutils.DNSSpecification, old *Entry) *EntryVersion {
 	v := &EntryVersion{
 		object:   object,
-		rsname:   dns.RecordSetName{DNSName: object.GetDNSName(), SetIdentifier: object.GetSetIdentifier()},
+		rsname:   dns.DNSSetName{DNSName: object.GetDNSName(), SetIdentifier: object.GetSetIdentifier()},
 		targets:  Targets{},
 		mappings: map[string][]string{},
 	}
@@ -201,12 +201,12 @@ func (this *EntryVersion) SetIdentifier() string {
 	return this.rsname.SetIdentifier
 }
 
-func (this *EntryVersion) RecordSetName() dns.RecordSetName {
+func (this *EntryVersion) DNSSetName() dns.DNSSetName {
 	return this.rsname
 }
 
-func (this *EntryVersion) ZonedDNSName() ZonedRecordSetName {
-	return ZonedRecordSetName{ZoneID: this.ZoneId(), RecordSetName: this.rsname}
+func (this *EntryVersion) ZonedDNSName() ZonedDNSSetName {
+	return ZonedDNSSetName{ZoneID: this.ZoneId(), DNSSetName: this.rsname}
 }
 
 func (this *EntryVersion) Targets() Targets {

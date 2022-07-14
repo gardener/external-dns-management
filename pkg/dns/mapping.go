@@ -48,7 +48,7 @@ func MapToProvider(rtype string, dnsset *DNSSet, base string) (string, *RecordSe
 	return rsName.DNSName, rs
 }
 
-func MapToProviderEx(rtype string, dnsset *DNSSet, base string, policy *RoutingPolicy) (RecordSetName, *RecordSet) {
+func MapToProviderEx(rtype string, dnsset *DNSSet, base string, policy *RoutingPolicy) (DNSSetName, *RecordSet) {
 	dnsName := dnsset.Name.DNSName
 	rs := dnsset.Sets[rtype]
 	if rtype == RS_META {
@@ -83,7 +83,7 @@ func CalcMetaRecordDomainNameForValidation(name string) string {
 	return calcMetaRecordDomainName(name, TxtPrefix, "")
 }
 
-func MapFromProvider(name RecordSetName, rs *RecordSet) (RecordSetName, *RecordSet) {
+func MapFromProvider(name DNSSetName, rs *RecordSet) (DNSSetName, *RecordSet) {
 	dns := name.DNSName
 	if rs.Type == RS_TXT {
 		prefix := rs.GetAttr(ATTR_PREFIX)

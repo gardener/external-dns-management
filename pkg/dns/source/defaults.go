@@ -93,7 +93,7 @@ func (this *DefaultDNSSource) CreateDNSFeedback(obj resources.Object) DNSFeedbac
 
 func (this *DefaultDNSSource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (*DNSInfo, error) {
 	info := &DNSInfo{}
-	info.Names = dns.NewRecordSetNameSetFromStringSet(current.AnnotatedNames, current.SetIdentifier())
+	info.Names = dns.NewDNSNameSetFromStringSet(current.AnnotatedNames, current.SetIdentifier())
 	tgts, txts, err := this.handler(logger, obj, info.Names)
 	info.Targets = tgts
 	info.Text = txts

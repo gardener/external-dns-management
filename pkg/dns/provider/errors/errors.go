@@ -34,7 +34,7 @@ func (e *AlreadyBusyForEntry) Error() string {
 }
 
 type AlreadyBusyForOwner struct {
-	Name           dns.RecordSetName
+	Name           dns.DNSSetName
 	EntryCreatedAt time.Time
 	Owner          string
 }

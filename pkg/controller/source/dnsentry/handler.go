@@ -56,11 +56,11 @@ func (this *DNSEntrySource) CreateDNSFeedback(obj resources.Object) source.DNSFe
 
 func (this *DNSEntrySource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
 	entryObject := dnsutils.DNSEntry(obj)
-	name := entryObject.RecordSetName()
+	name := entryObject.DNSSetName()
 	data := entryObject.DNSEntry()
 
 	info := &source.DNSInfo{
-		Names:         dns.NewRecordNameSet(name),
+		Names:         dns.NewDNSNameSet(name),
 		Targets:       utils.NewStringSetByArray(data.Spec.Targets),
 		Text:          utils.NewStringSetByArray(data.Spec.Text),
 		OrigRef:       data.Spec.Reference,

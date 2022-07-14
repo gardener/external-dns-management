@@ -29,7 +29,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
-func (this *sourceReconciler) exclude(name dns.RecordSetName) bool {
+func (this *sourceReconciler) exclude(name dns.DNSSetName) bool {
 	if this.excluded.Contains(name.DNSName) {
 		return true
 	}

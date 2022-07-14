@@ -323,9 +323,9 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 	}
 
 	stdMeta := buildRecordSet("META", 600, "\"owner=test\"", "\"prefix=comment-\"")
-	sub1 := dns.RecordSetName{DNSName: "sub1.z1.test"}
-	sub2 := dns.RecordSetName{DNSName: "sub2.z1.test"}
-	sub3 := dns.RecordSetName{DNSName: "sub3.z1.test"}
+	sub1 := dns.DNSSetName{DNSName: "sub1.z1.test"}
+	sub2 := dns.DNSSetName{DNSName: "sub2.z1.test"}
+	sub3 := dns.DNSSetName{DNSName: "sub3.z1.test"}
 	expectedDnssets := dns.DNSSets{
 		sub1: &dns.DNSSet{
 			Name: sub1,
@@ -341,7 +341,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 				"META":  stdMeta,
 			},
 		},
-		dns.RecordSetName{DNSName: "sub3.z1.test"}: &dns.DNSSet{
+		dns.DNSSetName{DNSName: "sub3.z1.test"}: &dns.DNSSet{
 			Name: sub3,
 			Sets: dns.RecordSets{
 				"TXT": buildRecordSet("TXT", 303, "foo", "bar"),
@@ -355,7 +355,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 	Ω(actualDnssets).Should(Equal(expectedDnssets))
 
 	tlog := logger.New()
-	sub4 := dns.RecordSetName{DNSName: "sub4.z1.test"}
+	sub4 := dns.DNSSetName{DNSName: "sub4.z1.test"}
 	reqs := []*provider.ChangeRequest{
 		{
 			Action: provider.R_CREATE,

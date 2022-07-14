@@ -44,7 +44,7 @@ type Execution struct {
 	rateLimiter flowcontrol.RateLimiter
 	zone        provider.DNSHostedZone
 
-	changes   map[dns.RecordSetName][]*Change
+	changes   map[dns.DNSSetName][]*Change
 	batchSize int
 }
 
@@ -54,12 +54,12 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 		r53:         h.r53,
 		rateLimiter: h.config.RateLimiter,
 		zone:        zone,
-		changes:     map[dns.RecordSetName][]*Change{},
+		changes:     map[dns.DNSSetName][]*Change{},
 		batchSize:   h.awsConfig.BatchSize,
 	}
 }
 
-func buildResourceRecordSet(name dns.RecordSetName, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
+func buildResourceRecordSet(name dns.DNSSetName, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
 	rrs := &route53.ResourceRecordSet{}
 	rrs.Name = aws.String(name.DNSName)
 	rrs.Type = aws.String(rset.Type)
@@ -101,7 +101,7 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 	return nil
 }
 
-func (this *Execution) addRawChange(name dns.RecordSetName, updateGroup string, change *route53.Change, done provider.DoneHandler) {
+func (this *Execution) addRawChange(name dns.DNSSetName, updateGroup string, change *route53.Change, done provider.DoneHandler) {
 	this.changes[name] = append(this.changes[name], &Change{Change: change, Done: done, UpdateGroup: updateGroup})
 }
 
@@ -258,7 +258,7 @@ func safeCompareInt64(a, b *int64) bool {
 	return *a == *b
 }
 
-func limitChangeSet(changesByName map[dns.RecordSetName][]*Change, max int) [][]*Change {
+func limitChangeSet(changesByName map[dns.DNSSetName][]*Change, max int) [][]*Change {
 	batches := [][]*Change{}
 
 	updateChanges := map[string][]*Change{}

@@ -50,7 +50,7 @@ type Execution struct {
 	updates   RecordSet
 	deletions RecordSet
 
-	results map[dns.RecordSetName]*result
+	results map[dns.DNSSetName]*result
 }
 
 func NewExecution(logger logger.LogContext, e Executor, state *ZoneState, zone provider.DNSHostedZone) *Execution {
@@ -60,7 +60,7 @@ func NewExecution(logger logger.LogContext, e Executor, state *ZoneState, zone p
 		zone:       zone,
 		state:      state,
 		domain:     zone.Domain(),
-		results:    map[dns.RecordSetName]*result{},
+		results:    map[dns.DNSSetName]*result{},
 		additions:  RecordSet{},
 		updates:    RecordSet{},
 		deletions:  RecordSet{},
@@ -68,7 +68,7 @@ func NewExecution(logger logger.LogContext, e Executor, state *ZoneState, zone p
 }
 
 func (this *Execution) AddChange(req *provider.ChangeRequest) {
-	var name dns.RecordSetName
+	var name dns.DNSSetName
 	var newset, oldset *dns.RecordSet
 
 	if req.Addition != nil {
@@ -116,7 +116,7 @@ func (this *Execution) AddChange(req *provider.ChangeRequest) {
 	}
 }
 
-func (this *Execution) add(name dns.RecordSetName, rset *dns.RecordSet, modonly bool, found *RecordSet, notfound *RecordSet) {
+func (this *Execution) add(name dns.DNSSetName, rset *dns.RecordSet, modonly bool, found *RecordSet, notfound *RecordSet) {
 	rtype := rset.Type
 	for _, r := range rset.Records {
 		old := this.state.GetRecord(name, rtype, r.Value)
@@ -184,7 +184,7 @@ func (this *Execution) SubmitChanges() error {
 func (this *Execution) submit(f func(record Record, zone provider.DNSHostedZone) error, r Record) {
 	err := f(r, this.zone)
 	if err != nil {
-		res := this.results[dns.RecordSetName{DNSName: r.GetDNSName(), SetIdentifier: r.GetSetIdentifier()}]
+		res := this.results[dns.DNSSetName{DNSName: r.GetDNSName(), SetIdentifier: r.GetSetIdentifier()}]
 		if res != nil {
 			res.err = err
 			this.Infof("operation failed for %s %s: %s", r.GetType(), r.GetDNSName(), err)

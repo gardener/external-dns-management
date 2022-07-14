@@ -111,7 +111,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 				if model.ExistsInEquivalentZone(s.Name) {
 					continue
 				}
-				if e := model.IsStale(ZonedRecordSetName{ZoneID: model.ZoneId(), RecordSetName: s.Name}); e != nil {
+				if e := model.IsStale(ZonedDNSSetName{ZoneID: model.ZoneId(), DNSSetName: s.Name}); e != nil {
 					if e.IsDeleting() {
 						model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
 					}
@@ -191,11 +191,11 @@ type ChangeModel struct {
 	config         Config
 	ownership      dns.Ownership
 	context        *zoneReconciliation
-	applied        map[dns.RecordSetName]*dns.DNSSet
+	applied        map[dns.DNSSetName]*dns.DNSSet
 	dangling       *ChangeGroup
 	providergroups map[string]*ChangeGroup
 	zonestate      DNSZoneState
-	failedDNSNames dns.RecordSetNameSet
+	failedDNSNames dns.DNSNameSet
 }
 
 type ChangeResult struct {
@@ -210,17 +210,17 @@ func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zone
 		config:         config,
 		ownership:      ownership,
 		context:        req,
-		applied:        map[dns.RecordSetName]*dns.DNSSet{},
+		applied:        map[dns.DNSSetName]*dns.DNSSet{},
 		providergroups: map[string]*ChangeGroup{},
-		failedDNSNames: dns.RecordSetNameSet{},
+		failedDNSNames: dns.DNSNameSet{},
 	}
 }
 
-func (this *ChangeModel) IsStale(dns ZonedRecordSetName) *Entry {
+func (this *ChangeModel) IsStale(dns ZonedDNSSetName) *Entry {
 	return this.context.stale[dns]
 }
 
-func (this *ChangeModel) ExistsInEquivalentZone(name dns.RecordSetName) bool {
+func (this *ChangeModel) ExistsInEquivalentZone(name dns.DNSSetName) bool {
 	return this.context.equivEntries != nil && this.context.equivEntries.Contains(name)
 }
 
@@ -293,20 +293,20 @@ func (this *ChangeModel) Setup() error {
 	return err
 }
 
-func (this *ChangeModel) Check(name dns.RecordSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Check(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(false, false, name, updateGroup, createdAt, done, spec)
 }
-func (this *ChangeModel) Apply(name dns.RecordSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Apply(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, false, name, updateGroup, createdAt, done, spec)
 }
-func (this *ChangeModel) Delete(name dns.RecordSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Delete(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, true, name, updateGroup, createdAt, done, spec)
 }
-func (this *ChangeModel) PseudoApply(name dns.RecordSetName) {
+func (this *ChangeModel) PseudoApply(name dns.DNSSetName) {
 	this.applied[name] = dns.NewDNSSet(name)
 }
 
-func (this *ChangeModel) Exec(apply bool, delete bool, name dns.RecordSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Exec(apply bool, delete bool, name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	//this.Infof("%s: %v", name, targets)
 	if len(spec.Targets()) == 0 && !delete {
 		return ChangeResult{}
@@ -445,11 +445,11 @@ func (this *ChangeModel) Update(logger logger.LogContext) error {
 	return nil
 }
 
-func (this *ChangeModel) IsFailed(name dns.RecordSetName) bool {
+func (this *ChangeModel) IsFailed(name dns.DNSSetName) bool {
 	return this.failedDNSNames.Contains(name)
 }
 
-func (this *ChangeModel) wrappedDoneHandler(rsName dns.RecordSetName, done DoneHandler) DoneHandler {
+func (this *ChangeModel) wrappedDoneHandler(rsName dns.DNSSetName, done DoneHandler) DoneHandler {
 	return &changeModelDoneHandler{
 		changeModel: this,
 		inner:       done,
@@ -463,7 +463,7 @@ func (this *ChangeModel) wrappedDoneHandler(rsName dns.RecordSetName, done DoneH
 type changeModelDoneHandler struct {
 	changeModel *ChangeModel
 	inner       DoneHandler
-	rsName      dns.RecordSetName
+	rsName      dns.DNSSetName
 }
 
 func (this *changeModelDoneHandler) SetInvalid(err error) {

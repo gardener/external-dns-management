@@ -98,7 +98,7 @@ func buildRecordSetFromAliasTarget(r *route53.ResourceRecordSet) *dns.RecordSet 
 	return rs
 }
 
-func buildResourceRecordSetForAliasTarget(name dns.RecordSetName, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
+func buildResourceRecordSetForAliasTarget(name dns.DNSSetName, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
 	target := dns.NormalizeHostname(rset.Records[0].Value)
 	hostedZone := canonicalHostedZone(target)
 	if hostedZone == "" {

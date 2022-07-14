@@ -38,9 +38,9 @@ func TestMarshalDNSSets(t *testing.T) {
 		Type:       "weighted",
 		Parameters: map[string]string{"weight": "2"},
 	}
-	sets1.AddRecordSet(dns.RecordSetName{DNSName: "b.a"}, rsb)
-	sets1.AddRecordSet(dns.RecordSetName{DNSName: "c.a", SetIdentifier: "id1"}, rsc1)
-	sets1.AddRecordSet(dns.RecordSetName{DNSName: "c.a", SetIdentifier: "id2"}, rsc2)
+	sets1.AddRecordSet(dns.DNSSetName{DNSName: "b.a"}, rsb)
+	sets1.AddRecordSet(dns.DNSSetName{DNSName: "c.a", SetIdentifier: "id1"}, rsc1)
+	sets1.AddRecordSet(dns.DNSSetName{DNSName: "c.a", SetIdentifier: "id2"}, rsc2)
 	table := []struct {
 		name                 string
 		sets                 dns.DNSSets
@@ -86,7 +86,7 @@ func doTestMarshalChangeRequest(t *testing.T, withPolicy bool) {
 			Parameters: map[string]string{"weight": "100"},
 		}
 	}
-	set := dns.NewDNSSet(dns.RecordSetName{DNSName: "b.a", SetIdentifier: setIdentifier})
+	set := dns.NewDNSSet(dns.DNSSetName{DNSName: "b.a", SetIdentifier: setIdentifier})
 	set.UpdateGroup = "group1"
 	set.SetMetaAttr(dns.ATTR_OWNER, "owner1", routingPolicy)
 	set.SetMetaAttr(dns.ATTR_PREFIX, "comment-", routingPolicy)

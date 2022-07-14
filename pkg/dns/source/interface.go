@@ -30,7 +30,7 @@ import (
 )
 
 type DNSInfo struct {
-	Names         dns.RecordSetNameSet
+	Names         dns.DNSNameSet
 	TTL           *int64
 	Interval      *int64
 	Targets       utils.StringSet
@@ -66,7 +66,7 @@ type DNSSourceType interface {
 	Create(controller.Interface) (DNSSource, error)
 }
 
-type DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, names dns.RecordSetNameSet) (targets utils.StringSet, texts utils.StringSet, err error)
+type DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, names dns.DNSNameSet) (targets utils.StringSet, texts utils.StringSet, err error)
 type DNSSourceCreator func(controller.Interface) (DNSSource, error)
 
 type DNSState struct {
@@ -75,7 +75,7 @@ type DNSState struct {
 }
 
 type DNSCurrentState struct {
-	Names                  map[dns.RecordSetName]*DNSState
+	Names                  map[dns.DNSSetName]*DNSState
 	Targets                utils.StringSet
 	AnnotatedNames         utils.StringSet
 	AnnotatedRoutingPolicy *v1alpha1.RoutingPolicy

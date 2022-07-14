@@ -140,19 +140,19 @@ func (this *DNSEntryObject) GetTargetSpec(p TargetProvider) TargetSpec {
 	return BaseTargetSpec(this, p)
 }
 
-func (this *DNSEntryObject) RecordSetName() dns.RecordSetName {
+func (this *DNSEntryObject) DNSSetName() dns.DNSSetName {
 	setIdentifier := ""
 	if this.Spec().RoutingPolicy != nil {
 		setIdentifier = this.Spec().RoutingPolicy.SetIdentifier
 	}
-	return dns.RecordSetName{
+	return dns.DNSSetName{
 		DNSName:       this.GetDNSName(),
 		SetIdentifier: setIdentifier,
 	}
 }
 
-func RecordSetNameMatcher(name dns.RecordSetName) resources.ObjectMatcher {
+func DNSSetNameMatcher(name dns.DNSSetName) resources.ObjectMatcher {
 	return func(o resources.Object) bool {
-		return DNSEntry(o).RecordSetName() == name
+		return DNSEntry(o).DNSSetName() == name
 	}
 }

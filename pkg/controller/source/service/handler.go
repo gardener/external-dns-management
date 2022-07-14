@@ -29,7 +29,7 @@ import (
 // FakeTargetIP provides target for testing without load balancer
 var FakeTargetIP *string
 
-func GetTargets(logger logger.LogContext, obj resources.Object, names dns.RecordSetNameSet) (utils.StringSet, utils.StringSet, error) {
+func GetTargets(logger logger.LogContext, obj resources.Object, names dns.DNSNameSet) (utils.StringSet, utils.StringSet, error) {
 	svc := obj.Data().(*api.Service)
 	if svc.Spec.Type != api.ServiceTypeLoadBalancer {
 		if len(names) == 0 {

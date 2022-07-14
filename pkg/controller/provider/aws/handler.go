@@ -218,7 +218,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 			} else {
 				rs = buildRecordSet(r)
 			}
-			dnssets.AddRecordSetFromProviderEx(dns.RecordSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}, rs)
+			dnssets.AddRecordSetFromProviderEx(dns.DNSSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}, rs)
 		}
 	}
 	forwarded, err := h.handleRecordSets(zone, aggr)
@@ -388,7 +388,7 @@ func (h *Handler) DeleteVPCAssociationAuthorization(hostedZoneId string, vpcId s
 	return out, nil
 }
 
-func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, rsName dns.RecordSetName, recordType string) (provider.DedicatedRecordSet, error) {
+func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, rsName dns.DNSSetName, recordType string) (provider.DedicatedRecordSet, error) {
 	name := rsName.Align()
 	var recordIdentifier *string
 	if rsName.SetIdentifier != "" {
@@ -414,7 +414,7 @@ func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, rsName dns.RecordSet
 			} else {
 				rs = buildRecordSet(r)
 			}
-			rsName := dns.RecordSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}
+			rsName := dns.DNSSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}
 			dnssets.AddRecordSetFromProviderEx(rsName, rs)
 		}
 	}

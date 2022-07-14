@@ -121,7 +121,7 @@ func (m *InMemory) Apply(zoneID dns.ZoneID, request *ChangeRequest, metrics Metr
 	return nil
 }
 
-func buildRecordSet(req *ChangeRequest) (dns.RecordSetName, *dns.RecordSet) {
+func buildRecordSet(req *ChangeRequest) (dns.DNSSetName, *dns.RecordSet) {
 	var dnsset *dns.DNSSet
 	switch req.Action {
 	case R_CREATE, R_UPDATE:
