@@ -17,6 +17,9 @@
 package integration
 
 import (
+	"encoding/base64"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -24,6 +27,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/client-go/rest"
+
+	"sigs.k8s.io/controller-runtime/pkg/envtest"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
@@ -35,6 +41,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
+var controllerRuntimeTestEnv *envtest.Environment
 var testEnv *TestEnv
 var testEnv2 *TestEnv
 var testCerts *certFileAndSecret
@@ -50,17 +57,22 @@ func TestIntegration(t *testing.T) {
 var _ = BeforeSuite(func() {
 	var err error
 
-	kubeconfig := os.Getenv("KUBECONFIG")
-	Ω(kubeconfig).ShouldNot(Equal(""))
+	controllerRuntimeTestEnv = &envtest.Environment{}
+	restConfig, err := controllerRuntimeTestEnv.Start()
+	Expect(err).ToNot(HaveOccurred())
+	Expect(restConfig).ToNot(BeNil())
 
-	testEnv, err = NewTestEnv(kubeconfig, "test")
+	kubeconfigFile := createKubeconfigFile(restConfig)
+	os.Setenv("KUBECONFIG", kubeconfigFile)
+
+	testEnv, err = NewTestEnv(kubeconfigFile, "test")
 	Ω(err).Should(BeNil())
 
 	testCerts, err = newCertFileAndSecret(testEnv)
 	Ω(err).Should(BeNil())
 
 	args := []string{
-		"--kubeconfig", kubeconfig,
+		"--kubeconfig", kubeconfigFile,
 		"--identifier", "integrationtest",
 		"--controllers", "dnscontrollers,dnssources",
 		"--remote-access-port", "50051",
@@ -81,6 +93,9 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
+	if controllerRuntimeTestEnv != nil {
+		_ = controllerRuntimeTestEnv.Stop()
+	}
 	if testCerts != nil {
 		testCerts.cleanup()
 	}
@@ -88,3 +103,33 @@ var _ = AfterSuite(func() {
 		testEnv.Infof("AfterSuite")
 	}
 })
+
+func createKubeconfigFile(cfg *rest.Config) string {
+	template := `apiVersion: v1
+kind: Config
+clusters:
+  - name: testenv
+    cluster:
+      server: '%s'
+      certificate-authority-data: %s
+contexts:
+  - name: testenv
+    context:
+      cluster: testenv
+      user: testuser
+current-context: testenv
+users:
+  - name: testuser
+    user:
+      client-certificate-data: %s
+      client-key-data: %s`
+
+	tmpfile, err := ioutil.TempFile("", "kubeconfig-integration-suite-test")
+	Expect(err).NotTo(HaveOccurred())
+	_, err = fmt.Fprintf(tmpfile, template, cfg.Host, base64.StdEncoding.EncodeToString(cfg.CAData),
+		base64.StdEncoding.EncodeToString(cfg.CertData), base64.StdEncoding.EncodeToString(cfg.KeyData))
+	Expect(err).NotTo(HaveOccurred())
+	err = tmpfile.Close()
+	Expect(err).NotTo(HaveOccurred())
+	return tmpfile.Name()
+}

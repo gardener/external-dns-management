@@ -77,21 +77,28 @@ func PrintConfigEnv() {
 }
 
 type ProviderConfig struct {
-	Name               string `json:"name"`
-	Type               string `json:"type"`
-	FinalizerType      string `json:"finalizerType,omitempty"`
-	Domain             string `json:"domain"`
-	ForeignDomain      string `json:"foreignDomain,omitempty"`
-	SecretData         string `json:"secretData"`
-	Prefix             string `json:"prefix"`
-	AliasTarget        string `json:"aliasTarget,omitempty"`
-	ZoneID             string `json:"zoneID"`
-	PrivateDNS         bool   `json:"privateDNS,omitempty"`
-	TTL                string `json:"ttl,omitempty"`
-	SpecProviderConfig string `json:"providerConfig,omitempty"`
+	Name               string                              `json:"name"`
+	Type               string                              `json:"type"`
+	FinalizerType      string                              `json:"finalizerType,omitempty"`
+	Domain             string                              `json:"domain"`
+	ForeignDomain      string                              `json:"foreignDomain,omitempty"`
+	SecretData         string                              `json:"secretData"`
+	Prefix             string                              `json:"prefix"`
+	AliasTarget        string                              `json:"aliasTarget,omitempty"`
+	ZoneID             string                              `json:"zoneID"`
+	PrivateDNS         bool                                `json:"privateDNS,omitempty"`
+	TTL                string                              `json:"ttl,omitempty"`
+	SpecProviderConfig string                              `json:"providerConfig,omitempty"`
+	RoutingPolicySets  map[string]map[string]RoutingPolicy `json:"routingPolicySets,omitempty"`
 
 	Namespace           string
 	TmpManifestFilename string
+}
+
+type RoutingPolicy struct {
+	Type       string            `json:"type"`
+	Parameters map[string]string `json:"parameters"`
+	Targets    []string          `json:"targets"`
 }
 
 type Config struct {
@@ -188,9 +195,9 @@ func (p *ProviderConfig) TTLValue() int {
 	return i
 }
 
-func (p *ProviderConfig) CreateTempManifest(basePath string, manifestTemplate *template.Template) error {
+func (p *ProviderConfig) CreateTempManifest(basePath, testName string, manifestTemplate *template.Template) error {
 	p.TmpManifestFilename = ""
-	filename := fmt.Sprintf("%s/tmp-%s.yaml", basePath, p.Name)
+	filename := fmt.Sprintf("%s/tmp-%s-%s.yaml", basePath, p.Name, testName)
 	f, err := os.Create(filename)
 	if err != nil {
 		return err

@@ -26,9 +26,6 @@ import (
 	api "k8s.io/api/core/v1"
 )
 
-// FakeTargetIP provides target for testing without load balancer
-var FakeTargetIP *string
-
 func GetTargets(logger logger.LogContext, obj resources.Object, names dns.DNSNameSet) (utils.StringSet, utils.StringSet, error) {
 	svc := obj.Data().(*api.Service)
 	if svc.Spec.Type != api.ServiceTypeLoadBalancer {
@@ -46,9 +43,6 @@ func GetTargets(logger logger.LogContext, obj resources.Object, names dns.DNSNam
 				set.Add(i.IP)
 			}
 		}
-	}
-	if FakeTargetIP != nil {
-		set.Add(*FakeTargetIP)
 	}
 	return set, nil, nil
 }

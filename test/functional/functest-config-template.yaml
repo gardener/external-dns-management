@@ -8,6 +8,23 @@ providers:
     AWS_ACCESS_KEY_ID: ...
     AWS_SECRET_ACCESS_KEY: ..
   zoneID: Z...
+## for testing weighted routing policy uncomment
+#  routingPolicySets:
+#    weighted:
+#      id-a:
+#        type: weighted
+#        parameters:
+#          weight: "1"
+#        targets:
+#          - 1.1.1.1
+#          - 1.1.1.2
+#      id-b:
+#        type: weighted
+#        parameters:
+#          weight: "2"
+#        targets:
+#          - 2.2.2.1
+#          - 2.2.2.2
 
 - name: alicloud-dns-playground
   type: alicloud-dns

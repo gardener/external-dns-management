@@ -161,10 +161,10 @@ spec:
 `
 
 func init() {
-	addProviderTests(functestbasics)
+	addProviderTests(functestBasics)
 }
 
-func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
+func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 	_ = Describe("basics-"+p.Name, func() {
 		It("should work with "+p.Name, func() {
 			tmpl, err := template.New("Manifest").Parse(basicTemplate)
@@ -173,7 +173,7 @@ func functestbasics(cfg *config.Config, p *config.ProviderConfig) {
 			basePath, err := os.Getwd()
 			Ω(err).Should(BeNil())
 
-			err = p.CreateTempManifest(basePath, tmpl)
+			err = p.CreateTempManifest(basePath, "basics", tmpl)
 			defer p.DeleteTempManifest()
 			Ω(err).Should(BeNil())
 
