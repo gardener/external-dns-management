@@ -80,7 +80,7 @@ func TestMapToFromProvider(t *testing.T) {
 			Sets: RecordSets{RS_META: &RecordSet{Type: RS_META, TTL: 600, Records: inputRecords}},
 		}
 
-		actualName, actualRecordSet := MapToProviderEx(rtype, &dnsset, base, nil)
+		actualName, actualRecordSet := MapToProvider(rtype, &dnsset, base)
 
 		Ω(actualName).Should(Equal(DNSSetName{DNSName: entry.wantedName}), "Name should match")
 		Ω(actualRecordSet.Type).Should(Equal(RS_TXT), "Type mismatch")

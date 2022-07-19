@@ -43,19 +43,14 @@ func NormalizeHostname(host string) string {
 	return host
 }
 
-func MapToProvider(rtype string, dnsset *DNSSet, base string) (string, *RecordSet) {
-	rsName, rs := MapToProviderEx(rtype, dnsset, base, nil)
-	return rsName.DNSName, rs
-}
-
-func MapToProviderEx(rtype string, dnsset *DNSSet, base string, policy *RoutingPolicy) (DNSSetName, *RecordSet) {
+func MapToProvider(rtype string, dnsset *DNSSet, base string) (DNSSetName, *RecordSet) {
 	dnsName := dnsset.Name.DNSName
 	rs := dnsset.Sets[rtype]
 	if rtype == RS_META {
 		prefix := dnsset.GetMetaAttr(ATTR_PREFIX)
 		if prefix == "" {
 			prefix = TxtPrefix
-			dnsset.SetMetaAttr(ATTR_PREFIX, prefix, policy)
+			dnsset.SetMetaAttr(ATTR_PREFIX, prefix)
 		}
 		metaName := calcMetaRecordDomainName(dnsName, prefix, base)
 		new := *dnsset.Sets[rtype]

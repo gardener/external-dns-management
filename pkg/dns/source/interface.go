@@ -81,7 +81,7 @@ type DNSCurrentState struct {
 	AnnotatedRoutingPolicy *v1alpha1.RoutingPolicy
 }
 
-func (s *DNSCurrentState) SetIdentifier() string {
+func (s *DNSCurrentState) GetSetIdentifier() string {
 	if s.AnnotatedRoutingPolicy == nil {
 		return ""
 	}

@@ -61,20 +61,20 @@ type Ownership interface {
 }
 
 func (dnssets DNSSets) AddRecordSetFromProvider(dnsName string, rs *RecordSet) {
-	dnssets.AddRecordSetFromProviderEx(DNSSetName{DNSName: dnsName}, rs)
+	dnssets.AddRecordSetFromProviderEx(DNSSetName{DNSName: dnsName}, nil, rs)
 }
 
-func (dnssets DNSSets) AddRecordSetFromProviderEx(rsName DNSSetName, rs *RecordSet) {
-	name := rsName.Normalize()
+func (dnssets DNSSets) AddRecordSetFromProviderEx(setName DNSSetName, policy *RoutingPolicy, rs *RecordSet) {
+	name := setName.Normalize()
 	name, rs = MapFromProvider(name, rs)
 
-	dnssets.AddRecordSet(name, rs)
+	dnssets.AddRecordSet(name, policy, rs)
 }
 
-func (dnssets DNSSets) AddRecordSet(name DNSSetName, rs *RecordSet) {
+func (dnssets DNSSets) AddRecordSet(name DNSSetName, policy *RoutingPolicy, rs *RecordSet) {
 	dnsset := dnssets[name]
 	if dnsset == nil {
-		dnsset = NewDNSSet(name)
+		dnsset = NewDNSSet(name, policy)
 		dnssets[name] = dnsset
 	}
 	dnsset.Sets[rs.Type] = rs
@@ -121,14 +121,16 @@ const (
 )
 
 type DNSSet struct {
-	Name        DNSSetName
-	Kind        string
-	UpdateGroup string
-	Sets        RecordSets
+	Name          DNSSetName
+	Kind          string
+	UpdateGroup   string
+	Sets          RecordSets
+	RoutingPolicy *RoutingPolicy
 }
 
 func (this *DNSSet) Clone() *DNSSet {
-	return &DNSSet{Name: this.Name, Sets: this.Sets.Clone(), UpdateGroup: this.UpdateGroup, Kind: this.Kind}
+	return &DNSSet{Name: this.Name, Sets: this.Sets.Clone(), UpdateGroup: this.UpdateGroup, Kind: this.Kind,
+		RoutingPolicy: this.RoutingPolicy.Clone()}
 }
 
 func (this *DNSSet) getAttr(ty string, name string) string {
@@ -139,10 +141,10 @@ func (this *DNSSet) getAttr(ty string, name string) string {
 	return ""
 }
 
-func (this *DNSSet) setAttr(ty string, name string, value string, policy *RoutingPolicy) {
+func (this *DNSSet) setAttr(ty string, name string, value string) {
 	rset := this.Sets[ty]
 	if rset == nil {
-		rset = newAttrRecordSet(ty, name, value, policy)
+		rset = newAttrRecordSet(ty, name, value)
 		this.Sets[rset.Type] = rset
 	} else {
 		rset.SetAttr(name, value)
@@ -160,8 +162,8 @@ func (this *DNSSet) GetTxtAttr(name string) string {
 	return this.getAttr(RS_TXT, name)
 }
 
-func (this *DNSSet) SetTxtAttr(name string, value string, policy *RoutingPolicy) {
-	this.setAttr(RS_TXT, name, value, policy)
+func (this *DNSSet) SetTxtAttr(name string, value string) {
+	this.setAttr(RS_TXT, name, value)
 }
 
 func (this *DNSSet) DeleteTxtAttr(name string) {
@@ -172,8 +174,8 @@ func (this *DNSSet) GetMetaAttr(name string) string {
 	return this.getAttr(RS_META, name)
 }
 
-func (this *DNSSet) SetMetaAttr(name string, value string, policy *RoutingPolicy) {
-	this.setAttr(RS_META, name, value, policy)
+func (this *DNSSet) SetMetaAttr(name string, value string) {
+	this.setAttr(RS_META, name, value)
 }
 
 func (this *DNSSet) DeleteMetaAttr(name string) {
@@ -194,8 +196,8 @@ func (this *DNSSet) GetOwner() string {
 	return this.GetMetaAttr(ATTR_OWNER)
 }
 
-func (this *DNSSet) SetOwner(ownerid string, policy *RoutingPolicy) *DNSSet {
-	this.SetMetaAttr(ATTR_OWNER, ownerid, policy)
+func (this *DNSSet) SetOwner(ownerid string) *DNSSet {
+	this.SetMetaAttr(ATTR_OWNER, ownerid)
 	return this
 }
 
@@ -213,7 +215,7 @@ func (this *DNSSet) SetKind(t string, prop ...bool) *DNSSet {
 	this.Kind = t
 	if t != api.DNSEntryKind {
 		if len(prop) == 0 || prop[0] {
-			this.SetMetaAttr(ATTR_KIND, t, nil)
+			this.SetMetaAttr(ATTR_KIND, t)
 		}
 	} else {
 		this.DeleteMetaAttr(ATTR_KIND)
@@ -221,14 +223,14 @@ func (this *DNSSet) SetKind(t string, prop ...bool) *DNSSet {
 	return this
 }
 
-func (this *DNSSet) SetRecordSet(rtype string, ttl int64, routingPolicy *RoutingPolicy, values ...string) {
+func (this *DNSSet) SetRecordSet(rtype string, ttl int64, values ...string) {
 	records := make([]*Record, len(values))
 	for i, r := range values {
 		records[i] = &Record{Value: r}
 	}
-	this.Sets[rtype] = &RecordSet{Type: rtype, TTL: ttl, IgnoreTTL: false, RoutingPolicy: routingPolicy, Records: records}
+	this.Sets[rtype] = &RecordSet{Type: rtype, TTL: ttl, IgnoreTTL: false, Records: records}
 }
 
-func NewDNSSet(name DNSSetName) *DNSSet {
-	return &DNSSet{Name: name, Sets: map[string]*RecordSet{}}
+func NewDNSSet(name DNSSetName, routingPolicy *RoutingPolicy) *DNSSet {
+	return &DNSSet{Name: name, RoutingPolicy: routingPolicy, Sets: map[string]*RecordSet{}}
 }

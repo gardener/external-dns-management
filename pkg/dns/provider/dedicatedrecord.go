@@ -26,7 +26,7 @@ import (
 )
 
 type DedicatedDNSAccess interface {
-	GetRecordSet(zone DNSHostedZone, rsName dns.DNSSetName, recordType string) (DedicatedRecordSet, error)
+	GetRecordSet(zone DNSHostedZone, name dns.DNSSetName, recordType string) (DedicatedRecordSet, error)
 	CreateOrUpdateRecordSet(logger logger.LogContext, zone DNSHostedZone, old, new DedicatedRecordSet) error
 	DeleteRecordSet(logger logger.LogContext, zone DNSHostedZone, rs DedicatedRecordSet) error
 }

@@ -269,7 +269,8 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 
 	var changeRequests []*common.ChangeRequest
 	for _, req := range reqs {
-		if req.RoutingPolicy != nil && h.serverProtocolVersion != common.ProtocolVersion1 {
+		if h.serverProtocolVersion != common.ProtocolVersion1 &&
+			(req.Addition != nil && req.Addition.RoutingPolicy != nil || req.Deletion != nil && req.Deletion.RoutingPolicy != nil) {
 			err := fmt.Errorf("routing policy not supported by remote server version")
 			logger.Warnf("%s", err)
 			if req.Done != nil {

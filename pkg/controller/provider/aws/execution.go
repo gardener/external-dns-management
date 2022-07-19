@@ -59,7 +59,7 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 	}
 }
 
-func buildResourceRecordSet(name dns.DNSSetName, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
+func buildResourceRecordSet(name dns.DNSSetName, policy *dns.RoutingPolicy, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
 	rrs := &route53.ResourceRecordSet{}
 	rrs.Name = aws.String(name.DNSName)
 	rrs.Type = aws.String(rset.Type)
@@ -70,14 +70,14 @@ func buildResourceRecordSet(name dns.DNSSetName, rset *dns.RecordSet) (*route53.
 			Value: aws.String(r.Value),
 		}
 	}
-	if err := addRoutingPolicy(rrs, name, rset.RoutingPolicy); err != nil {
+	if err := addRoutingPolicy(rrs, name, policy); err != nil {
 		return nil, err
 	}
 	return rrs, nil
 }
 
 func (this *Execution) addChange(action string, req *provider.ChangeRequest, dnsset *dns.DNSSet) error {
-	name, rset := dns.MapToProviderEx(req.Type, dnsset, this.zone.Domain(), req.RoutingPolicy)
+	name, rset := dns.MapToProvider(req.Type, dnsset, this.zone.Domain())
 	name = name.Align()
 	if len(rset.Records) == 0 {
 		return nil
@@ -86,10 +86,16 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 
 	var err error
 	var rrs *route53.ResourceRecordSet
+	var policy *dns.RoutingPolicy
+	if req.Addition != nil {
+		policy = req.Addition.RoutingPolicy
+	} else if req.Deletion != nil {
+		policy = req.Deletion.RoutingPolicy
+	}
 	if rset.Type == dns.RS_ALIAS {
-		rrs, err = buildResourceRecordSetForAliasTarget(name, rset)
+		rrs, err = buildResourceRecordSetForAliasTarget(name, policy, rset)
 	} else {
-		rrs, err = buildResourceRecordSet(name, rset)
+		rrs, err = buildResourceRecordSet(name, policy, rset)
 	}
 	if err != nil {
 		this.Errorf("addChange failed for %s[%s]: %s", name, this.zone.Id(), err)
@@ -176,8 +182,8 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 	return nil
 }
 
-var patternNotFound = regexp.MustCompile("Tried to delete resource record set \\[name='([^']+)', type='([^']+)'\\] but it was not found")
-var patternExists = regexp.MustCompile("Tried to create resource record set \\[name='([^']+)', type='([^']+)'\\] but it already exists")
+var patternNotFound = regexp.MustCompile("Tried to delete resource record set \\[name='([^']+)', type='([^']+)'] but it was not found")
+var patternExists = regexp.MustCompile("Tried to create resource record set \\[name='([^']+)', type='([^']+)'] but it already exists")
 
 func (this *Execution) tryFixChanges(message string, changes []*Change) (succeeded []*Change, failed []*Change, err error) {
 	submatchNotFound := patternNotFound.FindAllStringSubmatch(message, -1)

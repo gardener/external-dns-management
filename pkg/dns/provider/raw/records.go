@@ -114,7 +114,7 @@ func (this *ZoneState) CalculateDNSSets() {
 				rs.TTL = int64(r.GetTTL())
 				rs.Add(&dns.Record{Value: r.GetValue()})
 			}
-			this.dnssets.AddRecordSetFromProviderEx(dnsname, rs)
+			this.dnssets.AddRecordSetFromProviderEx(dnsname, nil, rs)
 		}
 	}
 }

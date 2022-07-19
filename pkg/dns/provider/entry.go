@@ -81,7 +81,7 @@ func (this *EntryPremise) NotifyChange(p *EntryPremise) string {
 type EntryVersion struct {
 	object        dnsutils.DNSSpecification
 	providername  resources.ObjectName
-	rsname        dns.DNSSetName
+	dnsSetName    dns.DNSSetName
 	targets       Targets
 	routingPolicy *dns.RoutingPolicy
 	mappings      map[string][]string
@@ -98,10 +98,10 @@ type EntryVersion struct {
 
 func NewEntryVersion(object dnsutils.DNSSpecification, old *Entry) *EntryVersion {
 	v := &EntryVersion{
-		object:   object,
-		rsname:   dns.DNSSetName{DNSName: object.GetDNSName(), SetIdentifier: object.GetSetIdentifier()},
-		targets:  Targets{},
-		mappings: map[string][]string{},
+		object:     object,
+		dnsSetName: dns.DNSSetName{DNSName: object.GetDNSName(), SetIdentifier: object.GetSetIdentifier()},
+		targets:    Targets{},
+		mappings:   map[string][]string{},
 	}
 	if old != nil {
 		v.status = old.status
@@ -116,7 +116,7 @@ func (this *EntryVersion) Kind() string {
 }
 
 func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string, refresh bool) {
-	if this.rsname != e.rsname {
+	if this.dnsSetName != e.dnsSetName {
 		reasons = append(reasons, "recordset name changed")
 	}
 	if !utils.Int64Equal(this.status.TTL, e.status.TTL) {
@@ -194,19 +194,19 @@ func (this *EntryVersion) ObjectName() resources.ObjectName {
 }
 
 func (this *EntryVersion) DNSName() string {
-	return this.rsname.DNSName
+	return this.dnsSetName.DNSName
 }
 
-func (this *EntryVersion) SetIdentifier() string {
-	return this.rsname.SetIdentifier
+func (this *EntryVersion) GetSetIdentifier() string {
+	return this.dnsSetName.SetIdentifier
 }
 
 func (this *EntryVersion) DNSSetName() dns.DNSSetName {
-	return this.rsname
+	return this.dnsSetName
 }
 
 func (this *EntryVersion) ZonedDNSName() ZonedDNSSetName {
-	return ZonedDNSSetName{ZoneID: this.ZoneId(), DNSSetName: this.rsname}
+	return ZonedDNSSetName{ZoneID: this.ZoneId(), DNSSetName: this.dnsSetName}
 }
 
 func (this *EntryVersion) Targets() Targets {
@@ -375,17 +375,17 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 		return
 	}
 
-	if p.zonedomain == entry.rsname.DNSName {
+	if p.zonedomain == entry.dnsSetName.DNSName {
 		err = fmt.Errorf("usage of dns name (%s) identical to domain of hosted zone (%s) is not supported",
 			p.zonedomain, p.zoneid)
 		return
 	}
 	if len(effspec.GetTargets()) > 0 && len(effspec.GetText()) > 0 {
-		err = fmt.Errorf("only Text or Targets possible: %s", err)
+		err = fmt.Errorf("only Text or Targets possible")
 		return
 	}
 	if ttl := effspec.GetTTL(); ttl != nil && (*ttl == 0 || *ttl < 0) {
-		err = fmt.Errorf("TTL must be greater than zero: %s", err)
+		err = fmt.Errorf("TTL must be greater than zero")
 		return
 	}
 
@@ -605,7 +605,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			if p.zoneid == "" {
 				this.status.State = api.STATE_ERROR
 				this.status.Provider = nil
-				this.status.Message = StatusMessagef("no provider found for %q", this.rsname)
+				this.status.Message = StatusMessagef("no provider found for %q", this.dnsSetName)
 			} else {
 				if p.provider.IsValid() {
 					this.valid = true

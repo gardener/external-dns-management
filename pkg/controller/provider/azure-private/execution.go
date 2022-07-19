@@ -65,18 +65,18 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 		dnsset = req.Deletion
 	}
 
-	name, rset := dns.MapToProvider(req.Type, dnsset, exec.zoneName)
-	name, ok := utils.DropZoneName(name, exec.zoneName)
+	if dnsset.RoutingPolicy != nil {
+		return bs_invalidRoutingPolicy, "", nil
+	}
+
+	setName, rset := dns.MapToProvider(req.Type, dnsset, exec.zoneName)
+	name, ok := utils.DropZoneName(setName.DNSName, exec.zoneName)
 	if !ok {
 		return bs_invalidName, "", &azure.RecordSet{Name: &name}
 	}
 
 	if len(rset.Records) == 0 {
 		return bs_empty, "", nil
-	}
-
-	if req.RoutingPolicy != nil {
-		return bs_invalidRoutingPolicy, "", nil
 	}
 
 	exec.Infof("Desired %s: %s record set %s[%s] with TTL %d: %s", req.Action, rset.Type, name, exec.zoneName, rset.TTL, rset.RecordString())

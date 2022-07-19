@@ -18,7 +18,6 @@ package dns
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 )
 
@@ -56,26 +55,18 @@ func (this *Record) Clone() *Record {
 }
 
 type RecordSet struct {
-	Type          string
-	TTL           int64
-	IgnoreTTL     bool
-	RoutingPolicy *RoutingPolicy
-	Records       Records
+	Type      string
+	TTL       int64
+	IgnoreTTL bool
+	Records   Records
 }
 
 func NewRecordSet(rtype string, ttl int64, records []*Record) *RecordSet {
-	return NewRecordSetEx(rtype, ttl, nil, records)
-}
-
-func NewRecordSetEx(rtype string, ttl int64, policy *RoutingPolicy, records []*Record) *RecordSet {
-	if records == nil {
-		records = Records{}
-	}
-	return &RecordSet{Type: rtype, TTL: ttl, RoutingPolicy: policy, Records: records}
+	return &RecordSet{Type: rtype, TTL: ttl, Records: records}
 }
 
 func (this *RecordSet) Clone() *RecordSet {
-	set := &RecordSet{Type: this.Type, TTL: this.TTL, IgnoreTTL: this.IgnoreTTL, RoutingPolicy: this.RoutingPolicy.Clone()}
+	set := &RecordSet{Type: this.Type, TTL: this.TTL, IgnoreTTL: this.IgnoreTTL}
 	for _, r := range this.Records {
 		set.Records = append(set.Records, r.Clone())
 	}
@@ -115,9 +106,6 @@ func (this *RecordSet) Match(set *RecordSet) bool {
 	}
 
 	if !this.IgnoreTTL && !set.IgnoreTTL && this.TTL != set.TTL {
-		return false
-	}
-	if !reflect.DeepEqual(this.RoutingPolicy, set.RoutingPolicy) {
 		return false
 	}
 
@@ -207,7 +195,7 @@ func newAttrRecord(name, value string) *Record {
 	return &Record{Value: newAttrValue(name, value)}
 }
 
-func newAttrRecordSet(ty string, name, value string, routingPolicy *RoutingPolicy) *RecordSet {
+func newAttrRecordSet(ty string, name, value string) *RecordSet {
 	records := []*Record{newAttrRecord(name, value)}
-	return &RecordSet{Type: ty, TTL: 600, IgnoreTTL: false, RoutingPolicy: routingPolicy, Records: records}
+	return &RecordSet{Type: ty, TTL: 600, IgnoreTTL: false, Records: records}
 }

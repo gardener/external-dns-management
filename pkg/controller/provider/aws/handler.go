@@ -196,7 +196,6 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 
 func buildRecordSet(r *route53.ResourceRecordSet) *dns.RecordSet {
 	rs := dns.NewRecordSet(aws.StringValue(r.Type), aws.Int64Value(r.TTL), nil)
-	rs.RoutingPolicy = extractRoutingPolicy(r)
 	for _, rr := range r.ResourceRecords {
 		rs.Add(&dns.Record{Value: aws.StringValue(rr.Value)})
 	}
@@ -218,7 +217,9 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 			} else {
 				rs = buildRecordSet(r)
 			}
-			dnssets.AddRecordSetFromProviderEx(dns.DNSSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}, rs)
+			name := dns.DNSSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}
+			policy := extractRoutingPolicy(r)
+			dnssets.AddRecordSetFromProviderEx(name, policy, rs)
 		}
 	}
 	forwarded, err := h.handleRecordSets(zone, aggr)
@@ -388,11 +389,11 @@ func (h *Handler) DeleteVPCAssociationAuthorization(hostedZoneId string, vpcId s
 	return out, nil
 }
 
-func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, rsName dns.DNSSetName, recordType string) (provider.DedicatedRecordSet, error) {
-	name := rsName.Align()
+func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, setName dns.DNSSetName, recordType string) (provider.DedicatedRecordSet, error) {
+	name := setName.Align()
 	var recordIdentifier *string
-	if rsName.SetIdentifier != "" {
-		recordIdentifier = &rsName.SetIdentifier
+	if setName.SetIdentifier != "" {
+		recordIdentifier = &setName.SetIdentifier
 	}
 	sets, err := h.r53.ListResourceRecordSets(&route53.ListResourceRecordSetsInput{
 		HostedZoneId:          aws.String(zone.Id().ID),
@@ -414,8 +415,9 @@ func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, rsName dns.DNSSetNam
 			} else {
 				rs = buildRecordSet(r)
 			}
-			rsName := dns.DNSSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}
-			dnssets.AddRecordSetFromProviderEx(rsName, rs)
+			routingPolicy := extractRoutingPolicy(r)
+			dnsSetName := dns.DNSSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}
+			dnssets.AddRecordSetFromProviderEx(dnsSetName, routingPolicy, rs)
 		}
 	}
 	for _, r := range sets.ResourceRecordSets {
@@ -423,8 +425,8 @@ func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, rsName dns.DNSSetNam
 			aggr(r)
 		}
 	}
-	if set := dnssets[rsName]; set != nil {
-		return provider.FromDedicatedRecordSet(rsName, set.Sets[recordType]), nil
+	if set := dnssets[setName]; set != nil {
+		return provider.FromDedicatedRecordSet(setName, set.Sets[recordType]), nil
 	}
 	return nil, nil
 }
@@ -440,7 +442,7 @@ func (h *Handler) DeleteRecordSet(logger logger.LogContext, zone provider.DNSHos
 func (h *Handler) executeRecordSetChange(action string, logger logger.LogContext, zone provider.DNSHostedZone, rawrs provider.DedicatedRecordSet) error {
 	exec := NewExecution(logger, h, zone)
 	dnsName, rs := provider.ToDedicatedRecordset(rawrs)
-	dnsset := dns.NewDNSSet(dnsName)
+	dnsset := dns.NewDNSSet(dnsName, nil)
 	dnsset.Sets[rs.Type] = rs
 	if err := exec.addChange(action, &provider.ChangeRequest{Type: rs.Type}, dnsset); err != nil {
 		return err

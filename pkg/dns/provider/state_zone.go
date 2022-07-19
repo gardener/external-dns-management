@@ -203,7 +203,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 				if changeResult.Modified {
 					if accepted, delay := this.tryAcceptProviderRateLimiter(logger, e); !accepted {
 						req.zone.nextTrigger = delay
-						changes.PseudoApply(e.DNSSetName())
+						changes.PseudoApply(e.DNSSetName(), spec)
 						logger.Infof("rate limited %s, delay %.1f s", e.ObjectName(), delay.Seconds())
 						statusUpdate.Throttled()
 						if delay.Seconds() > 2 {

@@ -61,18 +61,18 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 		dnsset = req.Deletion
 	}
 
+	if dnsset.RoutingPolicy != nil {
+		return bsInvalidRoutingPolicy, nil
+	}
+
 	name, rset := dns.MapToProvider(req.Type, dnsset, exec.zone.Domain())
 
 	if len(rset.Records) == 0 {
 		return bsEmpty, nil
 	}
 
-	if req.RoutingPolicy != nil {
-		return bsInvalidRoutingPolicy, nil
-	}
-
 	exec.Infof("Desired %s: %s record set %s[%s]: %s", req.Action, rset.Type, name, exec.zone.Domain(), rset.RecordString())
-	return exec.buildMappedRecordSet(name, rset)
+	return exec.buildMappedRecordSet(name.DNSName, rset)
 }
 
 func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) (buildStatus, *recordsets.RecordSet) {

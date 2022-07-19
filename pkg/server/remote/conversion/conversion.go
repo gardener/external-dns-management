@@ -58,6 +58,7 @@ func MarshalDNSSet(local *dns.DNSSet) *common.DNSSet {
 		SetIdentifier: local.Name.SetIdentifier,
 		UpdateGroup:   local.UpdateGroup,
 		Records:       map[string]*common.RecordSet{},
+		RoutingPolicy: MarshalRoutingPolicy(local.RoutingPolicy),
 	}
 	for typ, rs := range local.Sets {
 		remote.Records[typ] = MarshalRecordSet(rs)
@@ -67,9 +68,8 @@ func MarshalDNSSet(local *dns.DNSSet) *common.DNSSet {
 
 func MarshalRecordSet(local *dns.RecordSet) *common.RecordSet {
 	remote := &common.RecordSet{
-		Type:          local.Type,
-		Ttl:           int32(local.TTL),
-		RoutingPolicy: MarshalRoutingPolicy(local.RoutingPolicy),
+		Type: local.Type,
+		Ttl:  int32(local.TTL),
 	}
 	for _, v := range local.Records {
 		remote.Record = append(remote.Record, &common.RecordSet_Record{Value: v.Value})
@@ -77,7 +77,7 @@ func MarshalRecordSet(local *dns.RecordSet) *common.RecordSet {
 	return remote
 }
 
-func MarshalRoutingPolicy(local *dns.RoutingPolicy) *common.RecordSet_RoutingPolicy {
+func MarshalRoutingPolicy(local *dns.RoutingPolicy) *common.RoutingPolicy {
 	if local == nil {
 		return nil
 	}
@@ -85,7 +85,7 @@ func MarshalRoutingPolicy(local *dns.RoutingPolicy) *common.RecordSet_RoutingPol
 	for k, v := range local.Parameters {
 		params[k] = v
 	}
-	return &common.RecordSet_RoutingPolicy{
+	return &common.RoutingPolicy{
 		Type:       local.Type,
 		Parameters: params,
 	}
@@ -98,6 +98,7 @@ func MarshalPartialDNSSet(local *dns.DNSSet, recordType string) *common.PartialD
 		UpdateGroup:   local.UpdateGroup,
 		RecordType:    recordType,
 		RecordSet:     MarshalRecordSet(local.Sets[recordType]),
+		RoutingPolicy: MarshalRoutingPolicy(local.RoutingPolicy),
 	}
 }
 
@@ -110,7 +111,8 @@ func UnmarshalDNSSets(remote common.DNSSets) dns.DNSSets {
 }
 
 func UnmarshalDNSSet(remote *common.DNSSet) *dns.DNSSet {
-	local := dns.NewDNSSet(dns.DNSSetName{DNSName: remote.DnsName, SetIdentifier: remote.SetIdentifier})
+	policy := UnmarshalRoutingPolicy(remote.RoutingPolicy)
+	local := dns.NewDNSSet(dns.DNSSetName{DNSName: remote.DnsName, SetIdentifier: remote.SetIdentifier}, policy)
 	local.UpdateGroup = remote.UpdateGroup
 
 	for typ, rs := range remote.Records {
@@ -121,14 +123,13 @@ func UnmarshalDNSSet(remote *common.DNSSet) *dns.DNSSet {
 
 func UnmarshalRecordSet(rs *common.RecordSet) *dns.RecordSet {
 	local := dns.NewRecordSet(rs.Type, int64(rs.Ttl), nil)
-	local.RoutingPolicy = UnmarshalRoutingPolicy(rs.RoutingPolicy)
 	for _, v := range rs.Record {
 		local.Add(&dns.Record{Value: v.Value})
 	}
 	return local
 }
 
-func UnmarshalRoutingPolicy(policy *common.RecordSet_RoutingPolicy) *dns.RoutingPolicy {
+func UnmarshalRoutingPolicy(policy *common.RoutingPolicy) *dns.RoutingPolicy {
 	if policy == nil {
 		return nil
 	}
@@ -143,7 +144,8 @@ func UnmarshalRoutingPolicy(policy *common.RecordSet_RoutingPolicy) *dns.Routing
 }
 
 func UnmarshalPartialDNSSet(remote *common.PartialDNSSet) *dns.DNSSet {
-	local := dns.NewDNSSet(dns.DNSSetName{DNSName: remote.DnsName, SetIdentifier: remote.SetIdentifier})
+	policy := UnmarshalRoutingPolicy(remote.RoutingPolicy)
+	local := dns.NewDNSSet(dns.DNSSetName{DNSName: remote.DnsName, SetIdentifier: remote.SetIdentifier}, policy)
 	local.UpdateGroup = remote.UpdateGroup
 
 	local.Sets[remote.RecordType] = UnmarshalRecordSet(remote.RecordSet)

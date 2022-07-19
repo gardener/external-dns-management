@@ -72,15 +72,15 @@ func (this *Execution) AddChange(req *provider.ChangeRequest) {
 	var newset, oldset *dns.RecordSet
 
 	if req.Addition != nil {
-		name, newset = dns.MapToProviderEx(req.Type, req.Addition, this.domain, nil)
+		name, newset = dns.MapToProvider(req.Type, req.Addition, this.domain)
 	}
 	if req.Deletion != nil {
-		name, oldset = dns.MapToProviderEx(req.Type, req.Deletion, this.domain, nil)
+		name, oldset = dns.MapToProvider(req.Type, req.Deletion, this.domain)
 	}
 	if name.DNSName == "" || (newset.Length() == 0 && oldset.Length() == 0) {
 		return
 	}
-	if name.SetIdentifier != "" || req.RoutingPolicy != nil {
+	if name.SetIdentifier != "" || (req.Addition != nil && req.Addition.RoutingPolicy != nil) || (req.Deletion != nil && req.Deletion.RoutingPolicy != nil) {
 		err := fmt.Errorf("routing policy not supported")
 		this.Warnf("record set %s[%s]: %s", name, this.zone.Id(), err)
 		if req.Done != nil {

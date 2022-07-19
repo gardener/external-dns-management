@@ -55,23 +55,24 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 }
 
 func (this *Execution) addChange(req *provider.ChangeRequest) {
-	var name string
+	var setName dns.DNSSetName
 	var newset, oldset *dns.RecordSet
 
 	if req.Addition != nil {
-		name, newset = dns.MapToProvider(req.Type, req.Addition, this.zone.Domain())
+		setName, newset = dns.MapToProvider(req.Type, req.Addition, this.zone.Domain())
+		if req.Addition.RoutingPolicy != nil {
+			err := fmt.Errorf("Routing policies unsupported for " + TYPE_CODE)
+			if req.Done != nil {
+				req.Done.SetInvalid(err)
+			}
+			return
+		}
 	}
 	if req.Deletion != nil {
-		name, oldset = dns.MapToProvider(req.Type, req.Deletion, this.zone.Domain())
+		setName, oldset = dns.MapToProvider(req.Type, req.Deletion, this.zone.Domain())
 	}
+	name := setName.DNSName
 	if name == "" || (newset.Length() == 0 && oldset.Length() == 0) {
-		return
-	}
-	if req.RoutingPolicy != nil {
-		err := fmt.Errorf("Routing policies unsupported for " + TYPE_CODE)
-		if req.Done != nil {
-			req.Done.SetInvalid(err)
-		}
 		return
 	}
 	name = dns.AlignHostname(name)

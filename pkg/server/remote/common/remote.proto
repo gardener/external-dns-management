@@ -53,15 +53,14 @@ message RecordSet {
     string value = 1;
   }
 
-  message RoutingPolicy {
-    string type = 1;
-    map<string, string> parameters = 2;
-  }
-
   string type = 1;
   int32 ttl = 2;
   repeated Record record = 3;
-  RoutingPolicy routing_policy = 4;
+}
+
+message RoutingPolicy {
+  string type = 1;
+  map<string, string> parameters = 2;
 }
 
 message DNSSet {
@@ -69,6 +68,7 @@ message DNSSet {
   string update_group = 2;
   map<string, RecordSet> records = 3;
   string set_identifier = 4;
+  RoutingPolicy routing_policy = 5;
 }
 
 message PartialDNSSet {
@@ -77,6 +77,7 @@ message PartialDNSSet {
   string record_type = 3;
   RecordSet record_set = 4;
   string set_identifier = 5;
+  RoutingPolicy routing_policy = 6;
 }
 
 message ZoneState {

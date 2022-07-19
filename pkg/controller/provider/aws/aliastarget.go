@@ -94,11 +94,10 @@ func buildRecordSetFromAliasTarget(r *route53.ResourceRecordSet) *dns.RecordSet 
 	rs := dns.NewRecordSet(dns.RS_ALIAS, 0, nil)
 	rs.IgnoreTTL = true // alias target has no settable TTL
 	rs.Add(&dns.Record{Value: dns.NormalizeHostname(aws.StringValue(r.AliasTarget.DNSName))})
-	rs.RoutingPolicy = extractRoutingPolicy(r)
 	return rs
 }
 
-func buildResourceRecordSetForAliasTarget(name dns.DNSSetName, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
+func buildResourceRecordSetForAliasTarget(name dns.DNSSetName, policy *dns.RoutingPolicy, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
 	target := dns.NormalizeHostname(rset.Records[0].Value)
 	hostedZone := canonicalHostedZone(target)
 	if hostedZone == "" {
@@ -115,7 +114,7 @@ func buildResourceRecordSetForAliasTarget(name dns.DNSSetName, rset *dns.RecordS
 		Type:        aws.String(route53.RRTypeA),
 		AliasTarget: aliasTarget,
 	}
-	if err := addRoutingPolicy(rrset, name, rset.RoutingPolicy); err != nil {
+	if err := addRoutingPolicy(rrset, name, policy); err != nil {
 		return nil, err
 	}
 	return rrset, nil
