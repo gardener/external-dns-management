@@ -128,7 +128,7 @@ metadata:
     # If you are delegating the certificate management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/x509_certificates/)
     #cert.gardener.cloud/purpose: managed
     # routing-policy annotation provides the `.spec.routingPolicy` section as JSON
-    # Note: Currently only supported for aws-route53 (see https://github.com/gardener/external-dns-management/tree/master/docs/aws-route53#weighted-routing-policy)
+    # Note: Currently only supported for aws-route53 or google-clouddns (see https://github.com/gardener/external-dns-management/tree/master/docs/aws-route53#weighted-routing-policy)
     dns.gardener.cloud/routing-policy: '{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}'
   name: test-ingress-weighted-routing-policy
   namespace: default

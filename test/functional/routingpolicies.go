@@ -70,7 +70,7 @@ spec:
 {{ end }}
   routingPolicy:
     type: {{$policy.Type}}  
-    setIdentifier: {{$id}}
+    setIdentifier: '{{$id}}'
     parameters:
 {{ range $pk, $pv := $policy.Parameters }}
       {{$pk}}: '{{$pv}}'

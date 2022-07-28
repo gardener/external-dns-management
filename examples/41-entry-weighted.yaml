@@ -11,7 +11,7 @@ spec:
   ttl: 120
   targets:
     - instance-a.service.example.com
-  # routingPolicy is current only supported for AWS Route53
+  # routingPolicy is current only supported for AWS Route53 or Google CloudDNS
   routingPolicy:
     type: weighted
     setIdentifier: instance-a
@@ -31,7 +31,7 @@ spec:
   ttl: 120
   targets:
     - instance-b.service.example.com
-  # routingPolicy is current only supported for AWS Route53
+  # routingPolicy is current only supported for AWS Route53 or Google CloudDNS
   routingPolicy:
     type: weighted
     setIdentifier: instance-b

@@ -78,6 +78,12 @@ func (dnssets DNSSets) AddRecordSet(name DNSSetName, policy *RoutingPolicy, rs *
 		dnssets[name] = dnsset
 	}
 	dnsset.Sets[rs.Type] = rs
+	if rs.Type == RS_CNAME {
+		for i := range rs.Records {
+			rs.Records[i].Value = NormalizeHostname(rs.Records[i].Value)
+		}
+	}
+	dnsset.RoutingPolicy = policy
 }
 
 func (dnssets DNSSets) RemoveRecordSet(name DNSSetName, recordSetType string) {
