@@ -42,6 +42,7 @@ const TARGET_CLUSTER = "target"
 const DNS_ANNOTATION = dns.ANNOTATION_GROUP + "/dnsnames"
 const TTL_ANNOTATION = dns.ANNOTATION_GROUP + "/ttl"
 const PERIOD_ANNOTATION = dns.ANNOTATION_GROUP + "/cname-lookup-interval"
+const ROUTING_POLICY_ANNOTATION = dns.ANNOTATION_GROUP + "/routing-policy"
 const CLASS_ANNOTATION = dns.CLASS_ANNOTATION
 
 const OPT_CLASS = "dns-class"

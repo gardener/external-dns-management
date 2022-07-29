@@ -18,6 +18,7 @@ package source
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -139,14 +140,13 @@ func (this *sourceReconciler) Setup() error {
 
 func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	slaves := this.LookupSlaves(obj.ClusterKey())
-	names := utils.StringSet{}
+	names := dns.DNSNameSet{}
 	for _, s := range slaves {
-		e := dnsutils.DNSEntry(s).DNSEntry()
-		names.Add(e.Spec.DNSName)
+		names.Add(dnsutils.DNSEntry(s).DNSSetName())
 	}
-	found := &DNSCurrentState{Names: map[string]*DNSState{}, Targets: utils.StringSet{}}
+	found := &DNSCurrentState{Names: map[dns.DNSSetName]*DNSState{}, Targets: utils.StringSet{}}
 	for n := range names {
-		s := this.AssertSingleSlave(logger, obj.ClusterKey(), slaves, dns.DNSNameMatcher(n))
+		s := this.AssertSingleSlave(logger, obj.ClusterKey(), slaves, dnsutils.DNSSetNameMatcher(n))
 		e := dnsutils.DNSEntry(s).DNSEntry()
 		found.Names[n] = &DNSState{DNSEntryStatus: e.Status, CreationTimestamp: e.CreationTimestamp}
 		found.Targets.AddAll(e.Spec.Targets)
@@ -186,9 +186,9 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 			return reconcile.Delay(logger, err)
 		}
 	}
-	missing := utils.StringSet{}
+	missing := dns.DNSNameSet{}
 	obsolete := []resources.Object{}
-	obsolete_dns := utils.StringSet{}
+	obsolete_dns := dns.DNSNameSet{}
 
 	current := []resources.Object{}
 
@@ -205,35 +205,35 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 	}
 	logger.Debugf("found names: %s", info.Names)
 outer:
-	for dnsname := range info.Names {
+	for name := range info.Names {
 		for _, s := range slaves {
-			found := dnsutils.DNSEntry(s).DNSEntry().Spec.DNSName
-			if found == dnsname {
+			slaveName := dnsutils.DNSEntry(s).DNSSetName()
+			if slaveName == name {
 				continue outer
 			}
 		}
-		missing.Add(dnsname)
+		missing.Add(name)
 	}
 
 	for _, s := range slaves {
-		dnsname := dnsutils.DNSEntry(s).DNSEntry().Spec.DNSName
-		if !info.Names.Contains(dnsname) {
+		slaveName := dnsutils.DNSEntry(s).DNSSetName()
+		if !info.Names.Contains(slaveName) {
 			obsolete = append(obsolete, s)
-			obsolete_dns.Add(dnsname)
+			obsolete_dns.Add(slaveName)
 		} else {
 			current = append(current, s)
 		}
 	}
 
 	var notifiedErrors []string
-	modified := map[string]bool{}
+	modified := map[dns.DNSSetName]bool{}
 	if len(missing) > 0 {
 		if len(info.Targets) > 0 || len(info.Text) > 0 || info.OrigRef != nil {
 			logger.Infof("found missing dns entries: %s", missing)
-			for dnsname := range missing {
-				err := this.createEntryFor(logger, obj, dnsname, info, feedback)
+			for name := range missing {
+				err := this.createEntryFor(logger, obj, name, info, feedback)
 				if err != nil {
-					notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot create dns entry object for %s: %s ", dnsname, err))
+					notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot create dns entry object for %s: %s ", name, err))
 				}
 			}
 		} else {
@@ -243,21 +243,21 @@ outer:
 	if len(obsolete_dns) > 0 {
 		logger.Infof("found obsolete dns entries: %s", obsolete_dns)
 		for _, o := range obsolete {
-			dnsname := dnsutils.DNSEntry(o).DNSEntry().Spec.DNSName
-			err := this.deleteEntry(logger, obj, o, dnsname, feedback)
+			name := dnsutils.DNSEntry(o).DNSSetName()
+			err := this.deleteEntry(logger, o, name, feedback)
 			if err != nil {
-				notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot remove dns entry object %q(%s): %s", o.ClusterKey(), dnsname, err))
+				notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot remove dns entry object %q(%s): %s", o.ClusterKey(), name, err))
 			}
 		}
 
 	}
 	if len(current) > 0 {
 		for _, o := range current {
-			dnsname := dnsutils.DNSEntry(o).DNSEntry().Spec.DNSName
+			name := dnsutils.DNSEntry(o).DNSSetName()
 			mod, err := this.updateEntryFor(logger, obj, info, o)
-			modified[dnsname] = mod
+			modified[name] = mod
 			if err != nil {
-				notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot update dns entry object %q(%s): %s", o.ClusterKey(), dnsname, err))
+				notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot update dns entry object %q(%s): %s", o.ClusterKey(), name, err))
 			}
 		}
 	}
@@ -285,7 +285,7 @@ outer:
 				case api.STATE_READY:
 				default:
 					if s.CreationTimestamp.Time.Before(threshold) {
-						feedback.Pending(logger, n, "no dns controller running?", s)
+						feedback.Pending(logger, n.String(), "no dns controller running?", s)
 					}
 				}
 			}
@@ -410,7 +410,7 @@ func (this *sourceReconciler) mapRef(obj resources.Object, info *DNSInfo) {
 	}
 }
 
-func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, dnsname string, info *DNSInfo, feedback DNSFeedback) error {
+func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resources.Object, name dns.DNSSetName, info *DNSInfo, feedback DNSFeedback) error {
 	entry := &api.DNSEntry{}
 	entry.GenerateName = strings.ToLower(this.nameprefix + obj.GetName() + "-" + obj.GroupKind().Kind + "-")
 	if !this.targetclasses.IsDefault() {
@@ -428,7 +428,7 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	if this.state.ownerState.ownerId != "" {
 		entry.Spec.OwnerId = &this.state.ownerState.ownerId
 	}
-	entry.Spec.DNSName = dnsname
+	entry.Spec.DNSName = name.DNSName
 	this.mapRef(obj, info)
 	if info.TargetRef != nil {
 		if info.OrigRef != nil {
@@ -450,23 +450,24 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 		entry.Namespace = this.namespace
 	}
 	entry.Spec.TTL = info.TTL
+	entry.Spec.RoutingPolicy = info.RoutingPolicy
 
 	e, _ := this.SlaveResoures()[0].Wrap(entry)
 
 	err := this.Slaves().CreateSlave(obj, e)
 	if err != nil {
 		if feedback != nil {
-			feedback.Failed(logger, dnsname, err, nil)
+			feedback.Failed(logger, name.String(), err, nil)
 		}
 		return err
 	}
 	if feedback != nil {
-		feedback.Created(logger, dnsname, e.ObjectName())
+		feedback.Created(logger, name.String(), e.ObjectName())
 	} else {
 		logger.Infof("created dns entry object %s", e.ObjectName())
 	}
 	if feedback != nil {
-		feedback.Pending(logger, dnsname, "", nil)
+		feedback.Pending(logger, name.String(), "", nil)
 	}
 	return nil
 }
@@ -511,6 +512,10 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 		}
 		mod.AssureStringPtrPtr(&spec.OwnerId, p)
 		mod.AssureInt64PtrPtr(&spec.TTL, info.TTL)
+		if !reflect.DeepEqual(spec.RoutingPolicy, info.RoutingPolicy) {
+			spec.RoutingPolicy = info.RoutingPolicy
+			mod.Modify(true)
+		}
 		mod.AssureInt64PtrPtr(&spec.CNameLookupInterval, info.Interval)
 		targets := info.Targets
 		text := info.Text
@@ -540,12 +545,12 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 	return slave.Modify(f)
 }
 
-func (this *sourceReconciler) deleteEntry(logger logger.LogContext, obj resources.Object, e resources.Object, dnsname string, feedback DNSFeedback) error {
+func (this *sourceReconciler) deleteEntry(logger logger.LogContext, e resources.Object, name dns.DNSSetName, feedback DNSFeedback) error {
 	err := e.Delete()
 	if err == nil {
 		msg := fmt.Sprintf("deleted dns entry object %s", e.ObjectName())
 		if feedback != nil {
-			feedback.Deleted(logger, dnsname, msg)
+			feedback.Deleted(logger, name.String(), msg)
 		} else {
 			logger.Info(msg)
 		}

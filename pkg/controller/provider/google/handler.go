@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"k8s.io/client-go/util/flowcontrol"
@@ -46,6 +47,8 @@ type Handler struct {
 	service     *googledns.Service
 	rateLimiter flowcontrol.RateLimiter
 }
+
+const epsilon = 0.00001
 
 var _ provider.DNSHandler = &Handler{}
 
@@ -178,11 +181,31 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 	f := func(r *googledns.ResourceRecordSet) {
 		if dns.SupportedRecordType(r.Type) {
-			rs := dns.NewRecordSet(r.Type, r.Ttl, nil)
-			for _, rr := range r.Rrdatas {
-				rs.Add(&dns.Record{Value: rr})
+			if len(r.Rrdatas) > 0 {
+				rs := dns.NewRecordSet(r.Type, r.Ttl, nil)
+				for _, rr := range r.Rrdatas {
+					rs.Add(&dns.Record{Value: rr})
+				}
+				dnssets.AddRecordSetFromProvider(r.Name, rs)
+			} else if r.RoutingPolicy != nil && r.RoutingPolicy.Wrr != nil {
+				for _, item := range r.RoutingPolicy.Wrr.Items {
+					if int64(item.Weight+epsilon)*10 != int64(item.Weight*10+epsilon) {
+						return // foreign as managed recordsets only use integral weights
+					}
+				}
+				for i, item := range r.RoutingPolicy.Wrr.Items {
+					if isWrrPlaceHolderItem(r.Type, item) {
+						continue
+					}
+					rs := dns.NewRecordSet(r.Type, r.Ttl, nil)
+					for _, rr := range item.Rrdatas {
+						rs.Add(&dns.Record{Value: rr})
+					}
+					dnsSetName := dns.DNSSetName{DNSName: r.Name, SetIdentifier: fmt.Sprintf("%d", i)}
+					policy := dns.NewRoutingPolicy(dns.RoutingPolicyWeighted, "weight", strconv.FormatInt(int64(item.Weight+epsilon), 10))
+					dnssets.AddRecordSetFromProviderEx(dnsSetName, policy, rs)
+				}
 			}
-			dnssets.AddRecordSetFromProvider(r.Name, rs)
 		}
 	}
 
@@ -211,7 +234,7 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 		exec.addChange(r)
 	}
 	if h.config.DryRun {
-		logger.Infof("no changes in dryrun mode for AWS")
+		logger.Infof("no changes in dryrun mode for Google")
 		return nil
 	}
 	return exec.submitChanges(h.config.Metrics)
@@ -219,6 +242,12 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 
 func (h *Handler) makeZoneID(name string) string {
 	return fmt.Sprintf("%s/%s", h.credentials.ProjectID, name)
+}
+
+func (h *Handler) getResourceRecordSet(project, managedZone, name, typ string) (*googledns.ResourceRecordSet, error) {
+	h.config.RateLimiter.Accept()
+	h.config.Metrics.AddGenericRequests("getrecordset", 1)
+	return h.service.ResourceRecordSets.Get(project, managedZone, name, typ).Do()
 }
 
 // SplitZoneID splits the zone id into project id and zone name

@@ -355,9 +355,11 @@ func (s *zoneStates) ExecuteRequests(zoneID dns.ZoneID, reqs []*ChangeRequest) {
 	var err error
 	nullMetrics := &NullMetrics{}
 	for _, req := range reqs {
-		err = s.inMemory.Apply(zoneID, req, nullMetrics)
-		if err != nil {
-			break
+		if req.Applied {
+			err = s.inMemory.Apply(zoneID, req, nullMetrics)
+			if err != nil {
+				break
+			}
 		}
 	}
 

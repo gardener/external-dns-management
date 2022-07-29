@@ -62,14 +62,11 @@ type RecordSet struct {
 }
 
 func NewRecordSet(rtype string, ttl int64, records []*Record) *RecordSet {
-	if records == nil {
-		records = Records{}
-	}
 	return &RecordSet{Type: rtype, TTL: ttl, Records: records}
 }
 
 func (this *RecordSet) Clone() *RecordSet {
-	set := &RecordSet{this.Type, this.TTL, this.IgnoreTTL, nil}
+	set := &RecordSet{Type: this.Type, TTL: this.TTL, IgnoreTTL: this.IgnoreTTL}
 	for _, r := range this.Records {
 		set.Records = append(set.Records, r.Clone())
 	}
@@ -200,5 +197,5 @@ func newAttrRecord(name, value string) *Record {
 
 func newAttrRecordSet(ty string, name, value string) *RecordSet {
 	records := []*Record{newAttrRecord(name, value)}
-	return &RecordSet{ty, 600, false, records}
+	return &RecordSet{Type: ty, TTL: 600, IgnoreTTL: false, Records: records}
 }

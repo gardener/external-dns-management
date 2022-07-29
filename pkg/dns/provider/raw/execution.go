@@ -50,7 +50,7 @@ type Execution struct {
 	updates   RecordSet
 	deletions RecordSet
 
-	results map[string]*result
+	results map[dns.DNSSetName]*result
 }
 
 func NewExecution(logger logger.LogContext, e Executor, state *ZoneState, zone provider.DNSHostedZone) *Execution {
@@ -60,7 +60,7 @@ func NewExecution(logger logger.LogContext, e Executor, state *ZoneState, zone p
 		zone:       zone,
 		state:      state,
 		domain:     zone.Domain(),
-		results:    map[string]*result{},
+		results:    map[dns.DNSSetName]*result{},
 		additions:  RecordSet{},
 		updates:    RecordSet{},
 		deletions:  RecordSet{},
@@ -68,7 +68,7 @@ func NewExecution(logger logger.LogContext, e Executor, state *ZoneState, zone p
 }
 
 func (this *Execution) AddChange(req *provider.ChangeRequest) {
-	var name string
+	var name dns.DNSSetName
 	var newset, oldset *dns.RecordSet
 
 	if req.Addition != nil {
@@ -77,7 +77,15 @@ func (this *Execution) AddChange(req *provider.ChangeRequest) {
 	if req.Deletion != nil {
 		name, oldset = dns.MapToProvider(req.Type, req.Deletion, this.domain)
 	}
-	if name == "" || (newset.Length() == 0 && oldset.Length() == 0) {
+	if name.DNSName == "" || (newset.Length() == 0 && oldset.Length() == 0) {
+		return
+	}
+	if name.SetIdentifier != "" || (req.Addition != nil && req.Addition.RoutingPolicy != nil) || (req.Deletion != nil && req.Deletion.RoutingPolicy != nil) {
+		err := fmt.Errorf("routing policy not supported")
+		this.Warnf("record set %s[%s]: %s", name, this.zone.Id(), err)
+		if req.Done != nil {
+			req.Done.SetInvalid(err)
+		}
 		return
 	}
 	switch req.Action {
@@ -108,10 +116,10 @@ func (this *Execution) AddChange(req *provider.ChangeRequest) {
 	}
 }
 
-func (this *Execution) add(dnsname string, rset *dns.RecordSet, modonly bool, found *RecordSet, notfound *RecordSet) {
+func (this *Execution) add(name dns.DNSSetName, rset *dns.RecordSet, modonly bool, found *RecordSet, notfound *RecordSet) {
 	rtype := rset.Type
 	for _, r := range rset.Records {
-		old := this.state.GetRecord(dnsname, rtype, r.Value)
+		old := this.state.GetRecord(name, rtype, r.Value)
 		if old != nil {
 			if (!modonly) || (old.GetTTL() != int(rset.TTL)) {
 				or := old.Copy()
@@ -120,7 +128,7 @@ func (this *Execution) add(dnsname string, rset *dns.RecordSet, modonly bool, fo
 			}
 		} else {
 			if notfound != nil {
-				record := this.executor.NewRecord(dnsname, rset.Type, r.Value, this.zone, rset.TTL)
+				record := this.executor.NewRecord(name.DNSName, rset.Type, r.Value, this.zone, rset.TTL)
 				*notfound = append(*notfound, record)
 			}
 		}
@@ -176,7 +184,7 @@ func (this *Execution) SubmitChanges() error {
 func (this *Execution) submit(f func(record Record, zone provider.DNSHostedZone) error, r Record) {
 	err := f(r, this.zone)
 	if err != nil {
-		res := this.results[r.GetDNSName()]
+		res := this.results[dns.DNSSetName{DNSName: r.GetDNSName(), SetIdentifier: r.GetSetIdentifier()}]
 		if res != nil {
 			res.err = err
 			this.Infof("operation failed for %s %s: %s", r.GetType(), r.GetDNSName(), err)

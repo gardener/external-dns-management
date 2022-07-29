@@ -123,19 +123,19 @@ func (s *server) ProviderRemovedEvent(logger logger.LogContext, objectName resou
 
 type reportFunc func(err error)
 
-func (s *server) checkAuth(token, requestType, zoneid string) (*namespaceState, logger.LogContext, reportFunc, error) {
+func (s *server) checkAuth(token, requestType, zoneid string) (*namespaceState, logger.LogContext, reportFunc, int32, error) {
 	start := time.Now()
 	parts := strings.SplitN(token, "|", 2)
 	namespace := parts[0]
 	nsState := s.getNamespaceState(namespace, false)
 	if nsState == nil {
-		return nil, s.logctx, nil, fmt.Errorf("namespace %s not found or no providers available", namespace)
+		return nil, s.logctx, nil, 0, fmt.Errorf("namespace %s not found or no providers available", namespace)
 	}
 
-	clientID, err := nsState.getToken(token)
+	clientID, version, err := nsState.getToken(token)
 	logctx := s.logctx.NewContext("namespace", nsState.name).NewContext("clientID", clientID)
 	if err != nil {
-		return nil, logctx, nil, err
+		return nil, logctx, nil, 0, err
 	}
 
 	rf := func(err error) {
@@ -148,7 +148,7 @@ func (s *server) checkAuth(token, requestType, zoneid string) (*namespaceState, 
 	}
 
 	metrics.ReportRemoteAccessRequests(namespace, clientID, requestType, zoneid)
-	return nsState, logctx, rf, nil
+	return nsState, logctx, rf, version, nil
 }
 
 func (s *server) Login(ctx context.Context, request *common.LoginRequest) (*common.LoginResponse, error) {
@@ -174,8 +174,8 @@ func (s *server) Login(ctx context.Context, request *common.LoginRequest) (*comm
 		return nil, fmt.Errorf("random failed: %w", err)
 	}
 
-	token := nsState.generateAndAddToken(s.tokenTTL, rnd, request.CliendID, s.serverID)
-	return &common.LoginResponse{Token: token}, nil
+	token := nsState.generateAndAddToken(s.tokenTTL, rnd, request.CliendID, s.serverID, request.ClientProtocolVersion)
+	return &common.LoginResponse{Token: token, ServerProtocolVersion: common.ProtocolVersion1}, nil
 }
 
 func (s *server) checkNamespaceAuthorization(ctx context.Context, namespace string) (string, error) {
@@ -217,7 +217,7 @@ func (s *server) cleanupTokens() {
 }
 
 func (s *server) GetZones(_ context.Context, request *common.GetZonesRequest) (*common.Zones, error) {
-	nsState, logctx, report, err := s.checkAuth(request.Token, "GetZones", "")
+	nsState, logctx, report, _, err := s.checkAuth(request.Token, "GetZones", "")
 	if err != nil {
 		logctx.Warn(err)
 		return nil, err
@@ -253,7 +253,7 @@ func (s *server) getZones(nsState *namespaceState, logctx logger.LogContext) (*c
 }
 
 func (s *server) GetZoneState(_ context.Context, request *common.GetZoneStateRequest) (*common.ZoneState, error) {
-	nsState, logctx, report, err := s.checkAuth(request.Token, "GetZoneState", request.Zoneid)
+	nsState, logctx, report, version, err := s.checkAuth(request.Token, "GetZoneState", request.Zoneid)
 	if err != nil {
 		logctx.Warn(err)
 		return nil, err
@@ -261,12 +261,12 @@ func (s *server) GetZoneState(_ context.Context, request *common.GetZoneStateReq
 	logctx = logctx.NewContext("zoneid", request.Zoneid)
 	logctx.Info("GetZoneState")
 
-	res, err := s.getZoneState(nsState, logctx, request.Zoneid)
+	res, err := s.getZoneState(nsState, logctx, request.Zoneid, version)
 	report(err)
 	return res, err
 }
 
-func (s *server) getZoneState(nsState *namespaceState, logctx logger.LogContext, zoneid string) (*common.ZoneState, error) {
+func (s *server) getZoneState(nsState *namespaceState, logctx logger.LogContext, zoneid string, version int32) (*common.ZoneState, error) {
 	hstate, zone, err := nsState.lockupZone(s.spinning, zoneid)
 	if err != nil {
 		return nil, err
@@ -281,14 +281,14 @@ func (s *server) getZoneState(nsState *namespaceState, logctx logger.LogContext,
 	if err != nil {
 		return nil, err
 	}
-	result := &common.ZoneState{DnsSets: conversion.MarshalDNSSets(state.GetDNSSets())}
+	result := &common.ZoneState{DnsSets: conversion.MarshalDNSSets(state.GetDNSSets(), version)}
 	logctx.Infof("GetZoneState: %d DNSSets", len(result.GetDnsSets()))
 
 	return result, nil
 }
 
 func (s *server) Execute(_ context.Context, request *common.ExecuteRequest) (*common.ExecuteResponse, error) {
-	nsState, logctx, report, err := s.checkAuth(request.Token, "Execute", request.Zoneid)
+	nsState, logctx, report, _, err := s.checkAuth(request.Token, "Execute", request.Zoneid)
 	if err != nil {
 		logctx.Warn(err)
 		return nil, err

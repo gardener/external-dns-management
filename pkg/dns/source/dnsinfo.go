@@ -17,6 +17,7 @@
 package source
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -24,18 +25,20 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
-func (this *sourceReconciler) exclude(dns string) bool {
-	if this.excluded.Contains(dns) {
+func (this *sourceReconciler) exclude(name dns.DNSSetName) bool {
+	if this.excluded.Contains(name.DNSName) {
 		return true
 	}
 	for d := range this.excluded {
 		if strings.HasPrefix(d, "*.") {
 			d = d[2:]
-			i := strings.Index(dns, ".")
+			i := strings.Index(name.DNSName, ".")
 			if i >= 0 {
-				if d == dns[i+1:] {
+				if d == name.DNSName[i+1:] {
 					return true
 				}
 			}
@@ -54,6 +57,14 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 	annos := obj.GetAnnotations()
 	current.AnnotatedNames = utils.StringSet{}
 	current.AnnotatedNames.AddAllSplittedSelected(annos[DNS_ANNOTATION], utils.StandardNonEmptyStringElement)
+	current.AnnotatedRoutingPolicy = nil
+	if a := annos[ROUTING_POLICY_ANNOTATION]; a != "" {
+		policy := &v1alpha1.RoutingPolicy{}
+		if err := json.Unmarshal([]byte(a), policy); err != nil {
+			return nil, true, err
+		}
+		current.AnnotatedRoutingPolicy = policy
+	}
 
 	info, err := s.GetDNSInfo(logger, obj, current)
 	if info != nil && info.Names != nil {
@@ -92,6 +103,9 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 				info.Interval = &interval
 			}
 		}
+	}
+	if info.RoutingPolicy == nil {
+		info.RoutingPolicy = current.AnnotatedRoutingPolicy
 	}
 	return info, true, nil
 }

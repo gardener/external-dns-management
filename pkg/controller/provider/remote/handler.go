@@ -41,15 +41,16 @@ import (
 
 type Handler struct {
 	provider.DefaultDNSHandler
-	config          provider.DNSHandlerConfig
-	cache           provider.ZoneCache
-	clientID        string
-	remoteNamespace string
-	currentToken    string
-	connection      *grpc.ClientConn
-	client          common.RemoteProviderClient
-	sess            *session.Session
-	r53             *route53.Route53
+	config                provider.DNSHandlerConfig
+	cache                 provider.ZoneCache
+	clientID              string
+	remoteNamespace       string
+	currentToken          string
+	serverProtocolVersion int32
+	connection            *grpc.ClientConn
+	client                common.RemoteProviderClient
+	sess                  *session.Session
+	r53                   *route53.Route53
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -160,8 +161,9 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 func (h *Handler) login(ctx context.Context) error {
 	h.config.RateLimiter.Accept()
 	response, err := h.client.Login(ctx, &common.LoginRequest{
-		Namespace: h.remoteNamespace,
-		CliendID:  h.clientID,
+		Namespace:             h.remoteNamespace,
+		CliendID:              h.clientID,
+		ClientProtocolVersion: common.ProtocolVersion1,
 	})
 	if err != nil {
 		if s, ok := status.FromError(err); ok {
@@ -174,6 +176,7 @@ func (h *Handler) login(ctx context.Context) error {
 		return err
 	}
 	h.currentToken = response.Token
+	h.serverProtocolVersion = response.ServerProtocolVersion
 	return nil
 }
 
@@ -266,9 +269,22 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 
 	var changeRequests []*common.ChangeRequest
 	for _, req := range reqs {
+		if h.serverProtocolVersion != common.ProtocolVersion1 &&
+			(req.Addition != nil && req.Addition.RoutingPolicy != nil || req.Deletion != nil && req.Deletion.RoutingPolicy != nil) {
+			err := fmt.Errorf("routing policy not supported by remote server version")
+			logger.Warnf("%s", err)
+			if req.Done != nil {
+				req.Done.Failed(err)
+			}
+			continue
+		}
 		change, err := conversion.MarshalChangeRequest(req)
 		if err != nil {
-			return err
+			logger.Warnf("marshal failed: %s", err)
+			if req.Done != nil {
+				req.Done.SetInvalid(err)
+			}
+			continue
 		}
 		changeRequests = append(changeRequests, change)
 

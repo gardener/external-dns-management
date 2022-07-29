@@ -13,6 +13,7 @@ tmp/
 /cmd/dns/dns-controller-manager
 /main
 /test/functional/tmp-*.yaml
+/test/functional/kubebuilder*
 /test/integration/kubebuilder*
 /test/integration/default.etcd
 /test/integration/integration.test

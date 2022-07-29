@@ -22,13 +22,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	api "k8s.io/api/core/v1"
 )
 
-// FakeTargetIP provides target for testing without load balancer
-var FakeTargetIP *string
-
-func GetTargets(logger logger.LogContext, obj resources.Object, names utils.StringSet) (utils.StringSet, utils.StringSet, error) {
+func GetTargets(logger logger.LogContext, obj resources.Object, names dns.DNSNameSet) (utils.StringSet, utils.StringSet, error) {
 	svc := obj.Data().(*api.Service)
 	if svc.Spec.Type != api.ServiceTypeLoadBalancer {
 		if len(names) == 0 {
@@ -45,9 +43,6 @@ func GetTargets(logger logger.LogContext, obj resources.Object, names utils.Stri
 				set.Add(i.IP)
 			}
 		}
-	}
-	if FakeTargetIP != nil {
-		set.Add(*FakeTargetIP)
 	}
 	return set, nil, nil
 }

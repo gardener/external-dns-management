@@ -92,63 +92,21 @@ fi
 cd $ROOTDIR/test/integration
 
 if [ "$LOCAL_APISERVER" != "" ]; then
-  echo using local kube-apiserver and etcd
+  unset USE_EXISTING_CLUSTER
+  echo using controller runtime envtest
 
-  # download kube-apiserver, etcd, and kubectl executables from kubebuilder release
-  KUBEBUILDER_VERSION=2.3.2
-  ARCH=$(go env GOARCH)
-  GOOS=$(go env GOOS)
-  KUBEBUILDER_BIN_DIR=$(realpath -m kubebuilder_${KUBEBUILDER_VERSION}_${GOOS}_${ARCH}/bin)
-  if [ ! -d $KUBEBUILDER_BIN_DIR ]; then
-    curl -Ls https://github.com/kubernetes-sigs/kubebuilder/releases/download/v${KUBEBUILDER_VERSION}/kubebuilder_${KUBEBUILDER_VERSION}_${GOOS}_${ARCH}.tar.gz | tar xz
+  K8S_VERSION=1.24.2
+  KUBEBUILDER_DIR=$(realpath -m kubebuilder_${K8S_VERSION})
+  if [ ! -d "$KUBEBUILDER_DIR" ]; then
+    curl -sSL "https://go.kubebuilder.io/test-tools/${K8S_VERSION}/$(go env GOOS)/$(go env GOARCH)" | tar -xvz
+    mv kubebuilder "$KUBEBUILDER_DIR"
   fi
-  export PATH=$KUBEBUILDER_BIN_DIR:$PATH
-  mkdir -p $KUBEBUILDER_BIN_DIR/../var
-
-  # starting etcd
-  echo Starting Etcd
-  rm -rf default.etcd
-  if [ "$VERBOSE" != "" ]; then
-    $KUBEBUILDER_BIN_DIR/etcd &
-  else
-    $KUBEBUILDER_BIN_DIR/etcd >/dev/null 2>&1 &
-  fi
-  PID_ETCD=$!
-  trap "kill $PID_ETCD" SIGINT SIGTERM EXIT
-
-  # starting kube-apiserver
-  echo Starting Kube API Server
-  if [ "$VERBOSE" != "" ]; then
-    $KUBEBUILDER_BIN_DIR/kube-apiserver --etcd-servers http://localhost:2379 --cert-dir $KUBEBUILDER_BIN_DIR/../var &
-  else
-    $KUBEBUILDER_BIN_DIR/kube-apiserver --etcd-servers http://localhost:2379 --cert-dir $KUBEBUILDER_BIN_DIR/../var >/dev/null 2>&1 &
-  fi
-  PID_APISERVER=$!
-  trap "kill $PID_APISERVER && kill $PID_ETCD" SIGINT SIGTERM EXIT
-  sleep 3
-
-  # create local kubeconfig
-  cat > /tmp/kubeconfig-local.yaml << EOF
-apiVersion: v1
-clusters:
-- cluster:
-    server: http://localhost:8080
-  name: local
-contexts:
-- context:
-    cluster: local
-  name: local-ctx
-current-context: local-ctx
-kind: Config
-preferences: {}
-users: []
-EOF
-  export KUBECONFIG=/tmp/kubeconfig-local.yaml
+  export KUBEBUILDER_ASSETS="${KUBEBUILDER_DIR}/bin"
 else
+  export USE_EXISTING_CLUSTER=true
   export KUBECONFIG=$INTEGRATION_KUBECONFIG
+  kubectl cluster-info
 fi
-
-kubectl cluster-info
 
 # install ginkgo
 go install -mod=vendor github.com/onsi/ginkgo/v2/ginkgo

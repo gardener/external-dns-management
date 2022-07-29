@@ -323,23 +323,26 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 	}
 
 	stdMeta := buildRecordSet("META", 600, "\"owner=test\"", "\"prefix=comment-\"")
+	sub1 := dns.DNSSetName{DNSName: "sub1.z1.test"}
+	sub2 := dns.DNSSetName{DNSName: "sub2.z1.test"}
+	sub3 := dns.DNSSetName{DNSName: "sub3.z1.test"}
 	expectedDnssets := dns.DNSSets{
-		"sub1.z1.test": &dns.DNSSet{
-			Name: "sub1.z1.test",
+		sub1: &dns.DNSSet{
+			Name: sub1,
 			Sets: dns.RecordSets{
 				"A":    buildRecordSet("A", 301, "1.2.3.4", "5.6.7.8"),
 				"META": stdMeta,
 			},
 		},
-		"sub2.z1.test": &dns.DNSSet{
-			Name: "sub2.z1.test",
+		sub2: &dns.DNSSet{
+			Name: sub2,
 			Sets: dns.RecordSets{
 				"CNAME": buildRecordSet("CNAME", 302, "cname.target.test"),
 				"META":  stdMeta,
 			},
 		},
-		"sub3.z1.test": &dns.DNSSet{
-			Name: "sub3.z1.test",
+		dns.DNSSetName{DNSName: "sub3.z1.test"}: &dns.DNSSet{
+			Name: sub3,
 			Sets: dns.RecordSets{
 				"TXT": buildRecordSet("TXT", 303, "foo", "bar"),
 			},
@@ -352,12 +355,13 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 	Ω(actualDnssets).Should(Equal(expectedDnssets))
 
 	tlog := logger.New()
+	sub4 := dns.DNSSetName{DNSName: "sub4.z1.test"}
 	reqs := []*provider.ChangeRequest{
 		{
 			Action: provider.R_CREATE,
 			Type:   "A",
 			Addition: &dns.DNSSet{
-				Name: "sub4.z1.test",
+				Name: sub4,
 				Sets: dns.RecordSets{
 					"A": buildRecordSet("A", 304, "11.22.33.44"),
 				},
@@ -367,7 +371,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 			Action: provider.R_CREATE,
 			Type:   "META",
 			Addition: &dns.DNSSet{
-				Name: "sub4.z1.test",
+				Name: sub4,
 				Sets: dns.RecordSets{
 					"META": stdMeta,
 				},
@@ -377,7 +381,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 			Action: provider.R_UPDATE,
 			Type:   "A",
 			Addition: &dns.DNSSet{
-				Name: "sub1.z1.test",
+				Name: sub1,
 				Sets: dns.RecordSets{
 					"A": buildRecordSet("A", 305, "1.2.3.55", "5.6.7.8"),
 				},
@@ -386,32 +390,32 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 		{
 			Action:   provider.R_DELETE,
 			Type:     "CNAME",
-			Deletion: expectedDnssets["sub2.z1.test"],
+			Deletion: expectedDnssets[sub2],
 		},
 		{
 			Action:   provider.R_DELETE,
 			Type:     "META",
-			Deletion: expectedDnssets["sub2.z1.test"],
+			Deletion: expectedDnssets[sub2],
 		},
 		{
 			Action:   provider.R_DELETE,
 			Type:     "TXT",
-			Deletion: expectedDnssets["sub3.z1.test"],
+			Deletion: expectedDnssets[sub3],
 		},
 	}
 	err = h.ExecuteRequests(tlog, hostedZone, zoneState2, reqs)
 	Ω(err).Should(BeNil(), "ExecuteRequests failed")
 
 	expectedDnssets2 := dns.DNSSets{
-		"sub1.z1.test": &dns.DNSSet{
-			Name: "sub1.z1.test",
+		sub1: &dns.DNSSet{
+			Name: sub1,
 			Sets: dns.RecordSets{
 				"A":    buildRecordSet("A", 305, "1.2.3.55", "5.6.7.8"),
 				"META": stdMeta,
 			},
 		},
-		"sub4.z1.test": &dns.DNSSet{
-			Name: "sub4.z1.test",
+		sub4: &dns.DNSSet{
+			Name: sub4,
 			Sets: dns.RecordSets{
 				"A":    buildRecordSet("A", 304, "11.22.33.44"),
 				"META": stdMeta,
@@ -425,7 +429,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 		return
 	}
 	actualDnssets2 := zoneState3.GetDNSSets()
-	Ω(actualDnssets2["sub1.z1.test"]).Should(Equal(expectedDnssets2["sub1.z1.test"]))
-	Ω(actualDnssets2["sub4.z1.test"]).Should(Equal(expectedDnssets2["sub4.z1.test"]))
+	Ω(actualDnssets2[sub1]).Should(Equal(expectedDnssets2[sub1]))
+	Ω(actualDnssets2[sub4]).Should(Equal(expectedDnssets2[sub4]))
 	Ω(actualDnssets2).Should(Equal(expectedDnssets2))
 }

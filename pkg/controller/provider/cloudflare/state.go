@@ -25,9 +25,12 @@ import (
 
 type Record cloudflare.DNSRecord
 
-func (r *Record) GetType() string    { return r.Type }
-func (r *Record) GetId() string      { return r.ID }
-func (r *Record) GetDNSName() string { return r.Name }
+var _ raw.Record = &Record{}
+
+func (r *Record) GetType() string          { return r.Type }
+func (r *Record) GetId() string            { return r.ID }
+func (r *Record) GetDNSName() string       { return r.Name }
+func (r *Record) GetSetIdentifier() string { return "" }
 func (r *Record) GetValue() string {
 	if r.Type == dns.RS_TXT {
 		return raw.EnsureQuotedText(r.Content)

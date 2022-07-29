@@ -17,7 +17,7 @@
 package integration
 
 import (
-	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
@@ -32,22 +32,16 @@ var _ = Describe("ServiceAnnotation", func() {
 		fakeExternalIP := "1.2.3.4"
 		svcDomain := "mysvc." + domain
 		ttl := 456
-		svc, err := testEnv.CreateServiceWithAnnotation("mysvc", svcDomain, fakeExternalIP, ttl)
+		svc, err := testEnv.CreateServiceWithAnnotation("mysvc", svcDomain, fakeExternalIP, ttl, nil)
+		Ω(err).Should(BeNil())
+		routingPolicy := `{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}`
+		svc2, err := testEnv.CreateServiceWithAnnotation("mysvc2", svcDomain, fakeExternalIP, ttl, &routingPolicy)
 		Ω(err).Should(BeNil())
 
-		var entryObj resources.Object
-		err = testEnv.Await("Generated entry for service not found", func() (bool, error) {
-			var err error
-			entryObj, err = testEnv.FindEntryByOwner("Service", svc.GetName())
-			if entryObj != nil {
-				return true, nil
-			}
-			return false, err
-		})
+		entryObj, err := testEnv.AwaitObjectByOwner("Service", svc.GetName())
 		Ω(err).Should(BeNil())
 
 		checkEntry(entryObj, pr)
-
 		entryObj, err = testEnv.GetEntry(entryObj.GetName())
 		Ω(err).Should(BeNil())
 		entry := UnwrapEntry(entryObj)
@@ -56,13 +50,29 @@ var _ = Describe("ServiceAnnotation", func() {
 		Ω(entry.Spec.TTL).ShouldNot(BeNil())
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
 
+		entryObj2, err := testEnv.AwaitObjectByOwner("Service", svc2.GetName())
+		entry2 := UnwrapEntry(entryObj2)
+		Ω(err).Should(BeNil())
+		Ω(entry2.Spec.RoutingPolicy).ShouldNot(BeNil())
+		Ω(*entry2.Spec.RoutingPolicy).Should(Equal(v1alpha1.RoutingPolicy{
+			Type:          "weighted",
+			SetIdentifier: "my-id",
+			Parameters:    map[string]string{"weight": "10"},
+		}))
+
 		err = svc.Delete()
+		Ω(err).Should(BeNil())
+		err = svc2.Delete()
 		Ω(err).Should(BeNil())
 
 		err = testEnv.AwaitServiceDeletion(svc.GetName())
 		Ω(err).Should(BeNil())
+		err = testEnv.AwaitServiceDeletion(svc2.GetName())
+		Ω(err).Should(BeNil())
 
 		err = testEnv.AwaitEntryDeletion(entryObj.GetName())
+		Ω(err).Should(BeNil())
+		err = testEnv.AwaitEntryDeletion(entryObj2.GetName())
 		Ω(err).Should(BeNil())
 	})
 })

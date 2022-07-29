@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 type AlreadyBusyForEntry struct {
@@ -33,13 +34,13 @@ func (e *AlreadyBusyForEntry) Error() string {
 }
 
 type AlreadyBusyForOwner struct {
-	DNSName        string
+	Name           dns.DNSSetName
 	EntryCreatedAt time.Time
 	Owner          string
 }
 
 func (e *AlreadyBusyForOwner) Error() string {
-	return fmt.Sprintf("DNS name %q already busy for owner %q", e.DNSName, e.Owner)
+	return fmt.Sprintf("DNS name %q already busy for owner %q", e.Name, e.Owner)
 }
 
 type NoSuchHostedZone struct {

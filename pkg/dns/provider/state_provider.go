@@ -86,7 +86,7 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 		if last != nil {
 			logger.Infof("trigger entries for old zones")
 			entries := Entries{}
-			stale := DNSNames{}
+			stale := ZonedDNSSetNames{}
 			for _, z := range last.zones {
 				this.addEntriesForZone(logger, entries, stale, z)
 			}

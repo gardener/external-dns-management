@@ -20,19 +20,21 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
-
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 type TargetProvider interface {
 	Targets() Targets
 	TTL() int64
 	OwnerId() string
+	RoutingPolicy() *dns.RoutingPolicy
 }
 
 type DNSSpecification interface {
 	resources.Object
 	GetDNSName() string
+	GetSetIdentifier() string
 	GetTTL() *int64
 	GetOwnerId() *string
 	GetTargets() []string
@@ -40,12 +42,14 @@ type DNSSpecification interface {
 	GetCNameLookupInterval() *int64
 	GetReference() *api.EntryReference
 	BaseStatus() *api.DNSBaseStatus
+	GetRoutingPolicy() *dns.RoutingPolicy
 
 	GetTargetSpec(TargetProvider) TargetSpec
 
 	RefreshTime() time.Time
 	ValidateSpecial() error
 	AcknowledgeTargets(targets []string) bool
+	AcknowledgeRoutingPolicy(policy *dns.RoutingPolicy) bool
 }
 
 func DNSObject(data resources.Object, ign ...interface{}) DNSSpecification {

@@ -53,30 +53,40 @@ import (
 // or writing a record set, respectively. The map the given set to
 // an effective set and dns name for the desired purpose.
 
-type DNSSets map[string]*DNSSet
+type DNSSets map[DNSSetName]*DNSSet
 
 type Ownership interface {
 	IsResponsibleFor(id string) bool
 	GetIds() utils.StringSet
 }
 
-func (dnssets DNSSets) AddRecordSetFromProvider(dnsname string, rs *RecordSet) {
-	name := NormalizeHostname(dnsname)
-	name, rs = MapFromProvider(name, rs)
-
-	dnssets.AddRecordSet(name, rs)
+func (dnssets DNSSets) AddRecordSetFromProvider(dnsName string, rs *RecordSet) {
+	dnssets.AddRecordSetFromProviderEx(DNSSetName{DNSName: dnsName}, nil, rs)
 }
 
-func (dnssets DNSSets) AddRecordSet(name string, rs *RecordSet) {
+func (dnssets DNSSets) AddRecordSetFromProviderEx(setName DNSSetName, policy *RoutingPolicy, rs *RecordSet) {
+	name := setName.Normalize()
+	name, rs = MapFromProvider(name, rs)
+
+	dnssets.AddRecordSet(name, policy, rs)
+}
+
+func (dnssets DNSSets) AddRecordSet(name DNSSetName, policy *RoutingPolicy, rs *RecordSet) {
 	dnsset := dnssets[name]
 	if dnsset == nil {
-		dnsset = NewDNSSet(name)
+		dnsset = NewDNSSet(name, policy)
 		dnssets[name] = dnsset
 	}
 	dnsset.Sets[rs.Type] = rs
+	if rs.Type == RS_CNAME {
+		for i := range rs.Records {
+			rs.Records[i].Value = NormalizeHostname(rs.Records[i].Value)
+		}
+	}
+	dnsset.RoutingPolicy = policy
 }
 
-func (dnssets DNSSets) RemoveRecordSet(name string, recordSetType string) {
+func (dnssets DNSSets) RemoveRecordSet(name DNSSetName, recordSetType string) {
 	dnsset := dnssets[name]
 	if dnsset != nil {
 		delete(dnsset.Sets, recordSetType)
@@ -117,14 +127,16 @@ const (
 )
 
 type DNSSet struct {
-	Name        string
-	Kind        string
-	UpdateGroup string
-	Sets        RecordSets
+	Name          DNSSetName
+	Kind          string
+	UpdateGroup   string
+	Sets          RecordSets
+	RoutingPolicy *RoutingPolicy
 }
 
 func (this *DNSSet) Clone() *DNSSet {
-	return &DNSSet{Name: this.Name, Sets: this.Sets.Clone(), UpdateGroup: this.UpdateGroup, Kind: this.Kind}
+	return &DNSSet{Name: this.Name, Sets: this.Sets.Clone(), UpdateGroup: this.UpdateGroup, Kind: this.Kind,
+		RoutingPolicy: this.RoutingPolicy.Clone()}
 }
 
 func (this *DNSSet) getAttr(ty string, name string) string {
@@ -222,9 +234,9 @@ func (this *DNSSet) SetRecordSet(rtype string, ttl int64, values ...string) {
 	for i, r := range values {
 		records[i] = &Record{Value: r}
 	}
-	this.Sets[rtype] = &RecordSet{rtype, ttl, false, records}
+	this.Sets[rtype] = &RecordSet{Type: rtype, TTL: ttl, IgnoreTTL: false, Records: records}
 }
 
-func NewDNSSet(name string) *DNSSet {
-	return &DNSSet{Name: name, Sets: map[string]*RecordSet{}}
+func NewDNSSet(name DNSSetName, routingPolicy *RoutingPolicy) *DNSSet {
+	return &DNSSet{Name: name, RoutingPolicy: routingPolicy, Sets: map[string]*RecordSet{}}
 }

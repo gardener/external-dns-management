@@ -18,6 +18,7 @@ package provider
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -49,10 +50,43 @@ type ChangeRequest struct {
 	Addition *dns.DNSSet
 	Deletion *dns.DNSSet
 	Done     DoneHandler
+	Applied  bool
 }
 
 func NewChangeRequest(action string, rtype string, del, add *dns.DNSSet, done DoneHandler) *ChangeRequest {
-	return &ChangeRequest{Action: action, Type: rtype, Addition: add, Deletion: del, Done: done}
+	r := &ChangeRequest{Action: action, Type: rtype, Addition: add, Deletion: del}
+	r.Done = &applyingDoneHandler{changeRequest: r, inner: done}
+	return r
+}
+
+type applyingDoneHandler struct {
+	changeRequest *ChangeRequest
+	inner         DoneHandler
+}
+
+func (h *applyingDoneHandler) SetInvalid(err error) {
+	if h.inner != nil {
+		h.inner.SetInvalid(err)
+	}
+}
+
+func (h *applyingDoneHandler) Failed(err error) {
+	if h.inner != nil {
+		h.inner.Failed(err)
+	}
+}
+
+func (h *applyingDoneHandler) Throttled() {
+	if h.inner != nil {
+		h.inner.Throttled()
+	}
+}
+
+func (h *applyingDoneHandler) Succeeded() {
+	h.changeRequest.Applied = true
+	if h.inner != nil {
+		h.inner.Succeeded()
+	}
 }
 
 type ChangeGroup struct {
@@ -77,7 +111,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 				if model.ExistsInEquivalentZone(s.Name) {
 					continue
 				}
-				if e := model.IsStale(ZonedDNSName{ZoneID: model.ZoneId(), DNSName: s.Name}); e != nil {
+				if e := model.IsStale(ZonedDNSSetName{ZoneID: model.ZoneId(), DNSSetName: s.Name}); e != nil {
 					if e.IsDeleting() {
 						model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
 					}
@@ -99,7 +133,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 					model.Infof("found unapplied managed set '%s'", s.Name)
 					var done DoneHandler
 					for _, e := range model.context.entries {
-						if e.dnsname == s.Name {
+						if e.dnsSetName == s.Name {
 							done = NewStatusUpdate(logger, e, model.context.fhandler)
 							break
 						}
@@ -157,11 +191,11 @@ type ChangeModel struct {
 	config         Config
 	ownership      dns.Ownership
 	context        *zoneReconciliation
-	applied        map[string]*dns.DNSSet
+	applied        map[dns.DNSSetName]*dns.DNSSet
 	dangling       *ChangeGroup
 	providergroups map[string]*ChangeGroup
 	zonestate      DNSZoneState
-	failedDNSNames utils.StringSet
+	failedDNSNames dns.DNSNameSet
 }
 
 type ChangeResult struct {
@@ -176,18 +210,18 @@ func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zone
 		config:         config,
 		ownership:      ownership,
 		context:        req,
-		applied:        map[string]*dns.DNSSet{},
+		applied:        map[dns.DNSSetName]*dns.DNSSet{},
 		providergroups: map[string]*ChangeGroup{},
-		failedDNSNames: utils.StringSet{},
+		failedDNSNames: dns.DNSNameSet{},
 	}
 }
 
-func (this *ChangeModel) IsStale(dns ZonedDNSName) *Entry {
+func (this *ChangeModel) IsStale(dns ZonedDNSSetName) *Entry {
 	return this.context.stale[dns]
 }
 
-func (this *ChangeModel) ExistsInEquivalentZone(dnsName string) bool {
-	return this.context.equivEntries != nil && this.context.equivEntries.Contains(dnsName)
+func (this *ChangeModel) ExistsInEquivalentZone(name dns.DNSSetName) bool {
+	return this.context.equivEntries != nil && this.context.equivEntries.Contains(name)
 }
 
 func (this *ChangeModel) getProviderView(p DNSProvider) *ChangeGroup {
@@ -240,17 +274,17 @@ func (this *ChangeModel) Setup() error {
 	sets := this.zonestate.GetDNSSets()
 	this.context.zone.SetOwners(sets.GetOwners())
 	this.dangling = newChangeGroup("dangling entries", provider, this)
-	for dnsName, set := range sets {
+	for setName, set := range sets {
 		var view *ChangeGroup
-		provider = this.context.providers.LookupFor(dnsName)
+		provider = this.context.providers.LookupFor(setName.DNSName)
 		if provider != nil {
-			this.dumpf("  %s: %d types (provider %s)", dnsName, len(set.Sets), provider.ObjectName())
+			this.dumpf("  %s: %d types (provider %s)", setName, len(set.Sets), provider.ObjectName())
 			view = this.getProviderView(provider)
 		} else {
-			this.dumpf("  %s: %d types (no provider)", dnsName, len(set.Sets))
+			this.dumpf("  %s: %d types (no provider)", setName, len(set.Sets))
 			view = this.dangling
 		}
-		view.dnssets[dnsName] = set
+		view.dnssets[setName] = set
 		for t, r := range set.Sets {
 			this.dumpf("    %s: %d records: %s", t, len(r.Records), r.RecordString())
 		}
@@ -259,20 +293,20 @@ func (this *ChangeModel) Setup() error {
 	return err
 }
 
-func (this *ChangeModel) Check(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Check(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(false, false, name, updateGroup, createdAt, done, spec)
 }
-func (this *ChangeModel) Apply(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Apply(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, false, name, updateGroup, createdAt, done, spec)
 }
-func (this *ChangeModel) Delete(name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Delete(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, true, name, updateGroup, createdAt, done, spec)
 }
-func (this *ChangeModel) PseudoApply(name string) {
-	this.applied[name] = dns.NewDNSSet(name)
+func (this *ChangeModel) PseudoApply(name dns.DNSSetName, spec TargetSpec) {
+	this.applied[name] = dns.NewDNSSet(name, spec.RoutingPolicy())
 }
 
-func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Exec(apply bool, delete bool, name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	//this.Infof("%s: %v", name, targets)
 	if len(spec.Targets()) == 0 && !delete {
 		return ChangeResult{}
@@ -282,7 +316,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 		this.applied[name] = nil
 		done = this.wrappedDoneHandler(name, done)
 	}
-	p := this.context.providers.LookupFor(name)
+	p := this.context.providers.LookupFor(name.DNSName)
 	if p == nil {
 		err := fmt.Errorf("no provider found for %q", name)
 		if done != nil {
@@ -297,7 +331,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 
 	view := this.getProviderView(p)
 	oldset := view.dnssets[name]
-	newset := dns.NewDNSSet(name)
+	newset := dns.NewDNSSet(name, spec.RoutingPolicy())
 	newset.UpdateGroup = updateGroup
 	newset.SetKind(spec.Kind())
 	if !delete {
@@ -307,7 +341,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 	if oldset != nil {
 		this.Debugf("found old for %s %q", oldset.GetKind(), oldset.Name)
 		if this.IsForeign(oldset) {
-			err := &perrs.AlreadyBusyForOwner{DNSName: name, EntryCreatedAt: createdAt, Owner: oldset.GetOwner()}
+			err := &perrs.AlreadyBusyForOwner{Name: name, EntryCreatedAt: createdAt, Owner: oldset.GetOwner()}
 			retry := p.ReportZoneStateConflict(this.context.zone.getZone(), err)
 			if done != nil {
 				if apply && !retry {
@@ -338,7 +372,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name, updateGroup string,
 					olddns, _ := dns.MapToProvider(ty, oldset, this.Domain())
 					newdns, _ := dns.MapToProvider(ty, newset, this.Domain())
 					if olddns == newdns {
-						if !curset.Match(rset) {
+						if !curset.Match(rset) || !reflect.DeepEqual(spec.RoutingPolicy(), oldset.RoutingPolicy) {
 							if apply {
 								view.addUpdateRequest(oldset, newset, ty, done)
 							}
@@ -411,15 +445,15 @@ func (this *ChangeModel) Update(logger logger.LogContext) error {
 	return nil
 }
 
-func (this *ChangeModel) IsFailed(dnsName string) bool {
-	return this.failedDNSNames.Contains(dnsName)
+func (this *ChangeModel) IsFailed(name dns.DNSSetName) bool {
+	return this.failedDNSNames.Contains(name)
 }
 
-func (this *ChangeModel) wrappedDoneHandler(dnsName string, done DoneHandler) DoneHandler {
+func (this *ChangeModel) wrappedDoneHandler(name dns.DNSSetName, done DoneHandler) DoneHandler {
 	return &changeModelDoneHandler{
 		changeModel: this,
 		inner:       done,
-		dnsName:     dnsName,
+		dnsSetName:  name,
 	}
 }
 
@@ -429,7 +463,7 @@ func (this *ChangeModel) wrappedDoneHandler(dnsName string, done DoneHandler) Do
 type changeModelDoneHandler struct {
 	changeModel *ChangeModel
 	inner       DoneHandler
-	dnsName     string
+	dnsSetName  dns.DNSSetName
 }
 
 func (this *changeModelDoneHandler) SetInvalid(err error) {
@@ -439,7 +473,7 @@ func (this *changeModelDoneHandler) SetInvalid(err error) {
 }
 
 func (this *changeModelDoneHandler) Failed(err error) {
-	this.changeModel.failedDNSNames.Add(this.dnsName)
+	this.changeModel.failedDNSNames.Add(this.dnsSetName)
 	if this.inner != nil {
 		this.inner.Failed(err)
 	}

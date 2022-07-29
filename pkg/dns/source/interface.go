@@ -22,6 +22,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -29,13 +30,14 @@ import (
 )
 
 type DNSInfo struct {
-	Names     utils.StringSet
-	TTL       *int64
-	Interval  *int64
-	Targets   utils.StringSet
-	Text      utils.StringSet
-	OrigRef   *v1alpha1.EntryReference
-	TargetRef *v1alpha1.EntryReference
+	Names         dns.DNSNameSet
+	TTL           *int64
+	Interval      *int64
+	Targets       utils.StringSet
+	Text          utils.StringSet
+	OrigRef       *v1alpha1.EntryReference
+	TargetRef     *v1alpha1.EntryReference
+	RoutingPolicy *v1alpha1.RoutingPolicy
 }
 
 type DNSFeedback interface {
@@ -64,7 +66,7 @@ type DNSSourceType interface {
 	Create(controller.Interface) (DNSSource, error)
 }
 
-type DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, names utils.StringSet) (utils.StringSet, utils.StringSet, error)
+type DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, names dns.DNSNameSet) (targets utils.StringSet, texts utils.StringSet, err error)
 type DNSSourceCreator func(controller.Interface) (DNSSource, error)
 
 type DNSState struct {
@@ -73,9 +75,17 @@ type DNSState struct {
 }
 
 type DNSCurrentState struct {
-	Names          map[string]*DNSState
-	Targets        utils.StringSet
-	AnnotatedNames utils.StringSet
+	Names                  map[dns.DNSSetName]*DNSState
+	Targets                utils.StringSet
+	AnnotatedNames         utils.StringSet
+	AnnotatedRoutingPolicy *v1alpha1.RoutingPolicy
+}
+
+func (s *DNSCurrentState) GetSetIdentifier() string {
+	if s.AnnotatedRoutingPolicy == nil {
+		return ""
+	}
+	return s.AnnotatedRoutingPolicy.SetIdentifier
 }
 
 func NewDNSSouceTypeForExtractor(name string, kind schema.GroupKind, handler DNSTargetExtractor) DNSSourceType {

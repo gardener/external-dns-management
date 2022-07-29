@@ -19,6 +19,7 @@ package provider
 import (
 	"fmt"
 	"net"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -78,12 +79,13 @@ func (this *EntryPremise) NotifyChange(p *EntryPremise) string {
 }
 
 type EntryVersion struct {
-	object       dnsutils.DNSSpecification
-	providername resources.ObjectName
-	dnsname      string
-	targets      Targets
-	mappings     map[string][]string
-	warnings     []string
+	object        dnsutils.DNSSpecification
+	providername  resources.ObjectName
+	dnsSetName    dns.DNSSetName
+	targets       Targets
+	routingPolicy *dns.RoutingPolicy
+	mappings      map[string][]string
+	warnings      []string
 
 	status api.DNSBaseStatus
 
@@ -96,10 +98,10 @@ type EntryVersion struct {
 
 func NewEntryVersion(object dnsutils.DNSSpecification, old *Entry) *EntryVersion {
 	v := &EntryVersion{
-		object:   object,
-		dnsname:  object.GetDNSName(),
-		targets:  Targets{},
-		mappings: map[string][]string{},
+		object:     object,
+		dnsSetName: dns.DNSSetName{DNSName: object.GetDNSName(), SetIdentifier: object.GetSetIdentifier()},
+		targets:    Targets{},
+		mappings:   map[string][]string{},
 	}
 	if old != nil {
 		v.status = old.status
@@ -114,8 +116,8 @@ func (this *EntryVersion) Kind() string {
 }
 
 func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string, refresh bool) {
-	if this.dnsname != e.dnsname {
-		reasons = append(reasons, "dnsname changed")
+	if this.dnsSetName != e.dnsSetName {
+		reasons = append(reasons, "recordset name changed")
 	}
 	if !utils.Int64Equal(this.status.TTL, e.status.TTL) {
 		reasons = append(reasons, "ttl changed")
@@ -131,6 +133,9 @@ func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string, 
 	}
 	if this.targets.DifferFrom(e.targets) {
 		reasons = append(reasons, "targets changed")
+	}
+	if !reflect.DeepEqual(this.routingPolicy, e.routingPolicy) {
+		reasons = append(reasons, "routing policy changed")
 	}
 	if this.State() != e.State() {
 		if e.State() != api.STATE_READY {
@@ -189,15 +194,27 @@ func (this *EntryVersion) ObjectName() resources.ObjectName {
 }
 
 func (this *EntryVersion) DNSName() string {
-	return this.dnsname
+	return this.dnsSetName.DNSName
 }
 
-func (this *EntryVersion) ZonedDNSName() ZonedDNSName {
-	return ZonedDNSName{ZoneID: this.ZoneId(), DNSName: this.dnsname}
+func (this *EntryVersion) GetSetIdentifier() string {
+	return this.dnsSetName.SetIdentifier
+}
+
+func (this *EntryVersion) DNSSetName() dns.DNSSetName {
+	return this.dnsSetName
+}
+
+func (this *EntryVersion) ZonedDNSName() ZonedDNSSetName {
+	return ZonedDNSSetName{ZoneID: this.ZoneId(), DNSSetName: this.dnsSetName}
 }
 
 func (this *EntryVersion) Targets() Targets {
 	return this.targets
+}
+
+func (this *EntryVersion) RoutingPolicy() *dns.RoutingPolicy {
+	return this.routingPolicy
 }
 
 func (this *EntryVersion) Description() string {
@@ -238,6 +255,7 @@ type dnsSpecModification struct {
 	ttl     *int64
 	ownerid *string
 	lookup  *int64
+	policy  *dns.RoutingPolicy
 }
 
 func (this *dnsSpecModification) GetTargets() []string {
@@ -276,7 +294,7 @@ func (this *dnsSpecModification) GetTTL() *int64 {
 }
 
 func (this *dnsSpecModification) IsModified() bool {
-	return this.targets != nil || this.text != nil || this.ownerid != nil || this.lookup != nil || this.ttl != nil
+	return this.targets != nil || this.text != nil || this.ownerid != nil || this.lookup != nil || this.ttl != nil || this.policy != nil
 }
 
 func complete(logger logger.LogContext, state *state, spec dnsutils.DNSSpecification, object resources.Object, prefix string) (dnsutils.DNSSpecification, error) {
@@ -357,17 +375,17 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 		return
 	}
 
-	if p.zonedomain == entry.dnsname {
+	if p.zonedomain == entry.dnsSetName.DNSName {
 		err = fmt.Errorf("usage of dns name (%s) identical to domain of hosted zone (%s) is not supported",
 			p.zonedomain, p.zoneid)
 		return
 	}
 	if len(effspec.GetTargets()) > 0 && len(effspec.GetText()) > 0 {
-		err = fmt.Errorf("only Text or Targets possible: %s", err)
+		err = fmt.Errorf("only Text or Targets possible")
 		return
 	}
 	if ttl := effspec.GetTTL(); ttl != nil && (*ttl == 0 || *ttl < 0) {
-		err = fmt.Errorf("TTL must be greater than zero: %s", err)
+		err = fmt.Errorf("TTL must be greater than zero")
 		return
 	}
 
@@ -567,6 +585,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		}
 
 		this.targets = targets
+		this.routingPolicy = spec.GetRoutingPolicy()
 		if err != nil {
 			if this.status.State != api.STATE_STALE {
 				if this.status.State == api.STATE_READY && (p.provider != nil && !p.provider.IsValid()) {
@@ -586,7 +605,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			if p.zoneid == "" {
 				this.status.State = api.STATE_ERROR
 				this.status.Provider = nil
-				this.status.Message = StatusMessagef("no provider found for %q", this.dnsname)
+				this.status.Message = StatusMessagef("no provider found for %q", this.dnsSetName)
 			} else {
 				if p.provider.IsValid() {
 					this.valid = true
@@ -652,6 +671,7 @@ func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg stri
 		}
 		if utils.StringValue(this.status.Provider) == "" {
 			mod.Modify(o.AcknowledgeTargets(nil))
+			mod.Modify(o.AcknowledgeRoutingPolicy(nil))
 		}
 		if mod.IsModified() {
 			logmsg.Infof(logger)
@@ -683,11 +703,15 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 				logger.Info(msg)
 				mod.Modify(true)
 			}
+			if o.AcknowledgeRoutingPolicy(this.routingPolicy) {
+				mod.Modify(true)
+			}
 			if this.status.Provider != nil {
 				mod.AssureStringPtrPtr(&b.Provider, this.status.Provider)
 			}
 		} else if state != api.STATE_STALE {
 			mod.Modify(o.AcknowledgeTargets(nil))
+			mod.Modify(o.AcknowledgeRoutingPolicy(nil))
 		}
 		mod.AssureInt64Value(&b.ObservedGeneration, o.GetGeneration())
 		if !(this.status.State == api.STATE_STALE && this.status.State == state) {

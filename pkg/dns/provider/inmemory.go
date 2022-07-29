@@ -109,10 +109,9 @@ func (m *InMemory) Apply(zoneID dns.ZoneID, request *ChangeRequest, metrics Metr
 	}
 
 	name, rset := buildRecordSet(request)
-
 	switch request.Action {
 	case R_CREATE, R_UPDATE:
-		data.dnssets.AddRecordSet(name, rset)
+		data.dnssets.AddRecordSet(name, request.Addition.RoutingPolicy, rset)
 		metrics.AddZoneRequests(zoneID.ID, M_UPDATERECORDS, 1)
 	case R_DELETE:
 		data.dnssets.RemoveRecordSet(name, rset.Type)
@@ -121,7 +120,7 @@ func (m *InMemory) Apply(zoneID dns.ZoneID, request *ChangeRequest, metrics Metr
 	return nil
 }
 
-func buildRecordSet(req *ChangeRequest) (string, *dns.RecordSet) {
+func buildRecordSet(req *ChangeRequest) (dns.DNSSetName, *dns.RecordSet) {
 	var dnsset *dns.DNSSet
 	switch req.Action {
 	case R_CREATE, R_UPDATE:

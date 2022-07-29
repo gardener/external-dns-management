@@ -21,8 +21,9 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
@@ -54,15 +55,18 @@ func (this *DNSEntrySource) CreateDNSFeedback(obj resources.Object) source.DNSFe
 }
 
 func (this *DNSEntrySource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
-	data := obj.Data().(*api.DNSEntry)
+	entryObject := dnsutils.DNSEntry(obj)
+	name := entryObject.DNSSetName()
+	data := entryObject.DNSEntry()
 
 	info := &source.DNSInfo{
-		Names:    utils.NewStringSet(data.Spec.DNSName),
-		Targets:  utils.NewStringSetByArray(data.Spec.Targets),
-		Text:     utils.NewStringSetByArray(data.Spec.Text),
-		OrigRef:  data.Spec.Reference,
-		TTL:      data.Spec.TTL,
-		Interval: data.Spec.CNameLookupInterval,
+		Names:         dns.NewDNSNameSet(name),
+		Targets:       utils.NewStringSetByArray(data.Spec.Targets),
+		Text:          utils.NewStringSetByArray(data.Spec.Text),
+		OrigRef:       data.Spec.Reference,
+		TTL:           data.Spec.TTL,
+		Interval:      data.Spec.CNameLookupInterval,
+		RoutingPolicy: data.Spec.RoutingPolicy,
 	}
 	return info, nil
 }

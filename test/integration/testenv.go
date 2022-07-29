@@ -45,7 +45,6 @@ import (
 
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
-	"github.com/gardener/external-dns-management/pkg/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dns"
 
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -515,10 +514,18 @@ func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {
 	return obj.Data().(*v1alpha1.DNSOwner)
 }
 
-func (te *TestEnv) CreateIngressWithAnnotation(name, domainName string) (resources.Object, error) {
+func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP string, ttl int, routingPolicy *string) (resources.Object, error) {
 	setter := func(e *networking.Ingress) {
-		e.Annotations = map[string]string{"dns.gardener.cloud/dnsnames": domainName}
-		e.Spec.Rules = []networking.IngressRule{{Host: domainName}}
+		e.Annotations = map[string]string{dnssource.DNS_ANNOTATION: "*", dnssource.TTL_ANNOTATION: fmt.Sprintf("%d", ttl)}
+		if routingPolicy != nil {
+			e.Annotations[dnssource.ROUTING_POLICY_ANNOTATION] = *routingPolicy
+		}
+		e.Spec.Rules = []networking.IngressRule{
+			{
+				Host:             domainName,
+				IngressRuleValue: networking.IngressRuleValue{},
+			},
+		}
 	}
 
 	ingress := &networking.Ingress{}
@@ -534,6 +541,24 @@ func (te *TestEnv) CreateIngressWithAnnotation(name, domainName string) (resourc
 			err = obj.Update()
 		}
 	}
+	if err != nil {
+		return obj, err
+	}
+
+	if fakeExternalIP != "" {
+		res, err := te.resources.Get(ingress)
+		if err != nil {
+			return obj, err
+		}
+		_, _, err = res.ModifyStatus(ingress, func(data resources.ObjectData) (bool, error) {
+			o := data.(*networking.Ingress)
+			o.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
+				{IP: fakeExternalIP},
+			}
+			return true, nil
+		})
+	}
+
 	return obj, err
 }
 
@@ -549,15 +574,16 @@ func (te *TestEnv) GetIngress(name string) (resources.Object, *networking.Ingres
 	return obj, obj.Data().(*networking.Ingress), nil
 }
 
-func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP string, ttl int) (resources.Object, error) {
+func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP string, ttl int, routingPolicy *string) (resources.Object, error) {
 	setter := func(e *corev1.Service) {
-		e.Annotations = map[string]string{"dns.gardener.cloud/dnsnames": domainName, "dns.gardener.cloud/ttl": fmt.Sprintf("%d", ttl)}
+		e.Annotations = map[string]string{dnssource.DNS_ANNOTATION: domainName, dnssource.TTL_ANNOTATION: fmt.Sprintf("%d", ttl)}
+		if routingPolicy != nil {
+			e.Annotations[dnssource.ROUTING_POLICY_ANNOTATION] = *routingPolicy
+		}
 		e.Spec.Type = corev1.ServiceTypeLoadBalancer
 		e.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(8080), Protocol: corev1.ProtocolTCP}}
 	}
 
-	ip := "1.2.3.4"
-	service.FakeTargetIP = &ip
 	svc := &corev1.Service{}
 	svc.SetName(name)
 	svc.SetNamespace(te.Namespace)
@@ -571,6 +597,24 @@ func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP 
 			err = obj.Update()
 		}
 	}
+	if err != nil {
+		return obj, err
+	}
+
+	if fakeExternalIP != "" {
+		res, err := te.resources.Get(svc)
+		if err != nil {
+			return obj, err
+		}
+		_, _, err = res.ModifyStatus(svc, func(data resources.ObjectData) (bool, error) {
+			o := data.(*corev1.Service)
+			o.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
+				{IP: fakeExternalIP},
+			}
+			return true, nil
+		})
+	}
+
 	return obj, err
 }
 
@@ -754,6 +798,30 @@ func (te *TestEnv) AwaitServiceDeletion(name string) error {
 	})
 }
 
+func (te *TestEnv) AwaitIngressDeletion(name string) error {
+	msg := fmt.Sprintf("Ingress %s still existing", name)
+	return te.Await(msg, func() (bool, error) {
+		_, _, err := te.GetIngress(name)
+		if errors.IsNotFound(err) {
+			return true, nil
+		}
+		return false, err
+	})
+}
+
+func (te *TestEnv) AwaitObjectByOwner(kind, name string) (resources.Object, error) {
+	var entryObj resources.Object
+	err := te.Await("Generated entry for service not found", func() (bool, error) {
+		var err error
+		entryObj, err = te.FindEntryByOwner(kind, name)
+		if entryObj != nil {
+			return true, nil
+		}
+		return false, err
+	})
+	return entryObj, err
+}
+
 func (te *TestEnv) DeleteSecretByName(name string) error {
 	secret := &corev1.Secret{}
 	secret.SetName(name)
@@ -792,7 +860,7 @@ func (te *TestEnv) MockInMemoryGetDNSSetEx(name, zonePrefix, dnsName string) (*d
 			if err != nil {
 				return nil, err
 			}
-			if set := state.GetDNSSets()[dnsName]; set != nil {
+			if set := state.GetDNSSets()[dns.DNSSetName{DNSName: dnsName}]; set != nil {
 				return set, nil
 			}
 		}

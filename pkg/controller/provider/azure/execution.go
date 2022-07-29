@@ -48,11 +48,12 @@ func NewExecution(logger logger.LogContext, h *Handler, resourceGroup string, zo
 type buildStatus int
 
 const (
-	bs_ok          buildStatus = 0
-	bs_invalidType buildStatus = 1
-	bs_empty       buildStatus = 2
-	bs_dryrun      buildStatus = 3
-	bs_invalidName buildStatus = 4
+	bs_ok                   buildStatus = 0
+	bs_invalidType          buildStatus = 1
+	bs_empty                buildStatus = 2
+	bs_dryrun               buildStatus = 3
+	bs_invalidName          buildStatus = 4
+	bs_invalidRoutingPolicy buildStatus = 5
 )
 
 func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus, azure.RecordType, *azure.RecordSet) {
@@ -64,8 +65,12 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 		dnsset = req.Deletion
 	}
 
-	name, rset := dns.MapToProvider(req.Type, dnsset, exec.zoneName)
-	name, ok := utils.DropZoneName(name, exec.zoneName)
+	if dnsset.RoutingPolicy != nil {
+		return bs_invalidRoutingPolicy, "", nil
+	}
+
+	setName, rset := dns.MapToProvider(req.Type, dnsset, exec.zoneName)
+	name, ok := utils.DropZoneName(setName.DNSName, exec.zoneName)
 	if !ok {
 		return bs_invalidName, "", &azure.RecordSet{Name: &name}
 	}

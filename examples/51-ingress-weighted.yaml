@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    dns.gardener.cloud/dnsnames: '*'
+    # If you are delegating the DNS management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
+    #dns.gardener.cloud/class: garden
+    # If you are delegating the certificate management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/x509_certificates/)
+    #cert.gardener.cloud/purpose: managed
+    # routing-policy annotation provides the `.spec.routingPolicy` section as JSON
+    # Note: Currently only supported for aws-route53 or google-clouddns (see https://github.com/gardener/external-dns-management/tree/master/docs/aws-route53#weighted-routing-policy)
+    dns.gardener.cloud/routing-policy: '{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}'
+  name: test-ingress-weighted-routing-policy
+  namespace: default
+spec:
+  rules:
+    - host: test.ingress.my-dns-domain.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: my-service
+                port:
+                  number: 9000
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - test.ingress.my-dns-domain.com
+      #secretName: my-cert-secret-name

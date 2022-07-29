@@ -22,24 +22,44 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/server/remote/common"
 )
 
 func TestMarshalDNSSets(t *testing.T) {
 	sets1 := dns.DNSSets{}
 	rsb := dns.NewRecordSet(dns.RS_A, 100, []*dns.Record{{Value: "1.1.1.1"}, {Value: "1.1.1.2"}})
-	rsc := dns.NewRecordSet(dns.RS_TXT, 200, []*dns.Record{{Value: "foo"}, {Value: "bar"}})
-	sets1.AddRecordSet("b.a", rsb)
-	sets1.AddRecordSet("c.a", rsc)
+	rsc1 := dns.NewRecordSet(dns.RS_TXT, 200, []*dns.Record{{Value: "foo"}, {Value: "bar"}})
+	routingPolicy1 := &dns.RoutingPolicy{
+		Type:       "weighted",
+		Parameters: map[string]string{"weight": "1"},
+	}
+	rsc2 := dns.NewRecordSet(dns.RS_TXT, 200, []*dns.Record{{Value: "foo"}, {Value: "bla"}})
+	routingPolicy2 := &dns.RoutingPolicy{
+		Type:       "weighted",
+		Parameters: map[string]string{"weight": "2"},
+	}
+	sets1.AddRecordSet(dns.DNSSetName{DNSName: "b.a"}, nil, rsb)
+	sets1.AddRecordSet(dns.DNSSetName{DNSName: "c.a", SetIdentifier: "id1"}, routingPolicy1, rsc1)
+	sets1.AddRecordSet(dns.DNSSetName{DNSName: "c.a", SetIdentifier: "id2"}, routingPolicy2, rsc2)
 	table := []struct {
-		name string
-		sets dns.DNSSets
+		name                 string
+		sets                 dns.DNSSets
+		expectedSizeVersion1 int
+		expectedSizeVersion0 int
 	}{
-		{"empty", dns.DNSSets{}},
-		{"sets1", sets1},
+		{"empty", dns.DNSSets{}, 0, 0},
+		{"sets1", sets1, 3, 1},
 	}
 
 	for _, item := range table {
-		remote := MarshalDNSSets(item.sets)
+		remote0 := MarshalDNSSets(item.sets, common.ProtocolVersion0)
+		if len(remote0) != item.expectedSizeVersion0 {
+			t.Errorf("version 0 size mismatch: %d != %d", len(remote0), item.expectedSizeVersion0)
+		}
+		remote := MarshalDNSSets(item.sets, common.ProtocolVersion1)
+		if len(remote) != item.expectedSizeVersion1 {
+			t.Errorf("version 0 size mismatch: %d != %d", len(remote), item.expectedSizeVersion1)
+		}
 		copy := UnmarshalDNSSets(remote)
 
 		if !reflect.DeepEqual(item.sets, copy) {
@@ -49,7 +69,24 @@ func TestMarshalDNSSets(t *testing.T) {
 }
 
 func TestMarshalChangeRequest(t *testing.T) {
-	set := dns.NewDNSSet("a.b")
+	doTestMarshalChangeRequest(t, false)
+}
+
+func TestMarshalChangeRequestWithRoutingPolicy(t *testing.T) {
+	doTestMarshalChangeRequest(t, true)
+}
+
+func doTestMarshalChangeRequest(t *testing.T, withPolicy bool) {
+	var routingPolicy *dns.RoutingPolicy
+	setIdentifier := ""
+	if withPolicy {
+		setIdentifier = "id1"
+		routingPolicy = &dns.RoutingPolicy{
+			Type:       dns.RoutingPolicyWeighted,
+			Parameters: map[string]string{"weight": "100"},
+		}
+	}
+	set := dns.NewDNSSet(dns.DNSSetName{DNSName: "b.a", SetIdentifier: setIdentifier}, routingPolicy)
 	set.UpdateGroup = "group1"
 	set.SetMetaAttr(dns.ATTR_OWNER, "owner1")
 	set.SetMetaAttr(dns.ATTR_PREFIX, "comment-")
@@ -85,6 +122,7 @@ func TestMarshalChangeRequest(t *testing.T) {
 			del.Sets = map[string]*dns.RecordSet{item.request.Type: del.Sets[item.request.Type]}
 		}
 		expected := provider.NewChangeRequest(item.request.Action, item.request.Type, del, add, item.request.Done)
+		expected.Done = nil
 		if !reflect.DeepEqual(expected, copy) {
 			t.Errorf("change request mismatch: %s", item.name)
 		}

@@ -46,9 +46,10 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 type buildStatus int
 
 const (
-	bsOk     buildStatus = 0
-	bsEmpty  buildStatus = 2
-	bsDryRun buildStatus = 3
+	bsOk                   buildStatus = 0
+	bsEmpty                buildStatus = 2
+	bsDryRun               buildStatus = 3
+	bsInvalidRoutingPolicy buildStatus = 4
 )
 
 func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus, *recordsets.RecordSet) {
@@ -60,6 +61,10 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 		dnsset = req.Deletion
 	}
 
+	if dnsset.RoutingPolicy != nil {
+		return bsInvalidRoutingPolicy, nil
+	}
+
 	name, rset := dns.MapToProvider(req.Type, dnsset, exec.zone.Domain())
 
 	if len(rset.Records) == 0 {
@@ -67,7 +72,7 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 	}
 
 	exec.Infof("Desired %s: %s record set %s[%s]: %s", req.Action, rset.Type, name, exec.zone.Domain(), rset.RecordString())
-	return exec.buildMappedRecordSet(name, rset)
+	return exec.buildMappedRecordSet(name.DNSName, rset)
 }
 
 func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) (buildStatus, *recordsets.RecordSet) {

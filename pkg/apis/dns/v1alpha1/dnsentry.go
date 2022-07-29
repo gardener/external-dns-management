@@ -43,6 +43,9 @@ type DNSEntryList struct {
 // +kubebuilder:printcolumn:name=OWNERID,JSONPath=".spec.ownerId",type=string,description="owner id used to tag entries in external DNS system"
 // +kubebuilder:printcolumn:name=TTL,JSONPath=".status.ttl",type=integer,priority=2000,description="time to live"
 // +kubebuilder:printcolumn:name=ZONE,JSONPath=".status.zone",type=string,priority=2000,description="zone id"
+// +kubebuilder:printcolumn:name=POLICY_TYPE,JSONPath=".status.routingPolicy.type",type=string,priority=2000,description="routing policy type"
+// +kubebuilder:printcolumn:name=POLICY_SETID,JSONPath=".status.routingPolicy.setIdentifier",type=string,priority=2000,description="routing policy set identifier"
+// +kubebuilder:printcolumn:name=POLICY_PARAMS,JSONPath=".status.routingPolicy.parameters",type=string,priority=2000,description="routing policy parameters"
 // +kubebuilder:printcolumn:name=MESSAGE,JSONPath=".status.message",type=string,priority=2000,description="message describing the reason for the state"
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -76,6 +79,9 @@ type DNSEntrySpec struct {
 	// target records (CNAME or A records), either text or targets must be specified
 	// +optional
 	Targets []string `json:"targets,omitempty"`
+	// optional routing policy
+	// +optional
+	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
 }
 
 type DNSEntryStatus struct {
@@ -83,6 +89,9 @@ type DNSEntryStatus struct {
 	// effective targets generated for the entry
 	// +optional
 	Targets []string `json:"targets,omitempty"`
+	// effective routing policy
+	// +optional
+	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
 }
 
 type DNSBaseStatus struct {
@@ -117,4 +126,13 @@ type EntryReference struct {
 	// namespace of the referenced DNSEntry object
 	// +optional
 	Namespace string `json:"namespace,omitempty"`
+}
+
+type RoutingPolicy struct {
+	// Policy is the policy type. Allowed values are provider dependent, e.g. `weighted`
+	Type string `json:"type"`
+	// SetIdentifier is the identifier of the record set
+	SetIdentifier string `json:"setIdentifier"`
+	// Policy specific parameters
+	Parameters map[string]string `json:"parameters"`
 }

@@ -195,16 +195,25 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 	var succeeded, failed int
 	for _, r := range reqs {
 		status, recordType, rset := exec.buildRecordSet(r)
-		if status == bs_empty || status == bs_dryrun {
+		switch status {
+		case bs_empty:
 			continue
-		} else if status == bs_invalidType {
+		case bs_dryrun:
+			continue
+		case bs_invalidType:
 			err := fmt.Errorf("Unexpected record type: %s", r.Type)
 			if r.Done != nil {
 				r.Done.SetInvalid(err)
 			}
 			continue
-		} else if status == bs_invalidName {
+		case bs_invalidName:
 			err := fmt.Errorf("Unexpected dns name: %s", *rset.Name)
+			if r.Done != nil {
+				r.Done.SetInvalid(err)
+			}
+			continue
+		case bs_invalidRoutingPolicy:
+			err := fmt.Errorf("Routing policies not supported for " + TYPE_CODE)
 			if r.Done != nil {
 				r.Done.SetInvalid(err)
 			}

@@ -20,6 +20,7 @@ import (
 	"sync"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
@@ -92,7 +93,7 @@ func (this *DefaultDNSSource) CreateDNSFeedback(obj resources.Object) DNSFeedbac
 
 func (this *DefaultDNSSource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (*DNSInfo, error) {
 	info := &DNSInfo{}
-	info.Names = current.AnnotatedNames
+	info.Names = dns.NewDNSNameSetFromStringSet(current.AnnotatedNames, current.GetSetIdentifier())
 	tgts, txts, err := this.handler(logger, obj, info.Names)
 	info.Targets = tgts
 	info.Text = txts
