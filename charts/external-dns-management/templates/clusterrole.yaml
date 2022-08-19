@@ -70,6 +70,7 @@ rules:
   - list
   - update
   - create
+{{- if semverCompare "<1.24-0" .Capabilities.KubeVersion.GitVersion }}
 - apiGroups:
   - policy
   resources:
@@ -78,6 +79,7 @@ rules:
   - {{ include "external-dns-management.fullname" . }}
   verbs:
   - use
+{{- end }}
 - apiGroups:
   - ""
   resources:
