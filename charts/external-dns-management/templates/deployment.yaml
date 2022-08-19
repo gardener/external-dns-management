@@ -21,7 +21,9 @@ spec:
   template:
     metadata:
       annotations:
+        {{- if semverCompare "<1.24-0" .Capabilities.KubeVersion.GitVersion }}
         checksum/psp: {{ include (print $.Template.BasePath "/psp.yaml") . | sha256sum }}
+        {{- end }}
 {{- if .Values.configuration.serverPortHttp }}
         prometheus.io/scrape: "true"
         prometheus.io/port: "{{- .Values.configuration.serverPortHttp }}"
