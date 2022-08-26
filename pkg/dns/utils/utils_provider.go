@@ -19,6 +19,7 @@ package utils
 import (
 	"strings"
 
+	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -67,19 +68,20 @@ func (this *DNSProviderObject) SetStateWithError(state string, err error) bool {
 	message := err.Error()
 	handlerErrorMsg := ""
 	for {
-		if cerr, ok := err.(causer); ok {
-			cause := cerr.Cause()
-			if cause == nil || cause == err {
-				break
-			}
-			if errors.IsHandlerError(cause) {
-				handlerErrorMsg = cause.Error()
-				break
-			}
-			err = cause
-		} else {
+		var cause error
+		if xerr, ok := err.(xerrors.Wrapper); ok {
+			cause = xerr.Unwrap()
+		} else if cerr, ok := err.(causer); ok {
+			cause = cerr.Cause()
+		}
+		if cause == nil || cause == err {
 			break
 		}
+		if errors.IsHandlerError(cause) {
+			handlerErrorMsg = cause.Error()
+			break
+		}
+		err = cause
 	}
 	if handlerErrorMsg != "" {
 		prefix := message
