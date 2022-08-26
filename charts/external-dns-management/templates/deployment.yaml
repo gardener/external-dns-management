@@ -260,6 +260,9 @@ spec:
         {{- if .Values.configuration.compoundDefaultPoolSize }}
         - --compound.default.pool.size={{ .Values.configuration.compoundDefaultPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.compoundDisableDnsnameValidation }}
+        - --compound.disable-dnsname-validation={{ .Values.configuration.compoundDisableDnsnameValidation }}
+        {{- end }}
         {{- if .Values.configuration.compoundDisableZoneStateCaching }}
         - --compound.disable-zone-state-caching={{ .Values.configuration.compoundDisableZoneStateCaching }}
         {{- end }}
@@ -418,6 +421,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.defaultPoolSize }}
         - --default.pool.size={{ .Values.configuration.defaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.disableDnsnameValidation }}
+        - --disable-dnsname-validation={{ .Values.configuration.disableDnsnameValidation }}
         {{- end }}
         {{- if .Values.configuration.disableNamespaceRestriction }}
         - --disable-namespace-restriction={{ .Values.configuration.disableNamespaceRestriction }}

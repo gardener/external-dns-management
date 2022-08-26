@@ -362,9 +362,11 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 	targets = Targets{}
 	warnings = []string{}
 
-	name := entry.object.GetDNSName()
-	if err = dns.ValidateDomainName(name); err != nil {
-		return
+	if !state.config.DisableDNSNameValidation {
+		name := entry.object.GetDNSName()
+		if err = dns.ValidateDomainName(name); err != nil {
+			return
+		}
 	}
 
 	if err = effspec.ValidateSpecial(); err != nil {
