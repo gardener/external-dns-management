@@ -35,18 +35,19 @@ import (
 )
 
 type Config struct {
-	TTL                int64
-	CacheTTL           time.Duration
-	RescheduleDelay    time.Duration
-	StatusCheckPeriod  time.Duration
-	Ident              string
-	Dryrun             bool
-	ZoneStateCaching   bool
-	Delay              time.Duration
-	Enabled            utils.StringSet
-	Options            *FactoryOptions
-	Factory            DNSHandlerFactory
-	RemoteAccessConfig *embed.RemoteAccessServerConfig
+	TTL                      int64
+	CacheTTL                 time.Duration
+	RescheduleDelay          time.Duration
+	StatusCheckPeriod        time.Duration
+	Ident                    string
+	Dryrun                   bool
+	ZoneStateCaching         bool
+	DisableDNSNameValidation bool
+	Delay                    time.Duration
+	Enabled                  utils.StringSet
+	Options                  *FactoryOptions
+	Factory                  DNSHandlerFactory
+	RemoteAccessConfig       *embed.RemoteAccessServerConfig
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
@@ -89,6 +90,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	}
 
 	disableZoneStateCaching, _ := c.GetBoolOption(OPT_DISABLE_ZONE_STATE_CACHING)
+	disableDNSNameValidation, _ := c.GetBoolOption(OPT_DISABLE_DNSNAME_VALIDATION)
 
 	enabled := utils.StringSet{}
 	types, err := c.GetStringOption(OPT_PROVIDERTYPES)
@@ -112,18 +114,19 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	fopts := GetFactoryOptions(osrc)
 
 	return &Config{
-		Ident:              ident,
-		TTL:                int64(ttl),
-		CacheTTL:           time.Duration(cttl) * time.Second,
-		RescheduleDelay:    rescheduleDelay,
-		StatusCheckPeriod:  statuscheckperiod,
-		Dryrun:             dryrun,
-		ZoneStateCaching:   !disableZoneStateCaching,
-		Delay:              delay,
-		Enabled:            enabled,
-		Options:            fopts,
-		Factory:            factory,
-		RemoteAccessConfig: remoteAccessConfig,
+		Ident:                    ident,
+		TTL:                      int64(ttl),
+		CacheTTL:                 time.Duration(cttl) * time.Second,
+		RescheduleDelay:          rescheduleDelay,
+		StatusCheckPeriod:        statuscheckperiod,
+		Dryrun:                   dryrun,
+		ZoneStateCaching:         !disableZoneStateCaching,
+		DisableDNSNameValidation: disableDNSNameValidation,
+		Delay:                    delay,
+		Enabled:                  enabled,
+		Options:                  fopts,
+		Factory:                  factory,
+		RemoteAccessConfig:       remoteAccessConfig,
 	}, nil
 }
 

@@ -122,6 +122,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries in DNS system").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
 		DefaultedBoolOption(OPT_DISABLE_ZONE_STATE_CACHING, false, "disable use of cached dns zone state on changes").
+		DefaultedBoolOption(OPT_DISABLE_DNSNAME_VALIDATION, false, "disable validation of domain names according to RFC 1123.").
 		DefaultedIntOption(OPT_TTL, 300, "Default time-to-live for DNS entries. Defines how long the record is kept in cache by DNS servers or resolvers.").
 		DefaultedIntOption(OPT_CACHE_TTL, 120, "Time-to-live for provider hosted zone cache").
 		DefaultedIntOption(OPT_SETUP, 10, "number of processors for controller setup").

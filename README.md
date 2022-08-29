@@ -475,6 +475,7 @@ Flags:
       --compound.cloudflare-dns.ratelimiter.enabled                   enables rate limiter for DNS provider requests of controller compound
       --compound.cloudflare-dns.ratelimiter.qps int                   maximum requests/queries per second of controller compound
       --compound.default.pool.size int                                Worker pool size for pool default of controller compound
+      --compound.disable-dnsname-validation                           disable validation of domain names according to RFC 1123. of controller compound
       --compound.disable-zone-state-caching                           disable use of cached dns zone state on changes of controller compound
       --compound.dns-class string                                     Class identifier used to differentiate responsible controllers for entry resources of controller compound
       --compound.dns-delay duration                                   delay between two dns reconciliations of controller compound
@@ -537,11 +538,12 @@ Flags:
       --cpuprofile string                                             set file for cpu profiling
       --default.pool.resync-period duration                           Period for resynchronization for pool default
       --default.pool.size int                                         Worker pool size for pool default
+      --disable-dnsname-validation                                    disable validation of domain names according to RFC 1123.
       --disable-namespace-restriction                                 disable access restriction for namespace local access only
       --disable-zone-state-caching                                    disable use of cached dns zone state on changes
-      --dns-class string                                              identifier used to differentiate responsible controllers for entries, Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers
+      --dns-class string                                              Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers, identifier used to differentiate responsible controllers for entries
       --dns-delay duration                                            delay between two dns reconciliations
-      --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target entries, identifier used to differentiate responsible dns controllers for target providers
+      --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target providers, identifier used to differentiate responsible dns controllers for target entries
       --dns.pool.resync-period duration                               Period for resynchronization for pool dns
       --dns.pool.size int                                             Worker pool size for pool dns
       --dnsentry-source.default.pool.resync-period duration           Period for resynchronization for pool default of controller dnsentry-source
@@ -690,13 +692,13 @@ Flags:
       --setup int                                                     number of processors for controller setup
       --statistic.pool.size int                                       Worker pool size for pool statistic
       --target string                                                 target cluster for dns requests
-      --target-creator-label-name string                              label name to store the creator for generated DNS entries, label name to store the creator for replicated DNS providers
+      --target-creator-label-name string                              label name to store the creator for replicated DNS providers, label name to store the creator for generated DNS entries
       --target-creator-label-value string                             label value for creator label
-      --target-name-prefix string                                     name prefix in target namespace for cross cluster generation, name prefix in target namespace for cross cluster replication
+      --target-name-prefix string                                     name prefix in target namespace for cross cluster replication, name prefix in target namespace for cross cluster generation
       --target-namespace string                                       target namespace for cross cluster generation
       --target-owner-id string                                        owner id to use for generated DNS entries
       --target-owner-object string                                    owner object to use for generated DNS entries
-      --target-realms string                                          realm(s) to use for generated DNS entries, realm(s) to use for replicated DNS provider
+      --target-realms string                                          realm(s) to use for replicated DNS provider, realm(s) to use for generated DNS entries
       --target-set-ignore-owners                                      mark generated DNS entries to omit owner based access control
       --target.disable-deploy-crds                                    disable deployment of required crds for cluster target
       --target.id string                                              id for cluster target

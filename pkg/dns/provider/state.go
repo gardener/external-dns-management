@@ -172,6 +172,7 @@ func NewDNSState(ctx Context, ownerresc, secretresc resources.Interface, classes
 	ctx.Infof("reschedule delay:            %v", config.RescheduleDelay)
 	ctx.Infof("zone cache ttl for zones:    %v", config.CacheTTL)
 	ctx.Infof("disable zone state caching:  %t", !config.ZoneStateCaching)
+	ctx.Infof("disable DNS name validation:  %t", config.DisableDNSNameValidation)
 	if config.RemoteAccessConfig != nil {
 		ctx.Infof("remote access server port: %d", config.RemoteAccessConfig.Port)
 	}

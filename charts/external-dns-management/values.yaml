@@ -113,6 +113,7 @@ configuration:
   # compoundCloudflareDnsRatelimiterEnabled:
   # compoundCloudflareDnsRatelimiterQps:
   # compoundDefaultPoolSize: 2
+  # compoundDisableDnsnameValidation: false
   # compoundDisableZoneStateCaching: false
   # compoundDnsClass: "gardendns"
   # compoundDnsDelay: 10s
@@ -166,6 +167,7 @@ configuration:
   # cpuprofile: ""
   # defaultPoolResyncPeriod:
   # defaultPoolSize:
+  # disableDnsnameValidation: false
   # disableNamespaceRestriction: false
   # disableZoneStateCaching: false
   # dnsClass: "gardendns"

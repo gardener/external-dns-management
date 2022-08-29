@@ -36,6 +36,7 @@ const (
 	OPT_RESCHEDULEDELAY            = "reschedule-delay"
 	OPT_LOCKSTATUSCHECKPERIOD      = "lock-status-check-period"
 	OPT_DISABLE_ZONE_STATE_CACHING = "disable-zone-state-caching"
+	OPT_DISABLE_DNSNAME_VALIDATION = "disable-dnsname-validation"
 
 	OPT_REMOTE_ACCESS_PORT               = "remote-access-port"
 	OPT_REMOTE_ACCESS_CACERT             = "remote-access-cacert"
