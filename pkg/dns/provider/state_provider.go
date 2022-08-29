@@ -25,10 +25,10 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"k8s.io/client-go/util/flowcontrol"
-
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/util/flowcontrol"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -131,8 +131,27 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 		for _, z := range new.zones {
 			this.triggerHostedZone(z.Id())
 		}
+		this.triggerAllDeletingEntries(logger)
 	}
 	return status
+}
+
+func (this *state) triggerAllDeletingEntries(logger logger.LogContext) {
+	res, err := this.context.GetCluster(TARGET_CLUSTER).Resources().GetByGK(entryGroupKind)
+	if err != nil {
+		logger.Warnf("cannot access target cluster for entries: %s", err)
+		return
+	}
+	entries, err := res.List(metav1.ListOptions{})
+	if err != nil {
+		logger.Warnf("cannot list entries: %s", err)
+		return
+	}
+	for _, entry := range entries {
+		if entry.IsDeleting() {
+			this.context.EnqueueKey(entry.ClusterKey())
+		}
+	}
 }
 
 func (this *state) updateProviderRateLimiter(logger logger.LogContext, obj *dnsutils.DNSProviderObject) *api.RateLimit {
