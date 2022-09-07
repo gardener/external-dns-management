@@ -27,4 +27,4 @@ spec:
   tls:
     - hosts:
         - test.ingress.my-dns-domain.com
-      #secretName: my-cert-secret-name
+      secretName: my-cert-secret-name
