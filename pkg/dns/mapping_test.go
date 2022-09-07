@@ -61,6 +61,7 @@ func TestMapToFromProvider(t *testing.T) {
 		{"a.myzone.de", true, "mycomment-a.myzone.de"},
 		{"*.a.myzone.de", false, "*.comment-a.myzone.de"},
 		{"*.myzone.de", false, "*.comment--base.myzone.de"},
+		{"@.myzone.de", false, "comment----at.myzone.de"},
 	}
 
 	rtype := RS_META

@@ -33,6 +33,9 @@ func ValidateDomainName(name string) error {
 	var errs []string
 	if strings.HasPrefix(check, "*.") {
 		errs = validation.IsWildcardDNS1123Subdomain(check)
+	} else if strings.HasPrefix(check, "@.") {
+		// special case: allow apex label for Azure
+		errs = validation.IsDNS1123Subdomain(check[2:])
 	} else {
 		errs = validation.IsDNS1123Subdomain(check)
 	}
@@ -53,6 +56,10 @@ func ValidateDomainName(name string) error {
 
 	labels := strings.Split(strings.TrimPrefix(check, "*."), ".")
 	for i, label := range labels {
+		if i == 0 && label == "@" {
+			// special case: allow apex label for Azure
+			continue
+		}
 		if errs = validation.IsDNS1123Label(label); len(errs) > 0 {
 			return fmt.Errorf("%d. label %q of %q is not valid (%v)", i+1, label, name, errs)
 		}
