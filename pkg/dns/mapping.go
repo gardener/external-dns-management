@@ -68,6 +68,10 @@ func calcMetaRecordDomainName(name, prefix, base string) string {
 		if name == base {
 			prefix += "-base."
 		}
+	} else if strings.HasPrefix(name, "@.") {
+		// special case: allow apex label for Azure
+		name = name[2:]
+		prefix += "---at."
 	}
 	return add + prefix + name
 }
@@ -94,6 +98,9 @@ func MapFromProvider(name DNSSetName, rs *RecordSet) (DNSSetName, *RecordSet) {
 				dns = dns[len(prefix):]
 				if strings.HasPrefix(dns, "-base.") {
 					dns = dns[6:]
+				} else if strings.HasPrefix(dns, "---at.") {
+					dns = dns[6:]
+					add = "@."
 				} else if strings.HasPrefix(dns, ".") {
 					// for backwards compatibility of form *.comment-.basedomain
 					dns = dns[1:]
