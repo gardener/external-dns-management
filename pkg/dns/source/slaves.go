@@ -24,6 +24,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile/reconcilers"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/external-dns-management/pkg/dns"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns/utils"
@@ -36,11 +37,12 @@ func SlaveReconcilerType(c controller.Interface) (reconcile.Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	classes := controller.NewClassesByOption(c, OPT_CLASS, dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
 	reconciler := &slaveReconciler{
-		controller: c,
-		slaves:     c.(*reconcilers.SlaveReconciler),
-		events:     NewEvents(),
+		controller:    c,
+		slaves:        c.(*reconcilers.SlaveReconciler),
+		targetClasses: controller.NewTargetClassesByOption(c, OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes),
+		events:        NewEvents(),
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
 				return NewState(ownerState)
@@ -51,10 +53,11 @@ func SlaveReconcilerType(c controller.Interface) (reconcile.Interface, error) {
 
 type slaveReconciler struct {
 	reconcile.DefaultReconciler
-	controller controller.Interface
-	slaves     *reconcilers.SlaveReconciler
-	events     *Events
-	state      *state
+	controller    controller.Interface
+	slaves        *reconcilers.SlaveReconciler
+	targetClasses *controller.Classes
+	events        *Events
+	state         *state
 }
 
 func (this *slaveReconciler) Setup() error {
@@ -78,6 +81,10 @@ func (this *slaveReconciler) Start() {
 }
 
 func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
+	if !this.targetClasses.IsResponsibleFor(logger, obj) {
+		return reconcile.Succeeded(logger)
+	}
+
 	stat := this.DefaultReconciler.Reconcile(logger, obj)
 
 	logger.Infof("reconcile slave")

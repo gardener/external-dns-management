@@ -138,8 +138,19 @@ func (this *sourceReconciler) Setup() error {
 	return this.NestedReconciler.Setup()
 }
 
+func (this *sourceReconciler) lookupSlavesResponsible(logger logger.LogContext, key resources.ClusterObjectKey) []resources.Object {
+	var slavesResponsible []resources.Object
+	for _, obj := range this.LookupSlaves(key) {
+		if !this.targetclasses.IsResponsibleFor(logger, obj) {
+			continue
+		}
+		slavesResponsible = append(slavesResponsible, obj)
+	}
+	return slavesResponsible
+}
+
 func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
-	slaves := this.LookupSlaves(obj.ClusterKey())
+	slaves := this.lookupSlavesResponsible(logger, obj.ClusterKey())
 	names := dns.DNSNameSet{}
 	for _, s := range slaves {
 		names.Add(dnsutils.DNSEntry(s).DNSSetName())
@@ -303,8 +314,9 @@ outer:
 }
 
 // Deleted is used as fallback, if the source object in another cluster is
-//  deleted unexpectedly (by removing the finalizer).
-//  It checks whether a slave is still available and deletes it.
+//
+//	deleted unexpectedly (by removing the finalizer).
+//	It checks whether a slave is still available and deletes it.
 func (this *sourceReconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
 	// For unclear reasons, k8s client lister spuriously can "forget" an object for some seconds (seen with K8S 1.17.7).
 	// As a mitigation, the cache and the kube-apiserver are checked again here.
@@ -338,6 +350,10 @@ func (this *sourceReconciler) Deleted(logger logger.LogContext, key resources.Cl
 }
 
 func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
+	if !this.classes.IsResponsibleFor(logger, obj) {
+		return reconcile.Succeeded(logger)
+	}
+
 	failed := false
 	logger.Infof("entry source is deleting -> delete all dns entries")
 	for _, s := range this.Slaves().GetByOwner(obj) {
