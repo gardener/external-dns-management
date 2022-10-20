@@ -48,7 +48,7 @@ type resourceContext struct {
 
 func NewResourceContext(ctx context.Context, c Cluster, scheme *runtime.Scheme, defaultResync time.Duration) (ResourceContext, error) {
 	groups := utils.NewStringSet()
-	for gvk, _ := range scheme.AllKnownTypes() {
+	for gvk := range scheme.AllKnownTypes() {
 		groups.Add(gvk.Group)
 	}
 

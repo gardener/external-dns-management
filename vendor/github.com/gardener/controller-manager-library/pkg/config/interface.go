@@ -16,12 +16,12 @@
 // This propagation may use the local option declarations to decide how
 // those options should be visible in the next upper OptionSet.
 // This package offers support for three kinds of propagations:
-// - Flat:  the optiuons is just propagated as it is
-// - Prefixed: the option is propagated with a prefix (it changes its name)
-// - Shared: The option is propagated as it is but shared with other parallel
-//          OptionSources
-// - PrefixedShared: The option is propagated with a prefix. Additionally a shared
-//          Option with the flat name is propagated.
+//   - Flat:  the optiuons is just propagated as it is
+//   - Prefixed: the option is propagated with a prefix (it changes its name)
+//   - Shared: The option is propagated as it is but shared with other parallel
+//     OptionSources
+//   - PrefixedShared: The option is propagated with a prefix. Additionally a shared
+//     Option with the flat name is propagated.
 //
 // Once the the options are finally set by parsing a command line using a
 // pflag.FlagSet the top level OptionSet must be evaluated calling the Evaluate
@@ -58,7 +58,6 @@ type OptionCompleter interface {
 
 // OptionEvaluator must be implemented by OptionSource to execute code after
 // option parsing is completed check and evaluate the actual settings
-//
 type OptionEvaluator interface {
 	Evaluate() error
 }
