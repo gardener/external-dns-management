@@ -300,7 +300,7 @@ single kubernetes cluster.
 
 ### DNSAnnotation objects
 
-DNS source controllers support the creation of DNS entries for potentiialy
+DNS source controllers support the creation of DNS entries for potentially
 any kind of resource originally not equipped to describe the generation of
 DNS entries. This is done by additionally annotations. Nevertheless it
 might be the case, that those objects are again the result of a generation
