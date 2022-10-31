@@ -43,6 +43,9 @@ import (
 
 const MSG_PRESERVED = "errorneous entry preserved in provider"
 
+// maxCNAMETargets is the maximum number of CNAME targets. It is restricted, as it needs regular DNS lookups.
+const maxCNAMETargets = 25
+
 type EntryPremise struct {
 	ptypes   utils.StringSet
 	ptype    string
@@ -774,8 +777,8 @@ func normalizeTargets(logger logger.LogContext, object dnsutils.DNSSpecification
 	}
 
 	result := make(Targets, 0, len(targets))
-	if len(targets) > 11 {
-		w := fmt.Sprintf("too many CNAME targets: %d", len(targets))
+	if len(targets) > maxCNAMETargets {
+		w := fmt.Sprintf("too many CNAME targets: %d (maximum allowed: %d)", len(targets), maxCNAMETargets)
 		logger.Warn(w)
 		object.Event(corev1.EventTypeWarning, "dnslookup restriction", w)
 		return result, true, false
