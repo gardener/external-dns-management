@@ -119,7 +119,6 @@ func (dnssets DNSSets) GetOwners() utils.StringSet {
 const (
 	ATTR_OWNER  = "owner"
 	ATTR_PREFIX = "prefix"
-	ATTR_CNAMES = "cnames"
 	ATTR_KIND   = "kind"
 
 	ATTR_TIMESTAMP = "ts"

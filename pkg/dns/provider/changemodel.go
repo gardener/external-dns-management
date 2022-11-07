@@ -19,8 +19,6 @@ package provider
 import (
 	"fmt"
 	"reflect"
-	"sort"
-	"strings"
 	"time"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -522,35 +520,13 @@ func (this *ChangeModel) ApplySpec(set *dns.DNSSet, base *dns.DNSSet, provider D
 	}
 
 	targetsets := set.Sets
-	cnames := []string{}
 	for _, t := range spec.Targets() {
 		// use status calculated in entry
 		ttl := t.GetTTL()
-		if t.GetRecordType() == dns.RS_CNAME && len(spec.Targets()) > 1 {
-			cnames = append(cnames, t.GetHostName())
-			ipv4addrs, ipv6addrs, err := lookupHosts(t.GetHostName())
-			if err == nil {
-				for _, addr := range ipv4addrs {
-					AddRecord(targetsets, dns.RS_A, addr, ttl)
-				}
-				for _, addr := range ipv6addrs {
-					AddRecord(targetsets, dns.RS_AAAA, addr, ttl)
-				}
-			} else {
-				this.Errorf("cannot lookup '%s': %s", t.GetHostName(), err)
-			}
-			this.Debugf("mapping target '%s' to A records: %s or AAAA records: %s",
-				t.GetHostName(), strings.Join(ipv4addrs, ","), strings.Join(ipv6addrs, ","))
-		} else {
-			t = provider.MapTarget(t)
-			AddRecord(targetsets, t.GetRecordType(), t.GetHostName(), ttl)
-		}
+		t = provider.MapTarget(t)
+		AddRecord(targetsets, t.GetRecordType(), t.GetHostName(), ttl)
 	}
 	set.Sets = targetsets
-	if len(cnames) > 0 && this.Owns(set) {
-		sort.Strings(cnames)
-		set.SetMetaAttr(dns.ATTR_CNAMES, strings.Join(cnames, ","))
-	}
 	return set
 }
 
