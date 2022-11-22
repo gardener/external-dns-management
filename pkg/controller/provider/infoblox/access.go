@@ -18,10 +18,8 @@
 package infoblox
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"strconv"
 	"strings"
 
@@ -34,17 +32,19 @@ import (
 
 type access struct {
 	ibclient.IBConnector
-	metrics provider.Metrics
-	view    string
+	requestBuilder ibclient.HttpRequestBuilder
+	metrics        provider.Metrics
+	view           string
 }
 
 var _ raw.Executor = (*access)(nil)
 
-func NewAccess(client ibclient.IBConnector, view string, metrics provider.Metrics) *access {
+func NewAccess(client ibclient.IBConnector, requestBuilder ibclient.HttpRequestBuilder, view string, metrics provider.Metrics) *access {
 	return &access{
-		IBConnector: client,
-		metrics:     metrics,
-		view:        view,
+		IBConnector:    client,
+		requestBuilder: requestBuilder,
+		metrics:        metrics,
+		view:           view,
 	}
 }
 
@@ -90,11 +90,11 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 		if n, err := strconv.Unquote(value); err == nil && !strings.Contains(value, " ") {
 			value = n
 		}
-		record = (*RecordTXT)(ibclient.NewRecordTXT(ibclient.RecordTXT{
-			Name: fqdn,
-			Text: value,
-			View: this.view,
-		}))
+		r := ibclient.NewEmptyRecordTXT()
+		r.Name = fqdn
+		r.Text = value
+		r.View = this.view
+		record = (*RecordTXT)(r)
 	}
 	if record != nil {
 		record.SetTTL(int(ttl))
@@ -104,27 +104,21 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 
 func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_LISTRECORDS, 1)
-	c := this.IBConnector.(*ibclient.Connector)
 
 	if rtype != dns.RS_TXT {
 		return nil, fmt.Errorf("record type %s not supported for GetRecord", rtype)
 	}
 
 	execRequest := func(forceProxy bool) ([]byte, error) {
-		rt := ibclient.NewRecordTXT(ibclient.RecordTXT{})
-		urlStr := c.RequestBuilder.BuildUrl(ibclient.GET, rt.ObjectType(), "", rt.ReturnFields(), &ibclient.QueryParams{})
-		urlStr += "&name=" + dnsName
-		if forceProxy {
-			urlStr += "&_proxy_search=GM"
-		}
-		req, err := http.NewRequest("GET", urlStr, new(bytes.Buffer))
+		rt := ibclient.NewEmptyRecordTXT()
+		queryParams := ibclient.NewQueryParams(forceProxy, map[string]string{"name": dnsName, "view": this.view, "zone": zone.Key()})
+		req, err := this.requestBuilder.BuildRequest(ibclient.GET, rt, "", queryParams)
 		if err != nil {
 			return nil, err
 		}
-		req.Header.Set("Content-Type", "application/json")
-		req.SetBasicAuth(c.HostConfig.Username, c.HostConfig.Password)
 
-		return c.Requestor.SendRequest(req)
+		requestor := &ibclient.WapiHttpRequestor{}
+		return requestor.SendRequest(req)
 	}
 
 	resp, err := execRequest(false)

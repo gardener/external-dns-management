@@ -19,11 +19,10 @@ package infoblox
 
 import (
 	"context"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/url"
-	"os"
 	"strconv"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -115,9 +114,12 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	config.Logger.Infof("creating infoblox handler for %s", *infobloxConfig.Host)
 
 	hostConfig := ibclient.HostConfig{
-		Host:     *infobloxConfig.Host,
-		Port:     strconv.Itoa(*infobloxConfig.Port),
-		Version:  *infobloxConfig.Version,
+		Host:    *infobloxConfig.Host,
+		Port:    strconv.Itoa(*infobloxConfig.Port),
+		Version: *infobloxConfig.Version,
+	}
+
+	authCfg := ibclient.AuthConfig{
 		Username: username,
 		Password: password,
 	}
@@ -127,25 +129,17 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		verify = strconv.FormatBool(*infobloxConfig.SSLVerify)
 	}
 
-	if infobloxConfig.CaCert != nil && verify == "true" {
-		tmpfile, err := ioutil.TempFile("", "cacert")
-		if err != nil {
-			return nil, fmt.Errorf("cannot create temporary file for cacert: %w", err)
-		}
-		defer os.Remove(tmpfile.Name())
-		if _, err := tmpfile.Write([]byte(*infobloxConfig.CaCert)); err != nil {
-			return nil, fmt.Errorf("cannot write temporary file for cacert: %w", err)
-		}
-		if err := tmpfile.Close(); err != nil {
-			return nil, fmt.Errorf("cannot close temporary file for cacert: %w", err)
-		}
-		verify = tmpfile.Name()
-	}
 	transportConfig := ibclient.NewTransportConfig(
 		verify,
 		*infobloxConfig.RequestTimeout,
 		*infobloxConfig.PoolConnections,
 	)
+	if infobloxConfig.CaCert != nil && verify == "true" {
+		transportConfig.CertPool, err = h.createCertPool([]byte(*infobloxConfig.CaCert))
+		if err != nil {
+			return nil, fmt.Errorf("cannot create cert pool for cacert: %w", err)
+		}
+	}
 	if infobloxConfig.ProxyURL != nil && *infobloxConfig.ProxyURL != "" {
 		u, err := url.Parse(*infobloxConfig.ProxyURL)
 		if err != nil {
@@ -154,17 +148,21 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		transportConfig.ProxyUrl = u
 	}
 
-	var requestBuilder ibclient.HttpRequestBuilder = &ibclient.WapiRequestBuilder{}
+	rb, err := ibclient.NewWapiRequestBuilder(hostConfig, authCfg)
+	if err != nil {
+		return nil, err
+	}
+	var requestBuilder ibclient.HttpRequestBuilder = rb
 	if infobloxConfig.MaxResults != 0 {
 		// wrap request builder which sets _max_results parameter on GET requests
 		requestBuilder = NewMaxResultsRequestBuilder(infobloxConfig.MaxResults, requestBuilder)
 	}
-	client, err := ibclient.NewConnector(hostConfig, transportConfig, requestBuilder, &ibclient.WapiHttpRequestor{})
+	client, err := ibclient.NewConnector(hostConfig, authCfg, transportConfig, requestBuilder, &ibclient.WapiHttpRequestor{})
 	if err != nil {
 		return nil, err
 	}
 
-	h.access = NewAccess(client, *h.infobloxConfig.View, config.Metrics)
+	h.access = NewAccess(client, requestBuilder, *h.infobloxConfig.View, config.Metrics)
 
 	h.ZoneCache, err = config.ZoneCacheFactory.CreateZoneCache(provider.CacheZonesOnly, config.Metrics, h.getZones, h.getZoneState)
 	if err != nil {
@@ -182,7 +180,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
 	obj := ibclient.NewZoneAuth(ibclient.ZoneAuth{})
 	err := h.access.GetObject(obj, "", &ibclient.QueryParams{}, &raw)
-	if err != nil {
+	if filterNotFound(err) != nil {
 		return nil, err
 	}
 
@@ -196,14 +194,10 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 
 		h.config.Metrics.AddZoneRequests(z.Ref, provider.M_LISTRECORDS, 1)
 		var resN []RecordNS
-		objN := ibclient.NewRecordNS(
-			ibclient.RecordNS{
-				Zone: z.Fqdn,
-				View: *h.infobloxConfig.View,
-			},
-		)
-		err = h.access.GetObject(objN, "", &ibclient.QueryParams{}, &resN)
-		if err != nil {
+		objN := ibclient.NewRecordNS(ibclient.RecordNS{})
+		params := ibclient.NewQueryParams(false, map[string]string{"view": *h.infobloxConfig.View, "zone": z.Fqdn})
+		err = h.access.GetObject(objN, "", params, &resN)
+		if filterNotFound(err) != nil {
 			return nil, fmt.Errorf("could not fetch NS records from zone '%s': %s", z.Fqdn, err)
 		}
 		forwarded := []string{}
@@ -222,13 +216,12 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 	state := raw.NewState()
 	rt := provider.M_LISTRECORDS
 
+	params := ibclient.NewQueryParams(false, map[string]string{"view": *h.infobloxConfig.View, "zone": zone.Key()})
+
 	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resA []RecordA
-	objA := ibclient.NewEmptyRecordA()
-	objA.Zone = zone.Key()
-	objA.View = *h.infobloxConfig.View
-	err := h.access.GetObject(objA, "", &ibclient.QueryParams{}, &resA)
-	if err != nil {
+	err := h.access.GetObject(ibclient.NewEmptyRecordA(), "", params, &resA)
+	if filterNotFound(err) != nil {
 		return nil, fmt.Errorf("could not fetch A records from zone '%s': %s", zone.Key(), err)
 	}
 	for _, res := range resA {
@@ -237,11 +230,8 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resAAAA []RecordAAAA
-	objAAAA := ibclient.NewEmptyRecordAAAA()
-	objAAAA.Zone = zone.Key()
-	objAAAA.View = *h.infobloxConfig.View
-	err = h.access.GetObject(objAAAA, "", &ibclient.QueryParams{}, &resAAAA)
-	if err != nil {
+	err = h.access.GetObject(ibclient.NewEmptyRecordAAAA(), "", params, &resAAAA)
+	if filterNotFound(err) != nil {
 		return nil, fmt.Errorf("could not fetch AAAA records from zone '%s': %s", zone.Key(), err)
 	}
 	for _, res := range resAAAA {
@@ -250,11 +240,8 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resC []RecordCNAME
-	objC := ibclient.NewEmptyRecordCNAME()
-	objC.Zone = zone.Key()
-	objC.View = *h.infobloxConfig.View
-	err = h.access.GetObject(objC, "", &ibclient.QueryParams{}, &resC)
-	if err != nil {
+	err = h.access.GetObject(ibclient.NewEmptyRecordCNAME(), "", params, &resC)
+	if filterNotFound(err) != nil {
 		return nil, fmt.Errorf("could not fetch CNAME records from zone '%s': %s", zone.Key(), err)
 	}
 	for _, res := range resC {
@@ -263,14 +250,8 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resT []RecordTXT
-	objT := ibclient.NewRecordTXT(
-		ibclient.RecordTXT{
-			Zone: zone.Key(),
-			View: *h.infobloxConfig.View,
-		},
-	)
-	err = h.access.GetObject(objT, "", &ibclient.QueryParams{}, &resT)
-	if err != nil {
+	err = h.access.GetObject(ibclient.NewEmptyRecordTXT(), "", params, &resT)
+	if filterNotFound(err) != nil {
 		return nil, fmt.Errorf("could not fetch TXT records from zone '%s': %s", zone.Key(), err)
 	}
 	for _, res := range resT {
@@ -324,4 +305,22 @@ func (h *Handler) DeleteRecordSet(logger logger.LogContext, zone provider.DNSHos
 		}
 	}
 	return nil
+}
+
+func (h *Handler) createCertPool(cert []byte) (*x509.CertPool, error) {
+	caPool := x509.NewCertPool()
+	if !caPool.AppendCertsFromPEM(cert) {
+		return nil, fmt.Errorf("cannot append certificate")
+	}
+	return caPool, nil
+}
+
+func filterNotFound(err error) error {
+	if err == nil {
+		return nil
+	}
+	if _, ok := err.(*ibclient.NotFoundError); ok {
+		return nil
+	}
+	return err
 }

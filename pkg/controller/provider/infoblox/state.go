@@ -85,7 +85,7 @@ func (r *RecordTXT) GetDNSName() string        { return r.Name }
 func (r *RecordTXT) GetSetIdentifier() string  { return "" }
 func (r *RecordTXT) GetValue() string          { return raw.EnsureQuotedText(r.Text) }
 func (r *RecordTXT) GetTTL() int               { return int(r.Ttl) }
-func (r *RecordTXT) SetTTL(ttl int)            { r.Ttl = uint(ttl); r.UseTtl = ttl != 0 }
+func (r *RecordTXT) SetTTL(ttl int)            { r.Ttl = uint32(ttl); r.UseTtl = ttl != 0 }
 func (r *RecordTXT) Copy() raw.Record          { n := *r; return &n }
 func (r *RecordTXT) PrepareUpdate() raw.Record { n := *r; n.Zone = ""; n.View = ""; return &n }
 
