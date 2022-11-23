@@ -10,19 +10,23 @@ This library is compatible with Go 1.2+
 - [Usage](#Usage)
 
 ## Build Status
+[![Build Status](https://travis-ci.org/infobloxopen/infoblox-go-client.svg?branch=master)](https://travis-ci.org/infobloxopen/infoblox-go-client) 
 
-| Master                                                                                                                                          | Develop                                                                                                                                                           |
-| ----------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [![Build Status](https://travis-ci.org/infobloxopen/infoblox-go-client.svg?branch=master)](https://travis-ci.org/infobloxopen/infoblox-go-client) | [![Build Status](https://travis-ci.org/infobloxopen/infoblox-go-client.svg?branch=develop)](https://travis-ci.org/infobloxopen/infoblox-go-client) |
-
-The newly developed features will be available under `develop` branch. After validation they would be merged to `master`.
 
 ## Prerequisites
    * Infoblox GRID with 2.5 or above WAPI support
    * Go 1.2 or above
 
 ## Installation
-   go get github.com/infobloxopen/infoblox-go-client
+   To get the latest released version [v2.1.0](https://github.com/infobloxopen/infoblox-go-client/releases/tag/v2.1.0) of Go Client use below command.
+   
+   `go get github.com/infobloxopen/infoblox-go-client/v2`
+
+   To get the previous major version [v1.1.1](https://github.com/infobloxopen/infoblox-go-client/releases/tag/v1.1.1) use below command.
+   
+   `go get github.com/infobloxopen/infoblox-go-client`
+
+   Note: Go client version v2.0.0 and above have breaking changes and are not backward compatible.
 
 ## Usage
 
@@ -59,6 +63,7 @@ The newly developed features will be available under `develop` branch. After val
 
    * AllocateIP
    * AllocateNetwork
+   * AllocateNetworkContainer
    * CreateARecord
    * CreateAAAARecord
    * CreateZoneAuth
@@ -96,6 +101,7 @@ The newly developed features will be available under `develop` branch. After val
    * GetFixedAddressByRef
    * GetHostRecord
    * GetHostRecordByRef
+   * SearchHostRecordByAltId
    * GetIpAddressFromHostRecord
    * GetNetwork
    * GetNetworkByRef
@@ -105,6 +111,8 @@ The newly developed features will be available under `develop` branch. After val
    * GetNetworkViewByRef
    * GetPTRRecordByRef
    * GetPTRRecord
+   * GetTXTRecord
+   * GetTXTRecordByRef
    * GetZoneAuthByRef
    * GetZoneDelegated
    * GetUpgradeStatus (2.7 or above)
@@ -120,6 +128,7 @@ The newly developed features will be available under `develop` branch. After val
    * UpdateNetworkContainer
    * UpdateNetworkView
    * UpdatePTRRecord
+   * UpdateTXTRecord
    * UpdateARecord
    * UpdateZoneDelegated
 

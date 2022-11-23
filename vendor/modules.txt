@@ -318,7 +318,7 @@ github.com/imdario/mergo
 # github.com/inconshreveable/mousetrap v1.0.0
 ## explicit
 github.com/inconshreveable/mousetrap
-# github.com/infobloxopen/infoblox-go-client/v2 v2.0.0
+# github.com/infobloxopen/infoblox-go-client/v2 v2.1.0 => github.com/MartinWeindel/infoblox-go-client/v2 v2.0.0-20221122085954-b7d80ebb106b
 ## explicit; go 1.15
 github.com/infobloxopen/infoblox-go-client/v2
 # github.com/jmespath/go-jmespath v0.4.0
@@ -1151,3 +1151,4 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.3.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
+# github.com/infobloxopen/infoblox-go-client/v2 => github.com/MartinWeindel/infoblox-go-client/v2 v2.0.0-20221122085954-b7d80ebb106b

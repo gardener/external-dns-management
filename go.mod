@@ -15,7 +15,7 @@ require (
 	github.com/go-openapi/strfmt v0.21.2
 	github.com/gophercloud/gophercloud v0.24.0
 	github.com/gophercloud/utils v0.0.0-20220307143606-8e7800759d16
-	github.com/infobloxopen/infoblox-go-client/v2 v2.0.0
+	github.com/infobloxopen/infoblox-go-client/v2 v2.1.0
 	github.com/miekg/dns v1.1.44
 	github.com/netlify/open-api v1.1.0
 	github.com/onsi/ginkgo/v2 v2.1.6
@@ -137,3 +137,6 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
+
+// need open PR https://github.com/infobloxopen/infoblox-go-client/pull/195
+replace github.com/infobloxopen/infoblox-go-client/v2 => github.com/MartinWeindel/infoblox-go-client/v2 v2.0.0-20221122085954-b7d80ebb106b
