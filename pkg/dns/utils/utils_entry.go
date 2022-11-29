@@ -62,7 +62,7 @@ func (this *DNSEntryObject) BaseStatus() *api.DNSBaseStatus {
 }
 
 func (this *DNSEntryObject) GetDNSName() string {
-	return this.DNSEntry().Spec.DNSName
+	return dns.NormalizeHostname(this.DNSEntry().Spec.DNSName)
 }
 func (this *DNSEntryObject) GetSetIdentifier() string {
 	if policy := this.DNSEntry().Spec.RoutingPolicy; policy != nil {

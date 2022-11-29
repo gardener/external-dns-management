@@ -99,7 +99,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 					continue
 				}
 				s := entry.Status()
-				n := entry.Spec().DNSName
+				n := entry.GetDNSName()
 
 				stateCopy := DNSState{DNSEntryStatus: *s, CreationTimestamp: entry.GetCreationTimestamp()}
 				if stateCopy.Provider != nil {
@@ -157,7 +157,7 @@ func (this *slaveReconciler) Delete(logger logger.LogContext, obj resources.Obje
 				if fb == nil {
 					continue
 				}
-				n := entry.Spec().DNSName
+				n := entry.GetDNSName()
 				fb.Deleted(logger, n, "")
 			}
 			this.events.Deleted(logger, k)

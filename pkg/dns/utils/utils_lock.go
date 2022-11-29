@@ -64,7 +64,7 @@ func (this *DNSLockObject) BaseStatus() *api.DNSBaseStatus {
 }
 
 func (this *DNSLockObject) GetDNSName() string {
-	return this.DNSLock().Spec.DNSName
+	return dns.NormalizeHostname(this.DNSLock().Spec.DNSName)
 }
 
 func (this *DNSLockObject) GetSetIdentifier() string {

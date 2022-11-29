@@ -16,21 +16,10 @@
 
 package dns
 
-import (
-	"github.com/gardener/controller-manager-library/pkg/resources"
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-)
-
 func SupportedRecordType(t string) bool {
 	switch t {
 	case RS_CNAME, RS_A, RS_AAAA, RS_TXT:
 		return true
 	}
 	return false
-}
-
-func DNSNameMatcher(dnsname string) resources.ObjectMatcher {
-	return func(o resources.Object) bool {
-		return o.Data().(*api.DNSEntry).Spec.DNSName == dnsname
-	}
 }
