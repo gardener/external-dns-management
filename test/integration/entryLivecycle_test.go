@@ -64,7 +64,7 @@ var _ = Describe("EntryLivecycle", func() {
 
 		defer testEnv.DeleteProviderAndSecret(pr)
 
-		e, err := testEnv.CreateTXTEntry(0, domain)
+		e, err := testEnv.CreateTXTEntry(0, domain+".")
 		Ω(err).Should(BeNil())
 
 		checkProvider(pr)
