@@ -34,6 +34,7 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const AnnotationSecretResourceVersion = dns.ANNOTATION_GROUP + "/secretResourceVersion"
@@ -163,8 +164,8 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 }
 
 // Deleted is used as fallback, if the source object in another cluster is
-//  deleted unexpectedly (by removing the finalizer).
-//  It checks whether a slave is still available and deletes it.
+// deleted unexpectedly (by removing the finalizer).
+// It checks whether a slave is still available and deletes it.
 func (this *sourceReconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
 	logger.Infof("%s finally deleted", key)
 	failed := false
@@ -358,11 +359,14 @@ func (this *sourceReconciler) updateSecretIfNeeded(logger logger.LogContext, tar
 	return true, nil
 }
 
-func (this *sourceReconciler) writeTargetSecret(logger logger.LogContext, target *api.DNSProvider, slave resources.Object, secret *core.Secret) error {
-	secret.Namespace = target.Namespace
-	secret.Name = target.Name
-	secret.ResourceVersion = ""
-	secret.UID = ""
+func (this *sourceReconciler) writeTargetSecret(logger logger.LogContext, target *api.DNSProvider, slave resources.Object, inputSecret *core.Secret) error {
+	secret := &core.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      target.Name,
+			Namespace: target.Namespace,
+		},
+		Data: inputSecret.Data,
+	}
 	resources.SetOwnerReference(secret, slave.GetOwnerReference())
 	_, err := this.resTargetSecrets.CreateOrUpdate(secret)
 	if err != nil {
