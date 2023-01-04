@@ -11,8 +11,8 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/ghodss/yaml"
 	"github.com/spf13/pflag"
+	"sigs.k8s.io/yaml"
 )
 
 // MergeConfigFile reads a yaml or json config file and merges it into a given
