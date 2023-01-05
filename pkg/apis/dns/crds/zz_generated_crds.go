@@ -31,7 +31,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
   name: dnsannotations.dns.gardener.cloud
 spec:
@@ -127,12 +127,6 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
   `
 	utils.Must(registry.RegisterCRD(data))
 	data = `
@@ -141,7 +135,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
   name: dnsentries.dns.gardener.cloud
 spec:
@@ -355,12 +349,6 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
   `
 	utils.Must(registry.RegisterCRD(data))
 	data = `
@@ -369,7 +357,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
   name: dnshostedzonepolicies.dns.gardener.cloud
 spec:
@@ -483,12 +471,6 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
   `
 	utils.Must(registry.RegisterCRD(data))
 	data = `
@@ -497,7 +479,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
   name: dnslocks.dns.gardener.cloud
 spec:
@@ -647,12 +629,6 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
   `
 	utils.Must(registry.RegisterCRD(data))
 	data = `
@@ -661,7 +637,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
   name: dnsowners.dns.gardener.cloud
 spec:
@@ -769,12 +745,6 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
   `
 	utils.Must(registry.RegisterCRD(data))
 	data = `
@@ -783,7 +753,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
   name: dnsproviders.dns.gardener.cloud
 spec:
@@ -893,6 +863,7 @@ spec:
                       name must be unique.
                     type: string
                 type: object
+                x-kubernetes-map-type: atomic
               type:
                 description: type of the provider (selecting the responsible type
                   of DNS controller)
@@ -987,12 +958,6 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
   `
 	utils.Must(registry.RegisterCRD(data))
 	data = `
@@ -1001,7 +966,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.8.0
+    controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
   name: remoteaccesscertificates.dns.gardener.cloud
 spec:
@@ -1094,12 +1059,6 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
   `
 	utils.Must(registry.RegisterCRD(data))
 }

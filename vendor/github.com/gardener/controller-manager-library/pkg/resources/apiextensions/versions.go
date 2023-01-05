@@ -34,7 +34,6 @@ type CustomResourceDefinitionVersions struct {
 
 var v122 = semver.MustParse("1.22.0")
 var v116 = semver.MustParse("1.16.0")
-var v112 = semver.MustParse("1.12.0")
 var otype runtime.Object
 
 func NewDefaultedCustomResourceDefinitionVersions(spec CRDSpecification) (*CustomResourceDefinitionVersions, error) {

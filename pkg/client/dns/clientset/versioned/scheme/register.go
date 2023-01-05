@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2022 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
+Copyright (c) 2023 SAP SE or an SAP affiliate company. All rights reserved. This file is licensed under the Apache Software License, v. 2 except as noted otherwise in the LICENSE file
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,14 +37,14 @@ var localSchemeBuilder = runtime.SchemeBuilder{
 // AddToScheme adds all types of this clientset into the given scheme. This allows composition
 // of clientsets, like in:
 //
-//   import (
-//     "k8s.io/client-go/kubernetes"
-//     clientsetscheme "k8s.io/client-go/kubernetes/scheme"
-//     aggregatorclientsetscheme "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/scheme"
-//   )
+//	import (
+//	  "k8s.io/client-go/kubernetes"
+//	  clientsetscheme "k8s.io/client-go/kubernetes/scheme"
+//	  aggregatorclientsetscheme "k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset/scheme"
+//	)
 //
-//   kclientset, _ := kubernetes.NewForConfig(c)
-//   _ = aggregatorclientsetscheme.AddToScheme(clientsetscheme.Scheme)
+//	kclientset, _ := kubernetes.NewForConfig(c)
+//	_ = aggregatorclientsetscheme.AddToScheme(clientsetscheme.Scheme)
 //
 // After this, RawExtensions in Kubernetes types will serialize kube-aggregator types
 // correctly.
