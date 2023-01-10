@@ -54,7 +54,15 @@ data:
 
 ## Routing Policy
 
-The Google CloudDNS provider supports currently only the `weighted` routing policy.
+The Google CloudDNS provider currently supports these routing policies types:
+
+- `weighted` [Weighted Routing Policy](#weighted-routing-policy)
+- `geolocation` [Geolocation Routing Policy](#geolocation-routing-policy)
+
+*Note*: Health checks are not supported.
+
+For more details about these routing policies, please see the Google Cloud DNS documentation at
+[Manage DNS routing policies and health checks](https://cloud.google.com/dns/docs/zones/manage-routing-policies)
 
 ### Weighted Routing Policy
 
@@ -63,6 +71,29 @@ acting on the same domain names. Every record set needs a `SetIdentifier` which 
 resource record set policy).
 Weighted routing policy is supported for all record types, i.e. `A`, `AAAA`, `CNAME`, and `TXT`.
 All entries of the same domain name must have the same record type and TTL. Only integral weights >= 0 are allowed.
+
+Example:
+
+```yaml
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: google-weighted
+  namespace: default
+spec:
+  dnsName: "my.service.example.com"
+  ttl: 60
+  targets:
+    - 1.2.3.4
+  routingPolicy:
+    type: weighted # Google Cloud DNS specific example
+    setIdentifier: "0"
+    parameters:
+      weight: "10"
+```
 
 #### Annotating Ingress or Service Resources with Routing Policy
 
@@ -102,3 +133,84 @@ spec:
         - test.ingress.my-dns-domain.com
       #secretName: my-cert-secret-name
 ```
+
+### Geolocation Routing Policy
+
+Each geolocation record set is defined by a separate `DNSEntry`. In this way it is possible to use different dns-controller-manager deployments
+acting on the same domain names. Every record set needs a `SetIdentifier` which must identical to the value of the parameter `location`.
+Geolocation routing policy is supported for all record types, i.e. `A`, `AAAA`, `CNAME`, and `TXT`.
+All entries of the same domain name must have the same record type and TTL.
+
+At the time of writing (January 2023), Google Cloud only supported Google Cloud regions as the geographic boundaries. Other
+geographic boundaries may follow. Please see Google documentation for the current state.
+
+<details>
+<summary>Click here to see a list of known possible values</summary>
+
+| Google Cloud region | Physical Location |
+|---------------------|-------------------|
+| asia-east1 | Changhua County, Taiwan |
+| asia-east2 | Hong Kong |
+| asia-northeast1 | Tokyo, Japan |
+| asia-northeast2 | Osaka, Japan |
+| asia-northeast3 | Seoul, South Korea |
+| asia-south1 | Mumbai, India |
+| asia-south2 | Delhi, India |
+| asia-southeast1 | Jurong West, Singapore |
+| australia-southeast1 | Sydney, Australia |
+| australia-southeast2 | Melbourne, Australia |
+| europe-central2 | Warsaw, Poland |
+| europe-north2 | Hamina, Finland |
+| europe-west1 | St. Ghislain, Belgium |
+| europe-west2 | London, England |
+| europe-west3 | Frankfurt, Germany |
+| europe-west4 | Eemshaven, Netherlands |
+| europe-west6 | Zurich, Switzerland |
+| europe-west8 | Milan, Italy |
+| europe-west9 | Paris, France |
+| europe-southwest1 | Madrid, Spain |
+| me-west1 | Tel Aviv, Israel, Middle East |
+| northamerica-northeast1 | Montréal, Québec |
+| northamerica-northeast2 | Toronto, Ontario |
+| southamerica-east1 | Osasco, São Paulo |
+ | southamerica-west1 |	Santiago, Chile, South America |
+| us-central1 | Council Bluffs, Iowa |
+| us-east1 | Moncks Corner, South Carolina |
+| us-east4 | Ashburn, Virginia |
+| us-west1 | The Dalles, Orego |
+| us-west2 | Los Angeles, California |
+| us-west3 | Salt Lake City, Utah |
+| us-west4 | Las Vegas, Nevada |
+
+
+
+*Note*: No guarantee for completeness
+</details>
+
+Example:
+
+```yaml
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+ annotations:
+ # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+ #dns.gardener.cloud/class: garden
+ name: google-geo-europe-west3
+ namespace: default
+spec:
+ dnsName: "my.second-service.example.com"
+ ttl: 60
+ targets:
+  - 1.2.3.4
+ routingPolicy:
+  type: geolocation # Google Cloud DNS specific example
+  setIdentifier: "europe-west3"
+  parameters:
+   location: "europe-west3"
+```
+
+
+Creating this routing policy using annotations please adjust the details according to the examples for the weighted routing policy:
+[Annotating Ingress or Service Resources with Routing Policy](#annotating-ingress-or-service-resources-with-routing-policy)
+

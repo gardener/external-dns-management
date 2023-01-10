@@ -1,0 +1,56 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: google-weighted
+  namespace: default
+spec:
+  dnsName: "my.service.example.com"
+  ttl: 60
+  targets:
+    - 1.2.3.4
+  routingPolicy:
+    type: weighted # Google Cloud DNS specific example
+    setIdentifier: "0"
+    parameters:
+      weight: "10"
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: google-geo-europe-west3
+  namespace: default
+spec:
+  dnsName: "my.second-service.example.com"
+  ttl: 60
+  targets:
+    - 1.2.3.4
+  routingPolicy:
+    type: geolocation # Google Cloud DNS specific example
+    setIdentifier: "europe-west3"
+    parameters:
+      location: "europe-west3"
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: google-geo-us-central1
+  namespace: default
+spec:
+  dnsName: "my.second-service.example.com"
+  ttl: 60
+  targets:
+    - 5.6.7.8
+  routingPolicy:
+    type: geolocation # Google Cloud DNS specific example
+    setIdentifier: "us-central1"
+    parameters:
+      location: "us-central1"

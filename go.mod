@@ -8,7 +8,7 @@ require (
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.9
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190603021944-12ad9f921c0b
-	github.com/aws/aws-sdk-go v1.38.43
+	github.com/aws/aws-sdk-go v1.44.173
 	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/gardener/controller-manager-library v0.2.1-0.20230104162714-c7c57096a522
 	github.com/go-openapi/runtime v0.24.1

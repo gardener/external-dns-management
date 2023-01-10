@@ -40,9 +40,10 @@ type Change struct {
 
 type Execution struct {
 	logger.LogContext
-	r53         *route53.Route53
-	rateLimiter flowcontrol.RateLimiter
-	zone        provider.DNSHostedZone
+	r53           *route53.Route53
+	policyContext *routingPolicyContext
+	rateLimiter   flowcontrol.RateLimiter
+	zone          provider.DNSHostedZone
 
 	changes   map[dns.DNSSetName][]*Change
 	batchSize int
@@ -50,16 +51,17 @@ type Execution struct {
 
 func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZone) *Execution {
 	return &Execution{
-		LogContext:  logger,
-		r53:         h.r53,
-		rateLimiter: h.config.RateLimiter,
-		zone:        zone,
-		changes:     map[dns.DNSSetName][]*Change{},
-		batchSize:   h.awsConfig.BatchSize,
+		LogContext:    logger,
+		r53:           h.r53,
+		policyContext: h.policyContext,
+		rateLimiter:   h.config.RateLimiter,
+		zone:          zone,
+		changes:       map[dns.DNSSetName][]*Change{},
+		batchSize:     h.awsConfig.BatchSize,
 	}
 }
 
-func buildResourceRecordSet(name dns.DNSSetName, policy *dns.RoutingPolicy, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
+func buildResourceRecordSet(name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
 	rrs := &route53.ResourceRecordSet{}
 	rrs.Name = aws.String(name.DNSName)
 	rrs.Type = aws.String(rset.Type)
@@ -70,7 +72,7 @@ func buildResourceRecordSet(name dns.DNSSetName, policy *dns.RoutingPolicy, rset
 			Value: aws.String(r.Value),
 		}
 	}
-	if err := addRoutingPolicy(rrs, name, policy); err != nil {
+	if err := policyContext.addRoutingPolicy(rrs, name, policy); err != nil {
 		return nil, err
 	}
 	return rrs, nil
@@ -93,9 +95,9 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 		policy = req.Deletion.RoutingPolicy
 	}
 	if rset.Type == dns.RS_ALIAS {
-		rrs, err = buildResourceRecordSetForAliasTarget(name, policy, rset)
+		rrs, err = buildResourceRecordSetForAliasTarget(name, policy, this.policyContext, rset)
 	} else {
-		rrs, err = buildResourceRecordSet(name, policy, rset)
+		rrs, err = buildResourceRecordSet(name, policy, this.policyContext, rset)
 	}
 	if err != nil {
 		this.Errorf("addChange failed for %s[%s]: %s", name, this.zone.Id(), err)
