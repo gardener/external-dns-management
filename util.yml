@@ -26,7 +26,8 @@ helper:
         head-update:
           traits:
             draft_release: (( b != ["master"] ? ~~ :~ ))
-            component_descriptor: ~
+            component_descriptor:
+              retention_policy: 'clean-snapshots'
       pull:
         <<: (( &template ))
         pull-request:
