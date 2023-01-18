@@ -28,6 +28,8 @@ helper:
             draft_release: (( b != ["master"] ? ~~ :~ ))
             component_descriptor:
               retention_policy: 'clean-snapshots'
+            version:
+              preprocess: inject-commit-hash
       pull:
         <<: (( &template ))
         pull-request:
