@@ -21,7 +21,16 @@ import (
 )
 
 const (
+	// RoutingPolicyWeighted is a weighted routing policy (supported for AWS Route 53 and Google CloudDNS)
 	RoutingPolicyWeighted = "weighted"
+	// RoutingPolicyLatency is a latency based routing policy (supported for AWS Route 53)
+	RoutingPolicyLatency = "latency"
+	// RoutingPolicyGeoLocation is a geolocation based routing policy (supported for AWS Route 53 and Google CloudDNS)
+	RoutingPolicyGeoLocation = "geolocation"
+	// RoutingPolicyIPBased is an IP based routing policy (supported for AWS Route 53)
+	RoutingPolicyIPBased = "ip-based"
+	// RoutingPolicyFailover is failover routing policy (supported for AWS Route 53)
+	RoutingPolicyFailover = "failover"
 )
 
 type RoutingPolicy struct {
@@ -48,7 +57,7 @@ func (p *RoutingPolicy) Clone() *RoutingPolicy {
 	return copy
 }
 
-func (p *RoutingPolicy) CheckParameterKeys(keys []string) error {
+func (p *RoutingPolicy) CheckParameterKeys(keys, optionalKeys []string) error {
 	for _, k := range keys {
 		if _, ok := p.Parameters[k]; !ok {
 			return fmt.Errorf("Missing parameter key %s", k)
@@ -58,6 +67,11 @@ func (p *RoutingPolicy) CheckParameterKeys(keys []string) error {
 	outer:
 		for k := range p.Parameters {
 			for _, k2 := range keys {
+				if k == k2 {
+					continue outer
+				}
+			}
+			for _, k2 := range optionalKeys {
 				if k == k2 {
 					continue outer
 				}

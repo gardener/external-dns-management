@@ -1,0 +1,190 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: aws-weighted
+  namespace: default
+spec:
+  dnsName: "my.service.example.com"
+  ttl: 120
+  targets:
+    - instance-a.service.example.com
+  # routingPolicy is current only supported for AWS Route53 or Google CloudDNS
+  routingPolicy:
+    type: weighted
+    setIdentifier: instance-a
+    parameters:
+      weight: "90"
+      #healthCheckID: 66666666-1111-4444-aaaa-25810ea11111 # optional
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: aws-geolocation-default
+  namespace: default
+spec:
+  dnsName: "my.second-service.example.com"
+  ttl: 120
+  targets:
+    - instance1.second-service.example.com
+  # routingPolicy is current only supported for AWS Route53 or Google CloudDNS
+  routingPolicy:
+    type: geolocation # AWS Route 53 specific example
+    setIdentifier: default
+    parameters:
+      location: Default # default location covers geographic locations that you haven't created records for
+      #healthCheckID: 66666666-1111-4444-aaaa-25810ea11111 # optional
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: aws-geolocation-europe
+  namespace: default
+spec:
+  dnsName: "my.second-service.example.com"
+  ttl: 120
+  targets:
+    - instance-eu.second-service.example.com
+  # routingPolicy is current only supported for AWS Route53 or Google CloudDNS
+  routingPolicy:
+    type: geolocation # AWS Route 53 specific example
+    setIdentifier: eu
+    parameters:
+      location: "Europe" # either continent, country or subdivision name (only allowed for countries United States or Ukraine), possible names see docs/aws-route53/README.md
+      #location: "continent=EU" # alternatively, use continent or country code as described here: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/resource-record-sets-values-geo.html#rrsets-values-geo-location
+      #location: "country=FR"
+      #healthCheckID: 66666666-1111-4444-aaaa-25810ea11111 # optional
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: aws-latency-eu-west-1
+  namespace: default
+spec:
+  dnsName: "my.third-service.example.com"
+  ttl: 120
+  targets:
+    - instance1.third-service.example.com
+  # routingPolicy is current only supported for AWS Route53 or Google CloudDNS
+  routingPolicy:
+    type: latency # only supported for AWS Route 53
+    setIdentifier: eu
+    parameters:
+      region: "eu-west-1" # AWS region name
+      #healthCheckID: 66666666-1111-4444-aaaa-25810ea11111 # optional
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: aws-latency-us-east-1
+  namespace: default
+spec:
+  dnsName: "my.third-service.example.com"
+  ttl: 120
+  targets:
+    - instance2.third-service.example.com
+  # routingPolicy is current only supported for AWS Route53 or Google CloudDNS
+  routingPolicy:
+    type: latency # only supported for AWS Route 53
+    setIdentifier: us
+    parameters:
+      region: "us-east-1" # AWS region name
+      #healthCheckID: 66666666-1111-4444-aaaa-25810ea11111 # optional
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: aws-ip-based-default
+  namespace: default
+spec:
+  dnsName: "my.fourth-service.example.com"
+  ttl: 120
+  targets:
+    - instance1.fourth-service.example.com
+  routingPolicy:
+    type: ip-based # only supported for AWS Route 53
+    setIdentifier: default
+    parameters:
+      collection: "my-collection" # CIDR collection must be already existing
+      location: "*" # default
+      #healthCheckID: 66666666-1111-4444-aaaa-25810ea11111 # optional
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: aws-ip-based-loc1
+  namespace: default
+spec:
+  dnsName: "my.fourth-service.example.com"
+  ttl: 120
+  targets:
+    - instance2.fourth-service.example.com
+  routingPolicy:
+    type: ip-based # only supported for AWS Route 53
+    setIdentifier: loc1
+    parameters:
+      collection: "my-collection" # CIDR collection must already be existing
+      location: "my-location1" # location name must already be existing
+      #healthCheckID: 66666666-1111-4444-aaaa-25810ea11111 # optional
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: aws-failover-primary
+  namespace: default
+spec:
+  dnsName: "my.fiveth-service.example.com"
+  ttl: 120
+  targets:
+    - instance1.fiveth-service.example.com
+  routingPolicy:
+    type: failover # only supported for AWS Route 53
+    setIdentifier: instance1
+    parameters:
+      failoverRecordType: primary
+      healthCheckID: 66666666-1111-4444-aaaa-25810ea11111
+      # disableEvaluateTargetHealth: "true" # only used if target is AWS ELB (target health is enabled by default)
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: aws-failover-secondary
+  namespace: default
+spec:
+  dnsName: "my.fiveth-service.example.com"
+  ttl: 120
+  targets:
+    - instance2.fiveth-service.example.com
+  routingPolicy:
+    type: failover # only supported for AWS Route 53
+    setIdentifier: instance2
+    parameters:
+      failoverRecordType: secondary
+      healthCheckID: 66666666-1111-5555-bbbb-25810ea22222
+      # disableEvaluateTargetHealth: "true" # only used if target is AWS ELB (target health is enabled by default)

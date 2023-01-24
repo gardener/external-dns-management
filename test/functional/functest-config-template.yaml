@@ -25,6 +25,68 @@ providers:
 #        targets:
 #          - 2.2.2.1
 #          - 2.2.2.2
+#    geolocation:
+#      default:
+#        type: geolocation
+#        parameters:
+#          location: "Default"
+#        targets:
+#          - 10.10.10.10
+#      eu:
+#        type: geolocation
+#        parameters:
+#          location: "Europe"
+#        targets:
+#          - 1.1.1.1
+#      fr:
+#        type: geolocation
+#        parameters:
+#          location: "country=FR"
+#        targets:
+#          - 2.2.2.2
+#    latency:
+#      eu:
+#        type: latency
+#        parameters:
+#          region: "eu-west-1"
+#        targets:
+#          - 1.1.1.1
+#      us:
+#        type: latency
+#        parameters:
+#          region: "us-east-1"
+#        targets:
+#          - 2.2.2.2
+#    ip-based:
+#      default:
+#        type: ip-based
+#        parameters:
+#          collection: "example1"
+#          location: "*"
+#        targets:
+#          - 1.1.1.1
+#      sap:
+#        type: ip-based
+#        parameters:
+#          collection: "example1"
+#          location: "my-block"
+#        targets:
+#          - 2.2.2.2
+#    failover:
+#      prim:
+#        type: failover
+#        parameters:
+#          failoverRecordType: primary
+#          healthCheckID: "66666666-1111-5555-bbbb-25810ea11111"
+#        targets:
+#          - 1.1.1.1
+#      sec:
+#        type: failover
+#        parameters:
+#          failoverRecordType: secondary
+#          healthCheckID: "66666666-1111-5555-bbbb-25810ea22222"
+#        targets:
+#          - 2.2.2.2
 
 - name: alicloud-dns-playground
   type: alicloud-dns
@@ -52,6 +114,36 @@ providers:
       ...
       ...
   zoneID: ...
+## for testing weighted routing policy uncomment
+#  routingPolicySets:
+#    weighted:
+#      "0":
+#        type: weighted
+#        parameters:
+#          weight: "10"
+#        targets:
+#          - 1.1.1.1
+#          - 1.1.1.2
+#      "2":
+#        type: weighted
+#        parameters:
+#          weight: "1"
+#        targets:
+#          - 2.2.2.1
+#          - 2.2.2.2
+#    geolocation:
+#      europe-west1:
+#        type: geolocation
+#        parameters:
+#          location: "europe-west1"
+#        targets:
+#          - 1.1.1.1
+#      us-central1:
+#        type: geolocation
+#        parameters:
+#          location: "us-central1"
+#        targets:
+#          - 2.2.2.2
 
 - name: openstack-designate-playground
   type: openstack-designate

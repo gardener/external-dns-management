@@ -37,11 +37,12 @@ const ()
 
 type Handler struct {
 	provider.DefaultDNSHandler
-	config    provider.DNSHandlerConfig
-	awsConfig AWSConfig
-	cache     provider.ZoneCache
-	sess      *session.Session
-	r53       *route53.Route53
+	config        provider.DNSHandlerConfig
+	awsConfig     AWSConfig
+	cache         provider.ZoneCache
+	sess          *session.Session
+	r53           *route53.Route53
+	policyContext *routingPolicyContext
 }
 
 type AWSConfig struct {
@@ -114,6 +115,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	}
 	h.sess = sess
 	h.r53 = route53.New(sess)
+	h.policyContext = newRoutingPolicyContext(h.r53)
 
 	h.cache, err = c.ZoneCacheFactory.CreateZoneCache(provider.CacheZoneState, c.Metrics, h.getZones, h.getZoneState)
 	if err != nil {
@@ -218,7 +220,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 				rs = buildRecordSet(r)
 			}
 			name := dns.DNSSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}
-			policy := extractRoutingPolicy(r)
+			policy := h.policyContext.extractRoutingPolicy(r)
 			dnssets.AddRecordSetFromProviderEx(name, policy, rs)
 		}
 	}
@@ -415,7 +417,7 @@ func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, setName dns.DNSSetNa
 			} else {
 				rs = buildRecordSet(r)
 			}
-			routingPolicy := extractRoutingPolicy(r)
+			routingPolicy := h.policyContext.extractRoutingPolicy(r)
 			dnsSetName := dns.DNSSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}
 			dnssets.AddRecordSetFromProviderEx(dnsSetName, routingPolicy, rs)
 		}

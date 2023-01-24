@@ -227,6 +227,104 @@ var _ = Describe("Execution", func() {
 		dnssetwrr1_0b    = makeDNSSetWrr("w1.example.org", 0, 4, dns.RS_A, "4.4.4.4")
 		dnssetwrr1_2b    = makeDNSSetWrr("w1.example.org", 2, 5, dns.RS_A, "5.5.5.5")
 		dnssetwrr1_2bnew = makeDNSSetWrr("w1.example.org", 2, 0, dns.RS_A, "5.5.6.6")
+
+		geoStatus0 = func(name, typ string) (*googledns.ResourceRecordSet, error) {
+			switch name {
+			case "w1.example.org.":
+				return nil, &googleapi.Error{Code: 404}
+			case "w2.example.org.":
+				if typ == dns.RS_CNAME {
+					return &googledns.ResourceRecordSet{
+						Name: name,
+						Type: typ,
+						RoutingPolicy: &googledns.RRSetRoutingPolicy{
+							Geo: &googledns.RRSetRoutingPolicyGeoPolicy{
+								Items: []*googledns.RRSetRoutingPolicyGeoPolicyGeoPolicyItem{
+									{
+										Rrdatas:  []string{"some-other.example.org."},
+										Location: "asia-east2",
+									},
+									{
+										Rrdatas:  []string{"some.example.org."},
+										Location: "europe-west1",
+									},
+								},
+							},
+						},
+					}, nil
+				}
+			case "w3.example.org.":
+				if typ == dns.RS_TXT {
+					return &googledns.ResourceRecordSet{
+						Name: name,
+						Type: typ,
+						RoutingPolicy: &googledns.RRSetRoutingPolicy{
+							Geo: &googledns.RRSetRoutingPolicyGeoPolicy{
+								Items: []*googledns.RRSetRoutingPolicyGeoPolicyGeoPolicyItem{
+									{
+										Rrdatas:  []string{"\"bla\"", "\"foo\""},
+										Location: "asia-east2",
+									},
+								},
+							},
+						},
+					}, nil
+				}
+			}
+			return nil, fmt.Errorf("unexpected: %s %s", name, typ)
+		}
+		geoStatus1 = func(name, typ string) (*googledns.ResourceRecordSet, error) {
+			switch name {
+			case "w1.example.org.":
+				if typ == dns.RS_A {
+					return &googledns.ResourceRecordSet{
+						Name: name,
+						Type: typ,
+						RoutingPolicy: &googledns.RRSetRoutingPolicy{
+							Geo: &googledns.RRSetRoutingPolicyGeoPolicy{
+								Items: []*googledns.RRSetRoutingPolicyGeoPolicyGeoPolicyItem{
+									{
+										Rrdatas:  []string{"1.1.2.1"},
+										Location: "us-east1",
+									},
+									{
+										Rrdatas:  []string{"1.1.2.2"},
+										Location: "asia-east1",
+									},
+								},
+							},
+						},
+					}, nil
+				}
+			case "w2.example.org.":
+				if typ == dns.RS_CNAME {
+					return &googledns.ResourceRecordSet{
+						Name: name,
+						Type: typ,
+						RoutingPolicy: &googledns.RRSetRoutingPolicy{
+							Geo: &googledns.RRSetRoutingPolicyGeoPolicy{
+								Items: []*googledns.RRSetRoutingPolicyGeoPolicyGeoPolicyItem{
+									{
+										Rrdatas:  []string{"some-other.example.org."},
+										Location: "asia-east2",
+									},
+									{
+										Rrdatas:  []string{"some.example.org."},
+										Location: "europe-west1",
+									},
+								},
+							},
+						},
+					}, nil
+				}
+			}
+			return nil, fmt.Errorf("unexpected: %s %s", name, typ)
+		}
+		dnssetgeo1_0    = makeDNSSetGeo("w1.example.org", "europe-west1", dns.RS_A, "1.1.2.0")
+		dnssetgeo1_2    = makeDNSSetGeo("w1.example.org", "asia-east1", dns.RS_A, "1.1.2.2")
+		dnssetgeo2_2old = makeDNSSetGeo("w2.example.org", "europe-west1", dns.RS_CNAME, "some.example.org")
+		dnssetgeo2_2new = makeDNSSetGeo("w2.example.org", "europe-west1", dns.RS_CNAME, "some2.example.org")
+		dnssetgeo3_1    = makeDNSSetGeo("w3.example.org", "asia-east2", dns.RS_TXT, "bla", "foo")
 	)
 	DescribeTable("Should prepare submission", func(reqs []*provider.ChangeRequest, rrsetGetter rrsetGetterFunc, changeMatcher types.GomegaMatcher) {
 		change, err := prepareSubmission(reqs, rrsetGetter)
@@ -334,6 +432,40 @@ var _ = Describe("Execution", func() {
 				}),
 			}),
 		),
+		Entry("prepares geolocation policy-routing change requests",
+			[]*provider.ChangeRequest{
+				{Action: provider.R_CREATE, Type: dns.RS_A, Addition: dnssetgeo1_0},
+				{Action: provider.R_CREATE, Type: dns.RS_A, Addition: dnssetgeo1_2},
+				{Action: provider.R_UPDATE, Type: dns.RS_CNAME, Addition: dnssetgeo2_2new, Deletion: dnssetgeo2_2old},
+				{Action: provider.R_DELETE, Type: dns.RS_TXT, Deletion: dnssetgeo3_1},
+			},
+			geoStatus0,
+			MatchFields(IgnoreExtras, Fields{
+				"Deletions": MatchAllElements(nameFunc, Elements{
+					"w2.example.org.": matchGeoResourceRecordSet(dns.RS_CNAME, matchGeoItem("asia-east2", "some-other.example.org."), matchGeoItem("europe-west1", "some.example.org.")),
+					"w3.example.org.": matchGeoResourceRecordSet(dns.RS_TXT, matchGeoItem("asia-east2", "\"bla\"", "\"foo\"")),
+				}),
+				"Additions": MatchAllElements(nameFunc, Elements{
+					"w1.example.org.": matchGeoResourceRecordSet(dns.RS_A, matchGeoItem("europe-west1", "1.1.2.0"), matchGeoItem("asia-east1", "1.1.2.2")),
+					"w2.example.org.": matchGeoResourceRecordSet(dns.RS_CNAME, matchGeoItem("asia-east2", "some-other.example.org."), matchGeoItem("europe-west1", "some2.example.org.")),
+				}),
+			}),
+		),
+		Entry("prepares geolocation policy-routing change requests (merging)",
+			[]*provider.ChangeRequest{
+				{Action: provider.R_CREATE, Type: dns.RS_A, Addition: dnssetgeo1_0},
+				{Action: provider.R_DELETE, Type: dns.RS_A, Deletion: dnssetgeo1_2},
+			},
+			geoStatus1,
+			MatchFields(IgnoreExtras, Fields{
+				"Deletions": MatchAllElements(nameFunc, Elements{
+					"w1.example.org.": matchGeoResourceRecordSet(dns.RS_A, matchGeoItem("us-east1", "1.1.2.1"), matchGeoItem("asia-east1", "1.1.2.2")),
+				}),
+				"Additions": MatchAllElements(nameFunc, Elements{
+					"w1.example.org.": matchGeoResourceRecordSet(dns.RS_A, matchGeoItem("europe-west1", "1.1.2.0"), matchGeoItem("us-east1", "1.1.2.1")),
+				}),
+			}),
+		),
 	)
 })
 
@@ -365,6 +497,16 @@ func makeDNSSetWrrMissingWeight(dnsName string, index int, typ string, targets .
 	return set
 }
 
+func makeDNSSetGeo(dnsName string, location string, typ string, targets ...string) *dns.DNSSet {
+	policy := &dns.RoutingPolicy{
+		Type:       dns.RoutingPolicyGeoLocation,
+		Parameters: map[string]string{"location": location},
+	}
+	set := dns.NewDNSSet(dns.DNSSetName{DNSName: dnsName, SetIdentifier: location}, policy)
+	set.SetRecordSet(typ, 300, targets...)
+	return set
+}
+
 func matchSimpleResourceRecordSet(typ string, ttl int64, targets ...string) types.GomegaMatcher {
 	return PointTo(MatchFields(IgnoreExtras, Fields{
 		"Type":    Equal(typ),
@@ -375,6 +517,13 @@ func matchSimpleResourceRecordSet(typ string, ttl int64, targets ...string) type
 
 func itemNameFunc(index int, element interface{}) string {
 	return fmt.Sprintf("%d", index)
+}
+
+func geoItemNameFunc(element interface{}) string {
+	if geo, ok := element.(*googledns.RRSetRoutingPolicyGeoPolicyGeoPolicyItem); ok {
+		return geo.Location
+	}
+	return ""
 }
 
 func matchWrrResourceRecordSet(typ string, items ...types.GomegaMatcher) types.GomegaMatcher {
@@ -405,6 +554,34 @@ func matchWrrPlaceholderItem(typ string) types.GomegaMatcher {
 		"Weight":  Equal(float64(0)),
 		"Rrdatas": Equal([]string{rrDefaultValue(typ)}),
 	}))
+}
+
+func matchGeoResourceRecordSet(typ string, items ...geoItem) types.GomegaMatcher {
+	elements := Elements{}
+	for _, item := range items {
+		elements[item.location] = PointTo(MatchFields(IgnoreExtras, Fields{
+			"Location": Equal(item.location),
+			"Rrdatas":  Equal(item.targets),
+		}))
+	}
+
+	return PointTo(MatchFields(IgnoreExtras, Fields{
+		"Type": Equal(typ),
+		"RoutingPolicy": PointTo(MatchFields(IgnoreExtras, Fields{
+			"Geo": PointTo(MatchFields(IgnoreExtras, Fields{
+				"Items": MatchAllElements(geoItemNameFunc, elements),
+			})),
+		})),
+	}))
+}
+
+type geoItem struct {
+	location string
+	targets  []string
+}
+
+func matchGeoItem(location string, targets ...string) geoItem {
+	return geoItem{location: location, targets: targets}
 }
 
 func prepareSubmission(reqs []*provider.ChangeRequest, rrsetGetter rrsetGetterFunc) (*googledns.Change, error) {
