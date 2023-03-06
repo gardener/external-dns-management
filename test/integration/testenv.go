@@ -40,7 +40,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	corev1 "k8s.io/api/core/v1"
-	networking "k8s.io/api/networking/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -515,20 +515,20 @@ func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {
 }
 
 func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP string, ttl int, routingPolicy *string) (resources.Object, error) {
-	setter := func(e *networking.Ingress) {
+	setter := func(e *networkingv1.Ingress) {
 		e.Annotations = map[string]string{dnssource.DNS_ANNOTATION: "*", dnssource.TTL_ANNOTATION: fmt.Sprintf("%d", ttl)}
 		if routingPolicy != nil {
 			e.Annotations[dnssource.ROUTING_POLICY_ANNOTATION] = *routingPolicy
 		}
-		e.Spec.Rules = []networking.IngressRule{
+		e.Spec.Rules = []networkingv1.IngressRule{
 			{
 				Host:             domainName,
-				IngressRuleValue: networking.IngressRuleValue{},
+				IngressRuleValue: networkingv1.IngressRuleValue{},
 			},
 		}
 	}
 
-	ingress := &networking.Ingress{}
+	ingress := &networkingv1.Ingress{}
 	ingress.SetName(name)
 	ingress.SetNamespace(te.Namespace)
 	setter(ingress)
@@ -551,8 +551,8 @@ func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP 
 			return obj, err
 		}
 		_, _, err = res.ModifyStatus(ingress, func(data resources.ObjectData) (bool, error) {
-			o := data.(*networking.Ingress)
-			o.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
+			o := data.(*networkingv1.Ingress)
+			o.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{
 				{IP: fakeExternalIP},
 			}
 			return true, nil
@@ -562,8 +562,8 @@ func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP 
 	return obj, err
 }
 
-func (te *TestEnv) GetIngress(name string) (resources.Object, *networking.Ingress, error) {
-	ingress := networking.Ingress{}
+func (te *TestEnv) GetIngress(name string) (resources.Object, *networkingv1.Ingress, error) {
+	ingress := networkingv1.Ingress{}
 	ingress.SetName(name)
 	ingress.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(&ingress)
@@ -571,7 +571,7 @@ func (te *TestEnv) GetIngress(name string) (resources.Object, *networking.Ingres
 	if err != nil {
 		return nil, nil, err
 	}
-	return obj, obj.Data().(*networking.Ingress), nil
+	return obj, obj.Data().(*networkingv1.Ingress), nil
 }
 
 func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP string, ttl int, routingPolicy *string) (resources.Object, error) {

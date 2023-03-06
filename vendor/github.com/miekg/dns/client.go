@@ -18,6 +18,18 @@ const (
 	tcpIdleTimeout time.Duration = 8 * time.Second
 )
 
+func isPacketConn(c net.Conn) bool {
+	if _, ok := c.(net.PacketConn); !ok {
+		return false
+	}
+
+	if ua, ok := c.LocalAddr().(*net.UnixAddr); ok {
+		return ua.Net == "unixgram" || ua.Net == "unixpacket"
+	}
+
+	return true
+}
+
 // A Conn represents a connection to a DNS server.
 type Conn struct {
 	net.Conn                         // a net.Conn holding the connection
@@ -25,6 +37,14 @@ type Conn struct {
 	TsigSecret     map[string]string // secret(s) for Tsig map[<zonename>]<base64 secret>, zonename must be in canonical form (lowercase, fqdn, see RFC 4034 Section 6.2)
 	TsigProvider   TsigProvider      // An implementation of the TsigProvider interface. If defined it replaces TsigSecret and is used for all TSIG operations.
 	tsigRequestMAC string
+}
+
+func (co *Conn) tsigProvider() TsigProvider {
+	if co.TsigProvider != nil {
+		return co.TsigProvider
+	}
+	// tsigSecretProvider will return ErrSecret if co.TsigSecret is nil.
+	return tsigSecretProvider(co.TsigSecret)
 }
 
 // A Client defines parameters for a DNS client.
@@ -165,7 +185,7 @@ func (c *Client) Exchange(m *Msg, address string) (r *Msg, rtt time.Duration, er
 // that entails when using "tcp" and especially "tcp-tls" clients.
 //
 // When the singleflight is set for this client the context is _not_ forwarded to the (shared) exchange, to
-// prevent one cancelation from canceling all outstanding requests.
+// prevent one cancellation from canceling all outstanding requests.
 func (c *Client) ExchangeWithConn(m *Msg, conn *Conn) (r *Msg, rtt time.Duration, err error) {
 	return c.exchangeWithConnContext(context.Background(), m, conn)
 }
@@ -178,7 +198,7 @@ func (c *Client) exchangeWithConnContext(ctx context.Context, m *Msg, conn *Conn
 	q := m.Question[0]
 	key := fmt.Sprintf("%s:%d:%d", q.Name, q.Qtype, q.Qclass)
 	r, rtt, err, shared := c.group.Do(key, func() (*Msg, time.Duration, error) {
-		// When we're doing singleflight we don't want one context cancelation, cancel _all_ outstanding queries.
+		// When we're doing singleflight we don't want one context cancellation, cancel _all_ outstanding queries.
 		// Hence we ignore the context and use Background().
 		return c.exchangeContext(context.Background(), m, conn)
 	})
@@ -221,7 +241,7 @@ func (c *Client) exchangeContext(ctx context.Context, m *Msg, co *Conn) (r *Msg,
 		return nil, 0, err
 	}
 
-	if _, ok := co.Conn.(net.PacketConn); ok {
+	if isPacketConn(co.Conn) {
 		for {
 			r, err = co.ReadMsg()
 			// Ignore replies with mismatched IDs because they might be
@@ -259,15 +279,8 @@ func (co *Conn) ReadMsg() (*Msg, error) {
 		return m, err
 	}
 	if t := m.IsTsig(); t != nil {
-		if co.TsigProvider != nil {
-			err = tsigVerifyProvider(p, co.TsigProvider, co.tsigRequestMAC, false)
-		} else {
-			if _, ok := co.TsigSecret[t.Hdr.Name]; !ok {
-				return m, ErrSecret
-			}
-			// Need to work on the original message p, as that was used to calculate the tsig.
-			err = TsigVerify(p, co.TsigSecret[t.Hdr.Name], co.tsigRequestMAC, false)
-		}
+		// Need to work on the original message p, as that was used to calculate the tsig.
+		err = TsigVerifyWithProvider(p, co.tsigProvider(), co.tsigRequestMAC, false)
 	}
 	return m, err
 }
@@ -282,7 +295,7 @@ func (co *Conn) ReadMsgHeader(hdr *Header) ([]byte, error) {
 		err error
 	)
 
-	if _, ok := co.Conn.(net.PacketConn); ok {
+	if isPacketConn(co.Conn) {
 		if co.UDPSize > MinMsgSize {
 			p = make([]byte, co.UDPSize)
 		} else {
@@ -322,7 +335,7 @@ func (co *Conn) Read(p []byte) (n int, err error) {
 		return 0, ErrConnEmpty
 	}
 
-	if _, ok := co.Conn.(net.PacketConn); ok {
+	if isPacketConn(co.Conn) {
 		// UDP connection
 		return co.Conn.Read(p)
 	}
@@ -344,17 +357,8 @@ func (co *Conn) Read(p []byte) (n int, err error) {
 func (co *Conn) WriteMsg(m *Msg) (err error) {
 	var out []byte
 	if t := m.IsTsig(); t != nil {
-		mac := ""
-		if co.TsigProvider != nil {
-			out, mac, err = tsigGenerateProvider(m, co.TsigProvider, co.tsigRequestMAC, false)
-		} else {
-			if _, ok := co.TsigSecret[t.Hdr.Name]; !ok {
-				return ErrSecret
-			}
-			out, mac, err = TsigGenerate(m, co.TsigSecret[t.Hdr.Name], co.tsigRequestMAC, false)
-		}
-		// Set for the next read, although only used in zone transfers
-		co.tsigRequestMAC = mac
+		// Set tsigRequestMAC for the next read, although only used in zone transfers.
+		out, co.tsigRequestMAC, err = TsigGenerateWithProvider(m, co.tsigProvider(), co.tsigRequestMAC, false)
 	} else {
 		out, err = m.Pack()
 	}
@@ -371,7 +375,7 @@ func (co *Conn) Write(p []byte) (int, error) {
 		return 0, &Error{err: "message too large"}
 	}
 
-	if _, ok := co.Conn.(net.PacketConn); ok {
+	if isPacketConn(co.Conn) {
 		return co.Conn.Write(p)
 	}
 
@@ -427,7 +431,6 @@ func ExchangeContext(ctx context.Context, m *Msg, a string) (r *Msg, err error) 
 //	co.WriteMsg(m)
 //	in, _  := co.ReadMsg()
 //	co.Close()
-//
 func ExchangeConn(c net.Conn, m *Msg) (r *Msg, err error) {
 	println("dns: ExchangeConn: this function is deprecated")
 	co := new(Conn)
