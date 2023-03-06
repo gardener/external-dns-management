@@ -33,8 +33,6 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
-const ()
-
 type Handler struct {
 	provider.DefaultDNSHandler
 	config        provider.DNSHandlerConfig
