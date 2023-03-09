@@ -574,11 +574,15 @@ func (te *TestEnv) GetIngress(name string) (resources.Object, *networkingv1.Ingr
 	return obj, obj.Data().(*networkingv1.Ingress), nil
 }
 
-func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP string, ttl int, routingPolicy *string) (resources.Object, error) {
+func (te *TestEnv) CreateServiceWithAnnotation(name, domainName string, status *corev1.LoadBalancerIngress, ttl int,
+	routingPolicy *string, additionalAnnotations map[string]string) (resources.Object, error) {
 	setter := func(e *corev1.Service) {
 		e.Annotations = map[string]string{dnssource.DNS_ANNOTATION: domainName, dnssource.TTL_ANNOTATION: fmt.Sprintf("%d", ttl)}
 		if routingPolicy != nil {
 			e.Annotations[dnssource.ROUTING_POLICY_ANNOTATION] = *routingPolicy
+		}
+		for k, v := range additionalAnnotations {
+			e.Annotations[k] = v
 		}
 		e.Spec.Type = corev1.ServiceTypeLoadBalancer
 		e.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(8080), Protocol: corev1.ProtocolTCP}}
@@ -601,16 +605,14 @@ func (te *TestEnv) CreateServiceWithAnnotation(name, domainName, fakeExternalIP 
 		return obj, err
 	}
 
-	if fakeExternalIP != "" {
+	if status != nil {
 		res, err := te.resources.Get(svc)
 		if err != nil {
 			return obj, err
 		}
 		_, _, err = res.ModifyStatus(svc, func(data resources.ObjectData) (bool, error) {
 			o := data.(*corev1.Service)
-			o.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
-				{IP: fakeExternalIP},
-			}
+			o.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{*status}
 			return true, nil
 		})
 	}
