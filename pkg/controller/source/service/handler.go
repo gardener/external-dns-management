@@ -37,7 +37,17 @@ func GetTargets(logger logger.LogContext, obj resources.Object, names dns.DNSNam
 	set := utils.StringSet{}
 	for _, i := range svc.Status.LoadBalancer.Ingress {
 		if i.Hostname != "" && i.IP == "" {
-			set.Add(i.Hostname)
+			if svc.Annotations != nil && svc.Annotations["loadbalancer.openstack.org/load-balancer-address"] != "" {
+				// Support for PROXY protocol on Openstack (which needs a hostname as ingress)
+				// If the user sets the annotation `loadbalancer.openstack.org/hostname`, the
+				// annotation `loadbalancer.openstack.org/load-balancer-address` contains the IP address.
+				// This address can then be used to create a DNS record for the hostname specified both
+				// in annotation `loadbalancer.openstack.org/hostname` and `dns.gardener.cloud/dnsnames`
+				// see https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/expose-applications-using-loadbalancer-type-service.md#service-annotations
+				set.Add(svc.Annotations["loadbalancer.openstack.org/load-balancer-address"])
+			} else {
+				set.Add(i.Hostname)
+			}
 		} else {
 			if i.IP != "" {
 				set.Add(i.IP)

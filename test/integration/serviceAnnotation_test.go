@@ -20,6 +20,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	v1 "k8s.io/api/core/v1"
 )
 
 var _ = Describe("ServiceAnnotation", func() {
@@ -30,12 +31,24 @@ var _ = Describe("ServiceAnnotation", func() {
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		fakeExternalIP := "1.2.3.4"
+		status := &v1.LoadBalancerIngress{IP: fakeExternalIP}
 		svcDomain := "mysvc." + domain
 		ttl := 456
-		svc, err := testEnv.CreateServiceWithAnnotation("mysvc", svcDomain, fakeExternalIP, ttl, nil)
+		svc, err := testEnv.CreateServiceWithAnnotation("mysvc", svcDomain, status, ttl, nil, nil)
 		Ω(err).Should(BeNil())
 		routingPolicy := `{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}`
-		svc2, err := testEnv.CreateServiceWithAnnotation("mysvc2", svcDomain, fakeExternalIP, ttl, &routingPolicy)
+		svcDomain2 := "mysvc2." + domain
+		svc2, err := testEnv.CreateServiceWithAnnotation("mysvc2", svcDomain2, status, ttl, &routingPolicy, nil)
+		Ω(err).Should(BeNil())
+
+		// openstack proxy support
+		svcDomain3 := "mysvc3." + domain
+		annotations := map[string]string{
+			"loadbalancer.openstack.org/hostname":              svcDomain3,
+			"loadbalancer.openstack.org/load-balancer-address": fakeExternalIP,
+		}
+		status3 := &v1.LoadBalancerIngress{Hostname: svcDomain3}
+		svc3, err := testEnv.CreateServiceWithAnnotation("mysvc3", svcDomain3, status3, ttl, nil, annotations)
 		Ω(err).Should(BeNil())
 
 		entryObj, err := testEnv.AwaitObjectByOwner("Service", svc.GetName())
@@ -53,6 +66,7 @@ var _ = Describe("ServiceAnnotation", func() {
 		entryObj2, err := testEnv.AwaitObjectByOwner("Service", svc2.GetName())
 		entry2 := UnwrapEntry(entryObj2)
 		Ω(err).Should(BeNil())
+		Ω(entry2.Spec.DNSName).Should(Equal(svcDomain2))
 		Ω(entry2.Spec.RoutingPolicy).ShouldNot(BeNil())
 		Ω(*entry2.Spec.RoutingPolicy).Should(Equal(v1alpha1.RoutingPolicy{
 			Type:          "weighted",
@@ -60,19 +74,31 @@ var _ = Describe("ServiceAnnotation", func() {
 			Parameters:    map[string]string{"weight": "10"},
 		}))
 
+		entryObj3, err := testEnv.AwaitObjectByOwner("Service", svc3.GetName())
+		entry3 := UnwrapEntry(entryObj3)
+		Ω(err).Should(BeNil())
+		Ω(entry3.Spec.DNSName).Should(Equal(svcDomain3))
+		Ω(entry3.Spec.Targets).Should(ConsistOf(fakeExternalIP))
+
 		err = svc.Delete()
 		Ω(err).Should(BeNil())
 		err = svc2.Delete()
+		Ω(err).Should(BeNil())
+		err = svc3.Delete()
 		Ω(err).Should(BeNil())
 
 		err = testEnv.AwaitServiceDeletion(svc.GetName())
 		Ω(err).Should(BeNil())
 		err = testEnv.AwaitServiceDeletion(svc2.GetName())
 		Ω(err).Should(BeNil())
+		err = testEnv.AwaitServiceDeletion(svc3.GetName())
+		Ω(err).Should(BeNil())
 
 		err = testEnv.AwaitEntryDeletion(entryObj.GetName())
 		Ω(err).Should(BeNil())
 		err = testEnv.AwaitEntryDeletion(entryObj2.GetName())
+		Ω(err).Should(BeNil())
+		err = testEnv.AwaitEntryDeletion(entryObj3.GetName())
 		Ω(err).Should(BeNil())
 	})
 })
