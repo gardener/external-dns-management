@@ -114,6 +114,7 @@ func createDesignateServiceClient(logger logger.LogContext, clientAuthConfig *cl
 	}
 
 	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
