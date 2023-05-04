@@ -54,12 +54,12 @@ spec:
           readOnlyRootFilesystem: true
         args:
         - --name={{ include "external-dns-management.fullname" . }}
-        {{- if or .Values.configuration.identifier (not .Values.gardener.seed.identity) }}
-        - --identifier={{ required "A value is required for configuration.identifier (or gardener.seed.identity)! It must be unique, globally or at least for all instances running with the same account." .Values.configuration.identifier }}
+        {{- if or .Values.configuration.identifier (not .Values.gardener.seed.name) }}
+        - --identifier={{ required "A value is required for configuration.identifier (or gardener.seed.name)! It must be unique, globally or at least for all instances running with the same account." .Values.configuration.identifier }}
         - --remote-access-client-id={{ .Values.configuration.identifier }}
         {{- else }}
-        - --identifier=seed.gardener.cloud/{{ .Values.gardener.garden.clusterIdentity }}/{{ .Values.gardener.seed.identity }}
-        - --remote-access-client-id={{ .Values.gardener.seed.identity }}
+        - --identifier=seed.gardener.cloud/{{ .Values.gardener.garden.clusterIdentity }}/{{ .Values.gardener.seed.name }}
+        - --remote-access-client-id={{ .Values.gardener.seed.name }}
         {{- end }}
         {{- if .Values.remoteaccess.enabled }}
         - --remote-access-port={{ .Values.remoteaccess.port }}
@@ -925,7 +925,7 @@ spec:
         {{- end }}
       {{- end }}
       serviceAccountName: {{ include "external-dns-management.fullname" . }}
-      {{- if .Values.gardener.seed.identity }}
+      {{- if .Values.gardener.seed.name }}
       priorityClassName: gardener-system-900
       {{- end }}
       {{- with .Values.nodeSelector }}

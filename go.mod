@@ -10,7 +10,7 @@ require (
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190603021944-12ad9f921c0b
 	github.com/aws/aws-sdk-go v1.44.173
 	github.com/cloudflare/cloudflare-go v0.11.4
-	github.com/gardener/controller-manager-library v0.2.1-0.20230104162714-c7c57096a522
+	github.com/gardener/controller-manager-library v0.2.1-0.20230504074505-cf120e9a982d
 	github.com/go-openapi/runtime v0.24.1
 	github.com/go-openapi/strfmt v0.21.2
 	github.com/gophercloud/gophercloud v0.24.0
@@ -30,14 +30,14 @@ require (
 	google.golang.org/api v0.88.0
 	google.golang.org/grpc v1.49.0
 	google.golang.org/protobuf v1.28.1
-	k8s.io/api v0.26.1
-	k8s.io/apimachinery v0.26.1
-	k8s.io/client-go v0.26.1
-	k8s.io/code-generator v0.26.1
+	k8s.io/api v0.26.4
+	k8s.io/apimachinery v0.26.4
+	k8s.io/client-go v0.26.4
+	k8s.io/code-generator v0.26.4
 	k8s.io/kube-openapi v0.0.0-20221207184640-f3cff1453715
-	sigs.k8s.io/controller-runtime v0.14.3
+	sigs.k8s.io/controller-runtime v0.14.5
 	sigs.k8s.io/controller-tools v0.11.3
-	sigs.k8s.io/kind v0.17.0
+	sigs.k8s.io/kind v0.18.0
 )
 
 require (
@@ -126,7 +126,7 @@ require (
 	gopkg.in/ini.v1 v1.62.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	k8s.io/apiextensions-apiserver v0.26.1 // indirect
+	k8s.io/apiextensions-apiserver v0.26.4 // indirect
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
 	k8s.io/klog v1.0.0 // indirect
 	k8s.io/klog/v2 v2.80.1 // indirect

@@ -31,7 +31,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   name: dnsannotations.dns.gardener.cloud
 spec:
@@ -135,7 +135,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   name: dnsentries.dns.gardener.cloud
 spec:
@@ -262,7 +262,7 @@ spec:
                     type: string
                   type:
                     description: Policy is the policy type. Allowed values are provider
-                      dependent, e.g. ` + "`" + `weighted` + "`" + `
+                      dependent, e.g. `+"`"+`weighted`+"`"+`
                     type: string
                 required:
                 - parameters
@@ -319,7 +319,7 @@ spec:
                     type: string
                   type:
                     description: Policy is the policy type. Allowed values are provider
-                      dependent, e.g. ` + "`" + `weighted` + "`" + `
+                      dependent, e.g. `+"`"+`weighted`+"`"+`
                     type: string
                 required:
                 - parameters
@@ -357,7 +357,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   name: dnshostedzonepolicies.dns.gardener.cloud
 spec:
@@ -479,7 +479,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   name: dnslocks.dns.gardener.cloud
 spec:
@@ -637,7 +637,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   name: dnsowners.dns.gardener.cloud
 spec:
@@ -753,7 +753,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   name: dnsproviders.dns.gardener.cloud
 spec:
@@ -966,7 +966,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.10.0
+    controller-gen.kubebuilder.io/version: v0.11.3
   creationTimestamp: null
   name: remoteaccesscertificates.dns.gardener.cloud
 spec:

@@ -38,7 +38,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	// register 1.16
-	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.16"
+	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.18"
 )
 
 const CONTROLLER_GROUP_DNS_CONTROLLERS = dns.CONTROLLER_GROUP_DNS_CONTROLLERS
