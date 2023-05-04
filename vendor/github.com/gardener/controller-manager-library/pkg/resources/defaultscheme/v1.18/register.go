@@ -4,12 +4,13 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package v1_16 // golint: ignore
+package v1_18 // golint: ignore
 
 import (
 	admissionregistration "k8s.io/api/admissionregistration/v1"
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
+	discovery "k8s.io/api/discovery/v1beta1"
 	extensions "k8s.io/api/extensions/v1beta1"
 	networking "k8s.io/api/networking/v1beta1"
 	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -21,6 +22,7 @@ func init() {
 	Register(core.SchemeBuilder)
 	Register(extensions.SchemeBuilder)
 	Register(apps.SchemeBuilder)
+	Register(discovery.SchemeBuilder)
 	Register(admissionregistration.SchemeBuilder)
 	Register(apiextensions.SchemeBuilder)
 	Register(networking.SchemeBuilder)
