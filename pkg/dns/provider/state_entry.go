@@ -285,7 +285,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	p, err := this.EntryPremise(object)
 	if p.provider == nil && err == nil {
 		if p.zoneid != "" {
-			err = fmt.Errorf("no matching provider for zone '%s' found", p.zoneid)
+			err = fmt.Errorf("no matching provider for zone '%s' found (no provider for this zone includes domain %s)", p.zoneid, object.GetDNSName())
 		}
 	}
 
