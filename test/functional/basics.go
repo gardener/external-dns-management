@@ -54,6 +54,8 @@ spec:
   domains:
     include:
       - {{.Domain}}
+    exclude:
+      - rp.{{.Domain}}
 ---
 apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSEntry
