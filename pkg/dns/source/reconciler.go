@@ -443,6 +443,8 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	}
 	if this.state.ownerState.ownerId != "" {
 		entry.Spec.OwnerId = &this.state.ownerState.ownerId
+	} else {
+		entry.Spec.OwnerId = info.OwnerId
 	}
 	entry.Spec.DNSName = name.DNSName
 	this.mapRef(obj, info)
@@ -525,6 +527,8 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 		var p *string
 		if this.state.ownerState.ownerId != "" {
 			p = &this.state.ownerState.ownerId
+		} else {
+			p = info.OwnerId
 		}
 		mod.AssureStringPtrPtr(&spec.OwnerId, p)
 		mod.AssureInt64PtrPtr(&spec.TTL, info.TTL)

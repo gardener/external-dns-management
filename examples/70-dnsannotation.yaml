@@ -14,3 +14,4 @@ spec:
     dns.gardener.cloud/dnsnames: echo2.ringtest.dev.k8s.ondemand.com,echo3.ringtest.dev.k8s.ondemand.com
     # all other annotations are only effective if not set on original object
     #dns.gardener.cloud/ttl: "1000"
+    #dns.gardener.cloud/owner-id: second-owner

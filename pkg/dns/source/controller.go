@@ -44,6 +44,7 @@ const TTL_ANNOTATION = dns.ANNOTATION_GROUP + "/ttl"
 const PERIOD_ANNOTATION = dns.ANNOTATION_GROUP + "/cname-lookup-interval"
 const ROUTING_POLICY_ANNOTATION = dns.ANNOTATION_GROUP + "/routing-policy"
 const CLASS_ANNOTATION = dns.CLASS_ANNOTATION
+const OWNER_ID_ANNOTATION = dns.ANNOTATION_GROUP + "/owner-id"
 
 const OPT_CLASS = "dns-class"
 const OPT_TARGET_CLASS = "dns-target-class"

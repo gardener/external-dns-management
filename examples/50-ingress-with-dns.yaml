@@ -7,6 +7,8 @@ metadata:
     #dns.gardener.cloud/class: garden
     # If you are delegating the certificate management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/x509_certificates/)
     #cert.gardener.cloud/purpose: managed
+    #dns.gardener.cloud/ttl: "500"
+    #dns.gardener.cloud/owner-id: second
   name: test-ingress
   namespace: default
 spec:

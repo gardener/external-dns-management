@@ -51,6 +51,13 @@ var _ = Describe("ServiceAnnotation", func() {
 		svc3, err := testEnv.CreateServiceWithAnnotation("mysvc3", svcDomain3, status3, ttl, nil, annotations)
 		Ω(err).Should(BeNil())
 
+		svcDomain4 := "mysvc4." + domain
+		svc4, err := testEnv.CreateServiceWithAnnotation("mysvc4", svcDomain4, status, ttl, &routingPolicy,
+			map[string]string{
+				"dns.gardener.cloud/owner-id": "second",
+			})
+		Ω(err).Should(BeNil())
+
 		entryObj, err := testEnv.AwaitObjectByOwner("Service", svc.GetName())
 		Ω(err).Should(BeNil())
 
@@ -60,6 +67,7 @@ var _ = Describe("ServiceAnnotation", func() {
 		entry := UnwrapEntry(entryObj)
 		Ω(entry.Spec.DNSName).Should(Equal(svcDomain))
 		Ω(entry.Spec.Targets).Should(ConsistOf(fakeExternalIP))
+		Ω(entry.Spec.OwnerId).Should(BeNil())
 		Ω(entry.Spec.TTL).ShouldNot(BeNil())
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
 
@@ -80,11 +88,21 @@ var _ = Describe("ServiceAnnotation", func() {
 		Ω(entry3.Spec.DNSName).Should(Equal(svcDomain3))
 		Ω(entry3.Spec.Targets).Should(ConsistOf(fakeExternalIP))
 
+		entryObj4, err := testEnv.AwaitObjectByOwner("Service", svc4.GetName())
+		entry4 := UnwrapEntry(entryObj4)
+		Ω(err).Should(BeNil())
+		Ω(entry4.Spec.DNSName).Should(Equal(svcDomain4))
+		Ω(entry4.Spec.DNSName).Should(Equal(svcDomain4))
+		Ω(entry4.Spec.OwnerId).ShouldNot(BeNil())
+		Ω(*entry4.Spec.OwnerId).Should(Equal("second"))
+
 		err = svc.Delete()
 		Ω(err).Should(BeNil())
 		err = svc2.Delete()
 		Ω(err).Should(BeNil())
 		err = svc3.Delete()
+		Ω(err).Should(BeNil())
+		err = svc4.Delete()
 		Ω(err).Should(BeNil())
 
 		err = testEnv.AwaitServiceDeletion(svc.GetName())
@@ -93,12 +111,16 @@ var _ = Describe("ServiceAnnotation", func() {
 		Ω(err).Should(BeNil())
 		err = testEnv.AwaitServiceDeletion(svc3.GetName())
 		Ω(err).Should(BeNil())
+		err = testEnv.AwaitServiceDeletion(svc4.GetName())
+		Ω(err).Should(BeNil())
 
 		err = testEnv.AwaitEntryDeletion(entryObj.GetName())
 		Ω(err).Should(BeNil())
 		err = testEnv.AwaitEntryDeletion(entryObj2.GetName())
 		Ω(err).Should(BeNil())
 		err = testEnv.AwaitEntryDeletion(entryObj3.GetName())
+		Ω(err).Should(BeNil())
+		err = testEnv.AwaitEntryDeletion(entryObj4.GetName())
 		Ω(err).Should(BeNil())
 	})
 })
