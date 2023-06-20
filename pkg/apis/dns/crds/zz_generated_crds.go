@@ -262,7 +262,7 @@ spec:
                     type: string
                   type:
                     description: Policy is the policy type. Allowed values are provider
-                      dependent, e.g. `+"`"+`weighted`+"`"+`
+                      dependent, e.g. ` + "`" + `weighted` + "`" + `
                     type: string
                 required:
                 - parameters
@@ -319,7 +319,7 @@ spec:
                     type: string
                   type:
                     description: Policy is the policy type. Allowed values are provider
-                      dependent, e.g. `+"`"+`weighted`+"`"+`
+                      dependent, e.g. ` + "`" + `weighted` + "`" + `
                     type: string
                 required:
                 - parameters
