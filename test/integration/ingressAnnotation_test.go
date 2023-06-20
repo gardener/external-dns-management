@@ -32,10 +32,13 @@ var _ = Describe("IngressAnnotation", func() {
 		fakeExternalIP := "1.2.3.4"
 		ingressDomain := "myingress." + domain
 		ttl := 456
-		ingress, err := testEnv.CreateIngressWithAnnotation("myingress", ingressDomain, fakeExternalIP, ttl, nil)
+		ingress, err := testEnv.CreateIngressWithAnnotation("myingress", ingressDomain, fakeExternalIP, ttl, nil, nil)
 		Ω(err).Should(BeNil())
 		routingPolicy := `{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}`
-		ingress2, err := testEnv.CreateIngressWithAnnotation("mysvc2", ingressDomain, fakeExternalIP, ttl, &routingPolicy)
+		ingress2, err := testEnv.CreateIngressWithAnnotation("mysvc2", ingressDomain, fakeExternalIP, ttl, &routingPolicy, nil)
+		Ω(err).Should(BeNil())
+		ingress3, err := testEnv.CreateIngressWithAnnotation("mysvc3", ingressDomain, fakeExternalIP, ttl, nil,
+			map[string]string{"dns.gardener.cloud/owner-id": "second"})
 		Ω(err).Should(BeNil())
 
 		entryObj, err := testEnv.AwaitObjectByOwner("Ingress", ingress.GetName())
@@ -49,6 +52,7 @@ var _ = Describe("IngressAnnotation", func() {
 		Ω(entry.Spec.Targets).Should(ConsistOf(fakeExternalIP))
 		Ω(entry.Spec.TTL).ShouldNot(BeNil())
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
+		Ω(entry.Spec.OwnerId).Should(BeNil())
 
 		entryObj2, err := testEnv.AwaitObjectByOwner("Ingress", ingress2.GetName())
 		entry2 := UnwrapEntry(entryObj2)
@@ -60,19 +64,30 @@ var _ = Describe("IngressAnnotation", func() {
 			Parameters:    map[string]string{"weight": "10"},
 		}))
 
+		entryObj3, err := testEnv.AwaitObjectByOwner("Ingress", ingress3.GetName())
+		entry3 := UnwrapEntry(entryObj3)
+		Ω(entry3.Spec.OwnerId).ShouldNot(BeNil())
+		Ω(*entry3.Spec.OwnerId).Should(Equal("second"))
+
 		err = ingress.Delete()
 		Ω(err).Should(BeNil())
 		err = ingress2.Delete()
+		Ω(err).Should(BeNil())
+		err = ingress3.Delete()
 		Ω(err).Should(BeNil())
 
 		err = testEnv.AwaitIngressDeletion(ingress.GetName())
 		Ω(err).Should(BeNil())
 		err = testEnv.AwaitIngressDeletion(ingress2.GetName())
 		Ω(err).Should(BeNil())
+		err = testEnv.AwaitIngressDeletion(ingress3.GetName())
+		Ω(err).Should(BeNil())
 
 		err = testEnv.AwaitEntryDeletion(entryObj.GetName())
 		Ω(err).Should(BeNil())
 		err = testEnv.AwaitEntryDeletion(entryObj2.GetName())
+		Ω(err).Should(BeNil())
+		err = testEnv.AwaitEntryDeletion(entryObj3.GetName())
 		Ω(err).Should(BeNil())
 	})
 })

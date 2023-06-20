@@ -31,6 +31,7 @@ import (
 
 type DNSInfo struct {
 	Names         dns.DNSNameSet
+	OwnerId       *string
 	TTL           *int64
 	Interval      *int64
 	Targets       utils.StringSet

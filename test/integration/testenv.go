@@ -514,11 +514,15 @@ func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {
 	return obj.Data().(*v1alpha1.DNSOwner)
 }
 
-func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP string, ttl int, routingPolicy *string) (resources.Object, error) {
+func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP string, ttl int, routingPolicy *string,
+	additionalAnnotations map[string]string) (resources.Object, error) {
 	setter := func(e *networkingv1.Ingress) {
 		e.Annotations = map[string]string{dnssource.DNS_ANNOTATION: "*", dnssource.TTL_ANNOTATION: fmt.Sprintf("%d", ttl)}
 		if routingPolicy != nil {
 			e.Annotations[dnssource.ROUTING_POLICY_ANNOTATION] = *routingPolicy
+		}
+		for k, v := range additionalAnnotations {
+			e.Annotations[k] = v
 		}
 		e.Spec.Rules = []networkingv1.IngressRule{
 			{
