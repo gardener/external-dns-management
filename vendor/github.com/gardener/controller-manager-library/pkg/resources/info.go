@@ -185,9 +185,10 @@ func (this *ResourceInfos) doUpdateGroup(dc *discovery.DiscoveryClient, group v1
 		if err != nil {
 			lastErr = err
 		}
-		if list != nil {
-			count += len(list.APIResources)
+		if list == nil {
+			continue
 		}
+		count += len(list.APIResources)
 
 		func() {
 			this.lock.Lock()
