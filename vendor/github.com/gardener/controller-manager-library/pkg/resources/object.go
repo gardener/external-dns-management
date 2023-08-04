@@ -38,3 +38,10 @@ func (this *_object) DeepCopy() Object {
 	data := this.ObjectData.DeepCopyObject().(ObjectData)
 	return newObject(data, this.resource)
 }
+
+func (this *_object) GetFullObject() (Object, error) {
+	if !this.IsMinimal() {
+		return this, nil
+	}
+	return this.resource.Get(this.ObjectName())
+}

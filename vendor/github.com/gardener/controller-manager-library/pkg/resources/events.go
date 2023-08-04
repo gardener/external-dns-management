@@ -81,7 +81,7 @@ func convertInfo(resource Interface, funcs *ResourceInfoEventHandlerFuncs) *cach
 			if funcs.DeleteFunc == nil {
 				return
 			}
-			data, ok := toMinimalObject(resource, obj)
+			data, ok := toPartialObjectMetadata(resource, obj)
 			if !ok {
 				stale, ok := obj.(cache.DeletedFinalStateUnknown)
 				if !ok {
@@ -92,7 +92,7 @@ func convertInfo(resource Interface, funcs *ResourceInfoEventHandlerFuncs) *cach
 					logger.Errorf("informer %q reported no stale object to be deleted", resource.Name())
 					return
 				}
-				data, ok = toMinimalObject(resource, stale.Obj)
+				data, ok = toPartialObjectMetadata(resource, stale.Obj)
 				if !ok {
 					logger.Errorf("informer %q reported unknown stale object to be deleted (%T)", resource.Name(), stale.Obj)
 					return
@@ -116,13 +116,13 @@ func convertInfo(resource Interface, funcs *ResourceInfoEventHandlerFuncs) *cach
 	}
 }
 
-func toMinimalObject(resource Interface, obj interface{}) (*minimal.MinimalObject, bool) {
-	if m, ok := obj.(*minimal.MinimalObject); ok {
+func toPartialObjectMetadata(resource Interface, obj interface{}) (*metav1.PartialObjectMetadata, bool) {
+	if m, ok := obj.(*metav1.PartialObjectMetadata); ok {
 		m.SetGroupVersionKind(resource.GroupVersionKind())
 		return m, ok
 	}
 	if meta, ok := obj.(metav1.Object); ok {
-		m := minimal.ConvertToMinimalObject("", "", meta)
+		m := minimal.ConvertToPartialObjectMetadata("", "", meta)
 		m.SetGroupVersionKind(resource.GroupVersionKind())
 		return m, true
 	}
@@ -130,34 +130,43 @@ func toMinimalObject(resource Interface, obj interface{}) (*minimal.MinimalObjec
 }
 
 func wrapInfo(resource Interface, obj interface{}) ObjectInfo {
-	m, ok := toMinimalObject(resource, obj)
+	m, ok := toPartialObjectMetadata(resource, obj)
 	if !ok {
 		return nil
 	}
-	return &minimalObjectInfo{
-		minimalObject: m,
-		cluster:       resource.GetCluster(),
+	return &partialObjectMetadataInfo{
+		partialObjectMetadata: m,
+		cluster:               resource.GetCluster(),
 	}
 }
 
-type minimalObjectInfo struct {
-	minimalObject *minimal.MinimalObject
-	cluster       Cluster
+type partialObjectMetadataInfo struct {
+	partialObjectMetadata *metav1.PartialObjectMetadata
+	cluster               Cluster
 }
 
-func (this *minimalObjectInfo) Key() ObjectKey {
-	m := this.minimalObject
+func (this *partialObjectMetadataInfo) Key() ObjectKey {
+	m := this.partialObjectMetadata
 	return NewKey(m.GroupVersionKind().GroupKind(), m.GetNamespace(), m.GetName())
 }
 
-func (this *minimalObjectInfo) Description() string {
+func (this *partialObjectMetadataInfo) Description() string {
 	return this.Key().String()
 }
 
-func (this *minimalObjectInfo) GetResourceVersion() string {
-	return this.minimalObject.ResourceVersion
+func (this *partialObjectMetadataInfo) GetResourceVersion() string {
+	return this.partialObjectMetadata.ResourceVersion
 }
 
-func (this *minimalObjectInfo) GetCluster() Cluster {
+func (this *partialObjectMetadataInfo) GetCluster() Cluster {
 	return this.cluster
+}
+
+func WrapPartialMetadataObject(res Interface, info ObjectInfo) Object {
+	if m, ok := info.(*partialObjectMetadataInfo); ok {
+		if obj, err := res.Wrap(m.partialObjectMetadata); err == nil {
+			return obj
+		}
+	}
+	return nil
 }

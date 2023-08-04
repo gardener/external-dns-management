@@ -135,7 +135,7 @@ github.com/evanphx/json-patch/v5
 # github.com/fatih/color v1.13.0
 ## explicit; go 1.13
 github.com/fatih/color
-# github.com/gardener/controller-manager-library v0.2.1-0.20230626073055-c9884fe14283
+# github.com/gardener/controller-manager-library v0.2.1-0.20230810132003-651f3cbebad2
 ## explicit; go 1.20
 github.com/gardener/controller-manager-library/hack
 github.com/gardener/controller-manager-library/pkg/certmgmt

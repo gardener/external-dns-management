@@ -35,7 +35,13 @@ func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) 
 	if this.config.RemoteAccessConfig != nil &&
 		obj.ObjectName().Name() == this.config.RemoteAccessConfig.SecretName.Name() &&
 		obj.ObjectName().Namespace() == this.config.RemoteAccessConfig.SecretName.Namespace() {
-		this.config.RemoteAccessConfig.ServerSecretProvider.UpdateSecret(obj.Data().(*corev1.Secret))
+
+		fullObj, err := obj.GetFullObject()
+		if err != nil {
+			return reconcile.Failed(logger, err)
+		}
+		secret := fullObj.Data().(*corev1.Secret)
+		this.config.RemoteAccessConfig.ServerSecretProvider.UpdateSecret(secret)
 	}
 
 	providers := this.GetSecretUsage(obj.ObjectName())
@@ -84,7 +90,7 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 					logger.Warnf("cannot release secret %q for provider %q: %s", old, pname, err)
 					return true, err
 				}
-				s, err := r.GetCached(old)
+				s, err := r.Get(old)
 				if err != nil {
 					if !errors.IsNotFound(err) {
 						logger.Warnf("cannot release secret %q for provider %q: %s", old, pname, err)
@@ -120,7 +126,7 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 		}
 
 		r, err := provider.Object().Resources().Get(&corev1.Secret{})
-		s, err := r.GetCached(secret)
+		s, err := r.Get(secret)
 		if err == nil {
 			err = this.SetFinalizer(s)
 		}

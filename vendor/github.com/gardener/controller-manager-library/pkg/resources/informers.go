@@ -90,7 +90,7 @@ func newSharedInformerFactory(rctx *resourceContext, defaultResync time.Duration
 		context:       rctx,
 		structured:    newSharedFilteredInformerFactory(rctx, defaultResync, newStructuredListWatchFactory),
 		unstructured:  newSharedFilteredInformerFactory(rctx, defaultResync, newUnstructuredListWatchFactory),
-		minimalObject: newSharedFilteredInformerFactory(rctx, defaultResync, newMinimalObjectListWatchFactory),
+		minimalObject: newSharedFilteredInformerFactory(rctx, defaultResync, newPartialObjectMetadataListWatchFactory),
 	}
 }
 

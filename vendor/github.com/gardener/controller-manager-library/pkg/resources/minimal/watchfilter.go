@@ -8,40 +8,34 @@
 package minimal
 
 import (
+	"github.com/gardener/controller-manager-library/pkg/kutil"
+	meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 )
 
+func init() {
+	kutil.AddGenericType(&metav1.PartialObjectMetadata{}, &metav1.PartialObjectMetadataList{})
+}
+
 // MinimalWatchFilter creates a Filter watch returning watchedObjects
 func MinimalWatchFilter(w watch.Interface) watch.Interface {
-	return watch.Filter(w, convertEventToMinimalObject)
+	return watch.Filter(w, convertEventToPartialObjectMetadata)
 }
 
 var ConvertCounter = 0
 
-func ConvertToMinimalObject(apiVersion, kind string, meta metav1.Object) *MinimalObject {
-	return &MinimalObject{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       kind,
-			APIVersion: apiVersion,
-		},
-		MinimalMeta: MinimalMeta{
-			Namespace:         meta.GetNamespace(),
-			Name:              meta.GetName(),
-			UID:               meta.GetUID(),
-			ResourceVersion:   meta.GetResourceVersion(),
-			Generation:        meta.GetGeneration(),
-			CreationTimestamp: meta.GetCreationTimestamp(),
-			DeletionTimestamp: meta.GetDeletionTimestamp(),
-			Labels:            meta.GetLabels(),
-		},
-	}
+func ConvertToPartialObjectMetadata(apiVersion, kind string, metaObj metav1.Object) *metav1.PartialObjectMetadata {
+	obj := meta.AsPartialObjectMetadata(metaObj)
+	obj.APIVersion = apiVersion
+	obj.Kind = kind
+	return obj
 }
 
-func convertEventToMinimalObject(evt watch.Event) (watch.Event, bool) {
+func convertEventToPartialObjectMetadata(evt watch.Event) (watch.Event, bool) {
 	if meta, ok := evt.Object.(metav1.Object); ok {
 		apiVersion, kind := evt.Object.GetObjectKind().GroupVersionKind().ToAPIVersionAndKind()
-		evt.Object = ConvertToMinimalObject(apiVersion, kind, meta)
+		evt.Object = ConvertToPartialObjectMetadata(apiVersion, kind, meta)
 		ConvertCounter++
 	}
 	return evt, true
