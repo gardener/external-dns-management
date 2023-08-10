@@ -100,6 +100,9 @@ type Object interface {
 
 	IsA(spec interface{}) bool
 
+	MinimalData() *metav1.PartialObjectMetadata
+	IsMinimal() bool
+
 	Description() string
 	HasFinalizer(key string) bool
 	SetFinalizer(key string) error

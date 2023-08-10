@@ -118,7 +118,7 @@ func (this *DefaultContext) RemoveFinalizer(obj resources.Object) error {
 }
 
 func (this *DefaultContext) GetSecretPropertiesByRef(src resources.ResourcesSource, ref *corev1.SecretReference) (utils.Properties, *resources.SecretObject, error) {
-	return resources.GetCachedSecretPropertiesByRef(src, ref)
+	return resources.GetSecretPropertiesByRef(src, ref)
 }
 
 func (this *DefaultContext) GetPoolPeriod(name string) *time.Duration {

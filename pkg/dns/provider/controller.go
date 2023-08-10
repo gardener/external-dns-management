@@ -20,8 +20,6 @@ import (
 	"reflect"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-
 	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -155,6 +153,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		Watches(
 			controller.NewResourceKey("core", "Secret"),
 		).
+		MinimalWatches(secretGroupKind).
 		WorkerPool("zonepolicies", 1, 0).
 		Watches(
 			controller.NewResourceKey(api.GroupName, api.DNSHostedZonePolicyKind),
@@ -278,7 +277,7 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 		} else {
 			return this.state.EntryDeleted(logger, obj.ClusterKey())
 		}
-	case obj.IsA(&corev1.Secret{}):
+	case obj.IsMinimal() && obj.GroupVersionKind().GroupKind() == secretGroupKind:
 		return this.state.UpdateSecret(logger, obj)
 	}
 	return reconcile.Succeeded(logger)
@@ -296,7 +295,7 @@ func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) r
 		case obj.IsA(&api.DNSLock{}):
 			obj.UpdateFromCache()
 			return this.state.DeleteEntry(logger, dnsutils.DNSLock(obj))
-		case obj.IsA(&corev1.Secret{}):
+		case obj.IsMinimal() && obj.GroupVersionKind().GroupKind() == secretGroupKind:
 			return this.state.UpdateSecret(logger, obj)
 		}
 	}

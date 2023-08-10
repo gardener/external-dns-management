@@ -221,22 +221,23 @@ func (f *unstructuredListWatchFactory) CreateListWatch(ctx context.Context, name
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// newMinimalObjectListWatchFactory
+// newPartialObjectMetadataListWatchFactory
 
-func newMinimalObjectListWatchFactory(rctx *resourceContext, gvk schema.GroupVersionKind) (listWatchFactory, error) {
-	elemType := reflect.TypeOf(minimal.MinimalObject{})
+func newPartialObjectMetadataListWatchFactory(rctx *resourceContext, gvk schema.GroupVersionKind) (listWatchFactory, error) {
+	elemType := reflect.TypeOf(metav1.PartialObjectMetadata{})
 	base, err := newListWatchFactoryBase(rctx, gvk, elemType)
 	if err != nil {
 		return nil, err
 	}
-	return &minimalObjectListWatchFactory{*base}, nil
+	base.listType = reflect.TypeOf(metav1.PartialObjectMetadataList{})
+	return &partialObjectMetadataListWatchFactory{*base}, nil
 }
 
-type minimalObjectListWatchFactory struct {
+type partialObjectMetadataListWatchFactory struct {
 	listWatchFactoryBase
 }
 
-func (f *minimalObjectListWatchFactory) CreateListWatch(ctx context.Context, namespace string, optionsFunc TweakListOptionsFunc) (*cache.ListWatch, error) {
+func (f *partialObjectMetadataListWatchFactory) CreateListWatch(ctx context.Context, namespace string, optionsFunc TweakListOptionsFunc) (*cache.ListWatch, error) {
 	res := f.Info()
 	client, err := f.rctx.GetClient(res.GroupVersion())
 	if err != nil {

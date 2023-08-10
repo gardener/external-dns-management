@@ -224,9 +224,6 @@ func (this *state) Setup() error {
 		processors = 5
 	}
 
-	// enforce global informer for secrets
-	_, _ = this.secretresc.ListCached(labels.Nothing())
-
 	if this.config.RemoteAccessConfig != nil {
 		secret := &corev1.Secret{}
 		_, err := this.secretresc.GetInto(this.config.RemoteAccessConfig.SecretName, secret)
@@ -309,6 +306,9 @@ func (this *state) SetFinalizer(obj resources.Object) error {
 }
 
 func (this *state) RemoveFinalizer(obj resources.Object) error {
+	if len(obj.GetFinalizers()) == 0 {
+		return nil
+	}
 	return this.context.RemoveFinalizer(obj)
 }
 

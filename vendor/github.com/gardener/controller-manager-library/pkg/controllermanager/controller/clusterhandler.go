@@ -211,6 +211,12 @@ func (c *ClusterHandler) GetObject(key resources.ClusterObjectKey) (resources.Ob
 	if err != nil {
 		return nil, err
 	}
+	if info, ok := o.(resources.ObjectInfo); ok {
+		if minObj := resources.WrapPartialMetadataObject(resource, info); minObj != nil {
+			return minObj, nil
+		}
+	}
+
 	obj, err := resource.Get(key.ObjectKey())
 	if err != nil && errors.IsNotFound(err) {
 		return nil, nil

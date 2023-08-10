@@ -10,7 +10,7 @@ require (
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190603021944-12ad9f921c0b
 	github.com/aws/aws-sdk-go v1.44.173
 	github.com/cloudflare/cloudflare-go v0.11.4
-	github.com/gardener/controller-manager-library v0.2.1-0.20230626073055-c9884fe14283
+	github.com/gardener/controller-manager-library v0.2.1-0.20230810132003-651f3cbebad2
 	github.com/go-openapi/runtime v0.24.1
 	github.com/go-openapi/strfmt v0.21.2
 	github.com/gophercloud/gophercloud v0.24.0

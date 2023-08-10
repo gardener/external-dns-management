@@ -54,24 +54,29 @@ func (c *Clients) GetClient(gv schema.GroupVersion) (restclient.Interface, error
 	var err error
 	client := c.clients[gv]
 	if client == nil {
-		config := c.config
-		config.GroupVersion = &gv
-		if gv.Group == "" {
-			config.APIPath = "/api"
-
-		} else {
-			config.APIPath = "/apis"
-		}
-
-		if config.UserAgent == "" {
-			config.UserAgent = restclient.DefaultKubernetesUserAgent()
-		}
-
-		client, err = restclient.RESTClientFor(&config)
+		client, err = c.GetNewClient(gv)
 		if err != nil {
 			return nil, err
 		}
 		c.clients[gv] = client
 	}
 	return client, nil
+}
+
+// GetNewClient always creates a new client (useful to avoid caching).
+func (c *Clients) GetNewClient(gv schema.GroupVersion) (restclient.Interface, error) {
+	config := c.config
+	config.GroupVersion = &gv
+	if gv.Group == "" {
+		config.APIPath = "/api"
+
+	} else {
+		config.APIPath = "/apis"
+	}
+
+	if config.UserAgent == "" {
+		config.UserAgent = restclient.DefaultKubernetesUserAgent()
+	}
+
+	return restclient.RESTClientFor(&config)
 }

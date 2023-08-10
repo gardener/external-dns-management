@@ -122,6 +122,9 @@ type Object interface {
 
 	GetResource() Interface
 
+	// GetFullObject get full object from api-server if IsMinimal(), otherwise it just returns the object.
+	GetFullObject() (Object, error)
+
 	Create() error
 	CreateOrUpdate() error
 	Delete() error

@@ -10,18 +10,21 @@ import (
 	"fmt"
 	"reflect"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 type AbstractObject struct {
 	resource Resource
 	ObjectData
+	minimal bool
 }
 
 var _ Object = &AbstractObject{}
 
 func NewAbstractObject(data ObjectData, resource Resource) *AbstractObject {
-	return &AbstractObject{resource, data}
+	_, minimal := data.(*metav1.PartialObjectMetadata)
+	return &AbstractObject{resource: resource, ObjectData: data, minimal: minimal}
 }
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -53,6 +56,17 @@ func (this *AbstractObject) IsA(spec interface{}) bool {
 
 func (this *AbstractObject) Data() ObjectData {
 	return this.ObjectData
+}
+
+func (this *AbstractObject) MinimalData() *metav1.PartialObjectMetadata {
+	if !this.minimal {
+		return nil
+	}
+	return this.ObjectData.(*metav1.PartialObjectMetadata)
+}
+
+func (this *AbstractObject) IsMinimal() bool {
+	return this.minimal
 }
 
 func (this *AbstractObject) StatusField() interface{} {

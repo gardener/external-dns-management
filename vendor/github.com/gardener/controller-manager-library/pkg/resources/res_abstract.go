@@ -11,6 +11,7 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
 	"github.com/gardener/controller-manager-library/pkg/resources/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
@@ -39,8 +40,10 @@ func (this *AbstractResource) Namespaced() bool {
 }
 
 func (this *AbstractResource) Wrap(obj ObjectData) (Object, error) {
-	if err := this.CheckOType(obj); err != nil {
-		return nil, err
+	if _, ok := obj.(*metav1.PartialObjectMetadata); !ok {
+		if err := this.CheckOType(obj); err != nil {
+			return nil, err
+		}
 	}
 	return this.helper.ObjectAsResource(obj), nil
 }
