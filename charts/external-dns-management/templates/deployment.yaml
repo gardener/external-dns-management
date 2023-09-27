@@ -932,6 +932,10 @@ spec:
         {{- end }}
       {{- end }}
       serviceAccountName: {{ include "external-dns-management.fullname" . }}
+      imagePullSecrets:
+      {{- with .Values.imagePullSecrets }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- if .Values.gardener.seed.name }}
       priorityClassName: gardener-system-900
       {{- end }}
