@@ -60,6 +60,17 @@ spec:
 apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSEntry
 metadata:
+  name: {{.Prefix}}a-base
+  namespace: {{.Namespace}}
+spec:
+  dnsName: {{.Domain}}
+  ttl: {{.TTL}}
+  targets:
+  - 11.22.33.44
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
   name: {{.Prefix}}a
   namespace: {{.Namespace}}
 spec:
@@ -193,7 +204,7 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 			Ω(err).Should(BeNil())
 
 			entryNames := []string{}
-			for _, name := range []string{"a", "aaaa", "mixed", "txt", "wildcard", "cname", "cname-multi"} {
+			for _, name := range []string{"a", "a-base", "aaaa", "mixed", "txt", "wildcard", "cname", "cname-multi"} {
 				entryNames = append(entryNames, entryName(p, name))
 			}
 			if p.AliasTarget != "" {
@@ -206,6 +217,24 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 			Ω(err).Should(BeNil())
 
 			Ω(itemMap).Should(MatchKeys(IgnoreExtras, Keys{
+				entryName(p, "a"): MatchKeys(IgnoreExtras, Keys{
+					"metadata": MatchKeys(IgnoreExtras, Keys{
+						"finalizers": And(HaveLen(1), ContainElement("dns.gardener.cloud/"+p.FinalizerType)),
+					}),
+					"spec": MatchKeys(IgnoreExtras, Keys{
+						"dnsName": Equal(p.Domain),
+						"targets": And(HaveLen(1), ContainElement("11.22.33.44")),
+					}),
+					"status": MatchKeys(IgnoreExtras, Keys{
+						"message":      Equal("dns entry active"),
+						"provider":     Equal(p.Namespace + "/" + p.Name),
+						"providerType": Equal(p.Type),
+						"state":        Equal("Ready"),
+						"targets":      And(HaveLen(1), ContainElement("11.22.33.44")),
+						"ttl":          Equal(float64(ttl)),
+						"zone":         Equal(p.ZoneID),
+					}),
+				}),
 				entryName(p, "a"): MatchKeys(IgnoreExtras, Keys{
 					"metadata": MatchKeys(IgnoreExtras, Keys{
 						"finalizers": And(HaveLen(1), ContainElement("dns.gardener.cloud/"+p.FinalizerType)),
@@ -332,6 +361,7 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 				if p.AliasTarget != "" {
 					u.AwaitLookupCName(dnsName(p, "alias"), p.AliasTarget)
 				}
+				u.AwaitLookup(p.Domain, "11.22.33.44")
 				u.AwaitLookup(dnsName(p, "a"), "11.11.11.11")
 				u.AwaitLookup(dnsName(p, "aaaa"), "20a0::1")
 				u.AwaitLookup(dnsName(p, "mixed"), "20a0::2", "11.11.0.11")
