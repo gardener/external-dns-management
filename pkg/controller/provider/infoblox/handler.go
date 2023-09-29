@@ -43,16 +43,17 @@ type Handler struct {
 }
 
 type InfobloxConfig struct {
-	Host            *string `json:"host,omitempty"`
-	Port            *int    `json:"port,omitempty"`
-	SSLVerify       *bool   `json:"sslVerify,omitempty"`
-	Version         *string `json:"version,omitempty"`
-	View            *string `json:"view,omitempty"`
-	PoolConnections *int    `json:"httpPoolConnections,omitempty"`
-	RequestTimeout  *int    `json:"httpRequestTimeout,omitempty"`
-	CaCert          *string `json:"caCert,omitempty"`
-	MaxResults      int     `json:"maxResults,omitempty"`
-	ProxyURL        *string `json:"proxyUrl,omitempty"`
+	Host            *string     `json:"host,omitempty"`
+	Port            *int        `json:"port,omitempty"`
+	SSLVerify       *bool       `json:"sslVerify,omitempty"`
+	Version         *string     `json:"version,omitempty"`
+	View            *string     `json:"view,omitempty"`
+	PoolConnections *int        `json:"httpPoolConnections,omitempty"`
+	RequestTimeout  *int        `json:"httpRequestTimeout,omitempty"`
+	CaCert          *string     `json:"caCert,omitempty"`
+	MaxResults      int         `json:"maxResults,omitempty"`
+	ProxyURL        *string     `json:"proxyUrl,omitempty"`
+	Extattrs        ibclient.EA `json:"extAttrs,omitempty"`
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -162,7 +163,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		return nil, err
 	}
 
-	h.access = NewAccess(client, requestBuilder, *h.infobloxConfig.View, config.Metrics)
+	h.access = NewAccess(client, requestBuilder, *h.infobloxConfig.View, config.Metrics, infobloxConfig.Extattrs)
 
 	h.ZoneCache, err = config.ZoneCacheFactory.CreateZoneCache(provider.CacheZonesOnly, config.Metrics, h.getZones, h.getZoneState)
 	if err != nil {
