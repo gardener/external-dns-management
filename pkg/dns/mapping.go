@@ -62,7 +62,9 @@ func MapToProvider(rtype string, dnsset *DNSSet, base string) (DNSSetName, *Reco
 
 func calcMetaRecordDomainName(name, prefix, base string) string {
 	add := ""
-	if strings.HasPrefix(name, "*.") {
+	if name == base {
+		prefix += "-base."
+	} else if strings.HasPrefix(name, "*.") {
 		add = "*."
 		name = name[2:]
 		if name == base {
