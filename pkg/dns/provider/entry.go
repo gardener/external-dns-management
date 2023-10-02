@@ -381,9 +381,13 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 	}
 
 	if p.zonedomain == entry.dnsSetName.DNSName {
-		err = fmt.Errorf("usage of dns name (%s) identical to domain of hosted zone (%s) is not supported",
-			p.zonedomain, p.zoneid)
-		return
+		for _, t := range []string{"azure-dns", "azure-private-dns"} {
+			if p.provider.TypeCode() == t {
+				err = fmt.Errorf("usage of dns name (%s) identical to domain of hosted zone (%s) is not supported. Please use apex prefix '@.'",
+					p.zonedomain, p.zoneid)
+				return
+			}
+		}
 	}
 	if len(effspec.GetTargets()) > 0 && len(effspec.GetText()) > 0 {
 		err = fmt.Errorf("only Text or Targets possible")
