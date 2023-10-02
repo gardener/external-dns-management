@@ -164,8 +164,11 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	}
 
 	ea := make(ibclient.EA)
-	for k, v := range *infobloxConfig.ExtAttrs {
-		ea[k] = v
+
+	if infobloxConfig.ExtAttrs != nil {
+		for k, v := range *infobloxConfig.ExtAttrs {
+			ea[k] = v
+		}
 	}
 
 	h.access = NewAccess(client, requestBuilder, *h.infobloxConfig.View, config.Metrics, ea)
