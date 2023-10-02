@@ -25,8 +25,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -49,8 +47,6 @@ type Handler struct {
 	serverProtocolVersion int32
 	connection            *grpc.ClientConn
 	client                common.RemoteProviderClient
-	sess                  *session.Session
-	r53                   *route53.Route53
 }
 
 var _ provider.DNSHandler = &Handler{}
