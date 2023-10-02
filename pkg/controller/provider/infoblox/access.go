@@ -35,16 +35,18 @@ type access struct {
 	requestBuilder ibclient.HttpRequestBuilder
 	metrics        provider.Metrics
 	view           string
+	extattrs       ibclient.EA
 }
 
 var _ raw.Executor = (*access)(nil)
 
-func NewAccess(client ibclient.IBConnector, requestBuilder ibclient.HttpRequestBuilder, view string, metrics provider.Metrics) *access {
+func NewAccess(client ibclient.IBConnector, requestBuilder ibclient.HttpRequestBuilder, view string, metrics provider.Metrics, ea ibclient.EA) *access {
 	return &access{
 		IBConnector:    client,
 		requestBuilder: requestBuilder,
 		metrics:        metrics,
 		view:           view,
+		extattrs:       ea,
 	}
 }
 
@@ -73,18 +75,21 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 		r.Name = fqdn
 		r.Ipv4Addr = value
 		r.View = this.view
+		r.Ea = this.extattrs
 		record = (*RecordA)(r)
 	case dns.RS_AAAA:
 		r := ibclient.NewEmptyRecordAAAA()
 		r.Name = fqdn
 		r.Ipv6Addr = value
 		r.View = this.view
+		r.Ea = this.extattrs
 		record = (*RecordAAAA)(r)
 	case dns.RS_CNAME:
 		r := ibclient.NewEmptyRecordCNAME()
 		r.Name = fqdn
 		r.Canonical = value
 		r.View = this.view
+		r.Ea = this.extattrs
 		record = (*RecordCNAME)(r)
 	case dns.RS_TXT:
 		if n, err := strconv.Unquote(value); err == nil && !strings.Contains(value, " ") {
@@ -94,6 +99,7 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, zone prov
 		r.Name = fqdn
 		r.Text = value
 		r.View = this.view
+		r.Ea = this.extattrs
 		record = (*RecordTXT)(r)
 	}
 	if record != nil {
