@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 TOOLS_BIN_DIR            := $(TOOLS_DIR)/bin
-KUBEBUILDER_K8S_VERSION  := 1.24.2
+KUBEBUILDER_K8S_VERSION  := 1.28.0
 KUBEBUILDER_TAG          := $(TOOLS_BIN_DIR)/kubebuilder
 KUBEBUILDER_DIR          := $(TOOLS_BIN_DIR)/kubebuilder_$(KUBEBUILDER_K8S_VERSION)
 KUBEBUILDER_ASSETS       := "$(shell realpath $(KUBEBUILDER_DIR))/bin"
