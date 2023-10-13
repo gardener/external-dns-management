@@ -19,9 +19,9 @@ package embed
 import (
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net"
+	"os"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -57,7 +57,7 @@ func RegisterCreateServerFunc(f CreateServerFunc) {
 
 func loadTLSCredentials(logctx logger.LogContext, cfg *RemoteAccessServerConfig) (credentials.TransportCredentials, error) {
 	// Load certificate of the CA who signed client's certificate
-	pemClientCA, err := ioutil.ReadFile(cfg.CACertFilename)
+	pemClientCA, err := os.ReadFile(cfg.CACertFilename)
 	if err != nil {
 		return nil, err
 	}
