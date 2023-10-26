@@ -238,24 +238,32 @@ func (this *state) Setup() error {
 	}
 
 	this.context.Infof("using %d parallel workers for initialization", processors)
-	this.setupFor(&api.DNSProvider{}, "providers", func(e resources.Object) {
+	if err := this.setupFor(&api.DNSProvider{}, "providers", func(e resources.Object) {
 		p := dnsutils.DNSProvider(e)
 		if this.GetHandlerFactory().IsResponsibleFor(p) {
 			this.UpdateProvider(this.context.NewContext("provider", p.ObjectName().String()), p)
 		}
-	}, processors)
-	this.setupFor(&api.DNSOwner{}, "owners", func(e resources.Object) {
+	}, processors); err != nil {
+		return err
+	}
+	if err := this.setupFor(&api.DNSOwner{}, "owners", func(e resources.Object) {
 		p := dnsutils.DNSOwner(e)
 		this.UpdateOwner(this.context.NewContext("owner", p.ObjectName().String()), p, true)
-	}, processors)
-	this.setupFor(&api.DNSEntry{}, "entries", func(e resources.Object) {
+	}, processors); err != nil {
+		return err
+	}
+	if err := this.setupFor(&api.DNSEntry{}, "entries", func(e resources.Object) {
 		p := dnsutils.DNSEntry(e)
 		this.UpdateEntry(this.context.NewContext("entry", p.ObjectName().String()), p)
-	}, processors)
-	this.setupFor(&api.DNSLock{}, "locks", func(e resources.Object) {
+	}, processors); err != nil {
+		return err
+	}
+	if err := this.setupFor(&api.DNSLock{}, "locks", func(e resources.Object) {
 		p := dnsutils.DNSLock(e)
 		this.UpdateEntry(this.context.NewContext("entry", p.ObjectName().String()), p)
-	}, processors)
+	}, processors); err != nil {
+		return err
+	}
 
 	this.triggerStatistic()
 	this.initialized = true
@@ -280,15 +288,22 @@ func (this *state) startRemoteAccessServer(secret *corev1.Secret) error {
 	return nil
 }
 
-func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.Object), processors int) {
+func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.Object), processors int) error {
 	this.context.Infof("### setup %s", msg)
-	res, _ := this.context.GetByExample(obj)
-	list, _ := res.ListCached(labels.Everything())
+	res, err := this.context.GetByExample(obj)
+	if err != nil {
+		return err
+	}
+	list, err := res.ListCached(labels.Everything())
+	if err != nil {
+		return err
+	}
 	dnsutils.ProcessElements(list, func(e resources.Object) {
 		if this.IsResponsibleFor(this.context, e) {
 			exec(e)
 		}
 	}, processors)
+	return nil
 }
 
 func (this *state) Start() {

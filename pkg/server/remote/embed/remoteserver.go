@@ -47,7 +47,7 @@ type RemoteAccessServerConfig struct {
 	ServerSecretProvider ServerSecretProvider
 }
 
-type CreateServerFunc func(logctx logger.LogContext) common.RemoteProviderServer
+type CreateServerFunc func(logctx logger.LogContext) (common.RemoteProviderServer, error)
 
 var serverFunc CreateServerFunc
 
@@ -81,7 +81,10 @@ func StartDNSHandlerServer(logctx logger.LogContext, config *RemoteAccessServerC
 		return nil, err
 	}
 	s := grpc.NewServer(grpc.Creds(creds))
-	server := serverFunc(logctx)
+	server, err := serverFunc(logctx)
+	if err != nil {
+		return nil, err
+	}
 	common.RegisterRemoteProviderServer(s, server)
 	logctx.Infof("DNSHandler server listening at %v", lis.Addr())
 	go func() {
