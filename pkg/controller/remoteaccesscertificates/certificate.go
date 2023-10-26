@@ -50,7 +50,10 @@ func CreateSubject(commonName string) pkix.Name {
 // CreateCertificate creates a client or server TLS certificate.
 func CreateCertificate(caCert *x509.Certificate, caPrivateKey *rsa.PrivateKey, subject pkix.Name, dnsName string,
 	days int, serialNumber int64, isServer bool) (*CertData, error) {
-	key, _ := rsa.GenerateKey(rand.Reader, 1024)
+	key, err := rsa.GenerateKey(rand.Reader, 3072)
+	if err != nil {
+		return nil, err
+	}
 
 	csrTemplate := x509.CertificateRequest{
 		Subject:            subject,

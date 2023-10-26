@@ -21,7 +21,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/config"
@@ -124,7 +124,7 @@ func loadClientCA(config *Config) (*x509.Certificate, *rsa.PrivateKey, error) {
 	if config.caCertFile == "" {
 		return nil, nil, fmt.Errorf("missing option %s with CA for client certificates", provider.OPT_REMOTE_ACCESS_CACERT)
 	}
-	pemClientCA, err := ioutil.ReadFile(config.caCertFile)
+	pemClientCA, err := os.ReadFile(config.caCertFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot read client CA: %w", err)
 	}
@@ -136,7 +136,7 @@ func loadClientCA(config *Config) (*x509.Certificate, *rsa.PrivateKey, error) {
 	if config.caKeyFile == "" {
 		return nil, nil, fmt.Errorf("missing option %s with CA key for client certificates", OPT_REMOTE_ACCESS_CAKEY)
 	}
-	keyPem, err := ioutil.ReadFile(config.caKeyFile)
+	keyPem, err := os.ReadFile(config.caKeyFile)
 	if err != nil {
 		return nil, nil, fmt.Errorf("cannot read client CA key: %w", err)
 	}
