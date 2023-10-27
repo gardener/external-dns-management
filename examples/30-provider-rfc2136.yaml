@@ -1,0 +1,12 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: rfc2136
+  namespace: default
+spec:
+  type: rfc2136
+  secretRef:
+    name: rfc2136-credentials
+  domains:
+    include:
+    - my.own.domain.com
