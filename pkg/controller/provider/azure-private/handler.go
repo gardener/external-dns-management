@@ -89,7 +89,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
 
-func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	zones := provider.DNSHostedZones{}
 	h.config.RateLimiter.Accept()
 	results, err := h.zonesClient.ListComplete(h.ctx, nil)
@@ -98,25 +98,34 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		return nil, perrs.WrapAsHandlerError(err, "Listing DNS zones failed")
 	}
 
+	ctx := context.Background()
 	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
-	for ; results.NotDone(); results.Next() {
+	for results.NotDone() {
+
 		item := results.Value()
 
+		var zoneID string
 		resourceGroup, err := utils.ExtractResourceGroup(*item.ID)
 		if err != nil {
 			logger.Warnf("skipping zone: %s", err)
-			continue
-		}
-		zoneID := utils.MakeZoneID(resourceGroup, *item.Name)
-		if blockedZones.Contains(zoneID) {
-			h.config.Logger.Infof("ignoring blocked zone id: %s", zoneID)
-			continue
+		} else {
+			zoneID = utils.MakeZoneID(resourceGroup, *item.Name)
+			if blockedZones.Contains(zoneID) {
+				h.config.Logger.Infof("ignoring blocked zone id: %s", zoneID)
+				zoneID = ""
+			}
 		}
 
-		// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(*item.Name), "", []string{}, true)
+		if zoneID != "" {
+			// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
+			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(*item.Name), "", []string{}, true)
 
-		zones = append(zones, hostedZone)
+			zones = append(zones, hostedZone)
+		}
+
+		if err := results.NextWithContext(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	return zones, nil
@@ -126,7 +135,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	resourceGroup, zoneName := utils.SplitZoneID(zone.Id().ID)
@@ -137,8 +146,9 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		return nil, perrs.WrapfAsHandlerError(err, "Listing DNS zone state for zone %s failed", zoneName)
 	}
 
+	ctx := context.Background()
 	count := 0
-	for ; results.NotDone(); results.Next() {
+	for results.NotDone() {
 		count++
 		item := results.Value()
 		// We expect recordName.DNSZone. However Azure only return recordName . Reverse is dropZoneName() needed for calls to Azure
@@ -148,6 +158,14 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 			rs := dns.NewRecordSet(dns.RS_A, *item.TTL, nil)
 			for _, record := range *item.ARecords {
 				rs.Add(&dns.Record{Value: *record.Ipv4Address})
+			}
+			dnssets.AddRecordSetFromProvider(fullName, rs)
+		}
+
+		if item.AaaaRecords != nil {
+			rs := dns.NewRecordSet(dns.RS_AAAA, *item.TTL, nil)
+			for _, record := range *item.AaaaRecords {
+				rs.Add(&dns.Record{Value: *record.Ipv6Address})
 			}
 			dnssets.AddRecordSetFromProvider(fullName, rs)
 		}
@@ -170,6 +188,10 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 			}
 			dnssets.AddRecordSetFromProvider(fullName, rs)
 		}
+
+		if err := results.NextWithContext(ctx); err != nil {
+			return nil, err
+		}
 	}
 	pages := count / 100
 	if pages > 0 {
@@ -188,7 +210,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	return err
 }
 
-func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, _ provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	resourceGroup, zoneName := utils.SplitZoneID(zone.Id().ID)
 	exec := NewExecution(logger, h, resourceGroup, zoneName)
 

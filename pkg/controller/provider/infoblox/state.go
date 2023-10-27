@@ -49,7 +49,7 @@ func (r *RecordA) PrepareUpdate() raw.Record {
 
 type RecordAAAA ibclient.RecordAAAA
 
-func (r *RecordAAAA) GetType() string          { return dns.RS_A }
+func (r *RecordAAAA) GetType() string          { return dns.RS_AAAA }
 func (r *RecordAAAA) GetId() string            { return r.Ref }
 func (r *RecordAAAA) GetDNSName() string       { return r.Name }
 func (r *RecordAAAA) GetSetIdentifier() string { return "" }
