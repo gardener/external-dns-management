@@ -13,6 +13,7 @@ It contains provisioning controllers for creating DNS records in one of the DNS 
   - [_Infoblox_](/docs/infoblox/README.md),
   - [_Netlify DNS_](docs/netlify/README.md),
   - [_remote_](docs/remote/README.md),
+  - [_DNS servers supporting RFC 2136 (DNS Update)_](docs/rfc2136/README.md) *(alpha - not recommended for productive usage)*,
 
 and source controllers for services and ingresses to create DNS entries by annotations.
 
