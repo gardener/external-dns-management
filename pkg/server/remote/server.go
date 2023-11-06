@@ -49,12 +49,15 @@ type server struct {
 	common.UnimplementedRemoteProviderServer
 }
 
-func CreateServer(logctx logger.LogContext) common.RemoteProviderServer {
+func CreateServer(logctx logger.LogContext) (common.RemoteProviderServer, error) {
 	return newServer(logctx)
 }
 
-func newServer(logctx logger.LogContext) *server {
-	id, _ := randonString(8)
+func newServer(logctx logger.LogContext) (*server, error) {
+	id, err := randonString(8)
+	if err != nil {
+		return nil, err
+	}
 	s := &server{
 		serverID:        id,
 		spinning:        15 * time.Second,
@@ -70,7 +73,7 @@ func newServer(logctx logger.LogContext) *server {
 		}
 	}()
 
-	return s
+	return s, nil
 }
 
 func (s *server) ProviderUpdatedEvent(logger logger.LogContext, objectName resources.ObjectName, annotations map[string]string, handler provider.LightDNSHandler) {
