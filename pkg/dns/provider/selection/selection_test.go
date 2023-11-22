@@ -133,6 +133,48 @@ var _ = Describe("Selection", func() {
 		}))
 	})
 
+	It("validates domain includes", func() {
+		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
+			Domains: &v1alpha1.DNSSelection{
+				Include: []string{"*.a.b"},
+				Exclude: []string{"sub.a.b"},
+			},
+		}
+		result := CalcZoneAndDomainSelection(spec, allzones)
+		Expect(result).To(Equal(SelectionResult{
+			SpecZoneSel: NewSubSelection(),
+			SpecDomainSel: SubSelection{
+				Include: utils.NewStringSet("*.a.b"),
+				Exclude: utils.NewStringSet("sub.a.b"),
+			},
+			ZoneSel:   NewSubSelection(),
+			DomainSel: NewSubSelection(),
+			Error:     "wildcards are not allowed in domains include '*.a.b' (hint: remove the wildcard)",
+		}))
+	})
+
+	It("validates domain excludes", func() {
+		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
+			Domains: &v1alpha1.DNSSelection{
+				Include: []string{"a.b"},
+				Exclude: []string{"*.sub.a.b"},
+			},
+		}
+		result := CalcZoneAndDomainSelection(spec, allzones)
+		Expect(result).To(Equal(SelectionResult{
+			SpecZoneSel: NewSubSelection(),
+			SpecDomainSel: SubSelection{
+				Include: utils.NewStringSet("a.b"),
+				Exclude: utils.NewStringSet("*.sub.a.b"),
+			},
+			ZoneSel:   NewSubSelection(),
+			DomainSel: NewSubSelection(),
+			Error:     "wildcards are not allowed in domains exclude '*.sub.a.b' (hint: remove the wildcard)",
+		}))
+	})
+
 	It("handles zones exclusion", func() {
 		spec := v1alpha1.DNSProviderSpec{
 			Type: "test",

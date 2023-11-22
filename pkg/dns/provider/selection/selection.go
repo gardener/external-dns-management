@@ -68,6 +68,15 @@ func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, allzones []LightD
 		DomainSel:     NewSubSelection(),
 	}
 
+	if err := validateDomains(this.SpecDomainSel.Include, "domains include"); err != nil {
+		this.Error = err.Error()
+		return this
+	}
+	if err := validateDomains(this.SpecDomainSel.Exclude, "domains exclude"); err != nil {
+		this.Error = err.Error()
+		return this
+	}
+
 	var zones []LightDNSHostedZone
 	for _, z := range allzones {
 		if z.Id().ProviderType == spec.Type {
@@ -181,6 +190,15 @@ outer:
 	}
 
 	return this
+}
+
+func validateDomains(domains utils.StringSet, name string) error {
+	for domain := range domains {
+		if strings.HasPrefix(domain, "*.") {
+			return fmt.Errorf("wildcards are not allowed in %s '%s' (hint: remove the wildcard)", name, domain)
+		}
+	}
+	return nil
 }
 
 func PrepareSelection(sel *v1alpha1.DNSSelection) SubSelection {
