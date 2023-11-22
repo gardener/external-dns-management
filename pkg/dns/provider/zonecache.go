@@ -84,47 +84,8 @@ type ZoneCache interface {
 	GetZones() (DNSHostedZones, error)
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ApplyRequests(logctx logger.LogContext, err error, zone DNSHostedZone, reqs []*ChangeRequest)
-	ForwardedDomainsCache() ForwardedDomainsCache
 	Release()
 	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
-}
-
-type ForwardedDomainsCache interface {
-	Get(zoneid dns.ZoneID) []string
-	Set(zoneid dns.ZoneID, value []string)
-}
-
-type forwardedDomainsCacheImpl struct {
-	lock             sync.Mutex
-	forwardedDomains map[dns.ZoneID][]string
-}
-
-func newForwardedDomainsCacheImpl() *forwardedDomainsCacheImpl {
-	return &forwardedDomainsCacheImpl{forwardedDomains: map[dns.ZoneID][]string{}}
-}
-
-func (hd *forwardedDomainsCacheImpl) Get(zoneid dns.ZoneID) []string {
-	hd.lock.Lock()
-	defer hd.lock.Unlock()
-	return hd.forwardedDomains[zoneid]
-}
-
-func (hd *forwardedDomainsCacheImpl) Set(zoneid dns.ZoneID, value []string) {
-	hd.lock.Lock()
-	defer hd.lock.Unlock()
-
-	if value != nil {
-		hd.forwardedDomains[zoneid] = value
-	} else {
-		delete(hd.forwardedDomains, zoneid)
-	}
-}
-
-func (hd *forwardedDomainsCacheImpl) DeleteZone(zoneID dns.ZoneID) {
-	hd.lock.Lock()
-	defer hd.lock.Unlock()
-
-	delete(hd.forwardedDomains, zoneID)
 }
 
 type abstractZonesCache struct {
@@ -139,8 +100,7 @@ type abstractZonesCache struct {
 
 type onlyZonesCache struct {
 	abstractZonesCache
-	lock                  sync.Mutex
-	forwardedDomainsCache ForwardedDomainsCache
+	lock sync.Mutex
 }
 
 var _ ZoneCache = &onlyZonesCache{}
@@ -155,19 +115,10 @@ func (c *onlyZonesCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) 
 	return state, err
 }
 
-func (c *onlyZonesCache) ApplyRequests(logctx logger.LogContext, err error, zone DNSHostedZone, reqs []*ChangeRequest) {
+func (c *onlyZonesCache) ApplyRequests(_ logger.LogContext, _ error, _ DNSHostedZone, _ []*ChangeRequest) {
 }
 
-func (c *onlyZonesCache) ForwardedDomainsCache() ForwardedDomainsCache {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if c.forwardedDomainsCache == nil {
-		c.forwardedDomainsCache = newForwardedDomainsCacheImpl()
-	}
-	return c.forwardedDomainsCache
-}
-
-func (c *onlyZonesCache) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
+func (c *onlyZonesCache) ReportZoneStateConflict(_ DNSHostedZone, _ error) bool {
 	return false
 }
 
@@ -257,10 +208,6 @@ func (c *defaultZoneCache) ApplyRequests(logctx logger.LogContext, err error, zo
 	}
 }
 
-func (c *defaultZoneCache) ForwardedDomainsCache() ForwardedDomainsCache {
-	return c.zoneStates.ForwardedDomainsCache()
-}
-
 func (c *defaultZoneCache) Release() {
 	c.zoneStates.UpdateUsedZones(c, nil)
 }
@@ -272,21 +219,19 @@ type zoneStateProxy struct {
 }
 
 type zoneStates struct {
-	lock                  sync.Mutex
-	stateTTLGetter        StateTTLGetter
-	inMemory              *InMemory
-	proxies               map[dns.ZoneID]*zoneStateProxy
-	usedZones             map[ZoneCache][]dns.ZoneID
-	forwardedDomainsCache *forwardedDomainsCacheImpl
+	lock           sync.Mutex
+	stateTTLGetter StateTTLGetter
+	inMemory       *InMemory
+	proxies        map[dns.ZoneID]*zoneStateProxy
+	usedZones      map[ZoneCache][]dns.ZoneID
 }
 
 func newZoneStates(stateTTLGetter StateTTLGetter) *zoneStates {
 	return &zoneStates{
-		inMemory:              NewInMemory(),
-		stateTTLGetter:        stateTTLGetter,
-		proxies:               map[dns.ZoneID]*zoneStateProxy{},
-		usedZones:             map[ZoneCache][]dns.ZoneID{},
-		forwardedDomainsCache: newForwardedDomainsCacheImpl(),
+		inMemory:       NewInMemory(),
+		stateTTLGetter: stateTTLGetter,
+		proxies:        map[dns.ZoneID]*zoneStateProxy{},
+		usedZones:      map[ZoneCache][]dns.ZoneID{},
 	}
 }
 
@@ -368,10 +313,6 @@ func (s *zoneStates) ExecuteRequests(zoneID dns.ZoneID, reqs []*ChangeRequest) {
 	}
 }
 
-func (s *zoneStates) ForwardedDomainsCache() ForwardedDomainsCache {
-	return s.forwardedDomainsCache
-}
-
 func (s *zoneStates) CleanZoneState(zoneID dns.ZoneID) {
 	control := s.getProxy(zoneID)
 	control.lock.Lock()
@@ -382,9 +323,6 @@ func (s *zoneStates) CleanZoneState(zoneID dns.ZoneID) {
 
 func (s *zoneStates) cleanZoneState(zoneID dns.ZoneID, proxy *zoneStateProxy) {
 	s.inMemory.DeleteZone(zoneID)
-	if s.forwardedDomainsCache != nil {
-		s.forwardedDomainsCache.DeleteZone(zoneID)
-	}
 	if proxy != nil {
 		var zero time.Time
 		proxy.lastUpdateStart = zero

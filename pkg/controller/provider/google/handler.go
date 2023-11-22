@@ -132,35 +132,18 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	zones := provider.DNSHostedZones{}
 	for _, z := range raw {
 		zoneID := h.makeZoneID(z.Name)
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(z.DnsName), "", []string{}, false)
-
-		// call GetZoneState for side effect to calculate forwarded domains
-		_, err := cache.GetZoneState(hostedZone)
-		if err == nil {
-			forwarded := cache.ForwardedDomainsCache().Get(hostedZone.Id())
-			if forwarded != nil {
-				hostedZone = provider.CopyDNSHostedZone(hostedZone, forwarded)
-			}
-		}
-
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(z.DnsName), "", false)
 		zones = append(zones, hostedZone)
 	}
 
 	return zones, nil
 }
 
-func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *googledns.ResourceRecordSet)) ([]string, error) {
+func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *googledns.ResourceRecordSet)) error {
 	rt := provider.M_LISTRECORDS
-	forwarded := []string{}
 	aggr := func(resp *googledns.ResourceRecordSetsListResponse) error {
 		for _, r := range resp.Rrsets {
 			f(r)
-			if r.Type == dns.RS_NS {
-				name := dns.NormalizeHostname(r.Name)
-				if name != zone.Domain() {
-					forwarded = append(forwarded, name)
-				}
-			}
 		}
 		h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 		rt = provider.M_PLISTRECORDS
@@ -168,8 +151,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(r *google
 	}
 	h.config.RateLimiter.Accept()
 	projectID, zoneName := SplitZoneID(zone.Id().ID)
-	err := h.service.ResourceRecordSets.List(projectID, zoneName).Pages(h.ctx, aggr)
-	return forwarded, err
+	return h.service.ResourceRecordSets.List(projectID, zoneName).Pages(h.ctx, aggr)
 }
 
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {
@@ -209,11 +191,9 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 		}
 	}
 
-	forwarded, err := h.handleRecordSets(zone, f)
-	if err != nil {
+	if err := h.handleRecordSets(zone, f); err != nil {
 		return nil, err
 	}
-	cache.ForwardedDomainsCache().Set(zone.Id(), forwarded)
 
 	return provider.NewDNSZoneState(dnssets), nil
 }

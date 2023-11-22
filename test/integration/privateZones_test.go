@@ -288,7 +288,7 @@ var _ = Describe("PrivateZones", func() {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"mock.xx"}}
 			spec.Type = "mock-inmemory"
-			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "sub.mock.xx", Domain2IsSubdomain, PrivateZones)
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "sub.mock.xx", PrivateZones)
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
 

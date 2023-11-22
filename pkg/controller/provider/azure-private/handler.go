@@ -118,7 +118,7 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 
 		if zoneID != "" {
 			// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
-			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(*item.Name), "", []string{}, true)
+			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(*item.Name), "", true)
 
 			zones = append(zones, hostedZone)
 		}

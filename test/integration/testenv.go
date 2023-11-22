@@ -58,7 +58,6 @@ const (
 	FailDeleteEntry
 	FailSecondZoneWithSameBaseDomain
 	AlternativeMockName
-	Domain2IsSubdomain
 	PrivateZones
 	Quotas4PerMin
 	RemoveAccess
@@ -220,12 +219,6 @@ func (te *TestEnv) BuildProviderConfig(domain, domain2 string, failOptions ...Pr
 			{ZonePrefix: te.ZonePrefix + prefix2, DNSName: domain},
 			{ZonePrefix: te.ZonePrefix + prefix2 + "second:", DNSName: domain2},
 		},
-	}
-	for _, opt := range failOptions {
-		switch opt {
-		case Domain2IsSubdomain:
-			input.Zones[0].ForwardedDomains = []string{domain2}
-		}
 	}
 	return te.BuildProviderConfigEx(input, failOptions...)
 }

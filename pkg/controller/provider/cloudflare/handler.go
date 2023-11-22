@@ -21,7 +21,6 @@ import (
 
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
 )
@@ -97,26 +96,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	zones := provider.DNSHostedZones{}
 
 	for _, z := range rawZones {
-		forwarded := []string{}
-		f := func(r cloudflare.DNSRecord) (bool, error) {
-			if r.Type == dns.RS_NS {
-				name := r.Name
-				if name != z.Name {
-					forwarded = append(forwarded, name)
-				}
-			}
-			return true, nil
-		}
-		err := h.access.ListRecords(z.ID, f)
-		if err != nil {
-			if checkAccessForbidden(err) {
-				// It is possible to deny access to certain zones in the account
-				// As a result, z zone should not be appended to the hosted zones
-				continue
-			}
-			return nil, err
-		}
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.ID, z.Name, z.ID, forwarded, false)
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.ID, z.Name, z.ID, false)
 		zones = append(zones, hostedZone)
 	}
 

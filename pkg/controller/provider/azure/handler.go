@@ -117,10 +117,8 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 		}
 
 		if zoneID != "" {
-			forwarded := h.collectForwardedSubzones(resourceGroup, *item.Name)
-
 			// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling SplitZoneID().
-			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(*item.Name), "", forwarded, false)
+			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(*item.Name), "", false)
 
 			zones = append(zones, hostedZone)
 		}
@@ -131,29 +129,6 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 	}
 
 	return zones, nil
-}
-
-func (h *Handler) collectForwardedSubzones(resourceGroup, zoneName string) []string {
-	forwarded := []string{}
-	// There should only few NS entries. Therefore no paging is performed for simplicity.
-	var top int32 = 1000
-	h.config.RateLimiter.Accept()
-	result, err := h.recordsClient.ListByType(h.ctx, resourceGroup, zoneName, azure.NS, &top, "")
-	zoneID := utils.MakeZoneID(resourceGroup, zoneName)
-	h.config.Metrics.AddZoneRequests(zoneID, provider.M_LISTRECORDS, 1)
-	if err != nil {
-		logger.Infof("Failed fetching NS records for %s: %s", zoneName, err.Error())
-		// just ignoring it
-		return forwarded
-	}
-
-	for _, item := range result.Values() {
-		if *item.Name != "@" && item.NsRecords != nil && len(*item.NsRecords) > 0 {
-			fullDomainName := *item.Name + "." + zoneName
-			forwarded = append(forwarded, fullDomainName)
-		}
-	}
-	return forwarded
 }
 
 func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneState, error) {

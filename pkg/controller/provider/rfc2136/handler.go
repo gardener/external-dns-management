@@ -119,7 +119,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	domainName := dns.NormalizeHostname(h.zone)
 	h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
 	return provider.DNSHostedZones{
-		provider.NewDNSHostedZone(TYPE_CODE, h.zone, domainName, h.zone, nil, false),
+		provider.NewDNSHostedZone(TYPE_CODE, h.zone, domainName, h.zone, false),
 	}, nil
 }
 
