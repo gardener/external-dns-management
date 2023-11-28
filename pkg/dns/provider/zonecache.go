@@ -43,17 +43,15 @@ type ZoneCacheFactory struct {
 }
 
 func (c ZoneCacheFactory) CreateZoneCache(cacheType ZoneCacheType, metrics Metrics, zonesUpdater ZoneCacheZoneUpdater, stateUpdater ZoneCacheStateUpdater) (ZoneCache, error) {
-	common := abstractZonesCache{zonesTTL: c.zonesTTL, logger: c.logger, zonesUpdater: zonesUpdater, stateUpdater: stateUpdater}
+	cache := onlyZonesCache{zonesTTL: c.zonesTTL, logger: c.logger, metrics: metrics, zonesUpdater: zonesUpdater, stateUpdater: stateUpdater}
 	switch cacheType {
 	case CacheZonesOnly:
-		cache := &onlyZonesCache{abstractZonesCache: common}
-		return cache, nil
+		return &cache, nil
 	case CacheZoneState:
 		if c.disableZoneStateCache {
-			cache := &onlyZonesCache{abstractZonesCache: common}
-			return cache, nil
+			return &cache, nil
 		}
-		return newDefaultZoneCache(c.zoneStates, common, metrics)
+		return &defaultZoneCache{onlyZonesCache: onlyZonesCache{zonesTTL: c.zonesTTL, logger: c.logger, metrics: metrics, zonesUpdater: zonesUpdater, stateUpdater: stateUpdater}, zoneStates: c.zoneStates}, nil
 	default:
 		return nil, fmt.Errorf("unknown zone cache type: %v", cacheType)
 	}
@@ -88,26 +86,55 @@ type ZoneCache interface {
 	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
 }
 
-type abstractZonesCache struct {
+type onlyZonesCache struct {
+	lock         sync.Mutex
 	logger       logger.LogContext
+	metrics      Metrics
 	zonesTTL     time.Duration
 	zones        DNSHostedZones
 	zonesErr     error
 	zonesNext    time.Time
 	zonesUpdater ZoneCacheZoneUpdater
 	stateUpdater ZoneCacheStateUpdater
-}
 
-type onlyZonesCache struct {
-	abstractZonesCache
-	lock sync.Mutex
+	backoffOnError time.Duration
 }
 
 var _ ZoneCache = &onlyZonesCache{}
 
 func (c *onlyZonesCache) GetZones() (DNSHostedZones, error) {
-	zones, err := c.zonesUpdater(c)
-	return zones, err
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	if time.Now().After(c.zonesNext) {
+		c.zones, c.zonesErr = c.zonesUpdater(c)
+		updateTime := time.Now()
+		if c.zonesErr != nil {
+			// if getzones fails, don't wait zonesTTL, but use an exponential backoff
+			// to recover fast from temporary failures like throttling, network problems...
+			backoff := c.nextBackoff()
+			c.zonesNext = updateTime.Add(backoff)
+		} else {
+			c.clearBackoff()
+			c.zonesNext = updateTime.Add(c.zonesTTL)
+		}
+	} else {
+		c.metrics.AddGenericRequests(M_CACHED_GETZONES, 1)
+	}
+	return c.zones, c.zonesErr
+}
+
+func (c *onlyZonesCache) nextBackoff() time.Duration {
+	next := c.backoffOnError*5/4 + 2*time.Second
+	maxBackoff := c.zonesTTL / 4
+	if next > maxBackoff {
+		next = maxBackoff
+	}
+	c.backoffOnError = next
+	return next
+}
+
+func (c *onlyZonesCache) clearBackoff() {
+	c.backoffOnError = 0
 }
 
 func (c *onlyZonesCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
@@ -126,56 +153,19 @@ func (c *onlyZonesCache) Release() {
 }
 
 type defaultZoneCache struct {
-	abstractZonesCache
-	lock       sync.Mutex
-	logger     logger.LogContext
-	metrics    Metrics
+	onlyZonesCache
 	zoneStates *zoneStates
-
-	backoffOnError time.Duration
 }
 
 var _ ZoneCache = &defaultZoneCache{}
 
-func newDefaultZoneCache(zoneStates *zoneStates, common abstractZonesCache, metrics Metrics) (*defaultZoneCache, error) {
-	cache := &defaultZoneCache{abstractZonesCache: common, logger: common.logger, metrics: metrics, zoneStates: zoneStates}
-	return cache, nil
-}
-
 func (c *defaultZoneCache) GetZones() (DNSHostedZones, error) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if time.Now().After(c.zonesNext) {
-		c.zones, c.zonesErr = c.zonesUpdater(c)
-		updateTime := time.Now()
-		if c.zonesErr != nil {
-			// if getzones fails, don't wait zonesTTL, but use an exponential backoff
-			// to recover fast from temporary failures like throttling, network problems...
-			backoff := c.nextBackoff()
-			c.zonesNext = updateTime.Add(backoff)
-		} else {
-			c.clearBackoff()
-			c.zonesNext = updateTime.Add(c.zonesTTL)
-		}
+	old := c.zonesNext
+	zones, err := c.onlyZonesCache.GetZones()
+	if c.zonesNext != old {
 		c.zoneStates.UpdateUsedZones(c, toSortedZoneIDs(c.zones))
-	} else {
-		c.metrics.AddGenericRequests(M_CACHED_GETZONES, 1)
 	}
-	return c.zones, c.zonesErr
-}
-
-func (c *defaultZoneCache) nextBackoff() time.Duration {
-	next := c.backoffOnError*5/4 + 2*time.Second
-	maxBackoff := c.zonesTTL / 4
-	if next > maxBackoff {
-		next = maxBackoff
-	}
-	c.backoffOnError = next
-	return next
-}
-
-func (c *defaultZoneCache) clearBackoff() {
-	c.backoffOnError = 0
+	return zones, err
 }
 
 func (c *defaultZoneCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) {
