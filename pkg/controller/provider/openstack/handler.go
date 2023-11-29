@@ -161,9 +161,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 			return nil
 		}
 
-		forwarded := h.collectForwardedSubzones(zone)
-
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zone.ID, dns.NormalizeHostname(zone.Name), "", forwarded, false)
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zone.ID, dns.NormalizeHostname(zone.Name), "", false)
 		hostedZones = append(hostedZones, hostedZone)
 		return nil
 	}
@@ -174,27 +172,6 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	}
 
 	return hostedZones, nil
-}
-
-func (h *Handler) collectForwardedSubzones(zone *zones.Zone) []string {
-	forwarded := []string{}
-
-	recordSetHandler := func(recordSet *recordsets.RecordSet) error {
-		if recordSet.Type == "NS" && recordSet.Name != zone.Name && len(recordSet.Records) > 0 {
-			fullDomainName := dns.NormalizeHostname(recordSet.Name)
-			forwarded = append(forwarded, fullDomainName)
-		}
-		return nil
-	}
-
-	h.config.RateLimiter.Accept()
-	if err := h.client.ForEachRecordSetFilterByTypeAndName(zone.ID, "NS", "", recordSetHandler); err != nil {
-		logger.Infof("Failed fetching NS records for %s: %s", zone.Name, err.Error())
-		// just ignoring it
-		return forwarded
-	}
-
-	return forwarded
 }
 
 // GetZoneState returns the state for a given zone.

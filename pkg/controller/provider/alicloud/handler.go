@@ -20,7 +20,6 @@ import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
@@ -96,26 +95,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	zones := provider.DNSHostedZones{}
 	{
 		for _, z := range raw {
-			forwarded := []string{}
-			f := func(r alidns.Record) (bool, error) {
-				if r.Type == dns.RS_NS {
-					name := GetDNSName(r)
-					if name != z.DomainName {
-						forwarded = append(forwarded, name)
-					}
-				}
-				return true, nil
-			}
-			err := h.access.ListRecords(z.DomainId, z.DomainName, f)
-			if err != nil {
-				if checkAccessForbidden(err) {
-					// It is reasonable for some RAM user, it is only allowed to access certain domain's records detail
-					// As a result, h domain should not be appended to the hosted zones
-					continue
-				}
-				return nil, perrs.WrapAsHandlerError(err, "list records failed")
-			}
-			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.DomainId, z.DomainName, z.DomainName, forwarded, false)
+			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.DomainId, z.DomainName, z.DomainName, false)
 			zones = append(zones, hostedZone)
 		}
 	}

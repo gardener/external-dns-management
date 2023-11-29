@@ -215,7 +215,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 
 	zones := provider.DNSHostedZones{}
 	for _, z := range remoteZones.Zone {
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.Id, dns.NormalizeHostname(z.Domain), z.Key, z.ForwardedDomain, z.PrivateZone)
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.Id, dns.NormalizeHostname(z.Domain), z.Key, z.PrivateZone)
 		zones = append(zones, hostedZone)
 	}
 	return zones, nil

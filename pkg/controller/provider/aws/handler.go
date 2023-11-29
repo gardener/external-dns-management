@@ -18,6 +18,7 @@ package aws
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -29,7 +30,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+	dnserrors "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
@@ -131,11 +132,11 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
 
-func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 
 	rt := provider.M_LISTZONES
-	raw := []*route53.HostedZone{}
+	var raw []*route53.HostedZone
 	aggr := func(resp *route53.ListHostedZonesOutput, lastPage bool) bool {
 		for _, zone := range resp.HostedZones {
 			comp := strings.Split(aws.StringValue(zone.Id), "/")
@@ -166,29 +167,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 		if z.Config.PrivateZone != nil && *z.Config.PrivateZone {
 			isPrivateZone = true
 		}
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), id, dns.NormalizeHostname(domain), aws.StringValue(z.Id), []string{}, isPrivateZone)
-
-		// call GetZoneState for side effect to calculate forwarded domains
-		_, err := cache.GetZoneState(hostedZone)
-		if err == nil {
-			forwarded := cache.ForwardedDomainsCache().Get(hostedZone.Id())
-			if forwarded != nil {
-				hostedZone = provider.CopyDNSHostedZone(hostedZone, forwarded)
-			}
-		} else {
-			a, ok := err.(awserr.Error)
-			if ok {
-				if a.Code() == "AccessDenied" {
-					h.config.Logger.Warnf("AWS permission missing for zone %s -> omit zone: %s", aws.StringValue(z.Id), err)
-					continue
-				} else {
-					h.config.Logger.Warnf("AWS error during get zone state for %s: %s: %s", aws.StringValue(z.Id), a.Code(), err)
-				}
-			} else {
-				h.config.Logger.Warnf("Error during get zone state for %s: %s", aws.StringValue(z.Id), err)
-			}
-		}
-
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), id, dns.NormalizeHostname(domain), aws.StringValue(z.Id), isPrivateZone)
 		zones = append(zones, hostedZone)
 	}
 	return zones, nil
@@ -206,7 +185,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	aggr := func(r *route53.ResourceRecordSet) {
@@ -222,33 +201,24 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 			dnssets.AddRecordSetFromProviderEx(name, policy, rs)
 		}
 	}
-	forwarded, err := h.handleRecordSets(zone, aggr)
-	if err != nil {
-		if awsErr, ok := err.(awserr.Error); ok && awsErr.Code() == "NoSuchHostedZone" {
-			err = &errors.NoSuchHostedZone{ZoneId: zone.Id().ID, Err: err}
+	if err := h.handleRecordSets(zone, aggr); err != nil {
+		var awsErr awserr.Error
+		if errors.As(err, &awsErr) && awsErr.Code() == "NoSuchHostedZone" {
+			err = &dnserrors.NoSuchHostedZone{ZoneId: zone.Id().ID, Err: err}
 		}
 		return nil, err
 	}
 
-	cache.ForwardedDomainsCache().Set(zone.Id(), forwarded)
-
 	return provider.NewDNSZoneState(dnssets), nil
 }
 
-func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route53.ResourceRecordSet)) ([]string, error) {
+func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route53.ResourceRecordSet)) error {
 	rt := provider.M_LISTRECORDS
 	inp := (&route53.ListResourceRecordSetsInput{MaxItems: aws.String("300")}).SetHostedZoneId(zone.Id().ID)
-	forwarded := []string{}
 	aggr := func(resp *route53.ListResourceRecordSetsOutput, lastPage bool) (shouldContinue bool) {
 		h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 		for _, r := range resp.ResourceRecordSets {
 			f(r)
-			if aws.StringValue(r.Type) == dns.RS_NS {
-				name := dns.NormalizeHostname(aws.StringValue(r.Name))
-				if name != zone.Domain() {
-					forwarded = append(forwarded, name)
-				}
-			}
 		}
 		rt = provider.M_PLISTRECORDS
 		if !lastPage {
@@ -258,8 +228,7 @@ func (h *Handler) handleRecordSets(zone provider.DNSHostedZone, f func(rs *route
 		return true
 	}
 	h.config.RateLimiter.Accept()
-	err := h.r53.ListResourceRecordSetsPages(inp, aggr)
-	return forwarded, err
+	return h.r53.ListResourceRecordSetsPages(inp, aggr)
 }
 
 func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error) bool {
@@ -272,7 +241,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	return err
 }
 
-func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, _ provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	exec := NewExecution(logger, h, zone)
 
 	for _, r := range reqs {
@@ -431,7 +400,7 @@ func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, setName dns.DNSSetNa
 	return nil, nil
 }
 
-func (h *Handler) CreateOrUpdateRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, old, new provider.DedicatedRecordSet) error {
+func (h *Handler) CreateOrUpdateRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, _, new provider.DedicatedRecordSet) error {
 	return h.executeRecordSetChange(route53.ChangeActionUpsert, logger, zone, new)
 }
 

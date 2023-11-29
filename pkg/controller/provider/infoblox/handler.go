@@ -201,21 +201,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 			continue
 		}
 
-		h.config.Metrics.AddZoneRequests(z.Ref, provider.M_LISTRECORDS, 1)
-		var resN []RecordNS
-		objN := ibclient.NewRecordNS(ibclient.RecordNS{})
-		params := ibclient.NewQueryParams(false, map[string]string{"view": *h.infobloxConfig.View, "zone": z.Fqdn})
-		err = h.access.GetObject(objN, "", params, &resN)
-		if filterNotFound(err) != nil {
-			return nil, fmt.Errorf("could not fetch NS records from zone '%s': %s", z.Fqdn, err)
-		}
-		forwarded := []string{}
-		for _, res := range resN {
-			if res.Name != z.Fqdn {
-				forwarded = append(forwarded, res.Name)
-			}
-		}
-		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.Ref, dns.NormalizeHostname(z.Fqdn), z.Fqdn, forwarded, false)
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.Ref, dns.NormalizeHostname(z.Fqdn), z.Fqdn, false)
 		zones = append(zones, hostedZone)
 	}
 	return zones, nil

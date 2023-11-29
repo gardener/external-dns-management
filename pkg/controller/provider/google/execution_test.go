@@ -586,7 +586,7 @@ func matchGeoItem(location string, targets ...string) geoItem {
 
 func prepareSubmission(reqs []*provider.ChangeRequest, rrsetGetter rrsetGetterFunc) (*googledns.Change, error) {
 	log := logger.NewContext("", "TestEnv")
-	zone := provider.NewDNSHostedZone(TYPE_CODE, "test", "example.org", "", nil, false)
+	zone := provider.NewDNSHostedZone(TYPE_CODE, "test", "example.org", "", false)
 	doneHandler := &testDoneHandler{}
 	exec := NewExecution(log, nil, zone)
 	for _, r := range reqs {

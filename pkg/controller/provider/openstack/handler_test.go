@@ -217,15 +217,6 @@ func newPreparedMockHandler(t *testing.T) *Handler {
 			ID:   "z2",
 			Name: "z2.test.",
 		})
-	_, err := h.client.CreateRecordSet("z2", recordsets.CreateOpts{
-		Name:    "excluded.z2.test.",
-		Type:    "NS",
-		TTL:     3600,
-		Records: []string{"ns1.somewhere", "ns2.somewhere"},
-	})
-	if err != nil {
-		t.Errorf("Error on creating mock recordsets: %v", err)
-	}
 	return h
 }
 
@@ -251,9 +242,6 @@ func TestGetZones(t *testing.T) {
 	}
 	if z2.Id().ID != "z2" || z2.Domain() != "z2.test" {
 		t.Errorf("Zone z2 not found: %v", z2)
-	}
-	if len(z2.ForwardedDomains()) != 1 || z2.ForwardedDomains()[0] != "excluded.z2.test" {
-		t.Errorf("Zone z2: unexpected forwarded domains: %v", z2.ForwardedDomains())
 	}
 }
 

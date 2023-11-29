@@ -92,8 +92,8 @@ func Match(zone DNSHostedZone, dnsname string) int {
 	return 0
 }
 
-func NewDNSHostedZone(providerType, id, domain, key string, forwarded []string, isPrivate bool) DNSHostedZone {
-	return &DefaultDNSHostedZone{zoneid: dns.NewZoneID(providerType, id), key: key, domain: domain, forwarded: forwarded, isPrivate: isPrivate}
+func NewDNSHostedZone(providerType, id, domain, key string, isPrivate bool) DNSHostedZone {
+	return &DefaultDNSHostedZone{zoneid: dns.NewZoneID(providerType, id), key: key, domain: domain, isPrivate: isPrivate}
 }
 
 func CopyDNSHostedZone(zone DNSHostedZone, forwardedDomains []string) DNSHostedZone {
