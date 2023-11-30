@@ -17,6 +17,8 @@
 package istio
 
 import (
+	"strings"
+
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
@@ -26,5 +28,11 @@ var _MAIN_RESOURCE = resources.NewGroupKind("networking.istio.io", "Gateway")
 func init() {
 	source.DNSSourceController(source.NewDNSSouceTypeForCreator("istio-gateways-dns", _MAIN_RESOURCE, NewGatewaySource), nil).
 		FinalizerDomain("dns.gardener.cloud").
+		DeactivateOnCreationErrorCheck(deactivateOnMissingMainResource).
 		MustRegister(source.CONTROLLER_GROUP_DNS_SOURCES)
+}
+
+func deactivateOnMissingMainResource(err error) bool {
+	return strings.Contains(err.Error(), "gardener/cml/resources/UNKNOWN_RESOURCE") &&
+		strings.Contains(err.Error(), _MAIN_RESOURCE.String())
 }
