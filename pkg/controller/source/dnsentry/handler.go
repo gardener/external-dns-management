@@ -21,11 +21,10 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
 type DNSEntrySource struct {
@@ -54,20 +53,19 @@ func (this *DNSEntrySource) CreateDNSFeedback(obj resources.Object) source.DNSFe
 	}
 }
 
-func (this *DNSEntrySource) GetDNSInfo(_ logger.LogContext, obj resources.Object, _ *source.DNSCurrentState) (*source.DNSInfo, error) {
-	entryObject := dnsutils.DNSEntry(obj)
-	name := entryObject.DNSSetName()
-	data := entryObject.DNSEntry()
+func (this *DNSEntrySource) GetDNSInfo(_ logger.LogContext, obj resources.ObjectData, _ *source.DNSCurrentState) (*source.DNSInfo, error) {
+	entry := obj.(*api.DNSEntry)
+	name := dnsutils.DNSSetName(entry)
 
 	info := &source.DNSInfo{
 		Names:         dns.NewDNSNameSet(name),
-		Targets:       utils.NewStringSetByArray(data.Spec.Targets),
-		Text:          utils.NewStringSetByArray(data.Spec.Text),
-		OrigRef:       data.Spec.Reference,
-		TTL:           data.Spec.TTL,
-		Interval:      data.Spec.CNameLookupInterval,
-		RoutingPolicy: data.Spec.RoutingPolicy,
-		IPStack:       obj.GetAnnotation(dns.AnnotationIPStack),
+		Targets:       utils.NewStringSetByArray(entry.Spec.Targets),
+		Text:          utils.NewStringSetByArray(entry.Spec.Text),
+		OrigRef:       entry.Spec.Reference,
+		TTL:           entry.Spec.TTL,
+		Interval:      entry.Spec.CNameLookupInterval,
+		RoutingPolicy: entry.Spec.RoutingPolicy,
+		IPStack:       entry.Annotations[dns.AnnotationIPStack],
 	}
 	return info, nil
 }

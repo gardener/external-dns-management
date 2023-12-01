@@ -25,14 +25,17 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/client-go/rest"
-
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
+	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/remote"
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/gateways/gatewayapi"
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
 
@@ -51,6 +54,8 @@ func TestIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
 
 	resources.Register(networkingv1.SchemeBuilder)
+	resources.Register(istionetworkingv1beta1.SchemeBuilder)
+	resources.Register(gatewayapisv1.SchemeBuilder)
 
 	RunSpecs(t, "Integration Suite")
 }

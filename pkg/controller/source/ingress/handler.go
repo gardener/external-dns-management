@@ -37,8 +37,8 @@ func NewIngressSource(controller.Interface) (source.DNSSource, error) {
 	return &IngressSource{DefaultDNSSource: source.NewDefaultDNSSource(nil)}, nil
 }
 
-func (this *IngressSource) GetDNSInfo(_ logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
-	info := &source.DNSInfo{Targets: this.GetTargets(obj)}
+func (this *IngressSource) GetDNSInfo(_ logger.LogContext, obj resources.ObjectData, current *source.DNSCurrentState) (*source.DNSInfo, error) {
+	info := &source.DNSInfo{Targets: GetTargets(obj)}
 	hosts, err := this.extractRuleHosts(obj)
 	if err != nil {
 		return nil, err
@@ -57,13 +57,13 @@ func (this *IngressSource) GetDNSInfo(_ logger.LogContext, obj resources.Object,
 		return info, fmt.Errorf("annotated dns names %s not declared by ingress", del)
 	}
 	info.Names = dns.NewDNSNameSetFromStringSet(names, current.GetSetIdentifier())
-	info.IPStack = obj.GetAnnotation(dns.AnnotationIPStack)
+	info.IPStack = obj.GetAnnotations()[dns.AnnotationIPStack]
 	return info, nil
 }
 
-func (this *IngressSource) extractRuleHosts(obj resources.Object) ([]string, error) {
+func (this *IngressSource) extractRuleHosts(obj resources.ObjectData) ([]string, error) {
 	hosts := []string{}
-	switch data := obj.Data().(type) {
+	switch data := obj.(type) {
 	case *networkingv1beta1.Ingress:
 		for _, i := range data.Spec.Rules {
 			hosts = append(hosts, i.Host)
@@ -75,13 +75,13 @@ func (this *IngressSource) extractRuleHosts(obj resources.Object) ([]string, err
 		}
 		return hosts, nil
 	default:
-		return nil, fmt.Errorf("unexpected ingress type: %#v", obj.Data())
+		return nil, fmt.Errorf("unexpected ingress type: %#v", obj)
 	}
 }
 
-func (this *IngressSource) GetTargets(obj resources.Object) utils.StringSet {
+func GetTargets(obj resources.ObjectData) utils.StringSet {
 	set := utils.StringSet{}
-	switch data := obj.Data().(type) {
+	switch data := obj.(type) {
 	case *networkingv1beta1.Ingress:
 		for _, i := range data.Status.LoadBalancer.Ingress {
 			if i.Hostname != "" && i.IP == "" {

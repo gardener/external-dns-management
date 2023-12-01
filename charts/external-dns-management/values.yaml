@@ -157,6 +157,11 @@ configuration:
   # compoundRemoteRatelimiterEnabled:
   # compoundRemoteRatelimiterQps:
   # compoundRescheduleDelay: 120s
+  # compoundRfc2136AdvancedBatchSize:
+  # compoundRfc2136AdvancedMaxRetries:
+  # compoundRfc2136RatelimiterBurst:
+  # compoundRfc2136RatelimiterEnabled:
+  # compoundRfc2136RatelimiterQps:
   # compoundSecretsPoolSize: 2
   # compoundSetup: 10
   # compoundStatisticPoolSize:
@@ -213,6 +218,7 @@ configuration:
   # googleCloudDNSRatelimiterEnabled:
   # googleCloudDNSRatelimiterQps:
   # gracePeriod: 0
+  # httproutesPoolSize:
   # infobloxDNSAdvancedBatchSize:
   # infobloxDNSAdvancedMaxRetries:
   # infobloxDNSRatelimiterBurst:
@@ -235,6 +241,43 @@ configuration:
   # ingressDNSTargetRealms: ""
   # ingressDNSTargetSetIgnoreOwners: false
   # ingressDNSTargetsPoolSize: 2
+  # istioGatewaysDnsDefaultPoolResyncPeriod:
+  # istioGatewaysDnsDefaultPoolSize:
+  # istioGatewaysDnsDnsClass:
+  # istioGatewaysDnsDnsTargetClass:
+  # istioGatewaysDnsExcludeDomains:
+  # istioGatewaysDnsKey:
+  # istioGatewaysDnsPoolResyncPeriod:
+  # istioGatewaysDnsPoolSize:
+  # istioGatewaysDnsTargetCreatorLabelName:
+  # istioGatewaysDnsTargetCreatorLabelValue:
+  # istioGatewaysDnsTargetNamePrefix:
+  # istioGatewaysDnsTargetNamespace:
+  # istioGatewaysDnsTargetOwnerId:
+  # istioGatewaysDnsTargetOwnerObject:
+  # istioGatewaysDnsTargetRealms:
+  # istioGatewaysDnsTargetSetIgnoreOwners:
+  # istioGatewaysDnsTargetsPoolSize:
+  # istioGatewaysDnsTargetsourcesPoolSize:
+  # istioGatewaysDnsVirtualservicesPoolSize:
+  # k8sGatewaysDnsDefaultPoolResyncPeriod:
+  # k8sGatewaysDnsDefaultPoolSize:
+  # k8sGatewaysDnsDnsClass:
+  # k8sGatewaysDnsDnsTargetClass:
+  # k8sGatewaysDnsExcludeDomains:
+  # k8sGatewaysDnsHttproutesPoolSize:
+  # k8sGatewaysDnsKey:
+  # k8sGatewaysDnsPoolResyncPeriod:
+  # k8sGatewaysDnsPoolSize:
+  # k8sGatewaysDnsTargetCreatorLabelName:
+  # k8sGatewaysDnsTargetCreatorLabelValue:
+  # k8sGatewaysDnsTargetNamePrefix:
+  # k8sGatewaysDnsTargetNamespace:
+  # k8sGatewaysDnsTargetOwnerId:
+  # k8sGatewaysDnsTargetOwnerObject:
+  # k8sGatewaysDnsTargetRealms:
+  # k8sGatewaysDnsTargetSetIgnoreOwners:
+  # k8sGatewaysDnsTargetsPoolSize:
   # key: ""
   # kubeconfig: ""
   # kubeconfigDisableDeployCrds: false
@@ -283,6 +326,11 @@ configuration:
   # remoteaccesscertificatesDefaultPoolSize:
   # remoteaccesscertificatesPoolSize:
   # rescheduleDelay: 120s
+  # rfc2136AdvancedBatchSize:
+  # rfc2136AdvancedMaxRetries:
+  # rfc2136RatelimiterBurst:
+  # rfc2136RatelimiterEnabled:
+  # rfc2136RatelimiterQps:
   # secretsPoolSize:
   serverPortHttp: 8080
   # serviceDNSDefaultPoolResyncPeriod: 30s
@@ -302,6 +350,7 @@ configuration:
   # serviceDNSTargetRealms: ""
   # serviceDNSTargetSetIgnoreOwners: false
   # serviceDNSTargetsPoolSize: 2
+  # servicesPoolSize:
   # setup: 10
   # statisticPoolSize:
   # target: ""
@@ -317,8 +366,12 @@ configuration:
   # targetId: ""
   # targetMigrationIds: ""
   # targetsPoolSize:
+  # targetsourcesPoolSize:
   ttl: 120
   # version:
+  # virtualservicesPoolSize:
+  # watchGatewaysCrdsDefaultPoolSize:
+  # watchGatewaysCrdsPoolSize:
   # zonepoliciesPoolSize:
 
 additionalConfiguration: []

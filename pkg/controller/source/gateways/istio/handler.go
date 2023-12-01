@@ -24,40 +24,70 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"github.com/gardener/external-dns-management/pkg/controller/source/service"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/source"
 	istionetworkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+
+	"github.com/gardener/external-dns-management/pkg/controller/source/ingress"
+	"github.com/gardener/external-dns-management/pkg/controller/source/service"
+	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
-type ServiceLister interface {
-	GetServices(selectors map[string]string) ([]resources.ObjectData, error)
+const (
+	// TargetsAnnotation is the annotation used to specify the target IPs or names explicitly
+	TargetsAnnotation = dns.ANNOTATION_GROUP + "/targets"
+	// IngressTargetSourceAnnotation is the annotation used to determine if the gateway is implemented by an Ingress object
+	// instead of a standard LoadBalancer service type
+	IngressTargetSourceAnnotation = dns.ANNOTATION_GROUP + "/ingress"
+)
+
+type resourceLister interface {
+	ListServices(selectors map[string]string) ([]resources.ObjectData, error)
+	GetIngress(name resources.ObjectName) (resources.ObjectData, error)
+	ListVirtualServices(gateway *resources.ObjectName) ([]resources.ObjectData, error)
 }
 
-type GatewaySource struct {
+type gatewaySource struct {
 	source.DefaultDNSSource
-	serviceLister ServiceLister
+	lister resourceLister
+	state  *resourcesState
 }
 
 func NewGatewaySource(c controller.Interface) (source.DNSSource, error) {
-	serviceLister, err := newServiceLister(c)
+	lister, err := newResourceLister(c)
 	if err != nil {
 		return nil, err
 	}
-	return NewGatewaySourceWithServiceLister(serviceLister)
+	state, err := getOrCreateSharedState(c)
+	if err != nil {
+		return nil, err
+	}
+	return newGatewaySourceWithResourceLister(lister, state)
 }
 
-func NewGatewaySourceWithServiceLister(serviceLister ServiceLister) (*GatewaySource, error) {
-	return &GatewaySource{serviceLister: serviceLister, DefaultDNSSource: source.NewDefaultDNSSource(nil)}, nil
+func newGatewaySourceWithResourceLister(lister resourceLister, state *resourcesState) (source.DNSSource, error) {
+	return &gatewaySource{lister: lister, state: state, DefaultDNSSource: source.NewDefaultDNSSource(nil)}, nil
 }
 
-func (s *GatewaySource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
-	return s.GetDNSInfoData(logger, obj.Data(), current)
+func (s *gatewaySource) Setup() error {
+	virtualServices, err := s.lister.ListVirtualServices(nil)
+	if err != nil {
+		return err
+	}
+	for _, virtualService := range virtualServices {
+		gateways := extractGatewayNames(virtualService)
+		s.state.AddVirtualService(resources.NewObjectNameForData(virtualService), gateways)
+	}
+	return nil
 }
 
-func (s *GatewaySource) GetDNSInfoData(logger logger.LogContext, obj resources.ObjectData, current *source.DNSCurrentState) (*source.DNSInfo, error) {
+func (s *gatewaySource) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) {
+	s.DefaultDNSSource.Deleted(logger, key)
+}
+
+func (s *gatewaySource) GetDNSInfo(logger logger.LogContext, obj resources.ObjectData, current *source.DNSCurrentState) (*source.DNSInfo, error) {
 	info := &source.DNSInfo{}
 	hosts, err := s.extractServerHosts(obj)
 	if err != nil {
@@ -77,53 +107,129 @@ func (s *GatewaySource) GetDNSInfoData(logger logger.LogContext, obj resources.O
 		return info, fmt.Errorf("annotated dns names %s not declared by gateway", del)
 	}
 	info.Names = dns.NewDNSNameSetFromStringSet(names, current.GetSetIdentifier())
-	info.Targets = s.GetTargets(logger, info.Names, obj)
+	info.Targets = s.getTargets(logger, info.Names, obj)
 	return info, nil
 }
 
-func (s *GatewaySource) extractServerHosts(obj resources.ObjectData) ([]string, error) {
+func (s *gatewaySource) extractServerHosts(obj resources.ObjectData) ([]string, error) {
 	var hosts []string
 	switch data := obj.(type) {
 	case *istionetworkingv1beta1.Gateway:
 		for _, server := range data.Spec.Servers {
 			hosts = append(hosts, parsedHosts(server.Hosts)...)
 		}
-		return hosts, nil
 	case *istionetworkingv1alpha3.Gateway:
 		for _, server := range data.Spec.Servers {
 			hosts = append(hosts, parsedHosts(server.Hosts)...)
 		}
-		return hosts, nil
 	default:
 		return nil, fmt.Errorf("unexpected istio gateway type: %#v", obj)
 	}
+
+	virtualServices, err := s.lister.ListVirtualServices(ptr.To(resources.NewObjectNameForData(obj)))
+	if err != nil {
+		return nil, err
+	}
+
+	addHost := func(hosts []string, host string) []string {
+		for _, h := range hosts {
+			if h == host {
+				return hosts
+			}
+			if strings.HasPrefix(h, "*.") && strings.HasSuffix(host, h[1:]) && !strings.Contains(host[:len(host)-len(h)+1], ".") {
+				return hosts
+			}
+		}
+		return append(hosts, host)
+	}
+
+	for _, vsvc := range virtualServices {
+		switch r := vsvc.(type) {
+		case *istionetworkingv1beta1.VirtualService:
+			for _, h := range r.Spec.Hosts {
+				hosts = addHost(hosts, h)
+			}
+		case *istionetworkingv1alpha3.VirtualService:
+			for _, h := range r.Spec.Hosts {
+				hosts = addHost(hosts, h)
+			}
+		}
+	}
+	return hosts, nil
 }
 
-func (s *GatewaySource) GetTargets(logger logger.LogContext, names dns.DNSNameSet, obj resources.ObjectData) utils.StringSet {
+func (s *gatewaySource) getTargets(logger logger.LogContext, names dns.DNSNameSet, obj resources.ObjectData) utils.StringSet {
 	if len(names) == 0 {
 		return nil
 	}
+
+	if targets := obj.GetAnnotations()[TargetsAnnotation]; targets != "" {
+		targetSet := utils.NewStringSet()
+		for _, target := range strings.Split(targets, ",") {
+			targetSet.Add(target)
+		}
+		return targetSet
+	}
+
+	if ingressName := obj.GetAnnotations()[IngressTargetSourceAnnotation]; ingressName != "" {
+		return s.getTargetsFromIngress(logger, ingressName, obj)
+	}
+
+	return s.getTargetsFromService(logger, names, obj)
+}
+
+func (s *gatewaySource) getTargetsFromIngress(logger logger.LogContext, ingressName string, obj resources.ObjectData) utils.StringSet {
+	parts := strings.Split(ingressName, "/")
+	var namespace, name string
+	switch len(parts) {
+	case 1:
+		namespace = obj.GetNamespace()
+		name = parts[0]
+	case 2:
+		namespace = parts[0]
+		name = parts[1]
+	default:
+		logger.Warnf("invalid annotation %s: %s", IngressTargetSourceAnnotation, ingressName)
+		return nil
+	}
+	key := resources.NewKey(ingress.MainResource, namespace, name)
+	ingressObj, err := s.lister.GetIngress(key.ObjectName())
+	if err != nil {
+		logger.Warnf("cannot retrieve source ingress %s: %s", key.ObjectName(), err)
+		return nil
+	}
+	return ingress.GetTargets(ingressObj)
+}
+
+func (s *gatewaySource) getTargetsFromService(logger logger.LogContext, names dns.DNSNameSet, obj resources.ObjectData) utils.StringSet {
 	selectors := s.getSelectors(obj)
 	if len(selectors) == 0 {
 		return nil
 	}
-	serviceObjects, err := s.serviceLister.GetServices(selectors)
+
+	serviceObjects, err := s.lister.ListServices(selectors)
 	if err != nil {
 		return nil
+	}
+	sources := make([]resources.ObjectKey, 0, len(serviceObjects))
+	for _, svcObj := range serviceObjects {
+		sources = append(sources, resources.NewKey(service.MainResource, svcObj.GetNamespace(), svcObj.GetName()))
 	}
 
 	set := utils.StringSet{}
 	for _, svc := range serviceObjects {
-		subset, _, err := service.GetTargets(logger, svc, names)
+		extraction, err := service.GetTargets(logger, svc, names)
 		if err != nil {
 			logger.Warnf("no targets for gateway %s/%s: %s", obj.GetNamespace(), obj.GetName(), err)
 		}
-		set.AddSet(subset)
+		if extraction != nil {
+			set.AddSet(extraction.Targets)
+		}
 	}
 	return set
 }
 
-func (s *GatewaySource) getSelectors(obj resources.ObjectData) map[string]string {
+func (s *gatewaySource) getSelectors(obj resources.ObjectData) map[string]string {
 	switch data := obj.(type) {
 	case *istionetworkingv1beta1.Gateway:
 		return data.Spec.Selector
@@ -134,21 +240,35 @@ func (s *GatewaySource) getSelectors(obj resources.ObjectData) map[string]string
 	}
 }
 
-type serviceLister struct {
-	servicesResources resources.Interface
+type stdResourceLister struct {
+	servicesResources        resources.Interface
+	ingressResources         resources.Interface
+	virtualServicesResources resources.Interface
 }
 
-var _ ServiceLister = &serviceLister{}
+var _ resourceLister = &stdResourceLister{}
 
-func newServiceLister(c controller.Interface) (*serviceLister, error) {
-	svcResources, err := c.GetMainCluster().Resources().GetByGK(resources.NewGroupKind("", "Service"))
+func newResourceLister(c controller.Interface) (*stdResourceLister, error) {
+	svcResources, err := c.GetMainCluster().Resources().GetByGK(service.MainResource)
 	if err != nil {
 		return nil, err
 	}
-	return &serviceLister{servicesResources: svcResources}, nil
+	ingressResources, err := c.GetMainCluster().Resources().GetByGK(ingress.MainResource)
+	if err != nil {
+		return nil, err
+	}
+	virtualServicesResources, err := c.GetMainCluster().Resources().GetByGK(GroupKindVirtualService)
+	if err != nil {
+		return nil, err
+	}
+	return &stdResourceLister{
+		servicesResources:        svcResources,
+		ingressResources:         ingressResources,
+		virtualServicesResources: virtualServicesResources,
+	}, nil
 }
 
-func (s *serviceLister) GetServices(selectors map[string]string) ([]resources.ObjectData, error) {
+func (s *stdResourceLister) ListServices(selectors map[string]string) ([]resources.ObjectData, error) {
 	ls, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{MatchLabels: selectors})
 	if err != nil {
 		return nil, err
@@ -160,6 +280,31 @@ func (s *serviceLister) GetServices(selectors map[string]string) ([]resources.Ob
 	var array []resources.ObjectData
 	for _, obj := range objs {
 		array = append(array, obj.Data())
+	}
+	return array, nil
+}
+
+func (s *stdResourceLister) GetIngress(name resources.ObjectName) (resources.ObjectData, error) {
+	obj, err := s.ingressResources.Get(name)
+	if err != nil {
+		return nil, err
+	}
+	return obj.Data(), nil
+}
+
+func (s *stdResourceLister) ListVirtualServices(gateway *resources.ObjectName) ([]resources.ObjectData, error) {
+	objs, err := s.virtualServicesResources.ListCached(nil)
+	if err != nil {
+		return nil, err
+	}
+	var array []resources.ObjectData
+	for _, obj := range objs {
+		gateways := extractGatewayNames(obj.Data())
+		for g := range gateways {
+			if gateway == nil || g == *gateway {
+				array = append(array, obj.Data())
+			}
+		}
 	}
 	return array, nil
 }

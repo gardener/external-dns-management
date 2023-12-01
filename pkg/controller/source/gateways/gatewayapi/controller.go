@@ -14,39 +14,36 @@
  *
  */
 
-package istio
+package gatewayapi
 
 import (
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/controller/source/ingress"
-	"github.com/gardener/external-dns-management/pkg/controller/source/service"
 
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
+const Group = "gateway.networking.k8s.io"
+
 var (
-	GroupKindGateway        = resources.NewGroupKind("networking.istio.io", "Gateway")
-	GroupKindVirtualService = resources.NewGroupKind("networking.istio.io", "VirtualService")
+	GroupKindGateway   = resources.NewGroupKind(Group, "Gateway")
+	GroupKindHTTPRoute = resources.NewGroupKind(Group, "HTTPRoute")
 )
 
 func init() {
-	source.DNSSourceController(source.NewDNSSouceTypeForCreator("istio-gateways-dns", GroupKindGateway, NewGatewaySource), nil).
+	source.DNSSourceController(source.NewDNSSouceTypeForCreator("k8s-gateways-dns", GroupKindGateway, NewGatewaySource), nil).
 		FinalizerDomain("dns.gardener.cloud").
 		DeactivateOnCreationErrorCheck(deactivateOnMissingMainResource).
-		Reconciler(newTargetSourcesReconciler, "targetsources").
-		Reconciler(newVirtualServicesReconciler, "virtualservices").
+		Reconciler(HTTPRoutesReconciler, "httproutes").
 		Cluster(cluster.DEFAULT).
-		WorkerPool("targetsources", 2, 0).
-		ReconcilerWatchesByGK("targetsources", service.MainResource, ingress.MainResource).
-		WorkerPool("virtualservices", 2, 0).
-		ReconcilerWatchesByGK("virtualservices", GroupKindVirtualService).
+		WorkerPool("httproutes", 2, 0).
+		ReconcilerWatchesByGK("httproutes", GroupKindHTTPRoute).
 		MustRegister(source.CONTROLLER_GROUP_DNS_SOURCES)
 }
 
 func deactivateOnMissingMainResource(err error) bool {
 	return strings.Contains(err.Error(), "gardener/cml/resources/UNKNOWN_RESOURCE") &&
-		(strings.Contains(err.Error(), GroupKindGateway.String()) || strings.Contains(err.Error(), GroupKindVirtualService.String()))
+		(strings.Contains(err.Error(), GroupKindGateway.String()) || strings.Contains(err.Error(), GroupKindHTTPRoute.String()))
 }

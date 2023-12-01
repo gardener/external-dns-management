@@ -6,7 +6,7 @@
  *
  */
 
-package istio
+package gatewayapi_test
 
 import (
 	"testing"
@@ -17,5 +17,5 @@ import (
 
 func TestUtilsSuite(t *testing.T) {
 	RegisterFailHandler(ginkgov2.Fail)
-	ginkgov2.RunSpecs(t, "Istio Gateway Suite")
+	ginkgov2.RunSpecs(t, "Networking Kubernetes Gateway Suite")
 }

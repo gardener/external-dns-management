@@ -61,8 +61,12 @@ func (this *DNSEntryObject) BaseStatus() *api.DNSBaseStatus {
 	return &this.DNSEntry().Status.DNSBaseStatus
 }
 
+func GetDNSName(entry *api.DNSEntry) string {
+	return dns.NormalizeHostname(entry.Spec.DNSName)
+}
+
 func (this *DNSEntryObject) GetDNSName() string {
-	return dns.NormalizeHostname(this.DNSEntry().Spec.DNSName)
+	return GetDNSName(this.DNSEntry())
 }
 
 func (this *DNSEntryObject) GetSetIdentifier() string {
@@ -148,15 +152,19 @@ func (this *DNSEntryObject) GetTargetSpec(p TargetProvider) TargetSpec {
 	return BaseTargetSpec(this, p)
 }
 
-func (this *DNSEntryObject) DNSSetName() dns.DNSSetName {
+func DNSSetName(entry *api.DNSEntry) dns.DNSSetName {
 	setIdentifier := ""
-	if this.Spec().RoutingPolicy != nil {
-		setIdentifier = this.Spec().RoutingPolicy.SetIdentifier
+	if policy := entry.Spec.RoutingPolicy; policy != nil {
+		setIdentifier = policy.SetIdentifier
 	}
 	return dns.DNSSetName{
-		DNSName:       this.GetDNSName(),
+		DNSName:       GetDNSName(entry),
 		SetIdentifier: setIdentifier,
 	}
+}
+
+func (this *DNSEntryObject) DNSSetName() dns.DNSSetName {
+	return DNSSetName(this.DNSEntry())
 }
 
 func DNSSetNameMatcher(name dns.DNSSetName) resources.ObjectMatcher {

@@ -399,6 +399,21 @@ spec:
         {{- if .Values.configuration.compoundRescheduleDelay }}
         - --compound.reschedule-delay={{ .Values.configuration.compoundRescheduleDelay }}
         {{- end }}
+        {{- if .Values.configuration.compoundRfc2136AdvancedBatchSize }}
+        - --compound.rfc2136.advanced.batch-size={{ .Values.configuration.compoundRfc2136AdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRfc2136AdvancedMaxRetries }}
+        - --compound.rfc2136.advanced.max-retries={{ .Values.configuration.compoundRfc2136AdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRfc2136RatelimiterBurst }}
+        - --compound.rfc2136.ratelimiter.burst={{ .Values.configuration.compoundRfc2136RatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRfc2136RatelimiterEnabled }}
+        - --compound.rfc2136.ratelimiter.enabled={{ .Values.configuration.compoundRfc2136RatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundRfc2136RatelimiterQps }}
+        - --compound.rfc2136.ratelimiter.qps={{ .Values.configuration.compoundRfc2136RatelimiterQps }}
+        {{- end }}
         {{- if .Values.configuration.compoundSecretsPoolSize }}
         - --compound.secrets.pool.size={{ .Values.configuration.compoundSecretsPoolSize }}
         {{- end }}
@@ -567,6 +582,9 @@ spec:
         {{- if .Values.configuration.gracePeriod }}
         - --grace-period={{ .Values.configuration.gracePeriod }}
         {{- end }}
+        {{- if .Values.configuration.httproutesPoolSize }}
+        - --httproutes.pool.size={{ .Values.configuration.httproutesPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.infobloxDNSAdvancedBatchSize }}
         - --infoblox-dns.advanced.batch-size={{ .Values.configuration.infobloxDNSAdvancedBatchSize }}
         {{- end }}
@@ -632,6 +650,117 @@ spec:
         {{- end }}
         {{- if .Values.configuration.ingressDNSTargetsPoolSize }}
         - --ingress-dns.targets.pool.size={{ .Values.configuration.ingressDNSTargetsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsDefaultPoolResyncPeriod }}
+        - --istio-gateways-dns.default.pool.resync-period={{ .Values.configuration.istioGatewaysDnsDefaultPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsDefaultPoolSize }}
+        - --istio-gateways-dns.default.pool.size={{ .Values.configuration.istioGatewaysDnsDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsDnsClass }}
+        - --istio-gateways-dns.dns-class={{ .Values.configuration.istioGatewaysDnsDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsDnsTargetClass }}
+        - --istio-gateways-dns.dns-target-class={{ .Values.configuration.istioGatewaysDnsDnsTargetClass }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsExcludeDomains }}
+        - --istio-gateways-dns.exclude-domains={{ .Values.configuration.istioGatewaysDnsExcludeDomains }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsKey }}
+        - --istio-gateways-dns.key={{ .Values.configuration.istioGatewaysDnsKey }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsPoolResyncPeriod }}
+        - --istio-gateways-dns.pool.resync-period={{ .Values.configuration.istioGatewaysDnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsPoolSize }}
+        - --istio-gateways-dns.pool.size={{ .Values.configuration.istioGatewaysDnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsTargetCreatorLabelName }}
+        - --istio-gateways-dns.target-creator-label-name={{ .Values.configuration.istioGatewaysDnsTargetCreatorLabelName }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsTargetCreatorLabelValue }}
+        - --istio-gateways-dns.target-creator-label-value={{ .Values.configuration.istioGatewaysDnsTargetCreatorLabelValue }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsTargetNamePrefix }}
+        - --istio-gateways-dns.target-name-prefix={{ .Values.configuration.istioGatewaysDnsTargetNamePrefix }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsTargetNamespace }}
+        - --istio-gateways-dns.target-namespace={{ .Values.configuration.istioGatewaysDnsTargetNamespace }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsTargetOwnerId }}
+        - --istio-gateways-dns.target-owner-id={{ .Values.configuration.istioGatewaysDnsTargetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsTargetOwnerObject }}
+        - --istio-gateways-dns.target-owner-object={{ .Values.configuration.istioGatewaysDnsTargetOwnerObject }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsTargetRealms }}
+        - --istio-gateways-dns.target-realms={{ .Values.configuration.istioGatewaysDnsTargetRealms }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsTargetSetIgnoreOwners }}
+        - --istio-gateways-dns.target-set-ignore-owners={{ .Values.configuration.istioGatewaysDnsTargetSetIgnoreOwners }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsTargetsPoolSize }}
+        - --istio-gateways-dns.targets.pool.size={{ .Values.configuration.istioGatewaysDnsTargetsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsTargetsourcesPoolSize }}
+        - --istio-gateways-dns.targetsources.pool.size={{ .Values.configuration.istioGatewaysDnsTargetsourcesPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.istioGatewaysDnsVirtualservicesPoolSize }}
+        - --istio-gateways-dns.virtualservices.pool.size={{ .Values.configuration.istioGatewaysDnsVirtualservicesPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsDefaultPoolResyncPeriod }}
+        - --k8s-gateways-dns.default.pool.resync-period={{ .Values.configuration.k8sGatewaysDnsDefaultPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsDefaultPoolSize }}
+        - --k8s-gateways-dns.default.pool.size={{ .Values.configuration.k8sGatewaysDnsDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsDnsClass }}
+        - --k8s-gateways-dns.dns-class={{ .Values.configuration.k8sGatewaysDnsDnsClass }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsDnsTargetClass }}
+        - --k8s-gateways-dns.dns-target-class={{ .Values.configuration.k8sGatewaysDnsDnsTargetClass }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsExcludeDomains }}
+        - --k8s-gateways-dns.exclude-domains={{ .Values.configuration.k8sGatewaysDnsExcludeDomains }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsHttproutesPoolSize }}
+        - --k8s-gateways-dns.httproutes.pool.size={{ .Values.configuration.k8sGatewaysDnsHttproutesPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsKey }}
+        - --k8s-gateways-dns.key={{ .Values.configuration.k8sGatewaysDnsKey }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsPoolResyncPeriod }}
+        - --k8s-gateways-dns.pool.resync-period={{ .Values.configuration.k8sGatewaysDnsPoolResyncPeriod }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsPoolSize }}
+        - --k8s-gateways-dns.pool.size={{ .Values.configuration.k8sGatewaysDnsPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsTargetCreatorLabelName }}
+        - --k8s-gateways-dns.target-creator-label-name={{ .Values.configuration.k8sGatewaysDnsTargetCreatorLabelName }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsTargetCreatorLabelValue }}
+        - --k8s-gateways-dns.target-creator-label-value={{ .Values.configuration.k8sGatewaysDnsTargetCreatorLabelValue }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsTargetNamePrefix }}
+        - --k8s-gateways-dns.target-name-prefix={{ .Values.configuration.k8sGatewaysDnsTargetNamePrefix }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsTargetNamespace }}
+        - --k8s-gateways-dns.target-namespace={{ .Values.configuration.k8sGatewaysDnsTargetNamespace }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsTargetOwnerId }}
+        - --k8s-gateways-dns.target-owner-id={{ .Values.configuration.k8sGatewaysDnsTargetOwnerId }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsTargetOwnerObject }}
+        - --k8s-gateways-dns.target-owner-object={{ .Values.configuration.k8sGatewaysDnsTargetOwnerObject }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsTargetRealms }}
+        - --k8s-gateways-dns.target-realms={{ .Values.configuration.k8sGatewaysDnsTargetRealms }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsTargetSetIgnoreOwners }}
+        - --k8s-gateways-dns.target-set-ignore-owners={{ .Values.configuration.k8sGatewaysDnsTargetSetIgnoreOwners }}
+        {{- end }}
+        {{- if .Values.configuration.k8sGatewaysDnsTargetsPoolSize }}
+        - --k8s-gateways-dns.targets.pool.size={{ .Values.configuration.k8sGatewaysDnsTargetsPoolSize }}
         {{- end }}
         {{- if .Values.configuration.key }}
         - --key={{ .Values.configuration.key }}
@@ -777,6 +906,21 @@ spec:
         {{- if .Values.configuration.rescheduleDelay }}
         - --reschedule-delay={{ .Values.configuration.rescheduleDelay }}
         {{- end }}
+        {{- if .Values.configuration.rfc2136AdvancedBatchSize }}
+        - --rfc2136.advanced.batch-size={{ .Values.configuration.rfc2136AdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.rfc2136AdvancedMaxRetries }}
+        - --rfc2136.advanced.max-retries={{ .Values.configuration.rfc2136AdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.rfc2136RatelimiterBurst }}
+        - --rfc2136.ratelimiter.burst={{ .Values.configuration.rfc2136RatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.rfc2136RatelimiterEnabled }}
+        - --rfc2136.ratelimiter.enabled={{ .Values.configuration.rfc2136RatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.rfc2136RatelimiterQps }}
+        - --rfc2136.ratelimiter.qps={{ .Values.configuration.rfc2136RatelimiterQps }}
+        {{- end }}
         {{- if .Values.configuration.secretsPoolSize }}
         - --secrets.pool.size={{ .Values.configuration.secretsPoolSize }}
         {{- end }}
@@ -879,11 +1023,23 @@ spec:
         {{- if .Values.configuration.targetsPoolSize }}
         - --targets.pool.size={{ .Values.configuration.targetsPoolSize }}
         {{- end }}
+        {{- if .Values.configuration.targetsourcesPoolSize }}
+        - --targetsources.pool.size={{ .Values.configuration.targetsourcesPoolSize }}
+        {{- end }}
         {{- if .Values.configuration.ttl }}
         - --ttl={{ .Values.configuration.ttl }}
         {{- end }}
         {{- if .Values.configuration.version }}
         - --version={{ .Values.configuration.version }}
+        {{- end }}
+        {{- if .Values.configuration.virtualservicesPoolSize }}
+        - --virtualservices.pool.size={{ .Values.configuration.virtualservicesPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.watchGatewaysCrdsDefaultPoolSize }}
+        - --watch-gateways-crds.default.pool.size={{ .Values.configuration.watchGatewaysCrdsDefaultPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.watchGatewaysCrdsPoolSize }}
+        - --watch-gateways-crds.pool.size={{ .Values.configuration.watchGatewaysCrdsPoolSize }}
         {{- end }}
         {{- if .Values.configuration.zonepoliciesPoolSize }}
         - --zonepolicies.pool.size={{ .Values.configuration.zonepoliciesPoolSize }}

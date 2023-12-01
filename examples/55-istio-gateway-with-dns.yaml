@@ -1,0 +1,43 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  annotations:
+    dns.gardener.cloud/dnsnames: '*'
+    #dns.gardener.cloud/ttl: "500"
+    # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
+    #dns.gardener.cloud/class: garden
+  name: my-gateway
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - hosts:
+        - uk.example.com
+        - eu.example.com
+      port:
+        name: http
+        number: 80
+        protocol: HTTP
+      tls:
+        httpsRedirect: true
+    - hosts:
+        - uk.example.com
+        - eu.example.com
+      port:
+        name: https-443
+        number: 443
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        privateKey: /etc/certs/privatekey.pem
+        serverCertificate: /etc/certs/servercert.pem
+    - hosts:
+        - bookinfo-namespace/*.example.com
+      port:
+        name: https-9443
+        number: 9443
+        protocol: HTTPS
+      tls:
+        credentialName: my-secret
+        mode: SIMPLE

@@ -21,10 +21,10 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
-var _MAIN_RESOURCE = resources.NewGroupKind("core", "Service")
+var MainResource = resources.NewGroupKind("core", "Service")
 
 func init() {
-	source.DNSSourceController(source.NewDNSSouceTypeForExtractor("service-dns", _MAIN_RESOURCE, GetTargets), nil).
+	source.DNSSourceController(source.NewDNSSouceTypeForExtractor("service-dns", MainResource, GetTargets), nil).
 		FinalizerDomain("dns.gardener.cloud").
 		MustRegister(source.CONTROLLER_GROUP_DNS_SOURCES)
 }
