@@ -1,7 +1,5 @@
 external-dns-management:
-  template: 'default'
   base_definition:
-    repo: ~
     traits:
       version:
         preprocess: 'inject-commit-hash'
