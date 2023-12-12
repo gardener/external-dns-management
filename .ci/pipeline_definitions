@@ -9,7 +9,7 @@ external-dns-management:
       integrationtest:
         image: golang:1.21.5
       test:
-        image: golang:1.20.2
+        image: golang:1.21.5
     traits:
       publish:
         dockerimages:
