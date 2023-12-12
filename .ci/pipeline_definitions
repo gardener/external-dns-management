@@ -7,7 +7,7 @@ external-dns-management:
       check:
         image: golang:1.20.2
       integrationtest:
-        image: golang:1.20.2
+        image: golang:1.21.5
       test:
         image: golang:1.20.2
     traits:
