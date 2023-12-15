@@ -1,4 +1,4 @@
-REGISTRY              := eu.gcr.io/gardener-project
+REGISTRY              := europe-docker.pkg.dev/gardener-project/public
 EXECUTABLE            := dns-controller-manager
 PROJECT               := github.com/gardener/external-dns-management
 IMAGE_REPOSITORY      := $(REGISTRY)/dns-controller-manager
