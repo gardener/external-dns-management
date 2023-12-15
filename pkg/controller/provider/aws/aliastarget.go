@@ -18,6 +18,7 @@ package aws
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -156,7 +157,7 @@ var canonicalHostedZones = map[string]string{
 }
 
 func isAliasTarget(r *route53.ResourceRecordSet) bool {
-	return aws.StringValue(r.Type) == route53.RRTypeA && r.AliasTarget != nil
+	return (aws.StringValue(r.Type) == route53.RRTypeA || aws.StringValue(r.Type) == route53.RRTypeAaaa) && r.AliasTarget != nil
 }
 
 // buildRecordSetFromAliasTarget transforms an A alias target to a CNAME dns.RecordSet
@@ -167,7 +168,7 @@ func buildRecordSetFromAliasTarget(r *route53.ResourceRecordSet) *dns.RecordSet 
 	return rs
 }
 
-func buildResourceRecordSetForAliasTarget(name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
+func buildResourceRecordSetsForAliasTarget(name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) ([]*route53.ResourceRecordSet, error) {
 	target := dns.NormalizeHostname(rset.Records[0].Value)
 	hostedZone := canonicalHostedZone(target)
 	if hostedZone == "" {
@@ -179,15 +180,36 @@ func buildResourceRecordSetForAliasTarget(name dns.DNSSetName, policy *dns.Routi
 		EvaluateTargetHealth: aws.Bool(true),
 	}
 
-	rrset := &route53.ResourceRecordSet{
-		Name:        aws.String(name.DNSName),
-		Type:        aws.String(route53.RRTypeA),
-		AliasTarget: aliasTarget,
+	ips, err := net.LookupIP(dns.AlignHostname(rset.Records[0].Value))
+	hasIPv4 := err != nil || len(ips) == 0 // assume it has IPv4 addresses if lookup fails temporarily
+	hasIPv6 := err != nil || len(ips) == 0 // assume it has IPv6 addresses if lookup fails temporarily
+	for _, ip := range ips {
+		if ip.To4() != nil {
+			hasIPv4 = true
+		} else {
+			hasIPv6 = true
+		}
 	}
-	if err := policyContext.addRoutingPolicy(rrset, name, policy); err != nil {
-		return nil, err
+	var types []string
+	if hasIPv4 {
+		types = append(types, route53.RRTypeA)
 	}
-	return rrset, nil
+	if hasIPv6 {
+		types = append(types, route53.RRTypeAaaa)
+	}
+	var rrsets []*route53.ResourceRecordSet
+	for _, t := range types {
+		rrset := &route53.ResourceRecordSet{
+			Name:        aws.String(name.DNSName),
+			Type:        aws.String(t),
+			AliasTarget: aliasTarget,
+		}
+		if err := policyContext.addRoutingPolicy(rrset, name, policy); err != nil {
+			return nil, err
+		}
+		rrsets = append(rrsets, rrset)
+	}
+	return rrsets, nil
 }
 
 // canonicalHostedZone returns the matching canonical zone for a given hostname.
