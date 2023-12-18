@@ -4,7 +4,7 @@ fullnameOverride: dns-controller-manager
 replicaCount: 1
 
 image:
-  repository: eu.gcr.io/gardener-project/dns-controller-manager
+  repository: europe-docker.pkg.dev/gardener-project/public/dns-controller-manager
   tag: v0.16.1-master
   pullPolicy: IfNotPresent
 

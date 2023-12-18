@@ -6,4 +6,4 @@
 
 set -e
 
-echo "eu.gcr.io/gardener-project"
+echo "europe-docker.pkg.dev/gardener-project/public"

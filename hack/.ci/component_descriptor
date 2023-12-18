@@ -16,7 +16,7 @@ if [[ -f "$repo_root_dir/charts/images.yaml" ]]; then
   # the konnectivity-server is temporary excluded until the component-descriptor for the replica-reloader is released
   component-cli image-vector add --comp-desc ${BASE_DEFINITION_PATH} \
     --image-vector "$repo_root_dir/charts/images.yaml" \
-    --component-prefixes eu.gcr.io/gardener-project/gardener \
+    --component-prefixes europe-docker.pkg.dev/gardener-project \
     --exclude-component-reference konnectivity-server \
     --generic-dependencies hyperkube,kube-apiserver,kube-controller-manager,kube-scheduler,kube-proxy
 fi
@@ -39,14 +39,6 @@ if [[ -d "$repo_root_dir/charts/" ]]; then
       REPOSITORY=${imageAndTag[0]}
       TAG=${imageAndTag[1]}
 
-      gardener="eu.gcr.io/gardener-project/gardener"
-      if [[ "$NAME" == "hyperkube" ]]; then
-        ${ADD_DEPENDENCIES_CMD} --generic-dependencies "{\"name\": \"$NAME\", \"version\": \"$TAG\"}"
-      elif [[ $REPOSITORY =~ "eu.gcr.io/gardener-project/gardener"* ]]; then
-        ${ADD_DEPENDENCIES_CMD} --generic-dependencies "{\"name\": \"$NAME\", \"version\": \"$TAG\"}"
-      else
-        ${ADD_DEPENDENCIES_CMD} --container-image-dependencies "{\"name\": \"${NAME}\", \"image_reference\": \"${REPOSITORY}:${TAG}\", \"version\": \"$TAG\"}"
-      fi
     done < <(echo "$outputFile")
   done
 fi
