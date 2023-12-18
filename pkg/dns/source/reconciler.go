@@ -61,7 +61,10 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		classes := controller.NewClassesByOption(c, OPT_CLASS, dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
 		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
 		targetclasses := controller.NewTargetClassesByOption(c, OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
-		slaves := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c, sourceType))
+		slaves, err := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c, sourceType))
+		if err != nil {
+			return nil, err
+		}
 		ownerState, err := getOrCreateSharedOwnerState(c, false)
 		if err != nil {
 			return nil, err

@@ -207,10 +207,8 @@ else
   fi
 fi
 
-# install ginkgo
-go install -mod=vendor github.com/onsi/ginkgo/v2/ginkgo
-
-GOFLAGS="-mod=vendor" FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER DNS_DEDICATED=$DNS_DEDICATED ginkgo -v -p "$@"
+GINKGO=${GINKGO:-ginkgo}
+FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER DNS_DEDICATED=$DNS_DEDICATED ${GINKGO} -v -p "$@"
 
 RETCODE=$?
 

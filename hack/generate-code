@@ -16,18 +16,27 @@
 
 set -e
 
+SOURCE_PATH="$(readlink -f "$(dirname ${0})/..")"
+
+# setup virtual GOPATH
+source "$CONTROLLER_MANAGER_LIB_HACK_DIR"/vgopath-setup.sh
+
+CODE_GEN_DIR=$(go list -m -f '{{.Dir}}' k8s.io/code-generator)
+
 rm -f ${GOPATH}/bin/*-gen
 
-CURRENT_DIR=$(dirname $0)
-PROJECT_ROOT="${CURRENT_DIR}"/..
+# We need to explicitly pass GO111MODULE=off to k8s.io/code-generator as it is significantly slower otherwise,
+# see https://github.com/kubernetes/code-generator/issues/100.
+export GO111MODULE=off
 
-source "$PROJECT_ROOT/build/settings.src"
+rm -rf "${SOURCE_PATH}/pkg/client/dns"
+PROJECT_ROOT=$(dirname $0)/..
 
-rm -rf "$SCRIPT_ROOT/pkg/client/$APINAME"
 
-bash "${PROJECT_ROOT}"/vendor/k8s.io/code-generator/generate-groups.sh \
+bash "${CODE_GEN_DIR}"/generate-internal-groups.sh \
   "deepcopy,client,informer,lister" \
-  $PKGPATH/pkg/client/$APINAME \
-  $PKGPATH/pkg/apis \
-  $APINAME:$APIVERSION \
-  -h "${PROJECT_ROOT}/hack/LICENSE_BOILERPLATE.txt"
+  github.com/gardener/external-dns-management/pkg/client/dns \
+  "" \
+  github.com/gardener/external-dns-management/pkg/apis \
+  "dns:v1alpha1" \
+  --go-header-file "${SOURCE_PATH}/hack/LICENSE_BOILERPLATE.txt"
