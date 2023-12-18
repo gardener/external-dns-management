@@ -4,7 +4,6 @@ PROJECT               := github.com/gardener/external-dns-management
 IMAGE_REPOSITORY      := $(REGISTRY)/dns-controller-manager
 VERSION               := $(shell cat VERSION)
 IMAGE_TAG             := $(VERSION)
-EFFECTIVE_VERSION     := $(VERSION)-$(shell git rev-parse HEAD)
 
 .PHONY: revendor
 revendor:
@@ -80,25 +79,3 @@ alltests:
 .PHONY: docker-images
 docker-images:
 	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) -f build/Dockerfile .
-
-#####################################################################
-# Rules for cnudie component descriptors dev setup #
-#####################################################################
-
-.PHONY: cnudie-docker-images
-cnudie-docker-images:
-	@echo "Building docker images for version $(EFFECTIVE_VERSION) for registry $(IMAGE_REPOSITORY)"
-	@docker build -t $(IMAGE_REPOSITORY):$(EFFECTIVE_VERSION) -f build/Dockerfile .
-
-.PHONY: cnudie-docker-push
-cnudie-docker-push:
-	@echo "Pushing docker images for version $(EFFECTIVE_VERSION) to registry $(IMAGE_REPOSITORY)"
-	@if ! docker images $(IMAGE_REPOSITORY) | awk '{ print $$2 }' | grep -q -F $(EFFECTIVE_VERSION); then echo "$(IMAGE_REPOSITORY) version $(EFFECTIVE_VERSION) is not yet built. Please run 'make cnudie-docker-images'"; false; fi
-	@docker push $(IMAGE_REPOSITORY):$(EFFECTIVE_VERSION)
-
-.PHONY: cnudie-docker-all
-cnudie-docker-all: cnudie-docker-images cnudie-docker-push
-
-.PHONY: cnudie-cd-build-push
-cnudie-cd-build-push:
-	@EFFECTIVE_VERSION=$(EFFECTIVE_VERSION) ./hack/generate-cd.sh
