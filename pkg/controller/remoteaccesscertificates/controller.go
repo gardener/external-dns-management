@@ -44,8 +44,10 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
-const CONTROLLER = "remoteaccesscertificates"
-const OPT_REMOTE_ACCESS_CAKEY = "remote-access-cakey"
+const (
+	CONTROLLER              = "remoteaccesscertificates"
+	OPT_REMOTE_ACCESS_CAKEY = "remote-access-cakey"
+)
 
 func init() {
 	crds.AddToRegistry(apiextensions.DefaultRegistry())
@@ -148,13 +150,13 @@ func loadClientCA(config *Config) (*x509.Certificate, *rsa.PrivateKey, error) {
 	return clientCA, caPrivateKey, nil
 }
 
-func (r *reconciler) Setup() {
+func (r *reconciler) Setup() error {
 	r.nextSerialNumber.Store(time.Now().Unix())
 	r.controller.Infof("### setup remote client certificate")
 	res, _ := r.controller.GetMainCluster().Resources().GetByExample(&api.RemoteAccessCertificate{})
 	list, _ := res.ListCached(labels.Everything())
-	dnsutils.ProcessElements(list, func(e resources.Object) {
-		r.reconcile(r.controller, e)
+	return dnsutils.ProcessElements(list, func(e resources.Object) error {
+		return r.reconcile(r.controller, e)
 	}, 1)
 }
 
@@ -290,11 +292,13 @@ func (r *reconciler) resetForCertificatRecreation(certobj *api.RemoteAccessCerti
 
 func (r *reconciler) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	cert := obj.Data().(*api.RemoteAccessCertificate)
-	r.deleteSecret(cert.Namespace, cert.Spec.SecretName)
+	if err := r.deleteSecret(cert.Namespace, cert.Spec.SecretName); err != nil {
+		return reconcile.Failed(logger, err)
+	}
 	return reconcile.Succeeded(logger)
 }
 
-func (r *reconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
+func (r *reconciler) Deleted(logger logger.LogContext, _ resources.ClusterObjectKey) reconcile.Status {
 	return reconcile.Succeeded(logger)
 }
 

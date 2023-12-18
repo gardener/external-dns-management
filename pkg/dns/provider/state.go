@@ -94,12 +94,12 @@ func (this *setup) Start(context Context) {
 	defer this.lock.Unlock()
 	for c := range this.pending {
 		context.Infof("trigger %s", c)
-		context.EnqueueCommand(c)
+		_ = context.EnqueueCommand(c)
 	}
 
 	for key := range this.pendingKeys {
 		context.Infof("trigger key %s/%s", key.Namespace(), key.Name())
-		context.EnqueueKey(key)
+		_ = context.EnqueueKey(key)
 	}
 	this.pending = nil
 	this.pendingKeys = nil
@@ -238,29 +238,33 @@ func (this *state) Setup() error {
 	}
 
 	this.context.Infof("using %d parallel workers for initialization", processors)
-	if err := this.setupFor(&api.DNSProvider{}, "providers", func(e resources.Object) {
+	if err := this.setupFor(&api.DNSProvider{}, "providers", func(e resources.Object) error {
 		p := dnsutils.DNSProvider(e)
 		if this.GetHandlerFactory().IsResponsibleFor(p) {
 			this.UpdateProvider(this.context.NewContext("provider", p.ObjectName().String()), p)
 		}
+		return nil
 	}, processors); err != nil {
 		return err
 	}
-	if err := this.setupFor(&api.DNSOwner{}, "owners", func(e resources.Object) {
+	if err := this.setupFor(&api.DNSOwner{}, "owners", func(e resources.Object) error {
 		p := dnsutils.DNSOwner(e)
 		this.UpdateOwner(this.context.NewContext("owner", p.ObjectName().String()), p, true)
+		return nil
 	}, processors); err != nil {
 		return err
 	}
-	if err := this.setupFor(&api.DNSEntry{}, "entries", func(e resources.Object) {
+	if err := this.setupFor(&api.DNSEntry{}, "entries", func(e resources.Object) error {
 		p := dnsutils.DNSEntry(e)
 		this.UpdateEntry(this.context.NewContext("entry", p.ObjectName().String()), p)
+		return nil
 	}, processors); err != nil {
 		return err
 	}
-	if err := this.setupFor(&api.DNSLock{}, "locks", func(e resources.Object) {
+	if err := this.setupFor(&api.DNSLock{}, "locks", func(e resources.Object) error {
 		p := dnsutils.DNSLock(e)
 		this.UpdateEntry(this.context.NewContext("entry", p.ObjectName().String()), p)
+		return nil
 	}, processors); err != nil {
 		return err
 	}
@@ -288,7 +292,7 @@ func (this *state) startRemoteAccessServer(secret *corev1.Secret) error {
 	return nil
 }
 
-func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.Object), processors int) error {
+func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.Object) error, processors int) error {
 	this.context.Infof("### setup %s", msg)
 	res, err := this.context.GetByExample(obj)
 	if err != nil {
@@ -298,12 +302,12 @@ func (this *state) setupFor(obj runtime.Object, msg string, exec func(resources.
 	if err != nil {
 		return err
 	}
-	dnsutils.ProcessElements(list, func(e resources.Object) {
-		if this.IsResponsibleFor(this.context, e) {
-			exec(e)
+	return dnsutils.ProcessElements(list, func(e resources.Object) error {
+		if !this.IsResponsibleFor(this.context, e) {
+			return nil
 		}
+		return exec(e)
 	}, processors)
-	return nil
 }
 
 func (this *state) Start() {
@@ -446,7 +450,7 @@ func (this *state) lookupProvider(e dnsutils.DNSSpecification) (DNSProvider, DNS
 		} else {
 			n = p.MatchZone(e.GetDNSName())
 			if n > 0 && p.IsValid() {
-				handleMatch(validMatchFallback, p, n, nil)
+				_ = handleMatch(validMatchFallback, p, n, nil)
 			}
 		}
 	}
@@ -463,7 +467,11 @@ func (this *state) GetProvider(name resources.ObjectName) DNSProvider {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
-	return this.providers[name]
+	p, ok := this.providers[name]
+	if !ok {
+		return nil
+	}
+	return p
 }
 
 func (this *state) GetZonesForProvider(name resources.ObjectName) dnsHostedZones {
@@ -484,9 +492,17 @@ func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid dns.ZoneID
 	return entries, nil, false
 }
 
-func (this *state) addEntriesForZone(logger logger.LogContext, entries Entries, stale ZonedDNSSetNames,
-	zone DNSHostedZone) (Entries, dns.DNSNameSet, ZonedDNSSetNames, bool) {
-
+func (this *state) addEntriesForZone(
+	logger logger.LogContext,
+	entries Entries,
+	stale ZonedDNSSetNames,
+	zone DNSHostedZone,
+) (
+	Entries,
+	dns.DNSNameSet,
+	ZonedDNSSetNames,
+	bool,
+) {
 	if entries == nil {
 		entries = Entries{}
 	}
@@ -604,7 +620,7 @@ loop:
 
 func (this *state) triggerStatistic() {
 	if this.context.IsReady() {
-		this.context.EnqueueCommand(CMD_STATISTIC)
+		_ = this.context.EnqueueCommand(CMD_STATISTIC)
 	} else {
 		this.setup.AddCommand(CMD_STATISTIC)
 	}
@@ -613,7 +629,7 @@ func (this *state) triggerStatistic() {
 func (this *state) triggerHostedZone(zoneid dns.ZoneID) {
 	cmd := CMD_HOSTEDZONE_PREFIX + zoneid.ProviderType + ":" + zoneid.ID
 	if this.context.IsReady() {
-		this.context.EnqueueCommand(cmd)
+		_ = this.context.EnqueueCommand(cmd)
 	} else {
 		this.setup.AddCommand(cmd)
 	}
@@ -621,7 +637,7 @@ func (this *state) triggerHostedZone(zoneid dns.ZoneID) {
 
 func (this *state) triggerKey(key resources.ClusterObjectKey) {
 	if this.context.IsReady() {
-		this.context.EnqueueKey(key)
+		_ = this.context.EnqueueKey(key)
 	} else {
 		this.setup.AddKey(key)
 	}
@@ -675,17 +691,15 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 
 	if last != nil {
 		name = last.ObjectName()
-		old := this.providerzones[name]
-		if old != nil {
-			for zoneid, z := range old {
-				if result[zoneid] == nil {
-					modified = true
-					this.removeProviderForZone(zoneid, name)
-					logger.Infof("removing provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain())
-					if !this.hasProvidersForZone(zoneid) {
-						logger.Infof("removing hosted zone %q (%s)", z.Id(), z.Domain())
-						this.deleteZone(zoneid)
-					}
+
+		for zoneid, z := range this.providerzones[name] {
+			if result[zoneid] == nil {
+				modified = true
+				this.removeProviderForZone(zoneid, name)
+				logger.Infof("removing provider %q for hosted zone %q (%s)", name, z.Id(), z.Domain())
+				if !this.hasProvidersForZone(zoneid) {
+					logger.Infof("removing hosted zone %q (%s)", z.Id(), z.Domain())
+					this.deleteZone(zoneid)
 				}
 			}
 		}
@@ -728,7 +742,7 @@ func (this *state) tryAcceptProviderRateLimiter(logger logger.LogContext, entry 
 		value := rt.lastAccept.Load()
 		if value != nil {
 			lastAccept := value.(time.Time)
-			delay -= time.Now().Sub(lastAccept)
+			delay -= time.Since(lastAccept)
 		}
 		if delay < 100*time.Millisecond {
 			delay = 100 * time.Millisecond
@@ -739,7 +753,7 @@ func (this *state) tryAcceptProviderRateLimiter(logger logger.LogContext, entry 
 
 func (this *state) ObjectUpdated(key resources.ClusterObjectKey) {
 	this.context.Infof("requeue %s because of change in annotation resource", key)
-	this.context.EnqueueKey(key)
+	_ = this.context.EnqueueKey(key)
 }
 
 func forwarded(nested utils.StringSet, dnsname string) bool {

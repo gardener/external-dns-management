@@ -89,9 +89,11 @@ func (r *RecordTXT) SetTTL(ttl int)            { r.Ttl = uint32(ttl); r.UseTtl =
 func (r *RecordTXT) Copy() raw.Record          { n := *r; return &n }
 func (r *RecordTXT) PrepareUpdate() raw.Record { n := *r; n.Zone = ""; n.View = ""; return &n }
 
-var _ raw.Record = (*RecordA)(nil)
-var _ raw.Record = (*RecordAAAA)(nil)
-var _ raw.Record = (*RecordCNAME)(nil)
-var _ raw.Record = (*RecordTXT)(nil)
+var (
+	_ raw.Record = (*RecordA)(nil)
+	_ raw.Record = (*RecordAAAA)(nil)
+	_ raw.Record = (*RecordCNAME)(nil)
+	_ raw.Record = (*RecordTXT)(nil)
+)
 
 type RecordNS ibclient.RecordNS

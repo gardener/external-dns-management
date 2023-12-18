@@ -167,12 +167,15 @@ func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bo
 func (this *ChangeGroup) addCreateRequest(dnsset *dns.DNSSet, rtype string, done DoneHandler) {
 	this.addChangeRequest(R_CREATE, nil, dnsset, rtype, done)
 }
+
 func (this *ChangeGroup) addUpdateRequest(old, new *dns.DNSSet, rtype string, done DoneHandler) {
 	this.addChangeRequest(R_UPDATE, old, new, rtype, done)
 }
+
 func (this *ChangeGroup) addDeleteRequest(dnsset *dns.DNSSet, rtype string, done DoneHandler) {
 	this.addChangeRequest(R_DELETE, dnsset, nil, rtype, done)
 }
+
 func (this *ChangeGroup) addChangeRequest(action string, old, new *dns.DNSSet, rtype string, done DoneHandler) {
 	r := NewChangeRequest(action, rtype, old, new, done)
 	this.requests = append(this.requests, r)
@@ -294,18 +297,21 @@ func (this *ChangeModel) Setup() error {
 func (this *ChangeModel) Check(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(false, false, name, updateGroup, createdAt, done, spec)
 }
+
 func (this *ChangeModel) Apply(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, false, name, updateGroup, createdAt, done, spec)
 }
+
 func (this *ChangeModel) Delete(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
 	return this.Exec(true, true, name, updateGroup, createdAt, done, spec)
 }
+
 func (this *ChangeModel) PseudoApply(name dns.DNSSetName, spec TargetSpec) {
 	this.applied[name] = dns.NewDNSSet(name, spec.RoutingPolicy())
 }
 
 func (this *ChangeModel) Exec(apply bool, delete bool, name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
-	//this.Infof("%s: %v", name, targets)
+	// this.Infof("%s: %v", name, targets)
 	if len(spec.Targets()) == 0 && !delete {
 		return ChangeResult{}
 	}

@@ -43,7 +43,7 @@ type dnsHostedZone struct {
 func newDNSHostedZone(min time.Duration, zone DNSHostedZone) *dnsHostedZone {
 	return &dnsHostedZone{
 		zone:        zone,
-		RateLimiter: dnsutils.NewRateLimiter(min, 10*time.Minute, min/2),
+		RateLimiter: dnsutils.NewRateLimiter(min, 10*time.Minute),
 		owners:      utils.StringSet{},
 	}
 }

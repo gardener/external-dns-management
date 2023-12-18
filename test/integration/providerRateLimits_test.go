@@ -33,7 +33,7 @@ var _ = Describe("ProviderRateLimits", func() {
 		defer func() { testEnv.defaultTimeout = defaultTimeout }()
 
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("pr-1.inmemory.mock", 0, Quotas4PerMin)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		checkProvider(pr)
@@ -42,7 +42,7 @@ var _ = Describe("ProviderRateLimits", func() {
 		entries := []resources.Object{}
 		for i := 0; i < 3; i++ {
 			e, err := testEnv.CreateEntry(i+1, domain)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			entries = append(entries, e)
 			defer testEnv.DeleteEntryAndWait(entries[i])
 		}
@@ -61,12 +61,12 @@ var _ = Describe("ProviderRateLimits", func() {
 
 		start = time.Now()
 		err = testEnv.DeleteEntriesAndWait(entries...)
-		Ω(err).Should(BeNil())
-		deleteDuration := time.Now().Sub(start)
+		Ω(err).ShouldNot(HaveOccurred())
+		deleteDuration := time.Since(start)
 		// delete operations are not rate limited
 		Ω(deleteDuration < 15*time.Second).Should(BeTrue(), fmt.Sprintf("deletion: %.1f < 15s", maxDuration.Seconds()))
 
 		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 })

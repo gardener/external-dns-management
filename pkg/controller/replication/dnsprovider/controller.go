@@ -26,6 +26,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"k8s.io/apimachinery/pkg/util/runtime"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
@@ -34,7 +35,7 @@ import (
 var gkDNSProvider = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 
 func init() {
-	cluster.Register(source.TARGET_CLUSTER, "target", "target cluster for dns requests")
+	runtime.Must(cluster.Register(source.TARGET_CLUSTER, "target", "target cluster for dns requests"))
 
 	crds.AddToRegistry(apiextensions.DefaultRegistry())
 

@@ -134,8 +134,10 @@ type DNSSet struct {
 }
 
 func (this *DNSSet) Clone() *DNSSet {
-	return &DNSSet{Name: this.Name, Sets: this.Sets.Clone(), UpdateGroup: this.UpdateGroup, Kind: this.Kind,
-		RoutingPolicy: this.RoutingPolicy.Clone()}
+	return &DNSSet{
+		Name: this.Name, Sets: this.Sets.Clone(), UpdateGroup: this.UpdateGroup, Kind: this.Kind,
+		RoutingPolicy: this.RoutingPolicy.Clone(),
+	}
 }
 
 func (this *DNSSet) getAttr(ty string, name string) string {

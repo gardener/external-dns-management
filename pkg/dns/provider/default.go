@@ -97,6 +97,8 @@ func NewDNSHostedZone(providerType, id, domain, key string, isPrivate bool) DNSH
 }
 
 func CopyDNSHostedZone(zone DNSHostedZone, forwardedDomains []string) DNSHostedZone {
-	return &DefaultDNSHostedZone{zoneid: zone.Id(), key: zone.Key(),
-		domain: zone.Domain(), forwarded: forwardedDomains, isPrivate: zone.IsPrivate()}
+	return &DefaultDNSHostedZone{
+		zoneid: zone.Id(), key: zone.Key(),
+		domain: zone.Domain(), forwarded: forwardedDomains, isPrivate: zone.IsPrivate(),
+	}
 }

@@ -35,10 +35,11 @@ func newMemoryLogger(logger logger.LogContext) *memoryLogger {
 	return &memoryLogger{logger: logger}
 }
 
-func (l *memoryLogger) NewContext(key, value string) logger.LogContext {
+func (l *memoryLogger) NewContext(_, _ string) logger.LogContext {
 	panic("unsupported")
 }
-func (l *memoryLogger) AddIndent(indent string) logger.LogContext {
+
+func (l *memoryLogger) AddIndent(_ string) logger.LogContext {
 	panic("unsupported")
 }
 
@@ -51,10 +52,12 @@ func (l *memoryLogger) Debug(msg ...interface{}) {
 	l.logger.Debug(msg...)
 	l.addEntry(common.LogEntry_DEBUG, fmt.Sprintf("%s", msg...))
 }
+
 func (l *memoryLogger) Warn(msg ...interface{}) {
 	l.logger.Warn(msg...)
 	l.addEntry(common.LogEntry_WARN, fmt.Sprintf("%s", msg...))
 }
+
 func (l *memoryLogger) Error(msg ...interface{}) {
 	l.logger.Error(msg...)
 	l.addEntry(common.LogEntry_ERROR, fmt.Sprintf("%s", msg...))
@@ -64,14 +67,17 @@ func (l *memoryLogger) Infof(msgfmt string, args ...interface{}) {
 	l.logger.Infof(msgfmt, args...)
 	l.addEntry(common.LogEntry_INFO, fmt.Sprintf(msgfmt, args...))
 }
+
 func (l *memoryLogger) Debugf(msgfmt string, args ...interface{}) {
 	l.logger.Debugf(msgfmt, args...)
 	l.addEntry(common.LogEntry_DEBUG, fmt.Sprintf(msgfmt, args...))
 }
+
 func (l *memoryLogger) Warnf(msgfmt string, args ...interface{}) {
 	l.logger.Warnf(msgfmt, args...)
 	l.addEntry(common.LogEntry_WARN, fmt.Sprintf(msgfmt, args...))
 }
+
 func (l *memoryLogger) Errorf(msgfmt string, args ...interface{}) {
 	l.logger.Errorf(msgfmt, args...)
 	l.addEntry(common.LogEntry_ERROR, fmt.Sprintf(msgfmt, args...))

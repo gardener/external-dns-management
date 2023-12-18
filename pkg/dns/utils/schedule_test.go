@@ -47,7 +47,7 @@ type Result struct {
 func (this *Result) Execute(key ScheduleKey) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	d := time.Now().Sub(this.start) + (PERIOD / 2)
+	d := time.Since(this.start) + (PERIOD / 2)
 	this.result = append(this.result, Execution{int(d / PERIOD), key})
 }
 

@@ -113,7 +113,7 @@ type sourceReconciler struct {
 
 func (this *sourceReconciler) ObjectUpdated(key resources.ClusterObjectKey) {
 	this.Infof("requeue %s because of change in annotation resource", key)
-	this.EnqueueKey(key)
+	_ = this.EnqueueKey(key)
 }
 
 func (this *sourceReconciler) Setup() error {

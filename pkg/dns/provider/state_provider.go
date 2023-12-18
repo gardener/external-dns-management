@@ -46,6 +46,7 @@ func (this *state) addEntriesForProvider(p *dnsProviderVersion, entries Entries)
 		}
 	}
 }
+
 func (this *state) UpdateProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status {
 	logger = this.RefineLogger(logger, obj.TypeCode())
 	logger.Infof("reconcile PROVIDER")
@@ -149,7 +150,7 @@ func (this *state) triggerAllDeletingEntries(logger logger.LogContext) {
 	}
 	for _, entry := range entries {
 		if entry.IsDeleting() {
-			this.context.EnqueueKey(entry.ClusterKey())
+			_ = this.context.EnqueueKey(entry.ClusterKey())
 		}
 	}
 }
@@ -220,7 +221,6 @@ func (this *state) removeForeignProvider(logger logger.LogContext, pname resourc
 }
 
 func (this *state) ProviderDeleted(logger logger.LogContext, key resources.ObjectKey) reconcile.Status {
-
 	this.lock.Lock()
 	defer this.lock.Unlock()
 

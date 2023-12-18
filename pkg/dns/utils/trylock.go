@@ -53,10 +53,7 @@ func (l *TryLock) Lock() error {
 
 // TryLock tries to acquire the resource and returns true if successful.
 func (l *TryLock) TryLock() bool {
-	if !l.lock.TryAcquire(1) {
-		return false
-	}
-	return true
+	return l.lock.TryAcquire(1)
 }
 
 // TryLockSpinning tries to acquire the resource for some time and returns true if successful.
@@ -67,7 +64,7 @@ func (l *TryLock) TryLockSpinning(spinTime time.Duration) bool {
 		if l.TryLock() {
 			return true
 		}
-		delta := end.Sub(time.Now())
+		delta := time.Until(end)
 		if waitTime > delta {
 			time.Sleep(delta)
 			return l.TryLock()

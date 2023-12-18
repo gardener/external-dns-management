@@ -17,7 +17,6 @@
 package alicloud
 
 import (
-	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/errors"
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -74,7 +73,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
 
-func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 	raw := []alidns.Domain{}
 	{
@@ -107,13 +106,13 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	state := raw.NewState()
 
 	f := func(r alidns.Record) (bool, error) {
 		a := (*Record)(&r)
 		state.AddRecord(a)
-		//fmt.Printf("**** found %s %s: %s\n", a.GetType(), a.GetDNSName(), a.GetValue() )
+		// fmt.Printf("**** found %s %s: %s\n", a.GetType(), a.GetDNSName(), a.GetValue() )
 		return true, nil
 	}
 	err := h.access.ListRecords(zone.Id().ID, zone.Key(), f)
@@ -132,20 +131,6 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	err := raw.ExecuteRequests(logger, &h.config, h.access, zone, state, reqs)
 	h.cache.ApplyRequests(logger, err, zone, reqs)
 	return err
-}
-
-func checkAccessForbidden(err error) bool {
-	if err != nil {
-		switch err.(type) {
-		case *errors.ServerError:
-			serverErr := err.(*errors.ServerError)
-			if serverErr.ErrorCode() == "Forbidden.RAM" {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, dnsName, recordType string) (provider.DedicatedRecordSet, error) {
@@ -175,7 +160,7 @@ func (h *Handler) CreateOrUpdateRecordSet(logger logger.LogContext, zone provide
 	return err
 }
 
-func (h *Handler) DeleteRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, rs provider.DedicatedRecordSet) error {
+func (h *Handler) DeleteRecordSet(_ logger.LogContext, zone provider.DNSHostedZone, rs provider.DedicatedRecordSet) error {
 	for _, r := range rs {
 		if r.(*Record).GetId() != "" {
 			err := h.access.DeleteRecord(r.(*Record), zone)

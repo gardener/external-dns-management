@@ -21,8 +21,10 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 )
 
-type WalkingState interface{}
-type OwnerWalker func(state WalkingState, owner, ptype string, pname resources.ObjectName, count int) WalkingState
+type (
+	WalkingState interface{}
+	OwnerWalker  func(state WalkingState, owner, ptype string, pname resources.ObjectName, count int) WalkingState
+)
 
 type ProviderStatistic map[resources.ObjectName]int
 

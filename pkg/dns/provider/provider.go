@@ -70,12 +70,14 @@ type DNSAccount struct {
 	clients resources.ObjectNameSet
 }
 
-var _ DNSHandler = &DNSAccount{}
-var _ Metrics = &DNSAccount{}
+var (
+	_ DNSHandler = &DNSAccount{}
+	_ Metrics    = &DNSAccount{}
+)
 
 func NewDNSAccount(config utils.Properties, handler DNSHandler, hash string) *DNSAccount {
 	return &DNSAccount{
-		RateLimiter: dnsutils.NewRateLimiter(3*time.Second, 10*time.Minute, 3*time.Second),
+		RateLimiter: dnsutils.NewRateLimiter(3*time.Second, 10*time.Minute),
 		config:      config,
 		handler:     handler,
 		hash:        hash,
@@ -377,24 +379,23 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	var err error
 
 	ref := this.object.DNSProvider().Spec.SecretRef
-	if ref != nil {
-		localref := *ref
-		ref = &localref
-
-		if ref.Namespace == "" {
-			ref.Namespace = provider.GetNamespace()
-		}
-		this.secret = resources.NewObjectName(ref.Namespace, ref.Name)
-		props, _, err = state.GetContext().GetSecretPropertiesByRef(provider, ref)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				return this, this.failed(logger, false, fmt.Errorf("cannot get secret %s/%s for provider %s: %s",
-					ref.Namespace, ref.Name, provider.Description(), err), false)
-			}
-			return this, this.failed(logger, false, fmt.Errorf("error reading secret for provider %q", provider.Description()), true)
-		}
-	} else {
+	if ref == nil {
 		return this, this.failed(logger, false, fmt.Errorf("no secret specified"), false)
+	}
+
+	localref := *ref
+	ref = &localref
+	if ref.Namespace == "" {
+		ref.Namespace = provider.GetNamespace()
+	}
+	this.secret = resources.NewObjectName(ref.Namespace, ref.Name)
+	props, _, err = state.GetContext().GetSecretPropertiesByRef(provider, ref)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return this, this.failed(logger, false, fmt.Errorf("cannot get secret %s/%s for provider %s: %s",
+				ref.Namespace, ref.Name, provider.Description(), err), false)
+		}
+		return this, this.failed(logger, false, fmt.Errorf("error reading secret for provider %q", provider.Description()), true)
 	}
 
 	this.account, err = state.GetDNSAccount(logger, provider, props)
@@ -476,7 +477,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 }
 
 func toLightZones(zones DNSHostedZones) []selection.LightDNSHostedZone {
-	lzones := make([]selection.LightDNSHostedZone, len(zones), len(zones))
+	lzones := make([]selection.LightDNSHostedZone, len(zones))
 	for i, z := range zones {
 		lzones[i] = z
 	}
@@ -484,7 +485,7 @@ func toLightZones(zones DNSHostedZones) []selection.LightDNSHostedZone {
 }
 
 func fromLightZones(lzones []selection.LightDNSHostedZone) DNSHostedZones {
-	zones := make(DNSHostedZones, len(lzones), len(lzones))
+	zones := make(DNSHostedZones, len(lzones))
 	for i, lz := range lzones {
 		zones[i] = lz.(DNSHostedZone)
 	}

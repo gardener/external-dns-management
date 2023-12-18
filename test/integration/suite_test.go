@@ -40,10 +40,12 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 )
 
-var controllerRuntimeTestEnv *envtest.Environment
-var testEnv *TestEnv
-var testEnv2 *TestEnv
-var testCerts *certFileAndSecret
+var (
+	controllerRuntimeTestEnv *envtest.Environment
+	testEnv                  *TestEnv
+	testEnv2                 *TestEnv
+	testCerts                *certFileAndSecret
+)
 
 func TestIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -65,10 +67,10 @@ var _ = BeforeSuite(func() {
 	os.Setenv("KUBECONFIG", kubeconfigFile)
 
 	testEnv, err = NewTestEnv(kubeconfigFile, "test")
-	Ω(err).Should(BeNil())
+	Ω(err).ShouldNot(HaveOccurred())
 
 	testCerts, err = newCertFileAndSecret(testEnv)
-	Ω(err).Should(BeNil())
+	Ω(err).ShouldNot(HaveOccurred())
 
 	args := []string{
 		"--kubeconfig", kubeconfigFile,
@@ -85,10 +87,10 @@ var _ = BeforeSuite(func() {
 	go runControllerManager(args)
 
 	err = testEnv.WaitForCRDs()
-	Ω(err).Should(BeNil())
+	Ω(err).ShouldNot(HaveOccurred())
 
 	testEnv2, err = NewTestEnvNamespace(testEnv, "test2")
-	Ω(err).Should(BeNil())
+	Ω(err).ShouldNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {

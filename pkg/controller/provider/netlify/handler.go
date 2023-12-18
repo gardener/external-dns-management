@@ -72,7 +72,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
 
-func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 	rawZones := []models.DNSZone{}
 	{
@@ -123,7 +123,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	state := raw.NewState()
 
 	f := func(r models.DNSRecord) (bool, error) {
@@ -183,7 +183,7 @@ func (h *Handler) CreateOrUpdateRecordSet(logger logger.LogContext, zone provide
 	return err
 }
 
-func (h *Handler) DeleteRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, rs provider.DedicatedRecordSet) error {
+func (h *Handler) DeleteRecordSet(_ logger.LogContext, zone provider.DNSHostedZone, rs provider.DedicatedRecordSet) error {
 	for _, r := range rs {
 		if r.(*Record).GetId() != "" {
 			err := h.access.DeleteRecord(r.(*Record), zone)

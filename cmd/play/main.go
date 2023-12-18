@@ -37,5 +37,4 @@ func main() {
 
 	back := (*alidns.Record)(r.(*alicloud.Record))
 	fmt.Printf("Value: %s\n", back.Value)
-
 }

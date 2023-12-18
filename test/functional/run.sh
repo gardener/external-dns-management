@@ -165,7 +165,7 @@ if [ "$NOBOOTSTRAP" == "" ] && [ "$LOCAL_APISERVER" == "" ]; then
   echo Starting Kubernetes IN Docker...
 
   # prepare Kubernetes IN Docker - local clusters for testing Kubernetes
-  go install -mod=vendor sigs.k8s.io/kind
+  go install sigs.k8s.io/kind
 
 
   rm $INTEGRATION_KUBECONFIG || true
@@ -191,11 +191,11 @@ kubectl cluster-info
 
 if [ "$RUN_CONTROLLER" == "true" ]; then
   if [ "$DNS_DEDICATED" == "true" ]; then
-    go build -mod=vendor -race -o $ROOTDIR/dns-controller-manager-dedicated $ROOTDIR/cmd/dedicated
+    go build -race -o $ROOTDIR/dns-controller-manager-dedicated $ROOTDIR/cmd/dedicated
     $ROOTDIR/dns-controller-manager-dedicated --controllers=dnscontrollers,infoblox-dns --identifier=functest --omit-lease >/tmp/dnsmgr-functional.log 2>&1 &
     PID_CONTROLLER=$!
   else
-    go build -mod=vendor -race -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/compound
+    go build -race -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/compound
     $ROOTDIR/dns-controller-manager --controllers=dnscontrollers --identifier=functest --omit-lease > /tmp/dnsmgr-functional.log 2>&1 &
     PID_CONTROLLER=$!
   fi

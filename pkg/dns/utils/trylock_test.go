@@ -33,7 +33,7 @@ var _ = Describe("TryLock", func() {
 	It("deals correctly with lock/unlock", func() {
 		lock := NewTryLock(context.Background())
 		err := lock.Lock()
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 
 		var counter uint32
 		var err2 error
@@ -50,7 +50,7 @@ var _ = Describe("TryLock", func() {
 		lock.Unlock()
 		time.Sleep(wait)
 		Expect(atomic.LoadUint32(&counter)).To(Equal(uint32(3)))
-		Expect(err2).To(BeNil())
+		Expect(err2).ToNot(HaveOccurred())
 
 		first := lock.TryLockSpinning(wait)
 		Expect(first).To(BeTrue())
@@ -62,7 +62,7 @@ var _ = Describe("TryLock", func() {
 	It("deals correctly with mixture of lock/trylock", func() {
 		lock := NewTryLock()
 		err := lock.Lock()
-		Expect(err).To(BeNil())
+		Expect(err).ToNot(HaveOccurred())
 		secondLock := lock.TryLockSpinning(20 * time.Millisecond)
 		Expect(secondLock).To(BeFalse())
 
@@ -102,12 +102,12 @@ var _ = Describe("TryLock", func() {
 		}()
 
 		wg.Wait()
-		Expect(err2).To(BeNil())
+		Expect(err2).ToNot(HaveOccurred())
 
 		for i := 0; i < len(counters); i++ {
 			for j := 0; j < len(counters); j++ {
 				if i != j && counters[i] > counters[j] {
-					Expect(counters[i]-counters[j] > uint64((10 * wait).Nanoseconds())).To(BeTrue())
+					Expect(counters[i] - counters[j]).To(BeNumerically(">", uint64((10 * wait).Nanoseconds())))
 				}
 			}
 		}

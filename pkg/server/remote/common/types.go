@@ -17,6 +17,7 @@
 package common
 
 const InvalidToken = "[invalid token]"
+
 const (
 	// ProtocolVersion0 without support for routing policy
 	ProtocolVersion0 = 0

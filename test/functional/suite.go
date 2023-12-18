@@ -17,12 +17,15 @@
 package functional
 
 import (
-	"github.com/gardener/external-dns-management/test/functional/config"
 	"sync"
+
+	"github.com/gardener/external-dns-management/test/functional/config"
 )
 
-var _config *config.Config
-var lock sync.Mutex
+var (
+	_config *config.Config
+	lock    sync.Mutex
+)
 
 func addProviderTests(testFactory ProviderTestFactory) {
 	lock.Lock()

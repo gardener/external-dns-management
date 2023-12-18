@@ -142,7 +142,7 @@ func (s *server) checkAuth(token, requestType, zoneid string) (*namespaceState, 
 	}
 
 	rf := func(err error) {
-		d := time.Now().Sub(start)
+		d := time.Since(start)
 		code := ""
 		if err != nil {
 			code = substr(err.Error(), 0, 40)

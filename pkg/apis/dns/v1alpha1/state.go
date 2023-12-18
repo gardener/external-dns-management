@@ -16,9 +16,11 @@
 
 package v1alpha1
 
-const STATE_PENDING = "Pending"
-const STATE_ERROR = "Error"
-const STATE_INVALID = "Invalid"
-const STATE_STALE = "Stale"
-const STATE_READY = "Ready"
-const STATE_DELETING = "Deleting"
+const (
+	STATE_PENDING  = "Pending"
+	STATE_ERROR    = "Error"
+	STATE_INVALID  = "Invalid"
+	STATE_STALE    = "Stale"
+	STATE_READY    = "Ready"
+	STATE_DELETING = "Deleting"
+)

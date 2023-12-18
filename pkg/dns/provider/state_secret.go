@@ -35,7 +35,6 @@ func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) 
 	if this.config.RemoteAccessConfig != nil &&
 		obj.ObjectName().Name() == this.config.RemoteAccessConfig.SecretName.Name() &&
 		obj.ObjectName().Namespace() == this.config.RemoteAccessConfig.SecretName.Namespace() {
-
 		fullObj, err := obj.GetFullObject()
 		if err != nil {
 			return reconcile.Failed(logger, err)
@@ -45,7 +44,7 @@ func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) 
 	}
 
 	providers := this.GetSecretUsage(obj.ObjectName())
-	if providers == nil || len(providers) == 0 {
+	if len(providers) == 0 {
 		return reconcile.DelayOnError(logger, this.RemoveFinalizer(obj))
 	}
 	logger.Infof("reconcile SECRET")
@@ -125,7 +124,7 @@ func (this *state) registerSecret(logger logger.LogContext, secret resources.Obj
 			mod = true
 		}
 
-		r, err := provider.Object().Resources().Get(&corev1.Secret{})
+		r, _ := provider.Object().Resources().Get(&corev1.Secret{})
 		s, err := r.Get(secret)
 		if err == nil {
 			err = this.SetFinalizer(s)

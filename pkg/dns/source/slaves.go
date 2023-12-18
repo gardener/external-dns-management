@@ -64,7 +64,7 @@ func (this *slaveReconciler) Setup() error {
 	return this.state.ownerState.Setup(this.controller)
 }
 
-func (this *slaveReconciler) Start() {
+func (this *slaveReconciler) Start() error {
 	this.controller.Infof("determining dangling dns entries...")
 	cluster := this.controller.GetMainCluster()
 	main := cluster.GetId()
@@ -72,12 +72,15 @@ func (this *slaveReconciler) Start() {
 		if k.Cluster() == main {
 			if _, err := cluster.GetCachedObject(k); errors.IsNotFound(err) {
 				this.controller.Infof("trigger vanished origin %s", k.ObjectKey())
-				this.controller.EnqueueKey(k)
+				if err := this.controller.EnqueueKey(k); err != nil {
+					return err
+				}
 			} else {
 				this.controller.Debugf("found origin %s", k.ObjectKey())
 			}
 		}
 	}
+	return nil
 }
 
 func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
@@ -125,7 +128,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 					}
 					fb.Invalid(logger, n, msg, &stateCopy)
 				case api.STATE_PENDING:
-					msg := fmt.Sprintf("dns entry pending")
+					msg := "dns entry pending"
 					if s.Message != nil {
 						msg = fmt.Sprintf("%s: %s", msg, *s.Message)
 					}

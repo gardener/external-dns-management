@@ -186,8 +186,10 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 	return nil
 }
 
-var patternNotFound = regexp.MustCompile("Tried to delete resource record set \\[name='([^']+)', type='([^']+)'] but it was not found")
-var patternExists = regexp.MustCompile("Tried to create resource record set \\[name='([^']+)', type='([^']+)'] but it already exists")
+var (
+	patternNotFound = regexp.MustCompile(`Tried to delete resource record set \[name='([^']+)', type='([^']+)'] but it was not found`)
+	patternExists   = regexp.MustCompile(`Tried to create resource record set \[name='([^']+)', type='([^']+)'] but it already exists`)
+)
 
 func (this *Execution) tryFixChanges(message string, changes []*Change) (succeeded []*Change, failed []*Change, err error) {
 	submatchNotFound := patternNotFound.FindAllStringSubmatch(message, -1)

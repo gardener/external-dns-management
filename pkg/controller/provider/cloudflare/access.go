@@ -65,7 +65,8 @@ func (this *access) ListRecords(zoneId string, consume func(record cloudflare.DN
 }
 
 func (this *access) listRecords(zoneId string, consume func(record cloudflare.DNSRecord) (bool, error),
-	record cloudflare.DNSRecord) error {
+	record cloudflare.DNSRecord,
+) error {
 	this.metrics.AddZoneRequests(zoneId, provider.M_LISTRECORDS, 1)
 	this.rateLimiter.Accept()
 	results, err := this.DNSRecords(zoneId, record)

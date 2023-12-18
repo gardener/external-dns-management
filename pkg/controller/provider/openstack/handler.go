@@ -151,7 +151,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
 
-func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 	hostedZones := provider.DNSHostedZones{}
 
@@ -179,7 +179,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	recordSetHandler := func(recordSet *recordsets.RecordSet) error {
@@ -217,7 +217,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	return err
 }
 
-func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, _ provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	exec := NewExecution(logger, h, zone)
 
 	var succeeded, failed int

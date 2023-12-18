@@ -165,8 +165,10 @@ func (m *InMemory) buildZoneDump(zoneId dns.ZoneID) *ZoneDump {
 	if !ok {
 		return nil
 	}
-	hostedZone := DumpDNSHostedZone{ProviderType: data.zone.Id().ProviderType, Id: data.zone.Id().ID, Domain: data.zone.Domain(),
-		Key: data.zone.Key(), ForwardedDomains: data.zone.ForwardedDomains()}
+	hostedZone := DumpDNSHostedZone{
+		ProviderType: data.zone.Id().ProviderType, Id: data.zone.Id().ID, Domain: data.zone.Domain(),
+		Key: data.zone.Key(), ForwardedDomains: data.zone.ForwardedDomains(),
+	}
 
 	return &ZoneDump{HostedZone: hostedZone, DNSSets: data.dnssets}
 }

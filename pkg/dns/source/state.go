@@ -33,6 +33,7 @@ type state struct {
 	deps map[resources.ClusterObjectKey]resources.ClusterObjectKey
 }
 
+// NewState creates a new owner state.
 func NewState(ownerState *ownerState) interface{} {
 	return &state{
 		source:     nil,

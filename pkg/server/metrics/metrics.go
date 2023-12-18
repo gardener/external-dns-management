@@ -243,10 +243,12 @@ func DeleteZone(zoneid dns.ZoneID) {
 	Entries.DeleteLabelValues(zoneid.ProviderType, zoneid.ID)
 }
 
-var currentStatistic = statistic.NewEntryStatistic()
-var lock sync.Mutex
+var (
+	currentStatistic = statistic.NewEntryStatistic()
+	lock             sync.Mutex
+)
 
-func deleteOwnerStatistic(state statistic.WalkingState, owner, ptype string, pname resources.ObjectName, count int) statistic.WalkingState {
+func deleteOwnerStatistic(state statistic.WalkingState, owner, ptype string, pname resources.ObjectName, _ int) statistic.WalkingState {
 	types := state.(utils.StringSet)
 	if types.Contains(ptype) {
 		Owners.DeleteLabelValues(owner, ptype, pname.String())

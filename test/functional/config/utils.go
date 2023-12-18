@@ -27,8 +27,10 @@ import (
 	"github.com/onsi/gomega"
 )
 
-const STATE_DELETED = "~DELETED~"
-const letterBytes = "abcdefghijklmnopqrstuvwxyz"
+const (
+	STATE_DELETED = "~DELETED~"
+	letterBytes   = "abcdefghijklmnopqrstuvwxyz"
+)
 
 type TestUtils struct {
 	AwaitTimeout     time.Duration

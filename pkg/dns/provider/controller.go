@@ -41,8 +41,10 @@ import (
 
 const CONTROLLER_GROUP_DNS_CONTROLLERS = dns.CONTROLLER_GROUP_DNS_CONTROLLERS
 
-const TARGET_CLUSTER = source.TARGET_CLUSTER
-const PROVIDER_CLUSTER = "provider"
+const (
+	TARGET_CLUSTER   = source.TARGET_CLUSTER
+	PROVIDER_CLUSTER = "provider"
+)
 
 const SYNC_ENTRIES = "entries"
 
@@ -50,12 +52,14 @@ const FACTORY_OPTIONS = "factory"
 
 const DNS_POOL = "dns"
 
-var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
-var secretGroupKind = resources.NewGroupKind("", "Secret")
-var providerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
-var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
-var zonePolicyGroupKind = resources.NewGroupKind(api.GroupName, api.DNSHostedZonePolicyKind)
-var lockGroupKind = resources.NewGroupKind(api.GroupName, api.DNSLockKind)
+var (
+	ownerGroupKind      = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
+	secretGroupKind     = resources.NewGroupKind("", "Secret")
+	providerGroupKind   = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
+	entryGroupKind      = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
+	zonePolicyGroupKind = resources.NewGroupKind(api.GroupName, api.DNSHostedZonePolicyKind)
+	lockGroupKind       = resources.NewGroupKind(api.GroupName, api.DNSLockKind)
+)
 
 // RemoteAccessClientID stores the optional client ID for remote access
 var RemoteAccessClientID string
@@ -71,18 +75,6 @@ func GetFactoryOptions(src config.OptionSource) *FactoryOptions {
 	return src.(config.OptionSet).GetSource(FACTORY_OPTIONS).(*FactoryOptions)
 }
 
-type factoryOptionSet struct {
-	*config.SharedOptionSet
-}
-
-func (this *factoryOptionSet) AddOptionsToSet(set config.OptionSet) {
-	this.SharedOptionSet.AddOptionsToSet(set)
-}
-
-func (this *factoryOptionSet) Evaluate() error {
-	return this.SharedOptionSet.Evaluate()
-}
-
 func CreateFactoryOptionSource(factory DNSHandlerFactory, prefix string) config.OptionSource {
 	v := reflect.ValueOf((*FactoryOptions)(nil))
 	required := v.Type().Elem().NumField() > 1
@@ -96,7 +88,7 @@ func CreateFactoryOptionSource(factory DNSHandlerFactory, prefix string) config.
 		required = required || src.Options != nil
 	}
 	if required {
-		//set := &factoryOptionSet{config.NewSharedOptionSet(FACTORY_OPTIONS, prefix, nil)}
+		// set := &factoryOptionSet{config.NewSharedOptionSet(FACTORY_OPTIONS, prefix, nil)}
 		set := config.NewSharedOptionSet(FACTORY_OPTIONS, prefix)
 		set.AddSource(FACTORY_OPTIONS, src)
 		return set
@@ -290,10 +282,10 @@ func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) r
 		case obj.IsA(&api.DNSProvider{}):
 			return this.state.RemoveProvider(logger, dnsutils.DNSProvider(obj))
 		case obj.IsA(&api.DNSEntry{}):
-			obj.UpdateFromCache()
+			_ = obj.UpdateFromCache()
 			return this.state.DeleteEntry(logger, dnsutils.DNSEntry(obj))
 		case obj.IsA(&api.DNSLock{}):
-			obj.UpdateFromCache()
+			_ = obj.UpdateFromCache()
 			return this.state.DeleteEntry(logger, dnsutils.DNSLock(obj))
 		case obj.IsMinimal() && obj.GroupVersionKind().GroupKind() == secretGroupKind:
 			return this.state.UpdateSecret(logger, obj)

@@ -17,7 +17,6 @@
 package mock
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -32,7 +31,6 @@ type Handler struct {
 	provider.DefaultDNSHandler
 	config      provider.DNSHandlerConfig
 	cache       provider.ZoneCache
-	ctx         context.Context
 	mock        *provider.InMemory
 	mockConfig  MockConfig
 	rateLimiter flowcontrol.RateLimiter
@@ -98,7 +96,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
 
-func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	if h.mockConfig.FailGetZones {
 		return nil, fmt.Errorf("forced error by mockConfig.FailGetZones")
 	}
@@ -111,7 +109,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	h.config.RateLimiter.Accept()
 	return h.mock.CloneZoneState(zone)
 }
@@ -126,7 +124,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	return err
 }
 
-func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, _ provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	var succeeded, failed int
 	for _, r := range reqs {
 		h.config.RateLimiter.Accept()

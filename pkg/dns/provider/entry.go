@@ -382,7 +382,7 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 
 	if p.zonedomain == entry.dnsSetName.DNSName {
 		for _, t := range []string{"azure-dns", "azure-private-dns"} {
-			if p.provider.TypeCode() == t {
+			if p.provider != nil && p.provider.TypeCode() == t {
 				err = fmt.Errorf("usage of dns name (%s) identical to domain of hosted zone (%s) is not supported. Please use apex prefix '@.'",
 					p.zonedomain, p.zoneid)
 				return
@@ -439,7 +439,7 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 	return
 }
 
-func validateOwner(logger logger.LogContext, state *state, entry *EntryVersion) error {
+func validateOwner(_ logger.LogContext, state *state, entry *EntryVersion) error {
 	effspec := entry.object
 
 	if ownerid := utils.StringValue(effspec.GetOwnerId()); ownerid != "" {
@@ -450,7 +450,7 @@ func validateOwner(logger logger.LogContext, state *state, entry *EntryVersion) 
 	return nil
 }
 
-func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config, old *Entry) reconcile.Status {
+func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config, _ *Entry) reconcile.Status {
 	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s, ref %+v", op, this.Object().BaseStatus().State, p.zoneid, p.ptype, Provider(p.provider), this.Object().GetReference())
 
 	this.valid = false
@@ -468,7 +468,9 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		if p.zoneid == "" {
 			// mark unassigned foreign entries as erroneous
 			if this.object.GetCreationTimestamp().Add(config.RescheduleDelay).After(time.Now()) {
-				state.RemoveFinalizer(this.object)
+				if err := state.RemoveFinalizer(this.object); err != nil {
+					return reconcile.Failed(logger, err)
+				}
 				return reconcile.Succeeded(logger).RescheduleAfter(config.RescheduleDelay)
 			}
 			hello.Infof(logger)
@@ -538,7 +540,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	if verr := validateOwner(logger, state, this); verr != nil {
 		hello.Infof(logger, "owner validation failed: %s", verr)
 
-		this.UpdateStatus(logger, api.STATE_STALE, verr.Error())
+		_, _ = this.UpdateStatus(logger, api.STATE_STALE, verr.Error())
 		return reconcile.Failed(logger, verr)
 	}
 
@@ -550,7 +552,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	if verr != nil {
 		hello.Infof(logger, "validation failed: %s", verr)
 
-		this.UpdateStatus(logger, api.STATE_INVALID, verr.Error())
+		_, _ = this.UpdateStatus(logger, api.STATE_INVALID, verr.Error())
 		return reconcile.Failed(logger, verr)
 	}
 
@@ -586,7 +588,9 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				if this.status.State == api.STATE_READY || this.status.State == api.STATE_STALE {
 					state = api.STATE_STALE
 				}
-				this.UpdateStatus(logger, state, verr.Error())
+				if _, err := this.UpdateStatus(logger, state, verr.Error()); err != nil {
+					return reconcile.Failed(logger, err)
+				}
 				return reconcile.Recheck(logger, verr, time.Duration(this.interval)*time.Second)
 			}
 		} else {
@@ -1068,6 +1072,7 @@ func (this EntryList) UpdateStatistic(statistic *statistic.EntryStatistic) {
 func StatusMessage(s string) *string {
 	return &s
 }
+
 func StatusMessagef(msgfmt string, args ...interface{}) *string {
 	return StatusMessage(fmt.Sprintf(msgfmt, args...))
 }

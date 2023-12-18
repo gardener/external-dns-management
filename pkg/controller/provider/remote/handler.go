@@ -197,7 +197,7 @@ func (h *Handler) retryOnInvalidTokenError(ctx context.Context, f func(token str
 	return err
 }
 
-func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -225,7 +225,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
 	defer cancel()
 
@@ -256,7 +256,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	return err
 }
 
-func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, _ provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	if len(reqs) == 0 {
 		return nil
 	}

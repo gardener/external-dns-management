@@ -42,7 +42,7 @@ func delta(owner *dnsutils.DNSOwnerObject, changed, active utils.StringSet) stri
 			if !owner.IsActive() {
 				msg = fmt.Sprintf(" (%s expired (%s))", owner.GetName(), owner.ValidUntil().Format(time.RFC3339))
 			} else {
-				d := owner.ValidUntil().Sub(time.Now())
+				d := time.Until(owner.ValidUntil().Time)
 				msg = fmt.Sprintf(" (%s expires in %s)", owner.GetName(), d)
 			}
 		}

@@ -267,13 +267,13 @@ func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretNa
 			}
 		}
 	}
-	obj, err := te.CreateProviderEx(providerIndex, secretName, setSpec)
+	obj, err := te.CreateProviderEx(providerIndex, setSpec)
 	return obj, domain, domain2, err
 }
 
 type ProviderSpecSetter func(p *v1alpha1.DNSProvider)
 
-func (te *TestEnv) CreateProviderEx(providerIndex int, secretName string, setSpec ProviderSpecSetter) (resources.Object, error) {
+func (te *TestEnv) CreateProviderEx(providerIndex int, setSpec ProviderSpecSetter) (resources.Object, error) {
 	name := fmt.Sprintf("mock-provider-%d", providerIndex)
 	provider := &v1alpha1.DNSProvider{}
 	provider.SetName(name)
@@ -430,7 +430,6 @@ func (te *TestEnv) GetEntry(name string) (resources.Object, error) {
 	entry.SetName(name)
 	entry.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(&entry)
-
 	if err != nil {
 		return nil, err
 	}
@@ -448,13 +447,14 @@ func (te *TestEnv) FindEntryByOwner(kind, name string) (resources.Object, error)
 	}
 
 	objs, err := entries.List(metav1.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
 	for _, obj := range objs {
 		refs := obj.GetOwnerReferences()
-		if refs != nil {
-			for _, ref := range refs {
-				if ref.Kind == kind && ref.Name == name {
-					return obj, nil
-				}
+		for _, ref := range refs {
+			if ref.Kind == kind && ref.Name == name {
+				return obj, nil
 			}
 		}
 	}
@@ -462,7 +462,6 @@ func (te *TestEnv) FindEntryByOwner(kind, name string) (resources.Object, error)
 }
 
 func (te *TestEnv) CreateOwner(name, ownerId string) (resources.Object, error) {
-
 	setSpec := func(e *v1alpha1.DNSOwner) {
 		e.Spec.OwnerId = ownerId
 	}
@@ -492,7 +491,6 @@ func (te *TestEnv) GetOwner(name string) (resources.Object, error) {
 	owner := v1alpha1.DNSOwner{}
 	owner.SetName(name)
 	obj, err := te.resources.GetObject(&owner)
-
 	if err != nil {
 		return nil, err
 	}
@@ -508,7 +506,8 @@ func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {
 }
 
 func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP string, ttl int, routingPolicy *string,
-	additionalAnnotations map[string]string) (resources.Object, error) {
+	additionalAnnotations map[string]string,
+) (resources.Object, error) {
 	setter := func(e *networkingv1.Ingress) {
 		e.Annotations = map[string]string{dnssource.DNS_ANNOTATION: "*", dnssource.TTL_ANNOTATION: fmt.Sprintf("%d", ttl)}
 		if routingPolicy != nil {
@@ -554,6 +553,9 @@ func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP 
 			}
 			return true, nil
 		})
+		if err != nil {
+			return obj, err
+		}
 	}
 
 	return obj, err
@@ -564,7 +566,6 @@ func (te *TestEnv) GetIngress(name string) (resources.Object, *networkingv1.Ingr
 	ingress.SetName(name)
 	ingress.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(&ingress)
-
 	if err != nil {
 		return nil, nil, err
 	}
@@ -572,7 +573,8 @@ func (te *TestEnv) GetIngress(name string) (resources.Object, *networkingv1.Ingr
 }
 
 func (te *TestEnv) CreateServiceWithAnnotation(name, domainName string, status *corev1.LoadBalancerIngress, ttl int,
-	routingPolicy *string, additionalAnnotations map[string]string) (resources.Object, error) {
+	routingPolicy *string, additionalAnnotations map[string]string,
+) (resources.Object, error) {
 	setter := func(e *corev1.Service) {
 		e.Annotations = map[string]string{dnssource.DNS_ANNOTATION: domainName, dnssource.TTL_ANNOTATION: fmt.Sprintf("%d", ttl)}
 		if routingPolicy != nil {
@@ -612,6 +614,9 @@ func (te *TestEnv) CreateServiceWithAnnotation(name, domainName string, status *
 			o.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{*status}
 			return true, nil
 		})
+		if err != nil {
+			return obj, err
+		}
 	}
 
 	return obj, err
@@ -622,7 +627,6 @@ func (te *TestEnv) GetService(name string) (resources.Object, *corev1.Service, e
 	svc.SetName(name)
 	svc.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(&svc)
-
 	if err != nil {
 		return nil, nil, err
 	}
@@ -647,7 +651,6 @@ func (te *TestEnv) GetProvider(name string) (resources.Object, *v1alpha1.DNSProv
 	provider.SetName(name)
 	provider.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(provider)
-
 	if err != nil {
 		return nil, nil, err
 	}
@@ -676,7 +679,6 @@ func (te *TestEnv) GetSecret(name string) (resources.Object, error) {
 	secret.SetName(name)
 	secret.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(secret)
-
 	if err != nil {
 		return nil, err
 	}

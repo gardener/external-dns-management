@@ -72,17 +72,17 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		return nil, fmt.Errorf("'serviceaccount.json' required in secret")
 	}
 
-	//c:=*http.DefaultClient
-	//h.ctx=context.WithValue(config.Context,oauth2.HTTPClient,&c)
+	// c:=*http.DefaultClient
+	// h.ctx=context.WithValue(config.Context,oauth2.HTTPClient,&c)
 	h.ctx = config.Context
 
 	h.credentials, err = google.CredentialsFromJSON(h.ctx, []byte(json), scopes...)
-	//cfg, err:=google.JWTConfigFromJSON([]byte(json))
+	// cfg, err:=google.JWTConfigFromJSON([]byte(json))
 	if err != nil {
 		return nil, fmt.Errorf("serviceaccount is invalid: %s", err)
 	}
 	h.client = oauth2.NewClient(h.ctx, h.credentials.TokenSource)
-	//h.client=cfg.Client(ctx)
+	// h.client=cfg.Client(ctx)
 
 	h.service, err = googledns.New(h.client)
 	if err != nil {
@@ -105,7 +105,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
 
-func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 
 	rt := provider.M_LISTZONES
@@ -158,7 +158,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	f := func(r *googledns.ResourceRecordSet) {
@@ -208,7 +208,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	return err
 }
 
-func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, _ provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	exec := NewExecution(logger, h, zone)
 	for _, r := range reqs {
 		exec.addChange(r)

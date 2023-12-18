@@ -59,7 +59,6 @@ type InfobloxConfig struct {
 var _ provider.DNSHandler = &Handler{}
 
 func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
-
 	infobloxConfig := &InfobloxConfig{}
 	if config.Config != nil {
 		err := json.Unmarshal(config.Config.Raw, infobloxConfig)
@@ -184,7 +183,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 // Infoblox does not support zone forwarding???
 // Just removed the forwarding stuff from code
 
-func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	var raw []ibclient.ZoneAuth
 	h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
 	obj := ibclient.NewZoneAuth(ibclient.ZoneAuth{})
@@ -207,7 +206,7 @@ func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, e
 	return zones, nil
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	state := raw.NewState()
 	rt := provider.M_LISTRECORDS
 
@@ -290,7 +289,7 @@ func (h *Handler) CreateOrUpdateRecordSet(logger logger.LogContext, zone provide
 	return err
 }
 
-func (h *Handler) DeleteRecordSet(logger logger.LogContext, zone provider.DNSHostedZone, rs provider.DedicatedRecordSet) error {
+func (h *Handler) DeleteRecordSet(_ logger.LogContext, zone provider.DNSHostedZone, rs provider.DedicatedRecordSet) error {
 	for _, r := range rs {
 		if r.(Record).GetId() != "" {
 			err := h.access.DeleteRecord(r.(Record), zone)

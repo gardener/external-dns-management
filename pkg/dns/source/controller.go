@@ -22,6 +22,7 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/watches"
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
+	"k8s.io/apimachinery/pkg/util/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	"github.com/gardener/external-dns-management/pkg/controller/annotation"
@@ -36,36 +37,44 @@ import (
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
-const CONTROLLER_GROUP_DNS_SOURCES = dns.CONTROLLER_GROUP_DNS_SOURCES
-const TARGET_CLUSTER = "target"
+const (
+	CONTROLLER_GROUP_DNS_SOURCES = dns.CONTROLLER_GROUP_DNS_SOURCES
+	TARGET_CLUSTER               = "target"
+)
 
-const DNS_ANNOTATION = dns.ANNOTATION_GROUP + "/dnsnames"
-const TTL_ANNOTATION = dns.ANNOTATION_GROUP + "/ttl"
-const PERIOD_ANNOTATION = dns.ANNOTATION_GROUP + "/cname-lookup-interval"
-const ROUTING_POLICY_ANNOTATION = dns.ANNOTATION_GROUP + "/routing-policy"
-const CLASS_ANNOTATION = dns.CLASS_ANNOTATION
-const OWNER_ID_ANNOTATION = dns.ANNOTATION_GROUP + "/owner-id"
+const (
+	DNS_ANNOTATION            = dns.ANNOTATION_GROUP + "/dnsnames"
+	TTL_ANNOTATION            = dns.ANNOTATION_GROUP + "/ttl"
+	PERIOD_ANNOTATION         = dns.ANNOTATION_GROUP + "/cname-lookup-interval"
+	ROUTING_POLICY_ANNOTATION = dns.ANNOTATION_GROUP + "/routing-policy"
+	CLASS_ANNOTATION          = dns.CLASS_ANNOTATION
+	OWNER_ID_ANNOTATION       = dns.ANNOTATION_GROUP + "/owner-id"
+)
 
-const OPT_CLASS = "dns-class"
-const OPT_TARGET_CLASS = "dns-target-class"
-const OPT_EXCLUDE = "exclude-domains"
-const OPT_KEY = "key"
-const OPT_NAMESPACE = "target-namespace"
-const OPT_NAMEPREFIX = "target-name-prefix"
-const OPT_TARGET_CREATOR_LABEL_NAME = "target-creator-label-name"
-const OPT_TARGET_CREATOR_LABEL_VALUE = "target-creator-label-value"
-const OPT_TARGET_OWNER_ID = "target-owner-id"
-const OPT_TARGET_OWNER_OBJECT = "target-owner-object"
-const OPT_TARGET_SET_IGNORE_OWNERS = "target-set-ignore-owners"
-const OPT_TARGET_REALMS = "target-realms"
+const (
+	OPT_CLASS                      = "dns-class"
+	OPT_TARGET_CLASS               = "dns-target-class"
+	OPT_EXCLUDE                    = "exclude-domains"
+	OPT_KEY                        = "key"
+	OPT_NAMESPACE                  = "target-namespace"
+	OPT_NAMEPREFIX                 = "target-name-prefix"
+	OPT_TARGET_CREATOR_LABEL_NAME  = "target-creator-label-name"
+	OPT_TARGET_CREATOR_LABEL_VALUE = "target-creator-label-value"
+	OPT_TARGET_OWNER_ID            = "target-owner-id"
+	OPT_TARGET_OWNER_OBJECT        = "target-owner-object"
+	OPT_TARGET_SET_IGNORE_OWNERS   = "target-set-ignore-owners"
+	OPT_TARGET_REALMS              = "target-realms"
+)
 
-var entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
-var ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
+var (
+	entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
+	ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
+)
 
 const KEY_STATE = "source-state"
 
 func init() {
-	cluster.Register(TARGET_CLUSTER, "target", "target cluster for dns requests")
+	runtime.Must(cluster.Register(TARGET_CLUSTER, "target", "target cluster for dns requests"))
 
 	crds.AddToRegistry(apiextensions.DefaultRegistry())
 }

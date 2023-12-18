@@ -28,7 +28,6 @@ import (
 )
 
 type Change struct {
-	rs   *azure.RecordSet
 	Done provider.DoneHandler
 }
 

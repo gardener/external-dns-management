@@ -35,6 +35,7 @@ issues:
     - "\".*\" imported but not used"
     # allow non-capitalized messages if they start with technical terms
     - "structured logging message should be capitalized: \"garden(er-apiserver|er-controller-manager|er-admission-controller|er-operator|er-resource-manager|let)"
+    - "Error return value of `testEnv.*` is not checked"
   exclude-rules:
     - linters:
         - staticcheck
@@ -51,4 +52,4 @@ linters-settings:
       - name: unreachable-code
       - name: context-as-argument
       - name: early-return
-      - name: exported
+      #- name: exported // TODO
