@@ -61,7 +61,7 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 	}
 }
 
-func buildResourceRecordSet(name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
+func buildResourceRecordSets(name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) ([]*route53.ResourceRecordSet, error) {
 	rrs := &route53.ResourceRecordSet{}
 	rrs.Name = aws.String(name.DNSName)
 	rrs.Type = aws.String(rset.Type)
@@ -75,7 +75,7 @@ func buildResourceRecordSet(name dns.DNSSetName, policy *dns.RoutingPolicy, poli
 	if err := policyContext.addRoutingPolicy(rrs, name, policy); err != nil {
 		return nil, err
 	}
-	return rrs, nil
+	return []*route53.ResourceRecordSet{rrs}, nil
 }
 
 func (this *Execution) addChange(action string, req *provider.ChangeRequest, dnsset *dns.DNSSet) error {
@@ -86,26 +86,28 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 	}
 	this.Infof("%s %s record set %s[%s]: %s(%d)", action, rset.Type, name, this.zone.Id(), rset.RecordString(), rset.TTL)
 
-	var err error
-	var rrs *route53.ResourceRecordSet
 	var policy *dns.RoutingPolicy
 	if req.Addition != nil {
 		policy = req.Addition.RoutingPolicy
 	} else if req.Deletion != nil {
 		policy = req.Deletion.RoutingPolicy
 	}
+	var err error
+	var rrsets []*route53.ResourceRecordSet
 	if rset.Type == dns.RS_ALIAS {
-		rrs, err = buildResourceRecordSetForAliasTarget(name, policy, this.policyContext, rset)
+		rrsets, err = buildResourceRecordSetsForAliasTarget(name, policy, this.policyContext, rset)
 	} else {
-		rrs, err = buildResourceRecordSet(name, policy, this.policyContext, rset)
+		rrsets, err = buildResourceRecordSets(name, policy, this.policyContext, rset)
 	}
 	if err != nil {
 		this.Errorf("addChange failed for %s[%s]: %s", name, this.zone.Id(), err)
 		return err
 	}
 
-	change := &route53.Change{Action: aws.String(action), ResourceRecordSet: rrs}
-	this.addRawChange(name, dnsset.UpdateGroup, change, req.Done)
+	for _, rrs := range rrsets {
+		change := &route53.Change{Action: aws.String(action), ResourceRecordSet: rrs}
+		this.addRawChange(name, dnsset.UpdateGroup, change, req.Done)
+	}
 	return nil
 }
 

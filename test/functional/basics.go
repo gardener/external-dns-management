@@ -17,6 +17,7 @@
 package functional
 
 import (
+	"net"
 	"os"
 	"text/template"
 	"time"
@@ -127,6 +128,19 @@ spec:
   - {{.AliasTarget}}
 ---
 {{end}}
+{{if .AliasTargetDualStack}}
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  name: {{.Prefix}}alias-ds
+  namespace: {{.Namespace}}
+spec:
+  dnsName: {{.Prefix}}alias-ds.{{.Domain}}
+  ttl: {{.TTL}}
+  targets:
+  - {{.AliasTargetDualStack}}
+---
+{{end}}
 apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSEntry
 metadata:
@@ -209,6 +223,9 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 			}
 			if p.AliasTarget != "" {
 				entryNames = append(entryNames, entryName(p, "alias"))
+			}
+			if p.AliasTargetDualStack != "" {
+				entryNames = append(entryNames, entryName(p, "alias-ds"))
 			}
 			err = u.AwaitDNSEntriesReady(entryNames...)
 			Ω(err).Should(BeNil())
@@ -333,7 +350,7 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 			}))
 
 			if p.AliasTarget != "" {
-				Context("handles AliasTarget", func() {
+				By("handles AliasTarget", func() {
 					Ω(itemMap).Should(MatchKeys(IgnoreExtras, Keys{
 						entryName(p, "alias"): MatchKeys(IgnoreExtras, Keys{
 							"metadata": MatchKeys(IgnoreExtras, Keys{
@@ -356,15 +373,55 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 					}))
 				})
 			}
+			if p.AliasTargetDualStack != "" {
+				By("handles AliasTargetDualStack", func() {
+					Ω(itemMap).Should(MatchKeys(IgnoreExtras, Keys{
+						entryName(p, "alias-ds"): MatchKeys(IgnoreExtras, Keys{
+							"metadata": MatchKeys(IgnoreExtras, Keys{
+								"finalizers": And(HaveLen(1), ContainElement("dns.gardener.cloud/"+p.FinalizerType)),
+							}),
+							"spec": MatchKeys(IgnoreExtras, Keys{
+								"dnsName": Equal(dnsName(p, "alias-ds")),
+								"targets": And(HaveLen(1), ContainElement(p.AliasTargetDualStack)),
+							}),
+							"status": MatchKeys(IgnoreExtras, Keys{
+								"message":      Equal("dns entry active"),
+								"provider":     Equal(p.Namespace + "/" + p.Name),
+								"providerType": Equal(p.Type),
+								"state":        Equal("Ready"),
+								"targets":      And(HaveLen(1), ContainElement(p.AliasTargetDualStack)),
+								"ttl":          Equal(float64(ttl)),
+								"zone":         Equal(p.ZoneID),
+							}),
+						}),
+					}))
+				})
+			}
 
 			if cfg.DNSLookup && cfg.Utils.CanLookup(p.PrivateDNS) {
 				if p.AliasTarget != "" {
 					u.AwaitLookupCName(dnsName(p, "alias"), p.AliasTarget)
 				}
+				if p.AliasTargetDualStack != "" {
+					u.AwaitLookupCName(dnsName(p, "alias-ds"), p.AliasTargetDualStack)
+					ips, err := net.LookupIP(dnsName(p, "alias-ds"))
+					Ω(err).Should(BeNil())
+					var hasIPv4, hasIPv6 bool
+					for _, ip := range ips {
+						if ip.To4() != nil {
+							hasIPv4 = true
+						} else {
+							hasIPv6 = true
+						}
+					}
+					Ω(hasIPv4).Should(BeTrue())
+					Ω(hasIPv6).Should(BeTrue())
+				}
 				u.AwaitLookup(p.Domain, "11.22.33.44")
 				u.AwaitLookup(dnsName(p, "a"), "11.11.11.11")
-				u.AwaitLookup(dnsName(p, "aaaa"), "20a0::1")
-				u.AwaitLookup(dnsName(p, "mixed"), "20a0::2", "11.11.0.11")
+				// no valid IPv6 addresses
+				//u.AwaitLookup(dnsName(p, "aaaa"), "20a0::1")
+				//u.AwaitLookup(dnsName(p, "mixed"), "20a0::2", "11.11.0.11")
 				randname := config.RandStringBytes(6)
 				u.AwaitLookup(randname+"."+dnsName(p, "wildcard"), "44.44.44.44")
 				u.AwaitLookupCName(dnsName(p, "cname"), "google-public-dns-a.google.com")

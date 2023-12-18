@@ -77,19 +77,20 @@ func PrintConfigEnv() {
 }
 
 type ProviderConfig struct {
-	Name               string                              `json:"name"`
-	Type               string                              `json:"type"`
-	FinalizerType      string                              `json:"finalizerType,omitempty"`
-	Domain             string                              `json:"domain"`
-	ForeignDomain      string                              `json:"foreignDomain,omitempty"`
-	SecretData         string                              `json:"secretData"`
-	Prefix             string                              `json:"prefix"`
-	AliasTarget        string                              `json:"aliasTarget,omitempty"`
-	ZoneID             string                              `json:"zoneID"`
-	PrivateDNS         bool                                `json:"privateDNS,omitempty"`
-	TTL                string                              `json:"ttl,omitempty"`
-	SpecProviderConfig string                              `json:"providerConfig,omitempty"`
-	RoutingPolicySets  map[string]map[string]RoutingPolicy `json:"routingPolicySets,omitempty"`
+	Name                 string                              `json:"name"`
+	Type                 string                              `json:"type"`
+	FinalizerType        string                              `json:"finalizerType,omitempty"`
+	Domain               string                              `json:"domain"`
+	ForeignDomain        string                              `json:"foreignDomain,omitempty"`
+	SecretData           string                              `json:"secretData"`
+	Prefix               string                              `json:"prefix"`
+	AliasTarget          string                              `json:"aliasTarget,omitempty"`
+	AliasTargetDualStack string                              `json:"aliasTargetDualStack,omitempty"`
+	ZoneID               string                              `json:"zoneID"`
+	PrivateDNS           bool                                `json:"privateDNS,omitempty"`
+	TTL                  string                              `json:"ttl,omitempty"`
+	SpecProviderConfig   string                              `json:"providerConfig,omitempty"`
+	RoutingPolicySets    map[string]map[string]RoutingPolicy `json:"routingPolicySets,omitempty"`
 
 	Namespace           string
 	TmpManifestFilename string
