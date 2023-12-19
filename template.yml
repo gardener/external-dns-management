@@ -1,7 +1,0 @@
-
-settings: (( &temporary ))
-
-cfgs:
-  <<: (( .settings.branchsets ))
-  
-
