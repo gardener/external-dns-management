@@ -39,25 +39,25 @@ var _ = Describe("PrivateZones", func() {
 		var domains []string
 		for _, te := range envs {
 			pr, domain, _, err := te.CreateSecretAndProvider(baseDomain, 0)
-			Ω(err).Should(BeNil())
-			defer te.DeleteProviderAndSecret(pr)
+			Ω(err).ShouldNot(HaveOccurred())
+			defer func() { _ = te.DeleteProviderAndSecret(pr) }()
 			providers = append(providers, pr)
 			domains = append(domains, domain)
 
 			e, err := te.CreateEntry(0, domain)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			entries = append(entries, e)
 
 			checkProviderEx(te, pr)
 
 			checkEntryEx(te, e, pr)
 		}
-		Ω(len(providers)).Should(Equal(2))
-		Ω(len(entries)).Should(Equal(2))
+		Ω(providers).Should(HaveLen(2))
+		Ω(entries).Should(HaveLen(2))
 
 		for i, te := range envs {
 			err = te.MockInMemoryHasEntry(entries[i])
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 		}
 
 		for i, te := range envs {
@@ -66,11 +66,11 @@ var _ = Describe("PrivateZones", func() {
 				spec.Domains.Exclude = []string{}
 				return nil
 			})
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			e := entries[i]
 			err = te.AwaitEntryError(e.GetName())
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 		}
 
 		for i, te := range envs {
@@ -79,26 +79,26 @@ var _ = Describe("PrivateZones", func() {
 				spec.Domains.Exclude = []string{}
 				return nil
 			})
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			e := entries[i]
 			err = te.AwaitEntryReady(e.GetName())
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 		}
 
 		for i, te := range envs {
 			err = te.DeleteEntryAndWait(entries[i])
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = te.DeleteProviderAndSecret(providers[i])
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 		}
 	})
 
 	It("should deal with provider with two different private zones, but the same base domain", func() {
 		secretName := testEnv.SecretName(0)
 		_, err := testEnv.CreateSecret(0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		domain := "pr1.mock.xx"
 		setSpec := func(provider *v1alpha1.DNSProvider) {
@@ -121,8 +121,8 @@ var _ = Describe("PrivateZones", func() {
 			spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: testEnv.Namespace}
 		}
 
-		pr, err := testEnv.CreateProviderEx(0, secretName, setSpec)
-		Ω(err).Should(BeNil())
+		pr, err := testEnv.CreateProviderEx(0, setSpec)
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		// duplicate base domain names are not allowed
@@ -133,26 +133,26 @@ var _ = Describe("PrivateZones", func() {
 			spec.Zones.Include = []string{"z2:private:pr1.mock.xx"}
 			return nil
 		})
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		testEnv.AwaitProviderReady(pr.GetName())
 
 		e, err := testEnv.CreateEntry(0, domain)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		testEnv.AwaitEntryReady(e.GetName())
 		err = testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, "z2:private:", e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
 			spec.Zones.Include = []string{"z1:private:pr1.mock.xx"}
 			return nil
 		})
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		found := false
 		for i := 0; i < 20; i++ {
 			time.Sleep(10 * time.Millisecond)
 			var data *v1alpha1.DNSProvider
 			pr, data, err = testEnv.GetProvider(pr.GetName())
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			if data.Status.Zones.Included[0] == "z1:private:pr1.mock.xx" {
 				found = true
 				break
@@ -165,39 +165,39 @@ var _ = Describe("PrivateZones", func() {
 		time.Sleep(100 * time.Millisecond)
 		testEnv.AwaitEntryReady(e.GetName())
 		err = testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, "z1:private:", e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	It("should deal with two providers with different private zones", func() {
 		pr1, domain1, _, err := testEnv.CreateSecretAndProvider("mock.xx", 1)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr1)
 		pr2, domain2, _, err := testEnv.CreateSecretAndProvider("mock.xx", 2, AlternativeMockName)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr2)
 
 		testEnv.AwaitProviderReady(pr1.GetName())
 		testEnv.AwaitProviderReady(pr2.GetName())
 
 		e, err := testEnv.CreateEntry(0, domain1)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		testEnv.AwaitEntryReady(e.GetName())
 		err = testEnv.MockInMemoryHasEntry(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		_, err = testEnv.UpdateEntryDomain(e, fmt.Sprintf("e%d.%s", 0, domain2))
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		testEnv.AwaitEntryReady(e.GetName())
 
 		var e2 resources.Object
 		for i := 0; i < 25; i++ {
 			e2, err = testEnv.GetEntry(e.GetName())
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			obj := UnwrapEntry(e2)
 			if obj.Status.ObservedGeneration == obj.Generation {
 				break
@@ -206,7 +206,7 @@ var _ = Describe("PrivateZones", func() {
 		}
 
 		err = testEnv.MockInMemoryHasEntryEx(testEnv.Namespace+"-alt", testEnv.ZonePrefix, e2)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		found := true
 		for i := 0; i < 25; i++ {
@@ -219,16 +219,16 @@ var _ = Describe("PrivateZones", func() {
 		Ω(found).Should(BeFalse())
 
 		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		err = testEnv.DeleteProviderAndSecret(pr1)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		err = testEnv.DeleteProviderAndSecret(pr2)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	It("should complain about a provider with overlapping domains from two private zones", func() {
 		secret, err := testEnv.CreateSecret(1)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		setSpec := func(provider *v1alpha1.DNSProvider) {
 			spec := &provider.Spec
@@ -238,24 +238,24 @@ var _ = Describe("PrivateZones", func() {
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
 
-		pr1, err := testEnv.CreateProviderEx(1, secret.GetName(), setSpec)
-		Ω(err).Should(BeNil())
+		pr1, err := testEnv.CreateProviderEx(1, setSpec)
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr1)
 
 		testEnv.AwaitProviderState(pr1.GetName(), "Error")
 
 		_, pr1b, err := testEnv.GetProvider(pr1.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		Ω(pr1b.Status.Message).ShouldNot(BeNil())
 		Ω(*pr1b.Status.Message).Should(ContainSubstring("overlapping zones"))
 
 		err = testEnv.DeleteProviderAndSecret(pr1)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	It("should complain about a provider with same domains from two private zones", func() {
 		secret, err := testEnv.CreateSecret(1)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		setSpec := func(provider *v1alpha1.DNSProvider) {
 			spec := &provider.Spec
@@ -265,24 +265,24 @@ var _ = Describe("PrivateZones", func() {
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
 
-		pr1, err := testEnv.CreateProviderEx(1, secret.GetName(), setSpec)
-		Ω(err).Should(BeNil())
+		pr1, err := testEnv.CreateProviderEx(1, setSpec)
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr1)
 
 		testEnv.AwaitProviderState(pr1.GetName(), "Error")
 
 		_, pr1b, err := testEnv.GetProvider(pr1.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		Ω(pr1b.Status.Message).ShouldNot(BeNil())
 		Ω(*pr1b.Status.Message).Should(ContainSubstring("duplicate zones"))
 
 		err = testEnv.DeleteProviderAndSecret(pr1)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	It("should not complain about a provider with zones forming domain and forwareded subdomain", func() {
 		secret, err := testEnv.CreateSecret(1)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		setSpec := func(provider *v1alpha1.DNSProvider) {
 			spec := &provider.Spec
@@ -292,13 +292,13 @@ var _ = Describe("PrivateZones", func() {
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
 
-		pr1, err := testEnv.CreateProviderEx(1, secret.GetName(), setSpec)
-		Ω(err).Should(BeNil())
+		pr1, err := testEnv.CreateProviderEx(1, setSpec)
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr1)
 
 		testEnv.AwaitProviderReady(pr1.GetName())
 
 		err = testEnv.DeleteProviderAndSecret(pr1)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 })

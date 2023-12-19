@@ -207,7 +207,7 @@ func newMockHandler(mockZones ...*zones.Zone) *Handler {
 	return h
 }
 
-func newPreparedMockHandler(t *testing.T) *Handler {
+func newPreparedMockHandler(_ *testing.T) *Handler {
 	h := newMockHandler(
 		&zones.Zone{
 			ID:   "z1",
@@ -266,12 +266,12 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 	h := newPreparedMockHandler(t)
 
 	hostedZone, err := getDNSHostedZone(h, "z1")
-	Ω(err).Should(BeNil(), "Get Zone z1 failed")
+	Ω(err).ShouldNot(HaveOccurred(), "Get Zone z1 failed")
 
 	zoneState, err := h.GetZoneState(hostedZone)
-	Ω(err).Should(BeNil(), "Initial GetZoneState failed")
+	Ω(err).ShouldNot(HaveOccurred(), "Initial GetZoneState failed")
 	dnssets := zoneState.GetDNSSets()
-	Ω(len(dnssets)).Should(Equal(0), "dnssets should be empty initially")
+	Ω(dnssets).Should(BeEmpty(), "dnssets should be empty initially")
 
 	initial := []recordsets.CreateOpts{
 		{
@@ -307,7 +307,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 	}
 	for _, opts := range initial {
 		_, err = h.client.CreateRecordSet("z1", opts)
-		Ω(err).Should(BeNil(), fmt.Sprintf("CreateRecordSet failed for %s %s", opts.Name, opts.Type))
+		Ω(err).ShouldNot(HaveOccurred(), fmt.Sprintf("CreateRecordSet failed for %s %s", opts.Name, opts.Type))
 	}
 
 	stdMeta := buildRecordSet("META", 600, "\"owner=test\"", "\"prefix=comment-\"")
@@ -338,7 +338,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 	}
 
 	zoneState2, err := h.GetZoneState(hostedZone)
-	Ω(err).Should(BeNil(), "GetZoneState failed")
+	Ω(err).ShouldNot(HaveOccurred(), "GetZoneState failed")
 	actualDnssets := zoneState2.GetDNSSets()
 	Ω(actualDnssets).Should(Equal(expectedDnssets))
 
@@ -392,7 +392,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 		},
 	}
 	err = h.ExecuteRequests(tlog, hostedZone, zoneState2, reqs)
-	Ω(err).Should(BeNil(), "ExecuteRequests failed")
+	Ω(err).ShouldNot(HaveOccurred(), "ExecuteRequests failed")
 
 	expectedDnssets2 := dns.DNSSets{
 		sub1: &dns.DNSSet{

@@ -52,7 +52,7 @@ type DNSSpecification interface {
 	AcknowledgeRoutingPolicy(policy *dns.RoutingPolicy) bool
 }
 
-func DNSObject(data resources.Object, ign ...interface{}) DNSSpecification {
+func DNSObject(data resources.Object, _ ...any) DNSSpecification {
 	switch data.Data().(type) {
 	case *api.DNSEntry:
 		return DNSEntry(data)

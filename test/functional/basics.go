@@ -195,27 +195,27 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 	_ = Describe("basics-"+p.Name, func() {
 		It("should work with "+p.Name, func() {
 			tmpl, err := template.New("Manifest").Parse(basicTemplate)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			basePath, err := os.Getwd()
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = p.CreateTempManifest(basePath, "basics", tmpl)
 			defer p.DeleteTempManifest()
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			ttl := p.TTLValue()
 
 			u := cfg.Utils
 
 			err = u.AwaitKubectlGetCRDs("dnsproviders.dns.gardener.cloud", "dnsentries.dns.gardener.cloud")
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.KubectlApply(p.TmpManifestFilename)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSProviderReady(p.Name)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			entryNames := []string{}
 			for _, name := range []string{"a", "a-base", "aaaa", "mixed", "txt", "wildcard", "cname", "cname-multi"} {
@@ -228,10 +228,10 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 				entryNames = append(entryNames, entryName(p, "alias-ds"))
 			}
 			err = u.AwaitDNSEntriesReady(entryNames...)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			itemMap, err := u.KubectlGetAllDNSEntries()
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			Ω(itemMap).Should(MatchKeys(IgnoreExtras, Keys{
 				entryName(p, "a"): MatchKeys(IgnoreExtras, Keys{
@@ -405,7 +405,7 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 				if p.AliasTargetDualStack != "" {
 					u.AwaitLookupCName(dnsName(p, "alias-ds"), p.AliasTargetDualStack)
 					ips, err := net.LookupIP(dnsName(p, "alias-ds"))
-					Ω(err).Should(BeNil())
+					Ω(err).ShouldNot(HaveOccurred())
 					var hasIPv4, hasIPv6 bool
 					for _, ip := range ips {
 						if ip.To4() != nil {
@@ -420,8 +420,8 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 				u.AwaitLookup(p.Domain, "11.22.33.44")
 				u.AwaitLookup(dnsName(p, "a"), "11.11.11.11")
 				// no valid IPv6 addresses
-				//u.AwaitLookup(dnsName(p, "aaaa"), "20a0::1")
-				//u.AwaitLookup(dnsName(p, "mixed"), "20a0::2", "11.11.0.11")
+				// u.AwaitLookup(dnsName(p, "aaaa"), "20a0::1")
+				// u.AwaitLookup(dnsName(p, "mixed"), "20a0::2", "11.11.0.11")
 				randname := config.RandStringBytes(6)
 				u.AwaitLookup(randname+"."+dnsName(p, "wildcard"), "44.44.44.44")
 				u.AwaitLookupCName(dnsName(p, "cname"), "google-public-dns-a.google.com")
@@ -434,10 +434,10 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 			// sometimes, need to wait for 120 seconds for status change to error
 			u.SetTimeoutForNextAwait(130 * time.Second)
 			err = u.AwaitDNSEntriesError(entryForeign)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			time.Sleep(5 * time.Second)
 			itemMap, err = u.KubectlGetAllDNSEntries()
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			Ω(itemMap).Should(MatchKeys(IgnoreExtras, Keys{
 				entryForeign: MatchKeys(IgnoreExtras, Keys{
 					"metadata": MatchKeys(IgnoreMissing|IgnoreExtras, Keys{
@@ -454,16 +454,16 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 			}))
 
 			err = u.KubectlDelete(p.TmpManifestFilename)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSEntriesDeleted(entryNames...)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSEntriesDeleted(entryForeign)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSProviderDeleted(p.Name)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
 }

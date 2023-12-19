@@ -57,7 +57,10 @@ func DNSProviderReplicationReconciler(c controller.Interface) (reconcile.Interfa
 	classes := controller.NewClassesByOption(c, source.OPT_CLASS, dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
 	c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
 	targetclasses := controller.NewTargetClassesByOption(c, source.OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
-	slaves := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c))
+	slaves, err := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c))
+	if err != nil {
+		return nil, err
+	}
 	gkSecret := resources.NewGroupKind("core", "Secret")
 	resMainProviders, err := c.GetMainCluster().Resources().GetByGK(gkDNSProvider)
 	if err != nil {
@@ -110,7 +113,7 @@ type sourceReconciler struct {
 
 func (this *sourceReconciler) ObjectUpdated(key resources.ClusterObjectKey) {
 	this.Infof("requeue %s because of change in annotation resource", key)
-	this.EnqueueKey(key)
+	_ = this.EnqueueKey(key)
 }
 
 func (this *sourceReconciler) Setup() error {

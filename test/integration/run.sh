@@ -76,7 +76,7 @@ if [ "$NOBOOTSTRAP" == "" ] && [ "$LOCAL_APISERVER" == "" ]; then
   echo Starting Kubernetes IN Docker...
 
   # prepare Kubernetes IN Docker - local clusters for testing Kubernetes
-  go install -mod=vendor sigs.k8s.io/kind
+  go install sigs.k8s.io/kind
 
   rm $INTEGRATION_KUBECONFIG || true
   touch $INTEGRATION_KUBECONFIG
@@ -108,11 +108,9 @@ else
   kubectl cluster-info
 fi
 
-# install ginkgo
-go install -mod=vendor github.com/onsi/ginkgo/v2/ginkgo
-
 # run test suite
-GOFLAGS="-mod=vendor" ginkgo -fail-fast -trace "$@"
+GINKGO=${GINKGO:-ginkgo}
+${GINKGO} -fail-fast -trace "$@"
 RETCODE=$?
 
 cd -

@@ -29,74 +29,74 @@ import (
 var _ = Describe("EntryLivecycle", func() {
 	It("has correct life cycle with provider", func() {
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		e, err := testEnv.CreateEntry(0, domain)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		checkProvider(pr)
 
 		checkEntry(e, pr)
 
 		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryState(e.GetName(), "Error", "")
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		time.Sleep(10 * time.Second)
 
 		err = testEnv.AwaitEntryState(e.GetName(), "Error")
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitFinalizers(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	It("has correct life cycle with provider for TXT record", func() {
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		e, err := testEnv.CreateTXTEntry(0, domain+".")
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		checkProvider(pr)
 
 		checkEntry(e, pr)
 
 		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryState(e.GetName(), "Error", "")
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		time.Sleep(10 * time.Second)
 
 		err = testEnv.AwaitEntryState(e.GetName(), "Error")
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitFinalizers(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	It("is handled only by owner", func() {
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		e, err := testEnv.CreateEntry(0, domain)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteEntryAndWait(e)
 
 		checkProvider(pr)
@@ -105,38 +105,38 @@ var _ = Describe("EntryLivecycle", func() {
 
 		ownerID := "my/owner1"
 		e, err = testEnv.UpdateEntryOwner(e, &ownerID)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryStale(e.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		owner1, err := testEnv.CreateOwner("owner1", ownerID)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
-		defer owner1.Delete()
+		defer func() { _ = owner1.Delete() }()
 
 		err = testEnv.AwaitEntryReady(e.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		ownerID2 := "my/owner2"
 		e, err = testEnv.UpdateEntryOwner(e, &ownerID2)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryStale(e.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	It("handles an entry without targets as invalid and can delete it", func() {
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		e, err := testEnv.CreateEntry(0, domain)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteEntryAndWait(e)
 
 		checkProvider(pr)
@@ -144,29 +144,29 @@ var _ = Describe("EntryLivecycle", func() {
 		checkEntry(e, pr)
 
 		e, err = testEnv.UpdateEntryTargets(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryInvalid(e.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.Await("entry still in mock provider", func() (bool, error) {
 			err := testEnv.MockInMemoryHasNotEntry(e)
 			return err == nil, err
 		})
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	It("handles entry correctly from ready -> stale -> invalid -> ready", func() {
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		e, err := testEnv.CreateEntry(0, domain)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteEntryAndWait(e)
 
 		checkProvider(pr)
@@ -175,48 +175,48 @@ var _ = Describe("EntryLivecycle", func() {
 
 		ownerID := "my/owner1"
 		e, err = testEnv.UpdateEntryOwner(e, &ownerID)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryStale(e.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.MockInMemoryHasEntry(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		e, err = testEnv.UpdateEntryTargets(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		e, err = testEnv.UpdateEntryOwner(e, nil)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryInvalid(e.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.Await("entry still in mock provider", func() (bool, error) {
 			err := testEnv.MockInMemoryHasNotEntry(e)
 			return err == nil, err
 		})
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		e, err = testEnv.UpdateEntryTargets(e, "1.1.1.1")
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryReady(e.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	It("is handled only by matching provider", func() {
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		e, err := testEnv.CreateEntry(0, domain)
 		dnsName := UnwrapEntry(e).Spec.DNSName
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteEntryAndWait(e)
 
 		checkProvider(pr)
@@ -224,24 +224,24 @@ var _ = Describe("EntryLivecycle", func() {
 		checkEntry(e, pr)
 
 		e, err = testEnv.UpdateEntryDomain(e, "foo.mock")
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryState(e.GetName(), "Error")
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		e, err = testEnv.UpdateEntryDomain(e, dnsName)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryReady(e.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 
 	It("handles entry with multiple cname targets correctly (deduplication)", func() {
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
 
@@ -258,19 +258,18 @@ var _ = Describe("EntryLivecycle", func() {
 			}
 		}
 		e, err := testEnv.CreateEntryGeneric(index, setSpec)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		checkProvider(pr)
 
 		entry := checkEntry(e, pr)
 		targets := utils.NewStringSet(entry.Status.Targets...)
-		Ω(len(targets)).To(Equal(len(entry.Status.Targets))) // no duplicates
+		Ω(targets).To(HaveLen(len(entry.Status.Targets))) // no duplicates
 
 		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
-
 })

@@ -431,7 +431,6 @@ var _ = Describe("Selection", func() {
 			}))
 		})
 		It("do include subdomain of forwarded subsubdomain", func() {
-
 			spec := v1alpha1.DNSProviderSpec{
 				Type: "test",
 				Domains: &v1alpha1.DNSSelection{

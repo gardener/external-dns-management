@@ -151,8 +151,8 @@ outer:
 			if i.Key() == t.Key() && i.Domain() == t.Domain() {
 				continue outer
 			}
-			return false
 		}
+		return false
 	}
 	return true
 }

@@ -24,8 +24,10 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
-type Target = dnsutils.Target
-type Targets = dnsutils.Targets
+type (
+	Target  = dnsutils.Target
+	Targets = dnsutils.Targets
+)
 
 func NewHostTargetFromEntryVersion(name string, entry *EntryVersion) (Target, error) {
 	ip := net.ParseIP(name)

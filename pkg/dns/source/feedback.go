@@ -22,7 +22,7 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -38,28 +38,28 @@ func NewEventFeedback(obj resources.Object, events map[string]string) DNSFeedbac
 	return &EventFeedback{obj, events}
 }
 
-func (this *EventFeedback) Ready(logger logger.LogContext, dnsname, msg string, state *DNSState) {
+func (this *EventFeedback) Ready(logger logger.LogContext, dnsname, msg string, _ *DNSState) {
 	if msg == "" {
-		msg = fmt.Sprintf("dns entry is ready")
+		msg = "dns entry is ready"
 	}
 	this.event(logger, dnsname, msg)
 }
 
-func (this *EventFeedback) Pending(logger logger.LogContext, dnsname, msg string, state *DNSState) {
+func (this *EventFeedback) Pending(logger logger.LogContext, dnsname, msg string, _ *DNSState) {
 	if msg == "" {
-		msg = fmt.Sprintf("dns entry is pending")
+		msg = "dns entry is pending"
 	}
 	this.event(logger, dnsname, msg)
 }
 
-func (this *EventFeedback) Failed(logger logger.LogContext, dnsname string, err error, state *DNSState) {
+func (this *EventFeedback) Failed(logger logger.LogContext, dnsname string, err error, _ *DNSState) {
 	if err == nil {
 		err = fmt.Errorf("dns entry is errorneous")
 	}
 	this.event(logger, dnsname, err.Error())
 }
 
-func (this *EventFeedback) Invalid(logger logger.LogContext, dnsname string, msg error, state *DNSState) {
+func (this *EventFeedback) Invalid(logger logger.LogContext, dnsname string, msg error, _ *DNSState) {
 	if msg == nil {
 		msg = fmt.Errorf("dns entry is invalid")
 	}
@@ -68,12 +68,12 @@ func (this *EventFeedback) Invalid(logger logger.LogContext, dnsname string, msg
 
 func (this *EventFeedback) Deleted(logger logger.LogContext, dnsname string, msg string) {
 	if msg == "" {
-		msg = fmt.Sprintf("dns entry deleted")
+		msg = "dns entry deleted"
 	}
 	this.event(logger, dnsname, msg)
 }
 
-func (this *EventFeedback) Succeeded(logger logger.LogContext) {
+func (this *EventFeedback) Succeeded(_ logger.LogContext) {
 }
 
 func (this *EventFeedback) event(logger logger.LogContext, dnsname, msg string) {
@@ -82,11 +82,11 @@ func (this *EventFeedback) event(logger logger.LogContext, dnsname, msg string) 
 		this.events[dnsname] = msg
 		if dnsname != "" {
 			logger.Infof("event for %q(%s): %s", key, dnsname, msg)
-			this.source.Event(v1.EventTypeNormal, "dns-annotation",
+			this.source.Event(corev1.EventTypeNormal, "dns-annotation",
 				fmt.Sprintf("%s: %s", dnsname, msg))
 		} else {
 			logger.Infof("event for %q: %s", key, msg)
-			this.source.Event(v1.EventTypeNormal, "dns-annotation", msg)
+			this.source.Event(corev1.EventTypeNormal, "dns-annotation", msg)
 		}
 	}
 }

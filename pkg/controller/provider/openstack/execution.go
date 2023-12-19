@@ -27,7 +27,6 @@ import (
 )
 
 type Change struct {
-	rs   *recordsets.RecordSet
 	Done provider.DoneHandler
 }
 

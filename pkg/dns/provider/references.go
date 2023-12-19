@@ -68,7 +68,7 @@ func (this *References) NotifyHolder(ctx Context, ref resources.ClusterObjectKey
 
 func (this *References) notifyHolder(ctx Context, ref resources.ClusterObjectKey) {
 	for h := range this.usages[ref] {
-		ctx.EnqueueKey(h)
+		_ = ctx.EnqueueKey(h)
 		this.notifyHolder(ctx, h)
 	}
 }

@@ -24,7 +24,6 @@ import (
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -36,9 +35,9 @@ type FakeDNSLocks struct {
 	ns   string
 }
 
-var dnslocksResource = schema.GroupVersionResource{Group: "dns.gardener.cloud", Version: "v1alpha1", Resource: "dnslocks"}
+var dnslocksResource = v1alpha1.SchemeGroupVersion.WithResource("dnslocks")
 
-var dnslocksKind = schema.GroupVersionKind{Group: "dns.gardener.cloud", Version: "v1alpha1", Kind: "DNSLock"}
+var dnslocksKind = v1alpha1.SchemeGroupVersion.WithKind("DNSLock")
 
 // Get takes name of the dNSLock, and returns the corresponding dNSLock object, and an error if there is any.
 func (c *FakeDNSLocks) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.DNSLock, err error) {

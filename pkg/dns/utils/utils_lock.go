@@ -84,7 +84,7 @@ func (this *DNSLockObject) GetText() []string {
 	if this.Spec().Attributes != nil {
 		for k, v := range this.Spec().Attributes {
 			if strings.HasPrefix(k, "_") {
-				attrs = append(attrs, fmt.Sprintf("%s", v))
+				attrs = append(attrs, v)
 			} else {
 				attrs = append(attrs, fmt.Sprintf("%s=%s", k, v))
 			}
@@ -128,11 +128,11 @@ func (this *DNSLockObject) ValidateSpecial() error {
 	return nil
 }
 
-func (this *DNSLockObject) AcknowledgeTargets(targets []string) bool {
+func (this *DNSLockObject) AcknowledgeTargets(_ []string) bool {
 	return false
 }
 
-func (this *DNSLockObject) AcknowledgeRoutingPolicy(policy *dns.RoutingPolicy) bool {
+func (this *DNSLockObject) AcknowledgeRoutingPolicy(_ *dns.RoutingPolicy) bool {
 	return false
 }
 
@@ -148,7 +148,7 @@ type lockTargetSpec struct {
 	refreshTime time.Time
 }
 
-func (this *lockTargetSpec) Responsible(set *dns.DNSSet, ownership dns.Ownership) bool {
+func (this *lockTargetSpec) Responsible(set *dns.DNSSet, _ dns.Ownership) bool {
 	if set.GetKind() != api.DNSLockKind {
 		return false
 	}

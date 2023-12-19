@@ -16,23 +16,6 @@
 
 set -e
 
-# For the check step concourse will set the following environment variables:
-# SOURCE_PATH - path to component repository root directory.
-
-if [[ -z "${SOURCE_PATH}" ]]; then
-  export SOURCE_PATH="$(readlink -f "$(dirname ${0})/..")"
-else
-  export SOURCE_PATH="$(readlink -f ${SOURCE_PATH})"
-fi
-
-source "$SOURCE_PATH/build/setupenv.src"
-
-# Install Ginkgo (test framework) to be able to execute the tests.
-echo "Installing Ginkgo..."
-go install -mod=vendor github.com/onsi/ginkgo/v2/ginkgo
-
-###############################################################################
-
 echo "Running integration tests..."
-set -x
-./test/integration/run.sh -l -- ${TEST_ARGS}
+cd "$(dirname "$0")/.."
+make integrationtests

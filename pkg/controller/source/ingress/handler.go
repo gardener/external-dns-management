@@ -37,7 +37,7 @@ func NewIngressSource(controller.Interface) (source.DNSSource, error) {
 	return &IngressSource{DefaultDNSSource: source.NewDefaultDNSSource(nil)}, nil
 }
 
-func (this *IngressSource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
+func (this *IngressSource) GetDNSInfo(_ logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
 	info := &source.DNSInfo{Targets: this.GetTargets(obj)}
 	hosts, err := this.extractRuleHosts(obj)
 	if err != nil {

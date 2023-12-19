@@ -47,8 +47,10 @@ type TestOwnerCacheContext struct {
 func (this *TestOwnerCacheContext) GetContext() context.Context {
 	return context.Background()
 }
-func (this *TestOwnerCacheContext) Infof(msg string, args ...interface{}) {
+
+func (this *TestOwnerCacheContext) Infof(_ string, _ ...interface{}) {
 }
+
 func (this *TestOwnerCacheContext) EnqueueKey(key resources.ClusterObjectKey) error {
 	cachekey := OwnerName(key.Name())
 	old, ok := this.ids[cachekey]
@@ -238,8 +240,7 @@ var _ = ginkgov2.Describe("Owner cache", func() {
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident, "id1", "id2")))
 		time.Sleep(2 * time.Second)
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident, "id2")))
-		changed, _ = cache.updateOwnerData(name1, "id1", true)
+		_, _ = cache.updateOwnerData(name1, "id1", true)
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident, "id1", "id2")))
 	})
-
 })

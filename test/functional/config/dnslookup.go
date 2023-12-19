@@ -18,9 +18,10 @@ package config
 
 import (
 	"fmt"
-	"github.com/miekg/dns"
 	"net"
 	"time"
+
+	"github.com/miekg/dns"
 )
 
 const (

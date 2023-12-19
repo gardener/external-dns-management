@@ -38,7 +38,7 @@ type Record interface {
 type RecordSet []Record
 
 func (this RecordSet) Clone() RecordSet {
-	clone := make(RecordSet, len(this), len(this))
+	clone := make(RecordSet, len(this))
 	for i, r := range this {
 		clone[i] = r.Copy()
 	}

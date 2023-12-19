@@ -62,8 +62,7 @@ function cleanup {
 trap cleanup EXIT ERR INT TERM
 
 export HELM_HOME="$temp_helm_home"
-[ "$(helm version --client --template "{{.Version}}" | head -c2 | tail -c1)" = "3" ] || helm init --client-only > /dev/null 2>&1
-helm package "$CHART_DIR" --version "$VERSION" --app-version "$VERSION" --destination "$temp_dir" > /dev/null
+${HELM} package "$CHART_DIR" --version "$VERSION" --app-version "$VERSION" --destination "$temp_dir" > /dev/null
 tar -xzm -C "$temp_extract_dir" -f "$temp_dir"/*
 chart="$(tar --sort=name -c --owner=root:0 --group=root:0 --mtime='UTC 2019-01-01' -C "$temp_extract_dir" "$(basename "$temp_extract_dir"/*)" | gzip -n | base64 | tr -d '\n')"
 

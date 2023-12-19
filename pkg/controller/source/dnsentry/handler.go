@@ -54,7 +54,7 @@ func (this *DNSEntrySource) CreateDNSFeedback(obj resources.Object) source.DNSFe
 	}
 }
 
-func (this *DNSEntrySource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *source.DNSCurrentState) (*source.DNSInfo, error) {
+func (this *DNSEntrySource) GetDNSInfo(_ logger.LogContext, obj resources.Object, _ *source.DNSCurrentState) (*source.DNSInfo, error) {
 	entryObject := dnsutils.DNSEntry(obj)
 	name := entryObject.DNSSetName()
 	data := entryObject.DNSEntry()
@@ -103,7 +103,7 @@ func (f *updateOriginalFeedback) Created(logger logger.LogContext, dnsname strin
 	f.chain.Created(logger, dnsname, name)
 }
 
-func (f *updateOriginalFeedback) setStatus(logger logger.LogContext, state string, msg string, dnsState *source.DNSState) {
+func (f *updateOriginalFeedback) setStatus(logger logger.LogContext, _ string, _ string, dnsState *source.DNSState) {
 	if dnsState == nil || !f.isDNSEntry {
 		return
 	}

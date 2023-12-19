@@ -37,15 +37,15 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-const filePrefix = "/tmp/"
-
 type certFileAndSecret struct {
 	caCert     string
 	secretName string
 }
 
-var caCert *x509.Certificate
-var caKey *rsa.PrivateKey
+var (
+	caCert *x509.Certificate
+	caKey  *rsa.PrivateKey
+)
 
 func newCertFileAndSecret(te *TestEnv) (*certFileAndSecret, error) {
 	caCertPem, caKeyPem, err := createCA()
@@ -105,7 +105,7 @@ func writeTempFile(suffix string, content []byte) (string, error) {
 		return "", err
 	}
 	name := f.Name()
-	return name, os.WriteFile(name, content, 0644)
+	return name, os.WriteFile(name, content, 0o644)
 }
 
 func createCA() (cacert []byte, cakey []byte, err error) {
@@ -137,7 +137,7 @@ func createCA() (cacert []byte, cakey []byte, err error) {
 var _ = Describe("RemoteAccess", func() {
 	It("should update DNS entries via remote access", func() {
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("pr-1.inmemory.mock", 0, RemoveAccess)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		checkProvider(pr)
@@ -149,17 +149,17 @@ var _ = Describe("RemoteAccess", func() {
 		checkProviderEx(testEnv2, prLocal)
 
 		e, err := testEnv2.CreateEntry(0, subdomain)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		checkProviderEx(testEnv, pr)
 
 		checkEntryEx(testEnv2, e, prLocal, "remote")
 
 		err = testEnv2.DeleteEntryAndWait(e)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv2.DeleteProviderAndSecret(prLocal)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		By("provider with invalid certificate should have state error", func() {
 			// outdated certificate
@@ -170,18 +170,18 @@ var _ = Describe("RemoteAccess", func() {
 			defer testEnv2.DeleteProviderAndSecret(pr3)
 
 			err = testEnv2.AwaitProviderState(pr2.GetName(), "Error")
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			err = testEnv2.AwaitProviderState(pr3.GetName(), "Error")
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = testEnv2.DeleteProviderAndSecret(pr2)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			err = testEnv2.DeleteProviderAndSecret(pr3)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 
 		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 })
 
@@ -210,16 +210,16 @@ func prepareRemoteAccessClientSecret(index int, remoteNamespace, namespace strin
 
 func createRemoteProvider(index int, remoteNamespace, namespace, subdomain string, days int) resources.Object {
 	secret, err := prepareRemoteAccessClientSecret(index, remoteNamespace, namespace, days)
-	Ω(err).Should(BeNil())
+	Ω(err).ShouldNot(HaveOccurred())
 	_, err = testEnv2.CreateSecretEx(secret)
-	Ω(err).Should(BeNil())
+	Ω(err).ShouldNot(HaveOccurred())
 	setSpec := func(provider *v1alpha1.DNSProvider) {
 		spec := &provider.Spec
 		spec.Domains = &v1alpha1.DNSSelection{Include: []string{subdomain}}
 		spec.Type = "remote"
 		spec.SecretRef = &corev1.SecretReference{Name: secret.Name, Namespace: testEnv2.Namespace}
 	}
-	prLocal, err := testEnv2.CreateProviderEx(index, secret.Name, setSpec)
-	Ω(err).Should(BeNil())
+	prLocal, err := testEnv2.CreateProviderEx(index, setSpec)
+	Ω(err).ShouldNot(HaveOccurred())
 	return prLocal
 }

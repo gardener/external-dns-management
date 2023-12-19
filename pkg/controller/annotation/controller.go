@@ -75,7 +75,6 @@ var _ reconcile.Interface = &reconciler{}
 ///////////////////////////////////////////////////////////////////////////////
 
 func Create(controller controller.Interface) (reconcile.Interface, error) {
-
 	cfg, err := controller.GetOptionSource("options")
 	config := cfg.(*Config)
 	if err == nil {
@@ -89,12 +88,12 @@ func Create(controller controller.Interface) (reconcile.Interface, error) {
 	}, nil
 }
 
-func (this *reconciler) Setup() {
+func (this *reconciler) Setup() error {
 	this.controller.Infof("### setup dns watch resources")
 	res, _ := this.controller.GetMainCluster().Resources().GetByExample(&api.DNSAnnotation{})
 	list, _ := res.ListCached(labels.Everything())
-	dnsutils.ProcessElements(list, func(e resources.Object) {
-		this.annotations.Add(this.controller, e)
+	return dnsutils.ProcessElements(list, func(e resources.Object) error {
+		return this.annotations.Add(this.controller, e)
 	}, this.config.processors)
 }
 

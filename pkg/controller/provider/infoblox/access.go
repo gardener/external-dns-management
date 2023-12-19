@@ -68,7 +68,7 @@ func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) erro
 	return err
 }
 
-func (this *access) NewRecord(fqdn string, rtype string, value string, zone provider.DNSHostedZone, ttl int64) (record raw.Record) {
+func (this *access) NewRecord(fqdn string, rtype string, value string, _ provider.DNSHostedZone, ttl int64) (record raw.Record) {
 	switch rtype {
 	case dns.RS_A:
 		r := ibclient.NewEmptyRecordA()

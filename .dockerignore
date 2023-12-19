@@ -4,14 +4,9 @@
 # Exclude folders relevant for build
 !charts/
 !cmd/
-!docs/
-!example/
 !hack/
 !pkg/
-!test/
 !tools/
-!vendor/
-!local/remote/remoteclient/main.go
 
 !.gitignore
 !.golangci.yaml

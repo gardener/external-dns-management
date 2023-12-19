@@ -21,13 +21,17 @@ import (
 	"strings"
 )
 
-const RS_META = "META"
-const RS_ALIAS = "ALIAS" // provider specific alias for CNAME record (e.g. AWS alias target)
+const (
+	RS_META  = "META"
+	RS_ALIAS = "ALIAS" // provider specific alias for CNAME record (e.g. AWS alias target)
+)
 
-const RS_TXT = "TXT"
-const RS_CNAME = "CNAME"
-const RS_A = "A"
-const RS_AAAA = "AAAA"
+const (
+	RS_TXT   = "TXT"
+	RS_CNAME = "CNAME"
+	RS_A     = "A"
+	RS_AAAA  = "AAAA"
+)
 
 const RS_NS = "NS"
 
@@ -35,8 +39,10 @@ const RS_NS = "NS"
 // Record Sets
 ////////////////////////////////////////////////////////////////////////////////
 
-type RecordSets map[string]*RecordSet
-type Records []*Record
+type (
+	RecordSets map[string]*RecordSet
+	Records    []*Record
+)
 
 func (this RecordSets) Clone() RecordSets {
 	clone := RecordSets{}

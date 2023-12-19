@@ -34,13 +34,13 @@ var _ = Describe("ManyEntriesOneProvider", func() {
 		defer func() { testEnv.defaultTimeout = oldTimeout }()
 
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		entries := []resources.Object{}
 		for i := 0; i < entryCount; i++ {
 			e, err := testEnv.CreateEntry(i, domain)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			entries = append(entries, e)
 		}
 
@@ -51,22 +51,22 @@ var _ = Describe("ManyEntriesOneProvider", func() {
 		}
 
 		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		for _, entry := range entries {
 			err = testEnv.AwaitEntryState(entry.GetName(), "Error", "")
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = testEnv.AwaitFinalizers(entry)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = entry.Delete()
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 		}
 
 		for _, entry := range entries {
 			err = testEnv.AwaitEntryDeletion(entry.GetName())
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 		}
 	})
 })

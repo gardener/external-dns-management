@@ -103,9 +103,9 @@ func MapFromProvider(name DNSSetName, rs *RecordSet) (DNSSetName, *RecordSet) {
 				} else if strings.HasPrefix(dns, "---at.") {
 					dns = dns[6:]
 					add = "@."
-				} else if strings.HasPrefix(dns, ".") {
+				} else {
 					// for backwards compatibility of form *.comment-.basedomain
-					dns = dns[1:]
+					dns = strings.TrimPrefix(dns, ".")
 				}
 				return name.WithDNSName(add + dns), &new
 			} else {

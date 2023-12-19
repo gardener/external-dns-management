@@ -67,8 +67,10 @@ type DNSSourceType interface {
 	Create(controller.Interface) (DNSSource, error)
 }
 
-type DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, names dns.DNSNameSet) (targets utils.StringSet, texts utils.StringSet, err error)
-type DNSSourceCreator func(controller.Interface) (DNSSource, error)
+type (
+	DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, names dns.DNSNameSet) (targets utils.StringSet, texts utils.StringSet, err error)
+	DNSSourceCreator   func(controller.Interface) (DNSSource, error)
+)
 
 type DNSState struct {
 	v1alpha1.DNSEntryStatus

@@ -15,7 +15,7 @@ external-dns-management:
         dockerimages:
           dns-controller-manager:
             image: europe-docker.pkg.dev/gardener-project/snapshots/dns-controller-manager
-            dockerfile: build/Dockerfile
+            dockerfile: Dockerfile
             inputs:
               repos:
                 source: null

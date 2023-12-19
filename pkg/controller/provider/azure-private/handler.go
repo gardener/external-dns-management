@@ -101,7 +101,6 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 	ctx := context.Background()
 	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
 	for results.NotDone() {
-
 		item := results.Value()
 
 		var zoneID string

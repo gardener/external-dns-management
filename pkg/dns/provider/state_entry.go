@@ -56,7 +56,7 @@ func (this *state) TriggerEntry(logger logger.LogContext, e *Entry) {
 	if logger != nil {
 		logger.Infof("trigger entry %s", e.ClusterKey())
 	}
-	this.context.EnqueueKey(e.ClusterKey())
+	_ = this.context.EnqueueKey(e.ClusterKey())
 }
 
 func (this *state) TriggerEntriesByOwner(logger logger.LogContext, owners utils.StringSet) {
@@ -551,7 +551,7 @@ func (this *state) UpdateLockStates(log logger.LogContext) {
 }
 
 func (this *state) updateLockState(log logger.LogContext, dnsName string, e *Entry, records []string, err error) {
-	e.lock.Lock()
+	_ = e.lock.Lock()
 	defer e.lock.Unlock()
 
 	updateRequired := false
@@ -602,7 +602,7 @@ func (this *state) updateLockState(log logger.LogContext, dnsName string, e *Ent
 	}
 
 	owned, ok, ownedMsg := isLockOwned(e.object.(*dnsutils.DNSLockObject), lockDNS, timestampDNS)
-	e.object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
+	if _, err = e.object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
 		status := &data.(*api.DNSLock).Status
 		mod := utils.ModificationState{}
 		mod.Modify(AssureTimestamp(&status.Timestamp, ts))
@@ -630,11 +630,13 @@ func (this *state) updateLockState(log logger.LogContext, dnsName string, e *Ent
 		mod.Modify(!EqualAttrs(attrs, status.Attributes))
 		status.Attributes = attrs
 		return mod.IsModified(), nil
-	})
+	}); err != nil {
+		log.Infof("status update failed for %s: %s", e.object.ObjectName(), err)
+	}
 
 	if updateRequired {
 		e.updateRequired = true
-		this.context.Enqueue(e.object)
+		_ = this.context.Enqueue(e.object)
 	}
 }
 

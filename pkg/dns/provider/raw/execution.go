@@ -136,7 +136,6 @@ func (this *Execution) add(name dns.DNSSetName, rset *dns.RecordSet, modonly boo
 }
 
 func (this *Execution) SubmitChanges() error {
-
 	if len(this.additions) == 0 && len(this.updates) == 0 && len(this.deletions) == 0 {
 		return nil
 	}

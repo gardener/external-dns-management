@@ -17,14 +17,18 @@
 
 package dns
 
-const CONTROLLER_GROUP_DNS_CONTROLLERS = "dnscontrollers"
-const CONTROLLER_GROUP_DNS_SOURCES = "dnssources"
-const CONTROLLER_GROUP_REPLICATION = "replication"
+const (
+	CONTROLLER_GROUP_DNS_CONTROLLERS = "dnscontrollers"
+	CONTROLLER_GROUP_DNS_SOURCES     = "dnssources"
+	CONTROLLER_GROUP_REPLICATION     = "replication"
+)
 
-const DEFAULT_CLASS = "gardendns"
-const ANNOTATION_GROUP = "dns.gardener.cloud"
-const CLASS_ANNOTATION = ANNOTATION_GROUP + "/class"
-const REALM_ANNOTATION = ANNOTATION_GROUP + "/realms"
-const NOT_RATE_LIMITED_ANNOTATION = ANNOTATION_GROUP + "/not-rate-limited"
+const (
+	DEFAULT_CLASS               = "gardendns"
+	ANNOTATION_GROUP            = "dns.gardener.cloud"
+	CLASS_ANNOTATION            = ANNOTATION_GROUP + "/class"
+	REALM_ANNOTATION            = ANNOTATION_GROUP + "/realms"
+	NOT_RATE_LIMITED_ANNOTATION = ANNOTATION_GROUP + "/not-rate-limited"
+)
 
 const OPT_SETUP = "setup"

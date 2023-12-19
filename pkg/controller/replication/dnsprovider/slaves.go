@@ -58,7 +58,7 @@ type slaveReconciler struct {
 	slaves     *reconcilers.SlaveReconciler
 }
 
-func (this *slaveReconciler) Start() {
+func (this *slaveReconciler) Start() error {
 	this.controller.Infof("determining dangling dns providers...")
 	cluster := this.controller.GetMainCluster()
 	main := cluster.GetId()
@@ -66,12 +66,15 @@ func (this *slaveReconciler) Start() {
 		if k.Cluster() == main {
 			if _, err := cluster.GetCachedObject(k); errors.IsNotFound(err) {
 				this.controller.Infof("trigger vanished origin %s", k.ObjectKey())
-				this.controller.EnqueueKey(k)
+				if err := this.controller.EnqueueKey(k); err != nil {
+					return err
+				}
 			} else {
 				this.controller.Debugf("found origin %s", k.ObjectKey())
 			}
 		}
 	}
+	return nil
 }
 
 func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {

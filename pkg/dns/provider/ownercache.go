@@ -39,8 +39,10 @@ type ProviderCacheContext interface {
 	Infof(msg string, args ...interface{})
 }
 
-type ProviderTypeCounts map[string]int
-type OwnerCounts map[OwnerName]ProviderTypeCounts
+type (
+	ProviderTypeCounts map[string]int
+	OwnerCounts        map[OwnerName]ProviderTypeCounts
+)
 
 type OwnerObjectInfo struct {
 	active bool
@@ -73,6 +75,7 @@ func (this OwnerIDInfos) Contains(id string) bool {
 	_, ok := this[id]
 	return ok
 }
+
 func (this OwnerIDInfos) KeySet() utils.StringSet {
 	return utils.StringKeySet(this)
 }
@@ -118,7 +121,7 @@ func (this *OwnerCache) TriggerDNSActivation(logger logger.LogContext, cntr cont
 	for k, a := range this.GetDNSActivations() {
 		if active := a.IsActive(); active != a.Current {
 			logger.Infof("DNS activation changed for %s[%s] (%t)", k.ObjectName(), a.DNSName, active)
-			cntr.EnqueueKey(k)
+			_ = cntr.EnqueueKey(k)
 		}
 	}
 }
@@ -126,7 +129,7 @@ func (this *OwnerCache) TriggerDNSActivation(logger logger.LogContext, cntr cont
 func (this *OwnerCache) expire(key dnsutils.ScheduleKey) {
 	id := key.(resources.ClusterObjectKey)
 	this.ctx.Infof("owner %s expired", id.Name())
-	this.ctx.EnqueueKey(id)
+	_ = this.ctx.EnqueueKey(id)
 }
 
 func (this *OwnerCache) IsResponsibleFor(id string) bool {

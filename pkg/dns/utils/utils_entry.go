@@ -64,30 +64,38 @@ func (this *DNSEntryObject) BaseStatus() *api.DNSBaseStatus {
 func (this *DNSEntryObject) GetDNSName() string {
 	return dns.NormalizeHostname(this.DNSEntry().Spec.DNSName)
 }
+
 func (this *DNSEntryObject) GetSetIdentifier() string {
 	if policy := this.DNSEntry().Spec.RoutingPolicy; policy != nil {
 		return policy.SetIdentifier
 	}
 	return ""
 }
+
 func (this *DNSEntryObject) GetTargets() []string {
 	return this.DNSEntry().Spec.Targets
 }
+
 func (this *DNSEntryObject) GetText() []string {
 	return this.DNSEntry().Spec.Text
 }
+
 func (this *DNSEntryObject) GetOwnerId() *string {
 	return this.DNSEntry().Spec.OwnerId
 }
+
 func (this *DNSEntryObject) GetTTL() *int64 {
 	return this.DNSEntry().Spec.TTL
 }
+
 func (this *DNSEntryObject) GetCNameLookupInterval() *int64 {
 	return this.DNSEntry().Spec.CNameLookupInterval
 }
+
 func (this *DNSEntryObject) GetReference() *api.EntryReference {
 	return this.DNSEntry().Spec.Reference
 }
+
 func (this *DNSEntryObject) GetRoutingPolicy() *dns.RoutingPolicy {
 	if policy := this.DNSEntry().Spec.RoutingPolicy; policy != nil {
 		return &dns.RoutingPolicy{

@@ -18,12 +18,12 @@ package utils
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"strings"
-	"time"
 )
 
 func Match(hostname, domain string) bool {

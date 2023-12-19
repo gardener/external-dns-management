@@ -32,11 +32,13 @@ import (
 // Events
 ////////////////////////////////////////////////////////////////////////////////
 
+// Events stores events per cluster object key.
 type Events struct {
 	lock   sync.Mutex
 	Events map[resources.ClusterObjectKey]map[string]string
 }
 
+// NewEvents creates a new Events object.
 func NewEvents() *Events {
 	return &Events{Events: map[resources.ClusterObjectKey]map[string]string{}}
 }
@@ -63,7 +65,7 @@ func (this *Events) Delete(logger logger.LogContext, obj resources.Object) recon
 	return reconcile.Succeeded(logger)
 }
 
-func (this *Events) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) {
+func (this *Events) Deleted(_ logger.LogContext, key resources.ClusterObjectKey) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	delete(this.Events, key)
@@ -110,7 +112,7 @@ func (this *dnssourcetype) GroupKind() schema.GroupKind {
 	return this.kind
 }
 
-func (this *handlerdnssourcetype) Create(c controller.Interface) (DNSSource, error) {
+func (this *handlerdnssourcetype) Create(_ controller.Interface) (DNSSource, error) {
 	return this, nil
 }
 

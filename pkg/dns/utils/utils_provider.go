@@ -59,7 +59,7 @@ func (this *DNSProviderObject) TypeCode() string {
 	return this.DNSProvider().Spec.Type
 }
 
-func (this *DNSProviderObject) SetStateWithError(state string, err error) bool {
+func (this *DNSProviderObject) SetStateWithError(_ string, err error) bool {
 	type causer interface {
 		error
 		Cause() error

@@ -16,50 +16,8 @@
 
 set -e
 
-# For the check step concourse will set the following environment variables:
-# SOURCE_PATH - path to component repository root directory.
+cd "$(dirname "$0")/.."
+make check
 
-if [[ -z "${SOURCE_PATH}" ]]; then
-  export SOURCE_PATH="$(readlink -f "$(dirname ${0})/..")"
-else
-  export SOURCE_PATH="$(readlink -f ${SOURCE_PATH})"
-fi
-
-source "$SOURCE_PATH/build/setupenv.src"
-
-ignore=(
-   "receiver name should be a reflection of its identity; don't use generic names such as \"this\" or \"self\""
-   "should not use basic type string as key in context.WithValue"
-   "context.Context should be the first parameter of a function"
-   "if block ends with a return statement, so drop this else and outdent its block"
-   "should not use dot imports"
-   "*Id.*ID"
-   "don't use ALL_CAPS in Go names; use CamelCase"
-   "don't use underscores in Go names"
-   "by other packages, and that stutters; consider calling this"
-   ": exported "
-)
-
-# Build Golint.
-go install -mod=vendor ./vendor/golang.org/x/lint/golint
-
-###############################################################################
-
-join_by() { local IFS="$1"; shift; echo "$*"; }
-
-PACKAGES="$(go list -mod=vendor -e ./... | grep -vE '/tmp/|/vendor/|/local/')"
-PACKAGES_DIRS="$(echo ${PACKAGES} | sed "s|$GITPROVIDER/$PROJECT|.|g")"
-
-# Execute static code checks.
-go vet -mod=vendor ${PACKAGES}
-
-# go fmt ignores -mod=vendor and performs module lookup (https://github.com/golang/go/issues/27841).
-# Also go fmt is just alias for gofmt -l -w and does not support flags that gofmt does.
-# That is why gofmt is used.
-
-# Execute automatic code formatting directive.
-echo "Running gofmt..."
-gofmt -l -w -s ${PACKAGES_DIRS}
-
-# Execute lint checks.
-hack/lint -vacs  ${PACKAGES_DIRS}
+echo "running code generator..."
+make generate

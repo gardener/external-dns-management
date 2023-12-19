@@ -24,22 +24,18 @@ import (
 )
 
 type RateLimiter struct {
-	min     time.Duration
-	max     time.Duration
-	minincr time.Duration
+	min time.Duration
+	max time.Duration
 
 	rate atomic.Duration
 }
 
-func NewRateLimiter(min, max, minincr time.Duration) *RateLimiter {
+func NewRateLimiter(min, max time.Duration) *RateLimiter {
 	if min <= 0 {
 		min = time.Second
 	}
 	if max <= min {
 		max = min * 20
-	}
-	if minincr < min/10 {
-		minincr = min / 10
 	}
 	return &RateLimiter{
 		min: min,

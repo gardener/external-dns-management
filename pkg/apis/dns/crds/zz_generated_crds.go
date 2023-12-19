@@ -31,8 +31,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: dnsannotations.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -135,8 +134,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: dnsentries.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -357,8 +355,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: dnshostedzonepolicies.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -479,8 +476,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: dnslocks.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -637,8 +633,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: dnsowners.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -753,8 +748,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: dnsproviders.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -966,8 +960,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: remoteaccesscertificates.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud

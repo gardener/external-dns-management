@@ -28,8 +28,8 @@ import (
 )
 
 var _ = Describe("DNSActivation", func() {
-	var lookupName = "lock.mock.xx"
-	var lookupValues = []string{}
+	lookupName := "lock.mock.xx"
+	lookupValues := []string{}
 
 	// mock DNS TXT record lookup
 	BeforeEach(func() {
@@ -48,7 +48,7 @@ var _ = Describe("DNSActivation", func() {
 		baseDomain := "xx.mock"
 
 		pr, domain, _, err := testEnv.CreateSecretAndProvider(baseDomain, 0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		ownerID := "id-owner1"
@@ -60,12 +60,12 @@ var _ = Describe("DNSActivation", func() {
 			e.Spec.OwnerId = &ownerID
 		}
 		entry, err := testEnv.CreateEntryGeneric(0, setSpec)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		checkProviderEx(testEnv, pr)
 
 		err = testEnv.AwaitEntryStale(entry.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		clusterID := "cluster-id-1234"
 		ownerSetSpec := func(o *v1alpha1.DNSOwner) {
@@ -76,14 +76,14 @@ var _ = Describe("DNSActivation", func() {
 			}
 		}
 		owner1, err := testEnv.CreateOwnerGeneric("owner1", ownerSetSpec)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		active := false
 		lookupValues = []string{clusterID}
 		for i := 0; i < 30; i++ {
 			time.Sleep(500 * time.Millisecond)
 			obj, err := testEnv.GetOwner(owner1.GetName())
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			owner := UnwrapOwner(obj)
 			if owner.Status.Active != nil && *owner.Status.Active {
 				active = true
@@ -93,13 +93,13 @@ var _ = Describe("DNSActivation", func() {
 		Ω(active).Should(BeTrue())
 
 		err = testEnv.AwaitEntryReady(entry.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		lookupValues = []string{"foo"}
 		for i := 0; i < 30; i++ {
 			time.Sleep(500 * time.Millisecond)
 			obj, err := testEnv.GetOwner(owner1.GetName())
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 			owner := UnwrapOwner(obj)
 			if owner.Status.Active != nil && !*owner.Status.Active {
 				active = false
@@ -109,15 +109,15 @@ var _ = Describe("DNSActivation", func() {
 		Ω(active).Should(BeFalse())
 
 		err = testEnv.AwaitEntryStale(entry.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteOwner(owner1)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteEntryAndWait(entry)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 	})
 })

@@ -39,8 +39,10 @@ type googleRoutingPolicyData struct {
 	location *string
 }
 
-type dnsname = string
-type dnstype = string
+type (
+	dnsname = string
+	dnstype = string
+)
 
 type routingPolicyChanges map[dnsname]map[dnstype]*googledns.ResourceRecordSet
 
@@ -127,7 +129,8 @@ func (c routingPolicyChanges) calcDeletionsAndAdditions(rrsetGetter rrsetGetterF
 func (c routingPolicyChanges) calcDeletionsAndAdditionsWrr(
 	rrsetGetter rrsetGetterFunc, name dnsname, typ dnstype,
 	rrset *googledns.ResourceRecordSet,
-	deletions, additions []*googledns.ResourceRecordSet) ([]*googledns.ResourceRecordSet, []*googledns.ResourceRecordSet, error) {
+	deletions, additions []*googledns.ResourceRecordSet,
+) ([]*googledns.ResourceRecordSet, []*googledns.ResourceRecordSet, error) {
 	old, err := rrsetGetter(name, typ)
 	if err == nil {
 		deletions = append(deletions, old)
@@ -170,7 +173,8 @@ func (c routingPolicyChanges) calcDeletionsAndAdditionsWrr(
 func (c routingPolicyChanges) calcDeletionsAndAdditionsGeo(
 	rrsetGetter rrsetGetterFunc, name dnsname, typ dnstype,
 	rrset *googledns.ResourceRecordSet,
-	deletions, additions []*googledns.ResourceRecordSet) ([]*googledns.ResourceRecordSet, []*googledns.ResourceRecordSet, error) {
+	deletions, additions []*googledns.ResourceRecordSet,
+) ([]*googledns.ResourceRecordSet, []*googledns.ResourceRecordSet, error) {
 	old, err := rrsetGetter(name, typ)
 	if err == nil {
 		deletions = append(deletions, old)
@@ -244,7 +248,8 @@ func extractRoutingPolicy(set *dns.DNSSet) (*googleRoutingPolicyData, error) {
 			}
 			data.weight = &v
 		case keyLocation:
-			data.location = &value
+			vv := value
+			data.location = &vv
 		}
 	}
 

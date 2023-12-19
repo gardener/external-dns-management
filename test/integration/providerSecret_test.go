@@ -30,17 +30,17 @@ var _ = Describe("ProviderSecret", func() {
 	createAndDelete := func() {
 		secretName := testEnv.SecretName(0)
 		pr, _, _, err := testEnv.CreateProvider("inmemory.mock", 0, secretName)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		checkHasFinalizer(pr)
 
 		err = testEnv.AwaitProviderState(pr.GetName(), "Error")
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		// create secret after provider
 		secret, err := testEnv.CreateSecret(0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		// provider should be ready now
 		checkProvider(pr)
@@ -53,7 +53,7 @@ var _ = Describe("ProviderSecret", func() {
 
 		secretName := testEnv.SecretName(0)
 		err := testEnv.AwaitSecretDeletion(secretName)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		By("second round", createAndDelete)
 	})
@@ -61,7 +61,7 @@ var _ = Describe("ProviderSecret", func() {
 	It("takes into account includes and excludes of domain names and zone ids", func() {
 		secretName := testEnv.SecretName(0)
 		_, err := testEnv.CreateSecret(0)
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		var zonedata []mock.MockZone
 		for _, c := range []string{"a", "b", "c", "d", "e"} {
@@ -85,14 +85,14 @@ var _ = Describe("ProviderSecret", func() {
 			spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: testEnv.Namespace}
 		}
 
-		pr, err := testEnv.CreateProviderEx(1, secretName, setSpec)
-		Ω(err).Should(BeNil())
+		pr, err := testEnv.CreateProviderEx(1, setSpec)
+		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		checkProvider(pr)
 
 		_, data, err := testEnv.GetProvider(pr.GetName())
-		Ω(err).Should(BeNil())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		Ω(data.Status.Zones.Included).Should(ConsistOf(prefix + "pr1a.mock.xx"))
 		Ω(data.Status.Zones.Excluded).Should(ConsistOf(prefix+"pr1b.mock.xx", prefix+"pr1c.mock.xx", prefix+"pr1d.mock.xx", prefix+"pr1e.mock.xx"))

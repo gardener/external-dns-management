@@ -98,6 +98,9 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	h.tsigSecretBase64 = base64.StdEncoding.EncodeToString([]byte(secret))
 
 	h.tsigAlgorithm, err = findTsigAlgorithm(c.GetProperty("TSIGSecretAlgorithm"))
+	if err != nil {
+		return nil, err
+	}
 
 	h.cache, err = c.ZoneCacheFactory.CreateZoneCache(provider.CacheZoneState, c.Metrics, h.getZones, h.getZoneState)
 	if err != nil {
@@ -115,7 +118,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
 
-func (h *Handler) getZones(cache provider.ZoneCache) (provider.DNSHostedZones, error) {
+func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	domainName := dns.NormalizeHostname(h.zone)
 	h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
 	return provider.DNSHostedZones{
@@ -127,7 +130,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 	return h.cache.GetZoneState(zone)
 }
 
-func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneCache) (provider.DNSZoneState, error) {
+func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	dnssets := dns.DNSSets{}
 
 	if zone.Id().ID != h.zone {
@@ -219,7 +222,7 @@ func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHos
 	return err
 }
 
-func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
+func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHostedZone, _ provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	exec := NewExecution(logger, h)
 
 	var succeeded, failed int

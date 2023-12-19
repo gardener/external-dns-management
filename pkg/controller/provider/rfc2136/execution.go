@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"time"
 
-	azure "github.com/Azure/azure-sdk-for-go/services/dns/mgmt/2018-05-01/dns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	miekgdns "github.com/miekg/dns"
 
@@ -31,7 +30,6 @@ import (
 )
 
 type Change struct {
-	rs   *azure.RecordSet
 	Done provider.DoneHandler
 }
 

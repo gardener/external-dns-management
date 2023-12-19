@@ -28,8 +28,10 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
 )
 
-var nullHost = "@"
-var defaultPageSize = 20
+var (
+	nullHost        = "@"
+	defaultPageSize = 20
+)
 
 func GetDNSName(r alidns.Record) string {
 	if r.RR == nullHost {
@@ -107,7 +109,8 @@ func (this *access) ListRecords(zoneID, domain string, consume func(record alidn
 }
 
 func (this *access) listRecords(zoneID, domain string, consume func(record alidns.Record) (bool, error),
-	requestModifier func(request *alidns.DescribeDomainRecordsRequest)) error {
+	requestModifier func(request *alidns.DescribeDomainRecordsRequest),
+) error {
 	request := alidns.CreateDescribeDomainRecordsRequest()
 	request.DomainName = domain
 	if requestModifier != nil {

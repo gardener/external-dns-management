@@ -77,7 +77,7 @@ func (s *namespaceState) updateHandler(logger logger.LogContext, name string, ha
 	hstate := s.handlers[name]
 	if hstate != nil {
 		oldZones := hstate.getCachedZones()
-		hstate.lock.Lock()
+		_ = hstate.lock.Lock()
 		hstate.handler = handler
 		hstate.zones.Store(zones)
 		hstate.lock.Unlock()
@@ -188,7 +188,7 @@ func (s *namespaceState) getAllZones(spinning time.Duration) ([]provider.DNSHost
 	return allZones, nil
 }
 
-func (s *namespaceState) lockupZone(spinning time.Duration, zoneid string) (*handlerState, provider.DNSHostedZone, error) {
+func (s *namespaceState) lockupZone(_ time.Duration, zoneid string) (*handlerState, provider.DNSHostedZone, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

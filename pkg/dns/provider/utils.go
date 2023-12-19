@@ -29,10 +29,10 @@ type NullMetrics struct{}
 
 var _ Metrics = &NullMetrics{}
 
-func (m *NullMetrics) AddGenericRequests(requestType string, n int) {
+func (m *NullMetrics) AddGenericRequests(_ string, _ int) {
 }
 
-func (m *NullMetrics) AddZoneRequests(zoneid, requestType string, n int) {
+func (m *NullMetrics) AddZoneRequests(_, _ string, _ int) {
 }
 
 func copyZones(src map[dns.ZoneID]*dnsHostedZone) dnsHostedZones {

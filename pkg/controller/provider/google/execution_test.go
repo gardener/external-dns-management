@@ -515,7 +515,7 @@ func matchSimpleResourceRecordSet(typ string, ttl int64, targets ...string) type
 	}))
 }
 
-func itemNameFunc(index int, element interface{}) string {
+func itemNameFunc(index int, _ interface{}) string {
 	return fmt.Sprintf("%d", index)
 }
 

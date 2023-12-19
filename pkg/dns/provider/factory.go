@@ -121,9 +121,12 @@ type CompoundFactory struct {
 var _ DNSHandlerFactory = &CompoundFactory{}
 
 func NewDNSHandlerCompoundFactory(name string) *CompoundFactory {
-	return &CompoundFactory{name,
-		utils.StringSet{}, utils.StringSet{},
-		map[string]DNSHandlerFactory{}}
+	return &CompoundFactory{
+		name,
+		utils.StringSet{},
+		utils.StringSet{},
+		map[string]DNSHandlerFactory{},
+	}
 }
 
 func (this *CompoundFactory) Add(f DNSHandlerFactory, finalizer ...string) error {

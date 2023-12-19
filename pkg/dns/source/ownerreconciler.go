@@ -90,7 +90,7 @@ func (s *ownerState) Setup(logger logger.LogContext) error {
 
 func (s *ownerState) SetActiveByObj(logger logger.LogContext, owner *api.DNSOwner) {
 	s.lock.Lock()
-	s.lock.Unlock()
+	defer s.lock.Unlock()
 	s.setActiveByObj(logger, owner)
 }
 
@@ -152,7 +152,7 @@ type ownerReconciler struct {
 	ownerState *ownerState
 }
 
-func (r *ownerReconciler) RejectResourceReconcilation(cluster cluster.Interface, gk schema.GroupKind) bool {
+func (r *ownerReconciler) RejectResourceReconcilation(_ cluster.Interface, _ schema.GroupKind) bool {
 	return r.ownerState.controller != r.controller
 }
 

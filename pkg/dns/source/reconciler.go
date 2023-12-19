@@ -39,12 +39,14 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
+// NewSlaveAccessSpec creates a new SlaveAccessSpec.
 func NewSlaveAccessSpec(c controller.Interface, sourceType DNSSourceType) reconcilers.SlaveAccessSpec {
 	spec := reconcilers.NewSlaveAccessSpec(c, sourceType.Name(), SlaveResources, MasterResourcesType(sourceType.GroupKind()))
 	spec.Namespace, _ = c.GetStringOption(OPT_NAMESPACE)
 	return spec
 }
 
+// SourceReconciler returns a ReconcilerType method.
 func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType) controller.ReconcilerType {
 	return func(c controller.Interface) (reconcile.Interface, error) {
 		source, err := sourceType.Create(c)
@@ -61,7 +63,10 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		classes := controller.NewClassesByOption(c, OPT_CLASS, dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
 		c.SetFinalizerHandler(controller.NewFinalizerForClasses(c, c.GetDefinition().FinalizerName(), classes))
 		targetclasses := controller.NewTargetClassesByOption(c, OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes)
-		slaves := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c, sourceType))
+		slaves, err := reconcilers.NewSlaveAccessBySpec(c, NewSlaveAccessSpec(c, sourceType))
+		if err != nil {
+			return nil, err
+		}
 		ownerState, err := getOrCreateSharedOwnerState(c, false)
 		if err != nil {
 			return nil, err
@@ -125,7 +130,7 @@ type sourceReconciler struct {
 
 func (this *sourceReconciler) ObjectUpdated(key resources.ClusterObjectKey) {
 	this.Infof("requeue %s because of change in annotation resource", key)
-	this.EnqueueKey(key)
+	_ = this.EnqueueKey(key)
 }
 
 func (this *sourceReconciler) Setup() error {
@@ -260,7 +265,6 @@ outer:
 				notifiedErrors = append(notifiedErrors, fmt.Sprintf("cannot remove dns entry object %q(%s): %s", o.ClusterKey(), name, err))
 			}
 		}
-
 	}
 	if len(current) > 0 {
 		for _, o := range current {
@@ -274,7 +278,7 @@ outer:
 	}
 
 	for key := range this.state.GetUsed(obj.ClusterKey()) {
-		this.EnqueueKey(key)
+		_ = this.EnqueueKey(key)
 	}
 	if len(notifiedErrors) > 0 {
 		msg := strings.Join(notifiedErrors, ", ")

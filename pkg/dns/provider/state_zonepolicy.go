@@ -133,9 +133,11 @@ func (this *state) ZonePolicyDeleted(logger logger.LogContext, key resources.Clu
 	return reconcile.Succeeded(logger)
 }
 
-func (this *state) updateZonePolicyStatus(policy *dnsutils.DNSHostedZonePolicyObject,
-	zones []api.ZoneInfo, conflicts []string) error {
-
+func (this *state) updateZonePolicyStatus(
+	policy *dnsutils.DNSHostedZonePolicyObject,
+	zones []api.ZoneInfo,
+	conflicts []string,
+) error {
 	var pmsg *string
 	if len(conflicts) > 0 {
 		sort.Strings(conflicts)

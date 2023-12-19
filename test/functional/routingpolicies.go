@@ -90,26 +90,26 @@ func functestRoutingPolicies(cfg *config.Config, p *config.ProviderConfig) {
 				Skip("no routing policy sets defined")
 			}
 			tmpl, err := template.New("Manifest").Parse(routingPolicyTemplate)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			basePath, err := os.Getwd()
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = p.CreateTempManifest(basePath, "routingpolicies", tmpl)
 			defer p.DeleteTempManifest()
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			u := cfg.Utils
 
 			err = u.AwaitKubectlGetCRDs("dnsproviders.dns.gardener.cloud", "dnsentries.dns.gardener.cloud")
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.KubectlApply(p.TmpManifestFilename)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			providerName := p.Name + "-routingpolicies"
 			err = u.AwaitDNSProviderReady(providerName)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			entryNames := []string{}
 			for k, v := range p.RoutingPolicySets {
@@ -120,10 +120,10 @@ func functestRoutingPolicies(cfg *config.Config, p *config.ProviderConfig) {
 			}
 
 			err = u.AwaitDNSEntriesReady(entryNames...)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			itemMap, err := u.KubectlGetAllDNSEntries()
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			for k, v := range p.RoutingPolicySets {
 				for id, policy := range v {
@@ -160,13 +160,13 @@ func functestRoutingPolicies(cfg *config.Config, p *config.ProviderConfig) {
 			}
 
 			err = u.KubectlDelete(p.TmpManifestFilename)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSEntriesDeleted(entryNames...)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSProviderDeleted(providerName)
-			Ω(err).Should(BeNil())
+			Ω(err).ShouldNot(HaveOccurred())
 		})
 	})
 }
