@@ -18,7 +18,6 @@ package rfc2136
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"strings"
 	"time"
@@ -44,11 +43,11 @@ type Handler struct {
 	cache  provider.ZoneCache
 	ctx    context.Context
 
-	nameserver       string
-	zone             string
-	tsigKeyname      string
-	tsigSecretBase64 string
-	tsigAlgorithm    string
+	nameserver    string
+	zone          string
+	tsigKeyname   string
+	tsigSecret    string
+	tsigAlgorithm string
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -95,9 +94,12 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	h.tsigSecretBase64 = base64.StdEncoding.EncodeToString([]byte(secret))
+	h.tsigSecret = secret
 
 	h.tsigAlgorithm, err = findTsigAlgorithm(c.GetProperty("TSIGSecretAlgorithm"))
+	if err != nil {
+		return nil, err
+	}
 
 	h.cache, err = c.ZoneCacheFactory.CreateZoneCache(provider.CacheZoneState, c.Metrics, h.getZones, h.getZoneState)
 	if err != nil {
@@ -140,7 +142,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, cache provider.ZoneC
 
 	h.config.RateLimiter.Accept()
 	t := &miekgdns.Transfer{
-		TsigSecret: map[string]string{h.tsigKeyname: h.tsigSecretBase64},
+		TsigSecret: map[string]string{h.tsigKeyname: h.tsigSecret},
 	}
 	env, err := t.In(msg, h.nameserver)
 	if err != nil {
