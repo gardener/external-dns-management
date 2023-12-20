@@ -14,14 +14,14 @@ external-dns-management:
       publish:
         dockerimages:
           dns-controller-manager:
+            dockerfile: 'Dockerfile'
             image: europe-docker.pkg.dev/gardener-project/snapshots/dns-controller-manager
-            dockerfile: Dockerfile
             inputs:
               repos:
-                source: null
+                source: ~
               steps:
-                build: null
-            registry: gcr-readwrite
+                build: ~
+
       version:
         inject_effective_version: true
         preprocess: inject-branch-name
@@ -31,18 +31,17 @@ external-dns-management:
   jobs:
     head-update:
       traits:
+        draft_release: ~
         version:
           preprocess: inject-commit-hash
         component_descriptor:
           ocm_repository_mappings:
             - repository: europe-docker.pkg.dev/gardener-project/releases
           retention_policy: 'clean-snapshots'
-        draft_release: ~
-        draft_release: null
 
     pull-request:
       traits:
-        pull-request: null
+        pull-request: ~
         component_descriptor:
           ocm_repository_mappings:
             - repository: europe-docker.pkg.dev/gardener-project/releases
