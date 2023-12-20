@@ -184,7 +184,7 @@ func (exec *Execution) exchange(records []miekgdns.RR, apply func(*miekgdns.Msg,
 
 	c := &miekgdns.Client{
 		Net:        tcp,
-		TsigSecret: map[string]string{exec.handler.tsigKeyname: exec.handler.tsigSecretBase64},
+		TsigSecret: map[string]string{exec.handler.tsigKeyname: exec.handler.tsigSecret},
 	}
 
 	msg := &miekgdns.Msg{}
