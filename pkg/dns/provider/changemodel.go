@@ -526,7 +526,7 @@ func (this *ChangeModel) ApplySpec(set *dns.DNSSet, base *dns.DNSSet, provider D
 	}
 
 	targetsets := set.Sets
-	targets := provider.MapTargets(spec.Targets())
+	targets := provider.MapTargets(set.Name.DNSName, spec.Targets())
 	for _, t := range targets {
 		AddRecord(targetsets, t.GetRecordType(), t.GetHostName(), t.GetTTL())
 	}

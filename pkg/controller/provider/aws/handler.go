@@ -265,7 +265,12 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 	return exec.submitChanges(h.config.Metrics)
 }
 
-func (h *Handler) MapTargets(targets []provider.Target) []provider.Target {
+func (h *Handler) MapTargets(_ string, targets []provider.Target) []provider.Target {
+	return MapTargets(targets)
+}
+
+// MapTargets maps CNAME records to A/AAAA records for hosted zones used for AWS load balancers.
+func MapTargets(targets []provider.Target) []provider.Target {
 	mapped := make([]provider.Target, 0, len(targets)+1)
 	for _, t := range targets {
 		switch t.GetRecordType() {

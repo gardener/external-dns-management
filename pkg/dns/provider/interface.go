@@ -205,7 +205,7 @@ type DNSHandler interface {
 	GetZoneState(DNSHostedZone) (DNSZoneState, error)
 	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
 	ExecuteRequests(logger logger.LogContext, zone DNSHostedZone, state DNSZoneState, reqs []*ChangeRequest) error
-	MapTargets(targets []Target) []Target
+	MapTargets(dnsName string, targets []Target) []Target
 	Release()
 }
 
@@ -221,7 +221,7 @@ func (this *DefaultDNSHandler) ProviderType() string {
 	return this.providerType
 }
 
-func (this *DefaultDNSHandler) MapTargets(targets []Target) []Target {
+func (this *DefaultDNSHandler) MapTargets(_ string, targets []Target) []Target {
 	return targets
 }
 
@@ -262,7 +262,7 @@ type DNSProvider interface {
 	IsValid() bool
 
 	AccountHash() string
-	MapTargets(targets []Target) []Target
+	MapTargets(dnsName string, targets []Target) []Target
 
 	// ReportZoneStateConflict is used to report a conflict because of stale data.
 	// It returns true if zone data will be updated and a retry may resolve the conflict

@@ -161,8 +161,8 @@ func (this *DNSAccount) ExecuteRequests(logger logger.LogContext, zone DNSHosted
 	return this.handler.ExecuteRequests(logger, zone, state, reqs)
 }
 
-func (this *DNSAccount) MapTargets(targets []Target) []Target {
-	return this.handler.MapTargets(targets)
+func (this *DNSAccount) MapTargets(dnsName string, targets []Target) []Target {
+	return this.handler.MapTargets(dnsName, targets)
 }
 
 func (this *DNSAccount) Release() {
@@ -539,8 +539,8 @@ func (this *dnsProviderVersion) MatchZone(dns string) int {
 	return 0
 }
 
-func (this *dnsProviderVersion) MapTargets(targets []Target) []Target {
-	return this.account.MapTargets(targets)
+func (this *dnsProviderVersion) MapTargets(dnsName string, targets []Target) []Target {
+	return this.account.MapTargets(dnsName, targets)
 }
 
 func (this *dnsProviderVersion) setError(modified bool, err error) error {
