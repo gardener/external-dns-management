@@ -39,6 +39,7 @@ type DNSInfo struct {
 	OrigRef       *v1alpha1.EntryReference
 	TargetRef     *v1alpha1.EntryReference
 	RoutingPolicy *v1alpha1.RoutingPolicy
+	IPStack       string
 }
 
 type DNSFeedback interface {
@@ -67,8 +68,14 @@ type DNSSourceType interface {
 	Create(controller.Interface) (DNSSource, error)
 }
 
+type TargetExtraction struct {
+	Targets utils.StringSet
+	Texts   utils.StringSet
+	IPStack string
+}
+
 type (
-	DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, names dns.DNSNameSet) (targets utils.StringSet, texts utils.StringSet, err error)
+	DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, names dns.DNSNameSet) (*TargetExtraction, error)
 	DNSSourceCreator   func(controller.Interface) (DNSSource, error)
 )
 

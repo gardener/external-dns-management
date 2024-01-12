@@ -96,9 +96,12 @@ func (this *DefaultDNSSource) CreateDNSFeedback(obj resources.Object) DNSFeedbac
 func (this *DefaultDNSSource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (*DNSInfo, error) {
 	info := &DNSInfo{}
 	info.Names = dns.NewDNSNameSetFromStringSet(current.AnnotatedNames, current.GetSetIdentifier())
-	tgts, txts, err := this.handler(logger, obj, info.Names)
-	info.Targets = tgts
-	info.Text = txts
+	extraction, err := this.handler(logger, obj, info.Names)
+	if extraction != nil {
+		info.Targets = extraction.Targets
+		info.Text = extraction.Texts
+		info.IPStack = extraction.IPStack
+	}
 	return info, err
 }
 

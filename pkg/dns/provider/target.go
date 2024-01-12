@@ -32,7 +32,7 @@ type (
 func NewHostTargetFromEntryVersion(name string, entry *EntryVersion) (Target, error) {
 	ip := net.ParseIP(name)
 	if ip == nil {
-		return dnsutils.NewTarget(dns.RS_CNAME, name, entry.TTL()), nil
+		return dnsutils.NewTargetWithIPStack(dns.RS_CNAME, name, entry.TTL(), entry.GetAnnotations()[dns.AnnotationIPStack]), nil
 	} else if ip.To4() != nil {
 		return dnsutils.NewTarget(dns.RS_A, name, entry.TTL()), nil
 	} else if ip.To16() != nil {

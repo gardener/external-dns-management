@@ -34,7 +34,8 @@ var _ = Describe("ServiceAnnotation", func() {
 		status := &v1.LoadBalancerIngress{IP: fakeExternalIP}
 		svcDomain := "mysvc." + domain
 		ttl := 456
-		svc, err := testEnv.CreateServiceWithAnnotation("mysvc", svcDomain, status, ttl, nil, nil)
+		svc, err := testEnv.CreateServiceWithAnnotation("mysvc", svcDomain, status, ttl, nil,
+			map[string]string{"service.beta.kubernetes.io/aws-load-balancer-ip-address-type": "dualstack"})
 		Ω(err).ShouldNot(HaveOccurred())
 		routingPolicy := `{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}`
 		svcDomain2 := "mysvc2." + domain
@@ -70,6 +71,7 @@ var _ = Describe("ServiceAnnotation", func() {
 		Ω(entry.Spec.OwnerId).Should(BeNil())
 		Ω(entry.Spec.TTL).ShouldNot(BeNil())
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
+		Ω(entry.Annotations["dns.gardener.cloud/ip-stack"]).Should(Equal("dual-stack"))
 
 		entryObj2, err := testEnv.AwaitObjectByOwner("Service", svc2.GetName())
 		entry2 := UnwrapEntry(entryObj2)

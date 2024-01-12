@@ -57,6 +57,7 @@ func (this *IngressSource) GetDNSInfo(_ logger.LogContext, obj resources.Object,
 		return info, fmt.Errorf("annotated dns names %s not declared by ingress", del)
 	}
 	info.Names = dns.NewDNSNameSetFromStringSet(names, current.GetSetIdentifier())
+	info.IPStack = obj.GetAnnotation(dns.AnnotationIPStack)
 	return info, nil
 }
 

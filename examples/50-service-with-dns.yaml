@@ -7,6 +7,8 @@ metadata:
     # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
     #dns.gardener.cloud/class: garden
     #dns.gardener.cloud/owner-id: second
+    #service.beta.kubernetes.io/aws-load-balancer-ip-address-type: dualstack   # AWS-route 53 only: enable both A and AAAA alias targets
+    #dns.gardener.cloud/ip-stack: dual-stack                                   # AWS-route 53 only: alternative way to enable A and AAAA alias targets
   name: test-service
   namespace: default
 spec:

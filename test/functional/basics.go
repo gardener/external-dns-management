@@ -134,6 +134,8 @@ kind: DNSEntry
 metadata:
   name: {{.Prefix}}alias-ds
   namespace: {{.Namespace}}
+  annotations:
+    dns.gardener.cloud/ip-stack: dual-stack
 spec:
   dnsName: {{.Prefix}}alias-ds.{{.Domain}}
   ttl: {{.TTL}}

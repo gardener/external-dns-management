@@ -118,6 +118,10 @@ func (this *EntryVersion) Kind() string {
 	return this.object.GroupKind().Kind
 }
 
+func (this *EntryVersion) GetAnnotations() map[string]string {
+	return this.object.GetAnnotations()
+}
+
 func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string, refresh bool) {
 	if this.dnsSetName != e.dnsSetName {
 		reasons = append(reasons, "recordset name changed")

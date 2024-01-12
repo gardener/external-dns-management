@@ -32,7 +32,8 @@ var _ = Describe("IngressAnnotation", func() {
 		fakeExternalIP := "1.2.3.4"
 		ingressDomain := "myingress." + domain
 		ttl := 456
-		ingress, err := testEnv.CreateIngressWithAnnotation("myingress", ingressDomain, fakeExternalIP, ttl, nil, nil)
+		ingress, err := testEnv.CreateIngressWithAnnotation("myingress", ingressDomain, fakeExternalIP, ttl, nil,
+			map[string]string{"dns.gardener.cloud/ip-stack": "dual-stack"})
 		Ω(err).ShouldNot(HaveOccurred())
 		routingPolicy := `{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}`
 		ingress2, err := testEnv.CreateIngressWithAnnotation("mysvc2", ingressDomain, fakeExternalIP, ttl, &routingPolicy, nil)
@@ -53,6 +54,7 @@ var _ = Describe("IngressAnnotation", func() {
 		Ω(entry.Spec.TTL).ShouldNot(BeNil())
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
 		Ω(entry.Spec.OwnerId).Should(BeNil())
+		Ω(entry.Annotations["dns.gardener.cloud/ip-stack"]).Should(Equal("dual-stack"))
 
 		entryObj2, err := testEnv.AwaitObjectByOwner("Ingress", ingress2.GetName())
 		entry2 := UnwrapEntry(entryObj2)
@@ -63,6 +65,7 @@ var _ = Describe("IngressAnnotation", func() {
 			SetIdentifier: "my-id",
 			Parameters:    map[string]string{"weight": "10"},
 		}))
+		Ω(entry2.Annotations["dns.gardener.cloud/ip-stack"]).Should(Equal(""))
 
 		entryObj3, err := testEnv.AwaitObjectByOwner("Ingress", ingress3.GetName())
 		Ω(err).ShouldNot(HaveOccurred())

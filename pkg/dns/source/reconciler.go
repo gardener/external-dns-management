@@ -29,7 +29,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/annotation/annotations"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -473,6 +472,14 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	}
 	entry.Spec.TTL = info.TTL
 	entry.Spec.RoutingPolicy = info.RoutingPolicy
+	if info.IPStack != "" {
+		annots := entry.GetAnnotations()
+		if annots == nil {
+			annots = map[string]string{}
+		}
+		annots[dns.AnnotationIPStack] = info.IPStack
+		entry.SetAnnotations(annots)
+	}
 
 	e, _ := this.SlaveResoures()[0].Wrap(entry)
 
@@ -561,6 +568,24 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 		}
 		mod.AssureStringSet(&spec.Targets, targets)
 		mod.AssureStringSet(&spec.Text, text)
+		if info.IPStack != "" {
+			annots := o.GetAnnotations()
+			if annots == nil {
+				annots = map[string]string{}
+			}
+			if annots[dns.AnnotationIPStack] != info.IPStack {
+				annots[dns.AnnotationIPStack] = info.IPStack
+				o.SetAnnotations(annots)
+				mod.Modify(true)
+			}
+		} else {
+			if o.GetAnnotations()[dns.AnnotationIPStack] != "" {
+				annots := o.GetAnnotations()
+				delete(annots, dns.AnnotationIPStack)
+				o.SetAnnotations(annots)
+				mod.Modify(true)
+			}
+		}
 		if mod.IsModified() {
 			logger.Infof("update entry %s", slave.ObjectName())
 		}
