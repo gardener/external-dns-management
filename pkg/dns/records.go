@@ -22,8 +22,9 @@ import (
 )
 
 const (
-	RS_META  = "META"
-	RS_ALIAS = "ALIAS" // provider specific alias for CNAME record (e.g. AWS alias target)
+	RS_META       = "META"
+	RS_ALIAS_A    = "ALIAS"      // provider specific alias for CNAME record (AWS alias target A)
+	RS_ALIAS_AAAA = "ALIAS_AAAA" // provider specific alias for CNAME record (AWS alias target AAAA)
 )
 
 const (

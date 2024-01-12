@@ -174,6 +174,9 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 }
 
 func buildRecordSet(r *route53.ResourceRecordSet) *dns.RecordSet {
+	if rs := buildRecordSetFromAliasTarget(r); rs != nil {
+		return rs
+	}
 	rs := dns.NewRecordSet(aws.StringValue(r.Type), aws.Int64Value(r.TTL), nil)
 	for _, rr := range r.ResourceRecords {
 		rs.Add(&dns.Record{Value: aws.StringValue(rr.Value)})
@@ -190,12 +193,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 
 	aggr := func(r *route53.ResourceRecordSet) {
 		if dns.SupportedRecordType(aws.StringValue(r.Type)) {
-			var rs *dns.RecordSet
-			if isAliasTarget(r) {
-				rs = buildRecordSetFromAliasTarget(r)
-			} else {
-				rs = buildRecordSet(r)
-			}
+			rs := buildRecordSet(r)
 			name := dns.DNSSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}
 			policy := h.policyContext.extractRoutingPolicy(r)
 			dnssets.AddRecordSetFromProviderEx(name, policy, rs)
@@ -267,14 +265,35 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 	return exec.submitChanges(h.config.Metrics)
 }
 
-func (h *Handler) MapTarget(t provider.Target) provider.Target {
-	if t.GetRecordType() == dns.RS_CNAME {
-		hostedZone := canonicalHostedZone(t.GetHostName())
-		if hostedZone != "" {
-			return dnsutils.NewTarget(dns.RS_ALIAS, t.GetHostName(), t.GetTTL())
+func (h *Handler) MapTargets(_ string, targets []provider.Target) []provider.Target {
+	return MapTargets(targets)
+}
+
+// MapTargets maps CNAME records to A/AAAA records for hosted zones used for AWS load balancers.
+func MapTargets(targets []provider.Target) []provider.Target {
+	mapped := make([]provider.Target, 0, len(targets)+1)
+	for _, t := range targets {
+		switch t.GetRecordType() {
+		case dns.RS_CNAME:
+			hostedZone := canonicalHostedZone(t.GetHostName())
+			if hostedZone != "" {
+				switch strings.ToLower(t.GetIPStack()) {
+				case dns.AnnotationValueIPStackIPDualStack:
+					mapped = append(mapped, dnsutils.NewTarget(dns.RS_ALIAS_A, t.GetHostName(), t.GetTTL()))
+					mapped = append(mapped, dnsutils.NewTarget(dns.RS_ALIAS_AAAA, t.GetHostName(), t.GetTTL()))
+				case dns.AnnotationValueIPStackIPv6:
+					mapped = append(mapped, dnsutils.NewTarget(dns.RS_ALIAS_AAAA, t.GetHostName(), t.GetTTL()))
+				default:
+					mapped = append(mapped, dnsutils.NewTarget(dns.RS_ALIAS_A, t.GetHostName(), t.GetTTL()))
+				}
+			} else {
+				mapped = append(mapped, t)
+			}
+		default:
+			mapped = append(mapped, t)
 		}
 	}
-	return t
+	return mapped
 }
 
 // AssociateVPCWithHostedZone associates a VPC with a private hosted zone
@@ -378,12 +397,7 @@ func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, setName dns.DNSSetNa
 	dnssets := dns.DNSSets{}
 	aggr := func(r *route53.ResourceRecordSet) {
 		if dns.SupportedRecordType(aws.StringValue(r.Type)) {
-			var rs *dns.RecordSet
-			if isAliasTarget(r) {
-				rs = buildRecordSetFromAliasTarget(r)
-			} else {
-				rs = buildRecordSet(r)
-			}
+			rs := buildRecordSet(r)
 			routingPolicy := h.policyContext.extractRoutingPolicy(r)
 			dnsSetName := dns.DNSSetName{DNSName: aws.StringValue(r.Name), SetIdentifier: aws.StringValue(r.SetIdentifier)}
 			dnssets.AddRecordSetFromProviderEx(dnsSetName, routingPolicy, rs)

@@ -191,7 +191,7 @@ the target cluster. As there can be multiple controllers active on the same clus
 need to set the correct `DNSClass` both for the controller and for the source resource by
 setting the annotation `dns.gardener.cloud/class`. The default value for the `DNSClass` is `gardendns`.
 
-Note that if you delegate the DNS management for shoot resources to Gardener via the 
+**Note**: If you delegate the DNS management for shoot resources to Gardener via the 
 [shoot-dns-service extension](https://github.com/gardener/gardener-extension-shoot-dns-service),
 the correct annotation is `dns.gardener.cloud/class=garden`.
 
@@ -205,7 +205,7 @@ metadata:
     dns.gardener.cloud/dnsnames: echo.my-dns-domain.com
     dns.gardener.cloud/ttl: "500"
     # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
-    #`dns.gardener.cloud/class`: garden
+    #dns.gardener.cloud/class: garden
   name: test-service
   namespace: default
 spec:
@@ -217,6 +217,20 @@ spec:
   sessionAffinity: None
   type: LoadBalancer
 ``` 
+
+#### `A` DNS records with alias targets for provider type AWS-Route53 and AWS load balancers
+
+For AWS-Route53 and AWS load balancers, `A` DNS records with alias target are created instead of `CNAME` 
+as an optimisation.
+
+To support dual-stack IP addresses in this case, set one of these annotations:
+
+-  `service.beta.kubernetes.io/aws-load-balancer-ip-address-type=dualstack` (services only)
+- `dns.gardener.cloud/ip-stack=dual-stack` (ingresses, services or dnsentries)
+
+In this case, both `A` and `AAAA` records with alias target records are created.
+
+With annotation `dns.gardener.cloud/ip-stack=ipv6`, only an `AAAA` record with alias target is created.
 
 ## The Model
 

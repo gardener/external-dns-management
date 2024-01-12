@@ -26,10 +26,12 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/aws"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/server/remote/common"
 	"github.com/gardener/external-dns-management/pkg/server/remote/conversion"
+	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
@@ -47,6 +49,8 @@ type Handler struct {
 	serverProtocolVersion int32
 	connection            *grpc.ClientConn
 	client                common.RemoteProviderClient
+
+	knownZones atomic.Pointer[common.Zones]
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -213,6 +217,7 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 		return nil, err
 	}
 
+	h.knownZones.Store(remoteZones)
 	zones := provider.DNSHostedZones{}
 	for _, z := range remoteZones.Zone {
 		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.Id, dns.NormalizeHostname(z.Domain), z.Key, z.PrivateZone)
@@ -248,6 +253,31 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 
 func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error) bool {
 	return h.cache.ReportZoneStateConflict(zone, err)
+}
+
+func (h *Handler) MapTargets(dnsName string, targets []provider.Target) []provider.Target {
+	if h.isAWSRoute53(dnsName) {
+		return aws.MapTargets(targets)
+	}
+	return targets
+}
+
+func (h *Handler) isAWSRoute53(dnsName string) bool {
+	zones := h.knownZones.Load()
+	if zones == nil {
+		return false
+	}
+	minPrefixLen := len(dnsName)
+	bestProviderType := ""
+	for _, z := range zones.Zone {
+		domain := strings.TrimSuffix(z.Domain, ".")
+		prefixLen := len(strings.TrimSuffix(dnsName, domain))
+		if prefixLen < minPrefixLen && (prefixLen == 0 || dnsName[prefixLen-1] == '.') {
+			minPrefixLen = prefixLen
+			bestProviderType = z.ProviderType
+		}
+	}
+	return bestProviderType == aws.TYPE_CODE
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {

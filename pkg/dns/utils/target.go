@@ -32,7 +32,8 @@ type Targets []Target
 func (this Targets) Has(target Target) bool {
 	for _, t := range this {
 		if t.GetRecordType() == target.GetRecordType() &&
-			t.GetHostName() == target.GetHostName() {
+			t.GetHostName() == target.GetHostName() &&
+			t.GetIPStack() == target.GetIPStack() {
 			return true
 		}
 	}
@@ -56,12 +57,14 @@ type Target interface {
 	GetRecordType() string
 	GetTTL() int64
 	AsRecord() *dns.Record
+	GetIPStack() string
 }
 
 type target struct {
-	rtype string
-	host  string
-	ttl   int64
+	rtype   string
+	host    string
+	ttl     int64
+	ipstack string
 }
 
 func NewText(t string, ttl int64) Target {
@@ -72,9 +75,14 @@ func NewTarget(ty string, ta string, ttl int64) Target {
 	return &target{rtype: ty, host: ta, ttl: ttl}
 }
 
+func NewTargetWithIPStack(ty string, ta string, ttl int64, ipstack string) Target {
+	return &target{rtype: ty, host: ta, ttl: ttl, ipstack: ipstack}
+}
+
 func (t *target) GetTTL() int64         { return t.ttl }
 func (t *target) GetHostName() string   { return t.host }
 func (t *target) GetRecordType() string { return t.rtype }
+func (t *target) GetIPStack() string    { return t.ipstack }
 
 func (t *target) AsRecord() *dns.Record {
 	return &dns.Record{Value: t.host}

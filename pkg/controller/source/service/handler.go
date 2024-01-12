@@ -23,21 +23,23 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/source"
 	api "k8s.io/api/core/v1"
 )
 
-func GetTargets(_ logger.LogContext, obj resources.Object, names dns.DNSNameSet) (utils.StringSet, utils.StringSet, error) {
+func GetTargets(_ logger.LogContext, obj resources.Object, names dns.DNSNameSet) (*source.TargetExtraction, error) {
 	svc := obj.Data().(*api.Service)
 	if svc.Spec.Type != api.ServiceTypeLoadBalancer {
 		if len(names) == 0 {
-			return nil, nil, nil
+			return nil, nil
 		}
-		return nil, nil, fmt.Errorf("service is not of type LoadBalancer")
+		return nil, fmt.Errorf("service is not of type LoadBalancer")
 	}
+	ipstack := ""
 	set := utils.StringSet{}
 	for _, i := range svc.Status.LoadBalancer.Ingress {
 		if i.Hostname != "" && i.IP == "" {
-			if svc.Annotations != nil && svc.Annotations["loadbalancer.openstack.org/load-balancer-address"] != "" {
+			if svc.Annotations["loadbalancer.openstack.org/load-balancer-address"] != "" {
 				// Support for PROXY protocol on Openstack (which needs a hostname as ingress)
 				// If the user sets the annotation `loadbalancer.openstack.org/hostname`, the
 				// annotation `loadbalancer.openstack.org/load-balancer-address` contains the IP address.
@@ -53,6 +55,15 @@ func GetTargets(_ logger.LogContext, obj resources.Object, names dns.DNSNameSet)
 				set.Add(i.IP)
 			}
 		}
+		if svc.Annotations[dns.AnnotationIPStack] != "" {
+			ipstack = svc.Annotations[dns.AnnotationIPStack]
+		}
+		if svc.Annotations["service.beta.kubernetes.io/aws-load-balancer-ip-address-type"] == "dualstack" {
+			ipstack = dns.AnnotationValueIPStackIPDualStack
+		}
 	}
-	return set, nil, nil
+	return &source.TargetExtraction{
+		Targets: set,
+		IPStack: ipstack,
+	}, nil
 }

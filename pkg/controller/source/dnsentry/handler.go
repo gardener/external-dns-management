@@ -67,6 +67,7 @@ func (this *DNSEntrySource) GetDNSInfo(_ logger.LogContext, obj resources.Object
 		TTL:           data.Spec.TTL,
 		Interval:      data.Spec.CNameLookupInterval,
 		RoutingPolicy: data.Spec.RoutingPolicy,
+		IPStack:       obj.GetAnnotation(dns.AnnotationIPStack),
 	}
 	return info, nil
 }

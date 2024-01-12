@@ -61,7 +61,10 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 	}
 }
 
-func buildResourceRecordSets(name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) ([]*route53.ResourceRecordSet, error) {
+func buildResourceRecordSet(name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
+	if rrs, err := buildResourceRecordSetForAliasTarget(name, policy, policyContext, rset); rrs != nil || err != nil {
+		return rrs, err
+	}
 	rrs := &route53.ResourceRecordSet{}
 	rrs.Name = aws.String(name.DNSName)
 	rrs.Type = aws.String(rset.Type)
@@ -75,7 +78,7 @@ func buildResourceRecordSets(name dns.DNSSetName, policy *dns.RoutingPolicy, pol
 	if err := policyContext.addRoutingPolicy(rrs, name, policy); err != nil {
 		return nil, err
 	}
-	return []*route53.ResourceRecordSet{rrs}, nil
+	return rrs, nil
 }
 
 func (this *Execution) addChange(action string, req *provider.ChangeRequest, dnsset *dns.DNSSet) error {
@@ -92,22 +95,15 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 	} else if req.Deletion != nil {
 		policy = req.Deletion.RoutingPolicy
 	}
-	var err error
-	var rrsets []*route53.ResourceRecordSet
-	if rset.Type == dns.RS_ALIAS {
-		rrsets, err = buildResourceRecordSetsForAliasTarget(name, policy, this.policyContext, rset)
-	} else {
-		rrsets, err = buildResourceRecordSets(name, policy, this.policyContext, rset)
-	}
+	rrs, err := buildResourceRecordSet(name, policy, this.policyContext, rset)
 	if err != nil {
 		this.Errorf("addChange failed for %s[%s]: %s", name, this.zone.Id(), err)
 		return err
 	}
 
-	for _, rrs := range rrsets {
-		change := &route53.Change{Action: aws.String(action), ResourceRecordSet: rrs}
-		this.addRawChange(name, dnsset.UpdateGroup, change, req.Done)
-	}
+	change := &route53.Change{Action: aws.String(action), ResourceRecordSet: rrs}
+	this.addRawChange(name, dnsset.UpdateGroup, change, req.Done)
+
 	return nil
 }
 
