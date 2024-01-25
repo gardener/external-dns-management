@@ -130,6 +130,10 @@ func (te *TestEnv) WaitForCRDs() error {
 	if err != nil {
 		return fmt.Errorf("Wait for CRD failed: %s", err)
 	}
+	err = awaitCRD(30, "dnsannotations.dns.gardener.cloud")
+	if err != nil {
+		return fmt.Errorf("Wait for CRD failed: %s", err)
+	}
 	return nil
 }
 
@@ -441,11 +445,27 @@ func UnwrapEntry(obj resources.Object) *v1alpha1.DNSEntry {
 }
 
 func (te *TestEnv) FindEntryByOwner(kind, name string) (resources.Object, error) {
+	objs, err := te.FindEntriesByOwner(kind, name)
+	if err != nil {
+		return nil, err
+	}
+	switch len(objs) {
+	case 1:
+		return objs[0], nil
+	case 0:
+		return nil, fmt.Errorf("Entry for %s of kind %s not found", name, kind)
+	default:
+		return nil, fmt.Errorf("multiple entries for %s of kind %s", name, kind)
+	}
+}
+
+func (te *TestEnv) FindEntriesByOwner(kind, name string) ([]resources.Object, error) {
 	entries, err := te.resources.GetByExample(&v1alpha1.DNSEntry{})
 	if err != nil {
 		return nil, err
 	}
 
+	var foundObjs []resources.Object
 	objs, err := entries.List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
@@ -454,11 +474,11 @@ func (te *TestEnv) FindEntryByOwner(kind, name string) (resources.Object, error)
 		refs := obj.GetOwnerReferences()
 		for _, ref := range refs {
 			if ref.Kind == kind && ref.Name == name {
-				return obj, nil
+				foundObjs = append(foundObjs, obj)
 			}
 		}
 	}
-	return nil, fmt.Errorf("Entry for %s of kind %s not found", name, kind)
+	return foundObjs, nil
 }
 
 func (te *TestEnv) CreateOwner(name, ownerId string) (resources.Object, error) {
@@ -697,6 +717,42 @@ func (te *TestEnv) HasProviderState(name string, states ...string) (bool, error)
 	return found, nil
 }
 
+func (te *TestEnv) CreateDNSAnnotationForService(name string, spec v1alpha1.DNSAnnotationSpec) (resources.Object, error) {
+	annot := &v1alpha1.DNSAnnotation{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: te.Namespace,
+			Name:      name,
+		},
+		Spec: spec,
+	}
+
+	obj, err := te.resources.CreateObject(annot)
+	if errors.IsAlreadyExists(err) {
+		te.Infof("Service %s already existing, updating...", name)
+		obj, annot, err = te.GetDNSAnnotation(name)
+		if err == nil {
+			annot.Spec = spec
+			err = obj.Update()
+		}
+	}
+	return obj, err
+}
+
+func (te *TestEnv) GetDNSAnnotation(name string) (resources.Object, *v1alpha1.DNSAnnotation, error) {
+	annot := &v1alpha1.DNSAnnotation{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: te.Namespace,
+			Name:      name,
+		},
+	}
+
+	obj, err := te.resources.GetObject(&annot)
+	if err != nil {
+		return nil, nil, err
+	}
+	return obj, obj.Data().(*v1alpha1.DNSAnnotation), nil
+}
+
 func (te *TestEnv) AwaitEntryReady(name string) error {
 	return te.AwaitEntryState(name, "Ready")
 }
@@ -821,6 +877,16 @@ func (te *TestEnv) AwaitObjectByOwner(kind, name string) (resources.Object, erro
 		return false, err
 	})
 	return entryObj, err
+}
+
+func (te *TestEnv) AwaitObjectsByOwner(kind, name string, count int) ([]resources.Object, error) {
+	var objs []resources.Object
+	err := te.Await("Generated entries for service not found", func() (bool, error) {
+		var err error
+		objs, err = te.FindEntriesByOwner(kind, name)
+		return len(objs) == count, err
+	})
+	return objs, err
 }
 
 func (te *TestEnv) DeleteSecretByName(name string) error {

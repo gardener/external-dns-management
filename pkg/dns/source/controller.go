@@ -43,7 +43,7 @@ const (
 )
 
 const (
-	DNS_ANNOTATION            = dns.ANNOTATION_GROUP + "/dnsnames"
+	DNS_ANNOTATION            = dns.DNS_ANNOTATION
 	TTL_ANNOTATION            = dns.ANNOTATION_GROUP + "/ttl"
 	PERIOD_ANNOTATION         = dns.ANNOTATION_GROUP + "/cname-lookup-interval"
 	ROUTING_POLICY_ANNOTATION = dns.ANNOTATION_GROUP + "/routing-policy"

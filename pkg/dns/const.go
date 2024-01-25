@@ -29,6 +29,7 @@ const (
 	CLASS_ANNOTATION            = ANNOTATION_GROUP + "/class"
 	REALM_ANNOTATION            = ANNOTATION_GROUP + "/realms"
 	NOT_RATE_LIMITED_ANNOTATION = ANNOTATION_GROUP + "/not-rate-limited"
+	DNS_ANNOTATION              = ANNOTATION_GROUP + "/dnsnames"
 )
 
 const OPT_SETUP = "setup"

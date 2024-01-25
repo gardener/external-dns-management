@@ -125,4 +125,81 @@ var _ = Describe("ServiceAnnotation", func() {
 		err = testEnv.AwaitEntryDeletion(entryObj4.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 	})
+
+	It("creates DNS entries for DNSAnnotations", func() {
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		Ω(err).ShouldNot(HaveOccurred())
+		println(pr)
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		fakeExternalIP := "1.2.3.4"
+		status := &v1.LoadBalancerIngress{IP: fakeExternalIP}
+		svcDomain := "mysvc." + domain
+		ttl := 456
+		svc, err := testEnv.CreateServiceWithAnnotation("mysvc", svcDomain, status, ttl, nil, nil)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		entryObj, err := testEnv.AwaitObjectByOwner("Service", svc.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+		checkEntry(entryObj, pr)
+		entryObj, err = testEnv.GetEntry(entryObj.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+
+		annot1, err := testEnv.CreateDNSAnnotationForService("annot1", v1alpha1.DNSAnnotationSpec{
+			ResourceRef: v1alpha1.ResourceReference{
+				APIVersion: "v1",
+				Kind:       "Service",
+				Name:       svc.GetName(),
+				Namespace:  svc.GetNamespace(),
+			},
+			Annotations: map[string]string{
+				"dns.gardener.cloud/dnsnames": "test1.foo.bar",
+			},
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+		annot2, err := testEnv.CreateDNSAnnotationForService("annot2", v1alpha1.DNSAnnotationSpec{
+			ResourceRef: v1alpha1.ResourceReference{
+				APIVersion: "v1",
+				Kind:       "Service",
+				Name:       svc.GetName(),
+				Namespace:  svc.GetNamespace(),
+			},
+			Annotations: map[string]string{
+				"dns.gardener.cloud/dnsnames": "test2.foo.bar",
+			},
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+
+		entries, err := testEnv.AwaitObjectsByOwner("Service", svc.GetName(), 3)
+		Ω(err).ShouldNot(HaveOccurred())
+		found := 0
+		for _, e := range entries {
+			name := e.Data().(*v1alpha1.DNSEntry).Spec.DNSName
+			if name == "test1.foo.bar" {
+				found += 1
+			}
+			if name == "test2.foo.bar" {
+				found += 2
+			}
+		}
+		Ω(found).Should(Equal(3))
+
+		err = annot2.Delete()
+		Ω(err).ShouldNot(HaveOccurred())
+
+		_, err = testEnv.AwaitObjectsByOwner("Service", svc.GetName(), 2)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = annot1.Delete()
+		Ω(err).ShouldNot(HaveOccurred())
+
+		_, err = testEnv.AwaitObjectByOwner("Service", svc.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = svc.Delete()
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = testEnv.AwaitEntryDeletion(entryObj.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+	})
 })
