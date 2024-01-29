@@ -20,12 +20,15 @@ package annotations
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"sync"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/abstract"
+	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -135,14 +138,23 @@ func (this *State) GetInfoFor(key resources.ClusterObjectKey) Annotations {
 	if o := this.getStateFor(key); o != nil {
 		times := map[string]*metav1.Time{}
 		annos := Annotations{}
+
+		annotatedNames := utils.StringSet{}
+
 		for _, w := range o.annotations {
 			t := w.time
 			for k, v := range w.annotations {
-				if times[k] == nil || times[k].Before(&w.time) {
+				if k == dns.DNS_ANNOTATION {
+					annotatedNames.AddAllSplittedSelected(v, utils.StandardNonEmptyStringElement)
+				} else if times[k] == nil || times[k].Before(&w.time) {
 					annos[k] = v
 					times[k] = &t
 				}
 			}
+		}
+
+		if len(annotatedNames) > 0 {
+			annos[dns.DNS_ANNOTATION] = strings.Join(annotatedNames.AsArray(), ",")
 		}
 		return annos
 	}
@@ -288,6 +300,7 @@ func (this *State) removeAnnotations(logger logger.LogContext, watch resources.C
 	delete(o.annotations, watch)
 	if len(o.annotations) > 0 {
 		logger.Infof("enforced DNS source annotations for %s still has %d watch objects", obj, len(o.annotations))
+		wk.notify(obj)
 		return
 	}
 	logger.Infof("remove annotation enforcement for %s", obj)

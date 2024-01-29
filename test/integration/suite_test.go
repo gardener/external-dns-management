@@ -75,7 +75,7 @@ var _ = BeforeSuite(func() {
 	args := []string{
 		"--kubeconfig", kubeconfigFile,
 		"--identifier", "integrationtest",
-		"--controllers", "dnscontrollers,dnssources",
+		"--controllers", "dnscontrollers,dnssources,annotation",
 		"--remote-access-port", "50051",
 		"--remote-access-cacert", testCerts.caCert,
 		"--remote-access-server-secret-name", testCerts.secretName,
