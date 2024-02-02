@@ -63,11 +63,11 @@ func Create(controller controller.Interface) (reconcile.Interface, error) {
 	}, nil
 }
 
-func (r *reconciler) Setup() {
+func (r *reconciler) Setup() error {
 	r.controller.Infof("### setup crds watch resources")
 	res, _ := r.controller.GetMainCluster().Resources().GetByExample(&apiextensionsv1.CustomResourceDefinition{})
 	list, _ := res.ListCached(labels.Everything())
-	dnsutils.ProcessElements(list, func(e resources.Object) error {
+	return dnsutils.ProcessElements(list, func(e resources.Object) error {
 		crd := e.Data().(*apiextensionsv1.CustomResourceDefinition)
 		switch crd.Spec.Group {
 		case "networking.istio.io", "gateway.networking.k8s.io":
@@ -104,7 +104,7 @@ func (r *reconciler) Delete(logger logger.LogContext, obj resources.Object) reco
 	return reconcile.Succeeded(logger)
 }
 
-func (r *reconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
+func (r *reconciler) Deleted(logger logger.LogContext, _ resources.ClusterObjectKey) reconcile.Status {
 	return reconcile.Succeeded(logger)
 }
 

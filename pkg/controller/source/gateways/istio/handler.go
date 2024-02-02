@@ -211,10 +211,6 @@ func (s *gatewaySource) getTargetsFromService(logger logger.LogContext, names dn
 	if err != nil {
 		return nil
 	}
-	sources := make([]resources.ObjectKey, 0, len(serviceObjects))
-	for _, svcObj := range serviceObjects {
-		sources = append(sources, resources.NewKey(service.MainResource, svcObj.GetNamespace(), svcObj.GetName()))
-	}
 
 	set := utils.StringSet{}
 	for _, svc := range serviceObjects {
