@@ -108,9 +108,6 @@ else
   kubectl cluster-info
 fi
 
-# install gateway CRDs
-kubectl apply -f "resources/"
-
 # run test suite
 GINKGO=${GINKGO:-ginkgo}
 ${GINKGO} -fail-fast -trace "$@"

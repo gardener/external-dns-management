@@ -77,6 +77,9 @@ var _ = BeforeSuite(func() {
 	testCerts, err = newCertFileAndSecret(testEnv)
 	Ω(err).ShouldNot(HaveOccurred())
 
+	err = testEnv.ApplyCRDs("resources/")
+	Ω(err).ShouldNot(HaveOccurred())
+
 	args := []string{
 		"--kubeconfig", kubeconfigFile,
 		"--identifier", "integrationtest",

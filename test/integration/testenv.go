@@ -17,10 +17,15 @@
 package integration
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
+	errs "errors"
 	"fmt"
+	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -43,10 +48,12 @@ import (
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/utils/ptr"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
@@ -83,6 +90,7 @@ func doInit() {
 		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
 
 	resources.Register(v1alpha1.SchemeBuilder)
+	resources.Register(apiextensionsv1.SchemeBuilder)
 
 	embed.RegisterCreateServerFunc(remote.CreateServer)
 }
@@ -135,6 +143,67 @@ func (te *TestEnv) WaitForCRDs() error {
 		return fmt.Errorf("Wait for CRD failed: %s", err)
 	}
 	return nil
+}
+
+func (te *TestEnv) ApplyCRDs(dir string) error {
+	resource, err := te.Cluster.Resources().GetByGK(resources.NewGroupKind("apiextensions.k8s.io", "CustomResourceDefinition"))
+	if err != nil {
+		return err
+	}
+
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".yaml") {
+			docs, err := readDocuments(filepath.Join(dir, file.Name()))
+			if err != nil {
+				return fmt.Errorf("reading files failed: %w", err)
+			}
+
+			for i, doc := range docs {
+				crd := &apiextensionsv1.CustomResourceDefinition{}
+				if err := yaml.Unmarshal(doc, crd); err != nil {
+					return fmt.Errorf("unmarshalling doc %s %d failed: %w", file.Name(), i, err)
+				}
+				if crd.Name == "" {
+					continue
+				}
+				if _, err := resource.CreateOrUpdate(crd); err != nil {
+					return fmt.Errorf("crd creation failed: doc %s %d: %w", file.Name(), i, err)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+// readDocuments reads documents from file.
+func readDocuments(fp string) ([][]byte, error) {
+	b, err := os.ReadFile(fp)
+	if err != nil {
+		return nil, err
+	}
+
+	docs := [][]byte{}
+	reader := yaml.NewYAMLReader(bufio.NewReader(bytes.NewReader(b)))
+	for {
+		// Read document
+		doc, err := reader.Read()
+		if err != nil {
+			if errs.Is(err, io.EOF) {
+				break
+			}
+
+			return nil, err
+		}
+
+		docs = append(docs, doc)
+	}
+
+	return docs, nil
 }
 
 func NewTestEnv(kubeconfig string, namespace string) (*TestEnv, error) {

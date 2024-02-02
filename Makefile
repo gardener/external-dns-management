@@ -18,20 +18,13 @@ IMAGE_TAG                         := $(VERSION)
 
 TOOLS_DIR := hack/tools
 include $(CONTROLLER_MANAGER_LIB_HACK_DIR)/tools.mk
-export PATH := $(abspath $(TOOLS_BIN_DIR)):$(PATH)
 
 HELM                       := $(TOOLS_BIN_DIR)/helm
-KUBECTL                    := $(TOOLS_BIN_DIR)/kubectl
 
 HELM_VERSION ?= v3.13.1
-KUBECTL_VERSION ?= v1.29.0
 
 $(HELM): $(call tool_version_file,$(HELM),$(HELM_VERSION))
 	@curl -sSfL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | HELM_INSTALL_DIR=$(TOOLS_BIN_DIR) PATH=$(PATH):$(TOOLS_BIN_DIR) USE_SUDO=false bash -s -- --version $(HELM_VERSION)
-
-$(KUBECTL): $(call tool_version_file,$(KUBECTL),$(KUBECTL_VERSION))
-	curl -Lo $(KUBECTL) https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/$(shell uname -s | tr '[:upper:]' '[:lower:]')/$(shell uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')/kubectl
-	chmod +x $(KUBECTL)
 
 .PHONY: tidy
 tidy:
@@ -110,7 +103,7 @@ alltests: $(GINKGO)
 	$(GINKGO) -r ./pkg
 	GINKGO=$(shell realpath $(GINKGO)) test/integration/run.sh $(kindargs) -- $(args)
 
-integrationtests: $(GINKGO) $(KUBECTL)
+integrationtests: $(GINKGO)
 	GINKGO=$(shell realpath $(GINKGO)) test/integration/run.sh -l $(kindargs) -- $(args)
 
 .PHONY: docker-images
