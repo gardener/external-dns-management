@@ -48,11 +48,15 @@ func NewGatewaySource(c controller.Interface) (source.DNSSource, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newGatewaySourceWithRouteLister(lister)
+	state, err := getOrCreateSharedState(c)
+	if err != nil {
+		return nil, err
+	}
+	return newGatewaySourceWithRouteLister(lister, state)
 }
 
-func newGatewaySourceWithRouteLister(lister httpRouteLister) (source.DNSSource, error) {
-	return &gatewaySource{lister: lister, DefaultDNSSource: source.NewDefaultDNSSource(nil)}, nil
+func newGatewaySourceWithRouteLister(lister httpRouteLister, state *routesState) (source.DNSSource, error) {
+	return &gatewaySource{lister: lister, DefaultDNSSource: source.NewDefaultDNSSource(nil), state: state}, nil
 }
 
 func (s *gatewaySource) Setup() error {

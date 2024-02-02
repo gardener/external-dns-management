@@ -1221,7 +1221,7 @@ func (te *TestEnv) AwaitObjectByOwner(kind, name string) (resources.Object, erro
 
 func (te *TestEnv) AwaitObjectsByOwner(kind, name string, count int) ([]resources.Object, error) {
 	var objs []resources.Object
-	err := te.Await("Generated entries for service not found", func() (bool, error) {
+	err := te.Await(fmt.Sprintf("Generated entries for %s %s not found", kind, name), func() (bool, error) {
 		var err error
 		objs, err = te.FindEntriesByOwner(kind, name)
 		return len(objs) == count, err

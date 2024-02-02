@@ -74,7 +74,7 @@ var _ = Describe("Kubernetes Networking Gateway Handler", func() {
 
 	var _ = DescribeTable("GetDNSInfo",
 		func(gateway *gatewayapisv1.Gateway, httpRoutes []*gatewayapisv1.HTTPRoute, expectedInfo *dnssource.DNSInfo) {
-			handler, err := newGatewaySourceWithRouteLister(&testRouteLister{routes: httpRoutes})
+			handler, err := newGatewaySourceWithRouteLister(&testRouteLister{routes: httpRoutes}, newState())
 			Expect(err).To(Succeed())
 			current := &dnssource.DNSCurrentState{Names: map[dns.DNSSetName]*dnssource.DNSState{}, Targets: utils.StringSet{}}
 			annos := gateway.GetAnnotations()

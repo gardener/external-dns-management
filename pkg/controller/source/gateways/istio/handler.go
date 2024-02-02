@@ -193,6 +193,7 @@ func (s *gatewaySource) getTargetsFromIngress(logger logger.LogContext, ingressN
 		return nil
 	}
 	key := resources.NewKey(ingress.MainResource, namespace, name)
+	s.state.AddTargetSource(key, []resources.ObjectName{resources.NewObjectName(obj.GetNamespace(), obj.GetName())})
 	ingressObj, err := s.lister.GetIngress(key.ObjectName())
 	if err != nil {
 		logger.Warnf("cannot retrieve source ingress %s: %s", key.ObjectName(), err)
@@ -210,6 +211,11 @@ func (s *gatewaySource) getTargetsFromService(logger logger.LogContext, names dn
 	serviceObjects, err := s.lister.ListServices(selectors)
 	if err != nil {
 		return nil
+	}
+
+	for _, svc := range serviceObjects {
+		key := resources.NewKey(service.MainResource, svc.GetNamespace(), svc.GetName())
+		s.state.AddTargetSource(key, []resources.ObjectName{resources.NewObjectName(obj.GetNamespace(), obj.GetName())})
 	}
 
 	set := utils.StringSet{}
