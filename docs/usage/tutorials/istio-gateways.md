@@ -49,6 +49,7 @@ metadata:
   namespace: istio-system
   annotations:
     dns.gardener.cloud/dnsnames: "*"
+    #dns.gardener.cloud/class: garden # uncomment if used in a Gardener shoot cluster
 spec:
   selector:
     istio: ingressgateway # use Istio default gateway implementation
@@ -136,6 +137,7 @@ metadata:
   namespace: istio-system
   annotations:
     dns.gardener.cloud/dnsnames: "*"
+    #dns.gardener.cloud/class: garden # uncomment if used in a Gardener shoot cluster
 spec:
   selector:
     istio: ingressgateway # use Istio default gateway implementation
@@ -188,20 +190,20 @@ To get the targets to the extracted DNS names, dns-controller-manager is able to
 ```bash
 $ curl -I http://httpbin.example.com/status/200
 HTTP/1.1 200 OK
-server: envoy
-date: Tue, 28 Aug 2018 15:26:47 GMT
+server: istio-envoy
+date: Tue, 13 Feb 2024 07:49:37 GMT
 content-type: text/html; charset=utf-8
 access-control-allow-origin: *
 access-control-allow-credentials: true
 content-length: 0
-x-envoy-upstream-service-time: 5
+x-envoy-upstream-service-time: 15
 ```
 
 Accessing any other URL that has not been explicitly exposed should return an HTTP 404 error:
 ```bash
 $ curl -I http://httpbin.example.com/headers
 HTTP/1.1 404 Not Found
-date: Tue, 28 Aug 2018 15:27:48 GMT
-server: envoy
+date: Tue, 13 Feb 2024 08:09:41 GMT
+server: istio-envoy
 transfer-encoding: chunked
 ```
