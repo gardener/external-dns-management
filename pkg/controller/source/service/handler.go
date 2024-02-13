@@ -35,6 +35,13 @@ func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSName
 		}
 		return nil, fmt.Errorf("service is not of type LoadBalancer")
 	}
+	if len(names) == 1 {
+		for name := range names {
+			if name.DNSName == "*" {
+				return nil, nil
+			}
+		}
+	}
 	ipstack := ""
 	set := utils.StringSet{}
 	for _, i := range svc.Status.LoadBalancer.Ingress {
