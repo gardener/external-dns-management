@@ -27,8 +27,8 @@ import (
 	api "k8s.io/api/core/v1"
 )
 
-func GetTargets(_ logger.LogContext, obj resources.Object, names dns.DNSNameSet) (*source.TargetExtraction, error) {
-	svc := obj.Data().(*api.Service)
+func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSNameSet) (*source.TargetExtraction, error) {
+	svc := obj.(*api.Service)
 	if svc.Spec.Type != api.ServiceTypeLoadBalancer {
 		if len(names) == 0 {
 			return nil, nil

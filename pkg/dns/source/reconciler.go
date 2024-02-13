@@ -138,7 +138,9 @@ func (this *sourceReconciler) Setup() error {
 		return err
 	}
 	this.SlaveAccess.Setup()
-	this.state.source.Setup()
+	if err := this.state.source.Setup(); err != nil {
+		return err
+	}
 	return this.NestedReconciler.Setup()
 }
 

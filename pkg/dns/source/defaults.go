@@ -86,14 +86,15 @@ func NewDefaultDNSSource(handler DNSTargetExtractor) DefaultDNSSource {
 	return DefaultDNSSource{handler, NewEvents()}
 }
 
-func (this *DefaultDNSSource) Setup() {
+func (this *DefaultDNSSource) Setup() error {
+	return nil
 }
 
 func (this *DefaultDNSSource) CreateDNSFeedback(obj resources.Object) DNSFeedback {
 	return NewEventFeedback(obj, this.GetEvents(obj.ClusterKey()))
 }
 
-func (this *DefaultDNSSource) GetDNSInfo(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (*DNSInfo, error) {
+func (this *DefaultDNSSource) GetDNSInfo(logger logger.LogContext, obj resources.ObjectData, current *DNSCurrentState) (*DNSInfo, error) {
 	info := &DNSInfo{}
 	info.Names = dns.NewDNSNameSetFromStringSet(current.AnnotatedNames, current.GetSetIdentifier())
 	extraction, err := this.handler(logger, obj, info.Names)

@@ -66,7 +66,7 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 		current.AnnotatedRoutingPolicy = policy
 	}
 
-	info, err := s.GetDNSInfo(logger, obj, current)
+	info, err := s.GetDNSInfo(logger, obj.Data(), current)
 	if info != nil && info.Names != nil {
 		for d := range info.Names {
 			if this.exclude(d) {

@@ -21,10 +21,10 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
-var _MAIN_RESOURCE = resources.NewGroupKind("networking.k8s.io", "Ingress")
+var MainResource = resources.NewGroupKind("networking.k8s.io", "Ingress")
 
 func init() {
-	source.DNSSourceController(source.NewDNSSouceTypeForCreator("ingress-dns", _MAIN_RESOURCE, NewIngressSource), nil).
+	source.DNSSourceController(source.NewDNSSouceTypeForCreator("ingress-dns", MainResource, NewIngressSource), nil).
 		FinalizerDomain("dns.gardener.cloud").
 		MustRegister(source.CONTROLLER_GROUP_DNS_SOURCES)
 }

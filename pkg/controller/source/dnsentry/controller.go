@@ -24,13 +24,13 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
-var _MAIN_RESOURCE = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
+var MainResource = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 
 func init() {
-	source.DNSSourceController(source.NewDNSSouceTypeForCreator("dnsentry-source", _MAIN_RESOURCE, NewDNSEntrySource), nil).
+	source.DNSSourceController(source.NewDNSSouceTypeForCreator("dnsentry-source", MainResource, NewDNSEntrySource), nil).
 		FinalizerDomain("dns.gardener.cloud").
 		Cluster(cluster.DEFAULT).
-		CustomResourceDefinitions(_MAIN_RESOURCE).
+		CustomResourceDefinitions(MainResource).
 		ActivateExplicitly().
 		MustRegister()
 }

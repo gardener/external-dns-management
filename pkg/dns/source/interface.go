@@ -53,10 +53,10 @@ type DNSFeedback interface {
 }
 
 type DNSSource interface {
-	Setup()
+	Setup() error
 
 	CreateDNSFeedback(obj resources.Object) DNSFeedback
-	GetDNSInfo(logger logger.LogContext, obj resources.Object, current *DNSCurrentState) (*DNSInfo, error)
+	GetDNSInfo(logger logger.LogContext, obj resources.ObjectData, current *DNSCurrentState) (*DNSInfo, error)
 
 	Delete(logger logger.LogContext, obj resources.Object) reconcile.Status
 	Deleted(logger logger.LogContext, key resources.ClusterObjectKey)
@@ -75,7 +75,7 @@ type TargetExtraction struct {
 }
 
 type (
-	DNSTargetExtractor func(logger logger.LogContext, obj resources.Object, names dns.DNSNameSet) (*TargetExtraction, error)
+	DNSTargetExtractor func(logger logger.LogContext, obj resources.ObjectData, names dns.DNSNameSet) (*TargetExtraction, error)
 	DNSSourceCreator   func(controller.Interface) (DNSSource, error)
 )
 

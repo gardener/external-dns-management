@@ -216,7 +216,7 @@ spec:
     targetPort: 8080
   sessionAffinity: None
   type: LoadBalancer
-``` 
+```
 
 #### `A` DNS records with alias targets for provider type AWS-Route53 and AWS load balancers
 
@@ -231,6 +231,126 @@ To support dual-stack IP addresses in this case, set one of these annotations:
 In this case, both `A` and `AAAA` records with alias target records are created.
 
 With annotation `dns.gardener.cloud/ip-stack=ipv6`, only an `AAAA` record with alias target is created.
+
+### Automatic creation of DNS entries for gateways
+
+There are source controllers for `Gateways` from [Istio](https://github.com/istio/istio) or the new Kubernetes [Gateway API](https://gateway-api.sigs.k8s.io/).
+By annotating the `Gateway` resource with the `dns.gardener.cloud/dnsnames` annotation, DNS entries are managed automatically for the hosts.
+
+#### Istio gateways
+
+For Istio, gateways for API versions `networking.istio.io/v1beta1` and `networking.istio.io/v1alpha3` are supported.
+
+To enable automatic management of `DNSEntries`, annotate the Istio `Gateway` resource with `dns.gardener.cloud/dnsnames="*"`.
+The domain names are extracted from the `spec.servers.hosts` field and from the field `spec.hosts` of related `VirtualService` resources.  
+
+The determination of the `DNSEntry` targets, typically the IP addresses or hostnames of the load balancer, follows these steps:
+1. If the `dns.gardener.cloud/targets` annotation is provided, its value is used.
+   This value is expected to be a comma-separated list of the load balancer's IP addresses or hostnames.
+2. Alternatively, if the `dns.gardener.cloud/ingress` annotation is set, the IP addresses or hostnames are derived from the status 
+   of the `Ingress` resource. This resource is identified by its name, which can be in the format `<namespace>/<name>` or simply `<name>`.
+   In the latter case, the Gateway resource's namespace is assumed.
+3. If neither of these annotations is provided, it is assumed that the Gateway `spec.selector` field in Istio matches
+   a `Service` resource of type `LoadBalancer`. In this case, the targets are obtained from the service load balancer's status.
+
+```yaml
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  annotations:
+    dns.gardener.cloud/dnsnames: '*'
+    #dns.gardener.cloud/ttl: "500"
+    # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
+    #dns.gardener.cloud/class: garden
+  name: my-gateway
+  namespace: default
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - hosts:
+        - uk.example.com
+        - eu.example.com
+      port:
+        name: http
+        number: 80
+        protocol: HTTP
+      tls:
+        httpsRedirect: true
+    - hosts:
+        - uk.example.com
+        - eu.example.com
+      port:
+        name: https-443
+        number: 443
+        protocol: HTTPS
+      tls:
+        mode: SIMPLE
+        privateKey: /etc/certs/privatekey.pem
+        serverCertificate: /etc/certs/servercert.pem
+    - hosts:
+        - bookinfo-namespace/*.example.com
+      port:
+        name: https-9443
+        number: 9443
+        protocol: HTTPS
+      tls:
+        credentialName: my-secret
+        mode: SIMPLE
+```
+
+In this case, three `DNSEntries` woudl be created with domain names `uk.example.com`,  `eu.example.com`,  and `*.example.com`.
+As neither `dns.gardener.cloud/targets` or `dns.gardener.cloud/ingress` annotation is provided, the targets need to 
+come from the load balancer status of a `Service` resource with the label selector `istio=ingressgateway`.
+
+*Note: Alternatively in this concrete example, you could annotate the `Service` resource with `dns.gardener.cloud/dnsnames="*.example.com"`,
+if the domain names are static.* 
+
+See the [Istio tutorial](docs/usage/tutorials/istio-gateways.md) for a more detailed example.
+
+#### Gateway API gateways
+
+The Gateway API version `gateway.networking.k8s.io/v1` and `gateway.networking.k8s.io/v1alpha2` are supported.
+
+To enable automatic management of `DNSEntries`, annotate the Gateway API `Gateway` resource with `dns.gardener.cloud/dnsnames="*"`.
+The domain names are extracted from the `spec.listeners.hostnames` field and from the field `spec.hostnames` of related `HTTPRoute` resources.
+
+The targets of the `DNSEntry` are extracted from the `status.addresses` field.
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  annotations:
+    dns.gardener.cloud/dnsnames: '*'
+    #dns.gardener.cloud/ttl: "500"
+    # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
+    #dns.gardener.cloud/class: garden
+  name: my-gateway
+  namespace: default
+spec:
+  gatewayClassName: my-gateway-class
+  listeners:
+    - allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              shared-gateway-access: "true"
+      hostname: foo.example.com
+      name: https
+      port: 443
+      protocol: HTTPS
+      tls: ...
+status:
+  addresses:
+    - type: IPAddress
+      value: 1.2.3.4  
+```
+
+In this case, a single `DNSEntry` with domain name `foo.example.com` and target IP `1.2.3.4` would be created. 
+
+See the [Gateway API tutorial](docs/usage/tutorials/gateway-api-gateways.md) for a more detailed example.
 
 ## The Model
 
@@ -543,6 +663,12 @@ Flags:
       --compound.remote.ratelimiter.enabled                           enables rate limiter for DNS provider requests of controller compound
       --compound.remote.ratelimiter.qps int                           maximum requests/queries per second of controller compound
       --compound.reschedule-delay duration                            reschedule delay after losing provider of controller compound
+      --compound.rfc2136.advanced.batch-size int                      batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.rfc2136.advanced.max-retries int                     maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.rfc2136.blocked-zone zone-id                         Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
+      --compound.rfc2136.ratelimiter.burst int                        number of burst requests for rate limiter of controller compound
+      --compound.rfc2136.ratelimiter.enabled                          enables rate limiter for DNS provider requests of controller compound
+      --compound.rfc2136.ratelimiter.qps int                          maximum requests/queries per second of controller compound
       --compound.secrets.pool.size int                                Worker pool size for pool secrets of controller compound
       --compound.setup int                                            number of processors for controller setup of controller compound
       --compound.statistic.pool.size int                              Worker pool size for pool statistic of controller compound
@@ -556,7 +682,7 @@ Flags:
       --disable-dnsname-validation                                    disable validation of domain names according to RFC 1123.
       --disable-namespace-restriction                                 disable access restriction for namespace local access only
       --disable-zone-state-caching                                    disable use of cached dns zone state on changes
-      --dns-class string                                              Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers, identifier used to differentiate responsible controllers for entries
+      --dns-class string                                              identifier used to differentiate responsible controllers for providers, identifier used to differentiate responsible controllers for entries, Class identifier used to differentiate responsible controllers for entry resources
       --dns-delay duration                                            delay between two dns reconciliations
       --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target providers, identifier used to differentiate responsible dns controllers for target entries
       --dns.pool.resync-period duration                               Period for resynchronization for pool dns
@@ -602,6 +728,7 @@ Flags:
       --google-clouddns.ratelimiter.qps int                           maximum requests/queries per second
       --grace-period duration                                         inactivity grace period for detecting end of cleanup for shutdown
   -h, --help                                                          help for dns-controller-manager
+      --httproutes.pool.size int                                      Worker pool size for pool httproutes
       --identifier string                                             Identifier used to mark DNS entries in DNS system
       --infoblox-dns.advanced.batch-size int                          batch size for change requests (currently only used for aws-route53)
       --infoblox-dns.advanced.max-retries int                         maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
@@ -626,6 +753,43 @@ Flags:
       --ingress-dns.target-realms string                              realm(s) to use for generated DNS entries of controller ingress-dns
       --ingress-dns.target-set-ignore-owners                          mark generated DNS entries to omit owner based access control of controller ingress-dns
       --ingress-dns.targets.pool.size int                             Worker pool size for pool targets of controller ingress-dns
+      --istio-gateways-dns.default.pool.resync-period duration        Period for resynchronization for pool default of controller istio-gateways-dns
+      --istio-gateways-dns.default.pool.size int                      Worker pool size for pool default of controller istio-gateways-dns
+      --istio-gateways-dns.dns-class string                           identifier used to differentiate responsible controllers for entries of controller istio-gateways-dns
+      --istio-gateways-dns.dns-target-class string                    identifier used to differentiate responsible dns controllers for target entries of controller istio-gateways-dns
+      --istio-gateways-dns.exclude-domains stringArray                excluded domains of controller istio-gateways-dns
+      --istio-gateways-dns.key string                                 selecting key for annotation of controller istio-gateways-dns
+      --istio-gateways-dns.pool.resync-period duration                Period for resynchronization of controller istio-gateways-dns
+      --istio-gateways-dns.pool.size int                              Worker pool size of controller istio-gateways-dns
+      --istio-gateways-dns.target-creator-label-name string           label name to store the creator for generated DNS entries of controller istio-gateways-dns
+      --istio-gateways-dns.target-creator-label-value string          label value for creator label of controller istio-gateways-dns
+      --istio-gateways-dns.target-name-prefix string                  name prefix in target namespace for cross cluster generation of controller istio-gateways-dns
+      --istio-gateways-dns.target-namespace string                    target namespace for cross cluster generation of controller istio-gateways-dns
+      --istio-gateways-dns.target-owner-id string                     owner id to use for generated DNS entries of controller istio-gateways-dns
+      --istio-gateways-dns.target-owner-object string                 owner object to use for generated DNS entries of controller istio-gateways-dns
+      --istio-gateways-dns.target-realms string                       realm(s) to use for generated DNS entries of controller istio-gateways-dns
+      --istio-gateways-dns.target-set-ignore-owners                   mark generated DNS entries to omit owner based access control of controller istio-gateways-dns
+      --istio-gateways-dns.targets.pool.size int                      Worker pool size for pool targets of controller istio-gateways-dns
+      --istio-gateways-dns.targetsources.pool.size int                Worker pool size for pool targetsources of controller istio-gateways-dns
+      --istio-gateways-dns.virtualservices.pool.size int              Worker pool size for pool virtualservices of controller istio-gateways-dns
+      --k8s-gateways-dns.default.pool.resync-period duration          Period for resynchronization for pool default of controller k8s-gateways-dns
+      --k8s-gateways-dns.default.pool.size int                        Worker pool size for pool default of controller k8s-gateways-dns
+      --k8s-gateways-dns.dns-class string                             identifier used to differentiate responsible controllers for entries of controller k8s-gateways-dns
+      --k8s-gateways-dns.dns-target-class string                      identifier used to differentiate responsible dns controllers for target entries of controller k8s-gateways-dns
+      --k8s-gateways-dns.exclude-domains stringArray                  excluded domains of controller k8s-gateways-dns
+      --k8s-gateways-dns.httproutes.pool.size int                     Worker pool size for pool httproutes of controller k8s-gateways-dns
+      --k8s-gateways-dns.key string                                   selecting key for annotation of controller k8s-gateways-dns
+      --k8s-gateways-dns.pool.resync-period duration                  Period for resynchronization of controller k8s-gateways-dns
+      --k8s-gateways-dns.pool.size int                                Worker pool size of controller k8s-gateways-dns
+      --k8s-gateways-dns.target-creator-label-name string             label name to store the creator for generated DNS entries of controller k8s-gateways-dns
+      --k8s-gateways-dns.target-creator-label-value string            label value for creator label of controller k8s-gateways-dns
+      --k8s-gateways-dns.target-name-prefix string                    name prefix in target namespace for cross cluster generation of controller k8s-gateways-dns
+      --k8s-gateways-dns.target-namespace string                      target namespace for cross cluster generation of controller k8s-gateways-dns
+      --k8s-gateways-dns.target-owner-id string                       owner id to use for generated DNS entries of controller k8s-gateways-dns
+      --k8s-gateways-dns.target-owner-object string                   owner object to use for generated DNS entries of controller k8s-gateways-dns
+      --k8s-gateways-dns.target-realms string                         realm(s) to use for generated DNS entries of controller k8s-gateways-dns
+      --k8s-gateways-dns.target-set-ignore-owners                     mark generated DNS entries to omit owner based access control of controller k8s-gateways-dns
+      --k8s-gateways-dns.targets.pool.size int                        Worker pool size for pool targets of controller k8s-gateways-dns
       --key string                                                    selecting key for annotation
       --kubeconfig string                                             default cluster access
       --kubeconfig.disable-deploy-crds                                disable deployment of required crds for cluster default
@@ -669,7 +833,7 @@ Flags:
       --ratelimiter.burst int                                         number of burst requests for rate limiter
       --ratelimiter.enabled                                           enables rate limiter for DNS provider requests
       --ratelimiter.qps int                                           maximum requests/queries per second
-      --remote-access-cacert string                                   CA who signed client certs file, filename for certificate of client CA
+      --remote-access-cacert string                                   filename for certificate of client CA, CA who signed client certs file
       --remote-access-cakey string                                    filename for private key of client CA
       --remote-access-client-id string                                identifier used for remote access
       --remote-access-port int                                        port of remote access server for remote-enabled providers
@@ -685,6 +849,12 @@ Flags:
       --remoteaccesscertificates.remote-access-cacert string          filename for certificate of client CA of controller remoteaccesscertificates
       --remoteaccesscertificates.remote-access-cakey string           filename for private key of client CA of controller remoteaccesscertificates
       --reschedule-delay duration                                     reschedule delay after losing provider
+      --rfc2136.advanced.batch-size int                               batch size for change requests (currently only used for aws-route53)
+      --rfc2136.advanced.max-retries int                              maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --rfc2136.blocked-zone zone-id                                  Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
+      --rfc2136.ratelimiter.burst int                                 number of burst requests for rate limiter
+      --rfc2136.ratelimiter.enabled                                   enables rate limiter for DNS provider requests
+      --rfc2136.ratelimiter.qps int                                   maximum requests/queries per second
       --secrets.pool.size int                                         Worker pool size for pool secrets
       --server-port-http int                                          HTTP server port (serving /healthz, /metrics, ...)
       --service-dns.default.pool.resync-period duration               Period for resynchronization for pool default of controller service-dns
@@ -719,8 +889,12 @@ Flags:
       --target.id string                                              id for cluster target
       --target.migration-ids string                                   migration id for cluster target
       --targets.pool.size int                                         Worker pool size for pool targets
+      --targetsources.pool.size int                                   Worker pool size for pool targetsources
       --ttl int                                                       Default time-to-live for DNS entries. Defines how long the record is kept in cache by DNS servers or resolvers.
   -v, --version                                                       version for dns-controller-manager
+      --virtualservices.pool.size int                                 Worker pool size for pool virtualservices
+      --watch-gateways-crds.default.pool.size int                     Worker pool size for pool default of controller watch-gateways-crds
+      --watch-gateways-crds.pool.size int                             Worker pool size of controller watch-gateways-crds
       --zonepolicies.pool.size int                                    Worker pool size for pool zonepolicies
 ```
 
