@@ -10,7 +10,7 @@ require (
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20190603021944-12ad9f921c0b
 	github.com/aws/aws-sdk-go v1.44.173
 	github.com/cloudflare/cloudflare-go v0.11.4
-	github.com/gardener/controller-manager-library v0.2.1-0.20231213134107-496e1a49d791
+	github.com/gardener/controller-manager-library v0.2.1-0.20240214101453-c2ba8556a43a
 	github.com/go-openapi/runtime v0.24.1
 	github.com/go-openapi/strfmt v0.21.2
 	github.com/gophercloud/gophercloud v0.24.0
@@ -120,6 +120,7 @@ require (
 	go.mongodb.org/mongo-driver v1.8.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.17.0 // indirect
+	golang.org/x/lint v0.0.0-20190930215403-16217165b5de // indirect
 	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect

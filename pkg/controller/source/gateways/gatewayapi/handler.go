@@ -24,6 +24,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapisv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
@@ -200,7 +201,7 @@ func newServiceLister(c controller.Interface) (*httprouteLister, error) {
 }
 
 func (l *httprouteLister) ListHTTPRoutes(gateway *resources.ObjectName) ([]resources.ObjectData, error) {
-	objs, err := l.httprouteResources.ListCached(nil)
+	objs, err := l.httprouteResources.List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
