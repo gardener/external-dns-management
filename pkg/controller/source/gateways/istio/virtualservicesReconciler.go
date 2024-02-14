@@ -58,7 +58,7 @@ func (r *virtualservicesReconciler) Delete(logger logger.LogContext, obj resourc
 }
 
 func (r *virtualservicesReconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
-	gateways := r.state.MatchingGatewaysByTargetSource(key.ObjectKey())
+	gateways := r.state.MatchingGatewaysByVirtualService(key.ObjectName())
 	r.state.RemoveVirtualService(key.ObjectName())
 	r.triggerGateways(key.Cluster(), resources.NewObjectNameSetByArray(gateways))
 	return reconcile.Succeeded(logger)
