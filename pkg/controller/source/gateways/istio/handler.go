@@ -295,7 +295,7 @@ func (s *stdResourceLister) GetIngress(name resources.ObjectName) (resources.Obj
 }
 
 func (s *stdResourceLister) ListVirtualServices(gateway *resources.ObjectName) ([]resources.ObjectData, error) {
-	objs, err := s.virtualServicesResources.ListCached(nil)
+	objs, err := s.virtualServicesResources.List(metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
