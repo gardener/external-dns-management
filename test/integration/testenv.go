@@ -619,23 +619,36 @@ func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP 
 	}
 
 	if fakeExternalIP != "" {
-		res, err := te.resources.Get(ingress)
-		if err != nil {
-			return obj, err
-		}
-		_, _, err = res.ModifyStatus(ingress, func(data resources.ObjectData) (bool, error) {
-			o := data.(*networkingv1.Ingress)
-			o.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{
-				{IP: fakeExternalIP},
-			}
-			return true, nil
-		})
+		err := te.PatchIngressLoadBalancer(obj, fakeExternalIP)
 		if err != nil {
 			return obj, err
 		}
 	}
 
 	return obj, err
+}
+
+func (te *TestEnv) PatchIngressLoadBalancer(ingressObj resources.Object, fakeExternalIP string) error {
+	ingress, ok := ingressObj.Data().(*networkingv1.Ingress)
+	if !ok {
+		return fmt.Errorf("not an ingress object")
+	}
+	res, err := te.resources.Get(ingress)
+	if err != nil {
+		return err
+	}
+	_, _, err = res.ModifyStatus(ingress, func(data resources.ObjectData) (bool, error) {
+		o := data.(*networkingv1.Ingress)
+		if fakeExternalIP != "" {
+			o.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{
+				{IP: fakeExternalIP},
+			}
+		} else {
+			o.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{}
+		}
+		return true, nil
+	})
+	return err
 }
 
 func (te *TestEnv) GetIngress(name string) (resources.Object, *networkingv1.Ingress, error) {
