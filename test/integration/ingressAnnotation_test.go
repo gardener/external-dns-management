@@ -44,6 +44,10 @@ var _ = Describe("IngressAnnotation", func() {
 		Ω(entry.Spec.OwnerId).Should(BeNil())
 		Ω(entry.Annotations["dns.gardener.cloud/ip-stack"]).Should(Equal("dual-stack"))
 
+		// keep old targets if ingress lost its load balancers
+		err = testEnv.PatchIngressLoadBalancer(ingress, "")
+		Ω(err).ShouldNot(HaveOccurred())
+
 		entryObj2, err := testEnv.AwaitObjectByOwner("Ingress", ingress2.GetName())
 		entry2 := UnwrapEntry(entryObj2)
 		Ω(err).ShouldNot(HaveOccurred())
@@ -61,25 +65,34 @@ var _ = Describe("IngressAnnotation", func() {
 		Ω(entry3.Spec.OwnerId).ShouldNot(BeNil())
 		Ω(*entry3.Spec.OwnerId).Should(Equal("second"))
 
-		err = ingress.Delete()
-		Ω(err).ShouldNot(HaveOccurred())
 		err = ingress2.Delete()
 		Ω(err).ShouldNot(HaveOccurred())
 		err = ingress3.Delete()
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = testEnv.AwaitIngressDeletion(ingress.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
 		err = testEnv.AwaitIngressDeletion(ingress2.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 		err = testEnv.AwaitIngressDeletion(ingress3.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = testEnv.AwaitEntryDeletion(entryObj.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
 		err = testEnv.AwaitEntryDeletion(entryObj2.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 		err = testEnv.AwaitEntryDeletion(entryObj3.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+
+		// check unchanged target
+		entryObj, err = testEnv.AwaitObjectByOwner("Ingress", ingress.GetName())
+		entry = UnwrapEntry(entryObj)
+		Ω(err).ShouldNot(HaveOccurred())
+		Ω(entry.Spec.Targets).Should(ConsistOf(fakeExternalIP))
+
+		err = ingress.Delete()
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = testEnv.AwaitIngressDeletion(ingress.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = testEnv.AwaitEntryDeletion(entryObj.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 })

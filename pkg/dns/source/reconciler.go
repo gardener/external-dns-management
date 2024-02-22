@@ -556,8 +556,13 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 				mod.Modify(true)
 			}
 		}
-		mod.AssureStringSet(&spec.Targets, targets)
-		mod.AssureStringSet(&spec.Text, text)
+		if len(targets) > 0 || len(text) > 0 || !ignoreEmptyTargets(obj) {
+			mod.AssureStringSet(&spec.Targets, targets)
+			mod.AssureStringSet(&spec.Text, text)
+		} else if len(spec.Targets) > 0 && ignoreEmptyTargets(obj) {
+			// keep old targets if load balancer disappears temporarily
+			logger.Infof("ignoring empty targets for entry %s", slave.ObjectName())
+		}
 		if info.IPStack != "" {
 			annots := o.GetAnnotations()
 			if annots == nil {
@@ -601,4 +606,9 @@ func (this *sourceReconciler) deleteEntry(logger logger.LogContext, e resources.
 		}
 	}
 	return err
+}
+
+func ignoreEmptyTargets(obj resources.Object) bool {
+	_, ok := obj.Data().(*api.DNSEntry)
+	return !ok
 }
