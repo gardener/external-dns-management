@@ -22,6 +22,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapisv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapisv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	_ "github.com/gardener/external-dns-management/pkg/controller/annotation/annotations"
@@ -70,6 +71,7 @@ func init() {
 	resources.Register(istionetworkingv1alpha3.SchemeBuilder)
 	resources.Register(istionetworkingv1beta1.SchemeBuilder)
 	resources.Register(gatewayapisv1alpha2.SchemeBuilder)
+	resources.Register(gatewayapisv1beta1.SchemeBuilder)
 	resources.Register(gatewayapisv1.SchemeBuilder)
 
 	embed.RegisterCreateServerFunc(remote.CreateServer)
