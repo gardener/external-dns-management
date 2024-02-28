@@ -11,6 +11,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapisv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	gatewayapisv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 )
 
 func HTTPRoutesReconciler(c controller.Interface) (reconcile.Interface, error) {
@@ -60,6 +61,17 @@ func extractGatewayNames(route resources.ObjectData) resources.ObjectNameSet {
 	gatewayNames := resources.NewObjectNameSet()
 	switch data := route.(type) {
 	case *gatewayapisv1.HTTPRoute:
+		for _, ref := range data.Spec.ParentRefs {
+			if (ref.Group == nil || string(*ref.Group) == GroupKindGateway.Group) &&
+				(ref.Kind == nil || string(*ref.Kind) == GroupKindGateway.Kind) {
+				namespace := data.Namespace
+				if ref.Namespace != nil {
+					namespace = string(*ref.Namespace)
+				}
+				gatewayNames.Add(resources.NewObjectName(namespace, string(ref.Name)))
+			}
+		}
+	case *gatewayapisv1beta1.HTTPRoute:
 		for _, ref := range data.Spec.ParentRefs {
 			if (ref.Group == nil || string(*ref.Group) == GroupKindGateway.Group) &&
 				(ref.Kind == nil || string(*ref.Kind) == GroupKindGateway.Kind) {
