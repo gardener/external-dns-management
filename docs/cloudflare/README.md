@@ -31,7 +31,7 @@ metadata:
   name: cloudflare-credentials
   namespace: default
 type: Opaque
-data:
+stringData:
   CLOUDFLARE_API_TOKEN: 1234567890123456789
 ``` 
 
