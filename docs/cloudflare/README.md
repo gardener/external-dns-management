@@ -18,6 +18,7 @@ all zones. Optionally you can exclude certain zones.
 
 ![API token creation](api-token-creation.png)
 
+Generate the token and keep this key safe as it won't be shown again.
 ## Using the API Token
 
 Use the token in a `Secret` resource with the `metadata.name` to be 
