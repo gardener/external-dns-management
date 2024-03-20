@@ -1,6 +1,6 @@
 # Cloudflare DNS Provider
 
-This DNS provider allows you to create and manage DNS entries in Cloudlfare. 
+This DNS provider allows you to create and manage DNS entries in Cloudflare. 
 
 ## Generate API Tokens
 
@@ -19,19 +19,10 @@ all zones. Optionally you can exclude certain zones.
 ![API token creation](api-token-creation.png)
 
 Generate the token and keep this key safe as it won't be shown again.
-
-Then base64 encode the token. For eg. if the generated token in `1234567890123456`, use
-
-```bash
-$ echo -n '1234567890123456789' | base64
-```
-
-to get the base64 encoded token. In this eg. this would be `MTIzNDU2Nzg5MDEyMzQ1Njc4OQ==`.
-
 ## Using the API Token
 
-Use the base64 encoded token in a `Secret` resource with the `metadata.name` to be 
-`cloudflare-credentials` and `data.CLOUDFLARE_API_TOKEN` to be the base64 encoded token.
+Use the token in a `Secret` resource with the `metadata.name` to be 
+`cloudflare-credentials` and `data.CLOUDFLARE_API_TOKEN` to be the token.
 
 ```yaml
 apiVersion: v1
@@ -40,8 +31,8 @@ metadata:
   name: cloudflare-credentials
   namespace: default
 type: Opaque
-data:
-  CLOUDFLARE_API_TOKEN: MTIzNDU2Nzg5MDEyMzQ1Njc4OQ==
+stringData:
+  CLOUDFLARE_API_TOKEN: 1234567890123456789
 ``` 
 
 ## Troubleshooting
@@ -49,4 +40,3 @@ data:
 * If you get a permission error communicating with Cloudflare, be sure the domain name 
   being registered does not exceed your plan limits. Hierarchical domains are not
   supported on the free plan as of this writing.
-  
