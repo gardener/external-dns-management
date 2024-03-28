@@ -24,13 +24,6 @@ else
   export SOURCE_PATH="$(readlink -f "${SOURCE_PATH}")"
 fi
 
-"${SOURCE_PATH}/hack/generate-controller-registration.sh" \
-  dns-external \
-  "${SOURCE_PATH}/charts/external-dns-management/" \
-  "${SOURCE_PATH}/VERSION" \
-  "${SOURCE_PATH}/examples/controller-registration.yaml" \
-  DNSProvider:aws-route53 DNSProvider:alicloud-dns DNSProvider:azure-dns DNSProvider:azure-private-dns DNSProvider:google-clouddns DNSProvider:openstack-designate DNSProvider:cloudflare-dns DNSProvider:netlify-dns DNSProvider:infoblox-dns
-
 VERSION_FILE="$(readlink -f "${SOURCE_PATH}/VERSION")"
 VERSION="$(cat "${VERSION_FILE}")"
 VERSIONTAG="${VERSION//-dev/-master}"
