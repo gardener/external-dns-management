@@ -108,7 +108,7 @@ func (this *sourceReconciler) enrichAnnotations(logger logger.LogContext, obj re
 	addons := this.annotations.GetInfoFor(obj.ClusterKey())
 	if len(addons) > 0 {
 		obj = obj.DeepCopy()
-		annos := obj.GetAnnotations()
+		annos := getSafeMap(obj.GetAnnotations())
 
 		annotatedNames := utils.StringSet{}
 		annotatedNames.AddAllSplittedSelected(annos[DNS_ANNOTATION], utils.StandardNonEmptyStringElement)
@@ -131,4 +131,11 @@ func (this *sourceReconciler) enrichAnnotations(logger logger.LogContext, obj re
 		obj.SetAnnotations(annos)
 	}
 	return obj
+}
+
+func getSafeMap(m map[string]string) map[string]string {
+	if m == nil {
+		return map[string]string{}
+	}
+	return m
 }
