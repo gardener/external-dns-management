@@ -564,10 +564,7 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 			logger.Infof("ignoring empty targets for entry %s", slave.ObjectName())
 		}
 		if info.IPStack != "" {
-			annots := o.GetAnnotations()
-			if annots == nil {
-				annots = map[string]string{}
-			}
+			annots := getSafeMap(o.GetAnnotations())
 			if annots[dns.AnnotationIPStack] != info.IPStack {
 				annots[dns.AnnotationIPStack] = info.IPStack
 				o.SetAnnotations(annots)
