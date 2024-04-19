@@ -2,14 +2,14 @@ external-dns-management:
   base_definition:
     steps:
       build:
-        image: golang:1.21.6
+        image: golang:1.22.2
         output_dir: binary
       check:
-        image: golang:1.21.6
+        image: golang:1.22.2
       integrationtest:
-        image: golang:1.21.6
+        image: golang:1.22.2
       test:
-        image: golang:1.21.6
+        image: golang:1.22.2
     traits:
       publish:
         dockerimages:
