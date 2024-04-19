@@ -26,6 +26,7 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
+	_ "github.com/gardener/external-dns-management/pkg/server/pprof"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/oidc"
@@ -76,6 +77,8 @@ var _ = BeforeSuite(func() {
 		"--remote-access-cacert", testCerts.caCert,
 		"--remote-access-server-secret-name", testCerts.secretName,
 		"--omit-lease",
+		"--enable-profiling",
+		"--server-port-http", "8080",
 		"--reschedule-delay", "15s",
 		"--lock-status-check-period", "5s",
 		"--pool.size", "10",

@@ -442,7 +442,7 @@ func validateOwner(_ logger.LogContext, state *state, entry *EntryVersion) error
 	return nil
 }
 
-func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config, _ *Entry) reconcile.Status {
+func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config) reconcile.Status {
 	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s, ref %+v", op, this.Object().BaseStatus().State, p.zoneid, p.ptype, Provider(p.provider), this.Object().GetReference())
 
 	this.valid = false

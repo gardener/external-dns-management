@@ -25,12 +25,6 @@ import (
 // state handling for zone reconcilation
 ////////////////////////////////////////////////////////////////////////////////
 
-func (this *state) TriggerHostedZone(zoneid dns.ZoneID) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	this.triggerHostedZone(zoneid)
-}
-
 func (this *state) TriggerHostedZonesByChangedOwners(logger logger.LogContext, changed utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
