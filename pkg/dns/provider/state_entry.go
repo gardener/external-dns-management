@@ -6,6 +6,7 @@ package provider
 
 import (
 	"fmt"
+	"math/rand"
 	"net"
 	"strconv"
 	"strings"
@@ -91,18 +92,6 @@ func (this *state) DeleteEntry(logger logger.LogContext, object dnsutils.DNSSpec
 	return this.HandleUpdateEntry(logger, "delete", object)
 }
 
-func (this *state) GetEntry(name resources.ObjectName) *Entry {
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-	return this.entries[name]
-}
-
-func (this *state) SmartInfof(logger logger.LogContext, format string, args ...interface{}) {
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-	this.smartInfof(logger, format, args...)
-}
-
 func (this *state) smartInfof(logger logger.LogContext, format string, args ...interface{}) {
 	if this.hasProviders() {
 		logger.Infof(format, args...)
@@ -111,10 +100,7 @@ func (this *state) smartInfof(logger logger.LogContext, format string, args ...i
 	}
 }
 
-func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, status reconcile.Status) (*Entry, reconcile.Status) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-
+func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, status reconcile.Status) (*Entry, reconcile.Status) {
 	delete(this.blockingEntries, v.ObjectName())
 
 	var new *Entry
@@ -230,10 +216,7 @@ func (this *state) AddEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	return new, status
 }
 
-func (this *state) EntryPremise(e dnsutils.DNSSpecification) (*EntryPremise, error) {
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-
+func (this *state) entryPremise(e dnsutils.DNSSpecification) (*EntryPremise, error) {
 	provider, fallback, err := this.lookupProvider(e)
 	p := &EntryPremise{
 		ptypes:   this.config.Enabled,
@@ -261,15 +244,19 @@ func (this *state) EntryPremise(e dnsutils.DNSSpecification) (*EntryPremise, err
 }
 
 func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object dnsutils.DNSSpecification) reconcile.Status {
-	old := this.GetEntry(object.ObjectName())
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	old := this.entries[object.ObjectName()]
 	if old != nil {
-		if !old.lock.TryLockSpinning(200 * time.Millisecond) {
-			return reconcile.RescheduleAfter(logger, 15*time.Second)
+		if !old.lock.TryLockSpinning(10 * time.Millisecond) {
+			millis := time.Millisecond * time.Duration(3000+rand.Int31n(3000))
+			return reconcile.RescheduleAfter(logger, millis)
 		}
 		defer old.lock.Unlock()
 	}
 
-	p, err := this.EntryPremise(object)
+	p, err := this.entryPremise(object)
 	if p.provider == nil && err == nil {
 		if p.zoneid != "" {
 			err = fmt.Errorf("no matching provider for zone '%s' found (no provider for this zone includes domain %s)", p.zoneid, object.GetDNSName())
@@ -284,8 +271,8 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	if p.fallback != nil {
 		v.obsolete = true
 	}
-	status := v.Setup(logger, this, p, op, err, this.config, old)
-	new, status := this.AddEntryVersion(logger, v, status)
+	status := v.Setup(logger, this, p, op, err, this.config)
+	new, status := this.addEntryVersion(logger, v, status)
 
 	if new != nil {
 		if new.Kind() == api.DNSLockKind {
@@ -303,15 +290,15 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		}
 
 		if new.IsModified() && !new.ZoneId().IsEmpty() {
-			this.SmartInfof(logger, "trigger zone %q", new.ZoneId())
-			this.TriggerHostedZone(new.ZoneId())
+			this.smartInfof(logger, "trigger zone %q", new.ZoneId())
+			this.triggerHostedZone(new.ZoneId())
 		} else {
 			logger.Debugf("skipping trigger zone %q because entry not modified", new.ZoneId())
 		}
 	}
 
 	if !object.IsDeleting() {
-		check, _ := this.EntryPremise(object)
+		check, _ := this.entryPremise(object)
 		if !check.Match(p) {
 			logger.Infof("%s -> repeat reconcilation", p.NotifyChange(check))
 			return reconcile.Repeat(logger)

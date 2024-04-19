@@ -247,14 +247,17 @@ func (this *state) removeLocalProvider(logger logger.LogContext, obj *dnsutils.D
 				providers := this.getProvidersForZone(zoneid)
 				if len(providers) == 1 {
 					// if this is the last provider for this zone
-					// it must be cleanuped before the provider is gone
+					// it must be cleaned up before the provider is gone
 					logger.Infof("provider is exclusively handling zone %q -> cleanup", zoneid)
+
+					// collect stale entries to keep them untouched
+					_, _, stale, _ := this.addEntriesForZone(logger, nil, nil, z)
 
 					done, err := this.StartZoneReconcilation(logger, &zoneReconciliation{
 						zone:      z,
 						providers: providers,
 						entries:   Entries{},
-						stale:     nil,
+						stale:     stale,
 						dedicated: false,
 						deleting:  false,
 						fhandler:  this.context,
