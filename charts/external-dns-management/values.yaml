@@ -5,7 +5,7 @@ replicaCount: 1
 
 image:
   repository: europe-docker.pkg.dev/gardener-project/public/dns-controller-manager
-  tag: v0.18.5-master
+  tag: v0.18.5
   pullPolicy: IfNotPresent
 
 env: []
