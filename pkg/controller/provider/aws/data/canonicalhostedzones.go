@@ -36,12 +36,13 @@ func CanonicalHostedZones() map[string]string {
 		"sa-east-1.elb.amazonaws.com":         "Z2P70J7HTTTPLU",
 		"cn-north-1.elb.amazonaws.com.cn":     "Z1GDH35T77C1KE",
 		"cn-northwest-1.elb.amazonaws.com.cn": "ZM7IZAIOVVDZF",
-		"us-gov-west-1.elb.amazonaws.com":     "Z33AYJ8TM3BH4J",
-		"us-gov-east-1.elb.amazonaws.com":     "Z166TLBEWOO7G0",
-		"me-central-1.elb.amazonaws.com":      "Z08230872XQRWHG2XF6I",
-		"me-south-1.elb.amazonaws.com":        "ZS929ML54UICD",
-		"af-south-1.elb.amazonaws.com":        "Z268VQBMOI5EKX",
-		"il-central-1.elb.amazonaws.com":      "Z09170902867EHPV2DABU",
+		// exclude us-gov as alias targets are not supported
+		//"us-gov-west-1.elb.amazonaws.com":     "Z33AYJ8TM3BH4J",
+		//"us-gov-east-1.elb.amazonaws.com":     "Z166TLBEWOO7G0",
+		"me-central-1.elb.amazonaws.com": "Z08230872XQRWHG2XF6I",
+		"me-south-1.elb.amazonaws.com":   "ZS929ML54UICD",
+		"af-south-1.elb.amazonaws.com":   "Z268VQBMOI5EKX",
+		"il-central-1.elb.amazonaws.com": "Z09170902867EHPV2DABU",
 		// Network Load Balancers
 		"elb.us-east-2.amazonaws.com":         "ZLMOA37VPKANP",
 		"elb.us-east-1.amazonaws.com":         "Z26RNL4JYFTOTI",
@@ -69,12 +70,13 @@ func CanonicalHostedZones() map[string]string {
 		"elb.sa-east-1.amazonaws.com":         "ZTK26PT1VY4CU",
 		"elb.cn-north-1.amazonaws.com.cn":     "Z3QFB96KMJ7ED6",
 		"elb.cn-northwest-1.amazonaws.com.cn": "ZQEIKTCZ8352D",
-		"elb.us-gov-west-1.amazonaws.com":     "ZMG1MZ2THAWF1",
-		"elb.us-gov-east-1.amazonaws.com":     "Z1ZSMQQ6Q24QQ8",
-		"elb.me-central-1.amazonaws.com":      "Z00282643NTTLPANJJG2P",
-		"elb.me-south-1.amazonaws.com":        "Z3QSRYVP46NYYV",
-		"elb.af-south-1.amazonaws.com":        "Z203XCE67M25HM",
-		"elb.il-central-1.amazonaws.com":      "Z0313266YDI6ZRHTGQY4",
+		// exclude us-gov as alias targets are not supported
+		//"elb.us-gov-west-1.amazonaws.com":     "ZMG1MZ2THAWF1",
+		//"elb.us-gov-east-1.amazonaws.com":     "Z1ZSMQQ6Q24QQ8",
+		"elb.me-central-1.amazonaws.com": "Z00282643NTTLPANJJG2P",
+		"elb.me-south-1.amazonaws.com":   "Z3QSRYVP46NYYV",
+		"elb.af-south-1.amazonaws.com":   "Z203XCE67M25HM",
+		"elb.il-central-1.amazonaws.com": "Z0313266YDI6ZRHTGQY4",
 		// Global Accelerator
 		"awsglobalaccelerator.com": "Z2BJ6XQ5FK7U4H",
 		// Cloudfront and AWS API Gateway edge-optimized endpoints
@@ -105,10 +107,11 @@ func CanonicalHostedZones() map[string]string {
 		"me-south-1.vpce.amazonaws.com":     "Z3B95P3VBGEQGY",
 		"sa-east-1.vpce.amazonaws.com":      "Z2LXUWEVLCVZIB",
 		"us-east-1.vpce.amazonaws.com":      "Z7HUB22UULQXV",
-		"us-gov-east-1.vpce.amazonaws.com":  "Z2MU5TEIGO9WXB",
-		"us-gov-west-1.vpce.amazonaws.com":  "Z12529ZODG2B6H",
-		"us-west-1.vpce.amazonaws.com":      "Z12I86A8N7VCZO",
-		"us-west-2.vpce.amazonaws.com":      "Z1YSA3EXCYUU9Z",
+		// exclude us-gov as alias targets are not supported
+		//"us-gov-east-1.vpce.amazonaws.com":  "Z2MU5TEIGO9WXB",
+		//"us-gov-west-1.vpce.amazonaws.com":  "Z12529ZODG2B6H",
+		"us-west-1.vpce.amazonaws.com": "Z12I86A8N7VCZO",
+		"us-west-2.vpce.amazonaws.com": "Z1YSA3EXCYUU9Z",
 		// AWS API Gateway (Regional endpoints)
 		// See: https://docs.aws.amazon.com/general/latest/gr/apigateway.html
 		"execute-api.us-east-2.amazonaws.com":      "ZOJJZC49E0EPZ",
@@ -133,7 +136,8 @@ func CanonicalHostedZones() map[string]string {
 		"execute-api.me-south-1.amazonaws.com":     "Z20ZBPC0SS8806",
 		"execute-api.me-central-1.amazonaws.com":   "Z08780021BKYYY8U0YHTV",
 		"execute-api.sa-east-1.amazonaws.com":      "ZCMLWB8V5SYIT",
-		"execute-api.us-gov-east-1.amazonaws.com":  "Z3SE9ATJYCRCZJ",
-		"execute-api.us-gov-west-1.amazonaws.com":  "Z1K6XKP9SAGWDV",
+		// exclude us-gov as alias targets are not supported
+		//"execute-api.us-gov-east-1.amazonaws.com":  "Z3SE9ATJYCRCZJ",
+		//"execute-api.us-gov-west-1.amazonaws.com":  "Z1K6XKP9SAGWDV",
 	}
 }
