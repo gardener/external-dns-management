@@ -32,8 +32,8 @@ import (
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
 	"github.com/gardener/external-dns-management/pkg/server/remote"
 	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
-	istioapinetworkingv1beta1 "istio.io/api/networking/v1beta1"
-	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
+	istioapinetworkingv1 "istio.io/api/networking/v1"
+	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -861,7 +861,7 @@ func (te *TestEnv) CreateServiceAndIstioGatewayWithAnnotation(name, domainName s
 func (te *TestEnv) CreateIstioGatewayWithAnnotation(name, domainName string, selector map[string]string, ttl int,
 	routingPolicy *string, additionalAnnotations map[string]string,
 ) (resources.Object, error) {
-	setter := func(gw *istionetworkingv1beta1.Gateway) {
+	setter := func(gw *istionetworkingv1.Gateway) {
 		gw.Annotations = map[string]string{dnssource.DNS_ANNOTATION: "*", dnssource.TTL_ANNOTATION: fmt.Sprintf("%d", ttl)}
 		if routingPolicy != nil {
 			gw.Annotations[dnssource.ROUTING_POLICY_ANNOTATION] = *routingPolicy
@@ -869,9 +869,9 @@ func (te *TestEnv) CreateIstioGatewayWithAnnotation(name, domainName string, sel
 		for k, v := range additionalAnnotations {
 			gw.Annotations[k] = v
 		}
-		gw.Spec.Servers = []*istioapinetworkingv1beta1.Server{
+		gw.Spec.Servers = []*istioapinetworkingv1.Server{
 			{
-				Port: &istioapinetworkingv1beta1.Port{
+				Port: &istioapinetworkingv1.Port{
 					Name:     "http",
 					Number:   80,
 					Protocol: "HTTP",
@@ -882,13 +882,13 @@ func (te *TestEnv) CreateIstioGatewayWithAnnotation(name, domainName string, sel
 		gw.Spec.Selector = selector
 	}
 
-	gw := &istionetworkingv1beta1.Gateway{}
+	gw := &istionetworkingv1.Gateway{}
 	gw.SetName(name)
 	gw.SetNamespace(te.Namespace)
 	setter(gw)
 	obj, err := te.resources.CreateObject(gw)
 	if errors.IsAlreadyExists(err) {
-		te.Infof("Service %s already existing, updating...", name)
+		te.Infof("IstioGateway %s already existing, updating...", name)
 		obj, gw, err = te.GetIstioGateway(name)
 		if err == nil {
 			setter(gw)
@@ -921,7 +921,7 @@ func (te *TestEnv) CreateIngressAndIstioGatewayWithAnnotation(
 	ingressSetter(ingress)
 	svcObj, err := te.resources.CreateObject(ingress)
 	if errors.IsAlreadyExists(err) {
-		te.Infof("Service %s already existing, updating...", name)
+		te.Infof("Ingress %s already existing, updating...", name)
 		svcObj, ingress, err = te.GetIngress(name)
 		if err == nil {
 			ingressSetter(ingress)
@@ -959,15 +959,15 @@ func (te *TestEnv) CreateIngressAndIstioGatewayWithAnnotation(
 	return svcObj, gwObj, err
 }
 
-func (te *TestEnv) GetIstioGateway(name string) (resources.Object, *istionetworkingv1beta1.Gateway, error) {
-	gw := istionetworkingv1beta1.Gateway{}
+func (te *TestEnv) GetIstioGateway(name string) (resources.Object, *istionetworkingv1.Gateway, error) {
+	gw := istionetworkingv1.Gateway{}
 	gw.SetName(name)
 	gw.SetNamespace(te.Namespace)
 	obj, err := te.resources.GetObject(&gw)
 	if err != nil {
 		return nil, nil, err
 	}
-	return obj, obj.Data().(*istionetworkingv1beta1.Gateway), nil
+	return obj, obj.Data().(*istionetworkingv1.Gateway), nil
 }
 
 func (te *TestEnv) CreateGatewayAPIGatewayWithAnnotation(name, domainName string, address *gatewayapisv1.GatewayStatusAddress, ttl int,

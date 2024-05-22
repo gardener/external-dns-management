@@ -12,7 +12,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	networkingv1beta1 "istio.io/api/networking/v1beta1"
+	apinetworkingv1 "istio.io/api/networking/v1"
+	apinetworkingv1alpha3 "istio.io/api/networking/v1alpha3"
+	apinetworkingv1beta1 "istio.io/api/networking/v1beta1"
+	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
+	istionetworkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -50,19 +54,19 @@ var _ = Describe("Istio Gateway Handler", func() {
 		emptyDNSInfo     = &dnssource.DNSInfo{Names: dns.DNSNameSet{}}
 
 		vsvc1 = &istionetworkingv1beta1.VirtualService{
-			Spec: networkingv1beta1.VirtualService{
+			Spec: apinetworkingv1beta1.VirtualService{
 				Gateways: []string{"test/g1"},
 				Hosts:    []string{"foo.example.com", "bar.example.com"},
 			},
 		}
 		vsvc2 = &istionetworkingv1beta1.VirtualService{
-			Spec: networkingv1beta1.VirtualService{
+			Spec: apinetworkingv1beta1.VirtualService{
 				Gateways: []string{"test/g1"},
 				Hosts:    []string{"foo.example.com"},
 			},
 		}
 		vsvc3 = &istionetworkingv1beta1.VirtualService{
-			Spec: networkingv1beta1.VirtualService{
+			Spec: apinetworkingv1beta1.VirtualService{
 				Gateways: []string{"test/g2"},
 				Hosts:    []string{"bla.example.com"},
 			},
@@ -71,7 +75,7 @@ var _ = Describe("Istio Gateway Handler", func() {
 	)
 
 	var _ = DescribeTable("GetDNSInfo",
-		func(sources map[string]*corev1.LoadBalancerStatus, gateway *istionetworkingv1beta1.Gateway, expectedInfo *dnssource.DNSInfo) {
+		func(sources map[string]*corev1.LoadBalancerStatus, gateway resources.ObjectData, expectedInfo *dnssource.DNSInfo) {
 			lister := &testResourceLister{sources: sources, virtualServices: virtualServices}
 			state := newState()
 			handler, err := newGatewaySourceWithResourceLister(lister, state)
@@ -95,8 +99,8 @@ var _ = Describe("Istio Gateway Handler", func() {
 			Expect(*actual).To(Equal(*expectedInfo))
 		},
 		Entry("unmanaged gateway", defaultSources, &istionetworkingv1beta1.Gateway{
-			Spec: networkingv1beta1.Gateway{
-				Servers: []*networkingv1beta1.Server{
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
 					{Hosts: []string{"a.example.com"}},
 				},
 				Selector: selectorService1,
@@ -106,8 +110,30 @@ var _ = Describe("Istio Gateway Handler", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
 			},
-			Spec: networkingv1beta1.Gateway{
-				Servers: []*networkingv1beta1.Server{
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
+					{Hosts: []string{"a.example.com"}},
+				},
+				Selector: selectorService1,
+			},
+		}, makeDNSInfo([]string{"a.example.com"}, []string{"1.2.3.4"})),
+		Entry("assigned v1 gateway to service with IP", defaultSources, &istionetworkingv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
+			},
+			Spec: apinetworkingv1.Gateway{
+				Servers: []*apinetworkingv1.Server{
+					{Hosts: []string{"a.example.com"}},
+				},
+				Selector: selectorService1,
+			},
+		}, makeDNSInfo([]string{"a.example.com"}, []string{"1.2.3.4"})),
+		Entry("assigned v1alpha3 gateway to service with IP", defaultSources, &istionetworkingv1alpha3.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
+			},
+			Spec: apinetworkingv1alpha3.Gateway{
+				Servers: []*apinetworkingv1alpha3.Server{
 					{Hosts: []string{"a.example.com"}},
 				},
 				Selector: selectorService1,
@@ -120,8 +146,8 @@ var _ = Describe("Istio Gateway Handler", func() {
 					TargetsAnnotation:        "10.0.0.10,10.0.0.11",
 				},
 			},
-			Spec: networkingv1beta1.Gateway{
-				Servers: []*networkingv1beta1.Server{
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
 					{Hosts: []string{"a.example.com"}},
 				},
 				Selector: selectorService1,
@@ -134,8 +160,8 @@ var _ = Describe("Istio Gateway Handler", func() {
 					IngressTargetSourceAnnotation: "foo/bar",
 				},
 			},
-			Spec: networkingv1beta1.Gateway{
-				Servers: []*networkingv1beta1.Server{
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
 					{Hosts: []string{"a.example.com"}},
 				},
 				Selector: selectorService1,
@@ -145,8 +171,8 @@ var _ = Describe("Istio Gateway Handler", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
 			},
-			Spec: networkingv1beta1.Gateway{
-				Servers: []*networkingv1beta1.Server{
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
 					{Hosts: []string{"ns1/b.example.com"}},
 				},
 				Selector: selectorService2,
@@ -156,8 +182,8 @@ var _ = Describe("Istio Gateway Handler", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "all"},
 			},
-			Spec: networkingv1beta1.Gateway{
-				Servers: []*networkingv1beta1.Server{
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
 					{Hosts: []string{"*", "ns2/c.example2.com"}},
 				},
 				Selector: selectorService2,
@@ -167,8 +193,8 @@ var _ = Describe("Istio Gateway Handler", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "a.example.com,c.example.com"},
 			},
-			Spec: networkingv1beta1.Gateway{
-				Servers: []*networkingv1beta1.Server{
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
 					{Hosts: []string{"*/a.example.com", "ns2/c.example.com", "d.example.com"}},
 				},
 				Selector: selectorService2,
@@ -178,8 +204,8 @@ var _ = Describe("Istio Gateway Handler", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "a.example.com,c.example.com"},
 			},
-			Spec: networkingv1beta1.Gateway{
-				Servers: []*networkingv1beta1.Server{
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
 					{Hosts: []string{"*/a.example.com"}},
 				},
 				Selector: selectorService2,
@@ -191,8 +217,8 @@ var _ = Describe("Istio Gateway Handler", func() {
 				Name:        "g1",
 				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
 			},
-			Spec: networkingv1beta1.Gateway{
-				Servers: []*networkingv1beta1.Server{
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
 					{Hosts: []string{"*.example.com"}},
 				},
 				Selector: selectorService2,
@@ -204,8 +230,8 @@ var _ = Describe("Istio Gateway Handler", func() {
 				Name:        "g1",
 				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
 			},
-			Spec: networkingv1beta1.Gateway{
-				Servers: []*networkingv1beta1.Server{
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
 					{Hosts: []string{"*"}},
 				},
 				Selector: selectorService2,

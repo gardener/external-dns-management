@@ -12,6 +12,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istionetworkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -102,6 +103,10 @@ func (s *gatewaySource) GetDNSInfo(logger logger.LogContext, obj resources.Objec
 func (s *gatewaySource) extractServerHosts(obj resources.ObjectData) ([]string, error) {
 	var hosts []string
 	switch data := obj.(type) {
+	case *istionetworkingv1.Gateway:
+		for _, server := range data.Spec.Servers {
+			hosts = append(hosts, parsedHosts(server.Hosts)...)
+		}
 	case *istionetworkingv1beta1.Gateway:
 		for _, server := range data.Spec.Servers {
 			hosts = append(hosts, parsedHosts(server.Hosts)...)
@@ -133,6 +138,10 @@ func (s *gatewaySource) extractServerHosts(obj resources.ObjectData) ([]string, 
 
 	for _, vsvc := range virtualServices {
 		switch r := vsvc.(type) {
+		case *istionetworkingv1.VirtualService:
+			for _, h := range r.Spec.Hosts {
+				hosts = addHost(hosts, h)
+			}
 		case *istionetworkingv1beta1.VirtualService:
 			for _, h := range r.Spec.Hosts {
 				hosts = addHost(hosts, h)
@@ -221,6 +230,8 @@ func (s *gatewaySource) getTargetsFromService(logger logger.LogContext, names dn
 
 func (s *gatewaySource) getSelectors(obj resources.ObjectData) map[string]string {
 	switch data := obj.(type) {
+	case *istionetworkingv1.Gateway:
+		return data.Spec.Selector
 	case *istionetworkingv1beta1.Gateway:
 		return data.Spec.Selector
 	case *istionetworkingv1alpha3.Gateway:

@@ -240,7 +240,7 @@ By annotating the `Gateway` resource with the `dns.gardener.cloud/dnsnames` anno
 
 #### Istio gateways
 
-For Istio, gateways for API versions `networking.istio.io/v1beta1` and `networking.istio.io/v1alpha3` are supported.
+For Istio, gateways for API versions `networking.istio.io/v1`, `networking.istio.io/v1beta1`, and `networking.istio.io/v1alpha3` are supported.
 
 To enable automatic management of `DNSEntries`, annotate the Istio `Gateway` resource with `dns.gardener.cloud/dnsnames="*"`.
 The domain names are extracted from the `spec.servers.hosts` field and from the field `spec.hosts` of related `VirtualService` resources.  
@@ -255,7 +255,7 @@ The determination of the `DNSEntry` targets, typically the IP addresses or hostn
    a `Service` resource of type `LoadBalancer`. In this case, the targets are obtained from the service load balancer's status.
 
 ```yaml
-apiVersion: networking.istio.io/v1beta1
+apiVersion: networking.istio.io/v1
 kind: Gateway
 metadata:
   annotations:
