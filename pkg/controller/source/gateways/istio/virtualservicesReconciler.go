@@ -11,6 +11,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istionetworkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 )
@@ -61,6 +62,12 @@ func (r *virtualservicesReconciler) triggerGateways(cluster string, gateways res
 func extractGatewayNames(virtualService resources.ObjectData) resources.ObjectNameSet {
 	gatewayNames := resources.NewObjectNameSet()
 	switch data := virtualService.(type) {
+	case *istionetworkingv1.VirtualService:
+		for _, name := range data.Spec.Gateways {
+			if objName := toObjectName(name, virtualService.GetNamespace()); objName != nil {
+				gatewayNames.Add(*objName)
+			}
+		}
 	case *istionetworkingv1beta1.VirtualService:
 		for _, name := range data.Spec.Gateways {
 			if objName := toObjectName(name, virtualService.GetNamespace()); objName != nil {

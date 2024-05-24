@@ -14,6 +14,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	_ "go.uber.org/automaxprocs"
+	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istionetworkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
 	coordinationv1 "k8s.io/api/coordination/v1"
@@ -70,6 +71,7 @@ func init() {
 	resources.Register(networkingv1.SchemeBuilder)
 	resources.Register(istionetworkingv1alpha3.SchemeBuilder)
 	resources.Register(istionetworkingv1beta1.SchemeBuilder)
+	resources.Register(istionetworkingv1.SchemeBuilder)
 	resources.Register(gatewayapisv1alpha2.SchemeBuilder)
 	resources.Register(gatewayapisv1beta1.SchemeBuilder)
 	resources.Register(gatewayapisv1.SchemeBuilder)
