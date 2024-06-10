@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/remote"
@@ -40,9 +41,9 @@ var (
 func TestIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	resources.Register(networkingv1.SchemeBuilder)
-	resources.Register(istionetworkingv1.SchemeBuilder)
-	resources.Register(gatewayapisv1.SchemeBuilder)
+	utils.Must(resources.Register(networkingv1.SchemeBuilder))
+	utils.Must(resources.Register(istionetworkingv1.SchemeBuilder))
+	utils.Must(resources.Register(gatewayapisv1.SchemeBuilder))
 
 	RunSpecs(t, "Integration Suite")
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 	_ "go.uber.org/automaxprocs"
 	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istionetworkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
@@ -66,15 +67,15 @@ func init() {
 	mappings.ForControllerGroup(dnsprovider.CONTROLLER_GROUP_DNS_CONTROLLERS).
 		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
 
-	resources.Register(v1alpha1.SchemeBuilder)
-	resources.Register(coordinationv1.SchemeBuilder)
-	resources.Register(networkingv1.SchemeBuilder)
-	resources.Register(istionetworkingv1alpha3.SchemeBuilder)
-	resources.Register(istionetworkingv1beta1.SchemeBuilder)
-	resources.Register(istionetworkingv1.SchemeBuilder)
-	resources.Register(gatewayapisv1alpha2.SchemeBuilder)
-	resources.Register(gatewayapisv1beta1.SchemeBuilder)
-	resources.Register(gatewayapisv1.SchemeBuilder)
+	utils.Must(resources.Register(v1alpha1.SchemeBuilder))
+	utils.Must(resources.Register(coordinationv1.SchemeBuilder))
+	utils.Must(resources.Register(networkingv1.SchemeBuilder))
+	utils.Must(resources.Register(istionetworkingv1alpha3.SchemeBuilder))
+	utils.Must(resources.Register(istionetworkingv1beta1.SchemeBuilder))
+	utils.Must(resources.Register(istionetworkingv1.SchemeBuilder))
+	utils.Must(resources.Register(gatewayapisv1alpha2.SchemeBuilder))
+	utils.Must(resources.Register(gatewayapisv1beta1.SchemeBuilder))
+	utils.Must(resources.Register(gatewayapisv1.SchemeBuilder))
 
 	embed.RegisterCreateServerFunc(remote.CreateServer)
 }

@@ -58,7 +58,7 @@ const (
 func NewTestZoneCacheFactory(zonesTTL, stateTTL time.Duration) *ZoneCacheFactory {
 	return &ZoneCacheFactory{
 		zonesTTL:   zonesTTL,
-		zoneStates: newZoneStates(func(id dns.ZoneID) time.Duration { return stateTTL }),
+		zoneStates: newZoneStates(func(_ dns.ZoneID) time.Duration { return stateTTL }),
 	}
 }
 

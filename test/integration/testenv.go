@@ -24,6 +24,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 	"github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"
@@ -77,8 +78,8 @@ func doInit() {
 	mappings.ForControllerGroup(dnsprovider.CONTROLLER_GROUP_DNS_CONTROLLERS).
 		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
 
-	resources.Register(v1alpha1.SchemeBuilder)
-	resources.Register(apiextensionsv1.SchemeBuilder)
+	utils.Must(resources.Register(v1alpha1.SchemeBuilder))
+	utils.Must(resources.Register(apiextensionsv1.SchemeBuilder))
 
 	embed.RegisterCreateServerFunc(remote.CreateServer)
 }

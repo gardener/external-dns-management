@@ -125,7 +125,7 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 
 	rt := provider.M_LISTZONES
 	var raw []*route53.HostedZone
-	aggr := func(resp *route53.ListHostedZonesOutput, lastPage bool) bool {
+	aggr := func(resp *route53.ListHostedZonesOutput, _ bool) bool {
 		for _, zone := range resp.HostedZones {
 			comp := strings.Split(aws.StringValue(zone.Id), "/")
 			id := comp[len(comp)-1]

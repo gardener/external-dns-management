@@ -13,6 +13,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 	_ "go.uber.org/automaxprocs"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -57,9 +58,9 @@ func init() {
 	mappings.ForControllerGroup(dnsprovider.CONTROLLER_GROUP_DNS_CONTROLLERS).
 		Map(controller.CLUSTER_MAIN, dnssource.TARGET_CLUSTER).MustRegister()
 
-	resources.Register(v1alpha1.SchemeBuilder)
-	resources.Register(coordinationv1.SchemeBuilder)
-	resources.Register(networkingv1.SchemeBuilder)
+	utils.Must(resources.Register(v1alpha1.SchemeBuilder))
+	utils.Must(resources.Register(coordinationv1.SchemeBuilder))
+	utils.Must(resources.Register(networkingv1.SchemeBuilder))
 }
 
 func migrateExtensionsIngress(c controllermanager.Configuration) controllermanager.Configuration {
