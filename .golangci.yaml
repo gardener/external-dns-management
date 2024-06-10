@@ -2,12 +2,6 @@ run:
   concurrency: 4
   deadline: 10m
 
-  skip-dirs:
-    - test/functional/config
-
-  skip-files:
-    - "zz_generated.*\\.go$"
-
 linters:
   enable:
     - revive
@@ -20,6 +14,12 @@ linters:
 
 issues:
   exclude-use-default: false
+
+  exclude-dirs:
+    - test/functional/config
+  exclude-files:
+    - "zz_generated.*\\.go$"
+
   exclude:
     # errcheck: Almost all programs ignore errors on these functions and in most cases it's ok
     - Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked
