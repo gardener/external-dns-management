@@ -47,16 +47,16 @@ func (this *References) DelRef(holder resources.ClusterObjectKey) {
 	this.del(holder)
 }
 
-func (this *References) NotifyHolder(ctx Context, ref resources.ClusterObjectKey) {
+func (this *References) NotifyHolder(pctx ProviderContext, ref resources.ClusterObjectKey) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
-	this.notifyHolder(ctx, ref)
+	this.notifyHolder(pctx, ref)
 }
 
-func (this *References) notifyHolder(ctx Context, ref resources.ClusterObjectKey) {
+func (this *References) notifyHolder(pctx ProviderContext, ref resources.ClusterObjectKey) {
 	for h := range this.usages[ref] {
-		_ = ctx.EnqueueKey(h)
-		this.notifyHolder(ctx, h)
+		_ = pctx.EnqueueKey(h)
+		this.notifyHolder(pctx, h)
 	}
 }
 

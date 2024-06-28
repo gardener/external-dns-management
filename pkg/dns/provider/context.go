@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-type Context interface {
+type ProviderContext interface {
 	logger.LogContext
 
 	GetContext() context.Context
@@ -51,9 +51,9 @@ type DefaultContext struct {
 	controller controller.Interface
 }
 
-var _ Context = &DefaultContext{}
+var _ ProviderContext = &DefaultContext{}
 
-func NewDefaultContext(controller controller.Interface) Context {
+func NewDefaultContext(controller controller.Interface) ProviderContext {
 	return &DefaultContext{LogContext: controller, controller: controller}
 }
 

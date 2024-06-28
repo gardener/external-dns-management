@@ -118,15 +118,15 @@ func (this *state) UpdateOwnerCounts(log logger.LogContext) {
 
 ////////////////////////////////////////////////////////////////////////////////
 
-func startOwnerUpdater(ctx Context, ownerresc resources.Interface) chan OwnerCounts {
-	log := ctx.AddIndent("updater: ")
+func startOwnerUpdater(pctx ProviderContext, ownerresc resources.Interface) chan OwnerCounts {
+	log := pctx.AddIndent("updater: ")
 
 	requests := make(chan OwnerCounts, 2)
 	go func() {
 		log.Infof("starting owner count updater")
 		for {
 			select {
-			case <-ctx.GetContext().Done():
+			case <-pctx.GetContext().Done():
 				log.Infof("stopping owner updater")
 				return
 			case changes := <-requests:
