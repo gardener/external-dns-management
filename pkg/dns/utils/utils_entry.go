@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -84,6 +85,10 @@ func (this *DNSEntryObject) GetCNameLookupInterval() *int64 {
 	return this.DNSEntry().Spec.CNameLookupInterval
 }
 
+func (this *DNSEntryObject) ResolveTargetsToAddresses() *bool {
+	return this.DNSEntry().Spec.ResolveTargetsToAddresses
+}
+
 func (this *DNSEntryObject) GetReference() *api.EntryReference {
 	return this.DNSEntry().Spec.Reference
 }
@@ -134,6 +139,18 @@ func (this *DNSEntryObject) AcknowledgeRoutingPolicy(policy *dns.RoutingPolicy) 
 		return true
 	}
 	return false
+}
+
+func (this *DNSEntryObject) AcknowledgeCNAMELookupInterval(interval int64) bool {
+	s := this.Status()
+	if interval == 0 {
+		mod := s.CNameLookupInterval != nil
+		s.CNameLookupInterval = nil
+		return mod
+	}
+	var mod bool
+	s.CNameLookupInterval, mod = utils.AssureInt64PtrValue(false, s.CNameLookupInterval, interval)
+	return mod
 }
 
 func (this *DNSEntryObject) GetTargetSpec(p TargetProvider) TargetSpec {

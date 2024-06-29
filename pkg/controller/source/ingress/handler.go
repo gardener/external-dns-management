@@ -15,6 +15,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
+	"k8s.io/utils/ptr"
 )
 
 type IngressSource struct {
@@ -46,6 +47,9 @@ func (this *IngressSource) GetDNSInfo(_ logger.LogContext, obj resources.ObjectD
 	}
 	info.Names = dns.NewDNSNameSetFromStringSet(names, current.GetSetIdentifier())
 	info.IPStack = obj.GetAnnotations()[dns.AnnotationIPStack]
+	if v := obj.GetAnnotations()[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
+		info.ResolveTargetsToAddresses = ptr.To(v == "true")
+	}
 	return info, nil
 }
 

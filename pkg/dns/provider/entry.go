@@ -5,8 +5,8 @@
 package provider
 
 import (
+	"context"
 	"fmt"
-	"net"
 	"reflect"
 	"sort"
 	"strconv"
@@ -19,11 +19,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+	"k8s.io/utils/ptr"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -245,12 +245,13 @@ func (this *EntryVersion) OwnerId() string {
 
 type dnsSpecModification struct {
 	dnsutils.DNSSpecification
-	targets []string
-	text    []string
-	ttl     *int64
-	ownerid *string
-	lookup  *int64
-	policy  *dns.RoutingPolicy
+	targets                   []string
+	text                      []string
+	ttl                       *int64
+	ownerid                   *string
+	lookup                    *int64
+	policy                    *dns.RoutingPolicy
+	resolveTargetsToAddresses *bool
 }
 
 func (this *dnsSpecModification) GetTargets() []string {
@@ -271,21 +272,28 @@ func (this *dnsSpecModification) GetOwnerId() *string {
 	if this.ownerid != nil {
 		return this.ownerid
 	}
-	return this.GetOwnerId()
+	return this.DNSSpecification.GetOwnerId()
 }
 
 func (this *dnsSpecModification) GetCNameLookupInterval() *int64 {
 	if this.lookup != nil {
 		return this.lookup
 	}
-	return this.GetCNameLookupInterval()
+	return this.DNSSpecification.GetCNameLookupInterval()
+}
+
+func (this *dnsSpecModification) ResolveTargetsToAddresses() *bool {
+	if this.resolveTargetsToAddresses != nil {
+		return this.resolveTargetsToAddresses
+	}
+	return this.DNSSpecification.ResolveTargetsToAddresses()
 }
 
 func (this *dnsSpecModification) GetTTL() *int64 {
 	if this.ttl != nil {
 		return this.ttl
 	}
-	return this.GetTTL()
+	return this.DNSSpecification.GetTTL()
 }
 
 func (this *dnsSpecModification) IsModified() bool {
@@ -557,17 +565,29 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		this.status.State = api.STATE_DELETING
 		this.status.Message = StatusMessage("entry is scheduled to be deleted")
 		this.valid = true
+		state.DeleteLookupJob(this.object.ObjectName())
 	} else {
 		this.warnings = warnings
-		targets, multiCName, multiOk := normalizeTargets(logger, this.object, targets...)
+		targets, lookupResults, multiCName := normalizeTargets(logger, this.object, targets...)
 		if multiCName {
 			this.interval = int64(600)
 			if iv := spec.GetCNameLookupInterval(); iv != nil && *iv > 0 {
 				this.interval = *iv
+				if this.interval < 30 {
+					this.interval = 30
+				}
+				if len(targets) > 0 && this.interval < targets[0].GetTTL()/3 {
+					this.interval = targets[0].GetTTL() / 3
+				}
+			}
+			if lookupResults != nil {
+				state.UpsertLookupJob(this.object.ObjectName(), *lookupResults, time.Duration(this.interval)*time.Second)
+			} else {
+				state.DeleteLookupJob(this.object.ObjectName())
 			}
 			if len(targets) == 0 {
 				msg := "targets cannot be resolved to any valid IPv4 address"
-				if !multiOk {
+				if lookupResults == nil {
 					msg = "too many targets"
 					this.interval = int64(84600)
 				}
@@ -586,6 +606,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				return reconcile.Recheck(logger, verr, time.Duration(this.interval)*time.Second)
 			}
 		} else {
+			state.DeleteLookupJob(this.object.ObjectName())
 			this.interval = 0
 		}
 
@@ -626,11 +647,16 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		}
 	}
 
-	if this.Kind() != api.DNSLockKind {
+	switch this.object.(type) {
+	case *dnsutils.DNSEntryObject:
 		logger.Infof("%s: valid: %t, message: %s%s", this.status.State, this.valid, utils.StringValue(this.status.Message), errorValue(", err: %s", err))
 		logmsg := dnsutils.NewLogMessage("update entry status")
 		f := func(data resources.ObjectData) (bool, error) {
-			status := dnsutils.DNSObject(this.object.GetResource().Wrap(data)).BaseStatus()
+			obj, err := this.object.GetResource().Wrap(data)
+			if err != nil {
+				return false, err
+			}
+			status := dnsutils.DNSObject(obj).BaseStatus()
 			mod := &utils.ModificationState{}
 			if p.zoneid != "" {
 				mod.AssureStringPtrValue(&status.ProviderType, p.ptype)
@@ -643,6 +669,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				dnsutils.SetLastUpdateTime(&status.LastUptimeTime)
 				logmsg.Infof(logger)
 			}
+			mod.Modify(dnsutils.DNSEntry(obj).AcknowledgeCNAMELookupInterval(this.interval))
 			return mod.IsModified(), nil
 		}
 		_, err = this.object.ModifyStatus(f)
@@ -770,67 +797,37 @@ func targetList(targets Targets) ([]string, string) {
 	return list, msg
 }
 
-func normalizeTargets(logger logger.LogContext, object dnsutils.DNSSpecification, targets ...Target) (Targets, bool, bool) {
-	multiCNAME := len(targets) > 1 && targets[0].GetRecordType() == dns.RS_CNAME
+func normalizeTargets(logger logger.LogContext, object dnsutils.DNSSpecification, targets ...Target) (Targets, *lookupAllResults, bool) {
+	multiCNAME := len(targets) > 0 && targets[0].GetRecordType() == dns.RS_CNAME && (len(targets) > 1 || ptr.Deref(object.ResolveTargetsToAddresses(), false))
 	if !multiCNAME {
-		return targets, false, false
+		return targets, nil, false
 	}
 
-	result := make(Targets, 0, len(targets))
 	if len(targets) > maxCNAMETargets {
 		w := fmt.Sprintf("too many CNAME targets: %d (maximum allowed: %d)", len(targets), maxCNAMETargets)
 		logger.Warn(w)
 		object.Event(corev1.EventTypeWarning, "dnslookup restriction", w)
-		return result, true, false
+		return nil, nil, true
 	}
-	for _, t := range targets {
-		ipv4addrs, ipv6addrs, err := lookupHosts(t.GetHostName())
-		if err == nil {
-		outerV4:
-			for _, addr := range ipv4addrs {
-				for _, old := range result {
-					if old.GetHostName() == addr {
-						continue outerV4
-					}
-				}
-				result = append(result, dnsutils.NewTarget(dns.RS_A, addr, t.GetTTL()))
-			}
-		outerV6:
-			for _, addr := range ipv6addrs {
-				for _, old := range result {
-					if old.GetHostName() == addr {
-						continue outerV6
-					}
-				}
-				result = append(result, dnsutils.NewTarget(dns.RS_AAAA, addr, t.GetTTL()))
-			}
-		} else {
-			w := fmt.Sprintf("cannot lookup '%s': %s", t.GetHostName(), err)
-			logger.Warn(w)
-			object.Event(corev1.EventTypeNormal, "dnslookup", w)
-		}
+	result := make(Targets, 0, len(targets))
+	hostnames := make([]string, len(targets))
+	for i, t := range targets {
+		hostnames[i] = t.GetHostName()
 	}
-	return result, true, true
-}
-
-func lookupHosts(hostname string) ([]string, []string, error) {
-	ips, err := net.LookupIP(hostname)
-	if err != nil {
-		return nil, nil, err
+	ctx := context.Background()
+	results := lookupAllHostnamesIPs(ctx, hostnames...)
+	ttl := targets[0].GetTTL()
+	for _, addr := range results.ipv4Addrs {
+		result = append(result, dnsutils.NewTarget(dns.RS_A, addr, ttl))
 	}
-	ipv4addrs := make([]string, 0, len(ips))
-	ipv6addrs := make([]string, 0, len(ips))
-	for _, ip := range ips {
-		if ip.To4() != nil {
-			ipv4addrs = append(ipv4addrs, ip.String())
-		} else if ip.To16() != nil {
-			ipv6addrs = append(ipv6addrs, ip.String())
-		}
+	for _, addr := range results.ipv6Addrs {
+		result = append(result, dnsutils.NewTarget(dns.RS_AAAA, addr, ttl))
 	}
-	if len(ipv4addrs) == 0 && len(ipv6addrs) == 0 {
-		return nil, nil, fmt.Errorf("%s has no IPv4/IPv6 address (of %d addresses)", hostname, len(ips))
+	for _, err := range results.errs {
+		logger.Warn(err.Error())
+		object.Event(corev1.EventTypeNormal, "dnslookup", err.Error())
 	}
-	return ipv4addrs, ipv6addrs, nil
+	return result, &results, true
 }
 
 ///////////////////////////////////////////////////////////////////////////////

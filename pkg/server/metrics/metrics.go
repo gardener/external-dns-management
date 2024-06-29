@@ -11,6 +11,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/server"
@@ -31,6 +32,13 @@ func init() {
 	prometheus.MustRegister(RemoteAccessRequests)
 	prometheus.MustRegister(RemoteAccessSeconds)
 	prometheus.MustRegister(RemoteAccessCertificates)
+	prometheus.MustRegister(LookupProcessorJobs)
+	prometheus.MustRegister(LookupProcessorSkips)
+	prometheus.MustRegister(LookupProcessorLookups)
+	prometheus.MustRegister(LookupProcessorHosts)
+	prometheus.MustRegister(LookupProcessorErrors)
+	prometheus.MustRegister(LookupProcessorLookupChanged)
+	prometheus.MustRegister(LookupProcessorSeconds)
 
 	server.RegisterHandler("/metrics", promhttp.Handler())
 }
@@ -121,6 +129,60 @@ var (
 		prometheus.GaugeOpts{
 			Name: "external_dns_management_remoteaccess_transport_credentials",
 			Help: "Number of server-side transport credentials of remote access",
+		},
+	)
+
+	LookupProcessorJobs = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "external_dns_management_lookup_processor_jobs",
+			Help: "Number of jobs in the lookup processor",
+		},
+	)
+
+	LookupProcessorSkips = prometheus.NewCounter(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_lookup_processor_skips",
+			Help: "Number of skipped lookups because of overload",
+		},
+	)
+
+	LookupProcessorLookups = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_lookup_processor_lookups",
+			Help: "Number of lookups per object",
+		},
+		[]string{"namespace"},
+	)
+
+	LookupProcessorLookupChanged = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_lookup_processor_lookup_changed",
+			Help: "Number of lookup results have changed per object",
+		},
+		[]string{"namespace"},
+	)
+
+	LookupProcessorHosts = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_lookup_processor_hosts",
+			Help: "Number of hosts lookup per object",
+		},
+		[]string{"namespace"},
+	)
+
+	LookupProcessorErrors = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_lookup_processor_errors",
+			Help: "Number of failed host lookups per object",
+		},
+		[]string{"namespace"},
+	)
+
+	LookupProcessorSeconds = prometheus.NewHistogram(
+		prometheus.HistogramOpts{
+			Name:    "external_dns_management_lookup_processor_seconds",
+			Help:    "Lookup duration of lookup in seconds",
+			Buckets: []float64{.01, .02, .05, .1, .2, .5, 1, 2, 5, 10, 20},
 		},
 	)
 )
@@ -280,4 +342,56 @@ func UpdateOwnerStatistic(statistic *statistic.EntryStatistic, types utils.Strin
 			delete(currentStatistic.Owners, o)
 		}
 	}
+}
+
+func ReportLookupProcessorIncrSkipped() {
+	LookupProcessorSkips.Inc()
+}
+
+func ReportLookupProcessorIncrHostnameLookups(name resources.ObjectName, hosts, errorCount int, duration time.Duration) {
+	addLookupName(name)
+	LookupProcessorLookups.WithLabelValues(name.Namespace()).Inc()
+	LookupProcessorHosts.WithLabelValues(name.Namespace()).Add(float64(hosts))
+	LookupProcessorErrors.WithLabelValues(name.Namespace()).Add(float64(errorCount))
+	LookupProcessorSeconds.Observe(duration.Seconds())
+}
+
+func ReportLookupProcessorJobs(jobs int) {
+	LookupProcessorJobs.Set(float64(jobs))
+}
+
+func ReportLookupProcessorIncrLookupChanged(name resources.ObjectName) {
+	addLookupName(name)
+	LookupProcessorLookupChanged.WithLabelValues(name.Namespace()).Inc()
+}
+
+func ReportRemovedJob(name resources.ObjectName) {
+	if removeLookupName(name) {
+		LookupProcessorLookups.DeleteLabelValues(name.Namespace())
+		LookupProcessorHosts.DeleteLabelValues(name.Namespace())
+		LookupProcessorErrors.DeleteLabelValues(name.Namespace())
+		LookupProcessorLookupChanged.DeleteLabelValues(name.Namespace())
+	}
+}
+
+var knownLookupNames = sets.New[resources.ObjectName]()
+var knownLookupNamesLook sync.Mutex
+
+func addLookupName(name resources.ObjectName) {
+	knownLookupNamesLook.Lock()
+	defer knownLookupNamesLook.Unlock()
+	knownLookupNames.Insert(name)
+}
+
+// removeLookupName removes name from known lookup entries and returns true if it was the last in the namespace.
+func removeLookupName(name resources.ObjectName) bool {
+	knownLookupNamesLook.Lock()
+	defer knownLookupNamesLook.Unlock()
+	knownLookupNames.Delete(name)
+	for n := range knownLookupNames {
+		if n.Namespace() == name.Namespace() {
+			return false
+		}
+	}
+	return true
 }

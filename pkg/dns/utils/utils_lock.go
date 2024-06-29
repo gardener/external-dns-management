@@ -97,6 +97,10 @@ func (this *DNSLockObject) GetCNameLookupInterval() *int64 {
 	return nil
 }
 
+func (this *DNSLockObject) ResolveTargetsToAddresses() *bool {
+	return nil
+}
+
 func (this *DNSLockObject) GetReference() *api.EntryReference {
 	return nil
 }

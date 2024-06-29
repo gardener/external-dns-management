@@ -5,10 +5,12 @@
 package integration
 
 import (
+	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("ServiceAnnotation", func() {
@@ -47,6 +49,13 @@ var _ = Describe("ServiceAnnotation", func() {
 			})
 		Ω(err).ShouldNot(HaveOccurred())
 
+		svcDomain5 := "mysvc5." + domain
+		svc5, err := testEnv.CreateServiceWithAnnotation("mysvc5", svcDomain5, status, ttl, nil,
+			map[string]string{
+				"dns.gardener.cloud/resolve-targets-to-addresses": "true",
+			})
+		Ω(err).ShouldNot(HaveOccurred())
+
 		entryObj, err := testEnv.AwaitObjectByOwner("Service", svc.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 
@@ -82,36 +91,26 @@ var _ = Describe("ServiceAnnotation", func() {
 		entry4 := UnwrapEntry(entryObj4)
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(entry4.Spec.DNSName).Should(Equal(svcDomain4))
-		Ω(entry4.Spec.DNSName).Should(Equal(svcDomain4))
 		Ω(entry4.Spec.OwnerId).ShouldNot(BeNil())
 		Ω(*entry4.Spec.OwnerId).Should(Equal("second"))
 
-		err = svc.Delete()
+		entryObj5, err := testEnv.AwaitObjectByOwner("Service", svc5.GetName())
+		entry5 := UnwrapEntry(entryObj5)
 		Ω(err).ShouldNot(HaveOccurred())
-		err = svc2.Delete()
-		Ω(err).ShouldNot(HaveOccurred())
-		err = svc3.Delete()
-		Ω(err).ShouldNot(HaveOccurred())
-		err = svc4.Delete()
-		Ω(err).ShouldNot(HaveOccurred())
+		Ω(entry5.Spec.DNSName).Should(Equal(svcDomain5))
+		Ω(entry5.Spec.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
 
-		err = testEnv.AwaitServiceDeletion(svc.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitServiceDeletion(svc2.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitServiceDeletion(svc3.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitServiceDeletion(svc4.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
+		for _, item := range []resources.Object{svc, svc2, svc3, svc4, svc5} {
+			Ω(item.Delete()).ShouldNot(HaveOccurred())
+		}
 
-		err = testEnv.AwaitEntryDeletion(entryObj.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitEntryDeletion(entryObj2.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitEntryDeletion(entryObj3.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitEntryDeletion(entryObj4.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
+		for _, item := range []resources.Object{svc, svc2, svc3, svc4, svc5} {
+			Ω(testEnv.AwaitServiceDeletion(item.GetName())).ShouldNot(HaveOccurred())
+		}
+
+		for _, item := range []resources.Object{entryObj, entryObj2, entryObj3, entryObj4, entryObj5} {
+			Ω(testEnv.AwaitEntryDeletion(item.GetName())).ShouldNot(HaveOccurred())
+		}
 	})
 
 	It("creates DNS entries for DNSAnnotations", func() {

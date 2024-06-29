@@ -1,0 +1,15 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    # If you are delegating the DNS management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
+    #dns.gardener.cloud/class: garden
+  name: resolve-to-a
+  namespace: default
+spec:
+  dnsName: my.domain-name.example.com
+  ttl: 600
+  cnameLookupInterval: 30
+  resolveTargetsToAddresses: true # if this flag is set, the target name will be resolved and A/AAAA records will be created instead of an CNAME.
+  targets:
+  - my.domain-name.example.com

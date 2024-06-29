@@ -470,6 +470,7 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 		annots[dns.AnnotationIPStack] = info.IPStack
 		entry.SetAnnotations(annots)
 	}
+	entry.Spec.ResolveTargetsToAddresses = info.ResolveTargetsToAddresses
 
 	e, _ := this.SlaveResoures()[0].Wrap(entry)
 
@@ -538,6 +539,10 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 			mod.Modify(true)
 		}
 		mod.AssureInt64PtrPtr(&spec.CNameLookupInterval, info.Interval)
+		if !reflect.DeepEqual(spec.ResolveTargetsToAddresses, info.ResolveTargetsToAddresses) {
+			spec.ResolveTargetsToAddresses = info.ResolveTargetsToAddresses
+			mod.Modify(true)
+		}
 		targets := info.Targets
 		text := info.Text
 

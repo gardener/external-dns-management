@@ -10,6 +10,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -23,11 +24,17 @@ var _ = Describe("GatewayAPIGatewayAnnotation", func() {
 		fakeExternalIP := "1.2.3.4"
 		status := &gatewayapisv1.GatewayStatusAddress{Value: fakeExternalIP}
 		svcDomain := "mysvc." + domain
+		svcDomain2 := "mysvc2." + domain
 		ttl := 456
 		gw, err := testEnv.CreateGatewayAPIGatewayWithAnnotation("mygateway", svcDomain, status, ttl, nil, nil)
 		Ω(err).ShouldNot(HaveOccurred())
+		gw2, err := testEnv.CreateGatewayAPIGatewayWithAnnotation("mygateway2", svcDomain2, status, ttl, nil,
+			map[string]string{"dns.gardener.cloud/resolve-targets-to-addresses": "true"})
+		Ω(err).ShouldNot(HaveOccurred())
 
 		entryObj, err := testEnv.AwaitObjectByOwner("Gateway", gw.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+		entryObj2, err := testEnv.AwaitObjectByOwner("Gateway", gw2.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 
 		checkEntry(entryObj, pr)
@@ -39,14 +46,28 @@ var _ = Describe("GatewayAPIGatewayAnnotation", func() {
 		Ω(entry.Spec.OwnerId).Should(BeNil())
 		Ω(entry.Spec.TTL).ShouldNot(BeNil())
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
+		Ω(entry.Spec.ResolveTargetsToAddresses).To(BeNil())
+
+		checkEntry(entryObj2, pr)
+		entryObj2, err = testEnv.GetEntry(entryObj2.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+		entry2 := UnwrapEntry(entryObj2)
+		Ω(entry2.Spec.DNSName).Should(Equal(svcDomain2))
+		Ω(entry2.Spec.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
 
 		err = gw.Delete()
+		Ω(err).ShouldNot(HaveOccurred())
+		err = gw2.Delete()
 		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitServiceDeletion(gw.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
+		err = testEnv.AwaitServiceDeletion(gw2.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.AwaitEntryDeletion(entryObj.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+		err = testEnv.AwaitEntryDeletion(entryObj2.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 

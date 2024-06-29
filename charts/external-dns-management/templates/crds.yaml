@@ -101,7 +101,8 @@ spec:
             properties:
               cnameLookupInterval:
                 description: lookup interval for CNAMEs that must be resolved to IP
-                  addresses
+                  addresses. Only used if `resolveTargetsToAddresses` is set to true
+                  or targets consists of multiple domain names.
                 format: int64
                 type: integer
               dnsName:
@@ -122,6 +123,12 @@ spec:
                 required:
                 - name
                 type: object
+              resolveTargetsToAddresses:
+                description: enables translation of a target domain name in the resolved
+                  IPv4 and IPv6 addresses. If enabled, `A` and/or `AAAA` records are
+                  created instead of a `CNAME` record. If the target list contains
+                  multiple targets, it is enabled implicitly.
+                type: boolean
               routingPolicy:
                 description: optional routing policy
                 properties:
@@ -162,6 +169,11 @@ spec:
             type: object
           status:
             properties:
+              cnameLookupInterval:
+                description: effective lookup interval for CNAMEs that must be resolved
+                  to IP addresses
+                format: int64
+                type: integer
               lastUpdateTime:
                 description: lastUpdateTime contains the timestamp of the last status
                   update
