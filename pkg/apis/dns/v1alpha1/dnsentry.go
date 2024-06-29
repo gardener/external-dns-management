@@ -58,9 +58,15 @@ type DNSEntrySpec struct {
 	// time to live for records in external DNS system
 	// +optional
 	TTL *int64 `json:"ttl,omitempty"`
-	// lookup interval for CNAMEs that must be resolved to IP addresses
+	// lookup interval for CNAMEs that must be resolved to IP addresses.
+	// Only used if `resolveTargetsToAddresses` is set to true or targets consists of multiple domain names.
 	// +optional
 	CNameLookupInterval *int64 `json:"cnameLookupInterval,omitempty"`
+	// enables translation of a target domain name in the resolved IPv4 and IPv6 addresses.
+	// If enabled, `A` and/or `AAAA` records are created instead of a `CNAME` record.
+	// If the target list contains multiple targets, it is enabled implicitly.
+	// +optional
+	ResolveTargetsToAddresses *bool `json:"resolveTargetsToAddresses,omitempty"`
 	// text records, either text or targets must be specified
 	// +optional
 	Text []string `json:"text,omitempty"`
@@ -80,6 +86,9 @@ type DNSEntryStatus struct {
 	// effective routing policy
 	// +optional
 	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
+	// effective lookup interval for CNAMEs that must be resolved to IP addresses
+	// +optional
+	CNameLookupInterval *int64 `json:"cnameLookupInterval,omitempty"`
 }
 
 type DNSBaseStatus struct {

@@ -8,6 +8,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("IngressAnnotation", func() {
@@ -24,10 +25,10 @@ var _ = Describe("IngressAnnotation", func() {
 			map[string]string{"dns.gardener.cloud/ip-stack": "dual-stack"})
 		Ω(err).ShouldNot(HaveOccurred())
 		routingPolicy := `{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}`
-		ingress2, err := testEnv.CreateIngressWithAnnotation("mysvc2", ingressDomain, fakeExternalIP, ttl, &routingPolicy, nil)
+		ingress2, err := testEnv.CreateIngressWithAnnotation("myingress2", ingressDomain, fakeExternalIP, ttl, &routingPolicy, nil)
 		Ω(err).ShouldNot(HaveOccurred())
-		ingress3, err := testEnv.CreateIngressWithAnnotation("mysvc3", ingressDomain, fakeExternalIP, ttl, nil,
-			map[string]string{"dns.gardener.cloud/owner-id": "second"})
+		ingress3, err := testEnv.CreateIngressWithAnnotation("myingress3", ingressDomain, fakeExternalIP, ttl, nil,
+			map[string]string{"dns.gardener.cloud/owner-id": "second", "dns.gardener.cloud/resolve-targets-to-addresses": "true"})
 		Ω(err).ShouldNot(HaveOccurred())
 
 		entryObj, err := testEnv.AwaitObjectByOwner("Ingress", ingress.GetName())
@@ -58,12 +59,14 @@ var _ = Describe("IngressAnnotation", func() {
 			Parameters:    map[string]string{"weight": "10"},
 		}))
 		Ω(entry2.Annotations["dns.gardener.cloud/ip-stack"]).Should(Equal(""))
+		Ω(entry2.Spec.ResolveTargetsToAddresses).To(BeNil())
 
 		entryObj3, err := testEnv.AwaitObjectByOwner("Ingress", ingress3.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 		entry3 := UnwrapEntry(entryObj3)
 		Ω(entry3.Spec.OwnerId).ShouldNot(BeNil())
 		Ω(*entry3.Spec.OwnerId).Should(Equal("second"))
+		Ω(entry3.Spec.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
 
 		err = ingress2.Delete()
 		Ω(err).ShouldNot(HaveOccurred())

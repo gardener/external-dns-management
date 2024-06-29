@@ -141,6 +141,8 @@ type state struct {
 
 	dnsTicker *Ticker
 
+	lookupProcessor *lookupProcessor
+
 	providerEventListeners []ProviderEventListener
 }
 
@@ -211,6 +213,15 @@ func (this *state) Setup() error {
 	if err != nil || processors <= 0 {
 		processors = 5
 	}
+
+	this.lookupProcessor = newLookupProcessor(
+		this.context.NewContext("sub", "lookupProcessor"),
+		this.context,
+		max(processors/5, 2),
+		15*time.Second,
+		this.context.GetCluster(TARGET_CLUSTER).GetId(),
+		defaultLookupMetrics{},
+	)
 
 	if this.config.RemoteAccessConfig != nil {
 		secret := &corev1.Secret{}
@@ -302,6 +313,7 @@ func (this *state) Start() {
 	this.setup.Start(this.context)
 	this.setup = nil
 	this.startupTime = time.Now()
+	go this.lookupProcessor.Run(this.context.GetContext())
 }
 
 func (this *state) HasFinalizer(obj resources.Object) bool {

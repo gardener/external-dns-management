@@ -13,6 +13,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 	api "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 )
 
 func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSNameSet) (*source.TargetExtraction, error) {
@@ -30,6 +31,7 @@ func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSName
 			}
 		}
 	}
+	var resolveTargetsToAddresses *bool
 	ipstack := ""
 	set := utils.StringSet{}
 	for _, i := range svc.Status.LoadBalancer.Ingress {
@@ -56,9 +58,13 @@ func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSName
 		if svc.Annotations["service.beta.kubernetes.io/aws-load-balancer-ip-address-type"] == "dualstack" {
 			ipstack = dns.AnnotationValueIPStackIPDualStack
 		}
+		if v := svc.Annotations[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
+			resolveTargetsToAddresses = ptr.To(v == "true")
+		}
 	}
 	return &source.TargetExtraction{
-		Targets: set,
-		IPStack: ipstack,
+		Targets:                   set,
+		IPStack:                   ipstack,
+		ResolveTargetsToAddresses: resolveTargetsToAddresses,
 	}, nil
 }
