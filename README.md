@@ -179,7 +179,7 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
    ```
 
 For more examples about the custom resources and the annotations for services and ingresses
-see the `examples` directory.
+see the [examples](examples/) directory and [translation of `DNSEntries` examples](docs/usage/dnsentry_translation.md)
 
 ### Automatic creation of DNS entries for services and ingresses
 
