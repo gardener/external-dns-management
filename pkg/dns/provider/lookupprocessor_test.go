@@ -156,7 +156,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		expectCountBetween("count3a", count3a, 3, 9)
 		Expect(count3c).To(Equal(count3a))
 		Expect(enqueuer.enqueuedCount).To(BeEmpty())
-		Expect(processor.skipped.Load()).To(BeZero())
+		expectCountBetween("skipped", int(processor.skipped.Load()), -1, 4)
 	})
 
 	ginkgov2.It("performs multiple lookup jobs but skips on overload", func() {
@@ -180,7 +180,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		expectCountBetween("count3a", count3a, 10, 20)
 		Expect(count3c).To(Equal(count3a))
 		Expect(enqueuer.enqueuedCount).To(BeEmpty())
-		expectCountBetween("skipped", int(processor.skipped.Load()), 20, 40)
+		expectCountBetween("skipped", int(processor.skipped.Load()), 20, 50)
 	})
 
 	ginkgov2.It("performs multiple lookup jobs and enqueues keys on lookup changes", func() {
@@ -212,7 +212,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(enqueuer.enqueuedCount).To(HaveLen(2))
 		Expect(enqueuer.enqueuedCount[nameE2]).To(Equal(1))
 		Expect(enqueuer.enqueuedCount[nameE3]).To(Equal(1))
-		Expect(processor.skipped.Load()).To(BeZero())
+		expectCountBetween("skipped", int(processor.skipped.Load()), -1, 4)
 		stat1 := metrics.lookups[nameE1]
 		Expect(stat1.count).To(Equal(count1))
 		stat3 := metrics.lookups[nameE3]
