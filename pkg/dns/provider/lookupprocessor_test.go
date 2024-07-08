@@ -133,6 +133,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 	ginkgov2.It("performs multiple lookup jobs regularly", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		go processor.Run(ctx)
+		time.Sleep(10 * time.Millisecond)
 
 		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*time.Millisecond)
 		processor.Upsert(nameE2, lookupAllHostnamesIPs(ctx, "host2"), 2*time.Millisecond)
@@ -163,6 +164,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		ctx, cancel := context.WithCancel(context.Background())
 		mlh.delay = 1900 * time.Microsecond
 		go processor.Run(ctx)
+		time.Sleep(10 * time.Millisecond)
 
 		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*time.Millisecond)
 		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 1*time.Millisecond)
@@ -187,6 +189,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		changedIP := net.ParseIP("1.1.1.42")
 		ctx, cancel := context.WithCancel(context.Background())
 		go processor.Run(ctx)
+		time.Sleep(10 * time.Millisecond)
 
 		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*time.Millisecond)
 		processor.Upsert(nameE2, lookupAllHostnamesIPs(ctx, "host2"), 1*time.Millisecond)
