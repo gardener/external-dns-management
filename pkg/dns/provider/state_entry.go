@@ -331,6 +331,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 	this.smartInfof(logger, "cleanup old entry (duplicate=%t)", e.duplicate)
 	this.entries.Delete(e)
+	this.DeleteLookupJob(e.ObjectName())
 	if this.dnsnames[e.ZonedDNSName()] == e {
 		var found *Entry
 		for _, a := range this.entries {
