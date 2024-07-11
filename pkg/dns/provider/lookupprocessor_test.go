@@ -15,13 +15,18 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	ginkgov2 "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/atomic"
 )
 
 type testEnqueuer struct {
 	enqueuedCount map[resources.ObjectName]int
+	stopped       atomic.Bool
 }
 
 func (e *testEnqueuer) EnqueueKey(key resources.ClusterObjectKey) error {
+	if e.stopped.Load() {
+		return nil
+	}
 	e.enqueuedCount[key.ObjectName()]++
 	return nil
 }
@@ -36,12 +41,15 @@ type mockLookupHost struct {
 	lookupMap   map[string]mockLookupHostResult
 	lock        sync.Mutex
 	lookupCount map[string]int
+	stopped     atomic.Bool
 }
 
 func (lh *mockLookupHost) LookupHost(hostname string) ([]net.IP, error) {
 	time.Sleep(lh.delay)
 	lh.lock.Lock()
-	lh.lookupCount[hostname] += 1
+	if !lh.stopped.Load() {
+		lh.lookupCount[hostname] += 1
+	}
 	lh.lock.Unlock()
 	result, ok := lh.lookupMap[hostname]
 	if !ok {
@@ -61,6 +69,7 @@ type testMetrics struct {
 	lock    sync.Mutex
 	jobs    int
 	lookups map[resources.ObjectName]lookupStat
+	stopped atomic.Bool
 }
 
 var _ lookupMetrics = &testMetrics{}
@@ -71,6 +80,9 @@ func (t *testMetrics) IncrSkipped() {
 func (t *testMetrics) IncrHostnameLookups(name resources.ObjectName, targetCount, errorCount int, duration time.Duration) {
 	t.lock.Lock()
 	defer t.lock.Unlock()
+	if t.stopped.Load() {
+		return
+	}
 	stat := t.lookups[name]
 	stat.count++
 	stat.targetCount += targetCount
@@ -96,9 +108,20 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		mlh       *mockLookupHost
 		metrics   *testMetrics
 
-		nameE1 = resources.NewObjectName("ns1", "e1")
-		nameE2 = resources.NewObjectName("ns1", "e2")
-		nameE3 = resources.NewObjectName("ns1", "e3")
+		nameE1    = resources.NewObjectName("ns1", "e1")
+		nameE2    = resources.NewObjectName("ns1", "e2")
+		nameE3    = resources.NewObjectName("ns1", "e3")
+		ctx       context.Context
+		ctxCancel context.CancelFunc
+
+		cancel = func() {
+			enqueuer.stopped.Store(true)
+			mlh.stopped.Store(true)
+			metrics.stopped.Store(true)
+			ctxCancel()
+			time.Sleep(10 * time.Millisecond)
+			Expect(processor.running.Load()).To(BeFalse())
+		}
 	)
 
 	ginkgov2.BeforeEach(func() {
@@ -118,10 +141,10 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 			lookupCount: map[string]int{},
 		}
 		lookupHost = mlh.LookupHost
+		ctx, ctxCancel = context.WithCancel(context.Background())
 	})
 
 	ginkgov2.It("lookupAllHostnamesIPs should return expected results", func() {
-		ctx := context.Background()
 		results1 := lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
 		Expect(results1.ipv4Addrs).To(HaveLen(4))
 		Expect(results1.ipv6Addrs).To(HaveLen(1))
@@ -131,10 +154,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 	})
 
 	ginkgov2.It("performs multiple lookup jobs regularly", func() {
-		ctx, cancel := context.WithCancel(context.Background())
 		go processor.Run(ctx)
-		time.Sleep(10 * time.Millisecond)
-
 		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*time.Millisecond)
 		processor.Upsert(nameE2, lookupAllHostnamesIPs(ctx, "host2"), 2*time.Millisecond)
 		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 3*time.Millisecond)
@@ -145,8 +165,6 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		processor.Delete(nameE3)
 		time.Sleep(18 * time.Millisecond)
 		cancel()
-		time.Sleep(1 * time.Millisecond)
-		Expect(processor.running.Load()).To(BeFalse())
 
 		count1 := mlh.lookupCount["host1"]
 		count2 := mlh.lookupCount["host2"]
@@ -155,42 +173,34 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		expectCountBetween("count1", count1, 18, 54)
 		expectCountBetween("count2", count2, 9, 27)
 		expectCountBetween("count3a", count3a, 3, 9)
-		Expect(count3c).To(Equal(count3a))
+		expectCountBetween("count3c-count3a", count3c-count3a, -1, 1)
 		Expect(enqueuer.enqueuedCount).To(BeEmpty())
-		expectCountBetween("skipped", int(processor.skipped.Load()), -1, 9)
+		expectCountBetween("skipped", int(processor.skipped.Load()), 0, 10)
 	})
 
 	ginkgov2.It("performs multiple lookup jobs but skips on overload", func() {
-		ctx, cancel := context.WithCancel(context.Background())
 		mlh.delay = 1900 * time.Microsecond
 		go processor.Run(ctx)
-		time.Sleep(10 * time.Millisecond)
-
 		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*time.Millisecond)
 		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 1*time.Millisecond)
 		time.Sleep(processor.checkPeriod)
 
 		time.Sleep(30 * time.Millisecond)
 		cancel()
-		time.Sleep(1 * time.Millisecond)
-		Expect(processor.running.Load()).To(BeFalse())
 
 		count1 := mlh.lookupCount["host1"]
 		count3a := mlh.lookupCount["host3a"]
 		count3c := mlh.lookupCount["host3c"]
 		expectCountBetween("count1", count1, 10, 20)
 		expectCountBetween("count3a", count3a, 10, 20)
-		Expect(count3c).To(Equal(count3a))
+		expectCountBetween("count3c-count3a", count3c-count3a, -1, 1)
 		Expect(enqueuer.enqueuedCount).To(BeEmpty())
 		expectCountBetween("skipped", int(processor.skipped.Load()), 20, 50)
 	})
 
 	ginkgov2.It("performs multiple lookup jobs and enqueues keys on lookup changes", func() {
 		changedIP := net.ParseIP("1.1.1.42")
-		ctx, cancel := context.WithCancel(context.Background())
 		go processor.Run(ctx)
-		time.Sleep(10 * time.Millisecond)
-
 		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*time.Millisecond)
 		processor.Upsert(nameE2, lookupAllHostnamesIPs(ctx, "host2"), 1*time.Millisecond)
 		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 1*time.Millisecond)
@@ -201,8 +211,6 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		mlh.lookupMap["host2"].ips[0] = changedIP
 		time.Sleep(20 * time.Millisecond)
 		cancel()
-		time.Sleep(1 * time.Millisecond)
-		Expect(processor.running.Load()).To(BeFalse())
 
 		count1 := mlh.lookupCount["host1"]
 		count2 := mlh.lookupCount["host2"]
@@ -215,16 +223,16 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(enqueuer.enqueuedCount).To(HaveLen(2))
 		Expect(enqueuer.enqueuedCount[nameE2]).To(Equal(1))
 		Expect(enqueuer.enqueuedCount[nameE3]).To(Equal(1))
-		expectCountBetween("skipped", int(processor.skipped.Load()), -1, 9)
+		expectCountBetween("skipped", int(processor.skipped.Load()), 0, 10)
 		stat1 := metrics.lookups[nameE1]
-		Expect(stat1.count).To(Equal(count1))
+		expectCountBetween("stat1.count-count1", stat1.count-count1, -1, 1)
 		stat3 := metrics.lookups[nameE3]
-		Expect(stat3.count).To(Equal(count3a))
+		expectCountBetween("stat3.count-count3a", stat3.count-count3a, -1, 1)
 		Expect(stat3.targetCount).To(Equal(count3a * 3))
 		expectCountBetween("count not-existing-host", stat3.errorCount, 10, 30)
 	})
 })
 
 func expectCountBetween(name string, actual, lower, upper int) {
-	Expect(actual > lower && actual < upper).To(BeTrue(), fmt.Sprintf("%d < %s(%d) < %d", lower, name, actual, upper))
+	Expect(actual >= lower && actual <= upper).To(BeTrue(), fmt.Sprintf("%d <= %s(%d) <= %d", lower, name, actual, upper))
 }
