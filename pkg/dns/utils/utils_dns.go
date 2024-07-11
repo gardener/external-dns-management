@@ -28,6 +28,7 @@ type DNSSpecification interface {
 	GetTargets() []string
 	GetText() []string
 	GetCNameLookupInterval() *int64
+	ResolveTargetsToAddresses() *bool
 	GetReference() *api.EntryReference
 	BaseStatus() *api.DNSBaseStatus
 	GetRoutingPolicy() *dns.RoutingPolicy

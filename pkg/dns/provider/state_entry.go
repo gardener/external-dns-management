@@ -283,12 +283,6 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 			}
 		}
 
-		if status.IsSucceeded() && new.IsValid() {
-			if new.Interval() > 0 {
-				status = status.RescheduleAfter(time.Duration(new.Interval()) * time.Second)
-			}
-		}
-
 		if new.IsModified() && !new.ZoneId().IsEmpty() {
 			this.smartInfof(logger, "trigger zone %q", new.ZoneId())
 			this.triggerHostedZone(new.ZoneId())
@@ -337,6 +331,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 	this.smartInfof(logger, "cleanup old entry (duplicate=%t)", e.duplicate)
 	this.entries.Delete(e)
+	this.DeleteLookupJob(e.ObjectName())
 	if this.dnsnames[e.ZonedDNSName()] == e {
 		var found *Entry
 		for _, a := range this.entries {
@@ -612,6 +607,14 @@ func (this *state) updateLockState(log logger.LogContext, dnsName string, e *Ent
 		e.updateRequired = true
 		_ = this.context.Enqueue(e.object)
 	}
+}
+
+func (this *state) DeleteLookupJob(entryName resources.ObjectName) {
+	this.lookupProcessor.Delete(entryName)
+}
+
+func (this *state) UpsertLookupJob(entryName resources.ObjectName, results lookupAllResults, interval time.Duration) {
+	this.lookupProcessor.Upsert(entryName, results, interval)
 }
 
 func AssureTimestamp(target **metav1.Time, ts time.Time) bool {

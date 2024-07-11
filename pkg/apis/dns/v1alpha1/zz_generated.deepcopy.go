@@ -265,6 +265,11 @@ func (in *DNSEntrySpec) DeepCopyInto(out *DNSEntrySpec) {
 		*out = new(int64)
 		**out = **in
 	}
+	if in.ResolveTargetsToAddresses != nil {
+		in, out := &in.ResolveTargetsToAddresses, &out.ResolveTargetsToAddresses
+		*out = new(bool)
+		**out = **in
+	}
 	if in.Text != nil {
 		in, out := &in.Text, &out.Text
 		*out = make([]string, len(*in))
@@ -306,6 +311,11 @@ func (in *DNSEntryStatus) DeepCopyInto(out *DNSEntryStatus) {
 		in, out := &in.RoutingPolicy, &out.RoutingPolicy
 		*out = new(RoutingPolicy)
 		(*in).DeepCopyInto(*out)
+	}
+	if in.CNameLookupInterval != nil {
+		in, out := &in.CNameLookupInterval, &out.CNameLookupInterval
+		*out = new(int64)
+		**out = **in
 	}
 	return
 }

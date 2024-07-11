@@ -97,6 +97,9 @@ func (s *gatewaySource) GetDNSInfo(logger logger.LogContext, obj resources.Objec
 	}
 	info.Names = dns.NewDNSNameSetFromStringSet(names, current.GetSetIdentifier())
 	info.Targets = s.getTargets(logger, info.Names, obj)
+	if v := obj.GetAnnotations()[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
+		info.ResolveTargetsToAddresses = ptr.To(v == "true")
+	}
 	return info, nil
 }
 

@@ -85,13 +85,14 @@ if [ "$LOCAL_APISERVER" != "" ]; then
   unset USE_EXISTING_CLUSTER
   echo using controller runtime envtest
 
-  K8S_VERSION=1.24.2
+  K8S_VERSION=1.29.3
   KUBEBUILDER_DIR=$(realpath -m kubebuilder_${K8S_VERSION})
   if [ ! -d "$KUBEBUILDER_DIR" ]; then
     curl -sSL "https://go.kubebuilder.io/test-tools/${K8S_VERSION}/$(go env GOOS)/$(go env GOARCH)" | tar -xvz
     mv kubebuilder "$KUBEBUILDER_DIR"
   fi
   export KUBEBUILDER_ASSETS="${KUBEBUILDER_DIR}/bin"
+  echo KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS
 else
   export USE_EXISTING_CLUSTER=true
   export KUBECONFIG=$INTEGRATION_KUBECONFIG

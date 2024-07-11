@@ -4,15 +4,16 @@ This document provides an overview of the status section of a DNSEntry resource.
 
 ### Fields
 
-| Field name           | Description                                                                                                        |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `state`              | Indicates the state of the DNSEntry. Details see below.                                                            |
-| `lastUpdateTime`     | Timestamp for when the status was updated. Usually changes when any relevant status field like `state`, `message`, `provider`, or `targets` is updated. |
-| `message`            | Human-readable message indicating details about the last status transition.                                        |
-| `provider`           | Shows the DNS provider assigned to this entry.                                                                     |
-| `providerType`       | Shows the DNS provider type assigned to this entry.                                                                |
-| `targets`            | Shows the stored targets or text of the DNS record in the backend service.                                         |
-| `ttl`                | Shows the stored TTL value of the DNS record in the backend service.                                               |
+| Field name             | Description                                                                                                                                             |
+|------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `state`                | Indicates the state of the DNSEntry. Details see below.                                                                                                 |
+| `cnameLookupInterval`  | Shows effective lookup interval for targets domain names to be resolved to IP addresses. Only provided if lookups are active for this entry.            |
+| `lastUpdateTime`       | Timestamp for when the status was updated. Usually changes when any relevant status field like `state`, `message`, `provider`, or `targets` is updated. |
+| `message`              | Human-readable message indicating details about the last status transition.                                                                             |
+| `provider`             | Shows the DNS provider assigned to this entry.                                                                                                          |
+| `providerType`         | Shows the DNS provider type assigned to this entry.                                                                                                     |
+| `targets`              | Shows the stored targets or text of the DNS record in the backend service.                                                                              |
+| `ttl`                  | Shows the stored TTL value of the DNS record in the backend service.                                                                                    |
 
 Currently the available states are:
 
