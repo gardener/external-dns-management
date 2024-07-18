@@ -45,6 +45,9 @@ spec:
       - {{.Domain}}
     exclude:
       - rp.{{.Domain}}
+`
+
+var basicTemplateEntries = `
 ---
 apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSEntry
@@ -184,15 +187,21 @@ func init() {
 func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 	_ = Describe("basics-"+p.Name, func() {
 		It("should work with "+p.Name, func() {
-			tmpl, err := template.New("Manifest").Parse(basicTemplate)
+			tmpl1, err := template.New("Manifest").Parse(basicTemplate)
+			Ω(err).ShouldNot(HaveOccurred())
+			tmpl2, err := template.New("Manifest").Parse(basicTemplateEntries)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			basePath, err := os.Getwd()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = p.CreateTempManifest(basePath, "basics", tmpl)
-			defer p.DeleteTempManifest()
+			manifest1, err := p.CreateTempManifest(basePath, "basics", tmpl1)
 			Ω(err).ShouldNot(HaveOccurred())
+			defer p.DeleteTempManifest(manifest1)
+
+			manifest2, err := p.CreateTempManifest(basePath, "basics2", tmpl2)
+			Ω(err).ShouldNot(HaveOccurred())
+			defer p.DeleteTempManifest(manifest2)
 
 			ttl := p.TTLValue()
 
@@ -201,7 +210,9 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 			err = u.AwaitKubectlGetCRDs("dnsproviders.dns.gardener.cloud", "dnsentries.dns.gardener.cloud")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = u.KubectlApply(p.TmpManifestFilename)
+			err = u.KubectlApply(manifest1)
+			Ω(err).ShouldNot(HaveOccurred())
+			err = u.KubectlApply(manifest2)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSProviderReady(p.Name)
@@ -443,13 +454,16 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 				}),
 			}))
 
-			err = u.KubectlDelete(p.TmpManifestFilename)
+			err = u.KubectlDelete(manifest2)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSEntriesDeleted(entryNames...)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSEntriesDeleted(entryForeign)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = u.KubectlDelete(manifest1)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSProviderDeleted(p.Name)

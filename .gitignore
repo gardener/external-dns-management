@@ -19,3 +19,4 @@ tmp/
 /test/integration/integration.test
 .vscode/
 .kubeconfig-kind-integration
+test/functional/functional.test

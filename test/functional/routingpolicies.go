@@ -41,6 +41,9 @@ spec:
   domains:
     include:
       - rp.{{.Domain}}
+`
+
+var routingPolicyTemplateEntries = `
 {{ range $k, $v := .RoutingPolicySets }}
 {{ range $id, $policy := $v }}
 ---
@@ -77,22 +80,29 @@ func functestRoutingPolicies(cfg *config.Config, p *config.ProviderConfig) {
 			if len(p.RoutingPolicySets) == 0 {
 				Skip("no routing policy sets defined")
 			}
-			tmpl, err := template.New("Manifest").Parse(routingPolicyTemplate)
+			tmpl1, err := template.New("Manifest").Parse(routingPolicyTemplate)
+			Ω(err).ShouldNot(HaveOccurred())
+			tmpl2, err := template.New("Manifest").Parse(routingPolicyTemplateEntries)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			basePath, err := os.Getwd()
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = p.CreateTempManifest(basePath, "routingpolicies", tmpl)
-			defer p.DeleteTempManifest()
+			manifest1, err := p.CreateTempManifest(basePath, "routingpolicies", tmpl1)
 			Ω(err).ShouldNot(HaveOccurred())
+			defer p.DeleteTempManifest(manifest1)
+			manifest2, err := p.CreateTempManifest(basePath, "routingpolicies2", tmpl2)
+			Ω(err).ShouldNot(HaveOccurred())
+			defer p.DeleteTempManifest(manifest2)
 
 			u := cfg.Utils
 
 			err = u.AwaitKubectlGetCRDs("dnsproviders.dns.gardener.cloud", "dnsentries.dns.gardener.cloud")
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = u.KubectlApply(p.TmpManifestFilename)
+			err = u.KubectlApply(manifest1)
+			Ω(err).ShouldNot(HaveOccurred())
+			err = u.KubectlApply(manifest2)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			providerName := p.Name + "-routingpolicies"
@@ -147,10 +157,13 @@ func functestRoutingPolicies(cfg *config.Config, p *config.ProviderConfig) {
 				}
 			}
 
-			err = u.KubectlDelete(p.TmpManifestFilename)
+			err = u.KubectlDelete(manifest2)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSEntriesDeleted(entryNames...)
+			Ω(err).ShouldNot(HaveOccurred())
+
+			err = u.KubectlDelete(manifest1)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.AwaitDNSProviderDeleted(providerName)

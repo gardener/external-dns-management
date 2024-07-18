@@ -80,8 +80,7 @@ type ProviderConfig struct {
 	SpecProviderConfig   string                              `json:"providerConfig,omitempty"`
 	RoutingPolicySets    map[string]map[string]RoutingPolicy `json:"routingPolicySets,omitempty"`
 
-	Namespace           string
-	TmpManifestFilename string
+	Namespace string
 }
 
 type RoutingPolicy struct {
@@ -184,21 +183,19 @@ func (p *ProviderConfig) TTLValue() int {
 	return i
 }
 
-func (p *ProviderConfig) CreateTempManifest(basePath, testName string, manifestTemplate *template.Template) error {
-	p.TmpManifestFilename = ""
+func (p *ProviderConfig) CreateTempManifest(basePath, testName string, manifestTemplate *template.Template) (string, error) {
 	filename := fmt.Sprintf("%s/tmp-%s-%s.yaml", basePath, p.Name, testName)
 	f, err := os.Create(filename)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer f.Close()
-	p.TmpManifestFilename = filename
 
-	return manifestTemplate.Execute(f, p)
+	return filename, manifestTemplate.Execute(f, p)
 }
 
-func (p *ProviderConfig) DeleteTempManifest() {
-	if p.TmpManifestFilename != "" {
-		_ = os.Remove(p.TmpManifestFilename)
+func (p *ProviderConfig) DeleteTempManifest(manifestFilename string) {
+	if manifestFilename != "" {
+		_ = os.Remove(manifestFilename)
 	}
 }
