@@ -7,7 +7,7 @@ package azureprivate
 import (
 	"strconv"
 
-	azure "github.com/Azure/azure-sdk-for-go/services/privatedns/mgmt/2018-09-01/privatedns"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
 	"github.com/gardener/external-dns-management/pkg/controller/provider/azure/utils"
@@ -43,7 +43,7 @@ const (
 	bs_invalidRoutingPolicy buildStatus = 5
 )
 
-func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus, azure.RecordType, *azure.RecordSet) {
+func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus, armprivatedns.RecordType, *armprivatedns.RecordSet) {
 	var dnsset *dns.DNSSet
 	switch req.Action {
 	case provider.R_CREATE, provider.R_UPDATE:
@@ -59,7 +59,7 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 	setName, rset := dns.MapToProvider(req.Type, dnsset, exec.zoneName)
 	name, ok := utils.DropZoneName(setName.DNSName, exec.zoneName)
 	if !ok {
-		return bs_invalidName, "", &azure.RecordSet{Name: &name}
+		return bs_invalidName, "", &armprivatedns.RecordSet{Name: &name}
 	}
 
 	if len(rset.Records) == 0 {
@@ -70,49 +70,49 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 	return exec.buildMappedRecordSet(name, rset)
 }
 
-func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) (buildStatus, azure.RecordType, *azure.RecordSet) {
-	var properties azure.RecordSetProperties
-	var recordType azure.RecordType
+func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) (buildStatus, armprivatedns.RecordType, *armprivatedns.RecordSet) {
+	var properties armprivatedns.RecordSetProperties
+	var recordType armprivatedns.RecordType
 
 	properties.TTL = &rset.TTL
 	switch rset.Type {
 	case dns.RS_A:
-		recordType = azure.A
-		arecords := []azure.ARecord{}
+		recordType = armprivatedns.RecordTypeA
+		arecords := []*armprivatedns.ARecord{}
 		for _, r := range rset.Records {
-			arecords = append(arecords, azure.ARecord{Ipv4Address: &r.Value})
+			arecords = append(arecords, &armprivatedns.ARecord{IPv4Address: &r.Value})
 		}
-		properties.ARecords = &arecords
+		properties.ARecords = arecords
 	case dns.RS_AAAA:
-		recordType = azure.AAAA
-		aaaarecords := []azure.AaaaRecord{}
+		recordType = armprivatedns.RecordTypeAAAA
+		aaaarecords := []*armprivatedns.AaaaRecord{}
 		for _, r := range rset.Records {
-			aaaarecords = append(aaaarecords, azure.AaaaRecord{Ipv6Address: &r.Value})
+			aaaarecords = append(aaaarecords, &armprivatedns.AaaaRecord{IPv6Address: &r.Value})
 		}
-		properties.AaaaRecords = &aaaarecords
+		properties.AaaaRecords = aaaarecords
 	case dns.RS_CNAME:
-		recordType = azure.CNAME
-		properties.CnameRecord = &azure.CnameRecord{Cname: &rset.Records[0].Value}
+		recordType = armprivatedns.RecordTypeCNAME
+		properties.CnameRecord = &armprivatedns.CnameRecord{Cname: &rset.Records[0].Value}
 	case dns.RS_TXT:
-		recordType = azure.TXT
-		txtrecords := []azure.TxtRecord{}
+		recordType = armprivatedns.RecordTypeTXT
+		txtrecords := []*armprivatedns.TxtRecord{}
 		for _, r := range rset.Records {
 			// AzureDNS stores value as given, i.e. including quotes, so text value must be unquoted
 			unquoted, err := strconv.Unquote(r.Value)
 			if err != nil {
 				unquoted = r.Value
 			}
-			txtrecords = append(txtrecords, azure.TxtRecord{Value: &[]string{unquoted}})
+			txtrecords = append(txtrecords, &armprivatedns.TxtRecord{Value: []*string{&unquoted}})
 		}
-		properties.TxtRecords = &txtrecords
+		properties.TxtRecords = txtrecords
 	default:
 		return bs_invalidType, "", nil
 	}
 
-	return bs_ok, recordType, &azure.RecordSet{Name: &name, RecordSetProperties: &properties}
+	return bs_ok, recordType, &armprivatedns.RecordSet{Name: &name, Properties: &properties}
 }
 
-func (exec *Execution) apply(action string, recordType azure.RecordType, rset *azure.RecordSet, metrics provider.Metrics) error {
+func (exec *Execution) apply(action string, recordType armprivatedns.RecordType, rset *armprivatedns.RecordSet, metrics provider.Metrics) error {
 	var err error
 	switch action {
 	case provider.R_CREATE, provider.R_UPDATE:
@@ -123,18 +123,18 @@ func (exec *Execution) apply(action string, recordType azure.RecordType, rset *a
 	return err
 }
 
-func (exec *Execution) update(recordType azure.RecordType, rset *azure.RecordSet, metrics provider.Metrics) error {
+func (exec *Execution) update(recordType armprivatedns.RecordType, rset *armprivatedns.RecordSet, metrics provider.Metrics) error {
 	exec.handler.config.RateLimiter.Accept()
 	_, err := exec.handler.recordsClient.CreateOrUpdate(exec.handler.ctx, exec.resourceGroup, exec.zoneName,
-		recordType, *rset.Name, *rset, "", "")
+		recordType, *rset.Name, *rset, nil)
 	zoneID := utils.MakeZoneID(exec.resourceGroup, exec.zoneName)
 	metrics.AddZoneRequests(zoneID, provider.M_UPDATERECORDS, 1)
 	return err
 }
 
-func (exec *Execution) delete(recordType azure.RecordType, rset *azure.RecordSet, metrics provider.Metrics) error {
+func (exec *Execution) delete(recordType armprivatedns.RecordType, rset *armprivatedns.RecordSet, metrics provider.Metrics) error {
 	exec.handler.config.RateLimiter.Accept()
-	_, err := exec.handler.recordsClient.Delete(exec.handler.ctx, exec.resourceGroup, exec.zoneName, recordType, *rset.Name, "")
+	_, err := exec.handler.recordsClient.Delete(exec.handler.ctx, exec.resourceGroup, exec.zoneName, recordType, *rset.Name, nil)
 	zoneID := utils.MakeZoneID(exec.resourceGroup, exec.zoneName)
 	metrics.AddZoneRequests(zoneID, provider.M_DELETERECORDS, 1)
 	return err

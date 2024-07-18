@@ -10,8 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	azure "github.com/Azure/azure-sdk-for-go/services/privatedns/mgmt/2018-09-01/privatedns"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/controller/provider/azure/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -24,8 +25,8 @@ type Handler struct {
 	config        provider.DNSHandlerConfig
 	cache         provider.ZoneCache
 	ctx           context.Context
-	zonesClient   *azure.PrivateZonesClient
-	recordsClient *azure.RecordSetsClient
+	zonesClient   *armprivatedns.PrivateZonesClient
+	recordsClient *armprivatedns.RecordSetsClient
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -38,28 +39,33 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	h.ctx = c.Context
 
-	subscriptionID, authorizer, err := utils.GetSubscriptionIDAndAuthorizer(c)
+	subscriptionID, tc, err := utils.GetSubscriptionIDAndCredentials(c)
+	if err != nil {
+		return nil, err
+	}
+	opts, err := utils.GetDefaultAzureClientOpts(c)
 	if err != nil {
 		return nil, err
 	}
 
-	zonesClient := azure.NewPrivateZonesClient(subscriptionID)
-	recordsClient := azure.NewRecordSetsClient(subscriptionID)
-
-	zonesClient.Authorizer = authorizer
-	recordsClient.Authorizer = authorizer
+	zonesClient, err := armprivatedns.NewPrivateZonesClient(subscriptionID, tc, opts)
+	if err != nil {
+		return nil, err
+	}
+	recordsClient, err := armprivatedns.NewRecordSetsClient(subscriptionID, tc, opts)
+	if err != nil {
+		return nil, err
+	}
 
 	// dummy call to check authentication
-	var one int32 = 1
-	ctx := context.TODO()
 	h.config.RateLimiter.Accept()
-	_, err = zonesClient.List(ctx, &one)
+	_, err = zonesClient.NewListPager(&armprivatedns.PrivateZonesClientListOptions{Top: ptr.To[int32](1)}).NextPage(h.ctx)
 	if err != nil {
 		return nil, perrs.WrapAsHandlerError(err, "Authentication test to Azure with client credentials failed. Please check secret for DNSProvider.")
 	}
 
-	h.zonesClient = &zonesClient
-	h.recordsClient = &recordsClient
+	h.zonesClient = zonesClient
+	h.recordsClient = recordsClient
 
 	h.cache, err = c.ZoneCacheFactory.CreateZoneCache(provider.CacheZoneState, c.Metrics, h.getZones, h.getZoneState)
 	if err != nil {
@@ -80,38 +86,37 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	zones := provider.DNSHostedZones{}
 	h.config.RateLimiter.Accept()
-	results, err := h.zonesClient.ListComplete(h.ctx, nil)
-	h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
-	if err != nil {
-		return nil, perrs.WrapAsHandlerError(err, "Listing DNS zones failed")
-	}
 
-	ctx := context.Background()
 	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
-	for results.NotDone() {
-		item := results.Value()
-
-		var zoneID string
-		resourceGroup, err := utils.ExtractResourceGroup(*item.ID)
+	pager := h.zonesClient.NewListPager(nil)
+	for pager.More() {
+		h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
+		page, err := pager.NextPage(h.ctx)
 		if err != nil {
-			logger.Warnf("skipping zone: %s", err)
-		} else {
-			zoneID = utils.MakeZoneID(resourceGroup, *item.Name)
-			if blockedZones.Contains(zoneID) {
-				h.config.Logger.Infof("ignoring blocked zone id: %s", zoneID)
-				zoneID = ""
+			if err != nil {
+				return nil, perrs.WrapAsHandlerError(err, "Listing DNS zones failed")
 			}
 		}
 
-		if zoneID != "" {
-			// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling splitZoneid().
-			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(*item.Name), "", true)
+		for _, item := range page.Value {
+			var zoneID string
+			resourceGroup, err := utils.ExtractResourceGroup(*item.ID)
+			if err != nil {
+				logger.Warnf("skipping zone: %s", err)
+			} else {
+				zoneID = utils.MakeZoneID(resourceGroup, *item.Name)
+				if blockedZones.Contains(zoneID) {
+					h.config.Logger.Infof("ignoring blocked zone id: %s", zoneID)
+					zoneID = ""
+				}
+			}
 
-			zones = append(zones, hostedZone)
-		}
+			if zoneID != "" {
+				// ResourceGroup needed for requests to Azure. Remember by adding to Id. Split by calling SplitZoneID().
+				hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, dns.NormalizeHostname(*item.Name), "", false)
 
-		if err := results.NextWithContext(ctx); err != nil {
-			return nil, err
+				zones = append(zones, hostedZone)
+			}
 		}
 	}
 
@@ -127,63 +132,55 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 
 	resourceGroup, zoneName := utils.SplitZoneID(zone.Id().ID)
 	h.config.RateLimiter.Accept()
-	results, err := h.recordsClient.ListComplete(h.ctx, resourceGroup, zoneName, nil, "")
+
 	h.config.Metrics.AddZoneRequests(zone.Id().ID, provider.M_LISTRECORDS, 1)
-	if err != nil {
-		return nil, perrs.WrapfAsHandlerError(err, "Listing DNS zone state for zone %s failed", zoneName)
-	}
-
-	ctx := context.Background()
-	count := 0
-	for results.NotDone() {
-		count++
-		item := results.Value()
-		// We expect recordName.DNSZone. However Azure only return recordName . Reverse is dropZoneName() needed for calls to Azure
-		fullName := fmt.Sprintf("%s.%s", *item.Name, zoneName)
-
-		if item.ARecords != nil {
-			rs := dns.NewRecordSet(dns.RS_A, *item.TTL, nil)
-			for _, record := range *item.ARecords {
-				rs.Add(&dns.Record{Value: *record.Ipv4Address})
-			}
-			dnssets.AddRecordSetFromProvider(fullName, rs)
+	pager := h.recordsClient.NewListPager(resourceGroup, zoneName, nil)
+	for pager.More() {
+		page, err := pager.NextPage(h.ctx)
+		h.config.Metrics.AddZoneRequests(zone.Id().ID, provider.M_PLISTRECORDS, 1)
+		if err != nil {
+			return nil, perrs.WrapfAsHandlerError(err, "Listing DNS zone state for zone %s failed", zoneName)
 		}
+		for _, item := range page.Value {
+			// We expect recordName.DNSZone. However Azure only return recordName . Reverse is dropZoneName() needed for calls to Azure
+			fullName := fmt.Sprintf("%s.%s", *item.Name, zoneName)
 
-		if item.AaaaRecords != nil {
-			rs := dns.NewRecordSet(dns.RS_AAAA, *item.TTL, nil)
-			for _, record := range *item.AaaaRecords {
-				rs.Add(&dns.Record{Value: *record.Ipv6Address})
-			}
-			dnssets.AddRecordSetFromProvider(fullName, rs)
-		}
-
-		if item.CnameRecord != nil {
-			rs := dns.NewRecordSet(dns.RS_CNAME, *item.TTL, nil)
-			rs.Add(&dns.Record{Value: *item.CnameRecord.Cname})
-			dnssets.AddRecordSetFromProvider(fullName, rs)
-		}
-
-		if item.TxtRecords != nil {
-			rs := dns.NewRecordSet(dns.RS_TXT, *item.TTL, nil)
-			for _, record := range *item.TxtRecords {
-				quoted := strings.Join(*record.Value, "\n")
-				// AzureDNS stores values unquoted, but it is expected to be quoted in dns.Record
-				if len(quoted) > 0 && quoted[0] != '"' && quoted[len(quoted)-1] != '"' {
-					quoted = strconv.Quote(quoted)
+			switch {
+			case item.Properties.ARecords != nil:
+				rs := dns.NewRecordSet(dns.RS_A, *item.Properties.TTL, nil)
+				for _, record := range item.Properties.ARecords {
+					rs.Add(&dns.Record{Value: *record.IPv4Address})
 				}
-				rs.Add(&dns.Record{Value: quoted})
+				dnssets.AddRecordSetFromProvider(fullName, rs)
+			case item.Properties.AaaaRecords != nil:
+				rs := dns.NewRecordSet(dns.RS_AAAA, *item.Properties.TTL, nil)
+				for _, record := range item.Properties.AaaaRecords {
+					rs.Add(&dns.Record{Value: *record.IPv6Address})
+				}
+				dnssets.AddRecordSetFromProvider(fullName, rs)
+			case item.Properties.CnameRecord != nil:
+				rs := dns.NewRecordSet(dns.RS_CNAME, *item.Properties.TTL, nil)
+				rs.Add(&dns.Record{Value: *item.Properties.CnameRecord.Cname})
+				dnssets.AddRecordSetFromProvider(fullName, rs)
+			case item.Properties.TxtRecords != nil:
+				rs := dns.NewRecordSet(dns.RS_TXT, *item.Properties.TTL, nil)
+				for _, record := range item.Properties.TxtRecords {
+					values := make([]string, len(record.Value))
+					for i, value := range record.Value {
+						values[i] = *value
+					}
+					quoted := strings.Join(values, "\n")
+					// AzureDNS stores values unquoted, but it is expected to be quoted in dns.Record
+					if len(quoted) > 0 && quoted[0] != '"' && quoted[len(quoted)-1] != '"' {
+						quoted = strconv.Quote(quoted)
+					}
+					rs.Add(&dns.Record{Value: quoted})
+				}
+				dnssets.AddRecordSetFromProvider(fullName, rs)
 			}
-			dnssets.AddRecordSetFromProvider(fullName, rs)
 		}
+	}
 
-		if err := results.NextWithContext(ctx); err != nil {
-			return nil, err
-		}
-	}
-	pages := count / 100
-	if pages > 0 {
-		h.config.Metrics.AddZoneRequests(zone.Id().ID, provider.M_PLISTRECORDS, count/100)
-	}
 	return provider.NewDNSZoneState(dnssets), nil
 }
 
