@@ -4,6 +4,8 @@ metadata:
   annotations:
     # If you are delegating the DNS management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
     #dns.gardener.cloud/class: garden
+    # To temporarily skip reconciliation of an entry
+    #dns.gardener.cloud/ignore: "true"
   name: test
   namespace: default
 spec:

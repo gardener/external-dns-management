@@ -46,6 +46,11 @@ var _ = Describe("IstioGatewayAnnotation", func() {
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
 		Ω(entry.Spec.ResolveTargetsToAddresses).To(BeNil())
 
+		testEnv.AnnotateObject(gw, "dns.gardener.cloud/ignore", "true")
+		testEnv.AwaitEntryState(entryObj.GetName(), "Ignored")
+		testEnv.AnnotateObject(gw, "dns.gardener.cloud/ignore", "")
+		testEnv.AwaitEntryState(entryObj.GetName(), "Ready")
+
 		checkEntry(entryObj2, pr)
 		entryObj2, err = testEnv.GetEntry(entryObj2.GetName())
 		Ω(err).ShouldNot(HaveOccurred())

@@ -45,6 +45,11 @@ var _ = Describe("IngressAnnotation", func() {
 		Ω(entry.Spec.OwnerId).Should(BeNil())
 		Ω(entry.Annotations["dns.gardener.cloud/ip-stack"]).Should(Equal("dual-stack"))
 
+		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "true")
+		testEnv.AwaitEntryState(entryObj.GetName(), "Ignored")
+		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "")
+		testEnv.AwaitEntryState(entryObj.GetName(), "Ready")
+
 		// keep old targets if ingress lost its load balancers
 		err = testEnv.PatchIngressLoadBalancer(ingress, "")
 		Ω(err).ShouldNot(HaveOccurred())

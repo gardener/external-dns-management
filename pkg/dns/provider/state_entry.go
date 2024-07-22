@@ -21,6 +21,7 @@ import (
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,6 +255,23 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 			return reconcile.RescheduleAfter(logger, millis)
 		}
 		defer old.lock.Unlock()
+	}
+
+	switch object.(type) {
+	case *dnsutils.DNSEntryObject:
+		if !object.IsDeleting() && object.GetAnnotations()[dns.AnnotationIgnore] == "true" {
+			_, err := object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
+				status := &data.(*api.DNSEntry).Status
+				mod := utils.ModificationState{}
+				mod.AssureStringValue(&status.State, api.STATE_IGNORED)
+				mod.AssureStringPtrPtr(&status.Message, ptr.To("entry is ignored as annotated with "+dns.AnnotationIgnore))
+				return mod.IsModified(), nil
+			})
+			if err != nil {
+				return reconcile.Delay(logger, err)
+			}
+			return reconcile.Succeeded(logger, "ignored")
+		}
 	}
 
 	p, err := this.entryPremise(object)

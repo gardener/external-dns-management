@@ -29,4 +29,7 @@ const (
 	AnnotationValueIPStackIPv4        = "ipv4"
 	AnnotationValueIPStackIPDualStack = "dual-stack"
 	AnnotationValueIPStackIPv6        = "ipv6"
+
+	// AnnotationIgnore is an optional annotation for DNSEntries and source resources to ignore them on reconciliation.
+	AnnotationIgnore = ANNOTATION_GROUP + "/ignore"
 )

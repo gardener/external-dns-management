@@ -55,6 +55,7 @@ func (this *DNSEntrySource) GetDNSInfo(_ logger.LogContext, obj resources.Object
 		RoutingPolicy:             entry.Spec.RoutingPolicy,
 		IPStack:                   entry.Annotations[dns.AnnotationIPStack],
 		ResolveTargetsToAddresses: entry.Spec.ResolveTargetsToAddresses,
+		Ignore:                    entry.Annotations[dns.AnnotationIgnore] == "true",
 	}
 	return info, nil
 }

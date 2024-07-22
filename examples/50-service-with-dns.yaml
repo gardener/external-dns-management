@@ -10,6 +10,8 @@ metadata:
     #service.beta.kubernetes.io/aws-load-balancer-ip-address-type: dualstack   # AWS-route 53 only: enable both A and AAAA alias targets
     #dns.gardener.cloud/ip-stack: dual-stack                                   # AWS-route 53 only: alternative way to enable A and AAAA alias targets
     #dns.gardener.cloud/resolve-targets-to-addresses: "true"
+    # To temporarily skip reconciliation of created entries
+    #dns.gardener.cloud/ignore: "true"
   name: test-service
   namespace: default
 spec:

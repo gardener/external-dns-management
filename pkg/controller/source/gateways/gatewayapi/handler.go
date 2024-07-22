@@ -85,6 +85,9 @@ func (s *gatewaySource) GetDNSInfo(_ logger.LogContext, obj resources.ObjectData
 	if v := obj.GetAnnotations()[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
 		info.ResolveTargetsToAddresses = ptr.To(v == "true")
 	}
+	if v := obj.GetAnnotations()[dns.AnnotationIgnore]; v != "" {
+		info.Ignore = v == "true"
+	}
 	return info, nil
 }
 

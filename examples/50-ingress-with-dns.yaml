@@ -11,6 +11,8 @@ metadata:
     #dns.gardener.cloud/owner-id: second
     #dns.gardener.cloud/ip-stack: dual-stack     # AWS-route 53 only: enable both A and AAAA alias targets
     #dns.gardener.cloud/resolve-targets-to-addresses: "true"
+    # To temporarily skip reconciliation of created entries
+    #dns.gardener.cloud/ignore: "true"
   name: test-ingress
   namespace: default
 spec:
