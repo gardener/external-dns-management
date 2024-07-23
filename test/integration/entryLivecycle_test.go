@@ -30,6 +30,31 @@ var _ = Describe("EntryLivecycle", func() {
 
 		checkEntry(e, pr)
 
+		// check ignore annotation
+		orgTarget := UnwrapEntry(e).Spec.Targets[0]
+		newTarget := "2" + orgTarget
+		_, err = testEnv.UpdateEntry(e, func(entry *v1alpha1.DNSEntry) error {
+			if entry.Annotations == nil {
+				entry.Annotations = map[string]string{}
+			}
+			entry.Annotations["dns.gardener.cloud/ignore"] = "true"
+			entry.Spec.Targets[0] = newTarget
+			return nil
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+		err = testEnv.AwaitEntryState(e.GetName(), "Ignored", "")
+		Ω(err).ShouldNot(HaveOccurred())
+		e, err = testEnv.GetEntry(e.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+		Ω(UnwrapEntry(e).Status.Targets).To(Equal([]string{orgTarget}))
+		err = testEnv.AnnotateObject(e, "dns.gardener.cloud/ignore", "")
+		Ω(err).ShouldNot(HaveOccurred())
+		err = testEnv.AwaitEntryState(e.GetName(), "Ready", "")
+		Ω(err).ShouldNot(HaveOccurred())
+		e, err = testEnv.GetEntry(e.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+		Ω(UnwrapEntry(e).Status.Targets).To(Equal([]string{newTarget}))
+
 		err = testEnv.DeleteProviderAndSecret(pr)
 		Ω(err).ShouldNot(HaveOccurred())
 

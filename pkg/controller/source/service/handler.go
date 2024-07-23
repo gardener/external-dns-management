@@ -31,6 +31,7 @@ func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSName
 			}
 		}
 	}
+	ignore := false
 	var resolveTargetsToAddresses *bool
 	ipstack := ""
 	set := utils.StringSet{}
@@ -61,10 +62,14 @@ func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSName
 		if v := svc.Annotations[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
 			resolveTargetsToAddresses = ptr.To(v == "true")
 		}
+		if v := svc.Annotations[dns.AnnotationIgnore]; v != "" {
+			ignore = v == "true"
+		}
 	}
 	return &source.TargetExtraction{
 		Targets:                   set,
 		IPStack:                   ipstack,
 		ResolveTargetsToAddresses: resolveTargetsToAddresses,
+		Ignore:                    ignore,
 	}, nil
 }

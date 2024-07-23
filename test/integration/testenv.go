@@ -466,6 +466,37 @@ func (te *TestEnv) UpdateEntryTargets(obj resources.Object, targets ...string) (
 	return obj, err
 }
 
+func (te *TestEnv) UpdateEntry(obj resources.Object, modifier func(obj *v1alpha1.DNSEntry) error) (resources.Object, error) {
+	obj, err := te.GetEntry(obj.GetName())
+	if err != nil {
+		return nil, err
+	}
+	e := UnwrapEntry(obj)
+	err = modifier(e)
+	if err != nil {
+		return nil, err
+	}
+	err = obj.Update()
+	return obj, err
+}
+
+func (te *TestEnv) AnnotateObject(obj resources.Object, key, value string) error {
+	annots := obj.GetAnnotations()
+	if annots == nil {
+		if value != "" {
+			obj.SetAnnotations(map[string]string{key: value})
+		}
+	} else {
+		if value != "" {
+			annots[key] = value
+		} else {
+			delete(annots, key)
+		}
+		obj.SetAnnotations(annots)
+	}
+	return obj.Update()
+}
+
 func (te *TestEnv) DeleteEntryAndWait(obj resources.Object) error {
 	return te.DeleteEntriesAndWait(obj)
 }

@@ -287,6 +287,8 @@ outer:
 				case api.STATE_INVALID:
 				case api.STATE_PENDING:
 				case api.STATE_READY:
+				case api.STATE_IGNORED:
+					feedback.Pending(logger, n.String(), "annotated with "+dns.AnnotationIgnore, s)
 				default:
 					if s.CreationTimestamp.Time.Before(threshold) {
 						feedback.Pending(logger, n.String(), "no dns controller running?", s)
@@ -463,14 +465,16 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	entry.Spec.TTL = info.TTL
 	entry.Spec.RoutingPolicy = info.RoutingPolicy
 	if info.IPStack != "" {
-		annots := entry.GetAnnotations()
-		if annots == nil {
-			annots = map[string]string{}
-		}
-		annots[dns.AnnotationIPStack] = info.IPStack
-		entry.SetAnnotations(annots)
+		resources.SetAnnotation(entry, dns.AnnotationIPStack, info.IPStack)
+	} else {
+		resources.RemoveAnnotation(entry, dns.AnnotationIPStack)
 	}
 	entry.Spec.ResolveTargetsToAddresses = info.ResolveTargetsToAddresses
+	if info.Ignore {
+		resources.SetAnnotation(entry, dns.AnnotationIgnore, "true")
+	} else {
+		resources.RemoveAnnotation(entry, dns.AnnotationIgnore)
+	}
 
 	e, _ := this.SlaveResoures()[0].Wrap(entry)
 
@@ -569,20 +573,16 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 			logger.Infof("ignoring empty targets for entry %s", slave.ObjectName())
 		}
 		if info.IPStack != "" {
-			annots := getSafeMap(o.GetAnnotations())
-			if annots[dns.AnnotationIPStack] != info.IPStack {
-				annots[dns.AnnotationIPStack] = info.IPStack
-				o.SetAnnotations(annots)
-				mod.Modify(true)
-			}
+			mod.Modify(resources.SetAnnotation(o, dns.AnnotationIPStack, info.IPStack))
 		} else {
-			if o.GetAnnotations()[dns.AnnotationIPStack] != "" {
-				annots := o.GetAnnotations()
-				delete(annots, dns.AnnotationIPStack)
-				o.SetAnnotations(annots)
-				mod.Modify(true)
-			}
+			mod.Modify(resources.RemoveAnnotation(o, dns.AnnotationIPStack))
 		}
+		if info.Ignore {
+			mod.Modify(resources.SetAnnotation(o, dns.AnnotationIgnore, "true"))
+		} else {
+			mod.Modify(resources.RemoveAnnotation(o, dns.AnnotationIgnore))
+		}
+
 		if mod.IsModified() {
 			logger.Infof("update entry %s", slave.ObjectName())
 		}

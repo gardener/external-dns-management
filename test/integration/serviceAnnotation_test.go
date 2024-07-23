@@ -70,6 +70,11 @@ var _ = Describe("ServiceAnnotation", func() {
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
 		Ω(entry.Annotations["dns.gardener.cloud/ip-stack"]).Should(Equal("dual-stack"))
 
+		testEnv.AnnotateObject(svc, "dns.gardener.cloud/ignore", "true")
+		testEnv.AwaitEntryState(entryObj.GetName(), "Ignored")
+		testEnv.AnnotateObject(svc, "dns.gardener.cloud/ignore", "")
+		testEnv.AwaitEntryState(entryObj.GetName(), "Ready")
+
 		entryObj2, err := testEnv.AwaitObjectByOwner("Service", svc2.GetName())
 		entry2 := UnwrapEntry(entryObj2)
 		Ω(err).ShouldNot(HaveOccurred())

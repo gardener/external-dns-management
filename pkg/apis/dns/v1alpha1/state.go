@@ -11,4 +11,5 @@ const (
 	STATE_STALE    = "Stale"
 	STATE_READY    = "Ready"
 	STATE_DELETING = "Deleting"
+	STATE_IGNORED  = "Ignored"
 )
