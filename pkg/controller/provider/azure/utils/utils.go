@@ -5,17 +5,34 @@
 package utils
 
 import (
+	"crypto/tls"
 	"fmt"
+	"math"
+	"net"
+	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
 var re = regexp.MustCompile("/resourceGroups/([^/]+)/")
+
+const (
+	// DefaultMaxRetries is the default value for max retries on retryable operations.
+	DefaultMaxRetries = 3
+	// DefaultMaxRetryDelay is the default maximum value for delay on retryable operations.
+	DefaultMaxRetryDelay = math.MaxInt64
+	// DefaultRetryDelay is the default value for the initial delay on retry for retryable operations.
+	DefaultRetryDelay = 5 * time.Second
+)
 
 func ExtractResourceGroup(id string) (string, error) {
 	submatches := re.FindStringSubmatch(id)
@@ -48,8 +65,8 @@ func SplitZoneID(zoneid string) (string, string) {
 	return parts[0], parts[1]
 }
 
-// GetSubscriptionIDAndAuthorizer extracts credentials from config
-func GetSubscriptionIDAndAuthorizer(c *provider.DNSHandlerConfig) (subscriptionID string, authorizer autorest.Authorizer, err error) {
+// GetSubscriptionIDAndCredentials extracts credentials from config
+func GetSubscriptionIDAndCredentials(c *provider.DNSHandlerConfig) (subscriptionID string, tc azcore.TokenCredential, err error) {
 	subscriptionID, err = c.GetRequiredProperty("AZURE_SUBSCRIPTION_ID", "subscriptionID")
 	if err != nil {
 		return
@@ -69,10 +86,66 @@ func GetSubscriptionIDAndAuthorizer(c *provider.DNSHandlerConfig) (subscriptionI
 		return
 	}
 
-	authorizer, err = auth.NewClientCredentialsConfig(clientID, clientSecret, tenantID).Authorizer()
+	tc, err = azidentity.NewClientSecretCredential(tenantID, clientID, clientSecret, nil)
 	if err != nil {
 		err = perrs.WrapAsHandlerError(err, "Creating Azure authorizer with client credentials failed")
-		return
 	}
 	return
+}
+
+func GetDefaultAzureClientOpts(c *provider.DNSHandlerConfig) (*arm.ClientOptions, error) {
+	var cloudConf cloud.Configuration
+	switch v := c.GetProperty("AZURE_CLOUD"); v {
+	case "", "AzurePublic":
+		cloudConf = cloud.AzurePublic
+	case "AzureChina":
+		cloudConf = cloud.AzureChina
+	case "AzureGovernment":
+		cloudConf = cloud.AzureGovernment
+	default:
+		return nil, fmt.Errorf("unknown cloud configuration name '%s'", v)
+	}
+
+	return &arm.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Retry: policy.RetryOptions{
+				RetryDelay:    DefaultRetryDelay,
+				MaxRetryDelay: DefaultMaxRetryDelay,
+				MaxRetries:    DefaultMaxRetries,
+				StatusCodes:   getRetriableStatusCode(),
+			},
+			Transport: &http.Client{
+				Transport: getTransport(),
+			},
+			Cloud: cloudConf,
+		},
+	}, nil
+}
+
+func getTransport() *http.Transport {
+	return &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:   true,
+		MaxIdleConns:        100,
+		MaxConnsPerHost:     100,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+		TLSClientConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		},
+	}
+}
+
+func getRetriableStatusCode() []int {
+	return []int{
+		http.StatusRequestTimeout,      // 408
+		http.StatusInternalServerError, // 500
+		http.StatusBadGateway,          // 502
+		http.StatusServiceUnavailable,  // 503
+		http.StatusGatewayTimeout,      // 504
+	}
 }
