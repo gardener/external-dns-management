@@ -6,7 +6,6 @@ package provider
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -22,19 +21,8 @@ import (
 // state handling for OwnerIds
 ////////////////////////////////////////////////////////////////////////////////
 
-func delta(owner *dnsutils.DNSOwnerObject, changed, active utils.StringSet) string {
+func delta(changed, active utils.StringSet) string {
 	msg := ""
-	if owner != nil && owner.ValidUntil() != nil {
-		if owner.IsEnabled() {
-			if !owner.IsActive() {
-				msg = fmt.Sprintf(" (%s expired (%s))", owner.GetName(), owner.ValidUntil().Format(time.RFC3339))
-			} else {
-				d := time.Until(owner.ValidUntil().Time)
-				msg = fmt.Sprintf(" (%s expires in %s)", owner.GetName(), d)
-			}
-		}
-	}
-
 	added := utils.NewStringSet()
 	deleted := utils.NewStringSet()
 	for k := range changed {
@@ -70,7 +58,7 @@ func (this *state) UpdateOwner(logger logger.LogContext, owner *dnsutils.DNSOwne
 	this.lock.Lock()
 	changed, active := this.ownerCache.UpdateOwner(owner)
 	this.lock.Unlock()
-	logger.Infof("update: owner ids %s", delta(owner, changed, active))
+	logger.Infof("update: owner ids %s", delta(changed, active))
 	logger.Debugf("       active owner ids %s", active)
 	if len(changed) > 0 {
 		this.TriggerEntriesByOwner(logger, changed)

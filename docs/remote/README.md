@@ -61,7 +61,6 @@ remoteaccess:
   certs:
     ca:
       cert: LS0t... # CA used for client certs
-      #key: LS0t... # only needed if remoteaccesscertificates controller is enabled
     server:
       #secretName: remoteaccess-service # if managed server certificate is used
       cert: LS0t... # only needed if certificate is not managed

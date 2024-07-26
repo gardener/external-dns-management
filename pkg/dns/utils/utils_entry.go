@@ -6,7 +6,6 @@ package utils
 
 import (
 	"reflect"
-	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -14,8 +13,6 @@ import (
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
-
-var _ DNSSpecification = (*DNSEntryObject)(nil)
 
 var DNSEntryType = (*api.DNSEntry)(nil)
 
@@ -94,21 +91,7 @@ func (this *DNSEntryObject) GetReference() *api.EntryReference {
 }
 
 func (this *DNSEntryObject) GetRoutingPolicy() *dns.RoutingPolicy {
-	if policy := this.DNSEntry().Spec.RoutingPolicy; policy != nil {
-		return &dns.RoutingPolicy{
-			Type:       policy.Type,
-			Parameters: policy.Parameters,
-		}
-	}
-	return nil
-}
-
-func (this *DNSEntryObject) RefreshTime() time.Time {
-	return time.Time{}
-}
-
-func (this *DNSEntryObject) ValidateSpecial() error {
-	return nil
+	return ToDNSRoutingPolicy(this.DNSEntry().Spec.RoutingPolicy)
 }
 
 func (this *DNSEntryObject) AcknowledgeTargets(targets []string) bool {
@@ -176,4 +159,14 @@ func DNSSetNameMatcher(name dns.DNSSetName) resources.ObjectMatcher {
 	return func(o resources.Object) bool {
 		return DNSEntry(o).DNSSetName() == name
 	}
+}
+
+func ToDNSRoutingPolicy(policy *api.RoutingPolicy) *dns.RoutingPolicy {
+	if policy != nil {
+		return &dns.RoutingPolicy{
+			Type:       policy.Type,
+			Parameters: policy.Parameters,
+		}
+	}
+	return nil
 }

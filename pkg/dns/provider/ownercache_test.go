@@ -6,14 +6,11 @@ package provider
 
 import (
 	"context"
-	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	ginkgov2 "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 const ident = "TEST"
@@ -23,7 +20,6 @@ const ident = "TEST"
 
 type owner struct {
 	id     string
-	valid  *metav1.Time
 	active bool
 }
 type TestOwnerCacheContext struct {
@@ -42,27 +38,21 @@ func (this *TestOwnerCacheContext) EnqueueKey(key resources.ClusterObjectKey) er
 	cachekey := OwnerName(key.Name())
 	old, ok := this.ids[cachekey]
 	if ok {
-		active := old.active && old.valid.After(time.Now())
-		this.OwnerCache.updateOwnerData(cachekey, key, old.id, active, nil, old.valid)
+		this.OwnerCache.updateOwnerData(cachekey, old.id, old.active, nil)
 	}
 	return nil
 }
 
 func (this *TestOwnerCacheContext) updateOwnerData(cachekey OwnerName, id string, active bool) (changeset utils.StringSet, activeset utils.StringSet) {
-	return this._updateOwnerData(cachekey, id, active, nil)
+	return this._updateOwnerData(cachekey, id, active)
 }
 
-func (this *TestOwnerCacheContext) updateOwnerDataExpiration(cachekey OwnerName, id string, active bool, valid time.Duration) (changeset utils.StringSet, activeset utils.StringSet) {
-	t := metav1.NewTime(time.Now().Add(valid))
-	return this._updateOwnerData(cachekey, id, active, &t)
-}
-
-func (this *TestOwnerCacheContext) _updateOwnerData(cachekey OwnerName, id string, active bool, valid *metav1.Time) (changeset utils.StringSet, activeset utils.StringSet) {
+func (this *TestOwnerCacheContext) _updateOwnerData(cachekey OwnerName, id string, active bool) (changeset utils.StringSet, activeset utils.StringSet) {
 	this.ids[cachekey] = owner{
-		id, valid, active,
+		id:     id,
+		active: active,
 	}
-	key := resources.NewClusterKey("", schema.GroupKind{}, "", string(cachekey))
-	return this.OwnerCache.updateOwnerData(cachekey, key, id, active, nil, valid)
+	return this.OwnerCache.updateOwnerData(cachekey, id, active, nil)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,17 +207,5 @@ var _ = ginkgov2.Describe("Owner cache", func() {
 		Expect(changed).To(Equal(utils.NewStringSet("id1")))
 
 		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident)))
-	})
-
-	ginkgov2.It("activate and observe expiration date", func() {
-		changed, _ := cache.updateOwnerDataExpiration(name1, "id1", true, 1*time.Second)
-		Expect(changed).To(Equal(utils.NewStringSet("id1")))
-		changed, _ = cache.updateOwnerData(name2, "id2", true)
-		Expect(changed).To(Equal(utils.NewStringSet("id2")))
-		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident, "id1", "id2")))
-		time.Sleep(2 * time.Second)
-		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident, "id2")))
-		_, _ = cache.updateOwnerData(name1, "id1", true)
-		Expect(cache.GetIds()).To(Equal(utils.NewStringSet(ident, "id1", "id2")))
 	})
 })
