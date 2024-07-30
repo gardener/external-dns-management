@@ -31,6 +31,12 @@ func (e *testEnqueuer) EnqueueKey(key resources.ClusterObjectKey) error {
 	return nil
 }
 
+type timeoutError struct{}
+
+func (timeoutError) Error() string   { return "timeout" }
+func (timeoutError) Timeout() bool   { return true }
+func (timeoutError) Temporary() bool { return true }
+
 type mockLookupHostResult struct {
 	ips []net.IP
 	err error
@@ -42,15 +48,25 @@ type mockLookupHost struct {
 	lock        sync.Mutex
 	lookupCount map[string]int
 	stopped     atomic.Bool
+	retryMap    map[string]int
 }
 
 func (lh *mockLookupHost) LookupHost(hostname string) ([]net.IP, error) {
 	time.Sleep(lh.delay)
+	retry := false
 	lh.lock.Lock()
 	if !lh.stopped.Load() {
 		lh.lookupCount[hostname] += 1
 	}
+	if lh.retryMap != nil && lh.retryMap[hostname] > 0 {
+		retry = true
+		lh.retryMap[hostname]--
+	}
 	lh.lock.Unlock()
+	if retry {
+		time.Sleep(lh.delay)
+		return nil, timeoutError{}
+	}
 	result, ok := lh.lookupMap[hostname]
 	if !ok {
 		return nil, fmt.Errorf("host not found")
@@ -140,7 +156,8 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 			},
 			lookupCount: map[string]int{},
 		}
-		lookupHost = mlh.LookupHost
+		lookupHost.lookupHost = mlh.LookupHost
+		lookupHost.waitLookupRetry = 5 * time.Millisecond
 		ctx, ctxCancel = context.WithCancel(context.Background())
 	})
 
@@ -150,7 +167,27 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(results1.ipv6Addrs).To(HaveLen(1))
 		Expect(results1.allIPAddrs).To(HaveLen(5))
 		results2 := lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c", "host3c-alias")
+		Expect(results2.ipv4Addrs).To(Equal(results1.ipv4Addrs))
+		Expect(results2.ipv6Addrs).To(Equal(results1.ipv6Addrs))
 		Expect(results2.allIPAddrs).To(Equal(results1.allIPAddrs))
+	})
+
+	ginkgov2.It("lookupAllHostnamesIPs should return expected results with retries", func() {
+		mlh.retryMap = map[string]int{"host3b": 3}
+		results1 := lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
+		Expect(results1.ipv4Addrs).To(HaveLen(4))
+		Expect(results1.ipv6Addrs).To(HaveLen(1))
+		Expect(results1.allIPAddrs).To(HaveLen(5))
+		results2 := lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c", "host3c-alias")
+		Expect(results2.allIPAddrs).To(Equal(results1.allIPAddrs))
+	})
+
+	ginkgov2.It("lookupAllHostnamesIPs should return reduced results after too many retries", func() {
+		mlh.retryMap = map[string]int{"host3b": lookupHost.maxLookupRetries + 1}
+		results1 := lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
+		Expect(results1.ipv4Addrs).To(HaveLen(3))
+		Expect(results1.ipv6Addrs).To(HaveLen(1))
+		Expect(results1.allIPAddrs).To(HaveLen(4))
 	})
 
 	ginkgov2.It("performs multiple lookup jobs regularly", func() {
