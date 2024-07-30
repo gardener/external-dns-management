@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"sort"
 	"sync"
 	"time"
 
@@ -19,10 +20,24 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-const maxConcurrentLookupsPerJob = 4
+type lookupHostConfig struct {
+	lookupHost                 func(string) ([]net.IP, error)
+	maxConcurrentLookupsPerJob int
+	maxLookupRetries           int
+	waitLookupRetry            time.Duration
+}
+
+func defaultLookupHostConfig() lookupHostConfig {
+	return lookupHostConfig{
+		lookupHost:                 net.LookupIP,
+		maxConcurrentLookupsPerJob: 4,
+		maxLookupRetries:           5,
+		waitLookupRetry:            500 * time.Millisecond,
+	}
+}
 
 // lookupHost allows to override the default lookup function for testing purposes
-var lookupHost func(string) ([]net.IP, error) = net.LookupIP
+var lookupHost lookupHostConfig = defaultLookupHostConfig()
 
 type lookupJob struct {
 	objectName resources.ObjectName
@@ -292,9 +307,9 @@ type lookupAllResults struct {
 
 func lookupAllHostnamesIPs(ctx context.Context, hostnames ...string) lookupAllResults {
 	start := time.Now()
-	results := make(chan lookupIPsResult, maxConcurrentLookupsPerJob)
+	results := make(chan lookupIPsResult, lookupHost.maxConcurrentLookupsPerJob)
 	go func() {
-		sem := make(chan struct{}, maxConcurrentLookupsPerJob)
+		sem := make(chan struct{}, lookupHost.maxConcurrentLookupsPerJob)
 		for _, hostname := range hostnames {
 			select {
 			case <-ctx.Done():
@@ -334,6 +349,8 @@ func lookupAllHostnamesIPs(ctx context.Context, hostnames ...string) lookupAllRe
 		}
 	}
 	all.duration = time.Since(start)
+	sort.Strings(all.ipv4Addrs)
+	sort.Strings(all.ipv6Addrs)
 	return all
 }
 
@@ -344,7 +361,20 @@ type lookupIPsResult struct {
 }
 
 func lookupIPs(hostname string) lookupIPsResult {
-	ips, err := lookupHost(hostname)
+	var (
+		ips []net.IP
+		err error
+	)
+	for i := 1; i <= lookupHost.maxLookupRetries; i++ {
+		ips, err = lookupHost.lookupHost(hostname)
+		if err == nil || i == lookupHost.maxLookupRetries {
+			break
+		}
+		if netErr, ok := err.(net.Error); !ok || !netErr.Timeout() {
+			break
+		}
+		time.Sleep(lookupHost.waitLookupRetry)
+	}
 	if err != nil {
 		return lookupIPsResult{err: fmt.Errorf("cannot lookup '%s': %s", hostname, err)}
 	}
