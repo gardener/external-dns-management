@@ -40,7 +40,6 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/remote"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/rfc2136"
-	_ "github.com/gardener/external-dns-management/pkg/controller/remoteaccesscertificates"
 	_ "github.com/gardener/external-dns-management/pkg/controller/replication/dnsprovider"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/dnsentry"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/gateways/crdwatch"

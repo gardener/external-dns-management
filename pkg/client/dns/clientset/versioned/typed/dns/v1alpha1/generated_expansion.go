@@ -11,10 +11,6 @@ type DNSEntryExpansion interface{}
 
 type DNSHostedZonePolicyExpansion interface{}
 
-type DNSLockExpansion interface{}
-
 type DNSOwnerExpansion interface{}
 
 type DNSProviderExpansion interface{}
-
-type RemoteAccessCertificateExpansion interface{}

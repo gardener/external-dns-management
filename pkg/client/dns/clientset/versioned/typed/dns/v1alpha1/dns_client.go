@@ -18,10 +18,8 @@ type DnsV1alpha1Interface interface {
 	DNSAnnotationsGetter
 	DNSEntriesGetter
 	DNSHostedZonePoliciesGetter
-	DNSLocksGetter
 	DNSOwnersGetter
 	DNSProvidersGetter
-	RemoteAccessCertificatesGetter
 }
 
 // DnsV1alpha1Client is used to interact with features provided by the dns.gardener.cloud group.
@@ -41,20 +39,12 @@ func (c *DnsV1alpha1Client) DNSHostedZonePolicies(namespace string) DNSHostedZon
 	return newDNSHostedZonePolicies(c, namespace)
 }
 
-func (c *DnsV1alpha1Client) DNSLocks(namespace string) DNSLockInterface {
-	return newDNSLocks(c, namespace)
-}
-
 func (c *DnsV1alpha1Client) DNSOwners(namespace string) DNSOwnerInterface {
 	return newDNSOwners(c, namespace)
 }
 
 func (c *DnsV1alpha1Client) DNSProviders(namespace string) DNSProviderInterface {
 	return newDNSProviders(c, namespace)
-}
-
-func (c *DnsV1alpha1Client) RemoteAccessCertificates(namespace string) RemoteAccessCertificateInterface {
-	return newRemoteAccessCertificates(c, namespace)
 }
 
 // NewForConfig creates a new DnsV1alpha1Client for the given config.

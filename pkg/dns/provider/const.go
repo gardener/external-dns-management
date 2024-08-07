@@ -43,7 +43,6 @@ const (
 
 	CMD_HOSTEDZONE_PREFIX = "hostedzone:"
 	CMD_STATISTIC         = "statistic"
-	CMD_DNSLOOKUP         = "dnslookup"
 
 	MSG_THROTTLING = "provider throttled"
 )

@@ -60,14 +60,6 @@ build-local:
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
 	    ./cmd/compound
 
-.PHONY: build-local-dedicated
-build-local-dedicated:
-	@CGO_ENABLED=1 go build -o $(EXECUTABLE)-dedicated \
-	    -race \
-	    -gcflags="all=-N -l" \
-	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
-	    ./cmd/dedicated
-
 .PHONY: release
 release:
 	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(EXECUTABLE) \

@@ -8,14 +8,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
-	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
@@ -41,18 +36,6 @@ type OwnerName string
 
 type OwnerObjectInfos map[OwnerName]OwnerObjectInfo
 
-type OwnerDNSActivation struct {
-	Key     resources.ClusterObjectKey
-	Current bool
-	api.DNSActivation
-}
-
-func (this *OwnerDNSActivation) IsActive() bool {
-	return dnsutils.CheckDNSActivation(this.Key.Cluster(), &this.DNSActivation)
-}
-
-type OwnerDNSActivations map[resources.ClusterObjectKey]*OwnerDNSActivation
-
 type OwnerIDInfo struct {
 	refcount    int
 	entrycounts map[string]int
@@ -72,52 +55,22 @@ type OwnerCache struct {
 	lock sync.RWMutex
 	ctx  ProviderCacheContext
 
-	owners         OwnerObjectInfos
-	dnsactivations OwnerDNSActivations
+	owners OwnerObjectInfos
 
 	ownerids   OwnerIDInfos
 	pendingids utils.StringSet
-
-	schedule *dnsutils.Schedule
 }
 
 var _ dns.Ownership = &OwnerCache{}
 
 func NewOwnerCache(ctx ProviderCacheContext, config *Config) *OwnerCache {
 	this := &OwnerCache{
-		ctx:            ctx,
-		owners:         OwnerObjectInfos{},
-		ownerids:       OwnerIDInfos{config.Ident: {refcount: 1, entrycounts: ProviderTypeCounts{}}},
-		dnsactivations: OwnerDNSActivations{},
-		pendingids:     utils.StringSet{},
+		ctx:        ctx,
+		owners:     OwnerObjectInfos{},
+		ownerids:   OwnerIDInfos{config.Ident: {refcount: 1, entrycounts: ProviderTypeCounts{}}},
+		pendingids: utils.StringSet{},
 	}
-	this.schedule = dnsutils.NewSchedule(ctx.GetContext(), dnsutils.ScheduleExecutorFunction(this.expire))
 	return this
-}
-
-func (this *OwnerCache) GetDNSActivations() OwnerDNSActivations {
-	queries := OwnerDNSActivations{}
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-	for k, v := range this.dnsactivations {
-		queries[k] = v
-	}
-	return queries
-}
-
-func (this *OwnerCache) TriggerDNSActivation(logger logger.LogContext, cntr controller.Interface) {
-	for k, a := range this.GetDNSActivations() {
-		if active := a.IsActive(); active != a.Current {
-			logger.Infof("DNS activation changed for %s[%s] (%t)", k.ObjectName(), a.DNSName, active)
-			_ = cntr.EnqueueKey(k)
-		}
-	}
-}
-
-func (this *OwnerCache) expire(key dnsutils.ScheduleKey) {
-	id := key.(resources.ClusterObjectKey)
-	this.ctx.Infof("owner %s expired", id.Name())
-	_ = this.ctx.EnqueueKey(id)
 }
 
 func (this *OwnerCache) IsResponsibleFor(id string) bool {
@@ -176,21 +129,16 @@ func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changeset u
 	active := owner.IsActive()
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	if activation := owner.GetDNSActivation(); activation != nil {
-		this.dnsactivations[owner.ClusterKey()] = &OwnerDNSActivation{Key: owner.ClusterKey(), Current: active, DNSActivation: *activation}
-	} else {
-		delete(this.dnsactivations, owner.ClusterKey())
-	}
-	return this._updateOwnerData(OwnerName(owner.GetName()), owner.ClusterKey(), owner.GetOwnerId(), active, owner.GetCounts(), owner.ValidUntil())
+	return this._updateOwnerData(OwnerName(owner.GetName()), owner.GetOwnerId(), active, owner.GetCounts())
 }
 
-func (this *OwnerCache) updateOwnerData(cachekey OwnerName, key dnsutils.ScheduleKey, id string, active bool, counts ProviderTypeCounts, valid *metav1.Time) (changeset utils.StringSet, activeset utils.StringSet) {
+func (this *OwnerCache) updateOwnerData(cachekey OwnerName, id string, active bool, counts ProviderTypeCounts) (changeset utils.StringSet, activeset utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	return this._updateOwnerData(cachekey, key, id, active, counts, valid)
+	return this._updateOwnerData(cachekey, id, active, counts)
 }
 
-func (this *OwnerCache) _updateOwnerData(cachekey OwnerName, key dnsutils.ScheduleKey, id string, active bool, counts ProviderTypeCounts, valid *metav1.Time) (changeset utils.StringSet, activeset utils.StringSet) {
+func (this *OwnerCache) _updateOwnerData(cachekey OwnerName, id string, active bool, counts ProviderTypeCounts) (changeset utils.StringSet, activeset utils.StringSet) {
 	changeset = utils.StringSet{}
 
 	old, ok := this.owners[cachekey]
@@ -200,13 +148,6 @@ func (this *OwnerCache) _updateOwnerData(cachekey OwnerName, key dnsutils.Schedu
 		}
 		this.deactivate(cachekey, old, changeset)
 	}
-	if key != nil {
-		if active && valid != nil {
-			this.schedule.Schedule(key, (*valid).Time)
-		} else {
-			this.schedule.Delete(key)
-		}
-	}
 	this.activate(cachekey, id, active, changeset, counts)
 	return changeset, this.ownerids.KeySet()
 }
@@ -214,12 +155,10 @@ func (this *OwnerCache) _updateOwnerData(cachekey OwnerName, key dnsutils.Schedu
 func (this *OwnerCache) DeleteOwner(key resources.ClusterObjectKey) (changeset utils.StringSet, activeset utils.StringSet) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
-	delete(this.dnsactivations, key)
 	changeset = utils.StringSet{}
 	cachekey := OwnerName(key.Name())
 	old, ok := this.owners[cachekey]
 	if ok {
-		this.schedule.Delete(key)
 		this.deactivate(cachekey, old, changeset)
 	}
 	return changeset, this.ownerids.KeySet()

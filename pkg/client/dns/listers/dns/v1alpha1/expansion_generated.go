@@ -29,14 +29,6 @@ type DNSHostedZonePolicyListerExpansion interface{}
 // DNSHostedZonePolicyNamespaceLister.
 type DNSHostedZonePolicyNamespaceListerExpansion interface{}
 
-// DNSLockListerExpansion allows custom methods to be added to
-// DNSLockLister.
-type DNSLockListerExpansion interface{}
-
-// DNSLockNamespaceListerExpansion allows custom methods to be added to
-// DNSLockNamespaceLister.
-type DNSLockNamespaceListerExpansion interface{}
-
 // DNSOwnerListerExpansion allows custom methods to be added to
 // DNSOwnerLister.
 type DNSOwnerListerExpansion interface{}
@@ -52,11 +44,3 @@ type DNSProviderListerExpansion interface{}
 // DNSProviderNamespaceListerExpansion allows custom methods to be added to
 // DNSProviderNamespaceLister.
 type DNSProviderNamespaceListerExpansion interface{}
-
-// RemoteAccessCertificateListerExpansion allows custom methods to be added to
-// RemoteAccessCertificateLister.
-type RemoteAccessCertificateListerExpansion interface{}
-
-// RemoteAccessCertificateNamespaceListerExpansion allows custom methods to be added to
-// RemoteAccessCertificateNamespaceLister.
-type RemoteAccessCertificateNamespaceListerExpansion interface{}

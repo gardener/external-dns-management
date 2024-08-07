@@ -70,7 +70,7 @@ func (this *EntryPremise) NotifyChange(p *EntryPremise) string {
 }
 
 type EntryVersion struct {
-	object        dnsutils.DNSSpecification
+	object        *dnsutils.DNSEntryObject
 	providername  resources.ObjectName
 	dnsSetName    dns.DNSSetName
 	targets       Targets
@@ -87,7 +87,7 @@ type EntryVersion struct {
 	obsolete    bool
 }
 
-func NewEntryVersion(object dnsutils.DNSSpecification, old *Entry) *EntryVersion {
+func NewEntryVersion(object *dnsutils.DNSEntryObject, old *Entry) *EntryVersion {
 	v := &EntryVersion{
 		object:     object,
 		dnsSetName: dns.DNSSetName{DNSName: object.GetDNSName(), SetIdentifier: object.GetSetIdentifier()},
@@ -110,7 +110,7 @@ func (this *EntryVersion) GetAnnotations() map[string]string {
 	return this.object.GetAnnotations()
 }
 
-func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string, refresh bool) {
+func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string) {
 	if this.dnsSetName != e.dnsSetName {
 		reasons = append(reasons, "recordset name changed")
 	}
@@ -140,11 +140,6 @@ func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string, 
 	if this.obsolete != e.obsolete {
 		reasons = append(reasons, "provider responsibility changed")
 	}
-
-	if this.object.RefreshTime().Before(e.object.RefreshTime()) {
-		reasons = append(reasons, "refresh time changed")
-		refresh = true
-	}
 	return
 }
 
@@ -160,7 +155,7 @@ func (this *EntryVersion) IsDeleting() bool {
 	return this.object.IsDeleting()
 }
 
-func (this *EntryVersion) Object() dnsutils.DNSSpecification {
+func (this *EntryVersion) Object() *dnsutils.DNSEntryObject {
 	return this.object
 }
 
@@ -243,78 +238,21 @@ func (this *EntryVersion) OwnerId() string {
 	return ""
 }
 
-type dnsSpecModification struct {
-	dnsutils.DNSSpecification
-	targets                   []string
-	text                      []string
-	ttl                       *int64
-	ownerid                   *string
-	lookup                    *int64
-	policy                    *dns.RoutingPolicy
-	resolveTargetsToAddresses *bool
-}
-
-func (this *dnsSpecModification) GetTargets() []string {
-	if this.targets != nil {
-		return this.targets
-	}
-	return this.DNSSpecification.GetTargets()
-}
-
-func (this *dnsSpecModification) GetText() []string {
-	if this.text != nil {
-		return this.text
-	}
-	return this.DNSSpecification.GetText()
-}
-
-func (this *dnsSpecModification) GetOwnerId() *string {
-	if this.ownerid != nil {
-		return this.ownerid
-	}
-	return this.DNSSpecification.GetOwnerId()
-}
-
-func (this *dnsSpecModification) GetCNameLookupInterval() *int64 {
-	if this.lookup != nil {
-		return this.lookup
-	}
-	return this.DNSSpecification.GetCNameLookupInterval()
-}
-
-func (this *dnsSpecModification) ResolveTargetsToAddresses() *bool {
-	if this.resolveTargetsToAddresses != nil {
-		return this.resolveTargetsToAddresses
-	}
-	return this.DNSSpecification.ResolveTargetsToAddresses()
-}
-
-func (this *dnsSpecModification) GetTTL() *int64 {
-	if this.ttl != nil {
-		return this.ttl
-	}
-	return this.DNSSpecification.GetTTL()
-}
-
-func (this *dnsSpecModification) IsModified() bool {
-	return this.targets != nil || this.text != nil || this.ownerid != nil || this.lookup != nil || this.ttl != nil || this.policy != nil
-}
-
-func complete(logger logger.LogContext, state *state, spec dnsutils.DNSSpecification, object resources.Object, prefix string) (dnsutils.DNSSpecification, error) {
-	if ref := spec.GetReference(); ref != nil && ref.Name != "" {
-		mod := &dnsSpecModification{DNSSpecification: spec}
+func complete(logger logger.LogContext, state *state, entry *dnsutils.DNSEntryObject, prefix string) (*api.DNSEntrySpec, error) {
+	if ref := entry.GetReference(); ref != nil && ref.Name != "" {
+		newSpec := entry.Spec().DeepCopy()
 		ns := ref.Namespace
 		if ns == "" {
-			ns = object.GetNamespace()
+			ns = entry.GetNamespace()
 		}
 		dnsref := resources.NewObjectName(ns, ref.Name)
 		logger.Infof("completeing spec by reference: %s%s", prefix, dnsref)
 
-		cur := object.ClusterKey()
+		cur := entry.ClusterKey()
 		key := resources.NewClusterKey(cur.Cluster(), cur.GroupKind(), dnsref.Namespace(), dnsref.Name())
 		state.references.AddRef(cur, key)
 
-		ref, err := object.GetResource().GetCached(dnsref)
+		ref, err := entry.GetResource().GetCached(dnsref)
 		if err != nil {
 			if errors.IsNotFound(err) {
 				err = fmt.Errorf("entry reference %s%q not found", prefix, dnsref)
@@ -322,46 +260,42 @@ func complete(logger logger.LogContext, state *state, spec dnsutils.DNSSpecifica
 			logger.Warn(err)
 			return nil, err
 		}
-		err = access.CheckAccessWithRealms(object, "use", ref, state.realms)
+		err = access.CheckAccessWithRealms(entry, "use", ref, state.realms)
 		if err != nil {
 			return nil, fmt.Errorf("%s%s", prefix, err)
 		}
-		rspec, err := complete(logger, state, dnsutils.DNSEntry(ref), ref, fmt.Sprintf("%s%s->", prefix, dnsref))
+		rspec, err := complete(logger, state, dnsutils.DNSEntry(ref), fmt.Sprintf("%s%s->", prefix, dnsref))
 		if err != nil {
 			return nil, err
 		}
 
-		if spec.GetTargets() != nil {
+		if entry.GetTargets() != nil {
 			return nil, fmt.Errorf("%stargets specified together with entry reference", prefix)
 		}
-		if spec.GetText() != nil {
+		if entry.GetText() != nil {
 			err = fmt.Errorf("%stext specified together with entry reference", prefix)
 			return nil, err
 		}
-		mod.targets = rspec.GetTargets()
-		mod.text = rspec.GetText()
+		newSpec.Targets = rspec.Targets
+		newSpec.Text = rspec.Text
 
-		if spec.GetTTL() == nil {
-			mod.ttl = rspec.GetTTL()
+		if entry.GetTTL() == nil {
+			newSpec.TTL = rspec.TTL
 		}
-		if spec.GetOwnerId() == nil {
-			mod.ownerid = rspec.GetOwnerId()
+		if entry.GetOwnerId() == nil {
+			newSpec.OwnerId = rspec.OwnerId
 		}
-		if spec.GetCNameLookupInterval() == nil {
-			mod.lookup = rspec.GetCNameLookupInterval()
+		if entry.GetCNameLookupInterval() == nil {
+			newSpec.CNameLookupInterval = rspec.CNameLookupInterval
 		}
-		if mod.IsModified() {
-			return mod, nil
-		}
+		return newSpec, nil
 	} else {
-		state.references.DelRef(object.ClusterKey())
+		state.references.DelRef(entry.ClusterKey())
 	}
-	return spec, nil
+	return entry.Spec(), nil
 }
 
-func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *EntryPremise) (effspec dnsutils.DNSSpecification, targets Targets, warnings []string, err error) {
-	effspec = entry.object
-
+func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *EntryPremise) (effspec *api.DNSEntrySpec, targets Targets, warnings []string, err error) {
 	targets = Targets{}
 	warnings = []string{}
 
@@ -372,10 +306,7 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 		}
 	}
 
-	if err = effspec.ValidateSpecial(); err != nil {
-		return
-	}
-	effspec, err = complete(logger, state, effspec, entry.object, "")
+	effspec, err = complete(logger, state, entry.object, "")
 	if err != nil {
 		return
 	}
@@ -389,16 +320,16 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 			}
 		}
 	}
-	if len(effspec.GetTargets()) > 0 && len(effspec.GetText()) > 0 {
+	if len(effspec.Targets) > 0 && len(effspec.Text) > 0 {
 		err = fmt.Errorf("only Text or Targets possible")
 		return
 	}
-	if ttl := effspec.GetTTL(); ttl != nil && (*ttl == 0 || *ttl < 0) {
+	if ttl := effspec.TTL; ttl != nil && (*ttl == 0 || *ttl < 0) {
 		err = fmt.Errorf("TTL must be greater than zero")
 		return
 	}
 
-	for i, t := range effspec.GetTargets() {
+	for i, t := range effspec.Targets {
 		if strings.TrimSpace(t) == "" {
 			err = fmt.Errorf("target %d must not be empty", i+1)
 			return
@@ -415,7 +346,7 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 		}
 	}
 	tcnt := 0
-	for _, t := range effspec.GetText() {
+	for _, t := range effspec.Text {
 		if t == "" {
 			warnings = append(warnings, fmt.Sprintf("dns entry %q has empty text", entry.ObjectName()))
 			continue
@@ -428,7 +359,7 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 			tcnt++
 		}
 	}
-	if len(effspec.GetText()) > 0 && tcnt == 0 {
+	if len(effspec.Text) > 0 && tcnt == 0 {
 		err = fmt.Errorf("dns entry has only empty text")
 		return
 	}
@@ -443,7 +374,7 @@ func validateOwner(_ logger.LogContext, state *state, entry *EntryVersion) error
 	effspec := entry.object
 
 	if ownerid := utils.StringValue(effspec.GetOwnerId()); ownerid != "" {
-		if entry.Kind() != api.DNSLockKind && !state.ownerCache.IsResponsibleFor(ownerid) && !state.ownerCache.IsResponsiblePendingFor(ownerid) {
+		if !state.ownerCache.IsResponsibleFor(ownerid) && !state.ownerCache.IsResponsiblePendingFor(ownerid) {
 			return fmt.Errorf("unknown owner id '%s'", ownerid)
 		}
 	}
@@ -455,7 +386,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	this.valid = false
 	this.responsible = false
-	spec := this.object
+	spec := this.object.Spec()
 
 	///////////// handle type responsibility
 
@@ -526,8 +457,8 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		this.status.Provider = &provider
 		defaultTTL := p.provider.DefaultTTL()
 		this.status.TTL = &defaultTTL
-		if spec.GetTTL() != nil {
-			this.status.TTL = spec.GetTTL()
+		if spec.TTL != nil {
+			this.status.TTL = spec.TTL
 		}
 	} else {
 		this.providername = nil
@@ -545,8 +476,8 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	}
 
 	spec, targets, warnings, verr := validate(logger, state, this, p)
-	if p.provider != nil && spec.GetTTL() != nil {
-		this.status.TTL = spec.GetTTL()
+	if p.provider != nil && spec.TTL != nil {
+		this.status.TTL = spec.TTL
 	}
 
 	if verr != nil {
@@ -571,7 +502,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		targets, lookupResults, multiCName := normalizeTargets(logger, this.object, targets...)
 		if multiCName {
 			this.interval = int64(600)
-			if iv := spec.GetCNameLookupInterval(); iv != nil && *iv > 0 {
+			if iv := spec.CNameLookupInterval; iv != nil && *iv > 0 {
 				this.interval = *iv
 				if this.interval < 30 {
 					this.interval = 30
@@ -611,7 +542,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		}
 
 		this.targets = targets
-		this.routingPolicy = spec.GetRoutingPolicy()
+		this.routingPolicy = dnsutils.ToDNSRoutingPolicy(spec.RoutingPolicy)
 		if err != nil {
 			if this.status.State != api.STATE_STALE {
 				if this.status.State == api.STATE_READY && (p.provider != nil && !p.provider.IsValid()) {
@@ -647,33 +578,31 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		}
 	}
 
-	switch this.object.(type) {
-	case *dnsutils.DNSEntryObject:
-		logger.Infof("%s: valid: %t, message: %s%s", this.status.State, this.valid, utils.StringValue(this.status.Message), errorValue(", err: %s", err))
-		logmsg := dnsutils.NewLogMessage("update entry status")
-		f := func(data resources.ObjectData) (bool, error) {
-			obj, err := this.object.GetResource().Wrap(data)
-			if err != nil {
-				return false, err
-			}
-			status := dnsutils.DNSObject(obj).BaseStatus()
-			mod := &utils.ModificationState{}
-			if p.zoneid != "" {
-				mod.AssureStringPtrValue(&status.ProviderType, p.ptype)
-			}
-			mod.AssureStringValue(&status.State, this.status.State).
-				AssureStringPtrPtr(&status.Message, this.status.Message).
-				AssureStringPtrPtr(&status.Zone, this.status.Zone).
-				AssureStringPtrPtr(&status.Provider, this.status.Provider)
-			if mod.IsModified() {
-				dnsutils.SetLastUpdateTime(&status.LastUptimeTime)
-				logmsg.Infof(logger)
-			}
-			mod.Modify(dnsutils.DNSEntry(obj).AcknowledgeCNAMELookupInterval(this.interval))
-			return mod.IsModified(), nil
+	logger.Infof("%s: valid: %t, message: %s%s", this.status.State, this.valid, utils.StringValue(this.status.Message), errorValue(", err: %s", err))
+	logmsg := dnsutils.NewLogMessage("update entry status")
+	f := func(data resources.ObjectData) (bool, error) {
+		obj, err := this.object.GetResource().Wrap(data)
+		if err != nil {
+			return false, err
 		}
-		_, err = this.object.ModifyStatus(f)
+		status := dnsutils.DNSEntry(obj).BaseStatus()
+		mod := &utils.ModificationState{}
+		if p.zoneid != "" {
+			mod.AssureStringPtrValue(&status.ProviderType, p.ptype)
+		}
+		mod.AssureStringValue(&status.State, this.status.State).
+			AssureStringPtrPtr(&status.Message, this.status.Message).
+			AssureStringPtrPtr(&status.Zone, this.status.Zone).
+			AssureStringPtrPtr(&status.Provider, this.status.Provider)
+		if mod.IsModified() {
+			dnsutils.SetLastUpdateTime(&status.LastUptimeTime)
+			logmsg.Infof(logger)
+		}
+		mod.Modify(dnsutils.DNSEntry(obj).AcknowledgeCNAMELookupInterval(this.interval))
+		return mod.IsModified(), nil
 	}
+	_, err = this.object.ModifyStatus(f)
+
 	return reconcile.DelayOnError(logger, err)
 }
 
@@ -689,7 +618,11 @@ func (this *EntryVersion) NotRateLimited() bool {
 func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg string, args ...interface{}) error {
 	logmsg := dnsutils.NewLogMessage(msg, args...)
 	f := func(data resources.ObjectData) (bool, error) {
-		o := dnsutils.DNSObject(this.object.GetResource().Wrap(data))
+		tmp, err := this.object.GetResource().Wrap(data)
+		if err != nil {
+			return false, err
+		}
+		o := dnsutils.DNSEntry(tmp)
 		status := o.BaseStatus()
 		mod := (&utils.ModificationState{}).
 			AssureStringPtrPtr(&status.ProviderType, this.status.ProviderType).
@@ -721,7 +654,7 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 		if err != nil {
 			return false, err
 		}
-		o := dnsutils.DNSObject(obj)
+		o := dnsutils.DNSEntry(obj)
 		b := o.BaseStatus()
 		if state == api.STATE_PENDING && b.State != "" {
 			return false, nil
@@ -767,7 +700,7 @@ func (this *EntryVersion) UpdateState(logger logger.LogContext, state, msg strin
 		if err != nil {
 			return false, err
 		}
-		o := dnsutils.DNSObject(obj)
+		o := dnsutils.DNSEntry(obj)
 		b := o.BaseStatus()
 		mod := &utils.ModificationState{}
 
@@ -797,7 +730,7 @@ func targetList(targets Targets) ([]string, string) {
 	return list, msg
 }
 
-func normalizeTargets(logger logger.LogContext, object dnsutils.DNSSpecification, targets ...Target) (Targets, *lookupAllResults, bool) {
+func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject, targets ...Target) (Targets, *lookupAllResults, bool) {
 	multiCNAME := len(targets) > 0 && targets[0].GetRecordType() == dns.RS_CNAME && (len(targets) > 1 || ptr.Deref(object.ResolveTargetsToAddresses(), false))
 	if !multiCNAME {
 		return targets, nil, false
@@ -833,13 +766,12 @@ func normalizeTargets(logger logger.LogContext, object dnsutils.DNSSpecification
 ///////////////////////////////////////////////////////////////////////////////
 
 type Entry struct {
-	lock           *dnsutils.TryLock
-	key            string
-	createdAt      time.Time
-	modified       bool
-	updateRequired bool
-	activezone     dns.ZoneID
-	state          *state
+	lock       *dnsutils.TryLock
+	key        string
+	createdAt  time.Time
+	modified   bool
+	activezone dns.ZoneID
+	state      *state
 
 	*EntryVersion
 }
@@ -872,7 +804,7 @@ func (this *Entry) IsActive() bool {
 	if id == "" {
 		id = this.state.config.Ident
 	}
-	return this.Kind() == api.DNSLockKind || this.state.ownerCache.IsResponsibleFor(id)
+	return this.state.ownerCache.IsResponsibleFor(id)
 }
 
 func (this *Entry) IsModified() bool {
@@ -888,7 +820,7 @@ func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
 		return NewEntry(new, this.state)
 	}
 
-	reasons, _ := this.RequiresUpdateFor(new)
+	reasons := this.RequiresUpdateFor(new)
 	if len(reasons) != 0 {
 		logger.Infof("update actual entry: valid: %t  %v", new.IsValid(), reasons)
 		if this.targets.DifferFrom(new.targets) && !new.IsDeleting() {

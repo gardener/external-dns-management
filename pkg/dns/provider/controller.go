@@ -5,6 +5,7 @@
 package provider
 
 import (
+	"fmt"
 	"reflect"
 	"time"
 
@@ -13,6 +14,9 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/controller-manager-library/pkg/config"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
@@ -46,7 +50,6 @@ var (
 	providerGroupKind   = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 	entryGroupKind      = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
 	zonePolicyGroupKind = resources.NewGroupKind(api.GroupName, api.DNSHostedZonePolicyKind)
-	lockGroupKind       = resources.NewGroupKind(api.GroupName, api.DNSLockKind)
 )
 
 // RemoteAccessClientID stores the optional client ID for remote access
@@ -121,7 +124,6 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		WorkerPool("ownerids", 1, 0).
 		Watches(
 			controller.NewResourceKey(api.GroupName, api.DNSOwnerKind),
-			controller.NewResourceKey(api.GroupName, api.DNSLockKind),
 		).
 		Cluster(PROVIDER_CLUSTER).
 		CustomResourceDefinitions(providerGroupKind).
@@ -139,7 +141,6 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 			controller.NewResourceKey(api.GroupName, api.DNSHostedZonePolicyKind),
 		).
 		WorkerPool(DNS_POOL, 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
-		Commands(CMD_DNSLOOKUP).
 		WorkerPool("statistic", 2, 0).Commands(CMD_STATISTIC).
 		OptionSource(FACTORY_OPTIONS, FactoryOptionSourceCreator(factory))
 	return cfg
@@ -198,21 +199,19 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 }
 
 func (this *reconciler) Setup() error {
+	if err := this.removeObsoleteCRDs(); err != nil {
+		return err
+	}
 	this.controller.Infof("*** state Setup ")
 	return this.state.Setup()
 }
 
 func (this *reconciler) Start() {
-	this.state.setup.pending.Add(CMD_DNSLOOKUP)
 	this.state.Start()
 }
 
 func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.Status {
 	switch cmd {
-	case CMD_DNSLOOKUP:
-		this.state.ownerCache.TriggerDNSActivation(logger, this.controller)
-		this.state.UpdateLockStates(logger)
-		return reconcile.RescheduleAfter(logger, this.state.config.StatusCheckPeriod)
 	case CMD_STATISTIC:
 		this.state.UpdateOwnerCounts(logger)
 	default:
@@ -251,12 +250,6 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 		} else {
 			return this.state.RemoveZonePolicy(logger, dnsutils.DNSHostedZonePolicy(obj))
 		}
-	case obj.IsA(&api.DNSLock{}):
-		if this.state.IsResponsibleFor(logger, obj) {
-			return this.state.UpdateEntry(logger, dnsutils.DNSLock(obj))
-		} else {
-			return this.state.EntryDeleted(logger, obj.ClusterKey())
-		}
 	case obj.IsMinimal() && obj.GroupVersionKind().GroupKind() == secretGroupKind:
 		return this.state.UpdateSecret(logger, obj)
 	}
@@ -272,9 +265,6 @@ func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) r
 		case obj.IsA(&api.DNSEntry{}):
 			_ = obj.UpdateFromCache()
 			return this.state.DeleteEntry(logger, dnsutils.DNSEntry(obj))
-		case obj.IsA(&api.DNSLock{}):
-			_ = obj.UpdateFromCache()
-			return this.state.DeleteEntry(logger, dnsutils.DNSLock(obj))
 		case obj.IsMinimal() && obj.GroupVersionKind().GroupKind() == secretGroupKind:
 			return this.state.UpdateSecret(logger, obj)
 		}
@@ -293,8 +283,23 @@ func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterO
 		return this.state.EntryDeleted(logger, key)
 	case zonePolicyGroupKind:
 		return this.state.ZonePolicyDeleted(logger, key)
-	case lockGroupKind:
-		return this.state.EntryDeleted(logger, key)
 	}
 	return reconcile.Succeeded(logger)
+}
+
+// removeObsoleteCRDs removes DNSLock and RemoteAccessCertificates CRDs which are not supported anymore.
+// Can be deleted 2025.
+func (this *reconciler) removeObsoleteCRDs() error {
+	res, err := this.controller.GetCluster(TARGET_CLUSTER).Resources().GetByExample(&apiextensionsv1.CustomResourceDefinition{})
+	if err != nil {
+		return err
+	}
+	for _, name := range []string{"dnslocks.dns.gardener.cloud", "remoteaccesscertificates.dns.gardener.cloud"} {
+		if err := res.Delete(&apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{Name: name}}); client.IgnoreNotFound(err) != nil {
+			return fmt.Errorf("could not delete CRD %s: %w", name, err)
+		} else if err == nil {
+			this.controller.Infof("deleted obsolete CRD %s", name)
+		}
+	}
+	return nil
 }

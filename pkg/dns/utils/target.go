@@ -98,7 +98,7 @@ type targetSpec struct {
 	routingPolicy *dns.RoutingPolicy
 }
 
-func BaseTargetSpec(entry DNSSpecification, p TargetProvider) TargetSpec {
+func BaseTargetSpec(entry *DNSEntryObject, p TargetProvider) TargetSpec {
 	spec := &targetSpec{
 		kind:          entry.GroupKind().Kind,
 		ownerId:       p.OwnerId(),

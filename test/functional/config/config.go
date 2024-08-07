@@ -21,7 +21,6 @@ var (
 	namespace      = "default"
 	dnsServer      = ""
 	dnsLookup      = true
-	dedicated      = false
 )
 
 func init() {
@@ -33,11 +32,6 @@ func init() {
 	value := os.Getenv("DNS_LOOKUP")
 	if value != "" {
 		dnsLookup = strings.ToLower(value) == "true"
-	}
-
-	value = os.Getenv("DNS_DEDICATED")
-	if value != "" {
-		dedicated = strings.ToLower(value) == "true"
 	}
 
 	value = os.Getenv("DNS_SERVER")
@@ -146,11 +140,7 @@ func (c *Config) postProcess(namespace string) error {
 		names[provider.Name] = provider
 		provider.Namespace = namespace
 		if provider.FinalizerType == "" {
-			if !dedicated {
-				provider.FinalizerType = "compound"
-			} else {
-				provider.FinalizerType = provider.Type
-			}
+			provider.FinalizerType = "compound"
 		}
 		if provider.ForeignDomain == "" {
 			parts := strings.SplitN(provider.Domain, ".", 2)

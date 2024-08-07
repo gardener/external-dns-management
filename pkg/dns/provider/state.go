@@ -260,13 +260,6 @@ func (this *state) Setup() error {
 	}, processors); err != nil {
 		return err
 	}
-	if err := this.setupFor(&api.DNSLock{}, "locks", func(e resources.Object) error {
-		p := dnsutils.DNSLock(e)
-		this.UpdateEntry(this.context.NewContext("entry", p.ObjectName().String()), p)
-		return nil
-	}, processors); err != nil {
-		return err
-	}
 
 	this.triggerStatistic()
 	this.initialized = true
@@ -418,7 +411,7 @@ type providerMatch struct {
 	match int
 }
 
-func (this *state) lookupProvider(e dnsutils.DNSSpecification) (DNSProvider, DNSProvider, error) {
+func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, DNSProvider, error) {
 	handleMatch := func(match *providerMatch, p *dnsProviderVersion, n int, err error) error {
 		if match.match <= n {
 			err2 := access.CheckAccessWithRealms(e, "use", p.Object(), this.realms)
@@ -520,9 +513,6 @@ func (this *state) addEntriesForZone(
 		}
 	}
 	for dns, e := range this.dnsnames {
-		if e.Kind() == api.DNSLockKind {
-			continue
-		}
 		if e.IsValid() {
 			provider, fallback, err := this.lookupProvider(e.Object())
 			if (provider == nil || !provider.IsValid()) && !e.IsDeleting() {

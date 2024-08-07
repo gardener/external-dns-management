@@ -40,7 +40,6 @@ files=(
      "dns.gardener.cloud_dnsowners.yaml"
      "dns.gardener.cloud_dnsproviders.yaml"
      "dns.gardener.cloud_dnshostedzonepolicies.yaml"
-     "dns.gardener.cloud_dnslocks.yaml"
 )
 for filename in "${files[@]}"
 do
