@@ -897,12 +897,6 @@ spec:
         {{- if .Values.configuration.remoteRatelimiterQps }}
         - --remote.ratelimiter.qps={{ .Values.configuration.remoteRatelimiterQps }}
         {{- end }}
-        {{- if .Values.configuration.remoteaccesscertificatesDefaultPoolSize }}
-        - --remoteaccesscertificates.default.pool.size={{ .Values.configuration.remoteaccesscertificatesDefaultPoolSize }}
-        {{- end }}
-        {{- if .Values.configuration.remoteaccesscertificatesPoolSize }}
-        - --remoteaccesscertificates.pool.size={{ .Values.configuration.remoteaccesscertificatesPoolSize }}
-        {{- end }}
         {{- if .Values.configuration.rescheduleDelay }}
         - --reschedule-delay={{ .Values.configuration.rescheduleDelay }}
         {{- end }}

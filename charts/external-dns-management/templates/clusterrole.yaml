@@ -63,10 +63,6 @@ rules:
   - dnsowners/status
   - dnshostedzonepolicies
   - dnshostedzonepolicies/status
-  - dnslocks
-  - dnslocks/status
-  - remoteaccesscertificates
-  - remoteaccesscertificates/status
   verbs:
   - get
   - list
@@ -91,6 +87,15 @@ rules:
   - update
   - create
   - watch
+- apiGroups:
+    - apiextensions.k8s.io
+  resources:
+    - customresourcedefinitions
+  verbs:
+    - delete
+  resourceNames:
+  - "dnslocks.dns.gardener.cloud"
+  - "remoteaccesscertificates.dns.gardener.cloud"
 {{- if semverCompare "<1.24-0" .Capabilities.KubeVersion.GitVersion }}
 - apiGroups:
   - policy

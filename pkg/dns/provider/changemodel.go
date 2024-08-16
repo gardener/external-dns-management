@@ -487,7 +487,7 @@ func (this *changeModelDoneHandler) Throttled() {
 // DNSSets
 
 func (this *ChangeModel) Owns(set *dns.DNSSet) bool {
-	return set.GetKind() != api.DNSLockKind && set.IsOwnedBy(this.ownership)
+	return set.IsOwnedBy(this.ownership)
 }
 
 func (this *ChangeModel) IsForeign(set *dns.DNSSet) bool {
