@@ -31,6 +31,7 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/infoblox/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/netlify/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack/controller"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/powerdns/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/remote/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/rfc2136/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/remoteaccesscertificates"
