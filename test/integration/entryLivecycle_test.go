@@ -312,4 +312,28 @@ var _ = Describe("EntryLivecycle", func() {
 		err = testEnv.DeleteProviderAndSecret(pr)
 		Ω(err).ShouldNot(HaveOccurred())
 	})
+
+	It("handles entry with invalid domain name correctly", func() {
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		setSpec := func(e *v1alpha1.DNSEntry) {
+			e.Spec.DNSName = fmt.Sprintf("invalid-*.%s", domain)
+			e.Spec.Targets = []string{"1.2.3.4"}
+		}
+		e0, err := testEnv.CreateEntryGeneric(0, setSpec)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		checkProvider(pr)
+
+		Ω(testEnv.AwaitEntryInvalid(e0.GetName())).ShouldNot(HaveOccurred())
+
+		err = testEnv.DeleteEntryAndWait(e0)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = testEnv.DeleteProviderAndSecret(pr)
+		Ω(err).ShouldNot(HaveOccurred())
+	})
 })

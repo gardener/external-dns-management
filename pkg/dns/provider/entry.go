@@ -476,10 +476,6 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	}
 
 	spec, targets, warnings, verr := validate(logger, state, this, p)
-	if p.provider != nil && spec.TTL != nil {
-		this.status.TTL = spec.TTL
-	}
-
 	if verr != nil {
 		hello.Infof(logger, "validation failed: %s", verr)
 
@@ -490,6 +486,10 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	///////////// handle
 
 	hello.Infof(logger, "validation ok")
+
+	if p.provider != nil && spec.TTL != nil {
+		this.status.TTL = spec.TTL
+	}
 
 	if this.IsDeleting() {
 		logger.Infof("update state to %s", api.STATE_DELETING)
