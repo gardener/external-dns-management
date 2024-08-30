@@ -1,4 +1,16 @@
 external-dns-management:
+  templates: 
+    helmcharts:
+    - &external-dns-management
+      name: dns-controller-manager
+      dir: charts/external-dns-management
+      registry: europe-docker.pkg.dev/gardener-project/snapshots/charts
+      mappings:
+      - ref: ocm-resource:external-dns-management.repository
+        attribute: image.repository
+      - ref: ocm-resource:external-dns-management.tag
+        attribute: image.tag
+
   base_definition:
     steps:
       build:
@@ -38,6 +50,9 @@ external-dns-management:
           ocm_repository_mappings:
             - repository: europe-docker.pkg.dev/gardener-project/releases
           retention_policy: 'clean-snapshots'
+        publish:
+          helmcharts:
+          - *external-dns-management
 
     pull-request:
       traits:
@@ -47,6 +62,9 @@ external-dns-management:
             - repository: europe-docker.pkg.dev/gardener-project/releases
         version:
           preprocess: inject-commit-hash
+        publish:
+          helmcharts:
+          - *external-dns-management
 
     release:
       traits:
@@ -62,6 +80,9 @@ external-dns-management:
           dockerimages:
             dns-controller-manager:
               image: europe-docker.pkg.dev/gardener-project/releases/dns-controller-manager
+          helmcharts:
+          - <<: *external-dns-management
+            registry: europe-docker.pkg.dev/gardener-project/releases/charts
         slack:
           default_channel: 'internal_scp_workspace'
           channel_cfgs:
@@ -83,6 +104,9 @@ external-dns-management:
           dockerimages:
             dns-controller-manager:
               image: europe-docker.pkg.dev/gardener-project/releases/dns-controller-manager
+          helmcharts:
+          - <<: *external-dns-management
+            registry: europe-docker.pkg.dev/gardener-project/releases/charts
         slack:
           channel_cfgs:
             internal_scp_workspace:
@@ -101,6 +125,9 @@ external-dns-management:
           dockerimages:
             dns-controller-manager:
               image: europe-docker.pkg.dev/gardener-project/releases/dns-controller-manager
+          helmcharts:
+          - <<: *external-dns-management
+            registry: europe-docker.pkg.dev/gardener-project/releases/charts
         slack:
           channel_cfgs:
             internal_scp_workspace:
