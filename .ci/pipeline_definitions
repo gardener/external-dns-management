@@ -6,9 +6,9 @@ external-dns-management:
       dir: charts/external-dns-management
       registry: europe-docker.pkg.dev/gardener-project/snapshots/charts
       mappings:
-      - ref: ocm-resource:external-dns-management.repository
+      - ref: ocm-resource:dns-controller-manager.repository
         attribute: image.repository
-      - ref: ocm-resource:external-dns-management.tag
+      - ref: ocm-resource:dns-controller-manager.tag
         attribute: image.tag
 
   base_definition:
