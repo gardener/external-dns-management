@@ -32,7 +32,7 @@ type Config struct {
 	ZoneStateCaching         bool
 	DisableDNSNameValidation bool
 	Delay                    time.Duration
-	Enabled                  utils.StringSet
+	EnabledTypes             utils.StringSet
 	Options                  *FactoryOptions
 	Factory                  DNSHandlerFactory
 	RemoteAccessConfig       *embed.RemoteAccessServerConfig
@@ -111,7 +111,7 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		ZoneStateCaching:         !disableZoneStateCaching,
 		DisableDNSNameValidation: disableDNSNameValidation,
 		Delay:                    delay,
-		Enabled:                  enabled,
+		EnabledTypes:             enabled,
 		Options:                  fopts,
 		Factory:                  factory,
 		RemoteAccessConfig:       remoteAccessConfig,

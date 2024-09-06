@@ -155,7 +155,7 @@ type rateLimiterData struct {
 func NewDNSState(pctx ProviderContext, ownerresc, secretresc resources.Interface, classes *controller.Classes, config Config) *state {
 	pctx.Infof("responsible for classes:     %s (%s)", classes, classes.Main())
 	pctx.Infof("availabled providers types   %s", config.Factory.TypeCodes())
-	pctx.Infof("enabled providers types:     %s", config.Enabled)
+	pctx.Infof("enabled providers types:     %s", config.EnabledTypes)
 	pctx.Infof("using default ttl:           %d", config.TTL)
 	pctx.Infof("using identifier:            %s", config.Ident)
 	pctx.Infof("dry run mode:                %t", config.Dryrun)
@@ -704,7 +704,7 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 }
 
 func (this *state) RefineLogger(logger logger.LogContext, ptype string) logger.LogContext {
-	if len(this.config.Enabled) > 1 && ptype != "" {
+	if len(this.config.EnabledTypes) > 1 && ptype != "" {
 		logger = logger.NewContext("type", ptype)
 	}
 	return logger
