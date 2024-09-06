@@ -107,9 +107,6 @@ spec:
               dnsName:
                 description: full qualified domain name
                 type: string
-              ownerId:
-                description: owner id used to tag entries in external DNS system
-                type: string
               reference:
                 description: reference to base entry used to inherit attributes from
                 properties:

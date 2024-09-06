@@ -14,7 +14,6 @@ import (
 */
 
 const (
-	OPT_IDENTIFIER                 = "identifier"
 	OPT_CLASS                      = source.OPT_CLASS
 	OPT_DRYRUN                     = "dry-run"
 	OPT_TTL                        = "ttl"
@@ -42,7 +41,6 @@ const (
 	OPT_ADVANCED_BLOCKED_ZONE = "blocked-zone"
 
 	CMD_HOSTEDZONE_PREFIX = "hostedzone:"
-	CMD_STATISTIC         = "statistic"
 
 	MSG_THROTTLING = "provider throttled"
 )

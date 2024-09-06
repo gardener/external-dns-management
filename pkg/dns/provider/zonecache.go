@@ -255,18 +255,6 @@ func (s *zoneStates) ReportZoneStateConflict(zoneID dns.ZoneID, err error) bool 
 	proxy.lock.Lock()
 	defer proxy.lock.Unlock()
 
-	if !proxy.lastUpdateStart.IsZero() {
-		ownerConflict, ok := err.(*errors.AlreadyBusyForOwner)
-		if ok {
-			if ownerConflict.EntryCreatedAt.After(proxy.lastUpdateStart) {
-				// If a DNSEntry ownership is moved to another DNS controller manager (e.g. shoot recreation on another seed)
-				// the zone cache may have stale owner information. In this case the cache is invalidated
-				// if the entry is newer than the last cache refresh.
-				s.cleanZoneState(zoneID, proxy)
-				return true
-			}
-		}
-	}
 	return false
 }
 

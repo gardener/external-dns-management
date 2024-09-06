@@ -54,10 +54,6 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		if err != nil {
 			return nil, err
 		}
-		ownerState, err := getOrCreateSharedOwnerState(c, false)
-		if err != nil {
-			return nil, err
-		}
 
 		reconciler := &sourceReconciler{
 			SlaveAccess:   slaves,
@@ -67,7 +63,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 
 			state: c.GetOrCreateSharedValue(KEY_STATE,
 				func() interface{} {
-					return NewState(ownerState)
+					return NewState()
 				}).(*state),
 			annotations: annotations.GetOrCreateWatches(c),
 		}
@@ -78,7 +74,6 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 		reconciler.nameprefix, _ = c.GetStringOption(OPT_NAMEPREFIX)
 		reconciler.creatorLabelName, _ = c.GetStringOption(OPT_TARGET_CREATOR_LABEL_NAME)
 		reconciler.creatorLabelValue, _ = c.GetStringOption(OPT_TARGET_CREATOR_LABEL_VALUE)
-		reconciler.setIgnoreOwners, _ = c.GetBoolOption(OPT_TARGET_SET_IGNORE_OWNERS)
 
 		excluded, _ := c.GetStringArrayOption(OPT_EXCLUDE)
 		reconciler.excluded = utils.NewStringSetByArray(excluded)
@@ -121,10 +116,6 @@ func (this *sourceReconciler) ObjectUpdated(key resources.ClusterObjectKey) {
 }
 
 func (this *sourceReconciler) Setup() error {
-	err := this.state.ownerState.Setup(this)
-	if err != nil {
-		return err
-	}
 	this.SlaveAccess.Setup()
 	if err := this.state.source.Setup(); err != nil {
 		return err
@@ -436,11 +427,6 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 	if this.creatorLabelName != "" && this.creatorLabelValue != "" {
 		resources.SetLabel(entry, this.creatorLabelName, this.creatorLabelValue)
 	}
-	if this.state.ownerState.ownerId != "" {
-		entry.Spec.OwnerId = &this.state.ownerState.ownerId
-	} else {
-		entry.Spec.OwnerId = info.OwnerId
-	}
 	entry.Spec.DNSName = name.DNSName
 	this.mapRef(obj, info)
 	if info.TargetRef != nil {
@@ -530,13 +516,6 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 			}
 			mod.Modify(changed)
 		}
-		var p *string
-		if this.state.ownerState.ownerId != "" {
-			p = &this.state.ownerState.ownerId
-		} else {
-			p = info.OwnerId
-		}
-		mod.AssureStringPtrPtr(&spec.OwnerId, p)
 		mod.AssureInt64PtrPtr(&spec.TTL, info.TTL)
 		if !reflect.DeepEqual(spec.RoutingPolicy, info.RoutingPolicy) {
 			spec.RoutingPolicy = info.RoutingPolicy

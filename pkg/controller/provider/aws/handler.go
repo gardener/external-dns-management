@@ -16,10 +16,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/route53"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/mapping"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnserrors "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
 type Handler struct {
@@ -254,34 +254,7 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 }
 
 func (h *Handler) MapTargets(_ string, targets []provider.Target) []provider.Target {
-	return MapTargets(targets)
-}
-
-// MapTargets maps CNAME records to A/AAAA records for hosted zones used for AWS load balancers.
-func MapTargets(targets []provider.Target) []provider.Target {
-	mapped := make([]provider.Target, 0, len(targets)+1)
-	for _, t := range targets {
-		switch t.GetRecordType() {
-		case dns.RS_CNAME:
-			hostedZone := canonicalHostedZone(t.GetHostName())
-			if hostedZone != "" {
-				switch strings.ToLower(t.GetIPStack()) {
-				case dns.AnnotationValueIPStackIPDualStack:
-					mapped = append(mapped, dnsutils.NewTarget(dns.RS_ALIAS_A, t.GetHostName(), t.GetTTL()))
-					mapped = append(mapped, dnsutils.NewTarget(dns.RS_ALIAS_AAAA, t.GetHostName(), t.GetTTL()))
-				case dns.AnnotationValueIPStackIPv6:
-					mapped = append(mapped, dnsutils.NewTarget(dns.RS_ALIAS_AAAA, t.GetHostName(), t.GetTTL()))
-				default:
-					mapped = append(mapped, dnsutils.NewTarget(dns.RS_ALIAS_A, t.GetHostName(), t.GetTTL()))
-				}
-			} else {
-				mapped = append(mapped, t)
-			}
-		default:
-			mapped = append(mapped, t)
-		}
-	}
-	return mapped
+	return mapping.MapTargets(targets)
 }
 
 // AssociateVPCWithHostedZone associates a VPC with a private hosted zone

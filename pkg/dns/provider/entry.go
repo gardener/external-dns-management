@@ -24,6 +24,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -101,10 +102,6 @@ func NewEntryVersion(object *dnsutils.DNSEntryObject, old *Entry) *EntryVersion 
 	return v
 }
 
-func (this *EntryVersion) Kind() string {
-	return this.object.GroupKind().Kind
-}
-
 func (this *EntryVersion) GetAnnotations() map[string]string {
 	return this.object.GetAnnotations()
 }
@@ -121,9 +118,6 @@ func (this *EntryVersion) RequiresUpdateFor(e *EntryVersion) (reasons []string) 
 	}
 	if this.ZoneId() != e.ZoneId() {
 		reasons = append(reasons, "zone changed")
-	}
-	if this.OwnerId() != e.OwnerId() {
-		reasons = append(reasons, "ownerid changed")
 	}
 	if this.targets.DifferFrom(e.targets) {
 		reasons = append(reasons, "targets changed")
@@ -182,6 +176,10 @@ func (this *EntryVersion) ObjectName() resources.ObjectName {
 	return this.object.ObjectName()
 }
 
+func (this *EntryVersion) ObjectKey() client.ObjectKey {
+	return client.ObjectKey{Namespace: this.object.GetNamespace(), Name: this.object.GetName()}
+}
+
 func (this *EntryVersion) DNSName() string {
 	return this.dnsSetName.DNSName
 }
@@ -230,13 +228,6 @@ func (this *EntryVersion) ProviderName() resources.ObjectName {
 	return this.providername
 }
 
-func (this *EntryVersion) OwnerId() string {
-	if this.object.GetOwnerId() != nil {
-		return *this.object.GetOwnerId()
-	}
-	return ""
-}
-
 func complete(logger logger.LogContext, state *state, entry *dnsutils.DNSEntryObject, prefix string) (*api.DNSEntrySpec, error) {
 	if ref := entry.GetReference(); ref != nil && ref.Name != "" {
 		newSpec := entry.Spec().DeepCopy()
@@ -280,9 +271,6 @@ func complete(logger logger.LogContext, state *state, entry *dnsutils.DNSEntryOb
 
 		if entry.GetTTL() == nil {
 			newSpec.TTL = rspec.TTL
-		}
-		if entry.GetOwnerId() == nil {
-			newSpec.OwnerId = rspec.OwnerId
 		}
 		if entry.GetCNameLookupInterval() == nil {
 			newSpec.CNameLookupInterval = rspec.CNameLookupInterval
@@ -367,17 +355,6 @@ func validate(logger logger.LogContext, state *state, entry *EntryVersion, p *En
 		err = fmt.Errorf("no target or text specified")
 	}
 	return
-}
-
-func validateOwner(_ logger.LogContext, state *state, entry *EntryVersion) error {
-	effspec := entry.object
-
-	if ownerid := utils.StringValue(effspec.GetOwnerId()); ownerid != "" {
-		if !state.ownerCache.IsResponsibleFor(ownerid) && !state.ownerCache.IsResponsiblePendingFor(ownerid) {
-			return fmt.Errorf("unknown owner id '%s'", ownerid)
-		}
-	}
-	return nil
 }
 
 func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config) reconcile.Status {
@@ -466,13 +443,6 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	}
 
 	///////////// validate
-
-	if verr := validateOwner(logger, state, this); verr != nil {
-		hello.Infof(logger, "owner validation failed: %s", verr)
-
-		_, _ = this.UpdateStatus(logger, api.STATE_STALE, verr.Error())
-		return reconcile.Failed(logger, verr)
-	}
 
 	spec, targets, warnings, verr := validate(logger, state, this, p)
 	if verr != nil {
@@ -798,14 +768,6 @@ func (this *Entry) Trigger(logger logger.LogContext) {
 	this.state.TriggerEntry(logger, this)
 }
 
-func (this *Entry) IsActive() bool {
-	id := this.OwnerId()
-	if id == "" {
-		id = this.state.config.Ident
-	}
-	return this.state.ownerCache.IsResponsibleFor(id)
-}
-
 func (this *Entry) IsModified() bool {
 	return this.modified
 }
@@ -863,7 +825,6 @@ func (this *Entry) updateStatistic(statistic *statistic.EntryStatistic) {
 		return
 	}
 	defer this.lock.Unlock()
-	statistic.Owners.Inc(this.OwnerId(), this.ProviderType(), this.ProviderName())
 	statistic.Providers.Inc(this.ProviderType(), this.ProviderName())
 }
 

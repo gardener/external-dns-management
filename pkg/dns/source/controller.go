@@ -36,7 +36,6 @@ const (
 	PERIOD_ANNOTATION         = dns.ANNOTATION_GROUP + "/cname-lookup-interval"
 	ROUTING_POLICY_ANNOTATION = dns.ANNOTATION_GROUP + "/routing-policy"
 	CLASS_ANNOTATION          = dns.CLASS_ANNOTATION
-	OWNER_ID_ANNOTATION       = dns.ANNOTATION_GROUP + "/owner-id"
 	// RESOLVE_TARGETS_TO_ADDRS_ANNOTATION is the annotation key for source objects to set the `.spec.resolveTargetsToAddresses` in the DNSEntry.
 	RESOLVE_TARGETS_TO_ADDRS_ANNOTATION = dns.ANNOTATION_GROUP + "/resolve-targets-to-addresses"
 )
@@ -50,15 +49,11 @@ const (
 	OPT_NAMEPREFIX                 = "target-name-prefix"
 	OPT_TARGET_CREATOR_LABEL_NAME  = "target-creator-label-name"
 	OPT_TARGET_CREATOR_LABEL_VALUE = "target-creator-label-value"
-	OPT_TARGET_OWNER_ID            = "target-owner-id"
-	OPT_TARGET_OWNER_OBJECT        = "target-owner-object"
-	OPT_TARGET_SET_IGNORE_OWNERS   = "target-set-ignore-owners"
 	OPT_TARGET_REALMS              = "target-realms"
 )
 
 var (
 	entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
-	ownerGroupKind = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 )
 
 const KEY_STATE = "source-state"
@@ -82,9 +77,6 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		DefaultedStringOption(OPT_NAMEPREFIX, "", "name prefix in target namespace for cross cluster generation").
 		DefaultedStringOption(OPT_TARGET_CREATOR_LABEL_NAME, "creator", "label name to store the creator for generated DNS entries").
 		StringOption(OPT_TARGET_CREATOR_LABEL_VALUE, "label value for creator label").
-		StringOption(OPT_TARGET_OWNER_ID, "owner id to use for generated DNS entries").
-		StringOption(OPT_TARGET_OWNER_OBJECT, "owner object to use for generated DNS entries").
-		BoolOption(OPT_TARGET_SET_IGNORE_OWNERS, "mark generated DNS entries to omit owner based access control").
 		StringOption(OPT_TARGET_REALMS, "realm(s) to use for generated DNS entries").
 		FinalizerDomain(api.GroupName).
 		Reconciler(SourceReconciler(source, reconcilerType)).
@@ -92,17 +84,10 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		DefaultWorkerPool(2, 120*time.Second).
 		MainResource(gk.Group, gk.Kind).
 		Reconciler(reconcilers.SlaveReconcilerTypeByFunction(SlaveReconcilerType, SlaveAccessSpecCreatorForSource(source)), "entries").
-		Reconciler(OwnerReconciler, "owner").
 		Cluster(TARGET_CLUSTER, cluster.DEFAULT).
 		CustomResourceDefinitions(entryGroupKind).
 		WorkerPool("targets", 2, 0).
-		ReconcilerSelectedWatchesByGK("entries", controller.NamespaceByOptionSelection(OPT_NAMESPACE), entryGroupKind).
-		FlavoredReconcilerWatch("owner",
-			watches.Conditional(
-				OptionIsSet(OPT_TARGET_OWNER_OBJECT),
-				watches.ResourceFlavorByGK(ownerGroupKind),
-			),
-		)
+		ReconcilerSelectedWatchesByGK("entries", controller.NamespaceByOptionSelection(OPT_NAMESPACE), entryGroupKind)
 }
 
 var SlaveResources = reconcilers.ClusterResources(TARGET_CLUSTER, entryGroupKind)

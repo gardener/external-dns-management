@@ -15,6 +15,7 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/aws"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/mapping"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/server/remote/common"
@@ -246,7 +247,7 @@ func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error
 
 func (h *Handler) MapTargets(dnsName string, targets []provider.Target) []provider.Target {
 	if h.isAWSRoute53(dnsName) {
-		return aws.MapTargets(targets)
+		return mapping.MapTargets(targets)
 	}
 	return targets
 }

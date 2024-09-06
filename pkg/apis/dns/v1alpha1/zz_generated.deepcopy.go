@@ -229,11 +229,6 @@ func (in *DNSEntrySpec) DeepCopyInto(out *DNSEntrySpec) {
 		*out = new(EntryReference)
 		**out = **in
 	}
-	if in.OwnerId != nil {
-		in, out := &in.OwnerId, &out.OwnerId
-		*out = new(string)
-		**out = **in
-	}
 	if in.TTL != nil {
 		in, out := &in.TTL, &out.TTL
 		*out = new(int64)

@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	RS_META       = "META"
 	RS_ALIAS_A    = "ALIAS"      // provider specific alias for CNAME record (AWS alias target A)
 	RS_ALIAS_AAAA = "ALIAS_AAAA" // provider specific alias for CNAME record (AWS alias target AAAA)
 )
@@ -39,6 +38,15 @@ func (this RecordSets) Clone() RecordSets {
 		clone[rk] = rv.Clone()
 	}
 	return clone
+}
+
+func (this RecordSets) AddRecord(ty string, host string, ttl int64) {
+	rs := this[ty]
+	if rs == nil {
+		rs = NewRecordSet(ty, ttl, nil)
+		this[ty] = rs
+	}
+	rs.Records = append(rs.Records, &Record{Value: host})
 }
 
 type Record struct {
@@ -120,7 +128,7 @@ func (this *RecordSet) Match(set *RecordSet) bool {
 }
 
 func (this *RecordSet) GetAttr(name string) string {
-	if this.Type == RS_TXT || this.Type == RS_META {
+	if this.Type == RS_TXT {
 		prefix := newAttrKeyPrefix(name)
 		for _, r := range this.Records {
 			if strings.HasPrefix(r.Value, prefix) {

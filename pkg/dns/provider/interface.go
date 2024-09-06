@@ -27,7 +27,6 @@ type Config struct {
 	CacheTTL                 time.Duration
 	RescheduleDelay          time.Duration
 	StatusCheckPeriod        time.Duration
-	Ident                    string
 	Dryrun                   bool
 	ZoneStateCaching         bool
 	DisableDNSNameValidation bool
@@ -39,10 +38,6 @@ type Config struct {
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
-	ident, err := c.GetStringOption(OPT_IDENTIFIER)
-	if err != nil {
-		ident = "identifier-not-configured"
-	}
 	ttl, err := c.GetIntOption(OPT_TTL)
 	if err != nil {
 		ttl = 300
@@ -102,7 +97,6 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	fopts := GetFactoryOptions(osrc)
 
 	return &Config{
-		Ident:                    ident,
 		TTL:                      int64(ttl),
 		CacheTTL:                 time.Duration(cttl) * time.Second,
 		RescheduleDelay:          rescheduleDelay,
