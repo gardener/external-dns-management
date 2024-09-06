@@ -37,7 +37,7 @@ func (this *state) addEntriesForProvider(p *dnsProviderVersion, entries Entries)
 func (this *state) UpdateProvider(logger logger.LogContext, obj *dnsutils.DNSProviderObject) reconcile.Status {
 	logger = this.RefineLogger(logger, obj.TypeCode())
 	logger.Infof("reconcile PROVIDER")
-	if !this.config.Enabled.Contains(obj.TypeCode()) || !this.config.Factory.IsResponsibleFor(obj) {
+	if !this.config.EnabledTypes.Contains(obj.TypeCode()) || !this.config.Factory.IsResponsibleFor(obj) {
 		return this._UpdateForeignProvider(logger, obj)
 	}
 	return this._UpdateLocalProvider(logger, obj)

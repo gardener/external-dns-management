@@ -214,7 +214,6 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 func (this *state) entryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, error) {
 	provider, fallback, err := this.lookupProvider(e)
 	p := &EntryPremise{
-		ptypes:   this.config.Enabled,
 		provider: provider,
 		fallback: fallback,
 	}

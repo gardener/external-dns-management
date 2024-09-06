@@ -35,7 +35,6 @@ const MSG_PRESERVED = "errorneous entry preserved in provider"
 const maxCNAMETargets = 25
 
 type EntryPremise struct {
-	ptypes   utils.StringSet
 	ptype    string
 	provider DNSProvider
 	fallback DNSProvider // provider with correct zone, but outside selection (only set if provider == nil)
@@ -430,7 +429,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		}
 	}
 
-	if p.zoneid == "" && !utils.IsEmptyString(this.status.ProviderType) && p.ptypes.Contains(*this.status.ProviderType) {
+	if p.zoneid == "" && !utils.IsEmptyString(this.status.ProviderType) && config.EnabledTypes.Contains(*this.status.ProviderType) {
 		// revoke assignment to actual type
 		oldType := utils.StringValue(this.status.ProviderType)
 		hello.Infof(logger, "revoke assignment to %s", oldType)
