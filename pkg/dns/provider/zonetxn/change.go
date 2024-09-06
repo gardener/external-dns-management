@@ -7,36 +7,38 @@
 package zonetxn
 
 import (
+	"bytes"
+	"fmt"
 	"sync"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type ZoneTransaction struct {
+type PendingTransaction struct {
 	lock sync.Mutex
 
-	zoneID dns.ZoneID
-	goals  map[client.ObjectKey]*dns.DNSSet
+	zoneID             dns.ZoneID
+	pendingGenerations map[client.ObjectKey]int64
 
 	oldItems map[dns.DNSSetName][]*dns.DNSSet
 	newItems dns.DNSSets
 }
 
-func NewZoneTransaction(zoneID dns.ZoneID) *ZoneTransaction {
-	return &ZoneTransaction{
-		zoneID:   zoneID,
-		goals:    map[client.ObjectKey]*dns.DNSSet{},
-		oldItems: map[dns.DNSSetName][]*dns.DNSSet{},
-		newItems: dns.DNSSets{},
+func NewZoneTransaction(zoneID dns.ZoneID) *PendingTransaction {
+	return &PendingTransaction{
+		zoneID:             zoneID,
+		pendingGenerations: map[client.ObjectKey]int64{},
+		oldItems:           map[dns.DNSSetName][]*dns.DNSSet{},
+		newItems:           dns.DNSSets{},
 	}
 }
 
-func (t *ZoneTransaction) ZoneID() dns.ZoneID {
+func (t *PendingTransaction) ZoneID() dns.ZoneID {
 	return t.zoneID
 }
 
-func (t *ZoneTransaction) AddEntryChange(key client.ObjectKey, old, new *dns.DNSSet) {
+func (t *PendingTransaction) AddEntryChange(key client.ObjectKey, generation int64, old, new *dns.DNSSet) {
 	if old.Match(new) {
 		return
 	}
@@ -44,7 +46,7 @@ func (t *ZoneTransaction) AddEntryChange(key client.ObjectKey, old, new *dns.DNS
 	t.lock.Lock()
 	defer t.lock.Unlock()
 
-	t.goals[key] = new
+	t.pendingGenerations[key] = generation
 
 	if old != nil {
 		t.oldItems[old.Name] = append(t.oldItems[new.Name], old)
@@ -57,7 +59,10 @@ func (t *ZoneTransaction) AddEntryChange(key client.ObjectKey, old, new *dns.DNS
 	}
 }
 
-func (t *ZoneTransaction) AllChanges() map[dns.DNSSetName]Change {
+func (t *PendingTransaction) AllChanges() map[dns.DNSSetName]Change {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
 	changes := map[dns.DNSSetName]Change{}
 	for name, oldSets := range t.oldItems {
 		change := Change{
@@ -74,7 +79,33 @@ func (t *ZoneTransaction) AllChanges() map[dns.DNSSetName]Change {
 	return changes
 }
 
+func (t *PendingTransaction) OldDNSSets() dns.DNSSets {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+
+	sets := dns.DNSSets{}
+	for name, oldSetList := range t.oldItems {
+		for _, set := range oldSetList {
+			for _, recordset := range set.Sets {
+				sets.AddRecordSet(name, set.RoutingPolicy, recordset)
+			}
+		}
+	}
+	return sets
+}
+
 type Change struct {
 	old []*dns.DNSSet
 	new *dns.DNSSet
+}
+
+func (c Change) String() string {
+	var buf bytes.Buffer
+	for _, old := range c.old {
+		fmt.Fprintf(&buf, "old: %+v,", old)
+	}
+	if c.new != nil {
+		fmt.Fprintf(&buf, "new: %+v", c.new)
+	}
+	return buf.String()
 }

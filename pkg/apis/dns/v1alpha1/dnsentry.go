@@ -76,19 +76,15 @@ type DNSEntrySpec struct {
 }
 
 type DNSEntryStatus struct {
-	DNSBaseStatus `json:",inline"`
-	// effective targets generated for the entry
+	DNSEntryEffective `json:",inline"`
+	// Pending contains the pending spec
 	// +optional
-	Targets []string `json:"targets,omitempty"`
-	// effective routing policy
-	// +optional
-	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
-	// effective lookup interval for CNAMEs that must be resolved to IP addresses
+	Pending *DNSEntryPendingStatus `json:"pending,omitempty"`
+	// lookup interval for CNAMEs that must be resolved to IP addresses.
+	// Only used if `resolveTargetsToAddresses` is set to true or targets consists of multiple domain names.
 	// +optional
 	CNameLookupInterval *int64 `json:"cnameLookupInterval,omitempty"`
-}
-
-type DNSBaseStatus struct {
+	// effective targets generated for the entry
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 	// entry state
@@ -109,9 +105,32 @@ type DNSBaseStatus struct {
 	// zone used for the entry
 	// +optional
 	Zone *string `json:"zone,omitempty"`
-	// time to live used for the entry
+}
+
+type DNSEntryEffective struct {
+	// effective full qualified domain name
+	DNSName string `json:"dnsName"`
+	// effective time to live for records in external DNS system
 	// +optional
 	TTL *int64 `json:"ttl,omitempty"`
+	// effective resolveTargetsToAddresses from spec
+	// +optional
+	ResolveTargetsToAddresses *bool `json:"resolveTargetsToAddresses,omitempty"`
+	// effective text records (TXT records)
+	// +optional
+	Text []string `json:"text,omitempty"`
+	// effective target records (A, AAAA, or CNAME records)
+	// +optional
+	Targets []string `json:"targets,omitempty"`
+	// optional routing policy
+	// +optional
+	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
+}
+
+type DNSEntryPendingStatus struct {
+	DNSEntryEffective `json:",inline"`
+	// generation to be applied next
+	PendingGeneration int64 `json:"pendingGeneration"`
 }
 
 type EntryReference struct {
