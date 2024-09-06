@@ -16,6 +16,7 @@ import (
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"k8s.io/utils/ptr"
 )
@@ -42,28 +43,6 @@ func (this *state) TriggerEntry(logger logger.LogContext, e *Entry) {
 		logger.Infof("trigger entry %s", e.ClusterKey())
 	}
 	_ = this.context.EnqueueKey(e.ClusterKey())
-}
-
-func (this *state) TriggerEntriesByOwner(logger logger.LogContext, owners utils.StringSet) {
-	for _, e := range this.GetEntriesByOwner(owners) {
-		this.TriggerEntry(logger, e)
-	}
-}
-
-func (this *state) GetEntriesByOwner(owners utils.StringSet) Entries {
-	if len(owners) == 0 {
-		return nil
-	}
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-
-	entries := Entries{}
-	for _, e := range this.entries {
-		if owners.Contains(e.OwnerId()) {
-			entries[e.ObjectName()] = e
-		}
-	}
-	return entries
 }
 
 func (this *state) addBlockingEntries(logger logger.LogContext, entries Entries) {
@@ -124,12 +103,12 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				if old != nil {
 					logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
 				}
-				if !new.IsActive() || v.object.BaseStatus().Zone == nil {
+				if v.object.BaseStatus().Zone == nil {
 					err = this.RemoveFinalizer(v.object)
 				}
 			}
 		} else {
-			if !new.IsActive() || v.object.BaseStatus().State != api.STATE_STALE {
+			if v.object.BaseStatus().State != api.STATE_STALE {
 				this.smartInfof(logger, "deleting yet unmanaged or errorneous entry")
 				err = this.RemoveFinalizer(v.object)
 			} else {
@@ -206,6 +185,13 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 		}
 
 		this.dnsnames[zonedDNSName] = new
+		if txn := this.getActiveZoneTransaction(new.activezone); txn != nil {
+			var oldDNSSet *dns.DNSSet
+			if old != nil {
+				oldDNSSet = this.dnsSetFromEntry(old)
+			}
+			txn.AddEntryChange(new.ObjectKey(), oldDNSSet, this.dnsSetFromEntry(new))
+		}
 	}
 
 	return new, status
@@ -214,7 +200,6 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 func (this *state) entryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, error) {
 	provider, fallback, err := this.lookupProvider(e)
 	p := &EntryPremise{
-		ptypes:   this.config.Enabled,
 		provider: provider,
 		fallback: fallback,
 	}
@@ -272,7 +257,6 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		}
 	}
 
-	defer this.triggerStatistic()
 	defer this.references.NotifyHolder(this.context, object.ClusterKey())
 
 	logger = this.RefineLogger(logger, p.ptype)
@@ -347,6 +331,9 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 				}
 			}
 		}
+		if txn := this.getActiveZoneTransaction(e.activezone); txn != nil {
+			txn.AddEntryChange(e.ObjectKey(), this.dnsSetFromEntry(e), nil)
+		}
 		if found == nil {
 			logger.Infof("no duplicate found to reactivate")
 		} else {
@@ -358,6 +345,9 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 				msg = fmt.Sprintf("reactivate duplicate for %s: %s", found.ZonedDNSName(), found.ObjectName())
 			}
 			logger.Info(msg)
+			if txn := this.getActiveZoneTransaction(found.activezone); txn != nil {
+				txn.AddEntryChange(e.ObjectKey(), nil, this.dnsSetFromEntry(found))
+			}
 			found.Trigger(nil)
 		}
 		delete(this.dnsnames, e.ZonedDNSName())
@@ -370,4 +360,10 @@ func (this *state) DeleteLookupJob(entryName resources.ObjectName) {
 
 func (this *state) UpsertLookupJob(entryName resources.ObjectName, results lookupAllResults, interval time.Duration) {
 	this.lookupProcessor.Upsert(entryName, results, interval)
+}
+
+func (this *state) dnsSetFromEntry(e *Entry) *dns.DNSSet {
+	set := dns.NewDNSSet(e.dnsSetName, e.routingPolicy)
+	zonetxn.ApplySpec(set, e.activezone.ProviderType, e.object.GetTargetSpec(e))
+	return set
 }

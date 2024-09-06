@@ -37,7 +37,6 @@ echo '{{- if .Values.createCRDs }}' > "$destination"
 files=(
      "dns.gardener.cloud_dnsentries.yaml"
      "dns.gardener.cloud_dnsannotations.yaml"
-     "dns.gardener.cloud_dnsowners.yaml"
      "dns.gardener.cloud_dnsproviders.yaml"
      "dns.gardener.cloud_dnshostedzonepolicies.yaml"
 )

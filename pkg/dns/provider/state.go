@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -44,7 +45,6 @@ type zoneReconciliation struct {
 	providers    DNSProviders
 	entries      Entries
 	equivEntries dns.DNSNameSet
-	ownership    dns.Ownership
 	stale        ZonedDNSSetNames
 	dedicated    bool
 	deleting     bool
@@ -101,9 +101,7 @@ type state struct {
 
 	setup *setup
 
-	context   ProviderContext
-	ownerresc resources.Interface
-	ownerupd  chan OwnerCounts
+	context ProviderContext
 
 	secretresc resources.Interface
 
@@ -113,7 +111,6 @@ type state struct {
 	realms access.RealmTypes
 
 	accountCache *AccountCache
-	ownerCache   *OwnerCache
 	zoneStates   *zoneStates
 
 	foreign         map[resources.ObjectName]*foreignProvider
@@ -144,6 +141,9 @@ type state struct {
 	lookupProcessor *lookupProcessor
 
 	providerEventListeners []ProviderEventListener
+
+	zoneTransactions     map[dns.ZoneID]*zonetxn.ZoneTransaction
+	zoneTransactionsLock sync.Mutex
 }
 
 type rateLimiterData struct {
@@ -152,12 +152,11 @@ type rateLimiterData struct {
 	lastAccept  atomic.Value
 }
 
-func NewDNSState(pctx ProviderContext, ownerresc, secretresc resources.Interface, classes *controller.Classes, config Config) *state {
+func NewDNSState(pctx ProviderContext, secretresc resources.Interface, classes *controller.Classes, config Config) *state {
 	pctx.Infof("responsible for classes:     %s (%s)", classes, classes.Main())
 	pctx.Infof("availabled providers types   %s", config.Factory.TypeCodes())
-	pctx.Infof("enabled providers types:     %s", config.Enabled)
+	pctx.Infof("enabled providers types:     %s", config.EnabledTypes)
 	pctx.Infof("using default ttl:           %d", config.TTL)
-	pctx.Infof("using identifier:            %s", config.Ident)
 	pctx.Infof("dry run mode:                %t", config.Dryrun)
 	pctx.Infof("reschedule delay:            %v", config.RescheduleDelay)
 	pctx.Infof("zone cache ttl for zones:    %v", config.CacheTTL)
@@ -173,12 +172,10 @@ func NewDNSState(pctx ProviderContext, ownerresc, secretresc resources.Interface
 		setup:               newSetup(),
 		classes:             classes,
 		context:             pctx,
-		ownerresc:           ownerresc,
 		secretresc:          secretresc,
 		config:              config,
 		realms:              realms,
 		accountCache:        NewAccountCache(config.CacheTTL, config.Options),
-		ownerCache:          NewOwnerCache(pctx, &config),
 		foreign:             map[resources.ObjectName]*foreignProvider{},
 		providers:           map[resources.ObjectName]*dnsProviderVersion{},
 		deleting:            map[resources.ObjectName]*dnsProviderVersion{},
@@ -189,6 +186,7 @@ func NewDNSState(pctx ProviderContext, ownerresc, secretresc resources.Interface
 		providersecrets:     map[resources.ObjectName]resources.ObjectName{},
 		zonePolicies:        map[string]*dnsHostedZonePolicy{},
 		entries:             Entries{},
+		zoneTransactions:    map[dns.ZoneID]*zonetxn.ZoneTransaction{},
 		outdated:            newSynchronizedEntries(),
 		blockingEntries:     map[resources.ObjectName]time.Time{},
 		dnsnames:            map[ZonedDNSSetName]*Entry{},
@@ -208,7 +206,6 @@ func (this *state) Setup() error {
 	}
 	this.zoneStates = newZoneStates(this.CreateStateTTLGetter(*syncPeriod))
 	this.dnsTicker = NewTicker(this.context.GetPool(DNS_POOL).Tick)
-	this.ownerupd = startOwnerUpdater(this.context, this.ownerresc)
 	processors, err := this.context.GetIntOption(OPT_SETUP)
 	if err != nil || processors <= 0 {
 		processors = 5
@@ -246,13 +243,6 @@ func (this *state) Setup() error {
 	}, processors); err != nil {
 		return err
 	}
-	if err := this.setupFor(&api.DNSOwner{}, "owners", func(e resources.Object) error {
-		p := dnsutils.DNSOwner(e)
-		this.UpdateOwner(this.context.NewContext("owner", p.ObjectName().String()), p, true)
-		return nil
-	}, processors); err != nil {
-		return err
-	}
 	if err := this.setupFor(&api.DNSEntry{}, "entries", func(e resources.Object) error {
 		p := dnsutils.DNSEntry(e)
 		this.UpdateEntry(this.context.NewContext("entry", p.ObjectName().String()), p)
@@ -261,7 +251,6 @@ func (this *state) Setup() error {
 		return err
 	}
 
-	this.triggerStatistic()
 	this.initialized = true
 	this.context.Infof("setup done - starting reconciliation")
 	return nil
@@ -532,18 +521,14 @@ func (this *state) addEntriesForZone(
 			} else if provider == nil {
 				continue
 			} else if !provider.IncludesZone(zone.Id()) {
-				if provider.HasEquivalentZone(zone.Id()) && e.IsActive() && !forwarded(nested, dns.DNSName) {
+				if provider.HasEquivalentZone(zone.Id()) && !forwarded(nested, dns.DNSName) {
 					equivEntries.Add(dns.DNSSetName)
 				}
 				continue
 			}
 			if dns.ZoneID == zone.Id() && zone.Match(dns.DNSName) > 0 && !forwarded(nested, dns.DNSName) {
-				if e.IsActive() {
-					deleting = deleting || e.IsDeleting()
-					entries[e.ObjectName()] = e
-				} else {
-					logger.Infof("entry %q(%s) is inactive", e.ObjectName(), e.DNSName())
-				}
+				deleting = deleting || e.IsDeleting()
+				entries[e.ObjectName()] = e
 			}
 		} else {
 			if !e.IsDeleting() {
@@ -606,14 +591,6 @@ loop:
 		}
 	}
 	return found
-}
-
-func (this *state) triggerStatistic() {
-	if this.context.IsReady() {
-		_ = this.context.EnqueueCommand(CMD_STATISTIC)
-	} else {
-		this.setup.AddCommand(CMD_STATISTIC)
-	}
 }
 
 func (this *state) triggerHostedZone(zoneid dns.ZoneID) {
@@ -704,7 +681,7 @@ func (this *state) updateZones(logger logger.LogContext, last, new *dnsProviderV
 }
 
 func (this *state) RefineLogger(logger logger.LogContext, ptype string) logger.LogContext {
-	if len(this.config.Enabled) > 1 && ptype != "" {
+	if len(this.config.EnabledTypes) > 1 && ptype != "" {
 		logger = logger.NewContext("type", ptype)
 	}
 	return logger

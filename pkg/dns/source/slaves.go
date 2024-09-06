@@ -21,10 +21,6 @@ import (
 )
 
 func SlaveReconcilerType(c controller.Interface) (reconcile.Interface, error) {
-	ownerState, err := getOrCreateSharedOwnerState(c, false)
-	if err != nil {
-		return nil, err
-	}
 	classes := controller.NewClassesByOption(c, OPT_CLASS, dns.CLASS_ANNOTATION, dns.DEFAULT_CLASS)
 	reconciler := &slaveReconciler{
 		controller:    c,
@@ -33,7 +29,7 @@ func SlaveReconcilerType(c controller.Interface) (reconcile.Interface, error) {
 		events:        NewEvents(),
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewState(ownerState)
+				return NewState()
 			}).(*state),
 	}
 	return reconciler, nil
@@ -49,7 +45,7 @@ type slaveReconciler struct {
 }
 
 func (this *slaveReconciler) Setup() error {
-	return this.state.ownerState.Setup(this.controller)
+	return nil
 }
 
 func (this *slaveReconciler) Start() error {

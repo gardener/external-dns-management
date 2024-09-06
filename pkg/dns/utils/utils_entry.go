@@ -70,10 +70,6 @@ func (this *DNSEntryObject) GetText() []string {
 	return this.DNSEntry().Spec.Text
 }
 
-func (this *DNSEntryObject) GetOwnerId() *string {
-	return this.DNSEntry().Spec.OwnerId
-}
-
 func (this *DNSEntryObject) GetTTL() *int64 {
 	return this.DNSEntry().Spec.TTL
 }
