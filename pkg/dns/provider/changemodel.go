@@ -99,7 +99,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 				if e.IsDeleting() {
 					model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
 				}
-				status := e.Object().BaseStatus()
+				status := e.Object().Status()
 				msg := MSG_PRESERVED
 				trigger := false
 				if status.State == api.STATE_ERROR || status.State == api.STATE_INVALID {
@@ -114,6 +114,11 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 					e.Trigger(logger)
 				}
 			} else {
+				oldSet := model.oldDNSSets[s.Name]
+				if oldSet == nil {
+					// not part of transaction
+					continue
+				}
 				model.Infof("found unapplied managed set '%s'", s.Name)
 				var done DoneHandler
 				for _, e := range model.context.entries {
@@ -123,6 +128,9 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 					}
 				}
 				for ty := range s.Sets {
+					if _, ok := oldSet.Sets[ty]; !ok {
+						continue
+					}
 					mod = true
 					this.addDeleteRequest(s, ty, model.wrappedDoneHandler(s.Name, done))
 				}
@@ -181,6 +189,7 @@ type ChangeModel struct {
 	providergroups map[string]*ChangeGroup
 	zonestate      DNSZoneState
 	failedDNSNames dns.DNSNameSet
+	oldDNSSets     dns.DNSSets
 }
 
 type ChangeResult struct {
@@ -189,7 +198,7 @@ type ChangeResult struct {
 	Error    error
 }
 
-func NewChangeModel(logger logger.LogContext, req *zoneReconciliation, config Config) *ChangeModel {
+func NewChangeModel(logger logger.LogContext, req *zoneReconciliation, config Config, oldDNSSets dns.DNSSets) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
 		config:         config,
@@ -197,6 +206,7 @@ func NewChangeModel(logger logger.LogContext, req *zoneReconciliation, config Co
 		applied:        map[dns.DNSSetName]*dns.DNSSet{},
 		providergroups: map[string]*ChangeGroup{},
 		failedDNSNames: dns.DNSNameSet{},
+		oldDNSSets:     oldDNSSets,
 	}
 }
 

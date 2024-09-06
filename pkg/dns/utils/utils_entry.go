@@ -43,10 +43,6 @@ func (this *DNSEntryObject) Status() *api.DNSEntryStatus {
 	return &this.DNSEntry().Status
 }
 
-func (this *DNSEntryObject) BaseStatus() *api.DNSBaseStatus {
-	return &this.DNSEntry().Status.DNSBaseStatus
-}
-
 func GetDNSName(entry *api.DNSEntry) string {
 	return dns.NormalizeHostname(entry.Spec.DNSName)
 }
@@ -94,6 +90,15 @@ func (this *DNSEntryObject) AcknowledgeTargets(targets []string) bool {
 	s := this.Status()
 	if !reflect.DeepEqual(s.Targets, targets) {
 		s.Targets = targets
+		return true
+	}
+	return false
+}
+
+func (this *DNSEntryObject) AcknowledgeText(text []string) bool {
+	s := this.Status()
+	if !reflect.DeepEqual(s.Text, text) {
+		s.Text = text
 		return true
 	}
 	return false

@@ -5,6 +5,7 @@
 package dns
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -81,6 +82,20 @@ func (this *RecordSet) Length() int {
 		return 0
 	}
 	return len(this.Records)
+}
+
+func (this *RecordSet) String() string {
+	if this == nil {
+		return ""
+	}
+	var buf bytes.Buffer
+	for i, rec := range this.Records {
+		if i > 0 {
+			buf.WriteString(",")
+		}
+		buf.WriteString(rec.Value)
+	}
+	return buf.String()
 }
 
 func (this *RecordSet) Add(records ...*Record) *RecordSet {

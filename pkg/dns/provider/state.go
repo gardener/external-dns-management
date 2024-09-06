@@ -142,7 +142,7 @@ type state struct {
 
 	providerEventListeners []ProviderEventListener
 
-	zoneTransactions     map[dns.ZoneID]*zonetxn.ZoneTransaction
+	zoneTransactions     map[dns.ZoneID]*zonetxn.PendingTransaction
 	zoneTransactionsLock sync.Mutex
 }
 
@@ -186,7 +186,7 @@ func NewDNSState(pctx ProviderContext, secretresc resources.Interface, classes *
 		providersecrets:     map[resources.ObjectName]resources.ObjectName{},
 		zonePolicies:        map[string]*dnsHostedZonePolicy{},
 		entries:             Entries{},
-		zoneTransactions:    map[dns.ZoneID]*zonetxn.ZoneTransaction{},
+		zoneTransactions:    map[dns.ZoneID]*zonetxn.PendingTransaction{},
 		outdated:            newSynchronizedEntries(),
 		blockingEntries:     map[resources.ObjectName]time.Time{},
 		dnsnames:            map[ZonedDNSSetName]*Entry{},
@@ -405,7 +405,7 @@ func (this *state) lookupProvider(e *dnsutils.DNSEntryObject) (DNSProvider, DNSP
 		if match.match <= n {
 			err2 := access.CheckAccessWithRealms(e, "use", p.Object(), this.realms)
 			if err2 == nil {
-				if match.match < n || (e.BaseStatus().Provider != nil && *e.BaseStatus().Provider == p.object.ObjectName().String()) {
+				if match.match < n || (e.Status().Provider != nil && *e.Status().Provider == p.object.ObjectName().String()) {
 					match.found = p
 					match.match = n
 				}
@@ -532,7 +532,7 @@ func (this *state) addEntriesForZone(
 			}
 		} else {
 			if !e.IsDeleting() {
-				if utils.StringValue(e.object.BaseStatus().Provider) != "" {
+				if utils.StringValue(e.object.Status().Provider) != "" {
 					logger.Infof("invalid entry %q (%s): %s (%s)", e.ObjectName(), e.DNSName(), e.State(), e.Message())
 				}
 				if e.KeepRecords() {

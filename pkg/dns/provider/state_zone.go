@@ -118,12 +118,6 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 	if req.zone.TestAndSetBusy() {
 		defer req.zone.Release()
 
-		current := this.startZoneTransaction(req.zone.Id())
-		if current != nil {
-			for _, x := range current.AllChanges() {
-				logger.Infof("%v", x)
-			}
-		}
 		list := make(EntryList, 0, len(req.stale)+len(req.entries))
 		for _, e := range req.entries {
 			list = append(list, e)
@@ -154,7 +148,15 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	req.zone.SetNext(time.Now().Add(this.config.Delay))
 	metrics.ReportZoneEntries(zoneid, len(req.entries), len(req.stale))
 	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", req.zone.Id(), req.zone.Domain(), len(req.entries), len(req.stale))
-	changes := NewChangeModel(logger, req, this.config)
+	current := this.startZoneTransaction(req.zone.Id())
+	var oldDNSSets dns.DNSSets
+	if current != nil {
+		for _, x := range current.AllChanges() {
+			logger.Infof("txn-change: %s", x)
+		}
+		oldDNSSets = current.OldDNSSets()
+	}
+	changes := NewChangeModel(logger, req, this.config, oldDNSSets)
 	err := changes.Setup()
 	if err != nil {
 		req.zone.Failed()
@@ -237,7 +239,7 @@ func (this *state) CreateStateTTLGetter(defaultStateTTL time.Duration) StateTTLG
 	}
 }
 
-func (this *state) getActiveZoneTransaction(zoneID dns.ZoneID) *zonetxn.ZoneTransaction {
+func (this *state) getActiveZoneTransaction(zoneID dns.ZoneID) *zonetxn.PendingTransaction {
 	if zoneID.IsEmpty() {
 		return nil
 	}
@@ -253,7 +255,7 @@ func (this *state) getActiveZoneTransaction(zoneID dns.ZoneID) *zonetxn.ZoneTran
 	return current
 }
 
-func (this *state) startZoneTransaction(zoneID dns.ZoneID) *zonetxn.ZoneTransaction {
+func (this *state) startZoneTransaction(zoneID dns.ZoneID) *zonetxn.PendingTransaction {
 	if zoneID.IsEmpty() {
 		return nil
 	}
