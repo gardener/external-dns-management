@@ -1,0 +1,12 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: powerdns
+  namespace: default
+spec:
+  type: powerdns
+  secretRef:
+    name: powerdns-credentials
+  domains:
+    include:
+      - my.own.domain.com
