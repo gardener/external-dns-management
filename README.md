@@ -15,6 +15,7 @@ It contains provisioning controllers for creating DNS records in one of the DNS 
   - [_Netlify DNS_](docs/netlify/README.md),
   - [_remote_](docs/remote/README.md),
   - [_DNS servers supporting RFC 2136 (DNS Update)_](docs/rfc2136/README.md) *(alpha - not recommended for productive usage)*,
+  - [_powerdns_](docs/powerdns/README.md),
 
 and source controllers for services and ingresses to create DNS entries by annotations.
 
@@ -528,6 +529,7 @@ The following provider types can be selected (comma separated):
 - `infoblox-dns`: Infoblox DNS provider
 - `netlify-dns`: Netlify DNS provider
 - `remote`: Remote DNS provider (a dns-controller-manager with enabled remote access service)
+- `powerdns`: PowerDNS provider
 
 If the compound DNS Provisioning Controller is enabled it is important to specify a
 unique controller identity using the `--identifier` option.
