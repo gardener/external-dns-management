@@ -17,11 +17,14 @@ IMAGE_TAG                         := $(VERSION)
 #########################################
 
 TOOLS_DIR := hack/tools
+GOLANGCI_LINT_VERSION := v1.60.2
+
 include $(CONTROLLER_MANAGER_LIB_HACK_DIR)/tools.mk
 
 HELM                       := $(TOOLS_BIN_DIR)/helm
 
 HELM_VERSION ?= v3.13.1
+
 
 $(HELM): $(call tool_version_file,$(HELM),$(HELM_VERSION))
 	@curl -sSfL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | HELM_INSTALL_DIR=$(TOOLS_BIN_DIR) PATH=$(PATH):$(TOOLS_BIN_DIR) USE_SUDO=false bash -s -- --version $(HELM_VERSION)

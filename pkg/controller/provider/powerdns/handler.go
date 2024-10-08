@@ -145,7 +145,6 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 		dnssets.AddRecordSetFromProvider(powerdns.StringValue(rrset.Name), rs)
 	}
 	return provider.NewDNSZoneState(dnssets), nil
-
 }
 
 func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error) bool {

@@ -8,7 +8,7 @@ linters:
     - unused
     - importas
     - ginkgolinter
-    - exportloopref
+    - copyloopvar
     - nilerr
     - whitespace
 

@@ -415,7 +415,7 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 	mod := this.object.SetSelection(this.included, this.excluded, &this.object.Status().Domains)
 	mod = this.object.SetSelection(this.included_zones, this.excluded_zones, &this.object.Status().Zones) || mod
 	if results.Error != "" {
-		return this, this.failedButRecheck(logger, fmt.Errorf(results.Error), mod)
+		return this, this.failedButRecheck(logger, fmt.Errorf("%s", results.Error), mod)
 	}
 
 	allForwardedDomains := utils.NewStringSet()

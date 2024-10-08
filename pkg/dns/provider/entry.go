@@ -416,7 +416,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			if err != nil {
 				msg = fmt.Sprintf("%s: %s", msg, err)
 			}
-			err := this.updateStatus(logger, api.STATE_ERROR, msg)
+			err := this.updateStatus(logger, api.STATE_ERROR, "%s", msg)
 			if err != nil {
 				return reconcile.Delay(logger, err)
 			}
@@ -522,7 +522,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 					this.interval = int64(84600)
 				}
 
-				verr := fmt.Errorf(msg)
+				verr := fmt.Errorf("%s", msg)
 				hello.Infof(logger, msg)
 
 				state := api.STATE_INVALID
