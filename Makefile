@@ -2,11 +2,14 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+ENSURE_GARDENER_MOD               := $(shell go get github.com/gardener/gardener@$$(go list -m -f "{{.Version}}" github.com/gardener/gardener))
+GARDENER_HACK_DIR                 := $(shell go list -m -f "{{.Dir}}" github.com/gardener/gardener)/hack
 ENSURE_CONTROLLER_MANAGER_LIB_MOD := $(shell go get github.com/gardener/controller-manager-library@$$(go list -m -f "{{.Version}}" github.com/gardener/controller-manager-library))
 CONTROLLER_MANAGER_LIB_HACK_DIR   := $(shell go list -m -f "{{.Dir}}" github.com/gardener/controller-manager-library)/hack
 REGISTRY                          := europe-docker.pkg.dev/gardener-project/public
 EXECUTABLE                        := dns-controller-manager
 REPO_ROOT                         := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+HACK_DIR                          := $(REPO_ROOT)/hack
 PROJECT                           := github.com/gardener/external-dns-management
 IMAGE_REPOSITORY                  := $(REGISTRY)/dns-controller-manager
 VERSION                           := $(shell cat VERSION)
@@ -17,21 +20,12 @@ IMAGE_TAG                         := $(VERSION)
 #########################################
 
 TOOLS_DIR := hack/tools
-GOLANGCI_LINT_VERSION := v1.60.2
-
-include $(CONTROLLER_MANAGER_LIB_HACK_DIR)/tools.mk
-
-HELM                       := $(TOOLS_BIN_DIR)/helm
-
-HELM_VERSION ?= v3.13.1
-
-
-$(HELM): $(call tool_version_file,$(HELM),$(HELM_VERSION))
-	@curl -sSfL https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | HELM_INSTALL_DIR=$(TOOLS_BIN_DIR) PATH=$(PATH):$(TOOLS_BIN_DIR) USE_SUDO=false bash -s -- --version $(HELM_VERSION)
+include $(GARDENER_HACK_DIR)/tools.mk
 
 .PHONY: tidy
 tidy:
 	@go mod tidy
+	@cp $(GARDENER_HACK_DIR)/sast.sh $(HACK_DIR)/sast.sh && chmod +xw $(HACK_DIR)/sast.sh
 
 .PHONY: clean
 clean:
@@ -41,8 +35,11 @@ clean:
 	@rm -f pkg/apis/dns/v1alpha1/zz_generated*
 
 .PHONY: check
-check: format $(GOIMPORTS) $(GOLANGCI_LINT)
-	@TOOLS_BIN_DIR="$(TOOLS_DIR)/bin" bash $(CONTROLLER_MANAGER_LIB_HACK_DIR)/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
+check: sast-report fastcheck
+
+.PHONY: fastcheck
+fastcheck: format $(GOIMPORTS) $(GOLANGCI_LINT)
+	@TOOLS_BIN_DIR="$(TOOLS_BIN_DIR)" bash $(CONTROLLER_MANAGER_LIB_HACK_DIR)/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
 	@echo "Running go vet..."
 	@go vet ./cmd/... ./pkg/... ./test/...
 
@@ -104,3 +101,17 @@ integrationtests: $(GINKGO)
 .PHONY: docker-images
 docker-images:
 	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) -f Dockerfile --target dns-controller-manager .
+
+# TODO(martinweindel): Remove once https://github.com/gardener/gardener/pull/10642 is available as release.
+TOOLS_PKG_PATH := $(shell go list -tags tools -f '{{ .Dir }}' github.com/gardener/gardener/hack/tools 2>/dev/null)
+.PHONY: adjust-install-gosec.sh
+adjust-install-gosec.sh:
+	@chmod +xw $(TOOLS_PKG_PATH)/install-gosec.sh
+
+.PHONY: sast
+sast: adjust-install-gosec.sh $(GOSEC)
+	@./hack/sast.sh
+
+.PHONY: sast-report
+sast-report: adjust-install-gosec.sh $(GOSEC)
+	@./hack/sast.sh --gosec-report true
