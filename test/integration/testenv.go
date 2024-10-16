@@ -171,7 +171,7 @@ func (te *TestEnv) ApplyCRDs(dir string) error {
 
 // readDocuments reads documents from file.
 func readDocuments(fp string) ([][]byte, error) {
-	b, err := os.ReadFile(fp)
+	b, err := os.ReadFile(fp) // #nosec G304 -- only used during tests to read test configuration
 	if err != nil {
 		return nil, err
 	}

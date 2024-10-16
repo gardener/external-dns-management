@@ -121,6 +121,7 @@ func (h *Handler) loadTLSCredentials(serverCA_PEM, clientCert_PEM, clientKey_PEM
 
 	// Create the credentials and return it
 	config := &tls.Config{
+		MinVersion:   tls.VersionTLS12,
 		Certificates: []tls.Certificate{clientCert},
 	}
 
@@ -138,7 +139,7 @@ func (h *Handler) loadTLSCredentials(serverCA_PEM, clientCert_PEM, clientKey_PEM
 func (h *Handler) Release() {
 	h.cache.Release()
 	if h.connection != nil {
-		h.connection.Close()
+		_ = h.connection.Close()
 	}
 }
 
