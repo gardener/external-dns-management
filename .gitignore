@@ -20,3 +20,6 @@ tmp/
 .vscode/
 .kubeconfig-kind-integration
 test/functional/functional.test
+
+# gosec
+gosec-report.sarif

@@ -65,6 +65,7 @@ func (d *dynamicTransportCredentials) updateTLS(secret *corev1.Secret) {
 
 func (d *dynamicTransportCredentials) createTLS(secret *corev1.Secret) (credentials.TransportCredentials, bool) {
 	config := &tls.Config{
+		MinVersion:   tls.VersionTLS12,
 		Certificates: []tls.Certificate{},
 		ClientAuth:   tls.RequireAndVerifyClientCert,
 		ClientCAs:    d.certPool,

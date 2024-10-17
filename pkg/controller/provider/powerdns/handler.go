@@ -73,7 +73,7 @@ func newHttpClient(insecureSkipVerify bool, trustedCaCert string) *http.Client {
 
 	if insecureSkipVerify {
 		httpClient.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402 -- InsecureSkipVerify is used to allow insecure connections
 		}
 	}
 

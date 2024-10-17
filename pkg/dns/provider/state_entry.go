@@ -244,7 +244,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	old := this.entries[object.ObjectName()]
 	if old != nil {
 		if !old.lock.TryLockSpinning(10 * time.Millisecond) {
-			millis := time.Millisecond * time.Duration(3000+rand.Int31n(3000))
+			millis := time.Millisecond * time.Duration(3000+rand.Int31n(3000)) // #nosec G404  -- not used for cryptographic purposes
 			return reconcile.RescheduleAfter(logger, millis)
 		}
 		defer old.lock.Unlock()

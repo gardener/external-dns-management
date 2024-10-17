@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.13.0
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: dnsentries.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -80,23 +80,28 @@ spec:
       openAPIV3Schema:
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
           spec:
             properties:
               cnameLookupInterval:
-                description: lookup interval for CNAMEs that must be resolved to IP
-                  addresses. Only used if `resolveTargetsToAddresses` is set to true
-                  or targets consists of multiple domain names.
+                description: |-
+                  lookup interval for CNAMEs that must be resolved to IP addresses.
+                  Only used if `resolveTargetsToAddresses` is set to true or targets consists of multiple domain names.
                 format: int64
                 type: integer
               dnsName:
@@ -118,10 +123,10 @@ spec:
                 - name
                 type: object
               resolveTargetsToAddresses:
-                description: enables translation of a target domain name in the resolved
-                  IPv4 and IPv6 addresses. If enabled, `A` and/or `AAAA` records are
-                  created instead of a `CNAME` record. If the target list contains
-                  multiple targets, it is enabled implicitly.
+                description: |-
+                  enables translation of a target domain name in the resolved IPv4 and IPv6 addresses.
+                  If enabled, `A` and/or `AAAA` records are created instead of a `CNAME` record.
+                  If the target list contains multiple targets, it is enabled implicitly.
                 type: boolean
               routingPolicy:
                 description: optional routing policy

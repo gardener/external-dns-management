@@ -81,7 +81,9 @@ func createDesignateServiceClient(logger logger.LogContext, clientAuthConfig *cl
 		return nil, err
 	}
 
-	tlscfg := &tls.Config{}
+	tlscfg := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
 
 	if clientAuthConfig.CACert != "" {
 		caCertPool := x509.NewCertPool()
