@@ -12,6 +12,13 @@ external-dns-management:
         attribute: image.tag
 
   base_definition:
+    repo:
+      source_labels:
+      - name: cloud.gardener.cnudie/dso/scanning-hints/source_analysis/v1
+        value:
+          policy: skip
+          comment: |
+            we use gosec for sast scanning. See attached log.
     steps:
       build:
         image: golang:1.23.2
@@ -76,6 +83,17 @@ external-dns-management:
           nextversion: 'bump_minor'
           next_version_callback: '.ci/prepare_release'
           release_callback: '.ci/prepare_release'
+          assets:
+          - type: build-step-log
+            step_name: check
+            purposes:
+            - lint
+            - sast
+            - gosec
+            comment: |
+                we use gosec (linter) for SAST scans
+                see: https://github.com/securego/gosec
+                enabled by https://github.com/gardener/external-dns-management/pull/394
         publish:
           dockerimages:
             dns-controller-manager:
