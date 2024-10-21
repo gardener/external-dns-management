@@ -118,6 +118,17 @@ external-dns-management:
           nextversion: bump_patch
           next_version_callback: '.ci/prepare_release'
           release_callback: '.ci/prepare_release'
+          assets:
+          - type: build-step-log
+            step_name: check
+            purposes:
+            - lint
+            - sast
+            - gosec
+            comment: |
+                we use gosec (linter) for SAST scans
+                see: https://github.com/securego/gosec
+                enabled by https://github.com/gardener/external-dns-management/pull/394
         publish:
           dockerimages:
             dns-controller-manager:
@@ -137,6 +148,17 @@ external-dns-management:
         release:
           nextversion: noop
           release_callback: .ci/prepare_release
+          assets:
+          - type: build-step-log
+            step_name: check
+            purposes:
+            - lint
+            - sast
+            - gosec
+            comment: |
+                we use gosec (linter) for SAST scans
+                see: https://github.com/securego/gosec
+                enabled by https://github.com/gardener/external-dns-management/pull/394
         component_descriptor:
           ocm_repository: europe-docker.pkg.dev/gardener-project/releases
         publish:
