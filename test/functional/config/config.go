@@ -7,6 +7,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -104,7 +105,7 @@ func InitConfig() *Config {
 }
 
 func LoadConfig(filename string) (*Config, error) {
-	f, err := os.Open(filename) // #nosec G304 -- only used during tests to read test configuration
+	f, err := os.Open(filepath.Clean(filename))
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +176,7 @@ func (p *ProviderConfig) TTLValue() int {
 
 func (p *ProviderConfig) CreateTempManifest(basePath, testName string, manifestTemplate *template.Template) (string, error) {
 	filename := fmt.Sprintf("%s/tmp-%s-%s.yaml", basePath, p.Name, testName)
-	f, err := os.Create(filename) // #nosec G304 -- only used during tests to write to a temp file
+	f, err := os.Create(filepath.Clean(filename))
 	if err != nil {
 		return "", err
 	}
