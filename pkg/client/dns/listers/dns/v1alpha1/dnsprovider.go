@@ -7,8 +7,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -25,25 +25,17 @@ type DNSProviderLister interface {
 
 // dNSProviderLister implements the DNSProviderLister interface.
 type dNSProviderLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.DNSProvider]
 }
 
 // NewDNSProviderLister returns a new DNSProviderLister.
 func NewDNSProviderLister(indexer cache.Indexer) DNSProviderLister {
-	return &dNSProviderLister{indexer: indexer}
-}
-
-// List lists all DNSProviders in the indexer.
-func (s *dNSProviderLister) List(selector labels.Selector) (ret []*v1alpha1.DNSProvider, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.DNSProvider))
-	})
-	return ret, err
+	return &dNSProviderLister{listers.New[*v1alpha1.DNSProvider](indexer, v1alpha1.Resource("dnsprovider"))}
 }
 
 // DNSProviders returns an object that can list and get DNSProviders.
 func (s *dNSProviderLister) DNSProviders(namespace string) DNSProviderNamespaceLister {
-	return dNSProviderNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return dNSProviderNamespaceLister{listers.NewNamespaced[*v1alpha1.DNSProvider](s.ResourceIndexer, namespace)}
 }
 
 // DNSProviderNamespaceLister helps list and get DNSProviders.
@@ -61,26 +53,5 @@ type DNSProviderNamespaceLister interface {
 // dNSProviderNamespaceLister implements the DNSProviderNamespaceLister
 // interface.
 type dNSProviderNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all DNSProviders in the indexer for a given namespace.
-func (s dNSProviderNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.DNSProvider, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.DNSProvider))
-	})
-	return ret, err
-}
-
-// Get retrieves the DNSProvider from the indexer for a given namespace and name.
-func (s dNSProviderNamespaceLister) Get(name string) (*v1alpha1.DNSProvider, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("dnsprovider"), name)
-	}
-	return obj.(*v1alpha1.DNSProvider), nil
+	listers.ResourceIndexer[*v1alpha1.DNSProvider]
 }

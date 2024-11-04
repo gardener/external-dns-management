@@ -28,22 +28,24 @@ var dnsannotationsKind = v1alpha1.SchemeGroupVersion.WithKind("DNSAnnotation")
 
 // Get takes name of the dNSAnnotation, and returns the corresponding dNSAnnotation object, and an error if there is any.
 func (c *FakeDNSAnnotations) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.DNSAnnotation, err error) {
+	emptyResult := &v1alpha1.DNSAnnotation{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(dnsannotationsResource, c.ns, name), &v1alpha1.DNSAnnotation{})
+		Invokes(testing.NewGetActionWithOptions(dnsannotationsResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSAnnotation), err
 }
 
 // List takes label and field selectors, and returns the list of DNSAnnotations that match those selectors.
 func (c *FakeDNSAnnotations) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.DNSAnnotationList, err error) {
+	emptyResult := &v1alpha1.DNSAnnotationList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(dnsannotationsResource, dnsannotationsKind, c.ns, opts), &v1alpha1.DNSAnnotationList{})
+		Invokes(testing.NewListActionWithOptions(dnsannotationsResource, dnsannotationsKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -62,40 +64,43 @@ func (c *FakeDNSAnnotations) List(ctx context.Context, opts v1.ListOptions) (res
 // Watch returns a watch.Interface that watches the requested dNSAnnotations.
 func (c *FakeDNSAnnotations) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(dnsannotationsResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(dnsannotationsResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a dNSAnnotation and creates it.  Returns the server's representation of the dNSAnnotation, and an error, if there is any.
 func (c *FakeDNSAnnotations) Create(ctx context.Context, dNSAnnotation *v1alpha1.DNSAnnotation, opts v1.CreateOptions) (result *v1alpha1.DNSAnnotation, err error) {
+	emptyResult := &v1alpha1.DNSAnnotation{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(dnsannotationsResource, c.ns, dNSAnnotation), &v1alpha1.DNSAnnotation{})
+		Invokes(testing.NewCreateActionWithOptions(dnsannotationsResource, c.ns, dNSAnnotation, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSAnnotation), err
 }
 
 // Update takes the representation of a dNSAnnotation and updates it. Returns the server's representation of the dNSAnnotation, and an error, if there is any.
 func (c *FakeDNSAnnotations) Update(ctx context.Context, dNSAnnotation *v1alpha1.DNSAnnotation, opts v1.UpdateOptions) (result *v1alpha1.DNSAnnotation, err error) {
+	emptyResult := &v1alpha1.DNSAnnotation{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(dnsannotationsResource, c.ns, dNSAnnotation), &v1alpha1.DNSAnnotation{})
+		Invokes(testing.NewUpdateActionWithOptions(dnsannotationsResource, c.ns, dNSAnnotation, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSAnnotation), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeDNSAnnotations) UpdateStatus(ctx context.Context, dNSAnnotation *v1alpha1.DNSAnnotation, opts v1.UpdateOptions) (*v1alpha1.DNSAnnotation, error) {
+func (c *FakeDNSAnnotations) UpdateStatus(ctx context.Context, dNSAnnotation *v1alpha1.DNSAnnotation, opts v1.UpdateOptions) (result *v1alpha1.DNSAnnotation, err error) {
+	emptyResult := &v1alpha1.DNSAnnotation{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(dnsannotationsResource, "status", c.ns, dNSAnnotation), &v1alpha1.DNSAnnotation{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(dnsannotationsResource, "status", c.ns, dNSAnnotation, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSAnnotation), err
 }
@@ -110,7 +115,7 @@ func (c *FakeDNSAnnotations) Delete(ctx context.Context, name string, opts v1.De
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeDNSAnnotations) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(dnsannotationsResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(dnsannotationsResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.DNSAnnotationList{})
 	return err
@@ -118,11 +123,12 @@ func (c *FakeDNSAnnotations) DeleteCollection(ctx context.Context, opts v1.Delet
 
 // Patch applies the patch and returns the patched dNSAnnotation.
 func (c *FakeDNSAnnotations) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSAnnotation, err error) {
+	emptyResult := &v1alpha1.DNSAnnotation{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(dnsannotationsResource, c.ns, name, pt, data, subresources...), &v1alpha1.DNSAnnotation{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(dnsannotationsResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSAnnotation), err
 }

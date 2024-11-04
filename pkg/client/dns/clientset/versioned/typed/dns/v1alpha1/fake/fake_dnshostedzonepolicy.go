@@ -28,22 +28,24 @@ var dnshostedzonepoliciesKind = v1alpha1.SchemeGroupVersion.WithKind("DNSHostedZ
 
 // Get takes name of the dNSHostedZonePolicy, and returns the corresponding dNSHostedZonePolicy object, and an error if there is any.
 func (c *FakeDNSHostedZonePolicies) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.DNSHostedZonePolicy, err error) {
+	emptyResult := &v1alpha1.DNSHostedZonePolicy{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(dnshostedzonepoliciesResource, c.ns, name), &v1alpha1.DNSHostedZonePolicy{})
+		Invokes(testing.NewGetActionWithOptions(dnshostedzonepoliciesResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSHostedZonePolicy), err
 }
 
 // List takes label and field selectors, and returns the list of DNSHostedZonePolicies that match those selectors.
 func (c *FakeDNSHostedZonePolicies) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.DNSHostedZonePolicyList, err error) {
+	emptyResult := &v1alpha1.DNSHostedZonePolicyList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(dnshostedzonepoliciesResource, dnshostedzonepoliciesKind, c.ns, opts), &v1alpha1.DNSHostedZonePolicyList{})
+		Invokes(testing.NewListActionWithOptions(dnshostedzonepoliciesResource, dnshostedzonepoliciesKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -62,40 +64,43 @@ func (c *FakeDNSHostedZonePolicies) List(ctx context.Context, opts v1.ListOption
 // Watch returns a watch.Interface that watches the requested dNSHostedZonePolicies.
 func (c *FakeDNSHostedZonePolicies) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(dnshostedzonepoliciesResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(dnshostedzonepoliciesResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a dNSHostedZonePolicy and creates it.  Returns the server's representation of the dNSHostedZonePolicy, and an error, if there is any.
 func (c *FakeDNSHostedZonePolicies) Create(ctx context.Context, dNSHostedZonePolicy *v1alpha1.DNSHostedZonePolicy, opts v1.CreateOptions) (result *v1alpha1.DNSHostedZonePolicy, err error) {
+	emptyResult := &v1alpha1.DNSHostedZonePolicy{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(dnshostedzonepoliciesResource, c.ns, dNSHostedZonePolicy), &v1alpha1.DNSHostedZonePolicy{})
+		Invokes(testing.NewCreateActionWithOptions(dnshostedzonepoliciesResource, c.ns, dNSHostedZonePolicy, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSHostedZonePolicy), err
 }
 
 // Update takes the representation of a dNSHostedZonePolicy and updates it. Returns the server's representation of the dNSHostedZonePolicy, and an error, if there is any.
 func (c *FakeDNSHostedZonePolicies) Update(ctx context.Context, dNSHostedZonePolicy *v1alpha1.DNSHostedZonePolicy, opts v1.UpdateOptions) (result *v1alpha1.DNSHostedZonePolicy, err error) {
+	emptyResult := &v1alpha1.DNSHostedZonePolicy{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(dnshostedzonepoliciesResource, c.ns, dNSHostedZonePolicy), &v1alpha1.DNSHostedZonePolicy{})
+		Invokes(testing.NewUpdateActionWithOptions(dnshostedzonepoliciesResource, c.ns, dNSHostedZonePolicy, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSHostedZonePolicy), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeDNSHostedZonePolicies) UpdateStatus(ctx context.Context, dNSHostedZonePolicy *v1alpha1.DNSHostedZonePolicy, opts v1.UpdateOptions) (*v1alpha1.DNSHostedZonePolicy, error) {
+func (c *FakeDNSHostedZonePolicies) UpdateStatus(ctx context.Context, dNSHostedZonePolicy *v1alpha1.DNSHostedZonePolicy, opts v1.UpdateOptions) (result *v1alpha1.DNSHostedZonePolicy, err error) {
+	emptyResult := &v1alpha1.DNSHostedZonePolicy{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(dnshostedzonepoliciesResource, "status", c.ns, dNSHostedZonePolicy), &v1alpha1.DNSHostedZonePolicy{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(dnshostedzonepoliciesResource, "status", c.ns, dNSHostedZonePolicy, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSHostedZonePolicy), err
 }
@@ -110,7 +115,7 @@ func (c *FakeDNSHostedZonePolicies) Delete(ctx context.Context, name string, opt
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeDNSHostedZonePolicies) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(dnshostedzonepoliciesResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(dnshostedzonepoliciesResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.DNSHostedZonePolicyList{})
 	return err
@@ -118,11 +123,12 @@ func (c *FakeDNSHostedZonePolicies) DeleteCollection(ctx context.Context, opts v
 
 // Patch applies the patch and returns the patched dNSHostedZonePolicy.
 func (c *FakeDNSHostedZonePolicies) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSHostedZonePolicy, err error) {
+	emptyResult := &v1alpha1.DNSHostedZonePolicy{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(dnshostedzonepoliciesResource, c.ns, name, pt, data, subresources...), &v1alpha1.DNSHostedZonePolicy{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(dnshostedzonepoliciesResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSHostedZonePolicy), err
 }
