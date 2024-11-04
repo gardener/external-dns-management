@@ -7,8 +7,8 @@ package v1alpha1
 
 import (
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -25,25 +25,17 @@ type DNSOwnerLister interface {
 
 // dNSOwnerLister implements the DNSOwnerLister interface.
 type dNSOwnerLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1alpha1.DNSOwner]
 }
 
 // NewDNSOwnerLister returns a new DNSOwnerLister.
 func NewDNSOwnerLister(indexer cache.Indexer) DNSOwnerLister {
-	return &dNSOwnerLister{indexer: indexer}
-}
-
-// List lists all DNSOwners in the indexer.
-func (s *dNSOwnerLister) List(selector labels.Selector) (ret []*v1alpha1.DNSOwner, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.DNSOwner))
-	})
-	return ret, err
+	return &dNSOwnerLister{listers.New[*v1alpha1.DNSOwner](indexer, v1alpha1.Resource("dnsowner"))}
 }
 
 // DNSOwners returns an object that can list and get DNSOwners.
 func (s *dNSOwnerLister) DNSOwners(namespace string) DNSOwnerNamespaceLister {
-	return dNSOwnerNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return dNSOwnerNamespaceLister{listers.NewNamespaced[*v1alpha1.DNSOwner](s.ResourceIndexer, namespace)}
 }
 
 // DNSOwnerNamespaceLister helps list and get DNSOwners.
@@ -61,26 +53,5 @@ type DNSOwnerNamespaceLister interface {
 // dNSOwnerNamespaceLister implements the DNSOwnerNamespaceLister
 // interface.
 type dNSOwnerNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all DNSOwners in the indexer for a given namespace.
-func (s dNSOwnerNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.DNSOwner, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.DNSOwner))
-	})
-	return ret, err
-}
-
-// Get retrieves the DNSOwner from the indexer for a given namespace and name.
-func (s dNSOwnerNamespaceLister) Get(name string) (*v1alpha1.DNSOwner, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("dnsowner"), name)
-	}
-	return obj.(*v1alpha1.DNSOwner), nil
+	listers.ResourceIndexer[*v1alpha1.DNSOwner]
 }

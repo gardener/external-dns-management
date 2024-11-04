@@ -28,22 +28,24 @@ var dnsprovidersKind = v1alpha1.SchemeGroupVersion.WithKind("DNSProvider")
 
 // Get takes name of the dNSProvider, and returns the corresponding dNSProvider object, and an error if there is any.
 func (c *FakeDNSProviders) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.DNSProvider, err error) {
+	emptyResult := &v1alpha1.DNSProvider{}
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(dnsprovidersResource, c.ns, name), &v1alpha1.DNSProvider{})
+		Invokes(testing.NewGetActionWithOptions(dnsprovidersResource, c.ns, name, options), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSProvider), err
 }
 
 // List takes label and field selectors, and returns the list of DNSProviders that match those selectors.
 func (c *FakeDNSProviders) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.DNSProviderList, err error) {
+	emptyResult := &v1alpha1.DNSProviderList{}
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(dnsprovidersResource, dnsprovidersKind, c.ns, opts), &v1alpha1.DNSProviderList{})
+		Invokes(testing.NewListActionWithOptions(dnsprovidersResource, dnsprovidersKind, c.ns, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 
 	label, _, _ := testing.ExtractFromListOptions(opts)
@@ -62,40 +64,43 @@ func (c *FakeDNSProviders) List(ctx context.Context, opts v1.ListOptions) (resul
 // Watch returns a watch.Interface that watches the requested dNSProviders.
 func (c *FakeDNSProviders) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(dnsprovidersResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchActionWithOptions(dnsprovidersResource, c.ns, opts))
 
 }
 
 // Create takes the representation of a dNSProvider and creates it.  Returns the server's representation of the dNSProvider, and an error, if there is any.
 func (c *FakeDNSProviders) Create(ctx context.Context, dNSProvider *v1alpha1.DNSProvider, opts v1.CreateOptions) (result *v1alpha1.DNSProvider, err error) {
+	emptyResult := &v1alpha1.DNSProvider{}
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(dnsprovidersResource, c.ns, dNSProvider), &v1alpha1.DNSProvider{})
+		Invokes(testing.NewCreateActionWithOptions(dnsprovidersResource, c.ns, dNSProvider, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSProvider), err
 }
 
 // Update takes the representation of a dNSProvider and updates it. Returns the server's representation of the dNSProvider, and an error, if there is any.
 func (c *FakeDNSProviders) Update(ctx context.Context, dNSProvider *v1alpha1.DNSProvider, opts v1.UpdateOptions) (result *v1alpha1.DNSProvider, err error) {
+	emptyResult := &v1alpha1.DNSProvider{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(dnsprovidersResource, c.ns, dNSProvider), &v1alpha1.DNSProvider{})
+		Invokes(testing.NewUpdateActionWithOptions(dnsprovidersResource, c.ns, dNSProvider, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSProvider), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeDNSProviders) UpdateStatus(ctx context.Context, dNSProvider *v1alpha1.DNSProvider, opts v1.UpdateOptions) (*v1alpha1.DNSProvider, error) {
+func (c *FakeDNSProviders) UpdateStatus(ctx context.Context, dNSProvider *v1alpha1.DNSProvider, opts v1.UpdateOptions) (result *v1alpha1.DNSProvider, err error) {
+	emptyResult := &v1alpha1.DNSProvider{}
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(dnsprovidersResource, "status", c.ns, dNSProvider), &v1alpha1.DNSProvider{})
+		Invokes(testing.NewUpdateSubresourceActionWithOptions(dnsprovidersResource, "status", c.ns, dNSProvider, opts), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSProvider), err
 }
@@ -110,7 +115,7 @@ func (c *FakeDNSProviders) Delete(ctx context.Context, name string, opts v1.Dele
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeDNSProviders) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(dnsprovidersResource, c.ns, listOpts)
+	action := testing.NewDeleteCollectionActionWithOptions(dnsprovidersResource, c.ns, opts, listOpts)
 
 	_, err := c.Fake.Invokes(action, &v1alpha1.DNSProviderList{})
 	return err
@@ -118,11 +123,12 @@ func (c *FakeDNSProviders) DeleteCollection(ctx context.Context, opts v1.DeleteO
 
 // Patch applies the patch and returns the patched dNSProvider.
 func (c *FakeDNSProviders) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSProvider, err error) {
+	emptyResult := &v1alpha1.DNSProvider{}
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(dnsprovidersResource, c.ns, name, pt, data, subresources...), &v1alpha1.DNSProvider{})
+		Invokes(testing.NewPatchSubresourceActionWithOptions(dnsprovidersResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
 
 	if obj == nil {
-		return nil, err
+		return emptyResult, err
 	}
 	return obj.(*v1alpha1.DNSProvider), err
 }

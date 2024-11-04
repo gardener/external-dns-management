@@ -90,6 +90,7 @@ generate: $(VGOPATH) $(CONTROLLER_GEN) $(HELM)
 	@CONTROLLER_MANAGER_LIB_HACK_DIR=$(CONTROLLER_MANAGER_LIB_HACK_DIR) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN))  HELM=$(shell realpath $(HELM)) go generate ./charts/external-dns-management
 	@./hack/copy-crds.sh
 	@go fmt ./pkg/...
+	@go mod tidy
 
 alltests: $(GINKGO)
 	$(GINKGO) -r ./pkg
