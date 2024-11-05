@@ -12,8 +12,6 @@ import (
 // Text Record ObjectName Mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-var TxtPrefix = "comment-"
-
 func AlignHostname(host string) string {
 	if strings.HasSuffix(host, ".") {
 		return host

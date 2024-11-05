@@ -8,8 +8,7 @@ tmp/
 /cmd/dns
 /cmd/compound/dns-controller-manager
 /dns-controller-manager
-/dns-controller-manager-compound
-/dns-controller-manager-dedicated
+/dns-controller-manager-*
 /cmd/dns/dns-controller-manager
 /main
 /test/functional/tmp-*.yaml

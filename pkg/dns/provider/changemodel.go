@@ -7,14 +7,15 @@ package provider
 import (
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 	"time"
-
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -27,6 +28,8 @@ const (
 	R_DELETE = "delete"
 )
 
+const maxMetadataRecordDeletionsPerReconciliation = 20
+
 type ChangeRequests []*ChangeRequest
 
 type ChangeRequest struct {
@@ -36,6 +39,12 @@ type ChangeRequest struct {
 	Deletion *dns.DNSSet
 	Done     DoneHandler
 	Applied  bool
+}
+
+func (r *ChangeRequest) IsSemanticEqualTo(other *ChangeRequest) bool {
+	return r.Action == other.Action && r.Type == other.Type &&
+		(r.Addition == nil && other.Addition == nil || r.Addition != nil && other.Addition != nil && r.Addition.Match(other.Addition)) &&
+		(r.Deletion == nil && other.Deletion == nil || r.Deletion != nil && other.Deletion != nil && r.Deletion.Match(other.Deletion))
 }
 
 func NewChangeRequest(action string, rtype string, del, add *dns.DNSSet, done DoneHandler) *ChangeRequest {
@@ -81,6 +90,8 @@ type ChangeGroup struct {
 	requests      ChangeRequests
 	model         *ChangeModel
 	providerCount int
+
+	cleanedMetadataRecords int
 }
 
 func newChangeGroup(name string, provider DNSProvider, model *ChangeModel) *ChangeGroup {
@@ -116,7 +127,8 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 			} else {
 				oldSet := model.oldDNSSets[s.Name]
 				if oldSet == nil {
-					// not part of transaction
+					// not part of transaction, but old metadata entries may be present for cleanup
+					mod = this.partialCleanupOfMetadataRecords(logger, s) || mod
 					continue
 				}
 				model.Infof("found unapplied managed set '%s'", s.Name)
@@ -138,6 +150,41 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 		}
 	}
 	return mod
+}
+
+func (this *ChangeGroup) partialCleanupOfMetadataRecords(logger logger.LogContext, s *dns.DNSSet) bool {
+	if this.cleanedMetadataRecords >= maxMetadataRecordDeletionsPerReconciliation {
+		// maximum number of metadata records to delete per reconciliation reached
+		return false
+	}
+	if this.model.ownership == nil || len(this.model.ownership.GetIds()) == 0 {
+		// no known owners to clean up metadata records
+		return false
+	}
+
+	if set, ok := s.Sets[dns.RS_TXT]; ok {
+		name := s.Name.DNSName
+		for _, prefix := range []string{"comment-", "*.comment-"} {
+			if strings.HasPrefix(name, prefix) {
+				var foundPrefix, foundOwner bool
+				for _, r := range set.Records {
+					v, _ := strconv.Unquote(r.Value)
+					if strings.HasPrefix(v, "prefix=comment-") {
+						foundPrefix = true
+					} else if strings.HasPrefix(v, "owner=") && this.model.ownership.IsResponsibleFor(strings.TrimPrefix(v, "owner=")) {
+						foundOwner = true
+					}
+				}
+				if foundPrefix && foundOwner {
+					logger.Infof("cleaning up metadata record for %s", name)
+					this.cleanedMetadataRecords++
+					this.addDeleteRequest(s, dns.RS_TXT, nil)
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bool {
@@ -183,6 +230,7 @@ type TargetSpec = dnsutils.TargetSpec
 type ChangeModel struct {
 	logger.LogContext
 	config         Config
+	ownership      dns.Ownership
 	context        *zoneReconciliation
 	applied        map[dns.DNSSetName]*dns.DNSSet
 	dangling       *ChangeGroup
@@ -198,10 +246,11 @@ type ChangeResult struct {
 	Error    error
 }
 
-func NewChangeModel(logger logger.LogContext, req *zoneReconciliation, config Config, oldDNSSets dns.DNSSets) *ChangeModel {
+func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zoneReconciliation, config Config, oldDNSSets dns.DNSSets) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
 		config:         config,
+		ownership:      ownership,
 		context:        req,
 		applied:        map[dns.DNSSetName]*dns.DNSSet{},
 		providergroups: map[string]*ChangeGroup{},

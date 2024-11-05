@@ -99,6 +99,7 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				if this.HasFinalizer(new.Object()) {
 					logger.Infof("deleting delayed until entry deleted in provider")
 					this.outdated.AddEntry(new)
+					new.modified = true
 					return new, reconcile.Succeeded(logger)
 				}
 			} else {

@@ -49,7 +49,7 @@ func (t *PendingTransaction) AddEntryChange(key client.ObjectKey, generation int
 	t.pendingGenerations[key] = generation
 
 	if old != nil {
-		t.oldItems[old.Name] = append(t.oldItems[new.Name], old)
+		t.oldItems[old.Name] = append(t.oldItems[old.Name], old)
 	}
 	if new != nil {
 		if other := t.newItems[new.Name]; other != nil {

@@ -42,7 +42,6 @@ var _ = Describe("IngressAnnotation", func() {
 		Ω(entry.Spec.Targets).Should(ConsistOf(fakeExternalIP))
 		Ω(entry.Spec.TTL).ShouldNot(BeNil())
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
-		Ω(entry.Spec.OwnerId).Should(BeNil())
 		Ω(entry.Annotations["dns.gardener.cloud/ip-stack"]).Should(Equal("dual-stack"))
 
 		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "true")
@@ -69,8 +68,6 @@ var _ = Describe("IngressAnnotation", func() {
 		entryObj3, err := testEnv.AwaitObjectByOwner("Ingress", ingress3.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 		entry3 := UnwrapEntry(entryObj3)
-		Ω(entry3.Spec.OwnerId).ShouldNot(BeNil())
-		Ω(*entry3.Spec.OwnerId).Should(Equal("second"))
 		Ω(entry3.Spec.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
 
 		err = ingress2.Delete()

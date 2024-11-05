@@ -4,7 +4,11 @@
 
 package dns
 
-import "reflect"
+import (
+	"reflect"
+
+	"github.com/gardener/controller-manager-library/pkg/utils"
+)
 
 ////////////////////////////////////////////////////////////////////////////////
 // A DNSSet contains record sets for an DNS name. The name is given without
@@ -29,6 +33,11 @@ import "reflect"
 // an effective set and dns name for the desired purpose.
 
 type DNSSets map[DNSSetName]*DNSSet
+
+type Ownership interface {
+	IsResponsibleFor(id string) bool
+	GetIds() utils.StringSet
+}
 
 func (dnssets DNSSets) AddRecordSetFromProvider(dnsName string, rs *RecordSet) {
 	dnssets.AddRecordSetFromProviderEx(DNSSetName{DNSName: dnsName}, nil, rs)

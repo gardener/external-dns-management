@@ -45,6 +45,7 @@ type zoneReconciliation struct {
 	providers    DNSProviders
 	entries      Entries
 	equivEntries dns.DNSNameSet
+	ownership    dns.Ownership
 	stale        ZonedDNSSetNames
 	dedicated    bool
 	deleting     bool
@@ -101,7 +102,8 @@ type state struct {
 
 	setup *setup
 
-	context ProviderContext
+	ownerresc resources.Interface
+	context   ProviderContext
 
 	secretresc resources.Interface
 
@@ -111,6 +113,7 @@ type state struct {
 	realms access.RealmTypes
 
 	accountCache *AccountCache
+	ownerCache   *OwnerCache
 	zoneStates   *zoneStates
 
 	foreign         map[resources.ObjectName]*foreignProvider
@@ -152,7 +155,7 @@ type rateLimiterData struct {
 	lastAccept  atomic.Value
 }
 
-func NewDNSState(pctx ProviderContext, secretresc resources.Interface, classes *controller.Classes, config Config) *state {
+func NewDNSState(pctx ProviderContext, ownerresc, secretresc resources.Interface, classes *controller.Classes, config Config) *state {
 	pctx.Infof("responsible for classes:     %s (%s)", classes, classes.Main())
 	pctx.Infof("availabled providers types   %s", config.Factory.TypeCodes())
 	pctx.Infof("enabled providers types:     %s", config.EnabledTypes)
@@ -172,10 +175,12 @@ func NewDNSState(pctx ProviderContext, secretresc resources.Interface, classes *
 		setup:               newSetup(),
 		classes:             classes,
 		context:             pctx,
+		ownerresc:           ownerresc,
 		secretresc:          secretresc,
 		config:              config,
 		realms:              realms,
 		accountCache:        NewAccountCache(config.CacheTTL, config.Options),
+		ownerCache:          NewOwnerCache(pctx, &config),
 		foreign:             map[resources.ObjectName]*foreignProvider{},
 		providers:           map[resources.ObjectName]*dnsProviderVersion{},
 		deleting:            map[resources.ObjectName]*dnsProviderVersion{},
@@ -239,6 +244,13 @@ func (this *state) Setup() error {
 		if this.GetHandlerFactory().IsResponsibleFor(p) {
 			this.UpdateProvider(this.context.NewContext("provider", p.ObjectName().String()), p)
 		}
+		return nil
+	}, processors); err != nil {
+		return err
+	}
+	if err := this.setupFor(&api.DNSOwner{}, "owners", func(e resources.Object) error {
+		p := dnsutils.DNSOwner(e)
+		this.UpdateOwner(this.context.NewContext("owner", p.ObjectName().String()), p, true)
 		return nil
 	}, processors); err != nil {
 		return err
@@ -492,7 +504,7 @@ func (this *state) addEntriesForZone(
 		stale = ZonedDNSSetNames{}
 	}
 	equivEntries := dns.DNSNameSet{}
-	deleting := true // TODO check
+	deleting := false
 	domain := zone.Domain()
 	// fallback if no forwarded domains are reported
 	nested := utils.NewStringSet()

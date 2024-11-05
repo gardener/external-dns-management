@@ -33,6 +33,7 @@ func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid dns.Zon
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
+	req.ownership = this.ownerCache
 	hasProviders := this.hasProviders()
 	zone := this.zones[zoneid]
 	if zone == nil {
@@ -156,7 +157,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		}
 		oldDNSSets = current.OldDNSSets()
 	}
-	changes := NewChangeModel(logger, req, this.config, oldDNSSets)
+	changes := NewChangeModel(logger, req.ownership, req, this.config, oldDNSSets)
 	err := changes.Setup()
 	if err != nil {
 		req.zone.Failed()
@@ -204,6 +205,15 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	this.outdated.AddActiveZoneTo(zoneid, &outdatedEntries)
 	for _, e := range outdatedEntries {
 		if changes.IsFailed(e.DNSSetName()) {
+			if oldSet, ok := oldDNSSets[e.DNSSetName()]; ok {
+				if txn := this.getActiveZoneTransaction(zoneid); txn != nil {
+					txn.AddEntryChange(e.ObjectKey(), e.Object().GetGeneration(), oldSet, nil)
+				} else {
+					logger.Warnf("cleanup postpone failure: missing zone for %s", e.ObjectName())
+				}
+			} else {
+				logger.Warnf("cleanup postpone failure: old set not found for %s", e.ObjectName())
+			}
 			continue
 		}
 		logger.Infof("cleanup outdated entry %q", e.ObjectName())

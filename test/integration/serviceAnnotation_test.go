@@ -65,7 +65,6 @@ var _ = Describe("ServiceAnnotation", func() {
 		entry := UnwrapEntry(entryObj)
 		Ω(entry.Spec.DNSName).Should(Equal(svcDomain))
 		Ω(entry.Spec.Targets).Should(ConsistOf(fakeExternalIP))
-		Ω(entry.Spec.OwnerId).Should(BeNil())
 		Ω(entry.Spec.TTL).ShouldNot(BeNil())
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
 		Ω(entry.Annotations["dns.gardener.cloud/ip-stack"]).Should(Equal("dual-stack"))
@@ -96,8 +95,6 @@ var _ = Describe("ServiceAnnotation", func() {
 		entry4 := UnwrapEntry(entryObj4)
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(entry4.Spec.DNSName).Should(Equal(svcDomain4))
-		Ω(entry4.Spec.OwnerId).ShouldNot(BeNil())
-		Ω(*entry4.Spec.OwnerId).Should(Equal("second"))
 
 		entryObj5, err := testEnv.AwaitObjectByOwner("Service", svc5.GetName())
 		entry5 := UnwrapEntry(entryObj5)
