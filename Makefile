@@ -103,16 +103,10 @@ integrationtests: $(GINKGO)
 docker-images:
 	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) -f Dockerfile --target dns-controller-manager .
 
-# TODO(martinweindel): Remove once https://github.com/gardener/gardener/pull/10642 is available as release.
-TOOLS_PKG_PATH := $(shell go list -tags tools -f '{{ .Dir }}' github.com/gardener/gardener/hack/tools 2>/dev/null)
-.PHONY: adjust-install-gosec.sh
-adjust-install-gosec.sh:
-	@chmod +xw $(TOOLS_PKG_PATH)/install-gosec.sh
-
 .PHONY: sast
-sast: adjust-install-gosec.sh $(GOSEC)
+sast: $(GOSEC)
 	@./hack/sast.sh
 
 .PHONY: sast-report
-sast-report: adjust-install-gosec.sh $(GOSEC)
+sast-report: $(GOSEC)
 	@./hack/sast.sh --gosec-report true
