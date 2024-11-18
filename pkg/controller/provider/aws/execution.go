@@ -5,30 +5,32 @@
 package aws
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"regexp"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/service/route53"
-	"k8s.io/client-go/util/flowcontrol"
-
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
+	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
+	"github.com/aws/smithy-go"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+	dnserrors "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
 type Change struct {
-	*route53.Change
+	*route53types.Change
 	Done        provider.DoneHandler
 	UpdateGroup string
 }
 
 type Execution struct {
 	logger.LogContext
-	r53           *route53.Route53
+	r53           route53.Client
 	policyContext *routingPolicyContext
 	rateLimiter   flowcontrol.RateLimiter
 	zone          provider.DNSHostedZone
@@ -49,27 +51,27 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 	}
 }
 
-func buildResourceRecordSet(name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) (*route53.ResourceRecordSet, error) {
-	if rrs, err := buildResourceRecordSetForAliasTarget(name, policy, policyContext, rset); rrs != nil || err != nil {
+func buildResourceRecordSet(ctx context.Context, name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) (*route53types.ResourceRecordSet, error) {
+	if rrs, err := buildResourceRecordSetForAliasTarget(ctx, name, policy, policyContext, rset); rrs != nil || err != nil {
 		return rrs, err
 	}
-	rrs := &route53.ResourceRecordSet{}
+	rrs := &route53types.ResourceRecordSet{}
 	rrs.Name = aws.String(name.DNSName)
-	rrs.Type = aws.String(rset.Type)
+	rrs.Type = route53types.RRType(rset.Type)
 	rrs.TTL = aws.Int64(rset.TTL)
-	rrs.ResourceRecords = make([]*route53.ResourceRecord, len(rset.Records))
+	rrs.ResourceRecords = make([]route53types.ResourceRecord, len(rset.Records))
 	for i, r := range rset.Records {
-		rrs.ResourceRecords[i] = &route53.ResourceRecord{
+		rrs.ResourceRecords[i] = route53types.ResourceRecord{
 			Value: aws.String(r.Value),
 		}
 	}
-	if err := policyContext.addRoutingPolicy(rrs, name, policy); err != nil {
+	if err := policyContext.addRoutingPolicy(ctx, rrs, name, policy); err != nil {
 		return nil, err
 	}
 	return rrs, nil
 }
 
-func (this *Execution) addChange(action string, req *provider.ChangeRequest, dnsset *dns.DNSSet) error {
+func (this *Execution) addChange(ctx context.Context, action route53types.ChangeAction, req *provider.ChangeRequest, dnsset *dns.DNSSet) error {
 	name, rset := dns.MapToProvider(req.Type, dnsset, this.zone.Domain())
 	name = name.Align()
 	if len(rset.Records) == 0 {
@@ -83,23 +85,23 @@ func (this *Execution) addChange(action string, req *provider.ChangeRequest, dns
 	} else if req.Deletion != nil {
 		policy = req.Deletion.RoutingPolicy
 	}
-	rrs, err := buildResourceRecordSet(name, policy, this.policyContext, rset)
+	rrs, err := buildResourceRecordSet(ctx, name, policy, this.policyContext, rset)
 	if err != nil {
 		this.Errorf("addChange failed for %s[%s]: %s", name, this.zone.Id(), err)
 		return err
 	}
 
-	change := &route53.Change{Action: aws.String(action), ResourceRecordSet: rrs}
+	change := &route53types.Change{Action: action, ResourceRecordSet: rrs}
 	this.addRawChange(name, dnsset.UpdateGroup, change, req.Done)
 
 	return nil
 }
 
-func (this *Execution) addRawChange(name dns.DNSSetName, updateGroup string, change *route53.Change, done provider.DoneHandler) {
+func (this *Execution) addRawChange(name dns.DNSSetName, updateGroup string, change *route53types.Change, done provider.DoneHandler) {
 	this.changes[name] = append(this.changes[name], &Change{Change: change, Done: done, UpdateGroup: updateGroup})
 }
 
-func (this *Execution) submitChanges(metrics provider.Metrics) error {
+func (this *Execution) submitChanges(ctx context.Context, metrics provider.Metrics) error {
 	if len(this.changes) == 0 {
 		return nil
 	}
@@ -115,12 +117,12 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 			if c.ResourceRecordSet.AliasTarget != nil {
 				extraInfo = fmt.Sprintf(" (alias target hosted zone %s)", *c.ResourceRecordSet.AliasTarget.HostedZoneId)
 			}
-			this.Infof("desired change: %s %s %s%s", *c.Action, *c.ResourceRecordSet.Name, *c.ResourceRecordSet.Type, extraInfo)
+			this.Infof("desired change: %s %s %s%s", c.Action, *c.ResourceRecordSet.Name, c.ResourceRecordSet.Type, extraInfo)
 		}
 
 		params := &route53.ChangeResourceRecordSetsInput{
 			HostedZoneId: aws.String(this.zone.Id().ID),
-			ChangeBatch: &route53.ChangeBatch{
+			ChangeBatch: &route53types.ChangeBatch{
 				Changes: mapChanges(changes),
 			},
 		}
@@ -128,15 +130,18 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 		metrics.AddZoneRequests(this.zone.Id().ID, provider.M_UPDATERECORDS, 1)
 		this.rateLimiter.Accept()
 		var succeededChanges, failedChanges []*Change
-		_, err := this.r53.ChangeResourceRecordSets(params)
+		_, err := this.r53.ChangeResourceRecordSets(ctx, params)
 		if err != nil {
 			failedChanges = changes
-			if b, ok := err.(awserr.BatchedErrors); ok {
-				switch b.Code() {
-				case "Throttling":
-					throttlingErrCount++
-				case "InvalidChangeBatch":
-					succeededChanges, failedChanges, err = this.tryFixChanges(b.Message(), changes)
+			var apiError smithy.APIError
+			if errors.As(err, &apiError) {
+				switch v := apiError.(type) {
+				case *route53types.InvalidChangeBatch:
+					succeededChanges, failedChanges, err = this.tryFixChanges(ctx, v.ErrorMessage(), changes)
+				default:
+					if v.ErrorCode() == "Throttling" {
+						throttlingErrCount++
+					}
 				}
 			}
 		} else {
@@ -163,7 +168,7 @@ func (this *Execution) submitChanges(metrics provider.Metrics) error {
 	if failed > 0 {
 		err := fmt.Errorf("%d changes failed", failed)
 		if throttlingErrCount == len(limitedChanges) {
-			err = errors.NewThrottlingError(err)
+			err = dnserrors.NewThrottlingError(err)
 		}
 		return err
 	}
@@ -175,28 +180,28 @@ var (
 	patternExists   = regexp.MustCompile(`Tried to create resource record set \[name='([^']+)', type='([^']+)'] but it already exists`)
 )
 
-func (this *Execution) tryFixChanges(message string, changes []*Change) (succeeded []*Change, failed []*Change, err error) {
+func (this *Execution) tryFixChanges(ctx context.Context, message string, changes []*Change) (succeeded []*Change, failed []*Change, err error) {
 	submatchNotFound := patternNotFound.FindAllStringSubmatch(message, -1)
 	submatchExists := patternExists.FindAllStringSubmatch(message, -1)
 	var unclear []*Change
 outer:
 	for _, change := range changes {
-		switch *change.Change.Action {
-		case route53.ChangeActionDelete:
+		switch change.Change.Action {
+		case route53types.ChangeActionDelete:
 			for _, m := range submatchNotFound {
-				if dns.NormalizeHostname(m[1]) == dns.NormalizeHostname(*change.Change.ResourceRecordSet.Name) && m[2] == *change.Change.ResourceRecordSet.Type {
+				if dns.NormalizeHostname(m[1]) == dns.NormalizeHostname(*change.Change.ResourceRecordSet.Name) && m[2] == string(change.Change.ResourceRecordSet.Type) {
 					this.Infof("Ignoring already deleted record: %s (%s)",
-						*change.Change.ResourceRecordSet.Name, *change.Change.ResourceRecordSet.Type)
+						*change.Change.ResourceRecordSet.Name, change.Change.ResourceRecordSet.Type)
 					succeeded = append(succeeded, change)
 					continue outer
 				}
 			}
-		case route53.ChangeActionCreate:
+		case route53types.ChangeActionCreate:
 			for _, m := range submatchExists {
-				if dns.NormalizeHostname(m[1]) == dns.NormalizeHostname(*change.Change.ResourceRecordSet.Name) && m[2] == *change.Change.ResourceRecordSet.Type {
-					if this.isFetchedRecordSetEqual(change) {
+				if dns.NormalizeHostname(m[1]) == dns.NormalizeHostname(*change.Change.ResourceRecordSet.Name) && m[2] == string(change.Change.ResourceRecordSet.Type) {
+					if this.isFetchedRecordSetEqual(ctx, change) {
 						this.Infof("Ignoring already created record: %s (%s)",
-							*change.Change.ResourceRecordSet.Name, *change.Change.ResourceRecordSet.Type)
+							*change.Change.ResourceRecordSet.Name, change.Change.ResourceRecordSet.Type)
 						succeeded = append(succeeded, change)
 						continue outer
 					}
@@ -209,11 +214,11 @@ outer:
 	if len(unclear) > 0 {
 		params := &route53.ChangeResourceRecordSetsInput{
 			HostedZoneId: aws.String(this.zone.Id().ID),
-			ChangeBatch: &route53.ChangeBatch{
+			ChangeBatch: &route53types.ChangeBatch{
 				Changes: mapChanges(unclear),
 			},
 		}
-		_, err = this.r53.ChangeResourceRecordSets(params)
+		_, err = this.r53.ChangeResourceRecordSets(ctx, params)
 		if err != nil {
 			failed = append(failed, unclear...)
 		} else {
@@ -223,10 +228,10 @@ outer:
 	return
 }
 
-func (this *Execution) isFetchedRecordSetEqual(change *Change) bool {
-	output, err := this.r53.ListResourceRecordSets(&route53.ListResourceRecordSetsInput{
+func (this *Execution) isFetchedRecordSetEqual(ctx context.Context, change *Change) bool {
+	output, err := this.r53.ListResourceRecordSets(ctx, &route53.ListResourceRecordSetsInput{
 		HostedZoneId:          aws.String(this.zone.Id().ID),
-		MaxItems:              aws.String("1"),
+		MaxItems:              aws.Int32(1),
 		StartRecordIdentifier: nil,
 		StartRecordName:       change.Change.ResourceRecordSet.Name,
 		StartRecordType:       change.Change.ResourceRecordSet.Type,
@@ -236,7 +241,7 @@ func (this *Execution) isFetchedRecordSetEqual(change *Change) bool {
 	}
 	crrs := change.Change.ResourceRecordSet
 	orrs := output.ResourceRecordSets[0]
-	if dns.NormalizeHostname(*crrs.Name) != dns.NormalizeHostname(*orrs.Name) || *crrs.Type != *orrs.Type || !safeCompareInt64(crrs.TTL, orrs.TTL) || len(crrs.ResourceRecords) != len(orrs.ResourceRecords) {
+	if dns.NormalizeHostname(*crrs.Name) != dns.NormalizeHostname(*orrs.Name) || crrs.Type != orrs.Type || !safeCompareInt64(crrs.TTL, orrs.TTL) || len(crrs.ResourceRecords) != len(orrs.ResourceRecords) {
 		return false
 	}
 	for i := range crrs.ResourceRecords {
@@ -262,7 +267,7 @@ func limitChangeSet(changesByName map[dns.DNSSetName][]*Change, max int) [][]*Ch
 	batch := make([]*Change, 0)
 	for _, changes := range changesByName {
 		for _, change := range changes {
-			if aws.StringValue(change.Change.Action) == route53.ChangeActionDelete {
+			if change.Change.Action == route53types.ChangeActionDelete {
 				batch, batches = addLimited(change, batch, batches, max)
 			} else {
 				arr := updateChanges[change.UpdateGroup]
@@ -297,10 +302,10 @@ func addLimited(change *Change, batch []*Change, batches [][]*Change, max int) (
 	return append(batch, change), batches
 }
 
-func mapChanges(changes []*Change) []*route53.Change {
-	dest := []*route53.Change{}
+func mapChanges(changes []*Change) []route53types.Change {
+	dest := []route53types.Change{}
 	for _, c := range changes {
-		dest = append(dest, c.Change)
+		dest = append(dest, *c.Change)
 	}
 	return dest
 }

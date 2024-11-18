@@ -5,14 +5,17 @@
 package aws
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/route53"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/route53"
+	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
@@ -35,7 +38,7 @@ const (
 	refreshCIDRCollectionsPeriodNotFound = 15 * time.Minute
 )
 
-func newRoutingPolicyContext(r53 *route53.Route53) *routingPolicyContext {
+func newRoutingPolicyContext(r53 route53.Client) *routingPolicyContext {
 	return &routingPolicyContext{
 		r53:                            r53,
 		cachedCIDRCollectionNameToID:   map[string]string{},
@@ -47,8 +50,8 @@ func newRoutingPolicyContext(r53 *route53.Route53) *routingPolicyContext {
 
 type routingPolicyContext struct {
 	sync.Mutex
-	r53                             *route53.Route53
-	cachedGeoLocationNameToLocation map[string]*route53.GeoLocation
+	r53                             route53.Client
+	cachedGeoLocationNameToLocation map[string]*route53types.GeoLocation
 	cachedGeoLocationCodeToName     map[string]string
 	lastGeoLocationListUpdate       time.Time
 
@@ -64,18 +67,18 @@ type cidrBlockMap struct {
 	cidrBlockToLocation map[string]string
 }
 
-func (r *routingPolicyContext) lookupGeoLocation(name string) (*route53.GeoLocation, error) {
+func (r *routingPolicyContext) lookupGeoLocation(ctx context.Context, name string) (*route53types.GeoLocation, error) {
 	r.Lock()
 	defer r.Unlock()
 
-	if err := r.refreshGeoLocationList(refreshGeoLocationPeriod); err != nil {
+	if err := r.refreshGeoLocationList(ctx, refreshGeoLocationPeriod); err != nil {
 		return nil, err
 	}
 
 	location := r.cachedGeoLocationNameToLocation[name]
 	if location == nil {
 		// if not found refresh may be retried
-		if err := r.refreshGeoLocationList(refreshGeoLocationPeriodNotFound); err != nil {
+		if err := r.refreshGeoLocationList(ctx, refreshGeoLocationPeriodNotFound); err != nil {
 			return nil, err
 		}
 		location = r.cachedGeoLocationNameToLocation[name]
@@ -87,7 +90,7 @@ func (r *routingPolicyContext) lookupGeoLocation(name string) (*route53.GeoLocat
 	return location, nil
 }
 
-func (r *routingPolicyContext) geoLocationName(geoLocation *route53.GeoLocation) (string, error) {
+func (r *routingPolicyContext) geoLocationName(ctx context.Context, geoLocation *route53types.GeoLocation) (string, error) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -95,7 +98,7 @@ func (r *routingPolicyContext) geoLocationName(geoLocation *route53.GeoLocation)
 		return "", fmt.Errorf("geoLocation is nil")
 	}
 
-	if err := r.refreshGeoLocationList(refreshGeoLocationPeriod); err != nil {
+	if err := r.refreshGeoLocationList(ctx, refreshGeoLocationPeriod); err != nil {
 		return "", err
 	}
 
@@ -103,7 +106,7 @@ func (r *routingPolicyContext) geoLocationName(geoLocation *route53.GeoLocation)
 	name := r.cachedGeoLocationCodeToName[code]
 	if name == "" {
 		// if not found refresh may be retried
-		if err := r.refreshGeoLocationList(refreshGeoLocationPeriodNotFound); err != nil {
+		if err := r.refreshGeoLocationList(ctx, refreshGeoLocationPeriodNotFound); err != nil {
 			return "", err
 		}
 		name = r.cachedGeoLocationCodeToName[code]
@@ -115,12 +118,12 @@ func (r *routingPolicyContext) geoLocationName(geoLocation *route53.GeoLocation)
 	return name, nil
 }
 
-func (r *routingPolicyContext) refreshGeoLocationList(period time.Duration) error {
+func (r *routingPolicyContext) refreshGeoLocationList(ctx context.Context, period time.Duration) error {
 	if r.lastGeoLocationListUpdate.Add(period).After(time.Now()) {
 		return nil
 	}
 
-	output, err := r.r53.ListGeoLocations(&route53.ListGeoLocationsInput{})
+	output, err := r.r53.ListGeoLocations(ctx, &route53.ListGeoLocationsInput{})
 	if err != nil {
 		r.lastGeoLocationListUpdate = time.Now().Add(-period / 2)
 		return fmt.Errorf("listing geo-locations failed: %s", err)
@@ -128,25 +131,25 @@ func (r *routingPolicyContext) refreshGeoLocationList(period time.Duration) erro
 
 	r.lastGeoLocationListUpdate = time.Now()
 	r.cachedGeoLocationCodeToName = map[string]string{}
-	r.cachedGeoLocationNameToLocation = map[string]*route53.GeoLocation{}
+	r.cachedGeoLocationNameToLocation = map[string]*route53types.GeoLocation{}
 
 	for _, details := range output.GeoLocationDetailsList {
 		var name, altName string
 		if details.SubdivisionName != nil {
-			name = aws.StringValue(details.SubdivisionName)
-			altName = fmt.Sprintf("country=%s,subdivision=%s", aws.StringValue(details.CountryCode), aws.StringValue(details.SubdivisionCode))
+			name = aws.ToString(details.SubdivisionName)
+			altName = fmt.Sprintf("country=%s,subdivision=%s", aws.ToString(details.CountryCode), aws.ToString(details.SubdivisionCode))
 		} else if details.CountryName != nil {
-			name = aws.StringValue(details.CountryName)
-			altName = fmt.Sprintf("country=%s", aws.StringValue(details.CountryCode))
+			name = aws.ToString(details.CountryName)
+			altName = fmt.Sprintf("country=%s", aws.ToString(details.CountryCode))
 		} else if details.ContinentName != nil {
-			name = aws.StringValue(details.ContinentName)
-			altName = fmt.Sprintf("continent=%s", aws.StringValue(details.ContinentCode))
+			name = aws.ToString(details.ContinentName)
+			altName = fmt.Sprintf("continent=%s", aws.ToString(details.ContinentCode))
 		}
 		if name == "" {
 			// should never happen
 			continue
 		}
-		location := &route53.GeoLocation{
+		location := &route53types.GeoLocation{
 			ContinentCode:   details.ContinentCode,
 			CountryCode:     details.CountryCode,
 			SubdivisionCode: details.SubdivisionCode,
@@ -159,19 +162,19 @@ func (r *routingPolicyContext) refreshGeoLocationList(period time.Duration) erro
 	return nil
 }
 
-func (r *routingPolicyContext) lookupCIDRRoutingConfig(collectionName, locationName string) (*route53.CidrRoutingConfig, error) {
+func (r *routingPolicyContext) lookupCIDRRoutingConfig(ctx context.Context, collectionName, locationName string) (*route53types.CidrRoutingConfig, error) {
 	r.Lock()
 	defer r.Unlock()
 
 	// refresh every hour
-	if err := r.refreshCIDRCollections(refreshCIDRCollectionsPeriod, "", collectionName); err != nil {
+	if err := r.refreshCIDRCollections(ctx, refreshCIDRCollectionsPeriod, "", collectionName); err != nil {
 		return nil, err
 	}
 
 	collectionID := r.cachedCIDRCollectionNameToID[collectionName]
 	// if not found try after refresh, but only if last lookup older than 5 minutes
 	if collectionID == "" {
-		if err := r.refreshCIDRCollections(refreshCIDRCollectionsPeriodNotFound, "", collectionName); err != nil {
+		if err := r.refreshCIDRCollections(ctx, refreshCIDRCollectionsPeriodNotFound, "", collectionName); err != nil {
 			return nil, err
 		}
 		collectionID = r.cachedCIDRCollectionNameToID[collectionName]
@@ -186,32 +189,32 @@ func (r *routingPolicyContext) lookupCIDRRoutingConfig(collectionName, locationN
 		return nil, fmt.Errorf("CIDR collection ID %s not found", collectionID)
 	}
 	if locationName != "*" && blocks.locationToCIDRBlock[locationName] == "" {
-		if err := r.refreshCIDRCollections(refreshCIDRCollectionsPeriodNotFound, collectionID, collectionName); err != nil {
+		if err := r.refreshCIDRCollections(ctx, refreshCIDRCollectionsPeriodNotFound, collectionID, collectionName); err != nil {
 			return nil, err
 		}
 	}
 	if locationName != "*" && blocks.locationToCIDRBlock[locationName] == "" {
 		return nil, fmt.Errorf("location name %s not found in CIDR collection named %s", locationName, collectionName)
 	}
-	return &route53.CidrRoutingConfig{
+	return &route53types.CidrRoutingConfig{
 		CollectionId: aws.String(collectionID),
 		LocationName: aws.String(locationName),
 	}, nil
 }
 
-func (r *routingPolicyContext) collectionName(collectionID string) (string, error) {
+func (r *routingPolicyContext) collectionName(ctx context.Context, collectionID string) (string, error) {
 	r.Lock()
 	defer r.Unlock()
 
 	// refresh every 24 hours
-	if err := r.refreshCIDRCollections(refreshCIDRCollectionsPeriod, collectionID, ""); err != nil {
+	if err := r.refreshCIDRCollections(ctx, refreshCIDRCollectionsPeriod, collectionID, ""); err != nil {
 		return "", err
 	}
 
 	collectionName := r.cachedCIDRCollectionIDToName[collectionID]
 	// if not found try after refresh, but only if last lookup older than 10 minutes
 	if collectionName == "" {
-		if err := r.refreshCIDRCollections(refreshCIDRCollectionsPeriodNotFound, collectionID, ""); err != nil {
+		if err := r.refreshCIDRCollections(ctx, refreshCIDRCollectionsPeriodNotFound, collectionID, ""); err != nil {
 			return "", err
 		}
 		collectionName = r.cachedCIDRCollectionIDToName[collectionID]
@@ -224,13 +227,13 @@ func (r *routingPolicyContext) collectionName(collectionID string) (string, erro
 	return collectionName, nil
 }
 
-func (r *routingPolicyContext) refreshCIDRCollections(period time.Duration, collectionID, collectionName string) error {
+func (r *routingPolicyContext) refreshCIDRCollections(ctx context.Context, period time.Duration, collectionID, collectionName string) error {
 	if collectionID == "" && collectionName == "" {
 		return fmt.Errorf("missing collection ID or name")
 	}
 
 	if r.lastCIDRCollectionUpdate.Add(period).Before(time.Now()) {
-		output, err := r.r53.ListCidrCollections(&route53.ListCidrCollectionsInput{})
+		output, err := r.r53.ListCidrCollections(ctx, &route53.ListCidrCollectionsInput{})
 		if err != nil {
 			r.lastCIDRCollectionUpdate = time.Now().Add(-period / 2)
 			return fmt.Errorf("listing CIDR collections failed: %s", err)
@@ -240,8 +243,8 @@ func (r *routingPolicyContext) refreshCIDRCollections(period time.Duration, coll
 		r.cachedCIDRCollectionIDToName = map[string]string{}
 		r.cachedCIDRCollectionNameToID = map[string]string{}
 		for _, item := range output.CidrCollections {
-			id := aws.StringValue(item.Id)
-			name := aws.StringValue(item.Name)
+			id := aws.ToString(item.Id)
+			name := aws.ToString(item.Name)
 			r.cachedCIDRCollectionIDToName[id] = name
 			r.cachedCIDRCollectionNameToID[name] = id
 		}
@@ -268,7 +271,7 @@ func (r *routingPolicyContext) refreshCIDRCollections(period time.Duration, coll
 
 	lastUpdate := r.lastCIDRCollectionBlocksUpdate[collectionID]
 	if lastUpdate.Add(period).Before(time.Now()) {
-		output, err := r.r53.ListCidrBlocks(&route53.ListCidrBlocksInput{CollectionId: aws.String(collectionID)})
+		output, err := r.r53.ListCidrBlocks(ctx, &route53.ListCidrBlocksInput{CollectionId: aws.String(collectionID)})
 		if err != nil {
 			r.lastCIDRCollectionBlocksUpdate[collectionID] = time.Now().Add(-period / 2)
 			return fmt.Errorf("listing CIDR blocks failed for %s (%s)", collectionID, collectionName)
@@ -280,8 +283,8 @@ func (r *routingPolicyContext) refreshCIDRCollections(period time.Duration, coll
 			cidrBlockToLocation: map[string]string{},
 		}
 		for _, item := range output.CidrBlocks {
-			locationName := aws.StringValue(item.LocationName)
-			cidrBlock := aws.StringValue(item.CidrBlock)
+			locationName := aws.ToString(item.LocationName)
+			cidrBlock := aws.ToString(item.CidrBlock)
 			blocks.locationToCIDRBlock[locationName] = cidrBlock
 			blocks.cidrBlockToLocation[cidrBlock] = locationName
 		}
@@ -291,7 +294,7 @@ func (r *routingPolicyContext) refreshCIDRCollections(period time.Duration, coll
 	return nil
 }
 
-func (r *routingPolicyContext) addRoutingPolicy(rrset *route53.ResourceRecordSet, name dns.DNSSetName, routingPolicy *dns.RoutingPolicy) error {
+func (r *routingPolicyContext) addRoutingPolicy(ctx context.Context, rrset *route53types.ResourceRecordSet, name dns.DNSSetName, routingPolicy *dns.RoutingPolicy) error {
 	if name.SetIdentifier == "" && routingPolicy == nil {
 		return nil
 	}
@@ -338,18 +341,18 @@ func (r *routingPolicyContext) addRoutingPolicy(rrset *route53.ResourceRecordSet
 			}
 			rrset.Weight = aws.Int64(v)
 		case keyRegion:
-			rrset.Region = aws.String(value)
+			rrset.Region = route53types.ResourceRecordSetRegion(value)
 		case keyLocation:
 			switch routingPolicy.Type {
 			case dns.RoutingPolicyGeoLocation:
-				geoLocation, err := r.lookupGeoLocation(value)
+				geoLocation, err := r.lookupGeoLocation(ctx, value)
 				if err != nil {
 					return err
 				}
 				rrset.GeoLocation = geoLocation
 			case dns.RoutingPolicyIPBased:
 				collection := routingPolicy.Parameters[keyCollection]
-				cidrRoutingConfig, err := r.lookupCIDRRoutingConfig(collection, value)
+				cidrRoutingConfig, err := r.lookupCIDRRoutingConfig(ctx, collection, value)
 				if err != nil {
 					return err
 				}
@@ -358,16 +361,16 @@ func (r *routingPolicyContext) addRoutingPolicy(rrset *route53.ResourceRecordSet
 		case keyFailoverRecordType:
 			upperValue := strings.ToUpper(value)
 			valid := false
-			for _, validValue := range route53.ResourceRecordSetFailover_Values() {
-				if validValue == upperValue {
+			for _, validValue := range route53types.ResourceRecordSetFailoverPrimary.Values() {
+				if string(validValue) == upperValue {
 					valid = true
+					rrset.Failover = validValue
 					break
 				}
 			}
 			if !valid {
 				return fmt.Errorf("invalid %s value: %s", keyFailoverRecordType, value)
 			}
-			rrset.Failover = aws.String(upperValue)
 		case keyDisableEvaluateTargetHealth:
 			if rrset.AliasTarget == nil {
 				return fmt.Errorf("%s only allowed for alias targets", keyDisableEvaluateTargetHealth)
@@ -377,7 +380,7 @@ func (r *routingPolicyContext) addRoutingPolicy(rrset *route53.ResourceRecordSet
 				return fmt.Errorf("invalid %s value: %s", keyDisableEvaluateTargetHealth, value)
 			}
 			if disabled {
-				rrset.AliasTarget.EvaluateTargetHealth = aws.Bool(false)
+				rrset.AliasTarget.EvaluateTargetHealth = false
 			}
 		case keyHealthCheckID:
 			rrset.HealthCheckId = aws.String(value)
@@ -387,14 +390,14 @@ func (r *routingPolicyContext) addRoutingPolicy(rrset *route53.ResourceRecordSet
 	return nil
 }
 
-func (r *routingPolicyContext) extractRoutingPolicy(rrset *route53.ResourceRecordSet) *dns.RoutingPolicy {
+func (r *routingPolicyContext) extractRoutingPolicy(ctx context.Context, rrset *route53types.ResourceRecordSet) *dns.RoutingPolicy {
 	if rrset.SetIdentifier == nil {
 		return nil
 	}
 
 	var keyvalues []string
 	if rrset.HealthCheckId != nil {
-		keyvalues = []string{keyHealthCheckID, aws.StringValue(rrset.HealthCheckId)}
+		keyvalues = []string{keyHealthCheckID, aws.ToString(rrset.HealthCheckId)}
 	}
 
 	if rrset.Weight != nil {
@@ -402,13 +405,13 @@ func (r *routingPolicyContext) extractRoutingPolicy(rrset *route53.ResourceRecor
 		return dns.NewRoutingPolicy(dns.RoutingPolicyWeighted, keyvalues...)
 	}
 
-	if rrset.Region != nil {
-		keyvalues = append(keyvalues, keyRegion, *rrset.Region)
+	if rrset.Region != "" {
+		keyvalues = append(keyvalues, keyRegion, string(rrset.Region))
 		return dns.NewRoutingPolicy(dns.RoutingPolicyLatency, keyvalues...)
 	}
 
 	if rrset.GeoLocation != nil {
-		location, err := r.geoLocationName(rrset.GeoLocation)
+		location, err := r.geoLocationName(ctx, rrset.GeoLocation)
 		if err != nil {
 			// ignore
 			return nil
@@ -418,30 +421,30 @@ func (r *routingPolicyContext) extractRoutingPolicy(rrset *route53.ResourceRecor
 	}
 
 	if rrset.CidrRoutingConfig != nil {
-		collectioName, err := r.collectionName(aws.StringValue(rrset.CidrRoutingConfig.CollectionId))
+		collectioName, err := r.collectionName(ctx, aws.ToString(rrset.CidrRoutingConfig.CollectionId))
 		if err != nil {
 			// ignore
 			return nil
 		}
-		keyvalues = append(keyvalues, keyCollection, collectioName, keyLocation, aws.StringValue(rrset.CidrRoutingConfig.LocationName))
+		keyvalues = append(keyvalues, keyCollection, collectioName, keyLocation, aws.ToString(rrset.CidrRoutingConfig.LocationName))
 		return dns.NewRoutingPolicy(dns.RoutingPolicyGeoLocation, keyvalues...)
 	}
 
-	if rrset.Failover != nil {
-		if rrset.AliasTarget != nil && aws.BoolValue(rrset.AliasTarget.EvaluateTargetHealth) {
+	if rrset.Failover != "" {
+		if rrset.AliasTarget != nil && rrset.AliasTarget.EvaluateTargetHealth {
 			// only store false value, as true is default
 			keyvalues = append(keyvalues, keyDisableEvaluateTargetHealth, "true")
 		}
-		keyvalues = append(keyvalues, keyFailoverRecordType, aws.StringValue(rrset.Failover))
+		keyvalues = append(keyvalues, keyFailoverRecordType, string(rrset.Failover))
 		return dns.NewRoutingPolicy(dns.RoutingPolicyFailover, keyvalues...)
 	}
 	// ignore unsupported routing policy
 	return nil
 }
 
-func codeFromGeoLocation(location *route53.GeoLocation) string {
+func codeFromGeoLocation(location *route53types.GeoLocation) string {
 	if location == nil {
 		return ""
 	}
-	return fmt.Sprintf("%s,%s,%s", aws.StringValue(location.ContinentCode), aws.StringValue(location.CountryCode), aws.StringValue(location.SubdivisionCode))
+	return fmt.Sprintf("%s,%s,%s", aws.ToString(location.ContinentCode), aws.ToString(location.CountryCode), aws.ToString(location.SubdivisionCode))
 }
