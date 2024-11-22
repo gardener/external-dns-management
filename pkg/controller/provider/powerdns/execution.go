@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/joeig/go-powerdns/v3"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -66,7 +67,7 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (*RecordSet, 
 		}
 
 		recordSet.Content = content
-		recordSet.TTL = uint32(rset.TTL)
+		recordSet.TTL = utils.TTLToUint32(rset.TTL)
 	}
 
 	return &recordSet, nil

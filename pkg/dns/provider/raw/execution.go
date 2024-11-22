@@ -109,9 +109,9 @@ func (this *Execution) add(name dns.DNSSetName, rset *dns.RecordSet, modonly boo
 	for _, r := range rset.Records {
 		old := this.state.GetRecord(name, rtype, r.Value)
 		if old != nil {
-			if (!modonly) || (old.GetTTL() != int(rset.TTL)) {
+			if (!modonly) || (old.GetTTL() != rset.TTL) {
 				or := old.Copy()
-				or.SetTTL(int(rset.TTL))
+				or.SetTTL(rset.TTL)
 				*found = append(*found, or)
 			}
 		} else {

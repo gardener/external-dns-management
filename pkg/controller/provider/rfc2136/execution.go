@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/external-dns-management/pkg/dns/utils"
 	miekgdns "github.com/miekg/dns"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -93,7 +94,7 @@ func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) ([
 
 	hdr := miekgdns.RR_Header{
 		Name: miekgdns.Fqdn(name),
-		Ttl:  uint32(rset.TTL),
+		Ttl:  utils.TTLToUint32(rset.TTL),
 	}
 	switch rset.Type {
 	case dns.RS_A:

@@ -25,6 +25,6 @@ func (r *Record) GetValue() string {
 	}
 	return r.Content
 }
-func (r *Record) GetTTL() int      { return r.TTL }
-func (r *Record) SetTTL(ttl int)   { r.TTL = ttl }
+func (r *Record) GetTTL() int64    { return int64(r.TTL) }
+func (r *Record) SetTTL(ttl int64) { r.TTL = int(ttl) }
 func (r *Record) Copy() raw.Record { n := *r; return &n }

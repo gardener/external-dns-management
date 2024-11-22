@@ -7,7 +7,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
+	"math/rand/v2"
 	"os/exec"
 	"strings"
 	"time"
@@ -228,7 +228,7 @@ func (u *TestUtils) AwaitLookupTXT(dnsname string, expected ...string) {
 func RandStringBytes(n int) string {
 	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))] // #nosec G404  -- not used for cryptographic purposes
+		b[i] = letterBytes[rand.IntN(len(letterBytes))] // #nosec G404  -- not used for cryptographic purposes
 	}
 	return string(b)
 }

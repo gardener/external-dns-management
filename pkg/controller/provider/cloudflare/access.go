@@ -77,7 +77,7 @@ func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) erro
 		Type:    r.GetType(),
 		Name:    r.GetDNSName(),
 		Content: r.GetValue(),
-		TTL:     ttl,
+		TTL:     int(ttl),
 		ZoneID:  a.ZoneID,
 	}
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_CREATERECORDS, 1)
@@ -94,7 +94,7 @@ func (this *access) UpdateRecord(r raw.Record, zone provider.DNSHostedZone) erro
 		Type:    r.GetType(),
 		Name:    r.GetDNSName(),
 		Content: r.GetValue(),
-		TTL:     ttl,
+		TTL:     int(ttl),
 		ZoneID:  a.ZoneID,
 	}
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
@@ -136,7 +136,7 @@ func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZ
 	return rs, nil
 }
 
-func testTTL(ttl *int) {
+func testTTL(ttl *int64) {
 	if *ttl < 120 {
 		*ttl = 1
 	}

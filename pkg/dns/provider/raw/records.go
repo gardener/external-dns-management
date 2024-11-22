@@ -17,8 +17,8 @@ type Record interface {
 	GetValue() string
 	GetDNSName() string
 	GetSetIdentifier() string
-	GetTTL() int
-	SetTTL(int)
+	GetTTL() int64
+	SetTTL(int64)
 	Copy() Record
 }
 
@@ -98,7 +98,7 @@ func (this *ZoneState) CalculateDNSSets() {
 		for rtype, rset := range dset {
 			rs := dns.NewRecordSet(rtype, 0, nil)
 			for _, r := range rset {
-				rs.TTL = int64(r.GetTTL())
+				rs.TTL = r.GetTTL()
 				rs.Add(&dns.Record{Value: r.GetValue()})
 			}
 			this.dnssets.AddRecordSetFromProviderEx(dnsname, nil, rs)
