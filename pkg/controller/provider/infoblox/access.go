@@ -90,7 +90,7 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, _ provide
 		record = (*RecordTXT)(r)
 	}
 	if record != nil {
-		record.SetTTL(int(ttl))
+		record.SetTTL(ttl)
 	}
 	return
 }

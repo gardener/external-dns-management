@@ -84,7 +84,7 @@ func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) erro
 		Type:     r.GetType(),
 		Hostname: r.GetDNSName(),
 		Value:    r.GetValue(),
-		TTL:      int64(ttl),
+		TTL:      ttl,
 	}
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_CREATERECORDS, 1)
 	this.rateLimiter.Accept()
@@ -144,7 +144,7 @@ func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZ
 	return rs, nil
 }
 
-func testTTL(ttl *int) {
+func testTTL(ttl *int64) {
 	if *ttl < 1 {
 		*ttl = 1
 	}

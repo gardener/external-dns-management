@@ -10,6 +10,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/server/remote/common"
 )
 
@@ -57,7 +58,7 @@ func MarshalDNSSet(local *dns.DNSSet) *common.DNSSet {
 func MarshalRecordSet(local *dns.RecordSet) *common.RecordSet {
 	remote := &common.RecordSet{
 		Type: local.Type,
-		Ttl:  int32(local.TTL),
+		Ttl:  utils.TTLToInt32(local.TTL),
 	}
 	for _, v := range local.Records {
 		remote.Record = append(remote.Record, &common.RecordSet_Record{Value: v.Value})

@@ -23,7 +23,7 @@ type DedicatedRecord interface {
 	GetValue() string
 	GetDNSName() string
 	GetSetIdentifier() string
-	GetTTL() int
+	GetTTL() int64
 }
 
 type DedicatedRecordSet []DedicatedRecord
@@ -31,7 +31,7 @@ type DedicatedRecordSet []DedicatedRecord
 type dedicatedRecord struct {
 	dns.DNSSetName
 	Type  string
-	TTL   int
+	TTL   int64
 	Value string
 }
 
@@ -43,7 +43,7 @@ func (r *dedicatedRecord) GetSetIdentifier() string { return r.SetIdentifier }
 
 func (r *dedicatedRecord) GetDNSName() string { return r.DNSName }
 
-func (r *dedicatedRecord) GetTTL() int { return r.TTL }
+func (r *dedicatedRecord) GetTTL() int64 { return r.TTL }
 
 func FromDedicatedRecordSet(setName dns.DNSSetName, rs *dns.RecordSet) DedicatedRecordSet {
 	recordset := DedicatedRecordSet{}
@@ -51,7 +51,7 @@ func FromDedicatedRecordSet(setName dns.DNSSetName, rs *dns.RecordSet) Dedicated
 		recordset = append(recordset, &dedicatedRecord{
 			DNSSetName: setName,
 			Type:       rs.Type,
-			TTL:        int(rs.TTL),
+			TTL:        rs.TTL,
 			Value:      r.Value,
 		})
 	}
@@ -65,7 +65,7 @@ func ToDedicatedRecordset(rawrs DedicatedRecordSet) (dns.DNSSetName, *dns.Record
 	dnsName := rawrs[0].GetDNSName()
 	setIdentifier := rawrs[0].GetSetIdentifier()
 	rtype := rawrs[0].GetType()
-	ttl := int64(rawrs[0].GetTTL())
+	ttl := rawrs[0].GetTTL()
 	records := []*dns.Record{}
 	for _, r := range rawrs {
 		records = append(records, &dns.Record{Value: r.GetValue()})
