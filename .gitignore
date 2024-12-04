@@ -3,23 +3,21 @@ bin/
 *.sw[pq]
 .DS_Store
 tmp/
-/local/
-/local
-/cmd/dns
-/cmd/compound/dns-controller-manager
-/dns-controller-manager
-/dns-controller-manager-compound
-/dns-controller-manager-dedicated
-/cmd/dns/dns-controller-manager
-/main
-/test/functional/tmp-*.yaml
-/test/functional/kubebuilder*
-/test/integration/kubebuilder*
-/test/integration/default.etcd
-/test/integration/integration.test
+local/
+cmd/dns
+cmd/compound/dns-controller-manager
+dns-controller-manager
+dns-controller-manager-*
+cmd/dns/dns-controller-manager
+main
+test/functional/tmp-*.yaml
+test/functional/kubebuilder*
+test/functional/functional.test
+test/integration/kubebuilder*
+test/integration/default.etcd
+test/integration/integration.test
 .vscode/
 .kubeconfig-kind-integration
-test/functional/functional.test
 
 # gosec
 gosec-report.sarif

@@ -7,16 +7,13 @@ package aws
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 
-	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/data"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/mapping"
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
-
-var canonicalHostedZones = data.CanonicalHostedZones()
 
 // buildRecordSetFromAliasTarget transforms an A or AAAA alias target to a ALIAS_A or ALIAS_AAAA dns.RecordSet.
 // Otherwise returns nil.
@@ -53,7 +50,7 @@ func buildResourceRecordSetForAliasTarget(ctx context.Context, name dns.DNSSetNa
 	}
 
 	target := dns.NormalizeHostname(rset.Records[0].Value)
-	hostedZone := canonicalHostedZone(target)
+	hostedZone := mapping.CanonicalHostedZone(target)
 	if hostedZone == "" {
 		return nil, fmt.Errorf("Corrupted alias record set")
 	}
@@ -72,15 +69,4 @@ func buildResourceRecordSetForAliasTarget(ctx context.Context, name dns.DNSSetNa
 		return nil, err
 	}
 	return rrset, nil
-}
-
-// canonicalHostedZone returns the matching canonical zone for a given hostname.
-func canonicalHostedZone(hostname string) string {
-	for suffix, zone := range canonicalHostedZones {
-		if strings.HasSuffix(hostname, suffix) {
-			return zone
-		}
-	}
-
-	return ""
 }
