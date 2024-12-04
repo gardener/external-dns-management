@@ -79,19 +79,6 @@ type DNSEntrySpec struct {
 }
 
 type DNSEntryStatus struct {
-	DNSBaseStatus `json:",inline"`
-	// effective targets generated for the entry
-	// +optional
-	Targets []string `json:"targets,omitempty"`
-	// effective routing policy
-	// +optional
-	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
-	// effective lookup interval for CNAMEs that must be resolved to IP addresses
-	// +optional
-	CNameLookupInterval *int64 `json:"cnameLookupInterval,omitempty"`
-}
-
-type DNSBaseStatus struct {
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 	// entry state
@@ -115,6 +102,15 @@ type DNSBaseStatus struct {
 	// time to live used for the entry
 	// +optional
 	TTL *int64 `json:"ttl,omitempty"`
+	// effective targets generated for the entry
+	// +optional
+	Targets []string `json:"targets,omitempty"`
+	// effective routing policy
+	// +optional
+	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
+	// effective lookup interval for CNAMEs that must be resolved to IP addresses
+	// +optional
+	CNameLookupInterval *int64 `json:"cnameLookupInterval,omitempty"`
 }
 
 type EntryReference struct {

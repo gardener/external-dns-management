@@ -101,7 +101,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 					if e.IsDeleting() {
 						model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
 					}
-					status := e.Object().BaseStatus()
+					status := e.Object().Status()
 					msg := MSG_PRESERVED
 					trigger := false
 					if status.State == api.STATE_ERROR || status.State == api.STATE_INVALID {
