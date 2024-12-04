@@ -76,10 +76,23 @@ type DNSEntrySpec struct {
 }
 
 type DNSEntryStatus struct {
-	DNSEntryEffective `json:",inline"`
-	// Pending contains the pending spec
+	// effective full qualified domain name
+	DNSName string `json:"dnsName"`
+	// effective time to live for records in external DNS system
 	// +optional
-	Pending *DNSEntryPendingStatus `json:"pending,omitempty"`
+	TTL *int64 `json:"ttl,omitempty"`
+	// effective resolveTargetsToAddresses from spec
+	// +optional
+	ResolveTargetsToAddresses *bool `json:"resolveTargetsToAddresses,omitempty"`
+	// effective text records (TXT records)
+	// +optional
+	Text []string `json:"text,omitempty"`
+	// effective target records (A, AAAA, or CNAME records)
+	// +optional
+	Targets []string `json:"targets,omitempty"`
+	// optional routing policy
+	// +optional
+	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
 	// lookup interval for CNAMEs that must be resolved to IP addresses.
 	// Only used if `resolveTargetsToAddresses` is set to true or targets consists of multiple domain names.
 	// +optional
@@ -105,32 +118,6 @@ type DNSEntryStatus struct {
 	// zone used for the entry
 	// +optional
 	Zone *string `json:"zone,omitempty"`
-}
-
-type DNSEntryEffective struct {
-	// effective full qualified domain name
-	DNSName string `json:"dnsName"`
-	// effective time to live for records in external DNS system
-	// +optional
-	TTL *int64 `json:"ttl,omitempty"`
-	// effective resolveTargetsToAddresses from spec
-	// +optional
-	ResolveTargetsToAddresses *bool `json:"resolveTargetsToAddresses,omitempty"`
-	// effective text records (TXT records)
-	// +optional
-	Text []string `json:"text,omitempty"`
-	// effective target records (A, AAAA, or CNAME records)
-	// +optional
-	Targets []string `json:"targets,omitempty"`
-	// optional routing policy
-	// +optional
-	RoutingPolicy *RoutingPolicy `json:"routingPolicy,omitempty"`
-}
-
-type DNSEntryPendingStatus struct {
-	DNSEntryEffective `json:",inline"`
-	// generation to be applied next
-	PendingGeneration int64 `json:"pendingGeneration"`
 }
 
 type EntryReference struct {
