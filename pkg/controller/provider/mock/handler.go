@@ -12,6 +12,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"k8s.io/client-go/util/flowcontrol"
 
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
@@ -27,6 +28,10 @@ type Handler struct {
 type MockZone struct {
 	ZonePrefix string `json:"zonePrefix"`
 	DNSName    string `json:"dnsName"`
+}
+
+func (m MockZone) ZoneID() dns.ZoneID {
+	return dns.NewZoneID(TYPE_CODE, m.ZonePrefix+m.DNSName)
 }
 
 type MockConfig struct {
@@ -60,7 +65,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 
 	for _, mockZone := range h.mockConfig.Zones {
 		if mockZone.DNSName != "" {
-			zoneID := mockZone.ZonePrefix + mockZone.DNSName
+			zoneID := mockZone.ZoneID().ID
 			logger.Infof("Providing mock DNSZone %s[%s]", mockZone.DNSName, zoneID)
 			isPrivate := strings.Contains(mockZone.ZonePrefix, ":private:")
 			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, mockZone.DNSName, "", isPrivate)

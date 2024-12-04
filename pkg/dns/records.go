@@ -5,6 +5,7 @@
 package dns
 
 import (
+	"bytes"
 	"fmt"
 	"strings"
 )
@@ -33,20 +34,29 @@ type (
 	Records    []*Record
 )
 
-func (this RecordSets) Clone() RecordSets {
+func (rss RecordSets) Clone() RecordSets {
 	clone := RecordSets{}
-	for rk, rv := range this {
+	for rk, rv := range rss {
 		clone[rk] = rv.Clone()
 	}
 	return clone
+}
+
+func (rss RecordSets) AddRecord(ty string, host string, ttl int64) {
+	rs := rss[ty]
+	if rs == nil {
+		rs = NewRecordSet(ty, ttl, nil)
+		rss[ty] = rs
+	}
+	rs.Records = append(rs.Records, &Record{Value: host})
 }
 
 type Record struct {
 	Value string
 }
 
-func (this *Record) Clone() *Record {
-	return &Record{this.Value}
+func (r *Record) Clone() *Record {
+	return &Record{r.Value}
 }
 
 type RecordSet struct {
@@ -60,32 +70,32 @@ func NewRecordSet(rtype string, ttl int64, records []*Record) *RecordSet {
 	return &RecordSet{Type: rtype, TTL: ttl, Records: records}
 }
 
-func (this *RecordSet) Clone() *RecordSet {
-	set := &RecordSet{Type: this.Type, TTL: this.TTL, IgnoreTTL: this.IgnoreTTL}
-	for _, r := range this.Records {
+func (rs *RecordSet) Clone() *RecordSet {
+	set := &RecordSet{Type: rs.Type, TTL: rs.TTL, IgnoreTTL: rs.IgnoreTTL}
+	for _, r := range rs.Records {
 		set.Records = append(set.Records, r.Clone())
 	}
 	return set
 }
 
-func (this *RecordSet) Length() int {
-	if this == nil {
+func (rs *RecordSet) Length() int {
+	if rs == nil {
 		return 0
 	}
-	return len(this.Records)
+	return len(rs.Records)
 }
 
-func (this *RecordSet) Add(records ...*Record) *RecordSet {
+func (rs *RecordSet) Add(records ...*Record) *RecordSet {
 	for _, r := range records {
-		this.Records = append(this.Records, r)
+		rs.Records = append(rs.Records, r)
 	}
-	return this
+	return rs
 }
 
-func (this *RecordSet) RecordString() string {
+func (rs *RecordSet) RecordString() string {
 	line := ""
 	sep := ""
-	for _, r := range this.Records {
+	for _, r := range rs.Records {
 		line = fmt.Sprintf("%s%s%s", line, sep, r.Value)
 		sep = ", "
 	}
@@ -95,16 +105,16 @@ func (this *RecordSet) RecordString() string {
 	return "[" + line + "]"
 }
 
-func (this *RecordSet) Match(set *RecordSet) bool {
-	if len(this.Records) != len(set.Records) {
+func (rs *RecordSet) Match(set *RecordSet) bool {
+	if len(rs.Records) != len(set.Records) {
 		return false
 	}
 
-	if !this.IgnoreTTL && !set.IgnoreTTL && this.TTL != set.TTL {
+	if !rs.IgnoreTTL && !set.IgnoreTTL && rs.TTL != set.TTL {
 		return false
 	}
 
-	for _, r := range this.Records {
+	for _, r := range rs.Records {
 		found := false
 		for _, t := range set.Records {
 			if t.Value == r.Value {
@@ -119,10 +129,10 @@ func (this *RecordSet) Match(set *RecordSet) bool {
 	return true
 }
 
-func (this *RecordSet) GetAttr(name string) string {
-	if this.Type == RS_TXT || this.Type == RS_META {
+func (rs *RecordSet) GetAttr(name string) string {
+	if rs.Type == RS_TXT || rs.Type == RS_META {
 		prefix := newAttrKeyPrefix(name)
-		for _, r := range this.Records {
+		for _, r := range rs.Records {
 			if strings.HasPrefix(r.Value, prefix) {
 				return r.Value[len(prefix) : len(r.Value)-1]
 			}
@@ -131,34 +141,34 @@ func (this *RecordSet) GetAttr(name string) string {
 	return ""
 }
 
-func (this *RecordSet) SetAttr(name string, value string) {
+func (rs *RecordSet) SetAttr(name string, value string) {
 	prefix := newAttrKeyPrefix(name)
-	for _, r := range this.Records {
+	for _, r := range rs.Records {
 		if strings.HasPrefix(r.Value, prefix) {
 			r.Value = newAttrValue(name, value)
 			return
 		}
 	}
 	r := newAttrRecord(name, value)
-	this.Records = append(this.Records, r)
+	rs.Records = append(rs.Records, r)
 }
 
-func (this *RecordSet) DeleteAttr(name string) {
+func (rs *RecordSet) DeleteAttr(name string) {
 	prefix := newAttrKeyPrefix(name)
-	for i, r := range this.Records {
+	for i, r := range rs.Records {
 		if strings.HasPrefix(r.Value, prefix) {
-			this.Records = append(this.Records[:i], this.Records[i+1:]...)
+			rs.Records = append(rs.Records[:i], rs.Records[i+1:]...)
 			return
 		}
 	}
 }
 
-func (this *RecordSet) DiffTo(set *RecordSet) (new Records, update Records, delete Records) {
+func (rs *RecordSet) DiffTo(set *RecordSet) (new Records, update Records, delete Records) {
 nextOwn:
-	for _, r := range this.Records {
+	for _, r := range rs.Records {
 		for _, d := range set.Records {
 			if d.Value == r.Value {
-				if this.TTL != set.TTL {
+				if rs.TTL != set.TTL {
 					update = append(update, r)
 				}
 				continue nextOwn
@@ -168,7 +178,7 @@ nextOwn:
 	}
 nextForeign:
 	for _, d := range set.Records {
-		for _, r := range this.Records {
+		for _, r := range rs.Records {
 			if d.Value == r.Value {
 				continue nextForeign
 			}
@@ -176,6 +186,20 @@ nextForeign:
 		delete = append(delete, d)
 	}
 	return
+}
+
+func (rs *RecordSet) String() string {
+	if rs == nil {
+		return ""
+	}
+	var buf bytes.Buffer
+	for i, rec := range rs.Records {
+		if i > 0 {
+			buf.WriteString(",")
+		}
+		buf.WriteString(rec.Value)
+	}
+	return buf.String()
 }
 
 func newAttrKeyPrefix(name string) string {
