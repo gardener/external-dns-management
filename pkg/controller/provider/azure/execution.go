@@ -56,12 +56,12 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 		return bs_invalidRoutingPolicy, "", nil
 	}
 
-	setName, rset := dns.MapToProvider(req.Type, dnsset, exec.zoneName)
-	name, ok := utils.DropZoneName(setName.DNSName, exec.zoneName)
+	name, ok := utils.DropZoneName(dnsset.Name.DNSName, exec.zoneName)
 	if !ok {
 		return bs_invalidName, "", &armdns.RecordSet{Name: &name}
 	}
 
+	rset := dnsset.Sets[req.Type]
 	if len(rset.Records) == 0 {
 		return bs_empty, "", nil
 	}

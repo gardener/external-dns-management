@@ -32,16 +32,6 @@ func ValidateDomainName(name string) error {
 		return fmt.Errorf("%q is no valid dns name (%v)", name, errs)
 	}
 
-	metaCheck := CalcMetaRecordDomainNameForValidation(check)
-	if strings.HasPrefix(metaCheck, "*.") {
-		errs = validation.IsWildcardDNS1123Subdomain(metaCheck)
-	} else {
-		errs = validation.IsDNS1123Subdomain(metaCheck)
-	}
-	if len(errs) > 0 {
-		return fmt.Errorf("metadata record %q of %q is no valid dns name (%v)", metaCheck, name, errs)
-	}
-
 	labels := strings.Split(strings.TrimPrefix(check, "*."), ".")
 	for i, label := range labels {
 		if i == 0 && label == "@" {
@@ -51,10 +41,6 @@ func ValidateDomainName(name string) error {
 		if errs = validation.IsDNS1123Label(label); len(errs) > 0 {
 			return fmt.Errorf("%d. label %q of %q is not valid (%v)", i+1, label, name, errs)
 		}
-	}
-	metaLabels := strings.SplitN(strings.TrimPrefix(metaCheck, "*."), ".", 2)
-	if errs = validation.IsDNS1123Label(metaLabels[0]); len(errs) > 0 {
-		return fmt.Errorf("1. label %q of metadata record of %q is not valid (%v)", metaLabels[0], name, errs)
 	}
 
 	return nil
