@@ -9,6 +9,8 @@ import (
 	"sync"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"k8s.io/apimachinery/pkg/util/uuid"
+	yaml "sigs.k8s.io/yaml/goyaml.v3"
 )
 
 type zonedata struct {
@@ -16,9 +18,18 @@ type zonedata struct {
 	dnssets dns.DNSSets
 }
 
+// InMemory is a simple in-memory DNS provider implementation
 type InMemory struct {
-	lock  sync.Mutex
-	zones map[dns.ZoneID]zonedata
+	lock            sync.Mutex
+	zones           map[dns.ZoneID]zonedata
+	failSimulations map[string]*inMemoryApplyFailSimulation
+}
+
+// inMemoryApplyFailSimulation is a struct to simulate apply failures.
+type inMemoryApplyFailSimulation struct {
+	zoneID       dns.ZoneID
+	request      *ChangeRequest
+	appliedCount int
 }
 
 func NewInMemory() *InMemory {
@@ -96,6 +107,13 @@ func (m *InMemory) Apply(zoneID dns.ZoneID, request *ChangeRequest, metrics Metr
 		return fmt.Errorf("DNSZone %s not hosted", zoneID)
 	}
 
+	for _, fail := range m.failSimulations {
+		if fail.zoneID == zoneID && fail.request.IsSemanticEqualTo(request) {
+			fail.appliedCount++
+			return fmt.Errorf("simulated failure")
+		}
+	}
+
 	name, rset := buildRecordSet(request)
 	switch request.Action {
 	case R_CREATE, R_UPDATE:
@@ -136,6 +154,46 @@ type FullDump struct {
 	InMemory map[dns.ZoneID]*ZoneDump
 }
 
+func (m *InMemory) AddApplyFailSimulation(id dns.ZoneID, request *ChangeRequest) string {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	if m.failSimulations == nil {
+		m.failSimulations = map[string]*inMemoryApplyFailSimulation{}
+	}
+	uid := string(uuid.NewUUID())
+	m.failSimulations[uid] = &inMemoryApplyFailSimulation{zoneID: id, request: request}
+	return uid
+}
+
+func (m *InMemory) GetApplyFailSimulationCount(uid string) int {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	if m.failSimulations == nil {
+		return 0
+	}
+	fail, ok := m.failSimulations[uid]
+	if !ok {
+		return 0
+	}
+	return fail.appliedCount
+}
+
+func (m *InMemory) RemoveApplyFailSimulation(uid string) bool {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	if m.failSimulations == nil {
+		return false
+	}
+	_, ok := m.failSimulations[uid]
+	if ok {
+		delete(m.failSimulations, uid)
+	}
+	return ok
+}
+
 func (m *InMemory) BuildFullDump() *FullDump {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -161,17 +219,10 @@ func (m *InMemory) buildZoneDump(zoneId dns.ZoneID) *ZoneDump {
 	return &ZoneDump{HostedZone: hostedZone, DNSSets: data.dnssets}
 }
 
-/*
-func (m *InMemory) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fullDump := m.BuildFullDump()
-
-	js, err := json.Marshal(*fullDump)
+func (d *FullDump) ToYAMLString() string {
+	data, err := yaml.Marshal(d.InMemory)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return "error: " + err.Error()
 	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write(js)
+	return string(data)
 }
-*/
