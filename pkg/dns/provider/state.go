@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -103,7 +104,6 @@ type state struct {
 
 	context   ProviderContext
 	ownerresc resources.Interface
-	ownerupd  chan OwnerCounts
 
 	secretresc resources.Interface
 
@@ -144,6 +144,9 @@ type state struct {
 	lookupProcessor *lookupProcessor
 
 	providerEventListeners []ProviderEventListener
+
+	zoneTransactions     map[dns.ZoneID]*zonetxn.PendingTransaction
+	zoneTransactionsLock sync.Mutex
 }
 
 type rateLimiterData struct {
@@ -189,6 +192,7 @@ func NewDNSState(pctx ProviderContext, ownerresc, secretresc resources.Interface
 		providersecrets:     map[resources.ObjectName]resources.ObjectName{},
 		zonePolicies:        map[string]*dnsHostedZonePolicy{},
 		entries:             Entries{},
+		zoneTransactions:    map[dns.ZoneID]*zonetxn.PendingTransaction{},
 		outdated:            newSynchronizedEntries(),
 		blockingEntries:     map[resources.ObjectName]time.Time{},
 		dnsnames:            map[ZonedDNSSetName]*Entry{},
@@ -208,7 +212,6 @@ func (this *state) Setup() error {
 	}
 	this.zoneStates = newZoneStates(this.CreateStateTTLGetter(*syncPeriod))
 	this.dnsTicker = NewTicker(this.context.GetPool(DNS_POOL).Tick)
-	this.ownerupd = startOwnerUpdater(this.context, this.ownerresc)
 	processors, err := this.context.GetIntOption(OPT_SETUP)
 	if err != nil || processors <= 0 {
 		processors = 5
@@ -261,7 +264,6 @@ func (this *state) Setup() error {
 		return err
 	}
 
-	this.triggerStatistic()
 	this.initialized = true
 	this.context.Infof("setup done - starting reconciliation")
 	return nil
@@ -473,18 +475,6 @@ func (this *state) GetZonesForProvider(name resources.ObjectName) dnsHostedZones
 	return copyZones(this.providerzones[name])
 }
 
-func (this *state) GetEntriesForZone(logger logger.LogContext, zoneid dns.ZoneID) (Entries, ZonedDNSSetNames, bool) {
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-	entries := Entries{}
-	zone := this.zones[zoneid]
-	if zone != nil {
-		entries, _, stale, deleting := this.addEntriesForZone(logger, entries, ZonedDNSSetNames{}, zone)
-		return entries, stale, deleting
-	}
-	return entries, nil, false
-}
-
 func (this *state) addEntriesForZone(
 	logger logger.LogContext,
 	entries Entries,
@@ -503,7 +493,7 @@ func (this *state) addEntriesForZone(
 		stale = ZonedDNSSetNames{}
 	}
 	equivEntries := dns.DNSNameSet{}
-	deleting := true // TODO check
+	deleting := false
 	domain := zone.Domain()
 	// fallback if no forwarded domains are reported
 	nested := utils.NewStringSet()
@@ -532,18 +522,14 @@ func (this *state) addEntriesForZone(
 			} else if provider == nil {
 				continue
 			} else if !provider.IncludesZone(zone.Id()) {
-				if provider.HasEquivalentZone(zone.Id()) && e.IsActive() && !forwarded(nested, dns.DNSName) {
+				if provider.HasEquivalentZone(zone.Id()) && !forwarded(nested, dns.DNSName) {
 					equivEntries.Add(dns.DNSSetName)
 				}
 				continue
 			}
 			if dns.ZoneID == zone.Id() && zone.Match(dns.DNSName) > 0 && !forwarded(nested, dns.DNSName) {
-				if e.IsActive() {
-					deleting = deleting || e.IsDeleting()
-					entries[e.ObjectName()] = e
-				} else {
-					logger.Infof("entry %q(%s) is inactive", e.ObjectName(), e.DNSName())
-				}
+				deleting = deleting || e.IsDeleting()
+				entries[e.ObjectName()] = e
 			}
 		} else {
 			if !e.IsDeleting() {
@@ -606,14 +592,6 @@ loop:
 		}
 	}
 	return found
-}
-
-func (this *state) triggerStatistic() {
-	if this.context.IsReady() {
-		_ = this.context.EnqueueCommand(CMD_STATISTIC)
-	} else {
-		this.setup.AddCommand(CMD_STATISTIC)
-	}
 }
 
 func (this *state) triggerHostedZone(zoneid dns.ZoneID) {
