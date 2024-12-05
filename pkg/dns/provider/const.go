@@ -26,6 +26,8 @@ const (
 	OPT_DISABLE_ZONE_STATE_CACHING = "disable-zone-state-caching"
 	OPT_DISABLE_DNSNAME_VALIDATION = "disable-dnsname-validation"
 
+	OPT_MAX_METADATA_RECORD_DELETIONS_PER_RECONCILIATION = "max-metadata-record-deletions-per-reconciliation"
+
 	OPT_REMOTE_ACCESS_PORT               = "remote-access-port"
 	OPT_REMOTE_ACCESS_CACERT             = "remote-access-cacert"
 	OPT_REMOTE_ACCESS_SERVER_SECRET_NAME = "remote-access-server-secret-name"
@@ -42,7 +44,6 @@ const (
 	OPT_ADVANCED_BLOCKED_ZONE = "blocked-zone"
 
 	CMD_HOSTEDZONE_PREFIX = "hostedzone:"
-	CMD_STATISTIC         = "statistic"
 
 	MSG_THROTTLING = "provider throttled"
 )

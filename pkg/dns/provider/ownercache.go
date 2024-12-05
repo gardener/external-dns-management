@@ -11,7 +11,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
@@ -89,40 +88,6 @@ func (this *OwnerCache) GetIds() utils.StringSet {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 	return this.ownerids.KeySet()
-}
-
-func (this *OwnerCache) UpdateCountsWith(statistic statistic.OwnerStatistic, types utils.StringSet) OwnerCounts {
-	changed := OwnerCounts{}
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	for id, e := range this.ownerids {
-		mod := false
-		pts := statistic.Get(id)
-		for t := range types {
-			c := 0
-			if v, ok := pts[t]; ok {
-				c = v.Count()
-			}
-			mod = mod || this.checkCount(&e, t, c)
-		}
-		if mod {
-			this.ownerids[id] = e
-			for n, o := range this.owners {
-				if o.id == id {
-					changed[n] = e.entrycounts
-				}
-			}
-		}
-	}
-	return changed
-}
-
-func (this *OwnerCache) checkCount(e *OwnerIDInfo, ptype string, count int) bool {
-	if e.entrycounts[ptype] != count {
-		e.entrycounts[ptype] = count
-		return true
-	}
-	return false
 }
 
 func (this *OwnerCache) UpdateOwner(owner *dnsutils.DNSOwnerObject) (changeset utils.StringSet, activeset utils.StringSet) {

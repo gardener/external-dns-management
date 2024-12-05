@@ -17,7 +17,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/server"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 )
 
 func init() {
@@ -291,57 +290,6 @@ func ReportRemoteAccessCertificates(count int) {
 func DeleteZone(zoneid dns.ZoneID) {
 	zoneProviders.Remove(zoneid)
 	Entries.DeleteLabelValues(zoneid.ProviderType, zoneid.ID)
-}
-
-var (
-	currentStatistic = statistic.NewEntryStatistic()
-	lock             sync.Mutex
-)
-
-func deleteOwnerStatistic(state statistic.WalkingState, owner, ptype string, pname resources.ObjectName, _ int) statistic.WalkingState {
-	types := state.(utils.StringSet)
-	if types.Contains(ptype) {
-		Owners.DeleteLabelValues(owner, ptype, pname.String())
-	}
-	return state
-}
-
-func UpdateOwnerStatistic(statistic *statistic.EntryStatistic, types utils.StringSet) {
-	lock.Lock()
-	defer lock.Unlock()
-
-	for o := range currentStatistic.Owners {
-		statistic.Owners.Assure(o)
-	}
-	for o, pts := range statistic.Owners {
-		old_pts := currentStatistic.Owners.Assure(o)
-		for pt := range types {
-			ps := pts.Get(pt)
-			old_ps := old_pts.Assure(pt)
-			for p, c := range ps {
-				Owners.WithLabelValues(o, pt, p.String()).Set(float64(c))
-				old_ps[p] = c
-			}
-			for p := range old_ps {
-				if _, ok := ps[p]; !ok {
-					Owners.DeleteLabelValues(o, pt, p.String())
-					delete(old_ps, p)
-				}
-			}
-			if len(old_ps) == 0 {
-				delete(old_pts, pt)
-			}
-		}
-		for pt, ps := range old_pts {
-			if pts[pt] == nil && types.Contains(pt) {
-				ps.Walk(types, deleteOwnerStatistic, o, pt)
-				delete(old_pts, pt)
-			}
-		}
-		if len(old_pts) == 0 {
-			delete(currentStatistic.Owners, o)
-		}
-	}
 }
 
 func ReportLookupProcessorIncrSkipped() {

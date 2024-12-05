@@ -16,6 +16,7 @@ import (
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"k8s.io/utils/ptr"
 )
@@ -102,34 +103,37 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 
 	var new *Entry
 	old := this.entries[v.ObjectName()]
+	var oldDNSSet *dns.DNSSet
 	if old == nil {
 		new = NewEntry(v, this)
 	} else {
+		oldDNSSet = this.dnsSetFromEntry(old)
 		new = old.Update(logger, v)
 	}
 
 	if v.IsDeleting() {
 		var err error
 		if old != nil {
-			this.cleanupEntry(logger, old)
+			this.cleanupEntry(logger, old, oldDNSSet)
 		}
 		if new.valid {
 			if !new.activezone.IsEmpty() && this.zones[new.activezone] != nil {
 				if this.HasFinalizer(new.Object()) {
 					logger.Infof("deleting delayed until entry deleted in provider")
 					this.outdated.AddEntry(new)
+					new.modified = true
 					return new, reconcile.Succeeded(logger)
 				}
 			} else {
 				if old != nil {
 					logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
 				}
-				if !new.IsActive() || v.object.Status().Zone == nil {
+				if v.object.Status().Zone == nil {
 					err = this.RemoveFinalizer(v.object)
 				}
 			}
 		} else {
-			if !new.IsActive() || v.object.Status().State != api.STATE_STALE {
+			if v.object.Status().State != api.STATE_STALE {
 				this.smartInfof(logger, "deleting yet unmanaged or errorneous entry")
 				err = this.RemoveFinalizer(v.object)
 			} else {
@@ -155,7 +159,7 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	if old != nil && old != new {
 		// DNS name changed -> clean up old dns name
 		logger.Infof("dns name changed to %q", new.ZonedDNSName())
-		this.cleanupEntry(logger, old)
+		this.cleanupEntry(logger, old, oldDNSSet)
 		if !old.activezone.IsEmpty() && old.activezone != new.ZoneId() {
 			if this.zones[old.activezone] != nil {
 				logger.Infof("dns zone changed -> trigger old zone '%s'", old.ZoneId())
@@ -206,6 +210,9 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 		}
 
 		this.dnsnames[zonedDNSName] = new
+		if txn := this.getActiveZoneTransaction(new.activezone); txn != nil {
+			txn.AddEntryChange(new.ObjectKey(), new.object.GetGeneration(), oldDNSSet, this.dnsSetFromEntry(new))
+		}
 	}
 
 	return new, status
@@ -271,7 +278,6 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		}
 	}
 
-	defer this.triggerStatistic()
 	defer this.references.NotifyHolder(this.context, object.ClusterKey())
 
 	logger = this.RefineLogger(logger, p.ptype)
@@ -321,14 +327,14 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 		} else {
 			this.smartInfof(logger, "removing foreign entry %q (%s)", key.ObjectName(), old.ZonedDNSName())
 		}
-		this.cleanupEntry(logger, old)
+		this.cleanupEntry(logger, old, this.dnsSetFromEntry(old))
 	} else {
 		logger.Debugf("removing unknown entry %q", key.ObjectName())
 	}
 	return reconcile.Succeeded(logger)
 }
 
-func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
+func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *dns.DNSSet) {
 	this.smartInfof(logger, "cleanup old entry (duplicate=%t)", e.duplicate)
 	this.entries.Delete(e)
 	this.DeleteLookupJob(e.ObjectName())
@@ -346,6 +352,9 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 				}
 			}
 		}
+		if txn := this.getActiveZoneTransaction(e.activezone); txn != nil {
+			txn.AddEntryChange(e.ObjectKey(), e.object.GetGeneration(), oldDNSSet, nil)
+		}
 		if found == nil {
 			logger.Infof("no duplicate found to reactivate")
 		} else {
@@ -357,6 +366,9 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry) {
 				msg = fmt.Sprintf("reactivate duplicate for %s: %s", found.ZonedDNSName(), found.ObjectName())
 			}
 			logger.Info(msg)
+			if txn := this.getActiveZoneTransaction(found.activezone); txn != nil {
+				txn.AddEntryChange(e.ObjectKey(), e.object.GetGeneration(), nil, this.dnsSetFromEntry(found))
+			}
 			found.Trigger(nil)
 		}
 		delete(this.dnsnames, e.ZonedDNSName())
@@ -369,4 +381,12 @@ func (this *state) DeleteLookupJob(entryName resources.ObjectName) {
 
 func (this *state) UpsertLookupJob(entryName resources.ObjectName, results lookupAllResults, interval time.Duration) {
 	this.lookupProcessor.Upsert(entryName, results, interval)
+}
+
+func (this *state) dnsSetFromEntry(e *Entry) *dns.DNSSet {
+	set := dns.NewDNSSet(e.dnsSetName, e.routingPolicy)
+	if !e.activezone.IsEmpty() {
+		zonetxn.ApplySpec(set, e.activezone.ProviderType, e.object.GetTargetSpec(e))
+	}
+	return set
 }
