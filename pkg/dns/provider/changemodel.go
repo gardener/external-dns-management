@@ -7,11 +7,12 @@ package provider
 import (
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 	"time"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
-	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -88,6 +89,8 @@ type ChangeGroup struct {
 	requests      ChangeRequests
 	model         *ChangeModel
 	providerCount int
+
+	cleanedMetadataRecords int
 }
 
 func newChangeGroup(name string, provider DNSProvider, model *ChangeModel) *ChangeGroup {
@@ -99,46 +102,89 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 	for _, s := range this.dnssets {
 		_, ok := model.applied[s.Name]
 		if !ok {
-			if s.IsOwnedBy(model.ownership) {
-				if model.ExistsInEquivalentZone(s.Name) {
+			if model.ExistsInEquivalentZone(s.Name) {
+				continue
+			}
+			if e := model.IsStale(ZonedDNSSetName{ZoneID: model.ZoneId(), DNSSetName: s.Name}); e != nil {
+				if e.IsDeleting() {
+					model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
+				}
+				status := e.Object().Status()
+				msg := MSG_PRESERVED
+				trigger := false
+				if status.State == api.STATE_ERROR || status.State == api.STATE_INVALID {
+					msg = msg + ": " + utils.StringValue(status.Message)
+					model.Infof("found stale set '%s': %s -> preserve unchanged", utils.StringValue(status.Message), s.Name)
+				} else {
+					model.Infof("found stale set '%s' -> preserve unchanged", s.Name)
+					trigger = true
+				}
+				upd, err := e.UpdateStatus(logger, api.STATE_STALE, msg)
+				if trigger && (!upd || err != nil) {
+					e.Trigger(logger)
+				}
+			} else {
+				oldSet := model.oldDNSSets[s.Name]
+				if oldSet == nil {
+					// not part of transaction, but old metadata entries may be present for cleanup
+					mod = this.partialCleanupOfMetadataRecords(logger, s) || mod
 					continue
 				}
-				if e := model.IsStale(ZonedDNSSetName{ZoneID: model.ZoneId(), DNSSetName: s.Name}); e != nil {
-					if e.IsDeleting() {
-						model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
+				model.Infof("found unapplied managed set '%s'", s.Name)
+				var done DoneHandler
+				for _, e := range model.context.entries {
+					if e.dnsSetName == s.Name {
+						done = NewStatusUpdate(logger, e, model.context.fhandler)
+						break
 					}
-					status := e.Object().Status()
-					msg := MSG_PRESERVED
-					trigger := false
-					if status.State == api.STATE_ERROR || status.State == api.STATE_INVALID {
-						msg = msg + ": " + utils.StringValue(status.Message)
-						model.Infof("found stale set '%s': %s -> preserve unchanged", utils.StringValue(status.Message), s.Name)
-					} else {
-						model.Infof("found stale set '%s' -> preserve unchanged", s.Name)
-						trigger = true
+				}
+				for ty := range s.Sets {
+					if _, ok := oldSet.Sets[ty]; !ok {
+						continue
 					}
-					upd, err := e.UpdateStatus(logger, api.STATE_STALE, msg)
-					if trigger && (!upd || err != nil) {
-						e.Trigger(logger)
-					}
-				} else {
-					model.Infof("found unapplied managed set '%s'", s.Name)
-					var done DoneHandler
-					for _, e := range model.context.entries {
-						if e.dnsSetName == s.Name {
-							done = NewStatusUpdate(logger, e, model.context.fhandler)
-							break
-						}
-					}
-					for ty := range s.Sets {
-						mod = true
-						this.addDeleteRequest(s, ty, model.wrappedDoneHandler(s.Name, done))
-					}
+					mod = true
+					this.addDeleteRequest(s, ty, model.wrappedDoneHandler(s.Name, done))
 				}
 			}
 		}
 	}
 	return mod
+}
+
+func (this *ChangeGroup) partialCleanupOfMetadataRecords(logger logger.LogContext, s *dns.DNSSet) bool {
+	if this.cleanedMetadataRecords >= this.model.config.MaxMetadataRecordDeletionsPerReconciliation {
+		// Maximum number of metadata records to delete per reconciliation reached.
+		// To avoid excessive deletions, we stop here and continue in the next reconciliation
+		return false
+	}
+	if this.model.ownership == nil || len(this.model.ownership.GetIds()) == 0 {
+		// no known owners to clean up metadata records
+		return false
+	}
+
+	if set, ok := s.Sets[dns.RS_TXT]; ok {
+		name := s.Name.DNSName
+		for _, prefix := range []string{"comment-", "*.comment-"} {
+			if strings.HasPrefix(name, prefix) {
+				var foundPrefix, foundOwner bool
+				for _, r := range set.Records {
+					v, _ := strconv.Unquote(r.Value)
+					if strings.HasPrefix(v, "prefix=comment-") {
+						foundPrefix = true
+					} else if strings.HasPrefix(v, "owner=") && this.model.ownership.IsResponsibleFor(strings.TrimPrefix(v, "owner=")) {
+						foundOwner = true
+					}
+				}
+				if foundPrefix && foundOwner {
+					logger.Infof("cleaning up metadata record for %s", name)
+					this.cleanedMetadataRecords++
+					this.addDeleteRequest(s, dns.RS_TXT, nil)
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func (this *ChangeGroup) update(logger logger.LogContext, model *ChangeModel) bool {
@@ -191,6 +237,7 @@ type ChangeModel struct {
 	providergroups map[string]*ChangeGroup
 	zonestate      DNSZoneState
 	failedDNSNames dns.DNSNameSet
+	oldDNSSets     dns.DNSSets
 }
 
 type ChangeResult struct {
@@ -199,7 +246,7 @@ type ChangeResult struct {
 	Error    error
 }
 
-func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zoneReconciliation, config Config) *ChangeModel {
+func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zoneReconciliation, config Config, oldDNSSets dns.DNSSets) *ChangeModel {
 	return &ChangeModel{
 		LogContext:     logger,
 		config:         config,
@@ -208,6 +255,7 @@ func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zone
 		applied:        map[dns.DNSSetName]*dns.DNSSet{},
 		providergroups: map[string]*ChangeGroup{},
 		failedDNSNames: dns.DNSNameSet{},
+		oldDNSSets:     oldDNSSets,
 	}
 }
 
@@ -267,7 +315,6 @@ func (this *ChangeModel) Setup() error {
 		return err
 	}
 	sets := this.zonestate.GetDNSSets()
-	this.context.zone.SetOwners(sets.GetOwners())
 	this.dangling = newChangeGroup("dangling entries", provider, this)
 	for setName, set := range sets {
 		var view *ChangeGroup
@@ -331,78 +378,54 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name dns.DNSSetName, upda
 	oldset := view.dnssets[name]
 	newset := dns.NewDNSSet(name, spec.RoutingPolicy())
 	newset.UpdateGroup = updateGroup
-	newset.SetKind(spec.Kind())
 	if !delete {
-		this.ApplySpec(newset, oldset, p, spec)
+		this.ApplySpec(newset, p, spec)
 	}
 	mod := false
 	if oldset != nil {
-		this.Debugf("found old for %s %q", oldset.GetKind(), oldset.Name)
-		if this.IsForeign(oldset) {
-			err := &perrs.AlreadyBusyForOwner{Name: name, EntryCreatedAt: createdAt, Owner: oldset.GetOwner()}
-			retry := p.ReportZoneStateConflict(this.context.zone.getZone(), err)
-			if done != nil {
-				if apply && !retry {
-					done.SetInvalid(err)
+		this.Debugf("found old for entry %q", oldset.Name)
+		for ty, rset := range newset.Sets {
+			curset := oldset.Sets[ty]
+			if curset == nil {
+				if apply {
+					view.addCreateRequest(newset, ty, done)
 				}
+				mod = true
 			} else {
-				this.Warnf("no done handler and %s", err)
-			}
-			return ChangeResult{Error: err, Retry: retry}
-		} else {
-			if !spec.Responsible(oldset, this.ownership) {
-				return ChangeResult{}
-			}
-			if oldset.GetOwner() == "" && !this.Owns(oldset) {
-				if delete {
-					return ChangeResult{}
-				}
-				this.Infof("catch entry %q by reassigning owner", name)
-			}
-			for ty, rset := range newset.Sets {
-				curset := oldset.Sets[ty]
-				if curset == nil {
-					if apply {
-						view.addCreateRequest(newset, ty, done)
-					}
-					mod = true
-				} else {
-					olddns, _ := dns.MapToProvider(ty, oldset, this.Domain())
-					newdns, _ := dns.MapToProvider(ty, newset, this.Domain())
-					if olddns == newdns {
-						if !curset.Match(rset) || !reflect.DeepEqual(spec.RoutingPolicy(), oldset.RoutingPolicy) {
-							if apply {
-								view.addUpdateRequest(oldset, newset, ty, done)
-							}
-							mod = true
-						} else {
-							if apply {
-								this.Debugf("records type %s up to date for %s", ty, name)
-							}
-						}
-					} else {
+				olddns := oldset.Sets[ty]
+				newdns := newset.Sets[ty]
+				if olddns.Match(newdns) {
+					if !curset.Match(rset) || !reflect.DeepEqual(spec.RoutingPolicy(), oldset.RoutingPolicy) {
 						if apply {
-							view.addCreateRequest(newset, ty, done)
-							view.addDeleteRequest(oldset, ty, this.wrappedDoneHandler(name, nil))
+							view.addUpdateRequest(oldset, newset, ty, done)
 						}
 						mod = true
+					} else {
+						if apply {
+							this.Debugf("records type %s up to date for %s", ty, name)
+						}
 					}
-				}
-			}
-			for ty := range oldset.Sets {
-				if _, ok := newset.Sets[ty]; !ok {
+				} else {
 					if apply {
-						view.addDeleteRequest(oldset, ty, done)
+						view.addCreateRequest(newset, ty, done)
+						view.addDeleteRequest(oldset, ty, this.wrappedDoneHandler(name, nil))
 					}
 					mod = true
 				}
+			}
+		}
+		for ty := range oldset.Sets {
+			if _, ok := newset.Sets[ty]; !ok {
+				if apply {
+					view.addDeleteRequest(oldset, ty, done)
+				}
+				mod = true
 			}
 		}
 	} else {
 		if !delete {
 			if apply {
 				this.Infof("no existing entry found for %s", name)
-				this.setOwner(newset, spec.OwnerId())
 				for ty := range newset.Sets {
 					view.addCreateRequest(newset, ty, done)
 				}
@@ -492,49 +515,12 @@ func (this *changeModelDoneHandler) Throttled() {
 /////////////////////////////////////////////////////////////////////////////////
 // DNSSets
 
-func (this *ChangeModel) Owns(set *dns.DNSSet) bool {
-	return set.IsOwnedBy(this.ownership)
-}
-
-func (this *ChangeModel) IsForeign(set *dns.DNSSet) bool {
-	return set.IsForeign(this.ownership)
-}
-
-func (this *ChangeModel) setOwner(set *dns.DNSSet, id string) bool {
-	if id == "" {
-		id = this.config.Ident
-	}
-	if id != "" {
-		set.SetOwner(id)
-		return true
-	}
-	return false
-}
-
-func (this *ChangeModel) ApplySpec(set *dns.DNSSet, base *dns.DNSSet, provider DNSProvider, spec TargetSpec) *dns.DNSSet {
-	set.SetKind(spec.Kind())
-	if base == nil || !this.IsForeign(base) {
-		if this.setOwner(set, spec.OwnerId()) {
-			set.SetMetaAttr(dns.ATTR_PREFIX, dns.TxtPrefix)
-		}
-	}
-
-	targetsets := set.Sets
+func (this *ChangeModel) ApplySpec(set *dns.DNSSet, provider DNSProvider, spec TargetSpec) *dns.DNSSet {
 	targets := provider.MapTargets(set.Name.DNSName, spec.Targets())
 	for _, t := range targets {
-		AddRecord(targetsets, t.GetRecordType(), t.GetHostName(), t.GetTTL())
+		set.Sets.AddRecord(t.GetRecordType(), t.GetHostName(), t.GetTTL())
 	}
-	set.Sets = targetsets
 	return set
-}
-
-func AddRecord(targetsets dns.RecordSets, ty string, host string, ttl int64) {
-	rs := targetsets[ty]
-	if rs == nil {
-		rs = dns.NewRecordSet(ty, ttl, nil)
-		targetsets[ty] = rs
-	}
-	rs.Records = append(rs.Records, &dns.Record{Value: host})
 }
 
 func atMost(s string, maxlen int) string {

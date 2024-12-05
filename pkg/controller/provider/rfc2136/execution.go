@@ -39,10 +39,12 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) ([]miekgdns.R
 
 	domain := dns.NormalizeHostname(exec.handler.zone)
 	if req.Addition != nil {
-		setName, addset = dns.MapToProvider(req.Type, req.Addition, domain)
+		setName = req.Addition.Name
+		addset = req.Addition.Sets[req.Type]
 	}
 	if req.Deletion != nil {
-		setName, delset = dns.MapToProvider(req.Type, req.Deletion, domain)
+		setName = req.Deletion.Name
+		delset = req.Deletion.Sets[req.Type]
 	}
 	if setName.DNSName == "" || (addset.Length() == 0 && delset.Length() == 0) {
 		return nil, nil, nil

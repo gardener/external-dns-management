@@ -269,22 +269,10 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 			Records: []string{"1.2.3.4", "5.6.7.8"},
 		},
 		{
-			Name:    "comment-sub1.z1.test.",
-			TTL:     600,
-			Type:    "TXT",
-			Records: []string{"\"owner=test\"", "\"prefix=comment-\""},
-		},
-		{
 			Name:    "sub2.z1.test.",
 			TTL:     302,
 			Type:    "CNAME",
 			Records: []string{"cname.target.test."},
-		},
-		{
-			Name:    "comment-sub2.z1.test.",
-			TTL:     600,
-			Type:    "TXT",
-			Records: []string{"\"owner=test\"", "\"prefix=comment-\""},
 		},
 		{
 			Name:    "sub3.z1.test.",
@@ -298,7 +286,6 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 		Ω(err).ShouldNot(HaveOccurred(), fmt.Sprintf("CreateRecordSet failed for %s %s", opts.Name, opts.Type))
 	}
 
-	stdMeta := buildRecordSet("META", 600, "\"owner=test\"", "\"prefix=comment-\"")
 	sub1 := dns.DNSSetName{DNSName: "sub1.z1.test"}
 	sub2 := dns.DNSSetName{DNSName: "sub2.z1.test"}
 	sub3 := dns.DNSSetName{DNSName: "sub3.z1.test"}
@@ -306,15 +293,13 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 		sub1: &dns.DNSSet{
 			Name: sub1,
 			Sets: dns.RecordSets{
-				"A":    buildRecordSet("A", 301, "1.2.3.4", "5.6.7.8"),
-				"META": stdMeta,
+				"A": buildRecordSet("A", 301, "1.2.3.4", "5.6.7.8"),
 			},
 		},
 		sub2: &dns.DNSSet{
 			Name: sub2,
 			Sets: dns.RecordSets{
 				"CNAME": buildRecordSet("CNAME", 302, "cname.target.test"),
-				"META":  stdMeta,
 			},
 		},
 		dns.DNSSetName{DNSName: "sub3.z1.test"}: &dns.DNSSet{
@@ -344,16 +329,6 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 			},
 		},
 		{
-			Action: provider.R_CREATE,
-			Type:   "META",
-			Addition: &dns.DNSSet{
-				Name: sub4,
-				Sets: dns.RecordSets{
-					"META": stdMeta,
-				},
-			},
-		},
-		{
 			Action: provider.R_UPDATE,
 			Type:   "A",
 			Addition: &dns.DNSSet{
@@ -370,11 +345,6 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 		},
 		{
 			Action:   provider.R_DELETE,
-			Type:     "META",
-			Deletion: expectedDnssets[sub2],
-		},
-		{
-			Action:   provider.R_DELETE,
 			Type:     "TXT",
 			Deletion: expectedDnssets[sub3],
 		},
@@ -386,15 +356,13 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 		sub1: &dns.DNSSet{
 			Name: sub1,
 			Sets: dns.RecordSets{
-				"A":    buildRecordSet("A", 305, "1.2.3.55", "5.6.7.8"),
-				"META": stdMeta,
+				"A": buildRecordSet("A", 305, "1.2.3.55", "5.6.7.8"),
 			},
 		},
 		sub4: &dns.DNSSet{
 			Name: sub4,
 			Sets: dns.RecordSets{
-				"A":    buildRecordSet("A", 304, "11.22.33.44"),
-				"META": stdMeta,
+				"A": buildRecordSet("A", 304, "11.22.33.44"),
 			},
 		},
 	}

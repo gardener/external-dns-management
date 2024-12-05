@@ -60,10 +60,12 @@ func (this *Execution) AddChange(req *provider.ChangeRequest) {
 	var newset, oldset *dns.RecordSet
 
 	if req.Addition != nil {
-		name, newset = dns.MapToProvider(req.Type, req.Addition, this.domain)
+		name = req.Addition.Name
+		newset = req.Addition.Sets[req.Type]
 	}
 	if req.Deletion != nil {
-		name, oldset = dns.MapToProvider(req.Type, req.Deletion, this.domain)
+		name = req.Deletion.Name
+		oldset = req.Deletion.Sets[req.Type]
 	}
 	if name.DNSName == "" || (newset.Length() == 0 && oldset.Length() == 0) {
 		return

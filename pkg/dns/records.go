@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	RS_META       = "META"
 	RS_ALIAS_A    = "ALIAS"      // provider specific alias for CNAME record (AWS alias target A)
 	RS_ALIAS_AAAA = "ALIAS_AAAA" // provider specific alias for CNAME record (AWS alias target AAAA)
 )
@@ -130,7 +129,7 @@ func (rs *RecordSet) Match(set *RecordSet) bool {
 }
 
 func (rs *RecordSet) GetAttr(name string) string {
-	if rs.Type == RS_TXT || rs.Type == RS_META {
+	if rs.Type == RS_TXT {
 		prefix := newAttrKeyPrefix(name)
 		for _, r := range rs.Records {
 			if strings.HasPrefix(r.Value, prefix) {

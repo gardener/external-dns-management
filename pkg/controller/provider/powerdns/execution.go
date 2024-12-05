@@ -42,7 +42,8 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (*RecordSet, 
 		dnsset = req.Deletion
 	}
 
-	name, rset := dns.MapToProvider(req.Type, dnsset, exec.zone.Domain())
+	name := dnsset.Name
+	rset := dnsset.Sets[req.Type]
 
 	if name.SetIdentifier != "" || dnsset.RoutingPolicy != nil {
 		return nil, fmt.Errorf("routing policies not supported for " + TYPE_CODE)

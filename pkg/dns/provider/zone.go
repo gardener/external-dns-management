@@ -24,7 +24,6 @@ type dnsHostedZone struct {
 	zone        DNSHostedZone
 	next        time.Time
 	nextTrigger time.Duration
-	owners      utils.StringSet
 	policy      *dnsHostedZonePolicy
 }
 
@@ -32,7 +31,6 @@ func newDNSHostedZone(min time.Duration, zone DNSHostedZone) *dnsHostedZone {
 	return &dnsHostedZone{
 		zone:        zone,
 		RateLimiter: dnsutils.NewRateLimiter(min, 10*time.Minute),
-		owners:      utils.StringSet{},
 	}
 }
 
@@ -86,18 +84,6 @@ func (this *dnsHostedZone) IsPrivate() bool {
 
 func (this *dnsHostedZone) Match(dnsname string) int {
 	return Match(this, dnsname)
-}
-
-func (this *dnsHostedZone) SetOwners(owners utils.StringSet) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	this.owners = owners
-}
-
-func (this *dnsHostedZone) IntersectOwners(owners utils.StringSet) utils.StringSet {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	return this.owners.Intersect(owners)
 }
 
 func (this *dnsHostedZone) GetNext() time.Time {
