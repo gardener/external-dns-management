@@ -71,8 +71,12 @@ release:
 unittests: $(GINKGO)
 	$(GINKGO) -r ./pkg
 
+.PHONY: new-test-integration
+new-test-integration: $(REPORT_COLLECTOR) $(SETUP_ENVTEST)
+	@bash $(GARDENER_HACK_DIR)/test-integration.sh ./test/integration/compound
+
 .PHONY: test
-test: $(GINKGO) unittests
+test: $(GINKGO) unittests new-test-integration
 	@echo ----- Skipping long running integration tests, use \'make alltests\' to run all tests -----
 	GINKGO=$(shell realpath $(GINKGO)) test/integration/run.sh -l $(kindargs) -- -skip Many $(args)
 

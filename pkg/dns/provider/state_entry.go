@@ -124,12 +124,12 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 				if old != nil {
 					logger.Infof("dns zone '%s' of deleted entry gone", old.ZoneId())
 				}
-				if !new.IsActive() || v.object.BaseStatus().Zone == nil {
+				if !new.IsActive() || v.object.Status().Zone == nil {
 					err = this.RemoveFinalizer(v.object)
 				}
 			}
 		} else {
-			if !new.IsActive() || v.object.BaseStatus().State != api.STATE_STALE {
+			if !new.IsActive() || v.object.Status().State != api.STATE_STALE {
 				this.smartInfof(logger, "deleting yet unmanaged or errorneous entry")
 				err = this.RemoveFinalizer(v.object)
 			} else {
@@ -223,9 +223,9 @@ func (this *state) entryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 		p.ptype = zone.Id().ProviderType
 		p.zoneid = zone.Id().ID
 		p.zonedomain = zone.Domain()
-	} else if provider != nil && !provider.IsValid() && e.BaseStatus().Zone != nil {
+	} else if provider != nil && !provider.IsValid() && e.Status().Zone != nil {
 		p.ptype = provider.TypeCode()
-		p.zoneid = *e.BaseStatus().Zone
+		p.zoneid = *e.Status().Zone
 	} else if p.fallback != nil {
 		zone = this.getProviderZoneForName(e.GetDNSName(), p.fallback)
 		if zone != nil {

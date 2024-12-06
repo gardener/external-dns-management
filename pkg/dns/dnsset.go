@@ -5,6 +5,8 @@
 package dns
 
 import (
+	"reflect"
+
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -228,4 +230,32 @@ func (this *DNSSet) SetRecordSet(rtype string, ttl int64, values ...string) {
 
 func NewDNSSet(name DNSSetName, routingPolicy *RoutingPolicy) *DNSSet {
 	return &DNSSet{Name: name, RoutingPolicy: routingPolicy, Sets: map[string]*RecordSet{}}
+}
+
+// MatchRecordTypeSubset matches DNSSet equality for given record type subset.
+func (this *DNSSet) MatchRecordTypeSubset(that *DNSSet, rtype string) bool {
+	if this == that {
+		return true
+	}
+	if this == nil || that == nil {
+		return false
+	}
+	if this.Name != that.Name {
+		return false
+	}
+	if this.UpdateGroup != that.UpdateGroup {
+		return false
+	}
+	if this.RoutingPolicy != that.RoutingPolicy && !reflect.DeepEqual(this.RoutingPolicy, that.RoutingPolicy) {
+		return false
+	}
+	rs1 := this.Sets[rtype]
+	rs2 := that.Sets[rtype]
+	if (rs1 == nil) != (rs2 == nil) {
+		return false
+	}
+	if rs1 != nil && !rs1.Match(rs2) {
+		return false
+	}
+	return true
 }

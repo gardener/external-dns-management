@@ -43,10 +43,6 @@ func (this *DNSEntryObject) Status() *api.DNSEntryStatus {
 	return &this.DNSEntry().Status
 }
 
-func (this *DNSEntryObject) BaseStatus() *api.DNSBaseStatus {
-	return &this.DNSEntry().Status.DNSBaseStatus
-}
-
 func GetDNSName(entry *api.DNSEntry) string {
 	return dns.NormalizeHostname(entry.Spec.DNSName)
 }

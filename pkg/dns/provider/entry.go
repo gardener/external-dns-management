@@ -77,7 +77,7 @@ type EntryVersion struct {
 	mappings      map[string][]string
 	warnings      []string
 
-	status api.DNSBaseStatus
+	status api.DNSEntryStatus
 
 	interval    int64
 	responsible bool
@@ -96,13 +96,9 @@ func NewEntryVersion(object *dnsutils.DNSEntryObject, old *Entry) *EntryVersion 
 	if old != nil {
 		v.status = old.status
 	} else {
-		v.status = *object.BaseStatus()
+		v.status = *object.Status()
 	}
 	return v
-}
-
-func (this *EntryVersion) Kind() string {
-	return this.object.GroupKind().Kind
 }
 
 func (this *EntryVersion) GetAnnotations() map[string]string {
@@ -381,7 +377,7 @@ func validateOwner(_ logger.LogContext, state *state, entry *EntryVersion) error
 }
 
 func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *EntryPremise, op string, err error, config Config) reconcile.Status {
-	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s, ref %+v", op, this.Object().BaseStatus().State, p.zoneid, p.ptype, Provider(p.provider), this.Object().GetReference())
+	hello := dnsutils.NewLogMessage("%s ENTRY: %s, zoneid: %s, handler: %s, provider: %s, ref %+v", op, this.Object().Status().State, p.zoneid, p.ptype, Provider(p.provider), this.Object().GetReference())
 
 	this.valid = false
 	this.responsible = false
@@ -389,9 +385,9 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	///////////// handle type responsibility
 
-	if !utils.IsEmptyString(this.object.BaseStatus().ProviderType) && p.ptype == "" {
+	if !utils.IsEmptyString(this.object.Status().ProviderType) && p.ptype == "" {
 		// other controller claimed responsibility?
-		this.status.ProviderType = this.object.BaseStatus().ProviderType
+		this.status.ProviderType = this.object.Status().ProviderType
 	}
 
 	if utils.IsEmptyString(this.status.ProviderType) || (p.zoneid != "" && *this.status.ProviderType != p.ptype) {
@@ -572,7 +568,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			}
 		}
 
-		if this.status.State == api.STATE_READY && this.object.BaseStatus() != nil && this.object.GetGeneration() != this.object.BaseStatus().ObservedGeneration {
+		if this.status.State == api.STATE_READY && this.object.Status() != nil && this.object.GetGeneration() != this.object.Status().ObservedGeneration {
 			this.status.State = api.STATE_PENDING
 		}
 	}
@@ -584,7 +580,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		if err != nil {
 			return false, err
 		}
-		status := dnsutils.DNSEntry(obj).BaseStatus()
+		status := dnsutils.DNSEntry(obj).Status()
 		mod := &utils.ModificationState{}
 		if p.zoneid != "" {
 			mod.AssureStringPtrValue(&status.ProviderType, p.ptype)
@@ -622,7 +618,7 @@ func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg stri
 			return false, err
 		}
 		o := dnsutils.DNSEntry(tmp)
-		status := o.BaseStatus()
+		status := o.Status()
 		mod := (&utils.ModificationState{}).
 			AssureStringPtrPtr(&status.ProviderType, this.status.ProviderType).
 			AssureStringValue(&status.State, state).
@@ -654,7 +650,7 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 			return false, err
 		}
 		o := dnsutils.DNSEntry(obj)
-		b := o.BaseStatus()
+		b := o.Status()
 		if state == api.STATE_PENDING && b.State != "" {
 			return false, nil
 		}
@@ -662,9 +658,9 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 
 		if state == api.STATE_READY {
 			mod.AssureInt64PtrPtr(&b.TTL, this.status.TTL)
-			list, msg := targetList(this.targets)
-			if o.AcknowledgeTargets(list) {
-				logger.Info(msg)
+			targets := targetList(this.targets)
+			if o.AcknowledgeTargets(targets) {
+				logger.Infof("update effective targets: [%s]", strings.Join(targets, ", "))
 				mod.Modify(true)
 			}
 			if o.AcknowledgeRoutingPolicy(this.routingPolicy) {
@@ -700,7 +696,7 @@ func (this *EntryVersion) UpdateState(logger logger.LogContext, state, msg strin
 			return false, err
 		}
 		o := dnsutils.DNSEntry(obj)
-		b := o.BaseStatus()
+		b := o.Status()
 		mod := &utils.ModificationState{}
 
 		mod.AssureStringPtrValue(&b.Message, msg)
@@ -716,17 +712,12 @@ func (this *EntryVersion) UpdateState(logger logger.LogContext, state, msg strin
 	return this.object.ModifyStatus(f)
 }
 
-func targetList(targets Targets) ([]string, string) {
-	list := []string{}
-	msg := "update effective targets: ["
-	sep := ""
+func targetList(targets Targets) []string {
+	targetList := make([]string, 0, len(targets))
 	for _, t := range targets {
-		list = append(list, t.GetHostName())
-		msg = fmt.Sprintf("%s%s%s", msg, sep, t)
-		sep = ", "
+		targetList = append(targetList, t.GetHostName())
 	}
-	msg = msg + "]"
-	return list, msg
+	return targetList
 }
 
 func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject, targets ...Target) (Targets, *lookupAllResults, bool) {
@@ -833,8 +824,7 @@ func (this *Entry) Update(logger logger.LogContext, new *EntryVersion) *Entry {
 				logger.Info(msg)
 				this.object.Event(corev1.EventTypeNormal, "dnslookup", msg)
 			}
-			_, msg := targetList(new.targets)
-			logger.Infof("%s", msg)
+			logger.Infof("update effective targets: [%s]", strings.Join(targetList(new.targets), ", "))
 		}
 		this.modified = true
 	}

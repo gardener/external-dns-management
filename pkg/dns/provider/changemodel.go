@@ -39,6 +39,12 @@ type ChangeRequest struct {
 	Applied  bool
 }
 
+func (r *ChangeRequest) IsSemanticEqualTo(other *ChangeRequest) bool {
+	return r.Action == other.Action && r.Type == other.Type &&
+		(r.Addition == nil && other.Addition == nil || r.Addition != nil && other.Addition != nil && r.Addition.MatchRecordTypeSubset(other.Addition, r.Type)) &&
+		(r.Deletion == nil && other.Deletion == nil || r.Deletion != nil && other.Deletion != nil && r.Deletion.MatchRecordTypeSubset(other.Deletion, r.Type))
+}
+
 func NewChangeRequest(action string, rtype string, del, add *dns.DNSSet, done DoneHandler) *ChangeRequest {
 	r := &ChangeRequest{Action: action, Type: rtype, Addition: add, Deletion: del}
 	r.Done = &applyingDoneHandler{changeRequest: r, inner: done}
@@ -101,7 +107,7 @@ func (this *ChangeGroup) cleanup(logger logger.LogContext, model *ChangeModel) b
 					if e.IsDeleting() {
 						model.failedDNSNames.Add(s.Name) // preventing deletion of stale entry
 					}
-					status := e.Object().BaseStatus()
+					status := e.Object().Status()
 					msg := MSG_PRESERVED
 					trigger := false
 					if status.State == api.STATE_ERROR || status.State == api.STATE_INVALID {
