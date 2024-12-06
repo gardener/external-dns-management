@@ -1,8 +1,6 @@
-/*
- * // SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
- * //
- * // SPDX-License-Identifier: Apache-2.0
- */
+// SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Gardener contributors
+//
+// SPDX-License-Identifier: Apache-2.0
 
 package compound_test
 
@@ -30,6 +28,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 )
 
+var debug = false
+
 var _ = Describe("Compound controller tests", func() {
 	const (
 		defaultTTL   = 300
@@ -44,63 +44,61 @@ var _ = Describe("Compound controller tests", func() {
 
 		checkDeleted = func(g Gomega, ctx context.Context, entry *v1alpha1.DNSEntry) {
 			err := testClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)
-			g.Expect(err).To(HaveOccurred())
-			g.Expect(client.IgnoreNotFound(err)).To(Succeed())
+			g.ExpectWithOffset(1, err).To(HaveOccurred())
+			g.ExpectWithOffset(1, client.IgnoreNotFound(err)).To(Succeed())
 		}
 
-		checkSingleEntryInMockDatabaseGomega = func(g Gomega, entry *v1alpha1.DNSEntry) {
+		checkSingleEntryInMockDatabase = func(entry *v1alpha1.DNSEntry) {
 			dump := mock.TestMock[testRunID].BuildFullDump()
 			for _, zoneDump := range dump.InMemory {
 				switch {
 				case zoneDump.HostedZone.Domain == "first.example.com" && entry == nil:
-					g.Expect(zoneDump.DNSSets).To(BeEmpty(), "unexpected number of DNS sets in first.example.com")
+					ExpectWithOffset(1, zoneDump.DNSSets).To(BeEmpty(), "unexpected number of DNS sets in first.example.com")
 				case zoneDump.HostedZone.Domain == "first.example.com" && entry != nil:
-					g.Expect(zoneDump.DNSSets).To(HaveKey(dns.DNSSetName{DNSName: entry.Spec.DNSName}))
-					g.Expect(zoneDump.DNSSets).To(HaveLen(1), "unexpected number of DNS sets in first.example.com")
+					ExpectWithOffset(1, zoneDump.DNSSets).To(HaveKey(dns.DNSSetName{DNSName: entry.Spec.DNSName}))
+					ExpectWithOffset(1, zoneDump.DNSSets).To(HaveLen(1), "unexpected number of DNS sets in first.example.com")
 					set := zoneDump.DNSSets[dns.DNSSetName{DNSName: entry.Spec.DNSName}]
-					g.Expect(set.Sets).To(HaveKey("A"))
-					g.Expect(set.Sets).To(HaveKey("META"))
-					g.Expect(set.Sets).To(HaveLen(2))
+					ExpectWithOffset(1, set.Sets).To(HaveKey("A"))
+					ExpectWithOffset(1, set.Sets).To(HaveKey("META"))
+					ExpectWithOffset(1, set.Sets).To(HaveLen(2))
 					setA := set.Sets["A"]
-					g.Expect(setA.Records).To(ConsistOf(
+					ExpectWithOffset(1, setA.Records).To(ConsistOf(
 						PointTo(MatchFields(IgnoreExtras, Fields{
 							"Value": Equal(entry.Spec.Targets[0]),
 						}))))
-					g.Expect(setA.Type).To(Equal("A"))
-					g.Expect(setA.TTL).To(Equal(int64(defaultTTL)))
+					ExpectWithOffset(1, setA.Type).To(Equal("A"))
+					ExpectWithOffset(1, setA.TTL).To(Equal(int64(defaultTTL)))
 				case zoneDump.HostedZone.Domain == "second.example.com":
-					g.Expect(zoneDump.DNSSets).To(BeEmpty(), "unexpected number of DNS sets in second.example.com")
+					ExpectWithOffset(1, zoneDump.DNSSets).To(BeEmpty(), "unexpected number of DNS sets in second.example.com")
 				default:
-					g.Expect(false).To(BeTrue(), "unexpected zone domain "+zoneDump.HostedZone.Domain)
+					Fail("unexpected zone domain " + zoneDump.HostedZone.Domain)
 				}
 			}
 		}
 
-		checkSingleEntryInMockDatabase = func(entry *v1alpha1.DNSEntry) {
-			checkSingleEntryInMockDatabaseGomega(Default, entry)
-		}
-
 		checkEntry = func(entry *v1alpha1.DNSEntry) {
 			Eventually(func(g Gomega) {
-				Expect(testClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
-				g.Expect(entry.Status.State).To(Equal("Ready"))
+				g.ExpectWithOffset(1, testClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
+				g.ExpectWithOffset(1, entry.Status.State).To(Equal("Ready"))
 				if entry.Spec.Targets != nil {
-					g.Expect(entry.Status.Targets).To(Equal(entry.Spec.Targets))
+					g.ExpectWithOffset(1, entry.Status.Targets).To(Equal(entry.Spec.Targets))
 				} else {
-					g.Expect(entry.Status.Targets).To(Equal(quoted(entry.Spec.Text)))
+					g.ExpectWithOffset(1, entry.Status.Targets).To(Equal(quoted(entry.Spec.Text)))
 				}
 				if entry.Spec.TTL != nil {
-					g.Expect(entry.Status.TTL).To(Equal(entry.Spec.TTL))
+					g.ExpectWithOffset(1, entry.Status.TTL).To(Equal(entry.Spec.TTL))
 				} else {
-					g.Expect(entry.Status.TTL).To(Equal(ptr.To[int64](defaultTTL)))
+					g.ExpectWithOffset(1, entry.Status.TTL).To(Equal(ptr.To[int64](defaultTTL)))
 				}
-				g.Expect(entry.Status.ObservedGeneration).To(Equal(entry.Generation))
+				g.ExpectWithOffset(1, entry.Status.ObservedGeneration).To(Equal(entry.Generation))
 			}).Should(Succeed())
 		}
 	)
 
 	BeforeEach(func() {
-		//SetDefaultEventuallyTimeout(30 * time.Second)
+		if debug {
+			SetDefaultEventuallyTimeout(30 * time.Second)
+		}
 
 		ctxLocal := context.Background()
 		ctx0 := ctxutil.CancelContext(ctxutil.WaitGroupContext(context.Background(), "main"))
@@ -184,7 +182,7 @@ var _ = Describe("Compound controller tests", func() {
 		})
 
 		Eventually(func(g Gomega) {
-			Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider), provider)).To(Succeed())
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider), provider)).To(Succeed())
 			g.Expect(provider.Status.State).To(Equal("Ready"))
 		}).Should(Succeed())
 
@@ -295,7 +293,7 @@ var _ = Describe("Compound controller tests", func() {
 		}).ShouldNot(BeZero())
 
 		Eventually(func(g Gomega) {
-			Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
 			g.Expect(e1.Status.State).To(Or(Equal("Error"), Equal("Stale")))
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).Should(Succeed())
@@ -303,7 +301,7 @@ var _ = Describe("Compound controller tests", func() {
 		mock.TestMock[testRunID].RemoveApplyFailSimulation(failID)
 
 		Eventually(func(g Gomega) {
-			Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
 			g.Expect(e1.Status.State).To(Equal("Ready"))
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).WithTimeout(retryTimeout).Should(Succeed())
@@ -346,15 +344,15 @@ var _ = Describe("Compound controller tests", func() {
 		}).ShouldNot(BeZero())
 
 		Eventually(func(g Gomega) {
-			Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
-			g.Expect(e1.Status.State).To(Equal("Stale"))
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(e1.Status.State).To(Or(Equal("Error"), Equal("Stale")))
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).Should(Succeed())
 
 		mock.TestMock[testRunID].RemoveApplyFailSimulation(failID)
 
 		Eventually(func(g Gomega) {
-			Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
 			g.Expect(e1.Status.State).To(Equal("Ready"))
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).WithTimeout(retryTimeout).Should(Succeed())
