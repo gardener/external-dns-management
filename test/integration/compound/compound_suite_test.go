@@ -17,6 +17,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/mappings"
+	cmllogger "github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/gardener/gardener/pkg/logger"
@@ -63,6 +64,7 @@ var _ = BeforeSuite(func() {
 	// prevent flakes we have to increase the timeout here manually
 	SetDefaultEventuallyTimeout(5 * time.Second)
 
+	cmllogger.SetOutput(GinkgoWriter)
 	logf.SetLogger(logger.MustNewZapLogger(logger.DebugLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
 	log = logf.Log.WithName(testID)
 
@@ -152,6 +154,7 @@ func runControllerManager(ctx context.Context, args []string) {
 	c := controllermanager.PrepareStart(use, short)
 	def := c.Definition()
 	os.Args = args
+	controllermanager.DisableOptionSettingsLogging = true
 	command := controllermanager.NewCommand(ctx, use, short, short, def)
 	if err := command.Execute(); err != nil {
 		log.Error(err, "controllermanager command failed")

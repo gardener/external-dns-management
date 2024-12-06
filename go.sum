@@ -186,8 +186,8 @@ github.com/fxamacker/cbor/v2 v2.7.0 h1:iM5WgngdRBanHcxugY4JySA0nk1wZorNOpTgCMedv
 github.com/fxamacker/cbor/v2 v2.7.0/go.mod h1:pxXPTn3joSm21Gbwsv0w9OSA2y1HFR9qXEeXQVeNoDQ=
 github.com/gardener/cert-management v0.16.0 h1:OlE8nnPgqUii5jBknwASy5EtQlJ3Udy2f7VKIk35A4Q=
 github.com/gardener/cert-management v0.16.0/go.mod h1:09sH/cxbK3o4xdwCjM7HE9gGX2wq2lLhhVIqiMpmZy4=
-github.com/gardener/controller-manager-library v0.2.1-0.20241104074533-80cbeddadabc h1:o4r1a4B2HKwkglGpO74FJ9XnrGK8NAqynTpvKTfapyI=
-github.com/gardener/controller-manager-library v0.2.1-0.20241104074533-80cbeddadabc/go.mod h1:fyLOrcaKtGno4McZKW21b6QtwNghCF0IemTLKcwKZlM=
+github.com/gardener/controller-manager-library v0.2.1-0.20241206090116-9fadce45689c h1:im/eYurY6+CzlRtxYzes6IfqMPIuzQ7Cy3sA8D/t528=
+github.com/gardener/controller-manager-library v0.2.1-0.20241206090116-9fadce45689c/go.mod h1:fyLOrcaKtGno4McZKW21b6QtwNghCF0IemTLKcwKZlM=
 github.com/gardener/etcd-druid v0.24.1 h1:BfFQXOevuJ5oOvM3rkQSJ5XITMJzY/a2j54e7XcBIos=
 github.com/gardener/etcd-druid v0.24.1/go.mod h1:6C0eyfdlw6CowLm/l4ZiKwrvkc+5NHrnc/rY2wCUwys=
 github.com/gardener/gardener v1.108.0 h1:XJNLWRucboac4LYGqLpzIt8XaLxymFBsz7nHxfVF1gw=
