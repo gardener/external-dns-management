@@ -33,26 +33,28 @@ For extending or adapting this project with your own source or provisioning cont
 
 ## Index
 
-* [Quick start](#quick-start)
-  * [Automatic creation of DNS entries for services and ingresses](#automatic-creation-of-dns-entries-for-services-and-ingresses)
-    * [`A` DNS records with alias targets for provider type AWS-Route53 and AWS load balancers](#a-dns-records-with-alias-targets-for-provider-type-aws-route53-and-aws-load-balancers) 
-  * [Automatic creation of DNS entries for gateways](#automatic-creation-of-dns-entries-for-gateways)
-    * [Istio gateways](#istio-gateways)
-    * [Gateway API gateways](#gateway-api-gateways)
-* [The Model](#the-model)
-  * [Owner Identifiers](#owner-identifiers)
-  * [DNS Classes](#dns-classes)
-  * [DNSAnnotation objects](#dnsannotation-objects)
-* [Using the DNS controller manager](#using-the-dns-controller-manager)
-* [Extensions](#extensions)
-  * [How to implement Source Controllers](#how-to-implement-source-controllers)
-  * [How to implement Provisioning Controllers](#how-to-implement-provisioning-controllers)
-    * [Embedding a Factory into a Controller](#embedding-a-factory-into-a-controller)
-    * [Embedding a Factory into a Compound Factory](#embedding-a-factory-into-a-compound-factory)
-  * [Setting Up a Controller Manager](#setting-up-a-controller-manager)
-  * [Using the standard Compound Provisioning Controller](#using-the-standard-compound-provisioning-controller)
-  * [Multiple Cluster Support](#multiple-cluster-support)
-* [Why not use the community `external-dns` solution?](#why-not-use-the-community-external-dns-solution)
+- [External DNS Management](#external-dns-management)
+  - [Index](#index)
+  - [Quick start](#quick-start)
+    - [Automatic creation of DNS entries for services and ingresses](#automatic-creation-of-dns-entries-for-services-and-ingresses)
+      - [`A` DNS records with alias targets for provider type AWS-Route53 and AWS load balancers](#a-dns-records-with-alias-targets-for-provider-type-aws-route53-and-aws-load-balancers)
+    - [Automatic creation of DNS entries for gateways](#automatic-creation-of-dns-entries-for-gateways)
+      - [Istio gateways](#istio-gateways)
+      - [Gateway API gateways](#gateway-api-gateways)
+  - [The Model](#the-model)
+    - [Owner Identifiers](#owner-identifiers)
+    - [DNS Classes](#dns-classes)
+    - [DNSAnnotation objects](#dnsannotation-objects)
+  - [Using the DNS controller manager](#using-the-dns-controller-manager)
+  - [Extensions](#extensions)
+    - [How to implement Source Controllers](#how-to-implement-source-controllers)
+    - [How to implement Provisioning Controllers](#how-to-implement-provisioning-controllers)
+      - [Embedding a Factory into a Controller](#embedding-a-factory-into-a-controller)
+      - [Embedding a Factory into a Compound Factory](#embedding-a-factory-into-a-compound-factory)
+    - [Setting Up a Controller Manager](#setting-up-a-controller-manager)
+    - [Using the standard Compound Provisioning Controller](#using-the-standard-compound-provisioning-controller)
+    - [Multiple Cluster Support](#multiple-cluster-support)
+  - [Why not use the community `external-dns` solution?](#why-not-use-the-community-external-dns-solution)
 
 ## Quick start
 
@@ -430,31 +432,15 @@ and/or DNS zone identifiers to override the scanning results of the account.
 
 ### Owner Identifiers
 
-Every DNS Provisioning Controller is responsible for a set of _Owner Identifiers_.
-DNS records in an external DNS environment are attached to such an identifier.
-This is used to identify the records in the DNS environment managed by a dedicated
-controller (manager). Every controller manager hosting DNS Provisioning Controllers
-offers an option to specify a default identifier. Additionally, there might
-be dedicated `DNSOwner` objects that enable or disable additional owner ids.
+Starting with release `v0.23`, owner identifier are no longer supported.
+Formerly, every DNS Provisioning Controller was responsible for a set of _Owner Identifiers_.
+For every DNS record, there was an additional `TXT` DNS record ("metadata record") referencing the owner identifier.
+It was decided to remove this feature, as it doubles the number of DNS records without adding
+enough value.
 
-Every `DNSEntry` object may specify a dedicated owner that is used to tag
-the records in the DNS environment. A DNS provisioning controller only acts
-on DNS entries it is responsible for. Other resources in the external DNS
-environment are not touched at all.
-
-This way it is possible to
-- identify records in the external DNS management environment that are managed
-  by the actual controller instance
-- distinguish different DNS source environments sharing the same hosted zones
-  in the external management environment
-- cleanup unused entries, even if the whole resource set is already
-  gone
-- move the responsibility for dedicated sets of DNS entries among different
-  Kubernetes clusters or DNS source environments running different
-  DNS Provisioning Controller without losing the entries during the
-  migration process.
-
-**If multiple DNS controller instances have access to the same DNS zones, it is very important, that every instance uses a unique owner identifier! Otherwise, the cleanup of stale DNS record will delete entries created by another instance if they use the same identifier.**
+In the release `v0.23`, it is still important to specify the `--identifier` option for the compound DNS
+Provisioning Controller and also to keep the `DNSOwner` resources as they are used to clean up the "metadata records".
+In the future, the `DNSOwner` resources will be removed completely.
 
 ### DNS Classes
 
@@ -560,7 +546,8 @@ unique controller identity using the `--identifier` option.
 This identifier is stored in the DNS system to identify the DNS entries
 managed by a dedicated controller. There should never be two
 DNS controllers with the same identifier running at the same time for the
-same DNS domains/accounts.
+same DNS domains/accounts. In release `v0.23`, the `--identifier` option is only used to 
+cleanup the "metadata records" created by the DNS Provisioning Controller.
 
 Here is the complete list of options provided:
 
@@ -664,6 +651,7 @@ Flags:
       --compound.infoblox-dns.ratelimiter.enabled                     enables rate limiter for DNS provider requests of controller compound
       --compound.infoblox-dns.ratelimiter.qps int                     maximum requests/queries per second of controller compound
       --compound.lock-status-check-period duration                    interval for dns lock status checks of controller compound
+      --compound.max-metadata-record-deletions-per-reconciliation int   maximum number of metadata owner records that can be deleted per zone reconciliation of controller compound
       --compound.netlify-dns.advanced.batch-size int                  batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.netlify-dns.advanced.max-retries int                 maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
       --compound.netlify-dns.blocked-zone zone-id                     Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
@@ -704,7 +692,6 @@ Flags:
       --compound.rfc2136.ratelimiter.qps int                          maximum requests/queries per second of controller compound
       --compound.secrets.pool.size int                                Worker pool size for pool secrets of controller compound
       --compound.setup int                                            number of processors for controller setup of controller compound
-      --compound.statistic.pool.size int                              Worker pool size for pool statistic of controller compound
       --compound.ttl int                                              Default time-to-live for DNS entries. Defines how long the record is kept in cache by DNS servers or resolvers. of controller compound
       --compound.zonepolicies.pool.size int                           Worker pool size for pool zonepolicies of controller compound
       --config string                                                 config file
@@ -836,6 +823,7 @@ Flags:
       --lock-status-check-period duration                             interval for dns lock status checks
   -D, --log-level string                                              logrus log level
       --maintainer string                                             maintainer key for crds (default "dns-controller-manager")
+      --max-metadata-record-deletions-per-reconciliation int          maximum number of metadata owner records that can be deleted per zone reconciliation      
       --name string                                                   name used for controller manager (default "dns-controller-manager")
       --namespace string                                              namespace for lease (default "kube-system")
   -n, --namespace-local-access-only                                   enable access restriction for namespace local access only (deprecated)
@@ -908,7 +896,6 @@ Flags:
       --service-dns.target-set-ignore-owners                          mark generated DNS entries to omit owner based access control of controller service-dns
       --service-dns.targets.pool.size int                             Worker pool size for pool targets of controller service-dns
       --setup int                                                     number of processors for controller setup
-      --statistic.pool.size int                                       Worker pool size for pool statistic
       --target string                                                 target cluster for dns requests
       --target-creator-label-name string                              label name to store the creator for replicated DNS providers, label name to store the creator for generated DNS entries
       --target-creator-label-value string                             label value for creator label
@@ -1201,8 +1188,6 @@ DNS entries are explicitly specified as custom resources. As an important side e
 The Gardener DNS controller uses a custom resource DNSProvider to dynamically manage the backend DNS services. While with external-dns you have to specify the single provider during startup, in the Gardener DNS controller you can add/update/delete providers during runtime with different credentials and/or backends. This is important for a multi-tenant environment as in Gardener, where users can bring their own accounts.
 
 A DNS provider can also restrict its actions on subset of the DNS domains (includes and excludes) for which the credentials are capable to edit.
-
-Each provider can define a separate “owner” identifier, to differentiate DNS entries in the same DNS zone from different providers.
 
 3. Multi cluster support
 

@@ -324,6 +324,9 @@ spec:
         {{- if .Values.configuration.compoundLockStatusCheckPeriod }}
         - --compound.lock-status-check-period={{ .Values.configuration.compoundLockStatusCheckPeriod }}
         {{- end }}
+        {{- if .Values.configuration.compoundMaxMetadataRecordDeletionsPerReconciliation }}
+        - --compound.max-metadata-record-deletions-per-reconciliation={{ .Values.configuration.compoundMaxMetadataRecordDeletionsPerReconciliation }}
+        {{- end }}
         {{- if .Values.configuration.compoundNetlifyDnsAdvancedBatchSize }}
         - --compound.netlify-dns.advanced.batch-size={{ .Values.configuration.compoundNetlifyDnsAdvancedBatchSize }}
         {{- end }}
@@ -419,9 +422,6 @@ spec:
         {{- end }}
         {{- if .Values.configuration.compoundSetup }}
         - --compound.setup={{ .Values.configuration.compoundSetup }}
-        {{- end }}
-        {{- if .Values.configuration.compoundStatisticPoolSize }}
-        - --compound.statistic.pool.size={{ .Values.configuration.compoundStatisticPoolSize }}
         {{- end }}
         {{- if .Values.configuration.compoundTtl }}
         - --compound.ttl={{ .Values.configuration.compoundTtl }}
@@ -801,6 +801,9 @@ spec:
         {{- if .Values.configuration.maintainer }}
         - --maintainer={{ .Values.configuration.maintainer }}
         {{- end }}
+        {{- if .Values.configuration.maxMetadataRecordDeletionsPerReconciliation }}
+        - --max-metadata-record-deletions-per-reconciliation={{ .Values.configuration.maxMetadataRecordDeletionsPerReconciliation }}
+        {{- end }}
         {{- if .Values.configuration.namespace }}
         - --namespace={{ .Values.configuration.namespace }}
         {{- end }}
@@ -974,9 +977,6 @@ spec:
         {{- end }}
         {{- if .Values.configuration.setup }}
         - --setup={{ .Values.configuration.setup }}
-        {{- end }}
-        {{- if .Values.configuration.statisticPoolSize }}
-        - --statistic.pool.size={{ .Values.configuration.statisticPoolSize }}
         {{- end }}
         {{- if .Values.configuration.target }}
         - --target={{ .Values.configuration.target }}
