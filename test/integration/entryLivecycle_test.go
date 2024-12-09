@@ -104,46 +104,6 @@ var _ = Describe("EntryLivecycle", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
-	It("is handled only by owner", func() {
-		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
-		Ω(err).ShouldNot(HaveOccurred())
-
-		defer testEnv.DeleteProviderAndSecret(pr)
-
-		e, err := testEnv.CreateEntry(0, domain)
-		Ω(err).ShouldNot(HaveOccurred())
-		defer testEnv.DeleteEntryAndWait(e)
-
-		checkProvider(pr)
-
-		checkEntry(e, pr)
-
-		ownerID := "my/owner1"
-		e, err = testEnv.UpdateEntryOwner(e, &ownerID)
-		Ω(err).ShouldNot(HaveOccurred())
-
-		err = testEnv.AwaitEntryStale(e.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-
-		owner1, err := testEnv.CreateOwner("owner1", ownerID)
-		Ω(err).ShouldNot(HaveOccurred())
-
-		defer func() { _ = owner1.Delete() }()
-
-		err = testEnv.AwaitEntryReady(e.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-
-		ownerID2 := "my/owner2"
-		e, err = testEnv.UpdateEntryOwner(e, &ownerID2)
-		Ω(err).ShouldNot(HaveOccurred())
-
-		err = testEnv.AwaitEntryStale(e.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-
-		err = testEnv.DeleteEntryAndWait(e)
-		Ω(err).ShouldNot(HaveOccurred())
-	})
-
 	It("handles an entry without targets as invalid and can delete it", func() {
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).ShouldNot(HaveOccurred())
@@ -174,7 +134,7 @@ var _ = Describe("EntryLivecycle", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
-	It("handles entry correctly from ready -> stale -> invalid -> ready", func() {
+	It("handles entry correctly from ready -> invalid -> ready", func() {
 		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).ShouldNot(HaveOccurred())
 
@@ -188,29 +148,10 @@ var _ = Describe("EntryLivecycle", func() {
 
 		checkEntry(e, pr)
 
-		ownerID := "my/owner1"
-		e, err = testEnv.UpdateEntryOwner(e, &ownerID)
-		Ω(err).ShouldNot(HaveOccurred())
-
-		err = testEnv.AwaitEntryStale(e.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-
-		err = testEnv.MockInMemoryHasEntry(e)
-		Ω(err).ShouldNot(HaveOccurred())
-
 		e, err = testEnv.UpdateEntryTargets(e)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		e, err = testEnv.UpdateEntryOwner(e, nil)
-		Ω(err).ShouldNot(HaveOccurred())
-
 		err = testEnv.AwaitEntryInvalid(e.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
-
-		err = testEnv.Await("entry still in mock provider", func() (bool, error) {
-			err := testEnv.MockInMemoryHasNotEntry(e)
-			return err == nil, err
-		})
 		Ω(err).ShouldNot(HaveOccurred())
 
 		e, err = testEnv.UpdateEntryTargets(e, "1.1.1.1")

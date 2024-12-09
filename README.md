@@ -541,13 +541,13 @@ The following provider types can be selected (comma separated):
 - `remote`: Remote DNS provider (a dns-controller-manager with enabled remote access service)
 - `powerdns`: PowerDNS provider
 
-If the compound DNS Provisioning Controller is enabled it is important to specify a
-unique controller identity using the `--identifier` option.
-This identifier is stored in the DNS system to identify the DNS entries
-managed by a dedicated controller. There should never be two
-DNS controllers with the same identifier running at the same time for the
-same DNS domains/accounts. In release `v0.23`, the `--identifier` option is only used to 
-cleanup the "metadata records" created by the DNS Provisioning Controller.
+If the compound DNS Provisioning Controller is enabled, a unique controller identity was specified using the
+`--identifier` option in former release.
+This identifier was used to tag the DNS entries managed by a dedicated controller by creating additional
+"metadata `TXT` records" in the DNS system.
+Starting with release `v0.23`, this feature has been dropped as it doubles the number of DNS records.
+It is still important and required to specify the `--identifier` option to enable the cleanup of "metadata records" 
+created by former releases of the DNS Provisioning Controller.
 
 Here is the complete list of options provided:
 
