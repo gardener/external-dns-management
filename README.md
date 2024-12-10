@@ -30,6 +30,29 @@ For a detailed explanation of the model, see section [The Model](#the-model).
 For extending or adapting this project with your own source or provisioning controllers, see section
 [Extensions](#extensions)
 
+## Important Note: Support for owner identifiers is discontinued
+
+Starting with release `v0.23`, the support for owner identifiers is discontinued.
+
+The creation and management of meta data DNS records holding the owner identifier for each `DNSEntry` has been removed.
+These meta data DNS records will be removed automatically. To avoid running into rate limits, this removals will happen
+only during updates or with low batch size during the periodic reconciliation.
+Depending on size of the hosted zone these cleanup can take multiple days.
+To ensure the correct work of the cleanup of these special `TXT` DNS records, the owner identifier provided via 
+the `--identifier` command line option and the `DNSOwner` custom resources need still be provided as before.
+In a future release, the `DNSOwner` resources will be removed completely.
+
+These identifiers are now only used for cleanup, but not for any other purposes.
+
+The ownership information was used to several purposes:
+- detect conflicts (i.e. same DNS record written by multiple dns-controller-manager instances)
+- handing over responsibility of DNS records from one to another controller instance
+- detection of orphan DNS records and their cleanup
+
+Please note that these edge cases are not supported anymore.
+For handing over responsibility of DNS record, please use the `dns.gardener.cloud/ignore=true` annotation 
+on `DNSEntries` or the annotated source objects (like `Ingress`, `Service`, etc.)
+
 ## Quick start
 
 To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow these steps.
