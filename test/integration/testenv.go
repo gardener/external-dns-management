@@ -429,17 +429,6 @@ func (te *TestEnv) CreateEntryGeneric(index int, specSetter EntrySpecSetter) (re
 	return obj, err
 }
 
-func (te *TestEnv) UpdateEntryOwner(obj resources.Object, ownerID *string) (resources.Object, error) {
-	obj, err := te.GetEntry(obj.GetName())
-	if err != nil {
-		return nil, err
-	}
-	e := UnwrapEntry(obj)
-	e.Spec.OwnerId = ownerID
-	err = obj.Update()
-	return obj, err
-}
-
 func (te *TestEnv) UpdateEntryDomain(obj resources.Object, domain string) (resources.Object, error) {
 	obj, err := te.GetEntry(obj.GetName())
 	if err != nil {

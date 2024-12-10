@@ -32,10 +32,7 @@ func TestValidation(t *testing.T) {
 		{"a123456789012345678901234567890123456789012345678901234567890abc.b", false},   // label too long
 		{"a.a123456789012345678901234567890123456789012345678901234567890abc.b", false}, // label too long
 		{"a12345678901234567890123456789012345678901234567890abcd.b", true},
-		{"a12345678901234567890123456789012345678901234567890abcde.b", false}, // meta data label too long
-		{"abc.a123456789." + name239, false},                                  // name too long
-		{"abcde." + name239, true},                                            // comment-abcde... has 253 chars
-		{"abcdef." + name239, false},                                          // meta data name too long
+		{"abc.a123456789." + name239, false}, // name too long
 	}
 	for _, entry := range table {
 		err := ValidateDomainName(entry.input)

@@ -8,40 +8,20 @@ import (
 	"reflect"
 
 	"github.com/gardener/controller-manager-library/pkg/utils"
-
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-// A DNSSet contains Record sets for an DNS name. The name is given without
-// trailing dot. If the provider required this dot, it must be removed or addeed
-// whe reading or writing recordsets, respectively.
+// A DNSSet contains record sets for a DNS name. The name is given without
+// trailing dot. If the provider requires this dot, it must be removed or added
+// whe reading or writing record sets, respectively.
 // Supported record set types are:
 // - TXT
 // - CNAME
 // - A
-// - META   virtual type used by this API (see below) to store meta data
+// - AAAA
 //
 // If multiple CNAME records are given they will be mapped to A records
-// by resolving the cnames. THis resolution will be updated periodically,
-//
-// The META records contain attribute settings of the form "<attr>=<value>".
-// They are used to store the identifier of the controller and other
-// meta data to identity sets maintained or owned by this controller.
-// This record set must be stored and restored by the provider in some
-//  applicable way.
-//
-// This library supports a default mechanics for ths task, that can be used by
-// the provider:
-// This record set always contains a prefix attribute used to map META
-// records to TXT records finally stored by the provider.
-// Because not all regular record types can be combined with TXT records
-// the META text records are stores for a separate dns name composed of
-// the prefix and the original name.
-// This mapping is done by the the two functions MapFromProvider and
-// MapToProvider. These methods can be called by the provider when reading
-// or writing a record set, respectively. The map the given set to
-// an effective set and dns name for the desired purpose.
+// by resolving the cnames. This resolution will be updated periodically.
 
 type DNSSets map[DNSSetName]*DNSSet
 
@@ -50,27 +30,24 @@ type Ownership interface {
 	GetIds() utils.StringSet
 }
 
-func (dnssets DNSSets) AddRecordSetFromProvider(dnsName string, rs *RecordSet) {
-	dnssets.AddRecordSetFromProviderEx(DNSSetName{DNSName: dnsName}, nil, rs)
+func (dnssets DNSSets) AddRecordSetFromProvider(dnsName string, recordSet *RecordSet) {
+	dnssets.AddRecordSetFromProviderEx(DNSSetName{DNSName: dnsName}, nil, recordSet)
 }
 
-func (dnssets DNSSets) AddRecordSetFromProviderEx(setName DNSSetName, policy *RoutingPolicy, rs *RecordSet) {
-	name := setName.Normalize()
-	name, rs = MapFromProvider(name, rs)
-
-	dnssets.AddRecordSet(name, policy, rs)
+func (dnssets DNSSets) AddRecordSetFromProviderEx(setName DNSSetName, policy *RoutingPolicy, recordSet *RecordSet) {
+	dnssets.AddRecordSet(setName.Normalize(), policy, recordSet)
 }
 
-func (dnssets DNSSets) AddRecordSet(name DNSSetName, policy *RoutingPolicy, rs *RecordSet) {
+func (dnssets DNSSets) AddRecordSet(name DNSSetName, policy *RoutingPolicy, recordSet *RecordSet) {
 	dnsset := dnssets[name]
 	if dnsset == nil {
 		dnsset = NewDNSSet(name, policy)
 		dnssets[name] = dnsset
 	}
-	dnsset.Sets[rs.Type] = rs
-	if rs.Type == RS_CNAME {
-		for i := range rs.Records {
-			rs.Records[i].Value = NormalizeHostname(rs.Records[i].Value)
+	dnsset.Sets[recordSet.Type] = recordSet
+	if recordSet.Type == RS_CNAME {
+		for i := range recordSet.Records {
+			recordSet.Records[i].Value = NormalizeHostname(recordSet.Records[i].Value)
 		}
 	}
 	dnsset.RoutingPolicy = policy
@@ -94,30 +71,8 @@ func (dnssets DNSSets) Clone() DNSSets {
 	return clone
 }
 
-// GetOwners returns all owners for all DNSSets
-func (dnssets DNSSets) GetOwners() utils.StringSet {
-	owners := utils.NewStringSet()
-	for _, dnsset := range dnssets {
-		o := dnsset.GetMetaAttr(ATTR_OWNER)
-		if o != "" {
-			owners.Add(o)
-		}
-	}
-	return owners
-}
-
-const (
-	ATTR_OWNER  = "owner"
-	ATTR_PREFIX = "prefix"
-	ATTR_KIND   = "kind"
-
-	ATTR_TIMESTAMP = "ts"
-	ATTR_LOCKID    = "lockid"
-)
-
 type DNSSet struct {
 	Name          DNSSetName
-	Kind          string
 	UpdateGroup   string
 	Sets          RecordSets
 	RoutingPolicy *RoutingPolicy
@@ -125,33 +80,33 @@ type DNSSet struct {
 
 func (this *DNSSet) Clone() *DNSSet {
 	return &DNSSet{
-		Name: this.Name, Sets: this.Sets.Clone(), UpdateGroup: this.UpdateGroup, Kind: this.Kind,
+		Name: this.Name, Sets: this.Sets.Clone(), UpdateGroup: this.UpdateGroup,
 		RoutingPolicy: this.RoutingPolicy.Clone(),
 	}
 }
 
-func (this *DNSSet) getAttr(ty string, name string) string {
-	rset := this.Sets[ty]
-	if rset != nil {
-		return rset.GetAttr(name)
+func (this *DNSSet) getAttr(recordType string, name string) string {
+	recordSet := this.Sets[recordType]
+	if recordSet != nil {
+		return recordSet.GetAttr(name)
 	}
 	return ""
 }
 
-func (this *DNSSet) setAttr(ty string, name string, value string) {
-	rset := this.Sets[ty]
-	if rset == nil {
-		rset = newAttrRecordSet(ty, name, value)
-		this.Sets[rset.Type] = rset
+func (this *DNSSet) setAttr(recordType string, name string, value string) {
+	recordSet := this.Sets[recordType]
+	if recordSet == nil {
+		recordSet = newAttrRecordSet(recordType, name, value)
+		this.Sets[recordSet.Type] = recordSet
 	} else {
-		rset.SetAttr(name, value)
+		recordSet.SetAttr(name, value)
 	}
 }
 
-func (this *DNSSet) deleteAttr(ty string, name string) {
-	rset := this.Sets[ty]
-	if rset != nil {
-		rset.DeleteAttr(name)
+func (this *DNSSet) deleteAttr(recordType string, name string) {
+	recordSet := this.Sets[recordType]
+	if recordSet != nil {
+		recordSet.DeleteAttr(name)
 	}
 }
 
@@ -167,73 +122,29 @@ func (this *DNSSet) DeleteTxtAttr(name string) {
 	this.deleteAttr(RS_TXT, name)
 }
 
-func (this *DNSSet) GetMetaAttr(name string) string {
-	return this.getAttr(RS_META, name)
-}
-
-func (this *DNSSet) SetMetaAttr(name string, value string) {
-	this.setAttr(RS_META, name, value)
-}
-
-func (this *DNSSet) DeleteMetaAttr(name string) {
-	this.deleteAttr(RS_META, name)
-}
-
-func (this *DNSSet) IsOwnedBy(ownership Ownership) bool {
-	o := this.GetMetaAttr(ATTR_OWNER)
-	return o != "" && ownership.IsResponsibleFor(o)
-}
-
-func (this *DNSSet) IsForeign(ownership Ownership) bool {
-	o := this.GetMetaAttr(ATTR_OWNER)
-	return o != "" && !ownership.IsResponsibleFor(o)
-}
-
-func (this *DNSSet) GetOwner() string {
-	return this.GetMetaAttr(ATTR_OWNER)
-}
-
-func (this *DNSSet) SetOwner(ownerid string) *DNSSet {
-	this.SetMetaAttr(ATTR_OWNER, ownerid)
-	return this
-}
-
-func (this *DNSSet) GetKind() string {
-	if this.Kind == "" {
-		this.Kind = this.GetMetaAttr(ATTR_KIND)
-	}
-	if this.Kind == "" {
-		this.Kind = api.DNSEntryKind
-	}
-	return this.Kind
-}
-
-func (this *DNSSet) SetKind(t string, prop ...bool) *DNSSet {
-	this.Kind = t
-	if t != api.DNSEntryKind {
-		if len(prop) == 0 || prop[0] {
-			this.SetMetaAttr(ATTR_KIND, t)
-		}
-	} else {
-		this.DeleteMetaAttr(ATTR_KIND)
-	}
-	return this
-}
-
-func (this *DNSSet) SetRecordSet(rtype string, ttl int64, values ...string) {
+func (this *DNSSet) SetRecordSet(recordType string, ttl int64, values ...string) {
 	records := make([]*Record, len(values))
 	for i, r := range values {
 		records[i] = &Record{Value: r}
 	}
-	this.Sets[rtype] = &RecordSet{Type: rtype, TTL: ttl, IgnoreTTL: false, Records: records}
+	this.Sets[recordType] = &RecordSet{Type: recordType, TTL: ttl, IgnoreTTL: false, Records: records}
 }
 
 func NewDNSSet(name DNSSetName, routingPolicy *RoutingPolicy) *DNSSet {
 	return &DNSSet{Name: name, RoutingPolicy: routingPolicy, Sets: map[string]*RecordSet{}}
 }
 
+// Match matches DNSSet equality
+func (this *DNSSet) Match(that *DNSSet) bool {
+	return this.match(that, nil)
+}
+
 // MatchRecordTypeSubset matches DNSSet equality for given record type subset.
-func (this *DNSSet) MatchRecordTypeSubset(that *DNSSet, rtype string) bool {
+func (this *DNSSet) MatchRecordTypeSubset(that *DNSSet, recordType string) bool {
+	return this.match(that, &recordType)
+}
+
+func (this *DNSSet) match(that *DNSSet, restrictToRecordType *string) bool {
 	if this == that {
 		return true
 	}
@@ -249,13 +160,25 @@ func (this *DNSSet) MatchRecordTypeSubset(that *DNSSet, rtype string) bool {
 	if this.RoutingPolicy != that.RoutingPolicy && !reflect.DeepEqual(this.RoutingPolicy, that.RoutingPolicy) {
 		return false
 	}
-	rs1 := this.Sets[rtype]
-	rs2 := that.Sets[rtype]
-	if (rs1 == nil) != (rs2 == nil) {
+	if restrictToRecordType != nil {
+		rs1, rs2 := this.Sets[*restrictToRecordType], that.Sets[*restrictToRecordType]
+		if rs1 != nil && rs2 != nil {
+			return rs1.Match(rs2)
+		}
+		return rs1 == nil && rs2 == nil
+	}
+
+	if len(this.Sets) != len(that.Sets) {
 		return false
 	}
-	if rs1 != nil && !rs1.Match(rs2) {
-		return false
+	for k, v := range this.Sets {
+		w := that.Sets[k]
+		if w == nil {
+			return false
+		}
+		if !v.Match(w) {
+			return false
+		}
 	}
 	return true
 }

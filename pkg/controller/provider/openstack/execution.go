@@ -52,8 +52,8 @@ func (exec *Execution) buildRecordSet(req *provider.ChangeRequest) (buildStatus,
 		return bsInvalidRoutingPolicy, nil
 	}
 
-	name, rset := dns.MapToProvider(req.Type, dnsset, exec.zone.Domain())
-
+	name := dnsset.Name
+	rset := dnsset.Sets[req.Type]
 	if len(rset.Records) == 0 {
 		return bsEmpty, nil
 	}

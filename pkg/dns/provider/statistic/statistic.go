@@ -78,50 +78,10 @@ func (this ProviderTypeStatistic) Walk(state WalkingState, walker OwnerWalker, o
 
 ////////////////////////////////////////////////////////////////////////////////
 
-type OwnerStatistic map[string]ProviderTypeStatistic
-
-func (this OwnerStatistic) Inc(owner, ptype string, pname resources.ObjectName) {
-	this.Assure(owner).Inc(ptype, pname)
-}
-
-func (this OwnerStatistic) Count() int {
-	sum := 0
-	for _, e := range this {
-		sum += e.Count()
-	}
-	return sum
-}
-
-func (this OwnerStatistic) Get(owner string) ProviderTypeStatistic {
-	if pts := this[owner]; pts != nil {
-		return pts
-	}
-	return ProviderTypeStatistic{}
-}
-
-func (this OwnerStatistic) Assure(owner string) ProviderTypeStatistic {
-	cur := this[owner]
-	if cur == nil {
-		cur = ProviderTypeStatistic{}
-		this[owner] = cur
-	}
-	return cur
-}
-
-func (this OwnerStatistic) Walk(state WalkingState, walker OwnerWalker) WalkingState {
-	for o, os := range this {
-		state = os.Walk(state, walker, o)
-	}
-	return state
-}
-
-////////////////////////////////////////////////////////////////////////////////
-
 type EntryStatistic struct {
 	Providers ProviderTypeStatistic
-	Owners    OwnerStatistic
 }
 
 func NewEntryStatistic() *EntryStatistic {
-	return &EntryStatistic{ProviderTypeStatistic{}, OwnerStatistic{}}
+	return &EntryStatistic{ProviderTypeStatistic{}}
 }
