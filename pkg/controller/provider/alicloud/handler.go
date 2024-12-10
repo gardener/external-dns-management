@@ -111,10 +111,6 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 	return state, nil
 }
 
-func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error) bool {
-	return h.cache.ReportZoneStateConflict(zone, err)
-}
-
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	err := raw.ExecuteRequests(logger, &h.config, h.access, zone, state, reqs)
 	h.cache.ApplyRequests(logger, err, zone, reqs)

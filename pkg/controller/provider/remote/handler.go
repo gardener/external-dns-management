@@ -241,10 +241,6 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 	return provider.NewDNSZoneState(dnssets), nil
 }
 
-func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error) bool {
-	return h.cache.ReportZoneStateConflict(zone, err)
-}
-
 func (h *Handler) MapTargets(dnsName string, targets []provider.Target) []provider.Target {
 	if h.isAWSRoute53(dnsName) {
 		return mapping.MapTargets(targets)

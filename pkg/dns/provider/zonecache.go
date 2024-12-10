@@ -71,7 +71,6 @@ type ZoneCache interface {
 	GetZoneState(zone DNSHostedZone) (DNSZoneState, error)
 	ApplyRequests(logctx logger.LogContext, err error, zone DNSHostedZone, reqs []*ChangeRequest)
 	Release()
-	ReportZoneStateConflict(zone DNSHostedZone, err error) bool
 }
 
 type onlyZonesCache struct {
@@ -133,10 +132,6 @@ func (c *onlyZonesCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error) 
 func (c *onlyZonesCache) ApplyRequests(_ logger.LogContext, _ error, _ DNSHostedZone, _ []*ChangeRequest) {
 }
 
-func (c *onlyZonesCache) ReportZoneStateConflict(_ DNSHostedZone, _ error) bool {
-	return false
-}
-
 func (c *onlyZonesCache) Release() {
 }
 
@@ -162,10 +157,6 @@ func (c *defaultZoneCache) GetZoneState(zone DNSHostedZone) (DNSZoneState, error
 		c.metrics.AddZoneRequests(zone.Id().ID, M_CACHED_GETZONESTATE, 1)
 	}
 	return state, err
-}
-
-func (c *defaultZoneCache) ReportZoneStateConflict(zone DNSHostedZone, err error) bool {
-	return c.zoneStates.ReportZoneStateConflict(zone.Id(), err)
 }
 
 func (c *defaultZoneCache) cleanZoneState(zoneID dns.ZoneID) {
@@ -248,10 +239,6 @@ func (s *zoneStates) GetZoneState(zone DNSHostedZone, cache *defaultZoneCache) (
 		return nil, true, err
 	}
 	return state, true, nil
-}
-
-func (s *zoneStates) ReportZoneStateConflict(_ dns.ZoneID, _ error) bool {
-	return false
 }
 
 func (s *zoneStates) ExecuteRequests(zoneID dns.ZoneID, reqs []*ChangeRequest) {
