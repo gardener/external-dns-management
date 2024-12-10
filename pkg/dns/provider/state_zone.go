@@ -174,10 +174,10 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		spec := e.object.GetTargetSpec(e)
 		statusUpdate := NewStatusUpdate(logger, e, this.GetContext())
 		if e.IsDeleting() {
-			changeResult = changes.Delete(e.DNSSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
+			changeResult = changes.Delete(e.DNSSetName(), e.ObjectName().Namespace(), statusUpdate, spec)
 		} else {
 			if !e.NotRateLimited() {
-				changeResult = changes.Check(e.DNSSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
+				changeResult = changes.Check(e.DNSSetName(), e.ObjectName().Namespace(), statusUpdate, spec)
 				if changeResult.Modified {
 					if accepted, delay := this.tryAcceptProviderRateLimiter(logger, e); !accepted {
 						req.zone.nextTrigger = delay
@@ -191,7 +191,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 					}
 				}
 			}
-			changeResult = changes.Apply(e.DNSSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
+			changeResult = changes.Apply(e.DNSSetName(), e.ObjectName().Namespace(), statusUpdate, spec)
 			if changeResult.Error != nil && changeResult.Retry {
 				conflictErr = changeResult.Error
 			}

@@ -93,7 +93,7 @@ type targetSpec struct {
 	routingPolicy *dns.RoutingPolicy
 }
 
-func BaseTargetSpec(entry *DNSEntryObject, p TargetProvider) TargetSpec {
+func BaseTargetSpec(p TargetProvider) TargetSpec {
 	spec := &targetSpec{
 		targets:       p.Targets(),
 		routingPolicy: p.RoutingPolicy(),

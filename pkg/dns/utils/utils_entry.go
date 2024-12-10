@@ -133,7 +133,7 @@ func (this *DNSEntryObject) AcknowledgeCNAMELookupInterval(interval int64) bool 
 }
 
 func (this *DNSEntryObject) GetTargetSpec(p TargetProvider) TargetSpec {
-	return BaseTargetSpec(this, p)
+	return BaseTargetSpec(p)
 }
 
 func DNSSetName(entry *api.DNSEntry) dns.DNSSetName {
