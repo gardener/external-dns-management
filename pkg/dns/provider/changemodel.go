@@ -383,31 +383,31 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name dns.DNSSetName, upda
 	mod := false
 	if oldset != nil {
 		this.Debugf("found old for entry %q", oldset.Name)
-		for ty, rset := range newset.Sets {
-			curset := oldset.Sets[ty]
+		for recordType, recordSet := range newset.Sets {
+			curset := oldset.Sets[recordType]
 			if curset == nil {
 				if apply {
-					view.addCreateRequest(newset, ty, done)
+					view.addCreateRequest(newset, recordType, done)
 				}
 				mod = true
 			} else {
-				olddns := oldset.Sets[ty]
-				newdns := newset.Sets[ty]
+				olddns := oldset.Sets[recordType]
+				newdns := newset.Sets[recordType]
 				if olddns.Match(newdns) {
-					if !curset.Match(rset) || !reflect.DeepEqual(spec.RoutingPolicy(), oldset.RoutingPolicy) {
+					if !curset.Match(recordSet) || !reflect.DeepEqual(spec.RoutingPolicy(), oldset.RoutingPolicy) {
 						if apply {
-							view.addUpdateRequest(oldset, newset, ty, done)
+							view.addUpdateRequest(oldset, newset, recordType, done)
 						}
 						mod = true
 					} else {
 						if apply {
-							this.Debugf("records type %s up to date for %s", ty, name)
+							this.Debugf("records type %s up to date for %s", recordType, name)
 						}
 					}
 				} else {
 					if apply {
-						view.addCreateRequest(newset, ty, done)
-						view.addDeleteRequest(oldset, ty, this.wrappedDoneHandler(name, nil))
+						view.addCreateRequest(newset, recordType, done)
+						view.addDeleteRequest(oldset, recordType, this.wrappedDoneHandler(name, nil))
 					}
 					mod = true
 				}

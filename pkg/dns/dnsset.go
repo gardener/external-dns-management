@@ -11,9 +11,9 @@ import (
 )
 
 ////////////////////////////////////////////////////////////////////////////////
-// A DNSSet contains record sets for an DNS name. The name is given without
-// trailing dot. If the provider required this dot, it must be removed or addeed
-// whe reading or writing recordsets, respectively.
+// A DNSSet contains record sets for a DNS name. The name is given without
+// trailing dot. If the provider requires this dot, it must be removed or added
+// whe reading or writing record sets, respectively.
 // Supported record set types are:
 // - TXT
 // - CNAME
@@ -30,24 +30,24 @@ type Ownership interface {
 	GetIds() utils.StringSet
 }
 
-func (dnssets DNSSets) AddRecordSetFromProvider(dnsName string, rs *RecordSet) {
-	dnssets.AddRecordSetFromProviderEx(DNSSetName{DNSName: dnsName}, nil, rs)
+func (dnssets DNSSets) AddRecordSetFromProvider(dnsName string, recordSet *RecordSet) {
+	dnssets.AddRecordSetFromProviderEx(DNSSetName{DNSName: dnsName}, nil, recordSet)
 }
 
-func (dnssets DNSSets) AddRecordSetFromProviderEx(setName DNSSetName, policy *RoutingPolicy, rs *RecordSet) {
-	dnssets.AddRecordSet(setName.Normalize(), policy, rs)
+func (dnssets DNSSets) AddRecordSetFromProviderEx(setName DNSSetName, policy *RoutingPolicy, recordSet *RecordSet) {
+	dnssets.AddRecordSet(setName.Normalize(), policy, recordSet)
 }
 
-func (dnssets DNSSets) AddRecordSet(name DNSSetName, policy *RoutingPolicy, rs *RecordSet) {
+func (dnssets DNSSets) AddRecordSet(name DNSSetName, policy *RoutingPolicy, recordSet *RecordSet) {
 	dnsset := dnssets[name]
 	if dnsset == nil {
 		dnsset = NewDNSSet(name, policy)
 		dnssets[name] = dnsset
 	}
-	dnsset.Sets[rs.Type] = rs
-	if rs.Type == RS_CNAME {
-		for i := range rs.Records {
-			rs.Records[i].Value = NormalizeHostname(rs.Records[i].Value)
+	dnsset.Sets[recordSet.Type] = recordSet
+	if recordSet.Type == RS_CNAME {
+		for i := range recordSet.Records {
+			recordSet.Records[i].Value = NormalizeHostname(recordSet.Records[i].Value)
 		}
 	}
 	dnsset.RoutingPolicy = policy
@@ -85,28 +85,28 @@ func (this *DNSSet) Clone() *DNSSet {
 	}
 }
 
-func (this *DNSSet) getAttr(ty string, name string) string {
-	rset := this.Sets[ty]
-	if rset != nil {
-		return rset.GetAttr(name)
+func (this *DNSSet) getAttr(recordType string, name string) string {
+	recordSet := this.Sets[recordType]
+	if recordSet != nil {
+		return recordSet.GetAttr(name)
 	}
 	return ""
 }
 
-func (this *DNSSet) setAttr(ty string, name string, value string) {
-	rset := this.Sets[ty]
-	if rset == nil {
-		rset = newAttrRecordSet(ty, name, value)
-		this.Sets[rset.Type] = rset
+func (this *DNSSet) setAttr(recordType string, name string, value string) {
+	recordSet := this.Sets[recordType]
+	if recordSet == nil {
+		recordSet = newAttrRecordSet(recordType, name, value)
+		this.Sets[recordSet.Type] = recordSet
 	} else {
-		rset.SetAttr(name, value)
+		recordSet.SetAttr(name, value)
 	}
 }
 
-func (this *DNSSet) deleteAttr(ty string, name string) {
-	rset := this.Sets[ty]
-	if rset != nil {
-		rset.DeleteAttr(name)
+func (this *DNSSet) deleteAttr(recordType string, name string) {
+	recordSet := this.Sets[recordType]
+	if recordSet != nil {
+		recordSet.DeleteAttr(name)
 	}
 }
 
@@ -122,12 +122,12 @@ func (this *DNSSet) DeleteTxtAttr(name string) {
 	this.deleteAttr(RS_TXT, name)
 }
 
-func (this *DNSSet) SetRecordSet(rtype string, ttl int64, values ...string) {
+func (this *DNSSet) SetRecordSet(recordType string, ttl int64, values ...string) {
 	records := make([]*Record, len(values))
 	for i, r := range values {
 		records[i] = &Record{Value: r}
 	}
-	this.Sets[rtype] = &RecordSet{Type: rtype, TTL: ttl, IgnoreTTL: false, Records: records}
+	this.Sets[recordType] = &RecordSet{Type: recordType, TTL: ttl, IgnoreTTL: false, Records: records}
 }
 
 func NewDNSSet(name DNSSetName, routingPolicy *RoutingPolicy) *DNSSet {
@@ -140,8 +140,8 @@ func (this *DNSSet) Match(that *DNSSet) bool {
 }
 
 // MatchRecordTypeSubset matches DNSSet equality for given record type subset.
-func (this *DNSSet) MatchRecordTypeSubset(that *DNSSet, rtype string) bool {
-	return this.match(that, &rtype)
+func (this *DNSSet) MatchRecordTypeSubset(that *DNSSet, recordType string) bool {
+	return this.match(that, &recordType)
 }
 
 func (this *DNSSet) match(that *DNSSet, restrictToRecordType *string) bool {
