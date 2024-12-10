@@ -9,7 +9,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"time"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -335,23 +334,23 @@ func (this *ChangeModel) Setup() error {
 	return err
 }
 
-func (this *ChangeModel) Check(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
-	return this.Exec(false, false, name, updateGroup, createdAt, done, spec)
+func (this *ChangeModel) Check(name dns.DNSSetName, updateGroup string, done DoneHandler, spec TargetSpec) ChangeResult {
+	return this.Exec(false, false, name, updateGroup, done, spec)
 }
 
-func (this *ChangeModel) Apply(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
-	return this.Exec(true, false, name, updateGroup, createdAt, done, spec)
+func (this *ChangeModel) Apply(name dns.DNSSetName, updateGroup string, done DoneHandler, spec TargetSpec) ChangeResult {
+	return this.Exec(true, false, name, updateGroup, done, spec)
 }
 
-func (this *ChangeModel) Delete(name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
-	return this.Exec(true, true, name, updateGroup, createdAt, done, spec)
+func (this *ChangeModel) Delete(name dns.DNSSetName, updateGroup string, done DoneHandler, spec TargetSpec) ChangeResult {
+	return this.Exec(true, true, name, updateGroup, done, spec)
 }
 
 func (this *ChangeModel) PseudoApply(name dns.DNSSetName, spec TargetSpec) {
 	this.applied[name] = dns.NewDNSSet(name, spec.RoutingPolicy())
 }
 
-func (this *ChangeModel) Exec(apply bool, delete bool, name dns.DNSSetName, updateGroup string, createdAt time.Time, done DoneHandler, spec TargetSpec) ChangeResult {
+func (this *ChangeModel) Exec(apply bool, delete bool, name dns.DNSSetName, updateGroup string, done DoneHandler, spec TargetSpec) ChangeResult {
 	// this.Infof("%s: %v", name, targets)
 	if len(spec.Targets()) == 0 && !delete {
 		return ChangeResult{}
