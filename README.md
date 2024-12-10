@@ -35,6 +35,7 @@ For extending or adapting this project with your own source or provisioning cont
 
 - [External DNS Management](#external-dns-management)
   - [Index](#index)
+  - [Important Note: Support for owner identifiers is discontinued](#important-note-support-for-owner-identifiers-is-discontinued)
   - [Quick start](#quick-start)
     - [Automatic creation of DNS entries for services and ingresses](#automatic-creation-of-dns-entries-for-services-and-ingresses)
       - [`A` DNS records with alias targets for provider type AWS-Route53 and AWS load balancers](#a-dns-records-with-alias-targets-for-provider-type-aws-route53-and-aws-load-balancers)
@@ -55,6 +56,29 @@ For extending or adapting this project with your own source or provisioning cont
     - [Using the standard Compound Provisioning Controller](#using-the-standard-compound-provisioning-controller)
     - [Multiple Cluster Support](#multiple-cluster-support)
   - [Why not use the community `external-dns` solution?](#why-not-use-the-community-external-dns-solution)
+
+## Important Note: Support for owner identifiers is discontinued
+
+Starting with release `v0.23`, the support for owner identifiers is discontinued.
+
+The creation and management of meta data DNS records holding the owner identifier for each `DNSEntry` has been removed.
+These meta data DNS records will be removed automatically. To avoid running into rate limits, this removals will happen
+only during updates or with low batch size during the periodic reconciliation.
+Depending on size of the hosted zone these cleanup can take multiple days.
+To ensure the correct work of the cleanup of these special `TXT` DNS records, the owner identifier provided via 
+the `--identifier` command line option and the `DNSOwner` custom resources need still be provided as before.
+In a future release, the `DNSOwner` resources will be removed completely.
+
+These identifiers are now only used for cleanup, but not for any other purposes.
+
+The ownership information was used to several purposes:
+- detect conflicts (i.e. same DNS record written by multiple dns-controller-manager instances)
+- handing over responsibility of DNS records from one to another controller instance
+- detection of orphan DNS records and their cleanup
+
+Please note that these edge cases are not supported anymore.
+For handing over responsibility of DNS record, please use the `dns.gardener.cloud/ignore=true` annotation 
+on `DNSEntries` or the annotated source objects (like `Ingress`, `Service`, etc.)
 
 ## Quick start
 
