@@ -251,13 +251,18 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	}
 
 	if ignored, annotation := ignoredByAnnotation(object); ignored {
-		_, err := object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
-			status := &data.(*api.DNSEntry).Status
-			mod := utils.ModificationState{}
-			mod.AssureStringValue(&status.State, api.STATE_IGNORED)
-			mod.AssureStringPtrPtr(&status.Message, ptr.To(fmt.Sprintf("entry is ignored as annotated with %s", annotation)))
-			return mod.IsModified(), nil
-		})
+		var err error
+		if !object.IsDeleting() {
+			_, err = object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
+				status := &data.(*api.DNSEntry).Status
+				mod := utils.ModificationState{}
+				mod.AssureStringValue(&status.State, api.STATE_IGNORED)
+				mod.AssureStringPtrPtr(&status.Message, ptr.To(fmt.Sprintf("entry is ignored as annotated with %s", annotation)))
+				return mod.IsModified(), nil
+			})
+		} else {
+			err = this.RemoveFinalizer(object)
+		}
 		if err != nil {
 			return reconcile.Delay(logger, err)
 		}
