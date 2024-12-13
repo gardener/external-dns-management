@@ -422,7 +422,7 @@ var _ = Describe("Compound controller tests", func() {
 
 		By("Set reconcile annotation on DNS entry")
 		e1.Annotations = map[string]string{
-			constants.GardenerOperation: "Reconcile",
+			constants.GardenerOperation: constants.GardenerOperationReconcile,
 		}
 		Expect(testClient.Update(ctx, e1)).To(Succeed())
 
@@ -430,7 +430,7 @@ var _ = Describe("Compound controller tests", func() {
 		Eventually(func(g Gomega) {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
 			g.Expect(e1.Annotations).NotTo(HaveKey(constants.GardenerOperation))
-		})
+		}).Should(Succeed())
 	})
 })
 
