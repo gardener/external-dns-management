@@ -1,7 +1,8 @@
 # External DNS Management
+
 [![REUSE status](https://api.reuse.software/badge/github.com/gardener/external-dns-management)](https://api.reuse.software/info/github.com/gardener/external-dns-management)
 
-The main artefact of this project is the <b>DNS controller manager</b> for managing DNS records, also
+The main artefact of this project is the **DNS controller manager** for managing DNS records, also
 nicknamed as the Gardener "DNS Controller".
 
 It contains provisioning controllers for creating DNS records in one of the DNS cloud services
@@ -32,7 +33,7 @@ For extending or adapting this project with your own source or provisioning cont
 
 ## Quick start
 
-To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow these steps.
+To install the **DNS controller manager** in your Kubernetes cluster, follow these steps.
 
 1. Prerequisites
     - Check out or download the project to get a copy of the Helm charts.
@@ -45,7 +46,7 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
 2. Install the DNS controller manager
 
     As multiple Gardener DNS controllers can act on the same DNS Hosted Zone concurrently, each instance needs
-    an [owner identifier](#owner-identifiers). Therefore choose an identifier sufficiently unique across these instances.
+    an [owner identifier](#owner-identifiers). Therefore, choose an identifier sufficiently unique across these instances.
 
     Then install the DNS controller manager with
 
@@ -58,7 +59,7 @@ To install the <b>DNS controller manager</b> in your Kubernetes cluster, follow 
     Their meaning is explained by their corresponding command line options in section
     [Using the DNS controller manager](#using-the-dns-controller-manager)
 
-    By default, the DNS controller looks for custom resources in all namespaces. The choosen namespace is
+    By default, the DNS controller looks for custom resources in all namespaces. The chosen namespace is
     only relevant for the deployment itself.
 
     You may need to install [VerticalPodAutoscaler CRDs](https://raw.githubusercontent.com/kubernetes/autoscaler/master/vertical-pod-autoscaler/deploy/vpa-v1-crd-gen.yaml)
@@ -197,7 +198,7 @@ setting the annotation `dns.gardener.cloud/class`. The default value for the `DN
 [shoot-dns-service extension](https://github.com/gardener/gardener-extension-shoot-dns-service),
 the correct annotation is `dns.gardener.cloud/class=garden`.
 
-Here is an example for annotating a service (same as `examples/50-service-with-dns.yaml`)]:
+Here is an example for annotating a service (same as `examples/50-service-with-dns.yaml`):
 
 ```yaml
 apiVersion: v1
@@ -305,7 +306,7 @@ spec:
         mode: SIMPLE
 ```
 
-In this case, three `DNSEntries` woudl be created with domain names `uk.example.com`,  `eu.example.com`,  and `*.example.com`.
+In this case, three `DNSEntries` would be created with domain names `uk.example.com`,  `eu.example.com`,  and `*.example.com`.
 As neither `dns.gardener.cloud/targets` or `dns.gardener.cloud/ingress` annotation is provided, the targets need to 
 come from the load balancer status of a `Service` resource with the label selector `istio=ingressgateway`.
 
@@ -410,15 +411,15 @@ Every DNS Provisioning Controller is responsible for a set of _Owner Identifiers
 DNS records in an external DNS environment are attached to such an identifier.
 This is used to identify the records in the DNS environment managed by a dedicated
 controller (manager). Every controller manager hosting DNS Provisioning Controllers
-offers an option to specify a default identifier. Additionally there might
+offers an option to specify a default identifier. Additionally, there might
 be dedicated `DNSOwner` objects that enable or disable additional owner ids.
 
 Every `DNSEntry` object may specify a dedicated owner that is used to tag
 the records in the DNS environment. A DNS provisioning controller only acts
-of DNS entries it is responsible for. Other resources in the external DNS
+on DNS entries it is responsible for. Other resources in the external DNS
 environment are not touched at all.
 
-This way it is possbible to
+This way it is possible to
 - identify records in the external DNS management environment that are managed
   by the actual controller instance
 - distinguish different DNS source environments sharing the same hosted zones
@@ -426,37 +427,37 @@ This way it is possbible to
 - cleanup unused entries, even if the whole resource set is already
   gone
 - move the responsibility for dedicated sets of DNS entries among different
-  kubernetes clusters or DNS source environments running different
-  DNS Provisioning Controller without loosing the entries during the
+  Kubernetes clusters or DNS source environments running different
+  DNS Provisioning Controller without losing the entries during the
   migration process.
 
-**If multiple DNS controller instances have access to the same DNS zones, it is very important, that every instance uses a unique owner identifier! Otherwise the cleanup of stale DNS record will delete entries created by another instance if they use the same identifier.**
+**If multiple DNS controller instances have access to the same DNS zones, it is very important, that every instance uses a unique owner identifier! Otherwise, the cleanup of stale DNS record will delete entries created by another instance if they use the same identifier.**
 
 ### DNS Classes
 
 Multiple sets of controllers of the DNS ecosystem can run in parallel in
-a kubernetes cluster working on different object set. They are separated by
+a Kubernetes cluster working on different object set. They are separated by
 using different _DNS Classes_. Adding a DNS class annotation to an object of the
-DNS ecosytems assigns this object to such a dedicated set of DNS controllers.
+DNS ecosystems assigns this object to such a dedicated set of DNS controllers.
 This way it is possible to maintain clearly separated set of DNS objects in a
-single kubernetes cluster.
+single Kubernetes cluster.
 
 ### DNSAnnotation objects
 
 DNS source controllers support the creation of DNS entries for potentially
 any kind of resource originally not equipped to describe the generation of
-DNS entries. This is done by additionally annotations. Nevertheless it
+DNS entries. This is done by additionally annotations. Nevertheless, it
 might be the case, that those objects are again the result of a generation
 process, ether by predefined helm starts or by other higher level controllers.
 It is not necessarily possible to influence those generation steps to
-additionally generate the deired DNS annotations. 
+additionally generate the desired DNS annotations. 
 
-The typical mechanis in Kubernetes to handle this is to provide mutating
+The typical mechanism in Kubernetes to handle this is to provide mutating
 webhooks that enrich the generated objects accordingly. But this mechanism
 is basically not intended to support dedicated settings for dedicated instances.
-At least it is very strenous to provide web hooks for every such usecase.
+At least it is very strenuous to provide web hooks for every such use case.
 
-Therefore the DNS ecosystem provided by this project supports an additional
+Therefore, the DNS ecosystem provided by this project supports an additional
 extension mechanism to annotate any kind of object with additional annotations
 by supported a dedicated resource, the `DNSAnnotation`. 
 
@@ -465,21 +466,21 @@ controller. It caches the annotation settings declared by those objects and
 makes them accessible for the DNS source controllers.
 
 The DNS source controller responsible for a dedicated kind of resource
-(for example Service reads the object analyses the annotations and then decides
+,for example Service, reads the object, analyses the annotations, and then decides
 what to do with it. Most of the flow is handled by a central library, only
 some dedicated resource dependent steps are implemented separately by a
-dedicated source controller. The `DNSAnnotation`resource slightly extends this
+dedicated source controller. The `DNSAnnotation` resource slightly extends this
 flow: After reading the object the library additionally checks for the existence
 of a `DNSAnnotation` setting for this object by querying the `annotation`
 controller's cache. If found, it adds annotations declared there to the original
 object prior to the next processing steps.
-This way, for example whenver a `Service` without
-any DNS related annotation is handled by the controller and it finds a matching
+This way, for example whenever a `Service` without
+any DNS related annotation is handled by the controller, and it finds a matching
 `DNSAnnotation` setting, the set of actual annotations is enriched accordingly
 before the actual processing of the service object is done by the controller.
 
 This `DNSAnnotation` object can be created before or even after the object to
-be annotated and will implicity cause a reprocessing of the original object by
+be annotated and will implicitly cause a reprocessing of the original object by
 its DNS source controller.
 
 For example, the following object enforces a DNS related annotation for the
@@ -505,9 +506,9 @@ spec:
 
 The controllers to run can be selected with the `--controllers` option.
 Here the following controller groups can be used:
-- `dnssources`: all DNS Source Controllers. It includes the conrollers
-  - `ingress-dns`: handle DNS annotations for the standard kubernetes ingress resource
-  - `service-dns`: handle DNS annotations for the standard kubernetes service resource
+- `dnssources`: all DNS Source Controllers. It includes the controllers
+  - `ingress-dns`: handle DNS annotations for the standard Kubernetes ingress resource
+  - `service-dns`: handle DNS annotations for the standard Kubernetes service resource
 
 - `dnscontrollers`: all DNS Provisioning Controllers. It includes the controllers
   - `compound`: common DNS provisioning controller
@@ -1020,7 +1021,7 @@ func init() {
 ```
 
 The compound factory is then again embedded into a provisioning controller as shown
-in the previous section (see the [`controller`sub package](pkg/controller/provider/compound/controller/controller.go)).
+in the previous section (see the [`controller` sub package](pkg/controller/provider/compound/controller/controller.go)).
 
 ### Setting Up a Controller Manager
 
@@ -1149,22 +1150,22 @@ func main() {
 
 </details>
 
-Those clusters can the be separated by registering their names together with
-command line option names. These can be used to specify different kubeconfig
+Those clusters can then be separated by registering their names together with
+command line option names. These can be used to specify different `kubeconfig`
 files for those clusters.
 
-By default all logical clusters are mapped to the default physical cluster
+By default, all logical clusters are mapped to the default physical cluster
 specified via `--kubeconfig` or default cluster access.
 
 If multiple physical clusters are defined they can be specified by a
-corresponding cluster option defining the kubeconfig file used to access
+corresponding cluster option defining the `kubeconfig` file used to access
 this cluster. If no such option is specified the default is used.
 
 Therefore, even if the configuration is prepared for multiple clusters,
 such a controller manager can easily work on a single cluster if no special
 options are given on the command line.
 
-## Why not using the community external-dns solution?
+## Why not use the community external-dns solution?
 
 Some of the reasons are context-specific, i.e. relate to Gardener's highly dynamic requirements.
 
@@ -1182,7 +1183,7 @@ Each provider can define a separate “owner” identifier, to differentiate DNS
 
 3. Multi cluster support
 
-The Gardener DNS controller distinguish three different logical Kubernetes clusters: Source cluster, target cluster and runtime cluster. The source cluster is monitored by the DNS source controllers for annotations on ingress and service resources. These controllers then create DNS entries in the target cluster. DNS entries in the target cluster are then reconciliated/synchronized with the corresponding DNS backend service by the provider controller. The runtime cluster is the cluster the DNS controller runs on. For example, this enables needed flexibility in the Gardener deployment. The DNS controller runs on the seed cluster. This is also the target cluster. DNS providers and entries resources are created in the corresponding namespace of the shoot control plane, while the source cluster is the shoot cluster itself.
+The Gardener DNS controller distinguish three different logical Kubernetes clusters: Source cluster, target cluster and runtime cluster. The source cluster is monitored by the DNS source controllers for annotations on ingress and service resources. These controllers then create DNS entries in the target cluster. DNS entries in the target cluster are then reconciled/synchronized with the corresponding DNS backend service by the provider controller. The runtime cluster is the cluster the DNS controller runs on. For example, this enables needed flexibility in the Gardener deployment. The DNS controller runs on the seed cluster. This is also the target cluster. DNS providers and entries resources are created in the corresponding namespace of the shoot control plane, while the source cluster is the shoot cluster itself.
 
 4. Optimizations for handling hundreds of DNS entries
 
