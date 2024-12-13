@@ -17,6 +17,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/utils/ptr"
 )
 
@@ -248,6 +249,17 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 			return reconcile.RescheduleAfter(logger, millis)
 		}
 		defer old.lock.Unlock()
+	}
+
+	if object.GetAnnotations()[constants.GardenerOperation] == constants.GardenerOperationReconcile {
+		_, err := object.Modify(func(data resources.ObjectData) (bool, error) {
+			annotations := data.GetAnnotations()
+			delete(annotations, constants.GardenerOperation)
+			return true, nil
+		})
+		if err != nil {
+			return reconcile.Delay(logger, err)
+		}
 	}
 
 	if ignored, annotation := ignoredByAnnotation(object); ignored {
