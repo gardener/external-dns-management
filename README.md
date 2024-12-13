@@ -31,6 +31,29 @@ For a detailed explanation of the model, see section [The Model](#the-model).
 For extending or adapting this project with your own source or provisioning controllers, see section
 [Extensions](#extensions)
 
+## Index
+
+* [Quick start](#quick-start)
+  * [Automatic creation of DNS entries for services and ingresses](#automatic-creation-of-dns-entries-for-services-and-ingresses)
+    * [`A` DNS records with alias targets for provider type AWS-Route53 and AWS load balancers](#a-dns-records-with-alias-targets-for-provider-type-aws-route53-and-aws-load-balancers) 
+  * [Automatic creation of DNS entries for gateways](#automatic-creation-of-dns-entries-for-gateways)
+    * [Istio gateways](#istio-gateways)
+    * [Gateway API gateways](#gateway-api-gateways)
+* [The Model](#the-model)
+  * [Owner Identifiers](#owner-identifiers)
+  * [DNS Classes](#dns-classes)
+  * [DNSAnnotation objects](#dnsannotation-objects)
+* [Using the DNS controller manager](#using-the-dns-controller-manager)
+* [Extensions](#extensions)
+  * [How to implement Source Controllers](#how-to-implement-source-controllers)
+  * [How to implement Provisioning Controllers](#how-to-implement-provisioning-controllers)
+    * [Embedding a Factory into a Controller](#embedding-a-factory-into-a-controller)
+    * [Embedding a Factory into a Compound Factory](#embedding-a-factory-into-a-compound-factory)
+  * [Setting Up a Controller Manager](#setting-up-a-controller-manager)
+  * [Using the standard Compound Provisioning Controller](#using-the-standard-compound-provisioning-controller)
+  * [Multiple Cluster Support](#multiple-cluster-support)
+* [Why not use the community `external-dns` solution?](#why-not-use-the-community-external-dns-solution)
+
 ## Quick start
 
 To install the **DNS controller manager** in your Kubernetes cluster, follow these steps.
@@ -1165,7 +1188,7 @@ Therefore, even if the configuration is prepared for multiple clusters,
 such a controller manager can easily work on a single cluster if no special
 options are given on the command line.
 
-## Why not use the community external-dns solution?
+## Why not use the community `external-dns` solution?
 
 Some of the reasons are context-specific, i.e. relate to Gardener's highly dynamic requirements.
 
