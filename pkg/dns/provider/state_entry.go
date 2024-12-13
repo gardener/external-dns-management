@@ -250,14 +250,19 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		defer old.lock.Unlock()
 	}
 
-	if !object.IsDeleting() && object.GetAnnotations()[dns.AnnotationIgnore] == "true" {
-		_, err := object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
-			status := &data.(*api.DNSEntry).Status
-			mod := utils.ModificationState{}
-			mod.AssureStringValue(&status.State, api.STATE_IGNORED)
-			mod.AssureStringPtrPtr(&status.Message, ptr.To("entry is ignored as annotated with "+dns.AnnotationIgnore))
-			return mod.IsModified(), nil
-		})
+	if ignored, annotation := ignoredByAnnotation(object); ignored {
+		var err error
+		if !object.IsDeleting() {
+			_, err = object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
+				status := &data.(*api.DNSEntry).Status
+				mod := utils.ModificationState{}
+				mod.AssureStringValue(&status.State, api.STATE_IGNORED)
+				mod.AssureStringPtrPtr(&status.Message, ptr.To(fmt.Sprintf("entry is ignored as annotated with %s", annotation)))
+				return mod.IsModified(), nil
+			})
+		} else {
+			err = this.RemoveFinalizer(object)
+		}
 		if err != nil {
 			return reconcile.Delay(logger, err)
 		}
@@ -369,4 +374,14 @@ func (this *state) DeleteLookupJob(entryName resources.ObjectName) {
 
 func (this *state) UpsertLookupJob(entryName resources.ObjectName, results lookupAllResults, interval time.Duration) {
 	this.lookupProcessor.Upsert(entryName, results, interval)
+}
+
+func ignoredByAnnotation(object *dnsutils.DNSEntryObject) (bool, string) {
+	if !object.IsDeleting() && object.GetAnnotations()[dns.AnnotationIgnore] == "true" {
+		return true, dns.AnnotationIgnore
+	}
+	if object.GetAnnotations()[dns.AnnotationHardIgnore] == "true" {
+		return true, dns.AnnotationHardIgnore
+	}
+	return false, ""
 }

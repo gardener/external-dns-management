@@ -32,4 +32,8 @@ const (
 
 	// AnnotationIgnore is an optional annotation for DNSEntries and source resources to ignore them on reconciliation.
 	AnnotationIgnore = ANNOTATION_GROUP + "/ignore"
+	// AnnotationHardIgnore is an optional annotation for a generated target DNSEntry to ignore it on reconciliation.
+	// This annotation is not propagated from source objects to the target DNSEntry.
+	// IMPORTANT NOTE: The entry is even ignored on deletion, so use with caution to avoid orphaned entries.
+	AnnotationHardIgnore = ANNOTATION_GROUP + "/target-hard-ignore"
 )
