@@ -351,7 +351,8 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 
 	failed := false
 	logger.Infof("entry source is deleting -> delete all dns entries")
-	for _, s := range this.Slaves().GetByOwner(obj) {
+	slaves := this.Slaves().GetByOwner(obj)
+	for _, s := range slaves {
 		logger.Infof("delete dns entry %s(%s)", s.ObjectName(), dnsutils.DNSEntry(s).GetDNSName())
 		err := s.Delete()
 		if err != nil && !errors.IsNotFound(err) {
@@ -361,6 +362,24 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 	}
 	if failed {
 		return reconcile.Delay(logger, nil)
+	}
+
+	// wait for deletion of all dns entries
+	start := time.Now()
+	for _, s := range slaves {
+		for {
+			_, err := s.GetResource().Get(s.Data())
+			if err != nil {
+				if errors.IsNotFound(err) {
+					break
+				}
+				return reconcile.Delay(logger, fmt.Errorf("get dns entry failed %s: %s", s.ObjectName(), err))
+			}
+			time.Sleep(500 * time.Millisecond)
+			if time.Since(start) > 30*time.Second {
+				return reconcile.Delay(logger, fmt.Errorf("deletion of dns entry %s not finished", s.ObjectName()))
+			}
+		}
 	}
 
 	fb := this.state.GetFeedback(obj.ClusterKey())

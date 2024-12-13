@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"k8s.io/client-go/util/flowcontrol"
@@ -39,6 +40,7 @@ type MockConfig struct {
 	Zones           []MockZone `json:"zones"`
 	FailGetZones    bool       `json:"failGetZones"`
 	FailDeleteEntry bool       `json:"failDeleteEntry"`
+	LatencyMillis   int        `json:"latencyMillis"`
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -114,6 +116,9 @@ func (h *Handler) ReportZoneStateConflict(zone provider.DNSHostedZone, err error
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
 	err := h.executeRequests(logger, zone, state, reqs)
 	h.cache.ApplyRequests(logger, err, zone, reqs)
+	if h.mockConfig.LatencyMillis > 0 {
+		time.Sleep(time.Duration(h.mockConfig.LatencyMillis) * time.Millisecond)
+	}
 	return err
 }
 
