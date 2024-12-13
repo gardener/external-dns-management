@@ -12,6 +12,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -409,6 +410,27 @@ var _ = Describe("Compound controller tests", func() {
 
 		By("check mock database")
 		checkSingleEntryInMockDatabase(nil)
+	})
+
+	It("should remove the Gardener reconcile operation annotation after reconciliation", func() {
+		By("Create new DNS entry")
+		Expect(testClient.Create(ctx, e1)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, e1)).To(Succeed())
+		})
+		checkEntry(e1)
+
+		By("Set reconcile annotation on DNS entry")
+		e1.Annotations = map[string]string{
+			constants.GardenerOperation: "Reconcile",
+		}
+		Expect(testClient.Update(ctx, e1)).To(Succeed())
+
+		By("Wait for the reconcile annotation to be removed from the DNS entry")
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(e1.Annotations).NotTo(HaveKey(constants.GardenerOperation))
+		})
 	})
 })
 
