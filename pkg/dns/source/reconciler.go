@@ -373,7 +373,7 @@ func (this *sourceReconciler) Delete(logger logger.LogContext, obj resources.Obj
 				if errors.IsNotFound(err) {
 					break
 				}
-				return reconcile.Delay(logger, fmt.Errorf("get dns entry failed %s: %s", s.ObjectName(), err))
+				return reconcile.Delay(logger, fmt.Errorf("get dns entry failed %s: %w", s.ObjectName(), err))
 			}
 			time.Sleep(500 * time.Millisecond)
 			if time.Since(start) > 30*time.Second {
