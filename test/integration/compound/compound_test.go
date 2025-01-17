@@ -60,8 +60,7 @@ var _ = Describe("Compound controller tests", func() {
 					ExpectWithOffset(1, zoneDump.DNSSets).To(HaveLen(1), "unexpected number of DNS sets in first.example.com")
 					set := zoneDump.DNSSets[dns.DNSSetName{DNSName: entry.Spec.DNSName}]
 					ExpectWithOffset(1, set.Sets).To(HaveKey("A"))
-					ExpectWithOffset(1, set.Sets).To(HaveKey("META"))
-					ExpectWithOffset(1, set.Sets).To(HaveLen(2))
+					ExpectWithOffset(1, set.Sets).To(HaveLen(1))
 					setA := set.Sets["A"]
 					ExpectWithOffset(1, setA.Records).To(ConsistOf(
 						PointTo(MatchFields(IgnoreExtras, Fields{
@@ -270,6 +269,7 @@ var _ = Describe("Compound controller tests", func() {
 		By("check mock database")
 		checkSingleEntryInMockDatabase(e4)
 
+		By("await deletion of entry " + e4.Name)
 		Expect(testClient.Delete(ctx, e4)).To(Succeed())
 		Eventually(func(g Gomega) {
 			checkDeleted(g, ctx, e4)
@@ -295,7 +295,7 @@ var _ = Describe("Compound controller tests", func() {
 
 		Eventually(func(g Gomega) {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
-			g.Expect(e1.Status.State).To(Or(Equal("Error"), Equal("Stale")))
+			g.Expect(e1.Status.State).To(Equal("Error"))
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).Should(Succeed())
 
@@ -346,7 +346,7 @@ var _ = Describe("Compound controller tests", func() {
 
 		Eventually(func(g Gomega) {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
-			g.Expect(e1.Status.State).To(Or(Equal("Error"), Equal("Stale")))
+			g.Expect(e1.Status.State).To(Equal("Error"))
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).Should(Succeed())
 
@@ -380,21 +380,10 @@ var _ = Describe("Compound controller tests", func() {
 			Type:     "A",
 			Deletion: deleteSet,
 		})
-		deleteSet2 := dns.NewDNSSet(dns.DNSSetName{DNSName: "e2.first.example.com"}, nil)
-		deleteSet2.Sets.AddRecord("META", "\"owner=dnscontroller\"", 600)
-		deleteSet2.Sets.AddRecord("META", "\"prefix=comment-\"", 600)
-		failID2 := mock.TestMock[testRunID].AddApplyFailSimulation(firstZoneID, &provider.ChangeRequest{
-			Action:   provider.R_DELETE,
-			Type:     "META",
-			Deletion: deleteSet2,
-		})
 		Expect(testClient.Delete(ctx, e2)).To(Succeed())
 
 		Eventually(func() int {
 			return mock.TestMock[testRunID].GetApplyFailSimulationCount(failID)
-		}).ShouldNot(BeZero())
-		Eventually(func() int {
-			return mock.TestMock[testRunID].GetApplyFailSimulationCount(failID2)
 		}).ShouldNot(BeZero())
 
 		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e2), e2)).To(Succeed())
@@ -402,7 +391,6 @@ var _ = Describe("Compound controller tests", func() {
 
 		// remove apply fail simulation
 		mock.TestMock[testRunID].RemoveApplyFailSimulation(failID)
-		mock.TestMock[testRunID].RemoveApplyFailSimulation(failID2)
 		By("await deletion of entry " + e2.Name)
 		Eventually(func(g Gomega) {
 			checkDeleted(g, ctx, e2)

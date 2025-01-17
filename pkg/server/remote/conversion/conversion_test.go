@@ -76,15 +76,13 @@ func doTestMarshalChangeRequest(t *testing.T, withPolicy bool) {
 	}
 	set := dns.NewDNSSet(dns.DNSSetName{DNSName: "b.a", SetIdentifier: setIdentifier}, routingPolicy)
 	set.UpdateGroup = "group1"
-	set.SetMetaAttr(dns.ATTR_OWNER, "owner1")
-	set.SetMetaAttr(dns.ATTR_PREFIX, "comment-")
 	set.SetRecordSet(dns.RS_A, 100, "1.1.1.1", "1.1.1.2")
 	table := []struct {
 		name    string
 		request *provider.ChangeRequest
 	}{
 		{"create", provider.NewChangeRequest(provider.R_CREATE, dns.RS_A, nil, set, nil)},
-		{"update", provider.NewChangeRequest(provider.R_UPDATE, dns.RS_META, nil, set, nil)},
+		{"update", provider.NewChangeRequest(provider.R_UPDATE, dns.RS_A, nil, set, nil)},
 		{"delete", provider.NewChangeRequest(provider.R_DELETE, dns.RS_A, set, nil, nil)},
 	}
 

@@ -132,6 +132,7 @@ configuration:
   # compoundInfobloxDnsRatelimiterEnabled:
   # compoundInfobloxDnsRatelimiterQps:
   # compoundLockStatusCheckPeriod:
+  # compoundMaxMetadataRecordDeletionsPerReconciliation:
   # compoundNetlifyDnsAdvancedBatchSize:
   # compoundNetlifyDnsAdvancedMaxRetries:
   # compoundNetlifyDnsRatelimiterBurst:
@@ -164,7 +165,6 @@ configuration:
   # compoundRfc2136RatelimiterQps:
   # compoundSecretsPoolSize: 2
   # compoundSetup: 10
-  # compoundStatisticPoolSize:
   # compoundTtl: 120
   # compoundZonepoliciesPoolSize:
   # config:
@@ -291,6 +291,7 @@ configuration:
   # lockStatusCheckPeriod:
   # logLevel: info
   # maintainer:
+  # maxMetadataRecordDeletionsPerReconciliation:
   # namespace: default
   # namespaceLocalAccessOnly: false
   # netlifyDnsAdvancedBatchSize:
@@ -350,7 +351,6 @@ configuration:
   # serviceDNSTargetsPoolSize: 2
   # servicesPoolSize:
   # setup: 10
-  # statisticPoolSize:
   # target: ""
   # targetCreatorLabelName: ""
   # targetCreatorLabelValue: ""
