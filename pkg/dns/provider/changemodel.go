@@ -228,15 +228,16 @@ type TargetSpec = dnsutils.TargetSpec
 
 type ChangeModel struct {
 	logger.LogContext
-	config         Config
-	ownership      dns.Ownership
-	context        *zoneReconciliation
-	applied        map[dns.DNSSetName]*dns.DNSSet
-	dangling       *ChangeGroup
-	providergroups map[string]*ChangeGroup
-	zonestate      DNSZoneState
-	failedDNSNames dns.DNSNameSet
-	oldDNSSets     dns.DNSSets
+	config            Config
+	ownership         dns.Ownership
+	context           *zoneReconciliation
+	applied           map[dns.DNSSetName]*dns.DNSSet
+	dangling          *ChangeGroup
+	providergroups    map[string]*ChangeGroup
+	zonestate         DNSZoneState
+	succeededDNSNames dns.DNSNameSet
+	failedDNSNames    dns.DNSNameSet
+	oldDNSSets        dns.DNSSets
 }
 
 type ChangeResult struct {
@@ -247,14 +248,15 @@ type ChangeResult struct {
 
 func NewChangeModel(logger logger.LogContext, ownership dns.Ownership, req *zoneReconciliation, config Config, oldDNSSets dns.DNSSets) *ChangeModel {
 	return &ChangeModel{
-		LogContext:     logger,
-		config:         config,
-		ownership:      ownership,
-		context:        req,
-		applied:        map[dns.DNSSetName]*dns.DNSSet{},
-		providergroups: map[string]*ChangeGroup{},
-		failedDNSNames: dns.DNSNameSet{},
-		oldDNSSets:     oldDNSSets,
+		LogContext:        logger,
+		config:            config,
+		ownership:         ownership,
+		context:           req,
+		applied:           map[dns.DNSSetName]*dns.DNSSet{},
+		providergroups:    map[string]*ChangeGroup{},
+		succeededDNSNames: dns.DNSNameSet{},
+		failedDNSNames:    dns.DNSNameSet{},
+		oldDNSSets:        oldDNSSets,
 	}
 }
 
@@ -469,6 +471,10 @@ func (this *ChangeModel) IsFailed(name dns.DNSSetName) bool {
 	return this.failedDNSNames.Contains(name)
 }
 
+func (this *ChangeModel) IsSucceeded(name dns.DNSSetName) bool {
+	return this.succeededDNSNames.Contains(name)
+}
+
 func (this *ChangeModel) wrappedDoneHandler(name dns.DNSSetName, done DoneHandler) DoneHandler {
 	return &changeModelDoneHandler{
 		changeModel: this,
@@ -500,6 +506,7 @@ func (this *changeModelDoneHandler) Failed(err error) {
 }
 
 func (this *changeModelDoneHandler) Succeeded() {
+	this.changeModel.succeededDNSNames.Add(this.dnsSetName)
 	if this.inner != nil {
 		this.inner.Succeeded()
 	}

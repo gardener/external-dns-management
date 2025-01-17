@@ -208,15 +208,18 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	for _, e := range outdatedEntries {
 		if changes.IsFailed(e.DNSSetName()) {
 			if oldSet, ok := oldDNSSets[e.DNSSetName()]; ok {
-				if txn := this.getActiveZoneTransaction(zoneid); txn != nil {
-					txn.AddEntryChange(e.ObjectKey(), e.Object().GetGeneration(), oldSet, nil)
-				} else {
-					logger.Warnf("cleanup postpone failure: missing zone for %s", e.ObjectName())
-				}
+				this.addDeleteToNextTransaction(logger, req, zoneid, e, oldSet)
 			} else {
 				logger.Warnf("cleanup postpone failure: old set not found for %s", e.ObjectName())
 			}
 			continue
+		}
+		if !changes.IsSucceeded(e.DNSSetName()) {
+			// DNSEntry in deleting state, but not completely handled (e.g. after restart before zone reconciliation was running)
+			if oldSet, ok := changes.zonestate.GetDNSSets()[e.DNSSetName()]; ok {
+				this.addDeleteToNextTransaction(logger, req, zoneid, e, oldSet)
+				continue
+			}
 		}
 		logger.Infof("cleanup outdated entry %q", e.ObjectName())
 		err := e.RemoveFinalizer()
@@ -231,6 +234,17 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		req.zone.Failed()
 	}
 	return err
+}
+
+func (this *state) addDeleteToNextTransaction(logger logger.LogContext, req *zoneReconciliation, zoneid dns.ZoneID, e *Entry, oldSet *dns.DNSSet) {
+	if txn := this.getActiveZoneTransaction(zoneid); txn != nil {
+		txn.AddEntryChange(e.ObjectKey(), e.Object().GetGeneration(), oldSet, nil)
+		if req.zone.nextTrigger == 0 {
+			req.zone.nextTrigger = this.config.Delay
+		}
+	} else {
+		logger.Warnf("cleanup postpone failure: missing zone for %s", e.ObjectName())
+	}
 }
 
 func (this *state) deleteZone(zoneid dns.ZoneID) {
