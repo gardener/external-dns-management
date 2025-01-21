@@ -17,15 +17,15 @@ func TestMatch(t *testing.T) {
 		recordSetsAreEqual bool
 	}{
 		// Equal Sets
-		{RecordSet{Type: RS_META, TTL: 600, Records: []*Record{{"\"owner=test\""}}}, RecordSet{Type: RS_META, TTL: 600, Records: []*Record{{"\"owner=test\""}}}, true},
-		// RecordSet type not equal TTL & records equal = equal
-		{RecordSet{Type: RS_META, TTL: 600, Records: []*Record{{"\"owner=test\""}}}, RecordSet{Type: RS_TXT, TTL: 600, Records: []*Record{{"\"owner=test\""}}}, true},
+		{RecordSet{Type: RS_TXT, TTL: 600, Records: []*Record{{"\"foo\""}}}, RecordSet{Type: RS_TXT, TTL: 600, Records: []*Record{{"\"foo\""}}}, true},
 		// One record value different = not equal
-		{RecordSet{Type: RS_META, TTL: 600, Records: []*Record{{"\"owner=test\""}}}, RecordSet{Type: RS_META, TTL: 600, Records: []*Record{{"xx.xx.xx.xx"}}}, false},
+		{RecordSet{Type: RS_TXT, TTL: 600, Records: []*Record{{"\"foo\""}}}, RecordSet{Type: RS_TXT, TTL: 600, Records: []*Record{{"xx.xx.xx.xx"}}}, false},
 		// Equal except for TTL = not equal
-		{RecordSet{Type: RS_META, TTL: 600, Records: []*Record{{"\"owner=test\""}}}, RecordSet{Type: RS_TXT, TTL: 800, Records: []*Record{{"\"owner=test\""}}}, false},
+		{RecordSet{Type: RS_TXT, TTL: 600, Records: []*Record{{"\"foo\""}}}, RecordSet{Type: RS_TXT, TTL: 800, Records: []*Record{{"\"foo\""}}}, false},
 		// different amount of records = not equal
-		{RecordSet{Type: RS_META, TTL: 600, Records: []*Record{{"\"owner=test\""}}}, RecordSet{Type: RS_TXT, TTL: 600, Records: []*Record{{"\"owner=test\""}, {"\"owner=test\""}}}, false},
+		{RecordSet{Type: RS_TXT, TTL: 600, Records: []*Record{{"\"foo\""}}}, RecordSet{Type: RS_TXT, TTL: 600, Records: []*Record{{"\"foo\""}, {"\"foo\""}}}, false},
+		// different type = not equal
+		{RecordSet{Type: RS_A, TTL: 600, Records: []*Record{{"1.2.3.4"}}}, RecordSet{Type: RS_TXT, TTL: 600, Records: []*Record{{"\"foo\""}}}, false},
 	}
 
 	for _, entry := range table {

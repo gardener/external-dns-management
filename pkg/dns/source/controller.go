@@ -91,7 +91,7 @@ func DNSSourceController(source DNSSourceType, reconcilerType controller.Reconci
 		Cluster(cluster.DEFAULT). // first one used as MAIN cluster
 		DefaultWorkerPool(2, 120*time.Second).
 		MainResource(gk.Group, gk.Kind).
-		Reconciler(reconcilers.SlaveReconcilerTypeByFunction(SlaveReconcilerType, SlaveAccessSpecCreatorForSource(source)), "entries").
+		Reconciler(reconcilerTypeFilterByKind(gk.Kind, reconcilers.SlaveReconcilerTypeByFunction(SlaveReconcilerType, SlaveAccessSpecCreatorForSource(source))), "entries").
 		Reconciler(OwnerReconciler, "owner").
 		Cluster(TARGET_CLUSTER, cluster.DEFAULT).
 		CustomResourceDefinitions(entryGroupKind).

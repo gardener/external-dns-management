@@ -12,7 +12,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
@@ -24,17 +24,6 @@ import (
 ////////////////////////////////////////////////////////////////////////////////
 // state handling for zone reconcilation
 ////////////////////////////////////////////////////////////////////////////////
-
-func (this *state) TriggerHostedZonesByChangedOwners(logger logger.LogContext, changed utils.StringSet) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	for zoneid, zone := range this.zones {
-		if intersection := zone.IntersectOwners(changed); len(intersection) > 0 {
-			logger.Infof("trigger zone %s because of changed owners %s", zoneid, intersection)
-			this.triggerHostedZone(zoneid)
-		}
-	}
-}
 
 func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid dns.ZoneID) (time.Duration, bool, *zoneReconciliation) {
 	req := &zoneReconciliation{
@@ -149,7 +138,6 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 		defer func() {
 			logger.Infof("unlocking %d entries", len(list))
 			list.Unlock()
-			this.triggerStatistic()
 		}()
 		return true, this.reconcileZone(logger, req)
 	}
@@ -161,8 +149,17 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	req.zone.SetNext(time.Now().Add(this.config.Delay))
 	metrics.ReportZoneEntries(zoneid, len(req.entries), len(req.stale))
 	logger.Infof("reconcile ZONE %s (%s) for %d dns entries (%d stale)", req.zone.Id(), req.zone.Domain(), len(req.entries), len(req.stale))
-	logger.Debugf("    ownerids: %s", req.ownership.GetIds())
-	changes := NewChangeModel(logger, req.ownership, req, this.config)
+
+	current := this.startZoneTransaction(req.zone.Id())
+	var oldDNSSets dns.DNSSets
+	if current != nil {
+		for _, x := range current.AllChanges() {
+			logger.Infof("txn-change: %s", x)
+		}
+		oldDNSSets = current.OldDNSSets()
+	}
+	changes := NewChangeModel(logger, req.ownership, req, this.config, oldDNSSets)
+
 	err := changes.Setup()
 	if err != nil {
 		req.zone.Failed()
@@ -177,10 +174,10 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		spec := e.object.GetTargetSpec(e)
 		statusUpdate := NewStatusUpdate(logger, e, this.GetContext())
 		if e.IsDeleting() {
-			changeResult = changes.Delete(e.DNSSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
+			changeResult = changes.Delete(e.DNSSetName(), e.ObjectName().Namespace(), statusUpdate, spec)
 		} else {
 			if !e.NotRateLimited() {
-				changeResult = changes.Check(e.DNSSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
+				changeResult = changes.Check(e.DNSSetName(), e.ObjectName().Namespace(), statusUpdate, spec)
 				if changeResult.Modified {
 					if accepted, delay := this.tryAcceptProviderRateLimiter(logger, e); !accepted {
 						req.zone.nextTrigger = delay
@@ -194,7 +191,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 					}
 				}
 			}
-			changeResult = changes.Apply(e.DNSSetName(), e.ObjectName().Namespace(), e.CreatedAt(), statusUpdate, spec)
+			changeResult = changes.Apply(e.DNSSetName(), e.ObjectName().Namespace(), statusUpdate, spec)
 			if changeResult.Error != nil && changeResult.Retry {
 				conflictErr = changeResult.Error
 			}
@@ -210,7 +207,19 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	this.outdated.AddActiveZoneTo(zoneid, &outdatedEntries)
 	for _, e := range outdatedEntries {
 		if changes.IsFailed(e.DNSSetName()) {
+			if oldSet, ok := oldDNSSets[e.DNSSetName()]; ok {
+				this.addDeleteToNextTransaction(logger, req, zoneid, e, oldSet)
+			} else {
+				logger.Warnf("cleanup postpone failure: old set not found for %s", e.ObjectName())
+			}
 			continue
+		}
+		if !changes.IsSucceeded(e.DNSSetName()) {
+			// DNSEntry in deleting state, but not completely handled (e.g. after restart before zone reconciliation was running)
+			if oldSet, ok := changes.zonestate.GetDNSSets()[e.DNSSetName()]; ok {
+				this.addDeleteToNextTransaction(logger, req, zoneid, e, oldSet)
+				continue
+			}
 		}
 		logger.Infof("cleanup outdated entry %q", e.ObjectName())
 		err := e.RemoveFinalizer()
@@ -225,6 +234,17 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		req.zone.Failed()
 	}
 	return err
+}
+
+func (this *state) addDeleteToNextTransaction(logger logger.LogContext, req *zoneReconciliation, zoneid dns.ZoneID, e *Entry, oldSet *dns.DNSSet) {
+	if txn := this.getActiveZoneTransaction(zoneid); txn != nil {
+		txn.AddEntryChange(e.ObjectKey(), e.Object().GetGeneration(), oldSet, nil)
+		if req.zone.nextTrigger == 0 {
+			req.zone.nextTrigger = this.config.Delay
+		}
+	} else {
+		logger.Warnf("cleanup postpone failure: missing zone for %s", e.ObjectName())
+	}
 }
 
 func (this *state) deleteZone(zoneid dns.ZoneID) {
@@ -243,4 +263,33 @@ func (this *state) CreateStateTTLGetter(defaultStateTTL time.Duration) StateTTLG
 		}
 		return defaultStateTTL
 	}
+}
+
+func (this *state) getActiveZoneTransaction(zoneID dns.ZoneID) *zonetxn.PendingTransaction {
+	if zoneID.IsEmpty() {
+		return nil
+	}
+
+	this.zoneTransactionsLock.Lock()
+	defer this.zoneTransactionsLock.Unlock()
+
+	current := this.zoneTransactions[zoneID]
+	if current == nil {
+		current = zonetxn.NewZoneTransaction(zoneID)
+		this.zoneTransactions[zoneID] = current
+	}
+	return current
+}
+
+func (this *state) startZoneTransaction(zoneID dns.ZoneID) *zonetxn.PendingTransaction {
+	if zoneID.IsEmpty() {
+		return nil
+	}
+
+	this.zoneTransactionsLock.Lock()
+	defer this.zoneTransactionsLock.Unlock()
+
+	current := this.zoneTransactions[zoneID]
+	delete(this.zoneTransactions, zoneID)
+	return current
 }

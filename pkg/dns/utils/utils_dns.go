@@ -11,7 +11,6 @@ import (
 type TargetProvider interface {
 	Targets() Targets
 	TTL() int64
-	OwnerId() string
 	RoutingPolicy() *dns.RoutingPolicy
 }
 

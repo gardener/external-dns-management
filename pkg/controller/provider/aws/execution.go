@@ -72,8 +72,8 @@ func buildResourceRecordSet(ctx context.Context, name dns.DNSSetName, policy *dn
 }
 
 func (this *Execution) addChange(ctx context.Context, action route53types.ChangeAction, req *provider.ChangeRequest, dnsset *dns.DNSSet) error {
-	name, rset := dns.MapToProvider(req.Type, dnsset, this.zone.Domain())
-	name = name.Align()
+	name := dnsset.Name.Align()
+	rset := dnsset.Sets[req.Type]
 	if len(rset.Records) == 0 {
 		return nil
 	}

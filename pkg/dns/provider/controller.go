@@ -114,6 +114,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedStringOption(OPT_REMOTE_ACCESS_CACERT, "", "CA who signed client certs file").
 		DefaultedStringOption(OPT_REMOTE_ACCESS_SERVER_SECRET_NAME, "", "name of secret containing remote access server's certificate").
 		DefaultedStringOption(OPT_REMOTE_ACCESS_CLIENT_ID, "", "identifier used for remote access").
+		DefaultedIntOption(OPT_MAX_METADATA_RECORD_DELETIONS_PER_RECONCILIATION, 50, "maximum number of metadata owner records that can be deleted per zone reconciliation").
 		FinalizerDomain("dns.gardener.cloud").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
@@ -141,7 +142,6 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 			controller.NewResourceKey(api.GroupName, api.DNSHostedZonePolicyKind),
 		).
 		WorkerPool(DNS_POOL, 1, 15*time.Minute).CommandMatchers(utils.NewStringGlobMatcher(CMD_HOSTEDZONE_PREFIX+"*")).
-		WorkerPool("statistic", 2, 0).Commands(CMD_STATISTIC).
 		OptionSource(FACTORY_OPTIONS, FactoryOptionSourceCreator(factory))
 	return cfg
 }
@@ -211,16 +211,12 @@ func (this *reconciler) Start() {
 }
 
 func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.Status {
-	switch cmd {
-	case CMD_STATISTIC:
-		this.state.UpdateOwnerCounts(logger)
-	default:
-		zoneid := this.state.DecodeZoneCommand(cmd)
-		if zoneid != nil {
-			return this.state.ReconcileZone(logger, *zoneid)
-		}
-		logger.Infof("got unhandled command %q", cmd)
+	zoneid := this.state.DecodeZoneCommand(cmd)
+	if zoneid != nil {
+		return this.state.ReconcileZone(logger, *zoneid)
 	}
+
+	logger.Warnf("got unhandled command %q", cmd)
 	return reconcile.Succeeded(logger)
 }
 
@@ -275,8 +271,6 @@ func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) r
 func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
 	logger.Debugf("deleted %s", key)
 	switch key.GroupKind() {
-	case ownerGroupKind:
-		return this.state.OwnerDeleted(logger, key)
 	case providerGroupKind:
 		return this.state.ProviderDeleted(logger, key.ObjectKey())
 	case entryGroupKind:

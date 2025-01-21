@@ -51,11 +51,13 @@ func (this *Execution) addChange(req *provider.ChangeRequest) {
 	var err error
 
 	if req.Addition != nil {
-		setName, newset = dns.MapToProvider(req.Type, req.Addition, this.zone.Domain())
+		setName = req.Addition.Name
+		newset = req.Addition.Sets[req.Type]
 		policy, err = extractRoutingPolicy(req.Addition)
 	}
 	if req.Deletion != nil {
-		setName, oldset = dns.MapToProvider(req.Type, req.Deletion, this.zone.Domain())
+		setName = req.Deletion.Name
+		oldset = req.Deletion.Sets[req.Type]
 		if req.Addition == nil {
 			policy, err = extractRoutingPolicy(req.Deletion)
 		}
