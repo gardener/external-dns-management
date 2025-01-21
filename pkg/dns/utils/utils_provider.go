@@ -5,16 +5,16 @@
 package utils
 
 import (
+	"errors"
 	"strings"
 
-	"golang.org/x/xerrors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+	dnserrors "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
 
 var DNSProviderType = (*api.DNSProvider)(nil)
@@ -57,15 +57,15 @@ func (this *DNSProviderObject) SetStateWithError(_ string, err error) bool {
 	handlerErrorMsg := ""
 	for {
 		var cause error
-		if xerr, ok := err.(xerrors.Wrapper); ok {
-			cause = xerr.Unwrap()
-		} else if cerr, ok := err.(causer); ok {
-			cause = cerr.Cause()
+		if err := errors.Unwrap(err); err != nil {
+			cause = err
+		} else if err, ok := err.(causer); ok {
+			cause = err.Cause()
 		}
 		if cause == nil || cause == err {
 			break
 		}
-		if errors.IsHandlerError(cause) {
+		if dnserrors.IsHandlerError(cause) {
 			handlerErrorMsg = cause.Error()
 			break
 		}
