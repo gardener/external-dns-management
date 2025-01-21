@@ -45,14 +45,14 @@ var _ = Describe("ProviderRateLimits", func() {
 			}
 		}
 		// rate is limited to one request per 15s
-		Ω(maxDuration > 14*time.Second).Should(BeTrue(), fmt.Sprintf("max: %.1f > 14s", maxDuration.Seconds()))
+		Ω(maxDuration).Should(BeNumerically(">", 14*time.Second), fmt.Sprintf("max: %.1f > 14s", maxDuration.Seconds()))
 
 		start = time.Now()
 		err = testEnv.DeleteEntriesAndWait(entries...)
 		Ω(err).ShouldNot(HaveOccurred())
 		deleteDuration := time.Since(start)
 		// delete operations are not rate limited
-		Ω(deleteDuration < 15*time.Second).Should(BeTrue(), fmt.Sprintf("deletion: %.1f < 15s", maxDuration.Seconds()))
+		Ω(deleteDuration).Should(BeNumerically("<", 15*time.Second), fmt.Sprintf("deletion: %.1f < 15s", maxDuration.Seconds()))
 
 		err = testEnv.DeleteProviderAndSecret(pr)
 		Ω(err).ShouldNot(HaveOccurred())
