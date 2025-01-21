@@ -15,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
-	gatewayapisv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
 	gatewayapisv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -106,12 +105,6 @@ func (s *gatewaySource) extractServerHosts(obj resources.ObjectData) ([]string, 
 				hosts = append(hosts, string(*listener.Hostname))
 			}
 		}
-	case *gatewayapisv1alpha2.Gateway:
-		for _, listener := range data.Spec.Listeners {
-			if listener.Hostname != nil {
-				hosts = append(hosts, string(*listener.Hostname))
-			}
-		}
 	default:
 		return nil, fmt.Errorf("unexpected istio gateway type: %#v", obj)
 	}
@@ -143,10 +136,6 @@ func (s *gatewaySource) extractServerHosts(obj resources.ObjectData) ([]string, 
 			for _, h := range r.Spec.Hostnames {
 				hosts = addHost(hosts, string(h))
 			}
-		case *gatewayapisv1alpha2.HTTPRoute:
-			for _, h := range r.Spec.Hostnames {
-				hosts = addHost(hosts, string(h))
-			}
 		}
 	}
 	return hosts, nil
@@ -175,16 +164,6 @@ func (s *gatewaySource) getTargets(obj resources.ObjectData) utils.StringSet {
 			case t != nil && *t == gatewayapisv1beta1.HostnameAddressType:
 				hostnames = append(hostnames, address.Value)
 			case t == nil || *t == gatewayapisv1beta1.IPAddressType:
-				ipAddresses = append(ipAddresses, address.Value)
-			}
-		}
-	case *gatewayapisv1alpha2.Gateway:
-		for _, address := range data.Status.Addresses {
-			t := address.Type
-			switch {
-			case t != nil && *t == gatewayapisv1alpha2.HostnameAddressType:
-				hostnames = append(hostnames, address.Value)
-			case t == nil || *t == gatewayapisv1alpha2.IPAddressType:
 				ipAddresses = append(ipAddresses, address.Value)
 			}
 		}
