@@ -109,8 +109,11 @@ func (rs *RecordSet) Match(set *RecordSet) bool {
 		return false
 	}
 
-	if !rs.IgnoreTTL && !set.IgnoreTTL && rs.TTL != set.TTL {
-		return false
+	if rs.Type != RS_ALIAS_A && rs.Type != RS_ALIAS_AAAA {
+		// ignore TTL for alias records
+		if !rs.IgnoreTTL && !set.IgnoreTTL && rs.TTL != set.TTL {
+			return false
+		}
 	}
 
 	for _, r := range rs.Records {
