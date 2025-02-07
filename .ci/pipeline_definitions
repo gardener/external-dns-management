@@ -31,6 +31,10 @@ external-dns-management:
         image: golang:1.23.2
     traits:
       publish:
+        oci-builder: docker-buildx
+        platforms:
+        - linux/amd64
+        - linux/arm64
         dockerimages:
           dns-controller-manager:
             dockerfile: 'Dockerfile'
