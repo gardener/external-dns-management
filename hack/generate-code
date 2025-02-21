@@ -25,6 +25,14 @@ kube::codegen::gen_helpers \
   --extra-peer-dir k8s.io/apimachinery/pkg/conversion \
   "${REPO_ROOT}/pkg/apis"
 
+kube::codegen::gen_helpers \
+  --boilerplate "${PROJECT_ROOT}/hack/LICENSE_BOILERPLATE.txt" \
+  --extra-peer-dir k8s.io/apimachinery/pkg/apis/meta/v1 \
+  --extra-peer-dir k8s.io/apimachinery/pkg/conversion \
+  --extra-peer-dir k8s.io/component-base/config \
+  --extra-peer-dir k8s.io/component-base/config/v1alpha1 \
+  "${PROJECT_ROOT}/pkg/dnsman2/apis/config"
+
 kube::codegen::gen_client \
   --with-watch \
   --one-input-api "dns/v1alpha1" \

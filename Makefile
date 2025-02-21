@@ -8,6 +8,7 @@ ENSURE_CONTROLLER_MANAGER_LIB_MOD := $(shell go get github.com/gardener/controll
 CONTROLLER_MANAGER_LIB_HACK_DIR   := $(shell go list -m -f "{{.Dir}}" github.com/gardener/controller-manager-library)/hack
 REGISTRY                          := europe-docker.pkg.dev/gardener-project/public
 EXECUTABLE                        := dns-controller-manager
+EXECUTABLE2                       := dns-controller-manager-2
 REPO_ROOT                         := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 HACK_DIR                          := $(REPO_ROOT)/hack
 PROJECT                           := github.com/gardener/external-dns-management
@@ -59,6 +60,10 @@ build-local:
 	    -race \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
 	    ./cmd/compound
+	@CGO_ENABLED=1 go build -o $(EXECUTABLE2) \
+	    -race \
+	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
+	    ./cmd/dnsman2
 
 .PHONY: release
 release:
@@ -94,6 +99,7 @@ generate: $(VGOPATH) $(CONTROLLER_GEN) $(HELM)
 	@CONTROLLER_MANAGER_LIB_HACK_DIR=$(CONTROLLER_MANAGER_LIB_HACK_DIR) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN)) go generate ./pkg/apis/dns/...
 	@CONTROLLER_MANAGER_LIB_HACK_DIR=$(CONTROLLER_MANAGER_LIB_HACK_DIR) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN))  HELM=$(shell realpath $(HELM)) go generate ./charts/external-dns-management
 	@./hack/copy-crds.sh
+	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) VGOPATH=$(VGOPATH) REPO_ROOT=$(REPO_ROOT) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN)) go generate ./pkg/dnsman2/apis/...
 	@go fmt ./pkg/...
 	@go mod tidy
 

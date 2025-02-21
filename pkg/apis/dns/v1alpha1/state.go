@@ -13,3 +13,13 @@ const (
 	STATE_DELETING = "Deleting"
 	STATE_IGNORED  = "Ignored"
 )
+
+const (
+	StatePending  = "Pending"
+	StateError    = "Error"
+	StateInvalid  = "Invalid"
+	StateStale    = "Stale"
+	StateReady    = "Ready"
+	StateDeleting = "Deleting"
+	StateIgnored  = "Ignored"
+)
