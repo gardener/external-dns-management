@@ -6,6 +6,7 @@ package utils
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
+
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 

@@ -6,11 +6,12 @@ package integration
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
 var _ = Describe("ServiceAnnotation", func() {

@@ -6,8 +6,9 @@ package integration
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	. "github.com/onsi/gomega"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
 func checkHasFinalizer(obj resources.Object) {

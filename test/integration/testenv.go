@@ -25,14 +25,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
-	"github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
-	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
-	"github.com/gardener/external-dns-management/pkg/server/remote"
-	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
 	istioapinetworkingv1 "istio.io/api/networking/v1"
 	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -45,6 +37,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/utils/ptr"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
+
+	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	"github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"
+	"github.com/gardener/external-dns-management/pkg/dns"
+	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
+	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
+	"github.com/gardener/external-dns-management/pkg/server/remote"
+	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
 )
 
 type ProviderTestOption int

@@ -8,21 +8,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/watches"
-	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
-	"k8s.io/apimachinery/pkg/util/runtime"
-
-	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
-	"github.com/gardener/external-dns-management/pkg/controller/annotation"
-	"github.com/gardener/external-dns-management/pkg/dns"
-
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile/reconcilers"
+	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/watches"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/runtime"
 
+	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/controller/annotation"
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 const (

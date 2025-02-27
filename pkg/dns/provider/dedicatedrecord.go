@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
 

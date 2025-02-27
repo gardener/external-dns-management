@@ -12,8 +12,9 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
 )
 
 var _ LightDNSHandler = &dnsProviderVersionLightHandler{}

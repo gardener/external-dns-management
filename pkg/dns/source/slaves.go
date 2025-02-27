@@ -12,12 +12,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile/reconcilers"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/dns"
+	"k8s.io/apimachinery/pkg/api/errors"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/utils"
-
-	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 func SlaveReconcilerType(c controller.Interface) (reconcile.Interface, error) {

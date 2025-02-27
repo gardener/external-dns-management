@@ -15,9 +15,10 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	"go.uber.org/atomic"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
 type lookupHostConfig struct {

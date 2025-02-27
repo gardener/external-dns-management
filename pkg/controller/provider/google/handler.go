@@ -11,18 +11,14 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/client-go/util/flowcontrol"
-
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
-
+	"github.com/gardener/controller-manager-library/pkg/logger"
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
-
-	"github.com/gardener/controller-manager-library/pkg/logger"
+	googledns "google.golang.org/api/dns/v1"
+	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
-
-	googledns "google.golang.org/api/dns/v1"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 type Handler struct {

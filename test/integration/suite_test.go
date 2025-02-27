@@ -12,14 +12,6 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/remote"
-	_ "github.com/gardener/external-dns-management/pkg/controller/source/gateways/gatewayapi"
-	_ "github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"
-	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
-	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
-	_ "github.com/gardener/external-dns-management/pkg/server/pprof"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
@@ -30,6 +22,15 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
+
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/remote"
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/gateways/gatewayapi"
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/ingress"
+	_ "github.com/gardener/external-dns-management/pkg/controller/source/service"
+	_ "github.com/gardener/external-dns-management/pkg/server/pprof"
 )
 
 var (

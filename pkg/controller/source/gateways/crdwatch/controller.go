@@ -12,10 +12,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/dns/source"
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/labels"
+
+	"github.com/gardener/external-dns-management/pkg/dns/source"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
 const CONTROLLER = "watch-gateways-crds"

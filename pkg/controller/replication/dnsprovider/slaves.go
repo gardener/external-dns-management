@@ -14,13 +14,12 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	utils2 "github.com/gardener/controller-manager-library/pkg/utils"
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/dns/source"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns/source"
 	"github.com/gardener/external-dns-management/pkg/dns/utils"
-
-	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 const RemotePrefix = "remote: "

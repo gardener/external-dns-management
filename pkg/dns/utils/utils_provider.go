@@ -8,10 +8,9 @@ import (
 	"errors"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnserrors "github.com/gardener/external-dns-management/pkg/dns/provider/errors"

@@ -14,10 +14,11 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	atomic2 "go.uber.org/atomic"
 	"google.golang.org/grpc/credentials"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
 type dynamicTransportCredentials struct {

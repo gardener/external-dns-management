@@ -13,10 +13,11 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/server/remote/common"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/gardener/external-dns-management/pkg/server/remote/common"
 )
 
 // ServerSecretUpdateHandler is called on updated server secret

@@ -11,6 +11,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
