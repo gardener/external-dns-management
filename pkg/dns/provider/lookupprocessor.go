@@ -21,6 +21,7 @@ import (
 )
 
 type lookupHostConfig struct {
+	lock                       sync.Mutex
 	lookupHost                 func(string) ([]net.IP, error)
 	maxConcurrentLookupsPerJob int
 	maxLookupRetries           int
@@ -365,8 +366,11 @@ func lookupIPs(hostname string) lookupIPsResult {
 		ips []net.IP
 		err error
 	)
+	lookupHost.lock.Lock()
+	lookupFunc := lookupHost.lookupHost
+	lookupHost.lock.Unlock()
 	for i := 1; i <= lookupHost.maxLookupRetries; i++ {
-		ips, err = lookupHost.lookupHost(hostname)
+		ips, err = lookupFunc(hostname)
 		if err == nil || i == lookupHost.maxLookupRetries {
 			break
 		}
