@@ -29,10 +29,10 @@ tidy:
 
 .PHONY: clean
 clean:
+	bash $(GARDENER_HACK_DIR)/clean.sh ./cmd/... ./pkg/...
 	@rm -f charts/external-dns-management/templates/crds.yaml
 	@rm -f pkg/apis/dns/crds/*
 	@rm -rf /pkg/client/dns
-	@rm -f pkg/apis/dns/v1alpha1/zz_generated*
 
 .PHONY: check
 check: sast-report fastcheck
@@ -44,8 +44,8 @@ fastcheck: format $(GOIMPORTS) $(GOLANGCI_LINT)
 	@go vet ./cmd/... ./pkg/... ./test/...
 
 .PHONY: format
-format:
-	@go fmt ./cmd/... ./pkg/... ./test/...
+format: $(GOIMPORTS) $(GOIMPORTSREVISER)
+	@bash $(GARDENER_HACK_DIR)/format.sh ./cmd ./pkg ./test
 
 .PHONY: build
 build:
@@ -69,7 +69,7 @@ release:
 
 .PHONY: unittests
 unittests: $(GINKGO)
-	$(GINKGO) -r ./pkg
+	go test -race -timeout=3m ./pkg/... | grep -v 'no test files'
 
 .PHONY: new-test-integration
 new-test-integration: $(REPORT_COLLECTOR) $(SETUP_ENVTEST)
