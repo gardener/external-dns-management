@@ -240,8 +240,8 @@ func (in *DNSEntryStatus) DeepCopyInto(out *DNSEntryStatus) {
 		*out = new(string)
 		**out = **in
 	}
-	if in.LastUptimeTime != nil {
-		in, out := &in.LastUptimeTime, &out.LastUptimeTime
+	if in.LastUpdateTime != nil {
+		in, out := &in.LastUpdateTime, &out.LastUpdateTime
 		*out = (*in).DeepCopy()
 	}
 	if in.ProviderType != nil {

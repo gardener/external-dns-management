@@ -89,7 +89,7 @@ type DNSEntryStatus struct {
 	Message *string `json:"message,omitempty"`
 	// lastUpdateTime contains the timestamp of the last status update
 	// +optional
-	LastUptimeTime *metav1.Time `json:"lastUpdateTime,omitempty"`
+	LastUpdateTime *metav1.Time `json:"lastUpdateTime,omitempty"`
 	// provider type used for the entry
 	// +optional
 	ProviderType *string `json:"providerType,omitempty"`

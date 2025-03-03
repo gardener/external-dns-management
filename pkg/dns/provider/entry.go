@@ -571,7 +571,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			AssureStringPtrPtr(&status.Zone, this.status.Zone).
 			AssureStringPtrPtr(&status.Provider, this.status.Provider)
 		if mod.IsModified() {
-			dnsutils.SetLastUpdateTime(&status.LastUptimeTime)
+			dnsutils.SetLastUpdateTime(&status.LastUpdateTime)
 			logmsg.Infof(logger)
 		}
 		mod.Modify(dnsutils.DNSEntry(obj).AcknowledgeCNAMELookupInterval(this.interval))
@@ -662,7 +662,7 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 		mod.AssureStringValue(&b.State, state)
 		this.status.State = state
 		if mod.IsModified() {
-			dnsutils.SetLastUpdateTime(&b.LastUptimeTime)
+			dnsutils.SetLastUpdateTime(&b.LastUpdateTime)
 			logger.Infof("update state of '%s/%s' to %s (%s)", o.GetNamespace(), o.GetName(), state, msg)
 		}
 		return mod.IsModified(), nil
@@ -685,7 +685,7 @@ func (this *EntryVersion) UpdateState(logger logger.LogContext, state, msg strin
 		mod.AssureStringValue(&b.State, state)
 		this.status.State = state
 		if mod.IsModified() {
-			dnsutils.SetLastUpdateTime(&b.LastUptimeTime)
+			dnsutils.SetLastUpdateTime(&b.LastUpdateTime)
 			logger.Infof("update state of '%s/%s' to %s (%s)", o.GetNamespace(), o.GetName(), state, msg)
 		}
 		return mod.IsModified(), nil
