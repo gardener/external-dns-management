@@ -529,7 +529,7 @@ func (this *dnsProviderVersion) MapTargets(dnsName string, targets []Target) []T
 func (this *dnsProviderVersion) setError(modified bool, err error) error {
 	modified = this.object.SetStateWithError(api.STATE_ERROR, err) || modified
 	if modified {
-		dnsutils.SetLastUpdateTime(&this.object.Status().LastUptimeTime)
+		dnsutils.SetLastUpdateTime(&this.object.Status().LastUpdateTime)
 		return this.object.UpdateStatus()
 	}
 	return nil
@@ -587,7 +587,7 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	mod.AssureInt64PtrValue(&status.DefaultTTL, this.defaultTTL)
 	assureRateLimit(mod, &status.RateLimit, this.rateLimit)
 	if mod.IsModified() {
-		dnsutils.SetLastUpdateTime(&this.object.Status().LastUptimeTime)
+		dnsutils.SetLastUpdateTime(&this.object.Status().LastUpdateTime)
 	}
 	return reconcile.UpdateStatus(logger, mod)
 }

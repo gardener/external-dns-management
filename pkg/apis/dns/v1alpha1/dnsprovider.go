@@ -95,7 +95,7 @@ type DNSProviderStatus struct {
 	Message *string `json:"message,omitempty"`
 	// lastUpdateTime contains the timestamp of the last status update
 	// +optional
-	LastUptimeTime *metav1.Time `json:"lastUpdateTime,omitempty"`
+	LastUpdateTime *metav1.Time `json:"lastUpdateTime,omitempty"`
 	// actually served domain selection
 	// +optional
 	Domains DNSSelectionStatus `json:"domains"`
