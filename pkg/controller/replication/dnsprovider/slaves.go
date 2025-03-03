@@ -88,7 +88,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 					msg = &s
 				}
 				mod.AssureStringPtrPtr(&ownerStatus.Message, msg)
-				assureTimeValuePtrPtr(mod, &ownerStatus.LastUptimeTime, status.LastUptimeTime)
+				assureTimeValuePtrPtr(mod, &ownerStatus.LastUpdateTime, status.LastUpdateTime)
 				if mod.IsModified() {
 					err = o.UpdateStatus()
 					if err != nil {
