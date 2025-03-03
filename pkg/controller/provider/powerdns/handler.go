@@ -11,9 +11,9 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/joeig/go-powerdns/v3"
 
-	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )

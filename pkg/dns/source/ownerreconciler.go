@@ -15,8 +15,9 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
 var keyOwnerState = ctxutil.SimpleKey("owner-state")

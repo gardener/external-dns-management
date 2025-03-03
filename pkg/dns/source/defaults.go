@@ -8,12 +8,12 @@ import (
 	"sync"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 ////////////////////////////////////////////////////////////////////////////////

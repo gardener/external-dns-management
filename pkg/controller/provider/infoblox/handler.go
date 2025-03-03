@@ -13,11 +13,11 @@ import (
 	"strconv"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
-
-	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 )
 
 type Handler struct {

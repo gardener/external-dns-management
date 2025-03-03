@@ -8,9 +8,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	yaml "sigs.k8s.io/yaml/goyaml.v3"
+
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 type zonedata struct {

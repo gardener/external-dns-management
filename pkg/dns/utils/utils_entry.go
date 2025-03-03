@@ -9,9 +9,9 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"github.com/gardener/external-dns-management/pkg/dns"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 var DNSEntryType = (*api.DNSEntry)(nil)

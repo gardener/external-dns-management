@@ -7,11 +7,12 @@ package integration
 import (
 	"fmt"
 
-	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 )
 
 var _ = Describe("ProviderSecret", func() {

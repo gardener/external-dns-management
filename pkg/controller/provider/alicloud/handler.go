@@ -7,6 +7,7 @@ package alicloud
 import (
 	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"

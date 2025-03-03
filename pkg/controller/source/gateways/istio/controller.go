@@ -9,9 +9,9 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/cluster"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+
 	"github.com/gardener/external-dns-management/pkg/controller/source/ingress"
 	"github.com/gardener/external-dns-management/pkg/controller/source/service"
-
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 

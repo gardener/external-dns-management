@@ -10,11 +10,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"github.com/gardener/external-dns-management/pkg/dns"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 type DNSInfo struct {

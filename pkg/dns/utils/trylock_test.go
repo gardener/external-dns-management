@@ -54,6 +54,8 @@ var _ = Describe("TryLock", func() {
 		Expect(secondLock).To(BeFalse())
 
 		counters := make([]uint64, 3)
+		wgTryLockers := &sync.WaitGroup{}
+		wgTryLockers.Add(len(counters))
 		tryLocker := func(c *uint64) {
 			atomic.StoreUint64(c, 1)
 			for {
@@ -61,6 +63,7 @@ var _ = Describe("TryLock", func() {
 					atomic.StoreUint64(c, uint64(time.Now().Nanosecond()))
 					time.Sleep(10 * wait)
 					lock.Unlock()
+					wgTryLockers.Done()
 					return
 				}
 				time.Sleep(wait)
@@ -90,6 +93,8 @@ var _ = Describe("TryLock", func() {
 
 		wg.Wait()
 		Expect(err2).ToNot(HaveOccurred())
+
+		wgTryLockers.Wait()
 
 		for i := 0; i < len(counters); i++ {
 			for j := 0; j < len(counters); j++ {

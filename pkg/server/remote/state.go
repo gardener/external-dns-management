@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/server/remote/common"

@@ -16,8 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
-
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/mapping"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"

@@ -12,11 +12,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile/reconcilers"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
-	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
-	"github.com/gardener/external-dns-management/pkg/dns"
 	"k8s.io/apimachinery/pkg/util/runtime"
 
+	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 

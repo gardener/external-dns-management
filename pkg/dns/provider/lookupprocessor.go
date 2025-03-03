@@ -15,12 +15,14 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	"go.uber.org/atomic"
 	"k8s.io/apimachinery/pkg/util/sets"
+
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
 type lookupHostConfig struct {
+	lock                       sync.Mutex
 	lookupHost                 func(string) ([]net.IP, error)
 	maxConcurrentLookupsPerJob int
 	maxLookupRetries           int
@@ -365,8 +367,11 @@ func lookupIPs(hostname string) lookupIPsResult {
 		ips []net.IP
 		err error
 	)
+	lookupHost.lock.Lock()
+	lookupFunc := lookupHost.lookupHost
+	lookupHost.lock.Unlock()
 	for i := 1; i <= lookupHost.maxLookupRetries; i++ {
-		ips, err = lookupHost.lookupHost(hostname)
+		ips, err = lookupFunc(hostname)
 		if err == nil || i == lookupHost.maxLookupRetries {
 			break
 		}

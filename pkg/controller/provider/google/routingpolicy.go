@@ -10,8 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gardener/external-dns-management/pkg/dns"
 	googledns "google.golang.org/api/dns/v1"
+
+	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
 const routingPolicyMaxIndices = 5

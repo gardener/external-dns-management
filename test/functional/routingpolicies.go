@@ -9,10 +9,11 @@ import (
 	"os"
 	"text/template"
 
-	"github.com/gardener/external-dns-management/test/functional/config"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+
+	"github.com/gardener/external-dns-management/test/functional/config"
 )
 
 var routingPolicyTemplate = `

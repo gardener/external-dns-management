@@ -13,13 +13,14 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	"k8s.io/utils/ptr"
+
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
-	"k8s.io/utils/ptr"
 )
 
 ////////////////////////////////////////////////////////////////////////////////

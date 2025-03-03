@@ -7,6 +7,7 @@ package cloudflare
 import (
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
 )

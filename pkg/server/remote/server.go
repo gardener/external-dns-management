@@ -14,14 +14,15 @@ import (
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
-	"github.com/gardener/external-dns-management/pkg/server/remote/common"
-	"github.com/gardener/external-dns-management/pkg/server/remote/conversion"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
+
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
+	"github.com/gardener/external-dns-management/pkg/server/remote/common"
+	"github.com/gardener/external-dns-management/pkg/server/remote/conversion"
 )
 
 type server struct {

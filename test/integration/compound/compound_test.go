@@ -10,8 +10,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
@@ -24,9 +23,10 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 var debug = false

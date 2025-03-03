@@ -11,20 +11,19 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/util/flowcontrol"
-
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/flowcontrol"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
 )

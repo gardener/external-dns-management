@@ -15,10 +15,10 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	utils2 "github.com/gardener/controller-manager-library/pkg/utils"
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/dns"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 

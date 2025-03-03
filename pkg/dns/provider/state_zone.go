@@ -12,12 +12,12 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 

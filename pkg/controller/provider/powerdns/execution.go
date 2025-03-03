@@ -8,11 +8,11 @@ import (
 	"fmt"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/joeig/go-powerdns/v3"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
 type RecordSet struct {

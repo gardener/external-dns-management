@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/utils"
+
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"

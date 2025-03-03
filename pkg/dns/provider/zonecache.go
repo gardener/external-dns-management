@@ -14,10 +14,10 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/errors"
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
 type StateTTLGetter func(zoneid dns.ZoneID) time.Duration

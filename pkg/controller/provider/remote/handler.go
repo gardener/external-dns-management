@@ -14,18 +14,19 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gardener/external-dns-management/pkg/controller/provider/aws"
-	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/mapping"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
-	"github.com/gardener/external-dns-management/pkg/server/remote/common"
-	"github.com/gardener/external-dns-management/pkg/server/remote/conversion"
 	"go.uber.org/atomic"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
+
+	"github.com/gardener/external-dns-management/pkg/controller/provider/aws"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/mapping"
+	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/server/remote/common"
+	"github.com/gardener/external-dns-management/pkg/server/remote/conversion"
 )
 
 type Handler struct {

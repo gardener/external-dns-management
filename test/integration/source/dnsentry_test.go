@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager"
+	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -20,7 +21,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
 )

@@ -14,12 +14,12 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/flowcontrol"
+
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/util/flowcontrol"
 )
 
 type Config struct {

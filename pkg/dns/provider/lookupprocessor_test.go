@@ -156,7 +156,9 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 			},
 			lookupCount: map[string]int{},
 		}
+		lookupHost.lock.Lock()
 		lookupHost.lookupHost = mlh.LookupHost
+		lookupHost.lock.Unlock()
 		lookupHost.waitLookupRetry = 5 * time.Millisecond
 		ctx, ctxCancel = context.WithCancel(context.Background())
 	})
@@ -203,10 +205,13 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		time.Sleep(18 * time.Millisecond)
 		cancel()
 
+		mlh.lock.Lock()
 		count1 := mlh.lookupCount["host1"]
 		count2 := mlh.lookupCount["host2"]
 		count3a := mlh.lookupCount["host3a"]
 		count3c := mlh.lookupCount["host3c"]
+		mlh.lock.Unlock()
+
 		expectCountBetween("count1", count1, 18, 54)
 		expectCountBetween("count2", count2, 9, 27)
 		expectCountBetween("count3a", count3a, 3, 9)
@@ -245,14 +250,18 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 
 		time.Sleep(10 * time.Millisecond)
 		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "not-existing-host"), 1*time.Millisecond)
+		mlh.lock.Lock()
 		mlh.lookupMap["host2"].ips[0] = changedIP
+		mlh.lock.Unlock()
 		time.Sleep(20 * time.Millisecond)
 		cancel()
 
+		mlh.lock.Lock()
 		count1 := mlh.lookupCount["host1"]
 		count2 := mlh.lookupCount["host2"]
 		count3a := mlh.lookupCount["host3a"]
 		count3c := mlh.lookupCount["host3c"]
+		mlh.lock.Unlock()
 		expectCountBetween("count1", count1, 20, 40)
 		expectCountBetween("count2", count2, 20, 40)
 		expectCountBetween("count3a", count3a, 20, 40)
@@ -261,9 +270,13 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(enqueuer.enqueuedCount[nameE2]).To(Equal(1))
 		Expect(enqueuer.enqueuedCount[nameE3]).To(Equal(1))
 		expectCountBetween("skipped", int(processor.skipped.Load()), 0, 10)
+		metrics.lock.Lock()
 		stat1 := metrics.lookups[nameE1]
+		metrics.lock.Unlock()
 		expectCountBetween("stat1.count-count1", stat1.count-count1, -1, 1)
+		metrics.lock.Lock()
 		stat3 := metrics.lookups[nameE3]
+		metrics.lock.Unlock()
 		expectCountBetween("stat3.count-count3a", stat3.count-count3a, -1, 1)
 		Expect(stat3.targetCount).To(Equal(count3a * 3))
 		expectCountBetween("count not-existing-host", stat3.errorCount, 10, 30)

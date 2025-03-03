@@ -17,13 +17,13 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/annotation/annotations"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-
-	core "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 // NewSlaveAccessSpec creates a new SlaveAccessSpec.

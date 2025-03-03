@@ -10,10 +10,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/source"
 	api "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
+
+	"github.com/gardener/external-dns-management/pkg/dns"
+	"github.com/gardener/external-dns-management/pkg/dns/source"
 )
 
 func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSNameSet) (*source.TargetExtraction, error) {

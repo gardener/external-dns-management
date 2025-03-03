@@ -8,13 +8,12 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/config"
-	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
-	"k8s.io/apimachinery/pkg/labels"
-
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
+	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
+	"k8s.io/apimachinery/pkg/labels"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
