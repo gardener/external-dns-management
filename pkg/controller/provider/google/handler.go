@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 	"golang.org/x/oauth2/google"
 	googledns "google.golang.org/api/dns/v1"
 	"google.golang.org/api/option"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -61,6 +63,9 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	// h.ctx=context.WithValue(config.Context,oauth2.HTTPClient,&c)
 	h.ctx = config.Context
 
+	if err := validateServiceAccountJSON([]byte(json)); err != nil {
+		return nil, err
+	}
 	h.credentials, err = google.CredentialsFromJSON(h.ctx, []byte(json), scopes...)
 	// cfg, err:=google.JWTConfigFromJSON([]byte(json))
 	if err != nil {
@@ -209,6 +214,28 @@ func (h *Handler) getResourceRecordSet(project, managedZone, name, typ string) (
 	h.config.RateLimiter.Accept()
 	h.config.Metrics.AddGenericRequests("getrecordset", 1)
 	return h.service.ResourceRecordSets.Get(project, managedZone, name, typ).Do()
+}
+
+var projectIDRegexp = regexp.MustCompile(`^(?P<project>[a-z][a-z0-9-]{4,28}[a-z0-9])$`)
+
+func validateServiceAccountJSON(data []byte) error {
+	credentials := map[string]interface{}{}
+	if err := json.Unmarshal(data, &credentials); err != nil {
+		return fmt.Errorf("'serviceaccount.json' data field does not contain a valid JSON: %s", err)
+	}
+	if projectID, ok := credentials["project_id"]; !ok {
+		return fmt.Errorf("'serviceaccount.json' does not contain a 'project_id' field")
+	} else if v, ok := projectID.(string); !ok || !projectIDRegexp.MatchString(v) {
+		return fmt.Errorf("'serviceaccount.json' field 'project_id' is not a valid project")
+	}
+	value, ok := credentials["type"]
+	if !ok {
+		return fmt.Errorf("'serviceaccount.json' does not contain a 'type' field")
+	}
+	if v, ok := value.(string); !ok || v != "service_account" {
+		return fmt.Errorf("'serviceaccount.json' field 'type' is not 'service_account'")
+	}
+	return nil
 }
 
 // SplitZoneID splits the zone id into project id and zone name
