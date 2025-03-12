@@ -14,5 +14,6 @@ import (
 )
 
 func (r *Reconciler) delete(_ context.Context, _ logr.Logger, _ *v1alpha1.DNSProvider) (reconcile.Result, error) {
+	// TODO: implement deletion logic
 	return reconcile.Result{}, nil
 }

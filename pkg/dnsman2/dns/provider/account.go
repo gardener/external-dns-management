@@ -21,8 +21,8 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/metrics"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
-	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
 type DNSAccountConfig struct {
