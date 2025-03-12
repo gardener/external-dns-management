@@ -8,9 +8,7 @@ const (
 	ControllerGroupDNSControllers = "dnscontrollers"
 	ControllerGroupDNSSources     = "dnssources"
 	ControllerGroupReplication    = "replication"
-)
 
-const (
 	DefaultClass             = "gardendns"
 	AnnotationGroup          = "dns.gardener.cloud"
 	AnnotationClass          = AnnotationGroup + "/class"
@@ -19,9 +17,7 @@ const (
 
 	// FinalizerCompound is the finalizer for provider resources ("compound" to be backwards-compatible).
 	FinalizerCompound = "dns.gardener.cloud/compound"
-)
 
-const (
 	// AnnotationIPStack is an optional annotation for DNSEntries to specify the IP stack.
 	// Values are 'ipv4', 'dual-stack', and 'ipv6'. If not specified, 'ipv4' is assumed.
 	// This annotation is currently only relevant for AWS-Route53 to generate alias target A and/or AAAA records.

@@ -7,7 +7,6 @@ package dns
 import (
 	"bytes"
 	"fmt"
-	"strings"
 )
 
 // RecordType represents the type of record set.
@@ -132,40 +131,6 @@ func (rs *RecordSet) Match(set *RecordSet) bool {
 	return true
 }
 
-func (rs *RecordSet) GetAttr(name string) string {
-	if rs.Type == TypeTXT {
-		prefix := newAttrKeyPrefix(name)
-		for _, r := range rs.Records {
-			if strings.HasPrefix(r.Value, prefix) {
-				return r.Value[len(prefix) : len(r.Value)-1]
-			}
-		}
-	}
-	return ""
-}
-
-func (rs *RecordSet) SetAttr(name string, value string) {
-	prefix := newAttrKeyPrefix(name)
-	for _, r := range rs.Records {
-		if strings.HasPrefix(r.Value, prefix) {
-			r.Value = newAttrValue(name, value)
-			return
-		}
-	}
-	r := newAttrRecord(name, value)
-	rs.Records = append(rs.Records, r)
-}
-
-func (rs *RecordSet) DeleteAttr(name string) {
-	prefix := newAttrKeyPrefix(name)
-	for i, r := range rs.Records {
-		if strings.HasPrefix(r.Value, prefix) {
-			rs.Records = append(rs.Records[:i], rs.Records[i+1:]...)
-			return
-		}
-	}
-}
-
 func (rs *RecordSet) DiffTo(set *RecordSet) (new, update, delete []*Record) {
 nextOwn:
 	for _, r := range rs.Records {
@@ -203,21 +168,4 @@ func (rs *RecordSet) String() string {
 		buf.WriteString(rec.Value)
 	}
 	return buf.String()
-}
-
-func newAttrKeyPrefix(name string) string {
-	return fmt.Sprintf("\"%s=", name)
-}
-
-func newAttrValue(name, value string) string {
-	return fmt.Sprintf("%s%s\"", newAttrKeyPrefix(name), value)
-}
-
-func newAttrRecord(name, value string) *Record {
-	return &Record{Value: newAttrValue(name, value)}
-}
-
-func newAttrRecordSet(rtype RecordType, name, value string) *RecordSet {
-	records := []*Record{newAttrRecord(name, value)}
-	return &RecordSet{Type: rtype, TTL: 600, IgnoreTTL: false, Records: records}
 }
