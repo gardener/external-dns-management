@@ -18,19 +18,22 @@ require (
 	github.com/aws/smithy-go v1.22.1
 	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/gardener/controller-manager-library v0.2.1-0.20241212154005-7de194a006b6
-	github.com/gardener/gardener v1.110.4
+	github.com/gardener/gardener v1.112.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-openapi/runtime v0.24.1
 	github.com/go-openapi/strfmt v0.21.2
 	github.com/gophercloud/gophercloud v0.24.0
 	github.com/gophercloud/utils v0.0.0-20220307143606-8e7800759d16
 	github.com/infobloxopen/infoblox-go-client/v2 v2.1.0
+	github.com/jellydator/ttlcache/v3 v3.3.0
 	github.com/joeig/go-powerdns/v3 v3.10.0
 	github.com/miekg/dns v1.1.62
 	github.com/netlify/open-api v1.1.0
 	github.com/onsi/ginkgo/v2 v2.22.1
 	github.com/onsi/gomega v1.36.2
 	github.com/prometheus/client_golang v1.20.5
+	github.com/spf13/cobra v1.8.1
+	github.com/spf13/pflag v1.0.6
 	go.uber.org/atomic v1.10.0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/oauth2 v0.25.0
@@ -46,8 +49,9 @@ require (
 	k8s.io/apimachinery v0.31.5
 	k8s.io/client-go v0.31.5
 	k8s.io/code-generator v0.31.5
+	k8s.io/component-base v0.31.5
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
-	sigs.k8s.io/controller-runtime v0.19.4
+	sigs.k8s.io/controller-runtime v0.19.5
 	sigs.k8s.io/controller-runtime/tools/setup-envtest v0.0.0-20231015215740-bf15e44028f9
 	sigs.k8s.io/controller-tools v0.16.5
 	sigs.k8s.io/gateway-api v1.2.1
@@ -89,9 +93,9 @@ require (
 	github.com/fluent/fluent-operator/v2 v2.9.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
-	github.com/gardener/cert-management v0.17.2 // indirect
+	github.com/gardener/cert-management v0.17.3 // indirect
 	github.com/gardener/etcd-druid v0.26.1 // indirect
-	github.com/gardener/machine-controller-manager v0.55.1 // indirect
+	github.com/gardener/machine-controller-manager v0.56.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/analysis v0.21.2 // indirect
@@ -158,8 +162,6 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.12.0 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
-	github.com/spf13/cobra v1.8.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
@@ -172,14 +174,14 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	golang.org/x/crypto v0.35.0 // indirect
-	golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8 // indirect
+	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c // indirect
 	golang.org/x/lint v0.0.0-20241112194109-818c5a804067 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/net v0.36.0 // indirect
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
-	golang.org/x/time v0.9.0 // indirect
+	golang.org/x/time v0.10.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20241209162323-e6fa225c2576 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241223144023-3abc09e42ca8 // indirect
@@ -190,7 +192,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	helm.sh/helm/v3 v3.16.4 // indirect
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.2.2 // indirect
-	k8s.io/component-base v0.31.5 // indirect
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240826214909-a7b603a56eb7 // indirect
 	k8s.io/klog v1.0.0 // indirect
