@@ -14,7 +14,9 @@ type ProviderState struct {
 	lastVersion *v1alpha1.DNSProvider
 
 	account *provider.DNSAccount
-	valid   bool
+	// TODO(marc1404): Use this field or remove it
+	// nolint:unused
+	valid bool
 
 	defaultTTL int64
 	selection  selection.SelectionResult

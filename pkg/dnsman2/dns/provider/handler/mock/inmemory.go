@@ -91,6 +91,8 @@ func (m *InMemory) GetRecordset(zoneID dns.ZoneID, name dns.DNSSetName, rtype dn
 	return data.dnssets[name].Sets[rtype].Clone()
 }
 
+// TODO(marc1404): Implement and remove nolint
+// nolint:revive
 func (m *InMemory) Apply(zoneID dns.ZoneID, request *provider.ChangeRequest, metrics provider.Metrics) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()

@@ -81,7 +81,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 func (h *Handler) Release() {
 }
 
-func (h *Handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error) {
+func (h *Handler) GetZones(_ context.Context) ([]provider.DNSHostedZone, error) {
 	if h.mockConfig.FailGetZones {
 		return nil, fmt.Errorf("forced error by mockConfig.FailGetZones")
 	}

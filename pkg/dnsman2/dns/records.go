@@ -85,9 +85,7 @@ func (rs *RecordSet) Length() int {
 }
 
 func (rs *RecordSet) Add(records ...*Record) *RecordSet {
-	for _, r := range records {
-		rs.Records = append(rs.Records, r)
-	}
+	rs.Records = append(rs.Records, records...)
 	return rs
 }
 
