@@ -43,8 +43,8 @@ import (
 	dnsprovidercontrolplane "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsprovider/controlplane"
 )
 
-// Name is the name of the controller-manager.
-const Name = "Gardener External-DNS-Controller-Manager"
+// Name is the name of the dns-controller-manager.
+const Name = "dns-controller-manager"
 
 var configDecoder runtime.Decoder
 
@@ -63,10 +63,9 @@ func init() {
 func NewCommand() *cobra.Command {
 	o := newOptions()
 	cmd := &cobra.Command{
-		Use:     "controller-manager",
+		Use:     Name,
 		Aliases: []string{"cm"},
-		Short:   "Runs the DNS controller manager",
-		Long:    "Runs the DNS controller manager. This command runs typically in a pod in the cluster.",
+		Short:   "Launch the " + Name,
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			log, err := cmdutils.InitRun(cmd, o, Name)
@@ -75,7 +74,7 @@ func NewCommand() *cobra.Command {
 			}
 
 			if err := o.run(cmd.Context(), log); err != nil {
-				log.Error(err, "controller-manager run failed")
+				log.Error(err, "Launching "+Name+" failed")
 			}
 			return nil
 		},

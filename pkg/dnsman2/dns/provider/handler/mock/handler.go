@@ -117,6 +117,7 @@ func (h *Handler) executeRequests(ctx context.Context, zone provider.DNSHostedZo
 	}
 	log.Info("Executing requests", "zoneID", zone.ZoneID(), "requests", len(reqs))
 	return fmt.Errorf("not implemented")
+	// TODO: Implement this
 	/*
 		var succeeded, failed int
 		for _, r := range reqs {

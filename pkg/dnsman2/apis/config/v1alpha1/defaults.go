@@ -63,7 +63,7 @@ func SetDefaults_ControlPlaneClientConnection(obj *ControlPlaneClientConnection)
 	}
 }
 
-// SetDefaults_LeaderElectionConfiguration sets defaults for the leader election of the Gardener operator.
+// SetDefaults_LeaderElectionConfiguration sets defaults for the leader election of the Gardener dns-controller-manager.
 func SetDefaults_LeaderElectionConfiguration(obj *componentbaseconfigv1alpha1.LeaderElectionConfiguration) {
 	if obj.ResourceLock == "" {
 		// Don't use a constant from the client-go resourcelock package here (resourcelock is not an API package, pulls
