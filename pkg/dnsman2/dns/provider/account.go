@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -20,6 +19,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/metrics"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"

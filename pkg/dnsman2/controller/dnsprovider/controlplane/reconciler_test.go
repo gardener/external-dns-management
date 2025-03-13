@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	mock2 "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -20,6 +18,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	mock2 "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 var _ = Describe("Reconcile", func() {

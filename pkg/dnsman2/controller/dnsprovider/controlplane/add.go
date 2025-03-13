@@ -9,7 +9,6 @@ package controlplane
 import (
 	"context"
 
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
@@ -24,6 +23,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 // ControllerName is the name of this controller.

@@ -8,10 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
 func init() {
