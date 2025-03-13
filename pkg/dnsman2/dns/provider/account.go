@@ -69,7 +69,7 @@ func (h *handlerZoneQueryDNS) Query(ctx context.Context, dnsName string, recordT
 	if err != nil {
 		return utils.QueryDNSResult{Err: err}
 	}
-	return utils.QueryDNSResult{Records: records, TTL: uint32(ttl)}
+	return utils.QueryDNSResult{Records: records, TTL: utils.TTLToUint32(ttl)}
 }
 
 func NewDNSAccount(handler DNSHandler, hash string, config DNSAccountConfig) *DNSAccount {
