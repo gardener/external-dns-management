@@ -1,5 +1,6 @@
 bin/
 .idea/
+!.idea/copyright/
 *.sw[pq]
 .DS_Store
 tmp/
