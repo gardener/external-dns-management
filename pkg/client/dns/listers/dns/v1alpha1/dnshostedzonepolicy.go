@@ -6,10 +6,10 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // DNSHostedZonePolicyLister helps list DNSHostedZonePolicies.
@@ -17,7 +17,7 @@ import (
 type DNSHostedZonePolicyLister interface {
 	// List lists all DNSHostedZonePolicies in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.DNSHostedZonePolicy, err error)
+	List(selector labels.Selector) (ret []*dnsv1alpha1.DNSHostedZonePolicy, err error)
 	// DNSHostedZonePolicies returns an object that can list and get DNSHostedZonePolicies.
 	DNSHostedZonePolicies(namespace string) DNSHostedZonePolicyNamespaceLister
 	DNSHostedZonePolicyListerExpansion
@@ -25,17 +25,17 @@ type DNSHostedZonePolicyLister interface {
 
 // dNSHostedZonePolicyLister implements the DNSHostedZonePolicyLister interface.
 type dNSHostedZonePolicyLister struct {
-	listers.ResourceIndexer[*v1alpha1.DNSHostedZonePolicy]
+	listers.ResourceIndexer[*dnsv1alpha1.DNSHostedZonePolicy]
 }
 
 // NewDNSHostedZonePolicyLister returns a new DNSHostedZonePolicyLister.
 func NewDNSHostedZonePolicyLister(indexer cache.Indexer) DNSHostedZonePolicyLister {
-	return &dNSHostedZonePolicyLister{listers.New[*v1alpha1.DNSHostedZonePolicy](indexer, v1alpha1.Resource("dnshostedzonepolicy"))}
+	return &dNSHostedZonePolicyLister{listers.New[*dnsv1alpha1.DNSHostedZonePolicy](indexer, dnsv1alpha1.Resource("dnshostedzonepolicy"))}
 }
 
 // DNSHostedZonePolicies returns an object that can list and get DNSHostedZonePolicies.
 func (s *dNSHostedZonePolicyLister) DNSHostedZonePolicies(namespace string) DNSHostedZonePolicyNamespaceLister {
-	return dNSHostedZonePolicyNamespaceLister{listers.NewNamespaced[*v1alpha1.DNSHostedZonePolicy](s.ResourceIndexer, namespace)}
+	return dNSHostedZonePolicyNamespaceLister{listers.NewNamespaced[*dnsv1alpha1.DNSHostedZonePolicy](s.ResourceIndexer, namespace)}
 }
 
 // DNSHostedZonePolicyNamespaceLister helps list and get DNSHostedZonePolicies.
@@ -43,15 +43,15 @@ func (s *dNSHostedZonePolicyLister) DNSHostedZonePolicies(namespace string) DNSH
 type DNSHostedZonePolicyNamespaceLister interface {
 	// List lists all DNSHostedZonePolicies in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.DNSHostedZonePolicy, err error)
+	List(selector labels.Selector) (ret []*dnsv1alpha1.DNSHostedZonePolicy, err error)
 	// Get retrieves the DNSHostedZonePolicy from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.DNSHostedZonePolicy, error)
+	Get(name string) (*dnsv1alpha1.DNSHostedZonePolicy, error)
 	DNSHostedZonePolicyNamespaceListerExpansion
 }
 
 // dNSHostedZonePolicyNamespaceLister implements the DNSHostedZonePolicyNamespaceLister
 // interface.
 type dNSHostedZonePolicyNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.DNSHostedZonePolicy]
+	listers.ResourceIndexer[*dnsv1alpha1.DNSHostedZonePolicy]
 }

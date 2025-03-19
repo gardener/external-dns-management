@@ -6,9 +6,9 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	scheme "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -24,33 +24,34 @@ type DNSHostedZonePoliciesGetter interface {
 
 // DNSHostedZonePolicyInterface has methods to work with DNSHostedZonePolicy resources.
 type DNSHostedZonePolicyInterface interface {
-	Create(ctx context.Context, dNSHostedZonePolicy *v1alpha1.DNSHostedZonePolicy, opts v1.CreateOptions) (*v1alpha1.DNSHostedZonePolicy, error)
-	Update(ctx context.Context, dNSHostedZonePolicy *v1alpha1.DNSHostedZonePolicy, opts v1.UpdateOptions) (*v1alpha1.DNSHostedZonePolicy, error)
+	Create(ctx context.Context, dNSHostedZonePolicy *dnsv1alpha1.DNSHostedZonePolicy, opts v1.CreateOptions) (*dnsv1alpha1.DNSHostedZonePolicy, error)
+	Update(ctx context.Context, dNSHostedZonePolicy *dnsv1alpha1.DNSHostedZonePolicy, opts v1.UpdateOptions) (*dnsv1alpha1.DNSHostedZonePolicy, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, dNSHostedZonePolicy *v1alpha1.DNSHostedZonePolicy, opts v1.UpdateOptions) (*v1alpha1.DNSHostedZonePolicy, error)
+	UpdateStatus(ctx context.Context, dNSHostedZonePolicy *dnsv1alpha1.DNSHostedZonePolicy, opts v1.UpdateOptions) (*dnsv1alpha1.DNSHostedZonePolicy, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.DNSHostedZonePolicy, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.DNSHostedZonePolicyList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*dnsv1alpha1.DNSHostedZonePolicy, error)
+	List(ctx context.Context, opts v1.ListOptions) (*dnsv1alpha1.DNSHostedZonePolicyList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSHostedZonePolicy, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *dnsv1alpha1.DNSHostedZonePolicy, err error)
 	DNSHostedZonePolicyExpansion
 }
 
 // dNSHostedZonePolicies implements DNSHostedZonePolicyInterface
 type dNSHostedZonePolicies struct {
-	*gentype.ClientWithList[*v1alpha1.DNSHostedZonePolicy, *v1alpha1.DNSHostedZonePolicyList]
+	*gentype.ClientWithList[*dnsv1alpha1.DNSHostedZonePolicy, *dnsv1alpha1.DNSHostedZonePolicyList]
 }
 
 // newDNSHostedZonePolicies returns a DNSHostedZonePolicies
 func newDNSHostedZonePolicies(c *DnsV1alpha1Client, namespace string) *dNSHostedZonePolicies {
 	return &dNSHostedZonePolicies{
-		gentype.NewClientWithList[*v1alpha1.DNSHostedZonePolicy, *v1alpha1.DNSHostedZonePolicyList](
+		gentype.NewClientWithList[*dnsv1alpha1.DNSHostedZonePolicy, *dnsv1alpha1.DNSHostedZonePolicyList](
 			"dnshostedzonepolicies",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.DNSHostedZonePolicy { return &v1alpha1.DNSHostedZonePolicy{} },
-			func() *v1alpha1.DNSHostedZonePolicyList { return &v1alpha1.DNSHostedZonePolicyList{} }),
+			func() *dnsv1alpha1.DNSHostedZonePolicy { return &dnsv1alpha1.DNSHostedZonePolicy{} },
+			func() *dnsv1alpha1.DNSHostedZonePolicyList { return &dnsv1alpha1.DNSHostedZonePolicyList{} },
+		),
 	}
 }

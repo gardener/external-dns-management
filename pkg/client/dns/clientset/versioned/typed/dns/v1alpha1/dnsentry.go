@@ -6,9 +6,9 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	scheme "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -24,33 +24,34 @@ type DNSEntriesGetter interface {
 
 // DNSEntryInterface has methods to work with DNSEntry resources.
 type DNSEntryInterface interface {
-	Create(ctx context.Context, dNSEntry *v1alpha1.DNSEntry, opts v1.CreateOptions) (*v1alpha1.DNSEntry, error)
-	Update(ctx context.Context, dNSEntry *v1alpha1.DNSEntry, opts v1.UpdateOptions) (*v1alpha1.DNSEntry, error)
+	Create(ctx context.Context, dNSEntry *dnsv1alpha1.DNSEntry, opts v1.CreateOptions) (*dnsv1alpha1.DNSEntry, error)
+	Update(ctx context.Context, dNSEntry *dnsv1alpha1.DNSEntry, opts v1.UpdateOptions) (*dnsv1alpha1.DNSEntry, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, dNSEntry *v1alpha1.DNSEntry, opts v1.UpdateOptions) (*v1alpha1.DNSEntry, error)
+	UpdateStatus(ctx context.Context, dNSEntry *dnsv1alpha1.DNSEntry, opts v1.UpdateOptions) (*dnsv1alpha1.DNSEntry, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.DNSEntry, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.DNSEntryList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*dnsv1alpha1.DNSEntry, error)
+	List(ctx context.Context, opts v1.ListOptions) (*dnsv1alpha1.DNSEntryList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSEntry, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *dnsv1alpha1.DNSEntry, err error)
 	DNSEntryExpansion
 }
 
 // dNSEntries implements DNSEntryInterface
 type dNSEntries struct {
-	*gentype.ClientWithList[*v1alpha1.DNSEntry, *v1alpha1.DNSEntryList]
+	*gentype.ClientWithList[*dnsv1alpha1.DNSEntry, *dnsv1alpha1.DNSEntryList]
 }
 
 // newDNSEntries returns a DNSEntries
 func newDNSEntries(c *DnsV1alpha1Client, namespace string) *dNSEntries {
 	return &dNSEntries{
-		gentype.NewClientWithList[*v1alpha1.DNSEntry, *v1alpha1.DNSEntryList](
+		gentype.NewClientWithList[*dnsv1alpha1.DNSEntry, *dnsv1alpha1.DNSEntryList](
 			"dnsentries",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.DNSEntry { return &v1alpha1.DNSEntry{} },
-			func() *v1alpha1.DNSEntryList { return &v1alpha1.DNSEntryList{} }),
+			func() *dnsv1alpha1.DNSEntry { return &dnsv1alpha1.DNSEntry{} },
+			func() *dnsv1alpha1.DNSEntryList { return &dnsv1alpha1.DNSEntryList{} },
+		),
 	}
 }
