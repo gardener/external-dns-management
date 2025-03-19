@@ -6,9 +6,9 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	scheme "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -24,33 +24,34 @@ type DNSOwnersGetter interface {
 
 // DNSOwnerInterface has methods to work with DNSOwner resources.
 type DNSOwnerInterface interface {
-	Create(ctx context.Context, dNSOwner *v1alpha1.DNSOwner, opts v1.CreateOptions) (*v1alpha1.DNSOwner, error)
-	Update(ctx context.Context, dNSOwner *v1alpha1.DNSOwner, opts v1.UpdateOptions) (*v1alpha1.DNSOwner, error)
+	Create(ctx context.Context, dNSOwner *dnsv1alpha1.DNSOwner, opts v1.CreateOptions) (*dnsv1alpha1.DNSOwner, error)
+	Update(ctx context.Context, dNSOwner *dnsv1alpha1.DNSOwner, opts v1.UpdateOptions) (*dnsv1alpha1.DNSOwner, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, dNSOwner *v1alpha1.DNSOwner, opts v1.UpdateOptions) (*v1alpha1.DNSOwner, error)
+	UpdateStatus(ctx context.Context, dNSOwner *dnsv1alpha1.DNSOwner, opts v1.UpdateOptions) (*dnsv1alpha1.DNSOwner, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.DNSOwner, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.DNSOwnerList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*dnsv1alpha1.DNSOwner, error)
+	List(ctx context.Context, opts v1.ListOptions) (*dnsv1alpha1.DNSOwnerList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSOwner, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *dnsv1alpha1.DNSOwner, err error)
 	DNSOwnerExpansion
 }
 
 // dNSOwners implements DNSOwnerInterface
 type dNSOwners struct {
-	*gentype.ClientWithList[*v1alpha1.DNSOwner, *v1alpha1.DNSOwnerList]
+	*gentype.ClientWithList[*dnsv1alpha1.DNSOwner, *dnsv1alpha1.DNSOwnerList]
 }
 
 // newDNSOwners returns a DNSOwners
 func newDNSOwners(c *DnsV1alpha1Client, namespace string) *dNSOwners {
 	return &dNSOwners{
-		gentype.NewClientWithList[*v1alpha1.DNSOwner, *v1alpha1.DNSOwnerList](
+		gentype.NewClientWithList[*dnsv1alpha1.DNSOwner, *dnsv1alpha1.DNSOwnerList](
 			"dnsowners",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.DNSOwner { return &v1alpha1.DNSOwner{} },
-			func() *v1alpha1.DNSOwnerList { return &v1alpha1.DNSOwnerList{} }),
+			func() *dnsv1alpha1.DNSOwner { return &dnsv1alpha1.DNSOwner{} },
+			func() *dnsv1alpha1.DNSOwnerList { return &dnsv1alpha1.DNSOwnerList{} },
+		),
 	}
 }

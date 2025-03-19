@@ -6,9 +6,9 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	scheme "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -24,33 +24,34 @@ type DNSAnnotationsGetter interface {
 
 // DNSAnnotationInterface has methods to work with DNSAnnotation resources.
 type DNSAnnotationInterface interface {
-	Create(ctx context.Context, dNSAnnotation *v1alpha1.DNSAnnotation, opts v1.CreateOptions) (*v1alpha1.DNSAnnotation, error)
-	Update(ctx context.Context, dNSAnnotation *v1alpha1.DNSAnnotation, opts v1.UpdateOptions) (*v1alpha1.DNSAnnotation, error)
+	Create(ctx context.Context, dNSAnnotation *dnsv1alpha1.DNSAnnotation, opts v1.CreateOptions) (*dnsv1alpha1.DNSAnnotation, error)
+	Update(ctx context.Context, dNSAnnotation *dnsv1alpha1.DNSAnnotation, opts v1.UpdateOptions) (*dnsv1alpha1.DNSAnnotation, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, dNSAnnotation *v1alpha1.DNSAnnotation, opts v1.UpdateOptions) (*v1alpha1.DNSAnnotation, error)
+	UpdateStatus(ctx context.Context, dNSAnnotation *dnsv1alpha1.DNSAnnotation, opts v1.UpdateOptions) (*dnsv1alpha1.DNSAnnotation, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.DNSAnnotation, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.DNSAnnotationList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*dnsv1alpha1.DNSAnnotation, error)
+	List(ctx context.Context, opts v1.ListOptions) (*dnsv1alpha1.DNSAnnotationList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSAnnotation, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *dnsv1alpha1.DNSAnnotation, err error)
 	DNSAnnotationExpansion
 }
 
 // dNSAnnotations implements DNSAnnotationInterface
 type dNSAnnotations struct {
-	*gentype.ClientWithList[*v1alpha1.DNSAnnotation, *v1alpha1.DNSAnnotationList]
+	*gentype.ClientWithList[*dnsv1alpha1.DNSAnnotation, *dnsv1alpha1.DNSAnnotationList]
 }
 
 // newDNSAnnotations returns a DNSAnnotations
 func newDNSAnnotations(c *DnsV1alpha1Client, namespace string) *dNSAnnotations {
 	return &dNSAnnotations{
-		gentype.NewClientWithList[*v1alpha1.DNSAnnotation, *v1alpha1.DNSAnnotationList](
+		gentype.NewClientWithList[*dnsv1alpha1.DNSAnnotation, *dnsv1alpha1.DNSAnnotationList](
 			"dnsannotations",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.DNSAnnotation { return &v1alpha1.DNSAnnotation{} },
-			func() *v1alpha1.DNSAnnotationList { return &v1alpha1.DNSAnnotationList{} }),
+			func() *dnsv1alpha1.DNSAnnotation { return &dnsv1alpha1.DNSAnnotation{} },
+			func() *dnsv1alpha1.DNSAnnotationList { return &dnsv1alpha1.DNSAnnotationList{} },
+		),
 	}
 }

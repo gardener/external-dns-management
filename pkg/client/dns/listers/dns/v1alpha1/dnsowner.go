@@ -6,10 +6,10 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // DNSOwnerLister helps list DNSOwners.
@@ -17,7 +17,7 @@ import (
 type DNSOwnerLister interface {
 	// List lists all DNSOwners in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.DNSOwner, err error)
+	List(selector labels.Selector) (ret []*dnsv1alpha1.DNSOwner, err error)
 	// DNSOwners returns an object that can list and get DNSOwners.
 	DNSOwners(namespace string) DNSOwnerNamespaceLister
 	DNSOwnerListerExpansion
@@ -25,17 +25,17 @@ type DNSOwnerLister interface {
 
 // dNSOwnerLister implements the DNSOwnerLister interface.
 type dNSOwnerLister struct {
-	listers.ResourceIndexer[*v1alpha1.DNSOwner]
+	listers.ResourceIndexer[*dnsv1alpha1.DNSOwner]
 }
 
 // NewDNSOwnerLister returns a new DNSOwnerLister.
 func NewDNSOwnerLister(indexer cache.Indexer) DNSOwnerLister {
-	return &dNSOwnerLister{listers.New[*v1alpha1.DNSOwner](indexer, v1alpha1.Resource("dnsowner"))}
+	return &dNSOwnerLister{listers.New[*dnsv1alpha1.DNSOwner](indexer, dnsv1alpha1.Resource("dnsowner"))}
 }
 
 // DNSOwners returns an object that can list and get DNSOwners.
 func (s *dNSOwnerLister) DNSOwners(namespace string) DNSOwnerNamespaceLister {
-	return dNSOwnerNamespaceLister{listers.NewNamespaced[*v1alpha1.DNSOwner](s.ResourceIndexer, namespace)}
+	return dNSOwnerNamespaceLister{listers.NewNamespaced[*dnsv1alpha1.DNSOwner](s.ResourceIndexer, namespace)}
 }
 
 // DNSOwnerNamespaceLister helps list and get DNSOwners.
@@ -43,15 +43,15 @@ func (s *dNSOwnerLister) DNSOwners(namespace string) DNSOwnerNamespaceLister {
 type DNSOwnerNamespaceLister interface {
 	// List lists all DNSOwners in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.DNSOwner, err error)
+	List(selector labels.Selector) (ret []*dnsv1alpha1.DNSOwner, err error)
 	// Get retrieves the DNSOwner from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.DNSOwner, error)
+	Get(name string) (*dnsv1alpha1.DNSOwner, error)
 	DNSOwnerNamespaceListerExpansion
 }
 
 // dNSOwnerNamespaceLister implements the DNSOwnerNamespaceLister
 // interface.
 type dNSOwnerNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.DNSOwner]
+	listers.ResourceIndexer[*dnsv1alpha1.DNSOwner]
 }

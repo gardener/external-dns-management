@@ -6,13 +6,13 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	apisdnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	versioned "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned"
 	internalinterfaces "github.com/gardener/external-dns-management/pkg/client/dns/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/listers/dns/v1alpha1"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/listers/dns/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -23,7 +23,7 @@ import (
 // DNSAnnotations.
 type DNSAnnotationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.DNSAnnotationLister
+	Lister() dnsv1alpha1.DNSAnnotationLister
 }
 
 type dNSAnnotationInformer struct {
@@ -58,7 +58,7 @@ func NewFilteredDNSAnnotationInformer(client versioned.Interface, namespace stri
 				return client.DnsV1alpha1().DNSAnnotations(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&dnsv1alpha1.DNSAnnotation{},
+		&apisdnsv1alpha1.DNSAnnotation{},
 		resyncPeriod,
 		indexers,
 	)
@@ -69,9 +69,9 @@ func (f *dNSAnnotationInformer) defaultInformer(client versioned.Interface, resy
 }
 
 func (f *dNSAnnotationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&dnsv1alpha1.DNSAnnotation{}, f.defaultInformer)
+	return f.factory.InformerFor(&apisdnsv1alpha1.DNSAnnotation{}, f.defaultInformer)
 }
 
-func (f *dNSAnnotationInformer) Lister() v1alpha1.DNSAnnotationLister {
-	return v1alpha1.NewDNSAnnotationLister(f.Informer().GetIndexer())
+func (f *dNSAnnotationInformer) Lister() dnsv1alpha1.DNSAnnotationLister {
+	return dnsv1alpha1.NewDNSAnnotationLister(f.Informer().GetIndexer())
 }
