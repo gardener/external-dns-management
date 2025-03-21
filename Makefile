@@ -100,7 +100,7 @@ generate: $(VGOPATH) $(CONTROLLER_GEN) $(HELM)
 	@CONTROLLER_MANAGER_LIB_HACK_DIR=$(CONTROLLER_MANAGER_LIB_HACK_DIR) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN))  HELM=$(shell realpath $(HELM)) go generate ./charts/external-dns-management
 	@./hack/copy-crds.sh
 	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) VGOPATH=$(VGOPATH) REPO_ROOT=$(REPO_ROOT) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN)) go generate ./pkg/dnsman2/apis/...
-	@go fmt ./pkg/...
+	@(MAKE) format
 	@go mod tidy
 
 alltests: $(GINKGO)
