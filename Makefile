@@ -38,6 +38,10 @@ clean:
 .PHONY: check
 check: sast-report fastcheck
 
+.PHONY: check-generate
+check-generate:
+	@bash $(GARDENER_HACK_DIR)/check-generate.sh $(REPO_ROOT)
+
 .PHONY: fastcheck
 fastcheck: format $(GOIMPORTS) $(GOLANGCI_LINT)
 	@TOOLS_BIN_DIR="$(TOOLS_BIN_DIR)" bash $(CONTROLLER_MANAGER_LIB_HACK_DIR)/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
@@ -121,3 +125,9 @@ sast: $(GOSEC)
 .PHONY: sast-report
 sast-report: $(GOSEC)
 	@./hack/sast.sh --gosec-report true
+
+.PHONY: verify
+verify: check format test sast
+
+.PHONY: verify-extended
+verify-extended: check-generate check format test sast-report
