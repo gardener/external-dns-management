@@ -6,129 +6,34 @@
 package fake
 
 import (
-	"context"
-
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/typed/dns/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeDNSProviders implements DNSProviderInterface
-type FakeDNSProviders struct {
+// fakeDNSProviders implements DNSProviderInterface
+type fakeDNSProviders struct {
+	*gentype.FakeClientWithList[*v1alpha1.DNSProvider, *v1alpha1.DNSProviderList]
 	Fake *FakeDnsV1alpha1
-	ns   string
 }
 
-var dnsprovidersResource = v1alpha1.SchemeGroupVersion.WithResource("dnsproviders")
-
-var dnsprovidersKind = v1alpha1.SchemeGroupVersion.WithKind("DNSProvider")
-
-// Get takes name of the dNSProvider, and returns the corresponding dNSProvider object, and an error if there is any.
-func (c *FakeDNSProviders) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.DNSProvider, err error) {
-	emptyResult := &v1alpha1.DNSProvider{}
-	obj, err := c.Fake.
-		Invokes(testing.NewGetActionWithOptions(dnsprovidersResource, c.ns, name, options), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
+func newFakeDNSProviders(fake *FakeDnsV1alpha1, namespace string) dnsv1alpha1.DNSProviderInterface {
+	return &fakeDNSProviders{
+		gentype.NewFakeClientWithList[*v1alpha1.DNSProvider, *v1alpha1.DNSProviderList](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("dnsproviders"),
+			v1alpha1.SchemeGroupVersion.WithKind("DNSProvider"),
+			func() *v1alpha1.DNSProvider { return &v1alpha1.DNSProvider{} },
+			func() *v1alpha1.DNSProviderList { return &v1alpha1.DNSProviderList{} },
+			func(dst, src *v1alpha1.DNSProviderList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.DNSProviderList) []*v1alpha1.DNSProvider {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.DNSProviderList, items []*v1alpha1.DNSProvider) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.DNSProvider), err
-}
-
-// List takes label and field selectors, and returns the list of DNSProviders that match those selectors.
-func (c *FakeDNSProviders) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.DNSProviderList, err error) {
-	emptyResult := &v1alpha1.DNSProviderList{}
-	obj, err := c.Fake.
-		Invokes(testing.NewListActionWithOptions(dnsprovidersResource, dnsprovidersKind, c.ns, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.DNSProviderList{ListMeta: obj.(*v1alpha1.DNSProviderList).ListMeta}
-	for _, item := range obj.(*v1alpha1.DNSProviderList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested dNSProviders.
-func (c *FakeDNSProviders) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchActionWithOptions(dnsprovidersResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a dNSProvider and creates it.  Returns the server's representation of the dNSProvider, and an error, if there is any.
-func (c *FakeDNSProviders) Create(ctx context.Context, dNSProvider *v1alpha1.DNSProvider, opts v1.CreateOptions) (result *v1alpha1.DNSProvider, err error) {
-	emptyResult := &v1alpha1.DNSProvider{}
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateActionWithOptions(dnsprovidersResource, c.ns, dNSProvider, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.DNSProvider), err
-}
-
-// Update takes the representation of a dNSProvider and updates it. Returns the server's representation of the dNSProvider, and an error, if there is any.
-func (c *FakeDNSProviders) Update(ctx context.Context, dNSProvider *v1alpha1.DNSProvider, opts v1.UpdateOptions) (result *v1alpha1.DNSProvider, err error) {
-	emptyResult := &v1alpha1.DNSProvider{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateActionWithOptions(dnsprovidersResource, c.ns, dNSProvider, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.DNSProvider), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeDNSProviders) UpdateStatus(ctx context.Context, dNSProvider *v1alpha1.DNSProvider, opts v1.UpdateOptions) (result *v1alpha1.DNSProvider, err error) {
-	emptyResult := &v1alpha1.DNSProvider{}
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceActionWithOptions(dnsprovidersResource, "status", c.ns, dNSProvider, opts), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.DNSProvider), err
-}
-
-// Delete takes name of the dNSProvider and deletes it. Returns an error if one occurs.
-func (c *FakeDNSProviders) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(dnsprovidersResource, c.ns, name, opts), &v1alpha1.DNSProvider{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeDNSProviders) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionActionWithOptions(dnsprovidersResource, c.ns, opts, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.DNSProviderList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched dNSProvider.
-func (c *FakeDNSProviders) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSProvider, err error) {
-	emptyResult := &v1alpha1.DNSProvider{}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceActionWithOptions(dnsprovidersResource, c.ns, name, pt, data, opts, subresources...), emptyResult)
-
-	if obj == nil {
-		return emptyResult, err
-	}
-	return obj.(*v1alpha1.DNSProvider), err
 }

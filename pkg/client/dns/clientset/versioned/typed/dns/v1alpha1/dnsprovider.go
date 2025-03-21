@@ -6,9 +6,9 @@
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	scheme "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
@@ -24,33 +24,34 @@ type DNSProvidersGetter interface {
 
 // DNSProviderInterface has methods to work with DNSProvider resources.
 type DNSProviderInterface interface {
-	Create(ctx context.Context, dNSProvider *v1alpha1.DNSProvider, opts v1.CreateOptions) (*v1alpha1.DNSProvider, error)
-	Update(ctx context.Context, dNSProvider *v1alpha1.DNSProvider, opts v1.UpdateOptions) (*v1alpha1.DNSProvider, error)
+	Create(ctx context.Context, dNSProvider *dnsv1alpha1.DNSProvider, opts v1.CreateOptions) (*dnsv1alpha1.DNSProvider, error)
+	Update(ctx context.Context, dNSProvider *dnsv1alpha1.DNSProvider, opts v1.UpdateOptions) (*dnsv1alpha1.DNSProvider, error)
 	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-	UpdateStatus(ctx context.Context, dNSProvider *v1alpha1.DNSProvider, opts v1.UpdateOptions) (*v1alpha1.DNSProvider, error)
+	UpdateStatus(ctx context.Context, dNSProvider *dnsv1alpha1.DNSProvider, opts v1.UpdateOptions) (*dnsv1alpha1.DNSProvider, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.DNSProvider, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.DNSProviderList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*dnsv1alpha1.DNSProvider, error)
+	List(ctx context.Context, opts v1.ListOptions) (*dnsv1alpha1.DNSProviderList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.DNSProvider, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *dnsv1alpha1.DNSProvider, err error)
 	DNSProviderExpansion
 }
 
 // dNSProviders implements DNSProviderInterface
 type dNSProviders struct {
-	*gentype.ClientWithList[*v1alpha1.DNSProvider, *v1alpha1.DNSProviderList]
+	*gentype.ClientWithList[*dnsv1alpha1.DNSProvider, *dnsv1alpha1.DNSProviderList]
 }
 
 // newDNSProviders returns a DNSProviders
 func newDNSProviders(c *DnsV1alpha1Client, namespace string) *dNSProviders {
 	return &dNSProviders{
-		gentype.NewClientWithList[*v1alpha1.DNSProvider, *v1alpha1.DNSProviderList](
+		gentype.NewClientWithList[*dnsv1alpha1.DNSProvider, *dnsv1alpha1.DNSProviderList](
 			"dnsproviders",
 			c.RESTClient(),
 			scheme.ParameterCodec,
 			namespace,
-			func() *v1alpha1.DNSProvider { return &v1alpha1.DNSProvider{} },
-			func() *v1alpha1.DNSProviderList { return &v1alpha1.DNSProviderList{} }),
+			func() *dnsv1alpha1.DNSProvider { return &dnsv1alpha1.DNSProvider{} },
+			func() *dnsv1alpha1.DNSProviderList { return &dnsv1alpha1.DNSProviderList{} },
+		),
 	}
 }

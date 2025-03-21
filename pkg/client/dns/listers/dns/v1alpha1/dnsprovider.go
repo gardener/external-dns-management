@@ -6,10 +6,10 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // DNSProviderLister helps list DNSProviders.
@@ -17,7 +17,7 @@ import (
 type DNSProviderLister interface {
 	// List lists all DNSProviders in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.DNSProvider, err error)
+	List(selector labels.Selector) (ret []*dnsv1alpha1.DNSProvider, err error)
 	// DNSProviders returns an object that can list and get DNSProviders.
 	DNSProviders(namespace string) DNSProviderNamespaceLister
 	DNSProviderListerExpansion
@@ -25,17 +25,17 @@ type DNSProviderLister interface {
 
 // dNSProviderLister implements the DNSProviderLister interface.
 type dNSProviderLister struct {
-	listers.ResourceIndexer[*v1alpha1.DNSProvider]
+	listers.ResourceIndexer[*dnsv1alpha1.DNSProvider]
 }
 
 // NewDNSProviderLister returns a new DNSProviderLister.
 func NewDNSProviderLister(indexer cache.Indexer) DNSProviderLister {
-	return &dNSProviderLister{listers.New[*v1alpha1.DNSProvider](indexer, v1alpha1.Resource("dnsprovider"))}
+	return &dNSProviderLister{listers.New[*dnsv1alpha1.DNSProvider](indexer, dnsv1alpha1.Resource("dnsprovider"))}
 }
 
 // DNSProviders returns an object that can list and get DNSProviders.
 func (s *dNSProviderLister) DNSProviders(namespace string) DNSProviderNamespaceLister {
-	return dNSProviderNamespaceLister{listers.NewNamespaced[*v1alpha1.DNSProvider](s.ResourceIndexer, namespace)}
+	return dNSProviderNamespaceLister{listers.NewNamespaced[*dnsv1alpha1.DNSProvider](s.ResourceIndexer, namespace)}
 }
 
 // DNSProviderNamespaceLister helps list and get DNSProviders.
@@ -43,15 +43,15 @@ func (s *dNSProviderLister) DNSProviders(namespace string) DNSProviderNamespaceL
 type DNSProviderNamespaceLister interface {
 	// List lists all DNSProviders in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.DNSProvider, err error)
+	List(selector labels.Selector) (ret []*dnsv1alpha1.DNSProvider, err error)
 	// Get retrieves the DNSProvider from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.DNSProvider, error)
+	Get(name string) (*dnsv1alpha1.DNSProvider, error)
 	DNSProviderNamespaceListerExpansion
 }
 
 // dNSProviderNamespaceLister implements the DNSProviderNamespaceLister
 // interface.
 type dNSProviderNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.DNSProvider]
+	listers.ResourceIndexer[*dnsv1alpha1.DNSProvider]
 }

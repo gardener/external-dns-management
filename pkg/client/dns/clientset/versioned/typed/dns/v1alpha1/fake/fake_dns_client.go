@@ -16,23 +16,23 @@ type FakeDnsV1alpha1 struct {
 }
 
 func (c *FakeDnsV1alpha1) DNSAnnotations(namespace string) v1alpha1.DNSAnnotationInterface {
-	return &FakeDNSAnnotations{c, namespace}
+	return newFakeDNSAnnotations(c, namespace)
 }
 
 func (c *FakeDnsV1alpha1) DNSEntries(namespace string) v1alpha1.DNSEntryInterface {
-	return &FakeDNSEntries{c, namespace}
+	return newFakeDNSEntries(c, namespace)
 }
 
 func (c *FakeDnsV1alpha1) DNSHostedZonePolicies(namespace string) v1alpha1.DNSHostedZonePolicyInterface {
-	return &FakeDNSHostedZonePolicies{c, namespace}
+	return newFakeDNSHostedZonePolicies(c, namespace)
 }
 
 func (c *FakeDnsV1alpha1) DNSOwners(namespace string) v1alpha1.DNSOwnerInterface {
-	return &FakeDNSOwners{c, namespace}
+	return newFakeDNSOwners(c, namespace)
 }
 
 func (c *FakeDnsV1alpha1) DNSProviders(namespace string) v1alpha1.DNSProviderInterface {
-	return &FakeDNSProviders{c, namespace}
+	return newFakeDNSProviders(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate
