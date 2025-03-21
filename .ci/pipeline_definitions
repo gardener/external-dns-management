@@ -29,6 +29,8 @@ external-dns-management:
         image: golang:1.24
       test:
         image: golang:1.24
+      verify:
+        image: golang:1.24
     traits:
       publish:
         oci-builder: docker-buildx
