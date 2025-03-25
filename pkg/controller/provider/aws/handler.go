@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -59,8 +60,12 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	region := c.GetProperty("AWS_REGION", "region")
 	if region == "" {
-		region = "us-west-2"
+		region = os.Getenv("AWS_REGION")
+		if region == "" {
+			region = "us-west-2"
+		}
 	}
+	c.Logger.Infof("using region %s", region)
 
 	var awscfg aws.Config
 	useCredentialsChain, err := c.GetDefaultedBoolProperty("AWS_USE_CREDENTIALS_CHAIN", false)
@@ -93,6 +98,15 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 			return nil, fmt.Errorf("explicit credentials (AWS_ACCESS_KEY_ID or accessKeyID) cannot be used together with AWS_USE_CREDENTIALS_CHAIN=true")
 		}
 		c.Logger.Infof("creating aws-route53 handler using the chain of credential providers")
+		awscfg, err = v2config.LoadDefaultConfig(
+			context.TODO(),
+			v2config.WithRegion(region),
+			v2config.WithAppID("gardener-external-dns-management"),
+			v2config.WithRetryMaxAttempts(advancedConfig.MaxRetries), // change maxRetries to avoid paging stops because of throttling
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// TODO check if this is correct
