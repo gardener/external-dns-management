@@ -70,7 +70,6 @@ func (this *access) listRecords(zoneId string, consume func(record cloudflare.DN
 }
 
 func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) error {
-	a := r.(*Record)
 	ttl := r.GetTTL()
 	testTTL(&ttl)
 	dnsRecord := cloudflare.DNSRecord{
@@ -78,16 +77,15 @@ func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) erro
 		Name:    r.GetDNSName(),
 		Content: r.GetValue(),
 		TTL:     int(ttl),
-		ZoneID:  a.ZoneID,
+		ZoneID:  zone.Id().ID,
 	}
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_CREATERECORDS, 1)
 	this.rateLimiter.Accept()
-	_, err := this.CreateDNSRecord(a.ZoneID, dnsRecord)
+	_, err := this.CreateDNSRecord(zone.Id().ID, dnsRecord)
 	return err
 }
 
 func (this *access) UpdateRecord(r raw.Record, zone provider.DNSHostedZone) error {
-	a := r.(*Record)
 	ttl := r.GetTTL()
 	testTTL(&ttl)
 	dnsRecord := cloudflare.DNSRecord{
@@ -95,19 +93,18 @@ func (this *access) UpdateRecord(r raw.Record, zone provider.DNSHostedZone) erro
 		Name:    r.GetDNSName(),
 		Content: r.GetValue(),
 		TTL:     int(ttl),
-		ZoneID:  a.ZoneID,
+		ZoneID:  zone.Id().ID,
 	}
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
 	this.rateLimiter.Accept()
-	err := this.UpdateDNSRecord(a.ZoneID, r.GetId(), dnsRecord)
+	err := this.UpdateDNSRecord(zone.Id().ID, r.GetId(), dnsRecord)
 	return err
 }
 
 func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
-	a := r.(*Record)
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_DELETERECORDS, 1)
 	this.rateLimiter.Accept()
-	err := this.DeleteDNSRecord(a.ZoneID, r.GetId())
+	err := this.DeleteDNSRecord(zone.Id().ID, r.GetId())
 	return err
 }
 
