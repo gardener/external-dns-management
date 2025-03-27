@@ -492,11 +492,13 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			} else {
 				state.DeleteLookupJob(this.object.ObjectName())
 			}
-			if len(targets) == 0 {
+			if len(targets) == 0 || (lookupResults != nil && lookupResults.HasTemporaryError()) {
 				msg := "targets cannot be resolved to any valid IPv4 address"
 				if lookupResults == nil {
 					msg = "too many targets"
 					this.interval = int64(84600)
+				} else if lookupResults.HasTemporaryError() {
+					msg = "temporary error in DNS lookup"
 				}
 
 				verr := fmt.Errorf("%s", msg)

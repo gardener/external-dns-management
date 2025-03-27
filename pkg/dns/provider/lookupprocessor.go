@@ -307,6 +307,39 @@ type lookupAllResults struct {
 	duration   time.Duration
 }
 
+// HasTemporaryError returns true if any of the lookup results has a temporary error.
+func (r lookupAllResults) HasTemporaryError() bool {
+	for _, err := range r.errs {
+		if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+			return true
+		}
+	}
+	return false
+}
+
+// HasTimeoutError returns true if any of the lookup results has a timeout error.
+func (r lookupAllResults) HasTimeoutError() bool {
+	for _, err := range r.errs {
+		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+			return true
+		}
+	}
+	return false
+}
+
+// HasOnlyNotFoundError returns true if all lookup results are not found errors.
+func (r lookupAllResults) HasOnlyNotFoundError() bool {
+	if len(r.errs) == 0 {
+		return false
+	}
+	for _, err := range r.errs {
+		if dnsErr, ok := err.(*net.DNSError); !ok || !dnsErr.IsNotFound {
+			return false
+		}
+	}
+	return true
+}
+
 func lookupAllHostnamesIPs(ctx context.Context, hostnames ...string) lookupAllResults {
 	start := time.Now()
 	results := make(chan lookupIPsResult, lookupHost.maxConcurrentLookupsPerJob)
@@ -375,13 +408,22 @@ func lookupIPs(hostname string) lookupIPsResult {
 		if err == nil || i == lookupHost.maxLookupRetries {
 			break
 		}
-		if netErr, ok := err.(net.Error); !ok || !netErr.Timeout() {
+		if netErr, ok := err.(net.Error); !ok || (!netErr.Timeout() && !netErr.Temporary()) {
 			break
 		}
 		time.Sleep(lookupHost.waitLookupRetry)
 	}
 	if err != nil {
-		return lookupIPsResult{err: fmt.Errorf("cannot lookup '%s': %s", hostname, err)}
+		if _, ok := err.(*net.DNSError); ok {
+			return lookupIPsResult{err: err}
+		}
+		return lookupIPsResult{err: &net.DNSError{
+			Err:         err.Error(),
+			Name:        hostname,
+			IsTemporary: isTemporaryError(err),
+			IsTimeout:   isTimeoutError(err),
+			IsNotFound:  isNotFoundError(err),
+		}}
 	}
 	ipv4addrs := make([]string, 0, len(ips))
 	ipv6addrs := make([]string, 0, len(ips))
@@ -412,4 +454,25 @@ func sleep(ctx context.Context, d time.Duration) error {
 	case <-t.C:
 		return nil
 	}
+}
+
+func isTemporaryError(err error) bool {
+	if netErr, ok := err.(net.Error); ok {
+		return netErr.Temporary()
+	}
+	return false
+}
+
+func isTimeoutError(err error) bool {
+	if netErr, ok := err.(net.Error); ok {
+		return netErr.Timeout()
+	}
+	return false
+}
+
+func isNotFoundError(err error) bool {
+	if dnsErr, ok := err.(*net.DNSError); ok {
+		return dnsErr.IsNotFound
+	}
+	return false
 }

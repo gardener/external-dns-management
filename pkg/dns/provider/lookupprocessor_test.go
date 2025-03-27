@@ -31,45 +31,54 @@ func (e *testEnqueuer) EnqueueKey(key resources.ClusterObjectKey) error {
 	return nil
 }
 
-type timeoutError struct{}
-
-func (timeoutError) Error() string   { return "timeout" }
-func (timeoutError) Timeout() bool   { return true }
-func (timeoutError) Temporary() bool { return true }
-
 type mockLookupHostResult struct {
 	ips []net.IP
 	err error
 }
 
 type mockLookupHost struct {
-	delay       time.Duration
-	lookupMap   map[string]mockLookupHostResult
-	lock        sync.Mutex
-	lookupCount map[string]int
-	stopped     atomic.Bool
-	retryMap    map[string]int
+	delay            time.Duration
+	lookupMap        map[string]mockLookupHostResult
+	lock             sync.Mutex
+	lookupCount      map[string]int
+	stopped          atomic.Bool
+	retryMap         map[string]int
+	serverFailureMap map[string]int
 }
 
 func (lh *mockLookupHost) LookupHost(hostname string) ([]net.IP, error) {
 	time.Sleep(lh.delay)
-	retry := false
 	lh.lock.Lock()
 	if !lh.stopped.Load() {
 		lh.lookupCount[hostname] += 1
 	}
+	if lh.serverFailureMap != nil && lh.serverFailureMap[hostname] > 0 {
+		lh.serverFailureMap[hostname]--
+		lh.lock.Unlock()
+		return nil, &net.DNSError{
+			Err:         "server failure",
+			IsTemporary: true,
+			Server:      "mock",
+		}
+	}
 	if lh.retryMap != nil && lh.retryMap[hostname] > 0 {
-		retry = true
 		lh.retryMap[hostname]--
+		lh.lock.Unlock()
+		time.Sleep(lh.delay)
+		return nil, &net.DNSError{
+			Err:       "i/o timeout",
+			IsTimeout: true,
+			Server:    "mock",
+		}
 	}
 	lh.lock.Unlock()
-	if retry {
-		time.Sleep(lh.delay)
-		return nil, timeoutError{}
-	}
 	result, ok := lh.lookupMap[hostname]
 	if !ok {
-		return nil, fmt.Errorf("host not found")
+		return nil, &net.DNSError{
+			Err:        "no such host",
+			IsNotFound: true,
+			Server:     "mock",
+		}
 	}
 	return result.ips, result.err
 }
@@ -182,6 +191,48 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(results1.allIPAddrs).To(HaveLen(5))
 		results2 := lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c", "host3c-alias")
 		Expect(results2.allIPAddrs).To(Equal(results1.allIPAddrs))
+	})
+
+	ginkgov2.It("lookupAllHostnamesIPs should return reduced results with persisting timeouts", func() {
+		mlh.retryMap = map[string]int{"host3b": 10}
+		results1 := lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
+		Expect(results1.ipv4Addrs).To(HaveLen(3))
+		Expect(results1.ipv6Addrs).To(HaveLen(1))
+		Expect(results1.allIPAddrs).To(HaveLen(4))
+		Expect(results1.HasTemporaryError()).To(BeTrue())
+		Expect(results1.HasTimeoutError()).To(BeTrue())
+		Expect(results1.HasOnlyNotFoundError()).To(BeFalse())
+	})
+
+	ginkgov2.It("lookupAllHostnamesIPs should return expected results with temporary server failures", func() {
+		mlh.serverFailureMap = map[string]int{"host3b": 3}
+		results1 := lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
+		Expect(results1.ipv4Addrs).To(HaveLen(4))
+		Expect(results1.ipv6Addrs).To(HaveLen(1))
+		Expect(results1.allIPAddrs).To(HaveLen(5))
+		results2 := lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c", "host3c-alias")
+		Expect(results2.allIPAddrs).To(Equal(results1.allIPAddrs))
+	})
+
+	ginkgov2.It("lookupAllHostnamesIPs should return reduced results with persisting temporary server errors", func() {
+		mlh.serverFailureMap = map[string]int{"host3b": 10}
+		results1 := lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
+		Expect(results1.ipv4Addrs).To(HaveLen(3))
+		Expect(results1.ipv6Addrs).To(HaveLen(1))
+		Expect(results1.allIPAddrs).To(HaveLen(4))
+		Expect(results1.HasTemporaryError()).To(BeTrue())
+		Expect(results1.HasTimeoutError()).To(BeFalse())
+		Expect(results1.HasOnlyNotFoundError()).To(BeFalse())
+	})
+
+	ginkgov2.It("lookupAllHostnamesIPs should return reduced results with persisting temporary server errors", func() {
+		results1 := lookupAllHostnamesIPs(ctx, "host3a", "host3b-not-existing", "host3c")
+		Expect(results1.ipv4Addrs).To(HaveLen(3))
+		Expect(results1.ipv6Addrs).To(HaveLen(1))
+		Expect(results1.allIPAddrs).To(HaveLen(4))
+		Expect(results1.HasTemporaryError()).To(BeFalse())
+		Expect(results1.HasTimeoutError()).To(BeFalse())
+		Expect(results1.HasOnlyNotFoundError()).To(BeTrue())
 	})
 
 	ginkgov2.It("lookupAllHostnamesIPs should return reduced results after too many retries", func() {
