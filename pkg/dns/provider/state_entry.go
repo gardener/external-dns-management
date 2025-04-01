@@ -401,6 +401,25 @@ func (this *state) UpsertLookupJob(entryName resources.ObjectName, results looku
 	this.lookupProcessor.Upsert(entryName, results, interval)
 }
 
+func (this *state) SetUpdateOperationsBlocked(entryName resources.ObjectName, blocked bool) {
+	this.updateEntryBlockedLock.Lock()
+	defer this.updateEntryBlockedLock.Unlock()
+
+	if blocked {
+		this.updateEntryBlocked[entryName] = struct{}{}
+	} else {
+		delete(this.updateEntryBlocked, entryName)
+	}
+}
+
+func (this *state) IsUpdateOperationsBlocked(entryName resources.ObjectName) bool {
+	this.updateEntryBlockedLock.Lock()
+	defer this.updateEntryBlockedLock.Unlock()
+
+	_, blocked := this.updateEntryBlocked[entryName]
+	return blocked
+}
+
 func ignoredByAnnotation(object *dnsutils.DNSEntryObject) (bool, string) {
 	if !object.IsDeleting() && object.GetAnnotations()[dns.AnnotationIgnore] == "true" {
 		return true, dns.AnnotationIgnore

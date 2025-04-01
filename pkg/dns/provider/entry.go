@@ -489,8 +489,10 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			}
 			if lookupResults != nil {
 				state.UpsertLookupJob(this.object.ObjectName(), *lookupResults, time.Duration(this.interval)*time.Second)
+				state.SetUpdateOperationsBlocked(this.object.ObjectName(), lookupResults.HasTemporaryError())
 			} else {
 				state.DeleteLookupJob(this.object.ObjectName())
+				state.SetUpdateOperationsBlocked(this.object.ObjectName(), false)
 			}
 			if len(targets) == 0 || (lookupResults != nil && lookupResults.HasTemporaryError()) {
 				msg := "targets cannot be resolved to any valid IPv4 address"
@@ -517,6 +519,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		} else {
 			state.DeleteLookupJob(this.object.ObjectName())
 			this.interval = 0
+			state.SetUpdateOperationsBlocked(this.object.ObjectName(), false)
 		}
 
 		this.targets = targets
