@@ -18,7 +18,7 @@ require (
 	github.com/aws/smithy-go v1.22.1
 	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/gardener/controller-manager-library v0.2.1-0.20241212154005-7de194a006b6
-	github.com/gardener/gardener v1.112.0
+	github.com/gardener/gardener v1.116.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-openapi/runtime v0.24.1
 	github.com/go-openapi/strfmt v0.21.2
@@ -59,6 +59,7 @@ require (
 	sigs.k8s.io/yaml v1.4.0
 )
 
+// TODO (martinweindel) Remove with release v1.116.0
 replace github.com/gardener/gardener => github.com/MartinWeindel/gardener v1.62.1-0.20250319151120-8fdea17f5e78
 
 require (
