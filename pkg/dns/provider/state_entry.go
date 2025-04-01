@@ -306,7 +306,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	status := v.Setup(logger, this, p, op, err, this.config)
 	new, status := this.addEntryVersion(logger, v, status)
 
-	if new != nil {
+	if new != nil && status.Error == nil {
 		if new.IsModified() && !new.ZoneId().IsEmpty() {
 			this.smartInfof(logger, "trigger zone %q", new.ZoneId())
 			this.triggerHostedZone(new.ZoneId())

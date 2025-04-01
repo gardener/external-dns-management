@@ -496,22 +496,23 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			}
 			if len(targets) == 0 || (lookupResults != nil && lookupResults.HasTemporaryError()) {
 				msg := "targets cannot be resolved to any valid IPv4 address"
-				state := api.STATE_INVALID
+				newState := api.STATE_INVALID
 				if this.status.State == api.STATE_STALE {
-					state = api.STATE_STALE
+					newState = api.STATE_STALE
 				}
 				if lookupResults == nil {
 					msg = "too many targets"
 					this.interval = int64(84600)
 				} else if lookupResults.HasTemporaryError() {
 					msg = "temporary error in DNS lookup"
-					state = api.STATE_STALE
+					state.SetUpdateOperationsBlocked(this.object.ObjectName(), true)
+					newState = api.STATE_STALE
 				}
 
 				verr := fmt.Errorf("%s", msg)
 				hello.Infof(logger, msg)
 
-				if _, err := this.UpdateStatus(logger, state, verr.Error()); err != nil {
+				if _, err := this.UpdateStatus(logger, newState, verr.Error()); err != nil {
 					return reconcile.Failed(logger, err)
 				}
 				return reconcile.Recheck(logger, verr, time.Duration(this.interval)*time.Second)

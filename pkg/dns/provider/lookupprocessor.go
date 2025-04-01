@@ -64,7 +64,7 @@ func (j *lookupJob) updateWithLock(newResults lookupAllResults, interval time.Du
 func (j *lookupJob) updateLookupResult(newResults lookupAllResults) bool {
 	changed := !j.oldLookupResults.allIPAddrs.Equal(newResults.allIPAddrs)
 	j.oldLookupResults = newResults
-	return changed
+	return changed && !newResults.HasTemporaryError()
 }
 
 type lookupQueue []*lookupJob
