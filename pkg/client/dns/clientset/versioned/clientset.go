@@ -6,8 +6,8 @@
 package versioned
 
 import (
-	"fmt"
-	"net/http"
+	fmt "fmt"
+	http "net/http"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/client/dns/clientset/versioned/typed/dns/v1alpha1"
 	discovery "k8s.io/client-go/discovery"

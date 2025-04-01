@@ -6,10 +6,10 @@
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/listers"
-	"k8s.io/client-go/tools/cache"
+	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // DNSEntryLister helps list DNSEntries.
@@ -17,7 +17,7 @@ import (
 type DNSEntryLister interface {
 	// List lists all DNSEntries in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.DNSEntry, err error)
+	List(selector labels.Selector) (ret []*dnsv1alpha1.DNSEntry, err error)
 	// DNSEntries returns an object that can list and get DNSEntries.
 	DNSEntries(namespace string) DNSEntryNamespaceLister
 	DNSEntryListerExpansion
@@ -25,17 +25,17 @@ type DNSEntryLister interface {
 
 // dNSEntryLister implements the DNSEntryLister interface.
 type dNSEntryLister struct {
-	listers.ResourceIndexer[*v1alpha1.DNSEntry]
+	listers.ResourceIndexer[*dnsv1alpha1.DNSEntry]
 }
 
 // NewDNSEntryLister returns a new DNSEntryLister.
 func NewDNSEntryLister(indexer cache.Indexer) DNSEntryLister {
-	return &dNSEntryLister{listers.New[*v1alpha1.DNSEntry](indexer, v1alpha1.Resource("dnsentry"))}
+	return &dNSEntryLister{listers.New[*dnsv1alpha1.DNSEntry](indexer, dnsv1alpha1.Resource("dnsentry"))}
 }
 
 // DNSEntries returns an object that can list and get DNSEntries.
 func (s *dNSEntryLister) DNSEntries(namespace string) DNSEntryNamespaceLister {
-	return dNSEntryNamespaceLister{listers.NewNamespaced[*v1alpha1.DNSEntry](s.ResourceIndexer, namespace)}
+	return dNSEntryNamespaceLister{listers.NewNamespaced[*dnsv1alpha1.DNSEntry](s.ResourceIndexer, namespace)}
 }
 
 // DNSEntryNamespaceLister helps list and get DNSEntries.
@@ -43,15 +43,15 @@ func (s *dNSEntryLister) DNSEntries(namespace string) DNSEntryNamespaceLister {
 type DNSEntryNamespaceLister interface {
 	// List lists all DNSEntries in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha1.DNSEntry, err error)
+	List(selector labels.Selector) (ret []*dnsv1alpha1.DNSEntry, err error)
 	// Get retrieves the DNSEntry from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha1.DNSEntry, error)
+	Get(name string) (*dnsv1alpha1.DNSEntry, error)
 	DNSEntryNamespaceListerExpansion
 }
 
 // dNSEntryNamespaceLister implements the DNSEntryNamespaceLister
 // interface.
 type dNSEntryNamespaceLister struct {
-	listers.ResourceIndexer[*v1alpha1.DNSEntry]
+	listers.ResourceIndexer[*dnsv1alpha1.DNSEntry]
 }
