@@ -109,6 +109,10 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	if old == nil {
 		new = NewEntry(v, this)
 	} else {
+		if this.IsUpdateOperationsBlocked(v.ObjectName()) {
+			this.smartInfof(logger, "update operations blocked temporarily")
+			return old, status
+		}
 		oldDNSSet = this.dnsSetFromEntry(old)
 		new = old.Update(logger, v)
 	}
@@ -306,7 +310,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	status := v.Setup(logger, this, p, op, err, this.config)
 	new, status := this.addEntryVersion(logger, v, status)
 
-	if new != nil && status.Error == nil {
+	if new != nil {
 		if new.IsModified() && !new.ZoneId().IsEmpty() {
 			this.smartInfof(logger, "trigger zone %q", new.ZoneId())
 			this.triggerHostedZone(new.ZoneId())
