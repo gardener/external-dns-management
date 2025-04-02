@@ -109,6 +109,10 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	if old == nil {
 		new = NewEntry(v, this)
 	} else {
+		if this.IsUpdateOperationsBlocked(v.ObjectName()) {
+			this.smartInfof(logger, "update operations blocked temporarily")
+			return old, status
+		}
 		oldDNSSet = this.dnsSetFromEntry(old)
 		new = old.Update(logger, v)
 	}
@@ -399,6 +403,25 @@ func (this *state) DeleteLookupJob(entryName resources.ObjectName) {
 
 func (this *state) UpsertLookupJob(entryName resources.ObjectName, results lookupAllResults, interval time.Duration) {
 	this.lookupProcessor.Upsert(entryName, results, interval)
+}
+
+func (this *state) SetUpdateOperationsBlocked(entryName resources.ObjectName, blocked bool) {
+	this.updateEntryBlockedLock.Lock()
+	defer this.updateEntryBlockedLock.Unlock()
+
+	if blocked {
+		this.updateEntryBlocked[entryName] = struct{}{}
+	} else {
+		delete(this.updateEntryBlocked, entryName)
+	}
+}
+
+func (this *state) IsUpdateOperationsBlocked(entryName resources.ObjectName) bool {
+	this.updateEntryBlockedLock.Lock()
+	defer this.updateEntryBlockedLock.Unlock()
+
+	_, blocked := this.updateEntryBlocked[entryName]
+	return blocked
 }
 
 func ignoredByAnnotation(object *dnsutils.DNSEntryObject) (bool, string) {

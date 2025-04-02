@@ -130,6 +130,9 @@ type state struct {
 	outdated        *synchronizedEntries
 	blockingEntries map[resources.ObjectName]time.Time
 
+	updateEntryBlockedLock sync.Mutex
+	updateEntryBlocked     map[resources.ObjectName]struct{}
+
 	providerRateLimiter map[resources.ObjectName]*rateLimiterData
 	prlock              sync.RWMutex
 
@@ -197,6 +200,7 @@ func NewDNSState(pctx ProviderContext, ownerresc, secretresc resources.Interface
 		dnsnames:            map[ZonedDNSSetName]*Entry{},
 		references:          NewReferenceCache(),
 		providerRateLimiter: map[resources.ObjectName]*rateLimiterData{},
+		updateEntryBlocked:  map[resources.ObjectName]struct{}{},
 	}
 }
 
@@ -502,6 +506,11 @@ func (this *state) addEntriesForZone(
 		}
 	}
 	for dns, e := range this.dnsnames {
+		if this.IsUpdateOperationsBlocked(e.ObjectName()) {
+			logger.Infof("entry is blocked because of failing DNS lookups: %q(%s)", e.ObjectName(), dns)
+			stale[e.ZonedDNSName()] = e
+			continue
+		}
 		if e.IsValid() {
 			provider, fallback, err := this.lookupProvider(e.Object())
 			if (provider == nil || !provider.IsValid()) && !e.IsDeleting() {
