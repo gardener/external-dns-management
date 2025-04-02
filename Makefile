@@ -127,7 +127,7 @@ sast-report: $(GOSEC)
 	@./hack/sast.sh --gosec-report true
 
 .PHONY: verify
-verify: fastcheck format test sast
+verify: fastcheck format sast
 
 .PHONY: verify-extended
 verify-extended: check-generate fastcheck format unittests new-test-integration sast-report
