@@ -60,14 +60,16 @@ func (f filterByKindReconciler) Cleanup() error {
 }
 
 func (f filterByKindReconciler) Reconcile(logger logger.LogContext, object resources.Object) reconcile.Status {
-	if !f.isRelevantByHeuristic(object.GetName()) {
+	// Check if the object is relevant by its name. GenerateName is used as the object name may be shortened for long names.
+	if !f.isRelevantByHeuristicGenerateName(object.GetGenerateName()) {
 		return reconcile.Succeeded(logger)
 	}
 	return f.nested.Reconcile(logger, object)
 }
 
 func (f filterByKindReconciler) Delete(logger logger.LogContext, object resources.Object) reconcile.Status {
-	if !f.isRelevantByHeuristic(object.GetName()) {
+	// Check if the object is relevant by its name. GenerateName is used as the object name may be shortened for long names.
+	if !f.isRelevantByHeuristicGenerateName(object.GetGenerateName()) {
 		return reconcile.Succeeded(logger)
 	}
 	return f.nested.Delete(logger, object)
@@ -87,5 +89,15 @@ func (f filterByKindReconciler) Command(logger logger.LogContext, cmd string) re
 // isRelevantByHeuristic returns true if the entry name contains the kind substring.
 // This is a heuristic which relies on the fact that the SourceReconciler adds the kind to the entry name.
 func (this *filterByKindReconciler) isRelevantByHeuristic(objectName string) bool {
+	if len(objectName) >= 63 {
+		// The object name is too long. The kind substring cannot be checked, as it may be shortened.
+		return true
+	}
 	return strings.Contains(objectName, this.kindSubstring)
+}
+
+// isRelevantByHeuristic returns true if the entry name contains the kind substring.
+// This is a heuristic which relies on the fact that the SourceReconciler adds the kind to the entry name.
+func (this *filterByKindReconciler) isRelevantByHeuristicGenerateName(generateName string) bool {
+	return strings.HasSuffix(generateName, this.kindSubstring)
 }

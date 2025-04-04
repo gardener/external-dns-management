@@ -63,7 +63,7 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 				g.Expect(tc2.client.List(ctx, list, client.InNamespace(testRunID2))).To(Succeed())
 				var targetEntry *v1alpha1.DNSEntry
 				for _, e := range list.Items {
-					if strings.HasPrefix(e.Name, fmt.Sprintf("%s-dnsentry", entry.Name)) {
+					if strings.HasPrefix(e.GetGenerateName(), fmt.Sprintf("%s-dnsentry", entry.Name)) {
 						targetEntry = &e
 						break
 					}
@@ -183,10 +183,14 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 		}).Should(Succeed())
 
 		for i := 0; i < entryCount; i++ {
+			name := fmt.Sprintf("e%d", i)
+			if i == entryCount-1 {
+				name += "-very-very-very-very-long-name-with-really-more-than-63-characters"
+			}
 			entries = append(entries, &v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: testRunID,
-					Name:      fmt.Sprintf("e%d", i),
+					Name:      name,
 				},
 				Spec: v1alpha1.DNSEntrySpec{
 					DNSName: fmt.Sprintf("e%d.first.example.com", i),
@@ -207,6 +211,32 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 		}
 
 		checkMockDatabaseSize(entryCount)
+
+		By("check update")
+		for _, entry := range entries {
+			Expect(tc1.client.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
+			entry.Spec.Targets = []string{fmt.Sprintf("2.2.2.%d", entryCount)}
+			Expect(tc1.client.Update(ctx, entry)).To(Succeed())
+		}
+
+		By("check entries after update")
+		for _, entry := range entries {
+			checkTargetEntry(entry)
+		}
+
+		By("check recreation of target entries")
+		list := &v1alpha1.DNSEntryList{}
+		Expect(tc2.client.List(ctx, list, client.InNamespace(testRunID2))).To(Succeed())
+		for _, entry := range list.Items {
+			if strings.HasPrefix(entry.GetGenerateName(), fmt.Sprintf("%s-dnsentry", entry.Name)) {
+				Expect(tc2.client.Delete(ctx, &entry)).To(Succeed())
+			}
+		}
+
+		By("check new target entries")
+		for _, entry := range entries {
+			checkTargetEntry(entry)
+		}
 
 		By("delete entries")
 		for _, entry := range entries {
