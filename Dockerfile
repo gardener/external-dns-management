@@ -17,7 +17,7 @@ COPY . .
 RUN make release
 
 ############# base
-FROM gcr.io/distroless/static-debian11:nonroot AS base
+FROM gcr.io/distroless/static-debian12:nonroot AS base
 
 #############      dns-controller-manager     #############
 FROM base AS dns-controller-manager
