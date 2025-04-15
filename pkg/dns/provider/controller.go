@@ -17,6 +17,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.18"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+
 	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
