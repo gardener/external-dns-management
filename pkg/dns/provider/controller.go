@@ -5,7 +5,6 @@
 package provider
 
 import (
-	"fmt"
 	"reflect"
 	"time"
 
@@ -18,10 +17,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources/apiextensions"
 	_ "github.com/gardener/controller-manager-library/pkg/resources/defaultscheme/v1.18"
 	"github.com/gardener/controller-manager-library/pkg/utils"
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/gardener/external-dns-management/pkg/apis/dns/crds"
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -197,9 +192,6 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 }
 
 func (this *reconciler) Setup() error {
-	if err := this.removeObsoleteCRDs(); err != nil {
-		return err
-	}
 	this.controller.Infof("*** state Setup ")
 	return this.state.Setup()
 }
@@ -277,21 +269,4 @@ func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterO
 		return this.state.ZonePolicyDeleted(logger, key)
 	}
 	return reconcile.Succeeded(logger)
-}
-
-// removeObsoleteCRDs removes DNSLock and RemoteAccessCertificates CRDs which are not supported anymore.
-// Can be deleted 2025.
-func (this *reconciler) removeObsoleteCRDs() error {
-	res, err := this.controller.GetCluster(TARGET_CLUSTER).Resources().GetByExample(&apiextensionsv1.CustomResourceDefinition{})
-	if err != nil {
-		return err
-	}
-	for _, name := range []string{"dnslocks.dns.gardener.cloud", "remoteaccesscertificates.dns.gardener.cloud"} {
-		if err := res.Delete(&apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{Name: name}}); client.IgnoreNotFound(err) != nil {
-			return fmt.Errorf("could not delete CRD %s: %w", name, err)
-		} else if err == nil {
-			this.controller.Infof("deleted obsolete CRD %s", name)
-		}
-	}
-	return nil
 }
