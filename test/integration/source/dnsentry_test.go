@@ -55,9 +55,9 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 		checkTargetEntry = func(entry *v1alpha1.DNSEntry) {
 			Eventually(func(g Gomega) {
 				g.ExpectWithOffset(1, tc1.client.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
+				g.ExpectWithOffset(1, entry.Status.ObservedGeneration).To(Equal(entry.Generation))
 				g.ExpectWithOffset(1, entry.Status.State).To(Equal("Ready"))
 				g.ExpectWithOffset(1, entry.Status.Targets).To(Equal(entry.Spec.Targets))
-				g.ExpectWithOffset(1, entry.Status.ObservedGeneration).To(Equal(entry.Generation))
 
 				list := &v1alpha1.DNSEntryList{}
 				g.Expect(tc2.client.List(ctx, list, client.InNamespace(testRunID2))).To(Succeed())
@@ -213,9 +213,9 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 		checkMockDatabaseSize(entryCount)
 
 		By("check update")
-		for _, entry := range entries {
+		for i, entry := range entries {
 			Expect(tc1.client.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
-			entry.Spec.Targets = []string{fmt.Sprintf("2.2.2.%d", entryCount)}
+			entry.Spec.Targets = []string{fmt.Sprintf("2.2.2.%d", i)}
 			Expect(tc1.client.Update(ctx, entry)).To(Succeed())
 		}
 

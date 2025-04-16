@@ -43,7 +43,6 @@ var _ = Describe("GatewayAPIGatewayAnnotation", func() {
 		entry := UnwrapEntry(entryObj)
 		Ω(entry.Spec.DNSName).Should(Equal(svcDomain))
 		Ω(entry.Spec.Targets).Should(ConsistOf(fakeExternalIP))
-		Ω(entry.Spec.OwnerId).Should(BeNil())
 		Ω(entry.Spec.TTL).ShouldNot(BeNil())
 		Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
 		Ω(entry.Spec.ResolveTargetsToAddresses).To(BeNil())
@@ -115,7 +114,6 @@ var _ = Describe("GatewayAPIGatewayAnnotation", func() {
 				Fail("unexpected domain name: " + entry.Spec.DNSName)
 			}
 			Ω(entry.Spec.Targets).Should(ConsistOf(fakeExternalIP))
-			Ω(entry.Spec.OwnerId).Should(BeNil())
 			Ω(entry.Spec.TTL).ShouldNot(BeNil())
 			Ω(*entry.Spec.TTL).Should(Equal(int64(ttl)))
 		}

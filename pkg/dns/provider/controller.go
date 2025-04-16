@@ -39,7 +39,6 @@ const FACTORY_OPTIONS = "factory"
 const DNS_POOL = "dns"
 
 var (
-	ownerGroupKind      = resources.NewGroupKind(api.GroupName, api.DNSOwnerKind)
 	secretGroupKind     = resources.NewGroupKind("", "Secret")
 	providerGroupKind   = resources.NewGroupKind(api.GroupName, api.DNSProviderKind)
 	entryGroupKind      = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
@@ -94,7 +93,6 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 	cfg := controller.Configure(name).
 		RequireLease().
 		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "Class identifier used to differentiate responsible controllers for entry resources").
-		DefaultedStringOption(OPT_IDENTIFIER, "dnscontroller", "Identifier used to mark DNS entries in DNS system").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
 		DefaultedBoolOption(OPT_DISABLE_ZONE_STATE_CACHING, false, "disable use of cached dns zone state on changes").
 		DefaultedBoolOption(OPT_DISABLE_DNSNAME_VALIDATION, false, "disable validation of domain names according to RFC 1123.").
@@ -113,13 +111,8 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
 		Syncer(SYNC_ENTRIES, controller.NewResourceKey(api.GroupName, api.DNSEntryKind)).
-		CustomResourceDefinitions(ownerGroupKind, entryGroupKind).
 		MainResource(api.GroupName, api.DNSEntryKind).
 		DefaultWorkerPool(2, 0).
-		WorkerPool("ownerids", 1, 0).
-		Watches(
-			controller.NewResourceKey(api.GroupName, api.DNSOwnerKind),
-		).
 		Cluster(PROVIDER_CLUSTER).
 		CustomResourceDefinitions(providerGroupKind).
 		WorkerPool("providers", 2, 10*time.Minute).
@@ -174,10 +167,6 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 		return nil, err
 	}
 
-	ownerresc, err := c.GetCluster(TARGET_CLUSTER).Resources().GetByGK(ownerGroupKind)
-	if err != nil {
-		return nil, err
-	}
 	secretresc, err := c.GetCluster(TARGET_CLUSTER).Resources().GetByGK(secretGroupKind)
 	if err != nil {
 		return nil, err
@@ -187,7 +176,7 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 		controller: c,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
 			func() interface{} {
-				return NewDNSState(NewDefaultContext(c), ownerresc, secretresc, classes, *config)
+				return NewDNSState(NewDefaultContext(c), secretresc, classes, *config)
 			}).(*state),
 	}, nil
 }
@@ -213,12 +202,6 @@ func (this *reconciler) Command(logger logger.LogContext, cmd string) reconcile.
 
 func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	switch {
-	case obj.IsA(&api.DNSOwner{}):
-		if this.state.IsResponsibleFor(logger, obj) {
-			return this.state.UpdateOwner(logger, dnsutils.DNSOwner(obj), false)
-		} else {
-			return this.state.OwnerDeleted(logger, obj.ClusterKey())
-		}
 	case obj.IsA(&api.DNSProvider{}):
 		if this.state.IsResponsibleFor(logger, obj) {
 			return this.state.UpdateProvider(logger, dnsutils.DNSProvider(obj))

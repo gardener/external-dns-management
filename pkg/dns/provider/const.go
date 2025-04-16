@@ -14,7 +14,6 @@ import (
 */
 
 const (
-	OPT_IDENTIFIER                 = "identifier"
 	OPT_CLASS                      = source.OPT_CLASS
 	OPT_DRYRUN                     = "dry-run"
 	OPT_TTL                        = "ttl"

@@ -6,8 +6,6 @@ package dns
 
 import (
 	"reflect"
-
-	"github.com/gardener/controller-manager-library/pkg/utils"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -24,11 +22,6 @@ import (
 // by resolving the cnames. This resolution will be updated periodically.
 
 type DNSSets map[DNSSetName]*DNSSet
-
-type Ownership interface {
-	IsResponsibleFor(id string) bool
-	GetIds() utils.StringSet
-}
 
 func (dnssets DNSSets) AddRecordSetFromProvider(dnsName string, recordSet *RecordSet) {
 	dnssets.AddRecordSetFromProviderEx(DNSSetName{DNSName: dnsName}, nil, recordSet)

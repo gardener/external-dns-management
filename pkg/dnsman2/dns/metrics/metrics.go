@@ -22,7 +22,6 @@ func init() {
 	prometheus.MustRegister(Accounts)
 	prometheus.MustRegister(Entries)
 	prometheus.MustRegister(StaleEntries)
-	prometheus.MustRegister(Owners)
 	prometheus.MustRegister(LookupProcessorJobs)
 	prometheus.MustRegister(LookupProcessorSkips)
 	prometheus.MustRegister(LookupProcessorLookups)
@@ -79,14 +78,6 @@ var (
 			Help: "Total number of stale dns entries per hosted zone",
 		},
 		[]string{"providertype", "zone"},
-	)
-
-	Owners = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "external_dns_management_dns_owners",
-			Help: "Total number of dns entries per owner",
-		},
-		[]string{"owner", "providertype", "provider"},
 	)
 
 	LookupProcessorJobs = prometheus.NewGauge(
