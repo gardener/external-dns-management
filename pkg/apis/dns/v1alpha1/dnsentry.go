@@ -52,7 +52,8 @@ type DNSEntrySpec struct {
 	// reference to base entry used to inherit attributes from
 	// +optional
 	Reference *EntryReference `json:"reference,omitempty"`
-	// owner id used to tag entries in external DNS system
+	// Deprecated: This field is no longer used and will be removed in a future release.
+	// +kubebuilder:validation:Deprecated
 	// +optional
 	OwnerId *string `json:"ownerId,omitempty"`
 	// time to live for records in external DNS system

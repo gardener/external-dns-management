@@ -108,7 +108,8 @@ spec:
                 description: full qualified domain name
                 type: string
               ownerId:
-                description: owner id used to tag entries in external DNS system
+                description: 'Deprecated: This field is no longer used and will be
+                  removed in a future release.'
                 type: string
               reference:
                 description: reference to base entry used to inherit attributes from

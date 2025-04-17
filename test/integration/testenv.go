@@ -560,50 +560,6 @@ func (te *TestEnv) FindEntriesByOwner(kind, name string) ([]resources.Object, er
 	return foundObjs, nil
 }
 
-func (te *TestEnv) CreateOwner(name, ownerId string) (resources.Object, error) {
-	setSpec := func(e *v1alpha1.DNSOwner) {
-		e.Spec.OwnerId = ownerId
-	}
-
-	return te.CreateOwnerGeneric(name, setSpec)
-}
-
-type OwnerSpecSetter func(e *v1alpha1.DNSOwner)
-
-func (te *TestEnv) CreateOwnerGeneric(name string, setSpec OwnerSpecSetter) (resources.Object, error) {
-	owner := &v1alpha1.DNSOwner{}
-	owner.SetName(name)
-	setSpec(owner)
-	obj, err := te.resources.CreateObject(owner)
-	if errors.IsAlreadyExists(err) {
-		te.Infof("DNSOwner %s already existing, updating...", name)
-		obj, err = te.GetOwner(name)
-		if err == nil {
-			setSpec(UnwrapOwner(obj))
-			err = obj.Update()
-		}
-	}
-	return obj, err
-}
-
-func (te *TestEnv) GetOwner(name string) (resources.Object, error) {
-	owner := v1alpha1.DNSOwner{}
-	owner.SetName(name)
-	obj, err := te.resources.GetObject(&owner)
-	if err != nil {
-		return nil, err
-	}
-	return obj, nil
-}
-
-func (te *TestEnv) DeleteOwner(obj resources.Object) error {
-	return obj.Delete()
-}
-
-func UnwrapOwner(obj resources.Object) *v1alpha1.DNSOwner {
-	return obj.Data().(*v1alpha1.DNSOwner)
-}
-
 func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP string, ttl int, routingPolicy *string,
 	additionalAnnotations map[string]string,
 ) (resources.Object, error) {

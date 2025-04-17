@@ -228,13 +228,6 @@ func (this *EntryVersion) ProviderName() resources.ObjectName {
 	return this.providername
 }
 
-func (this *EntryVersion) OwnerId() string {
-	if this.object.GetOwnerId() != nil {
-		return *this.object.GetOwnerId()
-	}
-	return ""
-}
-
 func complete(logger logger.LogContext, state *state, entry *dnsutils.DNSEntryObject, prefix string) (*api.DNSEntrySpec, error) {
 	if ref := entry.GetReference(); ref != nil && ref.Name != "" {
 		newSpec := entry.Spec().DeepCopy()

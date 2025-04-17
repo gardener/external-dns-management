@@ -61,12 +61,10 @@ spec:
           readOnlyRootFilesystem: true
         args:
         - --name={{ include "external-dns-management.fullname" . }}
-        {{- if or .Values.configuration.identifier (not .Values.gardener.seed.name) }}
-        - --identifier={{ required "A value is required for configuration.identifier (or gardener.seed.name)! It must be unique, globally or at least for all instances running with the same account." .Values.configuration.identifier }}
-        - --remote-access-client-id={{ .Values.configuration.identifier }}
-        {{- else }}
-        - --identifier=seed.gardener.cloud/{{ .Values.gardener.garden.clusterIdentity }}/{{ .Values.gardener.seed.name }}
+        {{- if .Values.gardener.seed.name }}
         - --remote-access-client-id={{ .Values.gardener.seed.name }}
+        {{- else }}
+        - --remote-access-client-id=client
         {{- end }}
         {{- if .Values.remoteaccess.enabled }}
         - --remote-access-port={{ .Values.remoteaccess.port }}
@@ -357,14 +355,26 @@ spec:
         {{- if .Values.configuration.compoundOpenstackDesignateRatelimiterQps }}
         - --compound.openstack-designate.ratelimiter.qps={{ .Values.configuration.compoundOpenstackDesignateRatelimiterQps }}
         {{- end }}
-        {{- if .Values.configuration.compoundOwneridsPoolSize }}
-        - --compound.ownerids.pool.size={{ .Values.configuration.compoundOwneridsPoolSize }}
-        {{- end }}
         {{- if .Values.configuration.compoundPoolResyncPeriod }}
         - --compound.pool.resync-period={{ .Values.configuration.compoundPoolResyncPeriod }}
         {{- end }}
         {{- if .Values.configuration.compoundPoolSize }}
         - --compound.pool.size={{ .Values.configuration.compoundPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundPowerdnsAdvancedBatchSize }}
+        - --compound.powerdns.advanced.batch-size={{ .Values.configuration.compoundPowerdnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundPowerdnsAdvancedMaxRetries }}
+        - --compound.powerdns.advanced.max-retries={{ .Values.configuration.compoundPowerdnsAdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.compoundPowerdnsRatelimiterBurst }}
+        - --compound.powerdns.ratelimiter.burst={{ .Values.configuration.compoundPowerdnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundPowerdnsRatelimiterEnabled }}
+        - --compound.powerdns.ratelimiter.enabled={{ .Values.configuration.compoundPowerdnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundPowerdnsRatelimiterQps }}
+        - --compound.powerdns.ratelimiter.qps={{ .Values.configuration.compoundPowerdnsRatelimiterQps }}
         {{- end }}
         {{- if .Values.configuration.compoundProviderTypes }}
         - --compound.provider-types={{ .Values.configuration.compoundProviderTypes }}
@@ -504,17 +514,8 @@ spec:
         {{- if .Values.configuration.dnsentrySourceTargetNamespace }}
         - --dnsentry-source.target-namespace={{ .Values.configuration.dnsentrySourceTargetNamespace }}
         {{- end }}
-        {{- if .Values.configuration.dnsentrySourceTargetOwnerId }}
-        - --dnsentry-source.target-owner-id={{ .Values.configuration.dnsentrySourceTargetOwnerId }}
-        {{- end }}
-        {{- if .Values.configuration.dnsentrySourceTargetOwnerObject }}
-        - --dnsentry-source.target-owner-object={{ .Values.configuration.dnsentrySourceTargetOwnerObject }}
-        {{- end }}
         {{- if .Values.configuration.dnsentrySourceTargetRealms }}
         - --dnsentry-source.target-realms={{ .Values.configuration.dnsentrySourceTargetRealms }}
-        {{- end }}
-        {{- if .Values.configuration.dnsentrySourceTargetSetIgnoreOwners }}
-        - --dnsentry-source.target-set-ignore-owners={{ .Values.configuration.dnsentrySourceTargetSetIgnoreOwners }}
         {{- end }}
         {{- if .Values.configuration.dnsentrySourceTargetsPoolSize }}
         - --dnsentry-source.targets.pool.size={{ .Values.configuration.dnsentrySourceTargetsPoolSize }}
@@ -636,17 +637,8 @@ spec:
         {{- if .Values.configuration.ingressDNSTargetNamespace }}
         - --ingress-dns.target-namespace={{ .Values.configuration.ingressDNSTargetNamespace }}
         {{- end }}
-        {{- if .Values.configuration.ingressDNSTargetOwnerId }}
-        - --ingress-dns.target-owner-id={{ .Values.configuration.ingressDNSTargetOwnerId }}
-        {{- end }}
-        {{- if .Values.configuration.ingressDNSTargetOwnerObject }}
-        - --ingress-dns.target-owner-object={{ .Values.configuration.ingressDNSTargetOwnerObject }}
-        {{- end }}
         {{- if .Values.configuration.ingressDNSTargetRealms }}
         - --ingress-dns.target-realms={{ .Values.configuration.ingressDNSTargetRealms }}
-        {{- end }}
-        {{- if .Values.configuration.ingressDNSTargetSetIgnoreOwners }}
-        - --ingress-dns.target-set-ignore-owners={{ .Values.configuration.ingressDNSTargetSetIgnoreOwners }}
         {{- end }}
         {{- if .Values.configuration.ingressDNSTargetsPoolSize }}
         - --ingress-dns.targets.pool.size={{ .Values.configuration.ingressDNSTargetsPoolSize }}
@@ -687,17 +679,8 @@ spec:
         {{- if .Values.configuration.istioGatewaysDnsTargetNamespace }}
         - --istio-gateways-dns.target-namespace={{ .Values.configuration.istioGatewaysDnsTargetNamespace }}
         {{- end }}
-        {{- if .Values.configuration.istioGatewaysDnsTargetOwnerId }}
-        - --istio-gateways-dns.target-owner-id={{ .Values.configuration.istioGatewaysDnsTargetOwnerId }}
-        {{- end }}
-        {{- if .Values.configuration.istioGatewaysDnsTargetOwnerObject }}
-        - --istio-gateways-dns.target-owner-object={{ .Values.configuration.istioGatewaysDnsTargetOwnerObject }}
-        {{- end }}
         {{- if .Values.configuration.istioGatewaysDnsTargetRealms }}
         - --istio-gateways-dns.target-realms={{ .Values.configuration.istioGatewaysDnsTargetRealms }}
-        {{- end }}
-        {{- if .Values.configuration.istioGatewaysDnsTargetSetIgnoreOwners }}
-        - --istio-gateways-dns.target-set-ignore-owners={{ .Values.configuration.istioGatewaysDnsTargetSetIgnoreOwners }}
         {{- end }}
         {{- if .Values.configuration.istioGatewaysDnsTargetsPoolSize }}
         - --istio-gateways-dns.targets.pool.size={{ .Values.configuration.istioGatewaysDnsTargetsPoolSize }}
@@ -747,17 +730,8 @@ spec:
         {{- if .Values.configuration.k8sGatewaysDnsTargetNamespace }}
         - --k8s-gateways-dns.target-namespace={{ .Values.configuration.k8sGatewaysDnsTargetNamespace }}
         {{- end }}
-        {{- if .Values.configuration.k8sGatewaysDnsTargetOwnerId }}
-        - --k8s-gateways-dns.target-owner-id={{ .Values.configuration.k8sGatewaysDnsTargetOwnerId }}
-        {{- end }}
-        {{- if .Values.configuration.k8sGatewaysDnsTargetOwnerObject }}
-        - --k8s-gateways-dns.target-owner-object={{ .Values.configuration.k8sGatewaysDnsTargetOwnerObject }}
-        {{- end }}
         {{- if .Values.configuration.k8sGatewaysDnsTargetRealms }}
         - --k8s-gateways-dns.target-realms={{ .Values.configuration.k8sGatewaysDnsTargetRealms }}
-        {{- end }}
-        {{- if .Values.configuration.k8sGatewaysDnsTargetSetIgnoreOwners }}
-        - --k8s-gateways-dns.target-set-ignore-owners={{ .Values.configuration.k8sGatewaysDnsTargetSetIgnoreOwners }}
         {{- end }}
         {{- if .Values.configuration.k8sGatewaysDnsTargetsPoolSize }}
         - --k8s-gateways-dns.targets.pool.size={{ .Values.configuration.k8sGatewaysDnsTargetsPoolSize }}
@@ -767,6 +741,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.kubeconfig }}
         - --kubeconfig={{ .Values.configuration.kubeconfig }}
+        {{- end }}
+        {{- if .Values.configuration.kubeconfigConditionalDeployCrds }}
+        - --kubeconfig.conditional-deploy-crds={{ .Values.configuration.kubeconfigConditionalDeployCrds }}
         {{- end }}
         {{- if .Values.configuration.kubeconfigDisableDeployCrds }}
         - --kubeconfig.disable-deploy-crds={{ .Values.configuration.kubeconfigDisableDeployCrds }}
@@ -843,9 +820,6 @@ spec:
         {{- if .Values.configuration.openstackDesignateRatelimiterQps }}
         - --openstack-designate.ratelimiter.qps={{ .Values.configuration.openstackDesignateRatelimiterQps }}
         {{- end }}
-        {{- if .Values.configuration.owneridsPoolSize }}
-        - --ownerids.pool.size={{ .Values.configuration.owneridsPoolSize }}
-        {{- end }}
         {{- if .Values.configuration.pluginFile }}
         - --plugin-file={{ .Values.configuration.pluginFile }}
         {{- end }}
@@ -855,11 +829,29 @@ spec:
         {{- if .Values.configuration.poolSize }}
         - --pool.size={{ .Values.configuration.poolSize }}
         {{- end }}
+        {{- if .Values.configuration.powerdnsAdvancedBatchSize }}
+        - --powerdns.advanced.batch-size={{ .Values.configuration.powerdnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.powerdnsAdvancedMaxRetries }}
+        - --powerdns.advanced.max-retries={{ .Values.configuration.powerdnsAdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.powerdnsRatelimiterBurst }}
+        - --powerdns.ratelimiter.burst={{ .Values.configuration.powerdnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.powerdnsRatelimiterEnabled }}
+        - --powerdns.ratelimiter.enabled={{ .Values.configuration.powerdnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.powerdnsRatelimiterQps }}
+        - --powerdns.ratelimiter.qps={{ .Values.configuration.powerdnsRatelimiterQps }}
+        {{- end }}
         {{- if .Values.configuration.providerTypes }}
         - --provider-types={{ .Values.configuration.providerTypes }}
         {{- end }}
         {{- if .Values.configuration.providers }}
         - --providers={{ .Values.configuration.providers }}
+        {{- end }}
+        {{- if .Values.configuration.providersConditionalDeployCrds }}
+        - --providers.conditional-deploy-crds={{ .Values.configuration.providersConditionalDeployCrds }}
         {{- end }}
         {{- if .Values.configuration.providersDisableDeployCrds }}
         - --providers.disable-deploy-crds={{ .Values.configuration.providersDisableDeployCrds }}
@@ -960,17 +952,8 @@ spec:
         {{- if .Values.configuration.serviceDNSTargetNamespace }}
         - --service-dns.target-namespace={{ .Values.configuration.serviceDNSTargetNamespace }}
         {{- end }}
-        {{- if .Values.configuration.serviceDNSTargetOwnerId }}
-        - --service-dns.target-owner-id={{ .Values.configuration.serviceDNSTargetOwnerId }}
-        {{- end }}
-        {{- if .Values.configuration.serviceDNSTargetOwnerObject }}
-        - --service-dns.target-owner-object={{ .Values.configuration.serviceDNSTargetOwnerObject }}
-        {{- end }}
         {{- if .Values.configuration.serviceDNSTargetRealms }}
         - --service-dns.target-realms={{ .Values.configuration.serviceDNSTargetRealms }}
-        {{- end }}
-        {{- if .Values.configuration.serviceDNSTargetSetIgnoreOwners }}
-        - --service-dns.target-set-ignore-owners={{ .Values.configuration.serviceDNSTargetSetIgnoreOwners }}
         {{- end }}
         {{- if .Values.configuration.serviceDNSTargetsPoolSize }}
         - --service-dns.targets.pool.size={{ .Values.configuration.serviceDNSTargetsPoolSize }}
@@ -993,17 +976,11 @@ spec:
         {{- if .Values.configuration.targetNamespace }}
         - --target-namespace={{ .Values.configuration.targetNamespace }}
         {{- end }}
-        {{- if .Values.configuration.targetOwnerId }}
-        - --target-owner-id={{ .Values.configuration.targetOwnerId }}
-        {{- end }}
-        {{- if .Values.configuration.targetOwnerObject }}
-        - --target-owner-object={{ .Values.configuration.targetOwnerObject }}
-        {{- end }}
         {{- if .Values.configuration.targetRealms }}
         - --target-realms={{ .Values.configuration.targetRealms }}
         {{- end }}
-        {{- if .Values.configuration.targetSetIgnoreOwners }}
-        - --target-set-ignore-owners={{ .Values.configuration.targetSetIgnoreOwners }}
+        {{- if .Values.configuration.targetConditionalDeployCrds }}
+        - --target.conditional-deploy-crds={{ .Values.configuration.targetConditionalDeployCrds }}
         {{- end }}
         {{- if .Values.configuration.targetDisableDeployCrds }}
         - --target.disable-deploy-crds={{ .Values.configuration.targetDisableDeployCrds }}

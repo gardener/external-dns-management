@@ -43,7 +43,6 @@ For extending or adapting this project with your own source or provisioning cont
       - [Istio gateways](#istio-gateways)
       - [Gateway API gateways](#gateway-api-gateways)
   - [The Model](#the-model)
-    - [Owner Identifiers](#owner-identifiers)
     - [DNS Classes](#dns-classes)
     - [DNSAnnotation objects](#dnsannotation-objects)
   - [Using the DNS controller manager](#using-the-dns-controller-manager)
@@ -60,25 +59,8 @@ For extending or adapting this project with your own source or provisioning cont
 ## Important Note: Support for owner identifiers is discontinued
 
 Starting with release `v0.23`, the support for owner identifiers is discontinued.
-
-The creation and management of metadata DNS records holding the owner identifier for each `DNSEntry` has been removed.
-These metadata DNS records will be removed automatically. To avoid running into rate limits, this removals will happen
-only during updates or with low batch size during the periodic reconciliation.
-Depending on the size of the hosted zone the cleanup can take multiple days.
-To ensure the correct work of the cleanup of these special `TXT` DNS records, the owner identifier provided via 
-the `--identifier` command line option and the `DNSOwner` custom resources must still be provided as before.
-In a future release, the `DNSOwner` resources will be removed completely.
-
-These identifiers are now only used for cleanup, but not for any other purposes.
-
-The ownership information was used for several purposes:
-- detect conflicts (i.e. same DNS record written by multiple dns-controller-manager instances)
-- handing over responsibility of DNS records from one to another controller instance
-- detection of orphan DNS records and their cleanup
-
-Please note that these edge cases are not supported anymore.
-For handing over responsibility of DNS record, please use the `dns.gardener.cloud/ignore=true` annotation 
-on `DNSEntries` or the annotated source objects (like `Ingress`, `Service`, etc.)
+With release `v0.24`, the support for owner identifiers is removed completely.
+The custom resource `DNSOwner` are not supported anymore.
 
 ## Quick start
 
@@ -94,13 +76,10 @@ To install the **DNS controller manager** in your Kubernetes cluster, follow the
 
 2. Install the DNS controller manager
 
-    As multiple Gardener DNS controllers can act on the same DNS Hosted Zone concurrently, each instance needs
-    an [owner identifier](#owner-identifiers). Therefore, choose an identifier sufficiently unique across these instances.
-
     Then install the DNS controller manager with
 
     ```bash
-    helm install dns-controller charts/external-dns-management --namespace=<my-namespace> --set configuration.identifier=<my-identifier>
+    helm install dns-controller charts/external-dns-management --namespace=<my-namespace>
     ```
 
     This will use the default configuration with all source and provisioning controllers enabled.
@@ -456,15 +435,13 @@ and/or DNS zone identifiers to override the scanning results of the account.
 
 ### Owner Identifiers
 
-Starting with release `v0.23`, owner identifier are no longer supported.
+Starting with former release `v0.23`, owner identifier are no longer supported.
 Formerly, every DNS Provisioning Controller was responsible for a set of _Owner Identifiers_.
 For every DNS record, there was an additional `TXT` DNS record ("metadata record") referencing the owner identifier.
 It was decided to remove this feature, as it doubles the number of DNS records without adding
 enough value.
 
-In the release `v0.23`, it is still important to specify the `--identifier` option for the compound DNS
-Provisioning Controller and also to keep the `DNSOwner` resources as they are used to clean up the "metadata records".
-In the future, the `DNSOwner` resources will be removed completely.
+With release `v0.24`, the `DNSOwner` resources have been removed completely.
 
 ### DNS Classes
 
@@ -565,14 +542,6 @@ The following provider types can be selected (comma separated):
 - `remote`: Remote DNS provider (a dns-controller-manager with enabled remote access service)
 - `powerdns`: PowerDNS provider
 
-If the compound DNS Provisioning Controller is enabled, a unique controller identity was specified using the
-`--identifier` option in former release.
-This identifier was used to tag the DNS entries managed by a dedicated controller by creating additional
-"metadata `TXT` records" in the DNS system.
-Starting with release `v0.23`, this feature has been dropped as it doubles the number of DNS records.
-It is still important and required to specify the `--identifier` option to enable the cleanup of "metadata records" 
-created by former releases of the DNS Provisioning Controller.
-
 Here is the complete list of options provided:
 
 ```txt
@@ -667,7 +636,6 @@ Flags:
       --compound.google-clouddns.ratelimiter.burst int                  number of burst requests for rate limiter of controller compound
       --compound.google-clouddns.ratelimiter.enabled                    enables rate limiter for DNS provider requests of controller compound
       --compound.google-clouddns.ratelimiter.qps int                    maximum requests/queries per second of controller compound
-      --compound.identifier string                                      Identifier used to mark DNS entries in DNS system of controller compound
       --compound.infoblox-dns.advanced.batch-size int                   batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.infoblox-dns.advanced.max-retries int                  maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
       --compound.infoblox-dns.blocked-zone zone-id                      Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
@@ -688,7 +656,6 @@ Flags:
       --compound.openstack-designate.ratelimiter.burst int              number of burst requests for rate limiter of controller compound
       --compound.openstack-designate.ratelimiter.enabled                enables rate limiter for DNS provider requests of controller compound
       --compound.openstack-designate.ratelimiter.qps int                maximum requests/queries per second of controller compound
-      --compound.ownerids.pool.size int                                 Worker pool size for pool ownerids of controller compound
       --compound.pool.resync-period duration                            Period for resynchronization of controller compound
       --compound.pool.size int                                          Worker pool size of controller compound
       --compound.powerdns.advanced.batch-size int                       batch size for change requests (currently only used for aws-route53) of controller compound
@@ -732,7 +699,7 @@ Flags:
       --disable-dnsname-validation                                      disable validation of domain names according to RFC 1123.
       --disable-namespace-restriction                                   disable access restriction for namespace local access only
       --disable-zone-state-caching                                      disable use of cached dns zone state on changes
-      --dns-class string                                                identifier used to differentiate responsible controllers for entries, identifier used to differentiate responsible controllers for providers, Class identifier used to differentiate responsible controllers for entry resources
+      --dns-class string                                                identifier used to differentiate responsible controllers for entries, Class identifier used to differentiate responsible controllers for entry resources, identifier used to differentiate responsible controllers for providers
       --dns-delay duration                                              delay between two dns reconciliations
       --dns-target-class string                                         identifier used to differentiate responsible dns controllers for target entries, identifier used to differentiate responsible dns controllers for target providers
       --dns.pool.resync-period duration                                 Period for resynchronization for pool dns
@@ -749,10 +716,7 @@ Flags:
       --dnsentry-source.target-creator-label-value string               label value for creator label of controller dnsentry-source
       --dnsentry-source.target-name-prefix string                       name prefix in target namespace for cross cluster generation of controller dnsentry-source
       --dnsentry-source.target-namespace string                         target namespace for cross cluster generation of controller dnsentry-source
-      --dnsentry-source.target-owner-id string                          owner id to use for generated DNS entries of controller dnsentry-source
-      --dnsentry-source.target-owner-object string                      owner object to use for generated DNS entries of controller dnsentry-source
       --dnsentry-source.target-realms string                            realm(s) to use for generated DNS entries of controller dnsentry-source
-      --dnsentry-source.target-set-ignore-owners                        mark generated DNS entries to omit owner based access control of controller dnsentry-source
       --dnsentry-source.targets.pool.size int                           Worker pool size for pool targets of controller dnsentry-source
       --dnsprovider-replication.default.pool.resync-period duration     Period for resynchronization for pool default of controller dnsprovider-replication
       --dnsprovider-replication.default.pool.size int                   Worker pool size for pool default of controller dnsprovider-replication
@@ -779,7 +743,6 @@ Flags:
       --grace-period duration                                           inactivity grace period for detecting end of cleanup for shutdown
   -h, --help                                                            help for dns-controller-manager
       --httproutes.pool.size int                                        Worker pool size for pool httproutes
-      --identifier string                                               Identifier used to mark DNS entries in DNS system
       --infoblox-dns.advanced.batch-size int                            batch size for change requests (currently only used for aws-route53)
       --infoblox-dns.advanced.max-retries int                           maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
       --infoblox-dns.blocked-zone zone-id                               Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
@@ -798,10 +761,7 @@ Flags:
       --ingress-dns.target-creator-label-value string                   label value for creator label of controller ingress-dns
       --ingress-dns.target-name-prefix string                           name prefix in target namespace for cross cluster generation of controller ingress-dns
       --ingress-dns.target-namespace string                             target namespace for cross cluster generation of controller ingress-dns
-      --ingress-dns.target-owner-id string                              owner id to use for generated DNS entries of controller ingress-dns
-      --ingress-dns.target-owner-object string                          owner object to use for generated DNS entries of controller ingress-dns
       --ingress-dns.target-realms string                                realm(s) to use for generated DNS entries of controller ingress-dns
-      --ingress-dns.target-set-ignore-owners                            mark generated DNS entries to omit owner based access control of controller ingress-dns
       --ingress-dns.targets.pool.size int                               Worker pool size for pool targets of controller ingress-dns
       --istio-gateways-dns.default.pool.resync-period duration          Period for resynchronization for pool default of controller istio-gateways-dns
       --istio-gateways-dns.default.pool.size int                        Worker pool size for pool default of controller istio-gateways-dns
@@ -815,10 +775,7 @@ Flags:
       --istio-gateways-dns.target-creator-label-value string            label value for creator label of controller istio-gateways-dns
       --istio-gateways-dns.target-name-prefix string                    name prefix in target namespace for cross cluster generation of controller istio-gateways-dns
       --istio-gateways-dns.target-namespace string                      target namespace for cross cluster generation of controller istio-gateways-dns
-      --istio-gateways-dns.target-owner-id string                       owner id to use for generated DNS entries of controller istio-gateways-dns
-      --istio-gateways-dns.target-owner-object string                   owner object to use for generated DNS entries of controller istio-gateways-dns
       --istio-gateways-dns.target-realms string                         realm(s) to use for generated DNS entries of controller istio-gateways-dns
-      --istio-gateways-dns.target-set-ignore-owners                     mark generated DNS entries to omit owner based access control of controller istio-gateways-dns
       --istio-gateways-dns.targets.pool.size int                        Worker pool size for pool targets of controller istio-gateways-dns
       --istio-gateways-dns.targetsources.pool.size int                  Worker pool size for pool targetsources of controller istio-gateways-dns
       --istio-gateways-dns.virtualservices.pool.size int                Worker pool size for pool virtualservices of controller istio-gateways-dns
@@ -835,10 +792,7 @@ Flags:
       --k8s-gateways-dns.target-creator-label-value string              label value for creator label of controller k8s-gateways-dns
       --k8s-gateways-dns.target-name-prefix string                      name prefix in target namespace for cross cluster generation of controller k8s-gateways-dns
       --k8s-gateways-dns.target-namespace string                        target namespace for cross cluster generation of controller k8s-gateways-dns
-      --k8s-gateways-dns.target-owner-id string                         owner id to use for generated DNS entries of controller k8s-gateways-dns
-      --k8s-gateways-dns.target-owner-object string                     owner object to use for generated DNS entries of controller k8s-gateways-dns
       --k8s-gateways-dns.target-realms string                           realm(s) to use for generated DNS entries of controller k8s-gateways-dns
-      --k8s-gateways-dns.target-set-ignore-owners                       mark generated DNS entries to omit owner based access control of controller k8s-gateways-dns
       --k8s-gateways-dns.targets.pool.size int                          Worker pool size for pool targets of controller k8s-gateways-dns
       --key string                                                      selecting key for annotation
       --kubeconfig string                                               default cluster access
@@ -871,7 +825,6 @@ Flags:
       --openstack-designate.ratelimiter.burst int                       number of burst requests for rate limiter
       --openstack-designate.ratelimiter.enabled                         enables rate limiter for DNS provider requests
       --openstack-designate.ratelimiter.qps int                         maximum requests/queries per second
-      --ownerids.pool.size int                                          Worker pool size for pool ownerids
       --plugin-file string                                              directory containing go plugins
       --pool.resync-period duration                                     Period for resynchronization
       --pool.size int                                                   Worker pool size
@@ -923,10 +876,7 @@ Flags:
       --service-dns.target-creator-label-value string                   label value for creator label of controller service-dns
       --service-dns.target-name-prefix string                           name prefix in target namespace for cross cluster generation of controller service-dns
       --service-dns.target-namespace string                             target namespace for cross cluster generation of controller service-dns
-      --service-dns.target-owner-id string                              owner id to use for generated DNS entries of controller service-dns
-      --service-dns.target-owner-object string                          owner object to use for generated DNS entries of controller service-dns
       --service-dns.target-realms string                                realm(s) to use for generated DNS entries of controller service-dns
-      --service-dns.target-set-ignore-owners                            mark generated DNS entries to omit owner based access control of controller service-dns
       --service-dns.targets.pool.size int                               Worker pool size for pool targets of controller service-dns
       --setup int                                                       number of processors for controller setup
       --target string                                                   target cluster for dns requests
@@ -934,10 +884,7 @@ Flags:
       --target-creator-label-value string                               label value for creator label
       --target-name-prefix string                                       name prefix in target namespace for cross cluster generation, name prefix in target namespace for cross cluster replication
       --target-namespace string                                         target namespace for cross cluster generation
-      --target-owner-id string                                          owner id to use for generated DNS entries
-      --target-owner-object string                                      owner object to use for generated DNS entries
       --target-realms string                                            realm(s) to use for generated DNS entries, realm(s) to use for replicated DNS provider
-      --target-set-ignore-owners                                        mark generated DNS entries to omit owner based access control
       --target.conditional-deploy-crds                                  deployment of required crds for cluster target only if there is no managed resource in garden namespace deploying it
       --target.disable-deploy-crds                                      disable deployment of required crds for cluster target
       --target.id string                                                id for cluster target

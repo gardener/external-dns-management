@@ -143,9 +143,13 @@ configuration:
   # compoundOpenstackDesignateRatelimiterBurst:
   # compoundOpenstackDesignateRatelimiterEnabled:
   # compoundOpenstackDesignateRatelimiterQps:
-  # compoundOwneridsPoolSize: 1
   # compoundPoolResyncPeriod:
   # compoundPoolSize:
+  # compoundPowerdnsAdvancedBatchSize:
+  # compoundPowerdnsAdvancedMaxRetries:
+  # compoundPowerdnsRatelimiterBurst:
+  # compoundPowerdnsRatelimiterEnabled:
+  # compoundPowerdnsRatelimiterQps:
   # compoundProviderTypes:
   # compoundProvidersPoolResyncPeriod: 30s
   # compoundProvidersPoolSize: 2
@@ -192,10 +196,7 @@ configuration:
   # dnsentrySourceTargetCreatorLabelValue: ""
   # dnsentrySourceTargetNamePrefix: ""
   # dnsentrySourceTargetNamespace: ""
-  # dnsentrySourceTargetOwnerId: ""
-  # dnsentrySourceTargetOwnerObject:
   # dnsentrySourceTargetRealms: ""
-  # dnsentrySourceTargetSetIgnoreOwners: false
   # dnsentrySourceTargetsPoolSize: 2
   # dnsproviderReplicationDefaultPoolResyncPeriod:
   # dnsproviderReplicationDefaultPoolSize:
@@ -236,10 +237,7 @@ configuration:
   # ingressDNSTargetCreatorLabelValue: ""
   # ingressDNSTargetNamePrefix: ""
   # ingressDNSTargetNamespace: ""
-  # ingressDNSTargetOwnerId: ""
-  # ingressDNSTargetOwnerObject:
   # ingressDNSTargetRealms: ""
-  # ingressDNSTargetSetIgnoreOwners: false
   # ingressDNSTargetsPoolSize: 2
   # istioGatewaysDnsDefaultPoolResyncPeriod:
   # istioGatewaysDnsDefaultPoolSize:
@@ -253,10 +251,7 @@ configuration:
   # istioGatewaysDnsTargetCreatorLabelValue:
   # istioGatewaysDnsTargetNamePrefix:
   # istioGatewaysDnsTargetNamespace:
-  # istioGatewaysDnsTargetOwnerId:
-  # istioGatewaysDnsTargetOwnerObject:
   # istioGatewaysDnsTargetRealms:
-  # istioGatewaysDnsTargetSetIgnoreOwners:
   # istioGatewaysDnsTargetsPoolSize:
   # istioGatewaysDnsTargetsourcesPoolSize:
   # istioGatewaysDnsVirtualservicesPoolSize:
@@ -273,10 +268,7 @@ configuration:
   # k8sGatewaysDnsTargetCreatorLabelValue:
   # k8sGatewaysDnsTargetNamePrefix:
   # k8sGatewaysDnsTargetNamespace:
-  # k8sGatewaysDnsTargetOwnerId:
-  # k8sGatewaysDnsTargetOwnerObject:
   # k8sGatewaysDnsTargetRealms:
-  # k8sGatewaysDnsTargetSetIgnoreOwners:
   # k8sGatewaysDnsTargetsPoolSize:
   # key: ""
   # kubeconfig: ""
@@ -305,12 +297,17 @@ configuration:
   # openstackDesignateRatelimiterBurst:
   # openstackDesignateRatelimiterEnabled:
   # openstackDesignateRatelimiterQps:
-  # owneridsPoolSize:
   # pluginFile:
   # poolResyncPeriod: 30s
   # poolSize: 2
+  # powerdnsAdvancedBatchSize:
+  # powerdnsAdvancedMaxRetries:
+  # powerdnsRatelimiterBurst:
+  # powerdnsRatelimiterEnabled:
+  # powerdnsRatelimiterQps:
   # providerTypes: ""
   # providers: ""
+  # providersConditionalDeployCrds:
   # providersDisableDeployCrds: false
   # providersId: ""
   # providersMigrationIds: ""
@@ -344,22 +341,16 @@ configuration:
   # serviceDNSTargetCreatorLabelValue: ""
   # serviceDNSTargetNamePrefix: ""
   # serviceDNSTargetNamespace: ""
-  # serviceDNSTargetOwnerId: ""
-  # serviceDNSTargetOwnerObject:
   # serviceDNSTargetRealms: ""
-  # serviceDNSTargetSetIgnoreOwners: false
   # serviceDNSTargetsPoolSize: 2
-  # servicesPoolSize:
   # setup: 10
   # target: ""
   # targetCreatorLabelName: ""
   # targetCreatorLabelValue: ""
   # targetNamePrefix: ""
   # targetNamespace: ""
-  # targetOwnerId: ""
-  # targetOwnerObject:
   # targetRealms: ""
-  # targetSetIgnoreOwners: false
+  # targetConditionalDeployCrds:
   # targetDisableDeployCrds: false
   # targetId: ""
   # targetMigrationIds: ""
