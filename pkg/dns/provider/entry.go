@@ -26,7 +26,6 @@ import (
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/provider/statistic"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
@@ -820,14 +819,6 @@ func (this *Entry) Before(e *Entry) bool {
 	return this.Object().GetCreationTimestamp().Time.Before(e.Object().GetCreationTimestamp().Time)
 }
 
-func (this *Entry) updateStatistic(statistic *statistic.EntryStatistic) {
-	if err := this.lock.Lock(); err != nil {
-		return
-	}
-	defer this.lock.Unlock()
-	statistic.Providers.Inc(this.ProviderType(), this.ProviderName())
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Entries
 ////////////////////////////////////////////////////////////////////////////////
@@ -941,12 +932,6 @@ func (this EntryList) Lock() error {
 func (this EntryList) Unlock() {
 	for _, e := range this {
 		e.lock.Unlock()
-	}
-}
-
-func (this EntryList) UpdateStatistic(statistic *statistic.EntryStatistic) {
-	for _, e := range this {
-		e.updateStatistic(statistic)
 	}
 }
 

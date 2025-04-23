@@ -322,9 +322,6 @@ spec:
         {{- if .Values.configuration.compoundLockStatusCheckPeriod }}
         - --compound.lock-status-check-period={{ .Values.configuration.compoundLockStatusCheckPeriod }}
         {{- end }}
-        {{- if .Values.configuration.compoundMaxMetadataRecordDeletionsPerReconciliation }}
-        - --compound.max-metadata-record-deletions-per-reconciliation={{ .Values.configuration.compoundMaxMetadataRecordDeletionsPerReconciliation }}
-        {{- end }}
         {{- if .Values.configuration.compoundNetlifyDnsAdvancedBatchSize }}
         - --compound.netlify-dns.advanced.batch-size={{ .Values.configuration.compoundNetlifyDnsAdvancedBatchSize }}
         {{- end }}
@@ -777,9 +774,6 @@ spec:
         {{- end }}
         {{- if .Values.configuration.maintainer }}
         - --maintainer={{ .Values.configuration.maintainer }}
-        {{- end }}
-        {{- if .Values.configuration.maxMetadataRecordDeletionsPerReconciliation }}
-        - --max-metadata-record-deletions-per-reconciliation={{ .Values.configuration.maxMetadataRecordDeletionsPerReconciliation }}
         {{- end }}
         {{- if .Values.configuration.namespace }}
         - --namespace={{ .Values.configuration.namespace }}

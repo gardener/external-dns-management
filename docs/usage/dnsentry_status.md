@@ -20,7 +20,7 @@ Currently the available states are:
 - `Ready` means the provider has accepted the entry and created DNS record(s) in the backend service.
 - `Pending` means the update of the DNS records in the DNS backend service is batched or in progress.
 - `Error` means there is configuration or other problem. See `message` for details in this case.
-- `Invalid` means there is a conflict with another DNS entry or owner. See `message` for details in this case.
+- `Invalid` means there is a conflict with another DNS entry. See `message` for details in this case.
 - `Stale` means the DNS records in the backend service are existing but there is a problem with the provider. See `message` for details in this case.
 - `Deleting` means the deletion of the DNS records in the DNS backend service is in progress.
 - `Ignored` means the entry is annotated with `dns.gardener.cloud/ignore=true` and reconciliation is skipped.

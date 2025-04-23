@@ -92,7 +92,7 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 	}
 	cfg := controller.Configure(name).
 		RequireLease().
-		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "Class identifier used to differentiate responsible controllers for entry resources").
+		DefaultedStringOption(OPT_CLASS, dns.DEFAULT_CLASS, "identifier used to differentiate responsible controllers for entries").
 		DefaultedBoolOption(OPT_DRYRUN, false, "just check, don't modify").
 		DefaultedBoolOption(OPT_DISABLE_ZONE_STATE_CACHING, false, "disable use of cached dns zone state on changes").
 		DefaultedBoolOption(OPT_DISABLE_DNSNAME_VALIDATION, false, "disable validation of domain names according to RFC 1123.").
@@ -106,7 +106,6 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedStringOption(OPT_REMOTE_ACCESS_CACERT, "", "CA who signed client certs file").
 		DefaultedStringOption(OPT_REMOTE_ACCESS_SERVER_SECRET_NAME, "", "name of secret containing remote access server's certificate").
 		DefaultedStringOption(OPT_REMOTE_ACCESS_CLIENT_ID, "", "identifier used for remote access").
-		DefaultedIntOption(OPT_MAX_METADATA_RECORD_DELETIONS_PER_RECONCILIATION, 50, "maximum number of metadata owner records that can be deleted per zone reconciliation").
 		FinalizerDomain("dns.gardener.cloud").
 		Reconciler(DNSReconcilerType(factory)).
 		Cluster(TARGET_CLUSTER).
