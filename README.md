@@ -59,6 +59,7 @@ For extending or adapting this project with your own source or provisioning cont
 ## Important Note: Support for owner identifiers is discontinued
 
 Starting with former release `v0.23`, the support for owner identifiers is discontinued.
+See former description of [Owner Identifiers](https://github.com/gardener/external-dns-management/tree/v0.23.0?tab=readme-ov-file#owner-identifiers) for more details.
 With release `v0.24`, the support for owner identifiers is removed completely.
 The custom resource `DNSOwner` (`dnsowners.dns.gardener.cloud`) is no longer supported.
 
@@ -432,16 +433,6 @@ a provisioning controller then it is _responsible_ for this entry and manages
 the corresponding entries in the external environment.
 `DNSProvider` objects can specify explicit inclusion and exclusion sets of domain names
 and/or DNS zone identifiers to override the scanning results of the account.
-
-### Owner Identifiers
-
-Starting with former release `v0.23`, owner identifier are no longer supported.
-Formerly, every DNS Provisioning Controller was responsible for a set of _Owner Identifiers_.
-For every DNS record, there was an additional `TXT` DNS record ("metadata record") referencing the owner identifier.
-It was decided to remove this feature, as it doubles the number of DNS records without adding
-enough value.
-
-With release `v0.24`, the `DNSOwner` resources have been removed completely.
 
 ### DNS Classes
 
