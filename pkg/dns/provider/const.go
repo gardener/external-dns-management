@@ -14,7 +14,6 @@ import (
 */
 
 const (
-	OPT_IDENTIFIER                 = "identifier"
 	OPT_CLASS                      = source.OPT_CLASS
 	OPT_DRYRUN                     = "dry-run"
 	OPT_TTL                        = "ttl"
@@ -25,8 +24,6 @@ const (
 	OPT_LOCKSTATUSCHECKPERIOD      = "lock-status-check-period"
 	OPT_DISABLE_ZONE_STATE_CACHING = "disable-zone-state-caching"
 	OPT_DISABLE_DNSNAME_VALIDATION = "disable-dnsname-validation"
-
-	OPT_MAX_METADATA_RECORD_DELETIONS_PER_RECONCILIATION = "max-metadata-record-deletions-per-reconciliation"
 
 	OPT_REMOTE_ACCESS_PORT               = "remote-access-port"
 	OPT_REMOTE_ACCESS_CACERT             = "remote-access-cacert"

@@ -23,27 +23,21 @@ import (
 )
 
 type Config struct {
-	TTL                                         int64
-	CacheTTL                                    time.Duration
-	RescheduleDelay                             time.Duration
-	StatusCheckPeriod                           time.Duration
-	Ident                                       string
-	Dryrun                                      bool
-	ZoneStateCaching                            bool
-	DisableDNSNameValidation                    bool
-	Delay                                       time.Duration
-	EnabledTypes                                utils.StringSet
-	Options                                     *FactoryOptions
-	Factory                                     DNSHandlerFactory
-	RemoteAccessConfig                          *embed.RemoteAccessServerConfig
-	MaxMetadataRecordDeletionsPerReconciliation int
+	TTL                      int64
+	CacheTTL                 time.Duration
+	RescheduleDelay          time.Duration
+	StatusCheckPeriod        time.Duration
+	Dryrun                   bool
+	ZoneStateCaching         bool
+	DisableDNSNameValidation bool
+	Delay                    time.Duration
+	EnabledTypes             utils.StringSet
+	Options                  *FactoryOptions
+	Factory                  DNSHandlerFactory
+	RemoteAccessConfig       *embed.RemoteAccessServerConfig
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
-	ident, err := c.GetStringOption(OPT_IDENTIFIER)
-	if err != nil {
-		ident = "identifier-not-configured"
-	}
 	ttl, err := c.GetIntOption(OPT_TTL)
 	if err != nil {
 		ttl = 300
@@ -81,8 +75,6 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	disableZoneStateCaching, _ := c.GetBoolOption(OPT_DISABLE_ZONE_STATE_CACHING)
 	disableDNSNameValidation, _ := c.GetBoolOption(OPT_DISABLE_DNSNAME_VALIDATION)
 
-	maxMetadataRecordDeletionsPerReconciliation, _ := c.GetIntOption(OPT_MAX_METADATA_RECORD_DELETIONS_PER_RECONCILIATION)
-
 	enabled := utils.StringSet{}
 	types, err := c.GetStringOption(OPT_PROVIDERTYPES)
 	if err != nil || types == "" {
@@ -105,7 +97,6 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	fopts := GetFactoryOptions(osrc)
 
 	return &Config{
-		Ident:                    ident,
 		TTL:                      int64(ttl),
 		CacheTTL:                 time.Duration(cttl) * time.Second,
 		RescheduleDelay:          rescheduleDelay,
@@ -118,7 +109,6 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		Options:                  fopts,
 		Factory:                  factory,
 		RemoteAccessConfig:       remoteAccessConfig,
-		MaxMetadataRecordDeletionsPerReconciliation: maxMetadataRecordDeletionsPerReconciliation,
 	}, nil
 }
 

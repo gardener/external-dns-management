@@ -27,10 +27,6 @@ func (c *FakeDnsV1alpha1) DNSHostedZonePolicies(namespace string) v1alpha1.DNSHo
 	return newFakeDNSHostedZonePolicies(c, namespace)
 }
 
-func (c *FakeDnsV1alpha1) DNSOwners(namespace string) v1alpha1.DNSOwnerInterface {
-	return newFakeDNSOwners(c, namespace)
-}
-
 func (c *FakeDnsV1alpha1) DNSProviders(namespace string) v1alpha1.DNSProviderInterface {
 	return newFakeDNSProviders(c, namespace)
 }

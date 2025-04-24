@@ -47,28 +47,6 @@ func (this *state) TriggerEntry(logger logger.LogContext, e *Entry) {
 	_ = this.context.EnqueueKey(e.ClusterKey())
 }
 
-func (this *state) TriggerEntriesByOwner(logger logger.LogContext, owners utils.StringSet) {
-	for _, e := range this.GetEntriesByOwner(owners) {
-		this.TriggerEntry(logger, e)
-	}
-}
-
-func (this *state) GetEntriesByOwner(owners utils.StringSet) Entries {
-	if len(owners) == 0 {
-		return nil
-	}
-	this.lock.RLock()
-	defer this.lock.RUnlock()
-
-	entries := Entries{}
-	for _, e := range this.entries {
-		if owners.Contains(e.OwnerId()) {
-			entries[e.ObjectName()] = e
-		}
-	}
-	return entries
-}
-
 func (this *state) addBlockingEntries(logger logger.LogContext, entries Entries) {
 	if len(entries) == 0 {
 		return

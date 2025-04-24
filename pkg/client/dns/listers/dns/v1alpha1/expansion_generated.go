@@ -29,14 +29,6 @@ type DNSHostedZonePolicyListerExpansion interface{}
 // DNSHostedZonePolicyNamespaceLister.
 type DNSHostedZonePolicyNamespaceListerExpansion interface{}
 
-// DNSOwnerListerExpansion allows custom methods to be added to
-// DNSOwnerLister.
-type DNSOwnerListerExpansion interface{}
-
-// DNSOwnerNamespaceListerExpansion allows custom methods to be added to
-// DNSOwnerNamespaceLister.
-type DNSOwnerNamespaceListerExpansion interface{}
-
 // DNSProviderListerExpansion allows custom methods to be added to
 // DNSProviderLister.
 type DNSProviderListerExpansion interface{}

@@ -46,8 +46,6 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Dns().V1alpha1().DNSEntries().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("dnshostedzonepolicies"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Dns().V1alpha1().DNSHostedZonePolicies().Informer()}, nil
-	case v1alpha1.SchemeGroupVersion.WithResource("dnsowners"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Dns().V1alpha1().DNSOwners().Informer()}, nil
 	case v1alpha1.SchemeGroupVersion.WithResource("dnsproviders"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Dns().V1alpha1().DNSProviders().Informer()}, nil
 

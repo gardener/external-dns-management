@@ -176,10 +176,10 @@ kubectl cluster-info
 
 if [ "$RUN_CONTROLLER" == "true" ]; then
   go build -race -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/compound
-  $ROOTDIR/dns-controller-manager --controllers=dnscontrollers --identifier=functest --omit-lease > /tmp/dnsmgr-functional.log 2>&1 &
+  $ROOTDIR/dns-controller-manager --controllers=dnscontrollers --omit-lease > /tmp/dnsmgr-functional.log 2>&1 &
   PID_CONTROLLER=$!
 else
-  echo dns-controller-manager must be started with arguments: '--controllers=dnscontrollers --identifier=functest'
+  echo dns-controller-manager must be started with arguments: '--controllers=dnscontrollers'
 fi
 
 GINKGO=${GINKGO:-ginkgo}

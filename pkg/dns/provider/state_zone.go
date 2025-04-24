@@ -33,7 +33,6 @@ func (this *state) GetZoneReconcilation(logger logger.LogContext, zoneid dns.Zon
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
-	req.ownership = this.ownerCache
 	hasProviders := this.hasProviders()
 	zone := this.zones[zoneid]
 	if zone == nil {
@@ -158,7 +157,7 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		}
 		oldDNSSets = current.OldDNSSets()
 	}
-	changes := NewChangeModel(logger, req.ownership, req, this.config, oldDNSSets)
+	changes := NewChangeModel(logger, req, this.config, oldDNSSets)
 
 	err := changes.Setup()
 	if err != nil {
