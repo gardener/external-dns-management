@@ -34,7 +34,6 @@ const (
 	PERIOD_ANNOTATION         = dns.ANNOTATION_GROUP + "/cname-lookup-interval"
 	ROUTING_POLICY_ANNOTATION = dns.ANNOTATION_GROUP + "/routing-policy"
 	CLASS_ANNOTATION          = dns.CLASS_ANNOTATION
-	OWNER_ID_ANNOTATION       = dns.ANNOTATION_GROUP + "/owner-id"
 	// RESOLVE_TARGETS_TO_ADDRS_ANNOTATION is the annotation key for source objects to set the `.spec.resolveTargetsToAddresses` in the DNSEntry.
 	RESOLVE_TARGETS_TO_ADDRS_ANNOTATION = dns.ANNOTATION_GROUP + "/resolve-targets-to-addresses"
 )

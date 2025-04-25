@@ -28,7 +28,6 @@ type DNSEntryList struct {
 // +kubebuilder:printcolumn:name=STATUS,JSONPath=".status.state",type=string,description="entry status"
 // +kubebuilder:printcolumn:name=AGE,JSONPath=".metadata.creationTimestamp",type=date,description="entry creation timestamp"
 // +kubebuilder:printcolumn:name=TARGETS,JSONPath=".status.targets",type=string,description="effective targets"
-// +kubebuilder:printcolumn:name=OWNERID,JSONPath=".spec.ownerId",type=string,description="owner id used to tag entries in external DNS system"
 // +kubebuilder:printcolumn:name=TTL,JSONPath=".status.ttl",type=integer,priority=2000,description="time to live"
 // +kubebuilder:printcolumn:name=ZONE,JSONPath=".status.zone",type=string,priority=2000,description="zone id"
 // +kubebuilder:printcolumn:name=POLICY_TYPE,JSONPath=".status.routingPolicy.type",type=string,priority=2000,description="routing policy type"

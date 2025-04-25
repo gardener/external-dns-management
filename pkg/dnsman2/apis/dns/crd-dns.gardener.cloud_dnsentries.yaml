@@ -41,10 +41,6 @@ spec:
       jsonPath: .status.targets
       name: TARGETS
       type: string
-    - description: owner id used to tag entries in external DNS system
-      jsonPath: .spec.ownerId
-      name: OWNERID
-      type: string
     - description: time to live
       jsonPath: .status.ttl
       name: TTL

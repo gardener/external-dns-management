@@ -81,12 +81,6 @@ func (this *sourceReconciler) getDNSInfo(logger logger.LogContext, obj resources
 			}
 		}
 	}
-	if info.OwnerId == nil {
-		a := annos[OWNER_ID_ANNOTATION]
-		if a != "" {
-			info.OwnerId = &a
-		}
-	}
 	if info.Interval == nil {
 		a := annos[PERIOD_ANNOTATION]
 		if a != "" {
