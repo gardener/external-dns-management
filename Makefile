@@ -78,7 +78,7 @@ release:
 
 .PHONY: unittests
 unittests: $(GINKGO)
-	go test -race -timeout=3m ./pkg/... | grep -v 'no test files'
+	@hack/go-test.sh -race -timeout=3m ./pkg/...
 
 .PHONY: new-test-integration
 new-test-integration: $(REPORT_COLLECTOR) $(SETUP_ENVTEST)
