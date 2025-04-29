@@ -87,7 +87,7 @@ var _ = BeforeSuite(func() {
 	Expect(restConfig).NotTo(BeNil())
 
 	kubeconfigFile = createKubeconfigFile(restConfig)
-	os.Setenv("KUBECONFIG", kubeconfigFile)
+	Expect(os.Setenv("KUBECONFIG", kubeconfigFile)).To(Succeed())
 
 	doInit()
 

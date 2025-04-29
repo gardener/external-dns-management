@@ -25,35 +25,18 @@ linters:
     rules:
       - linters:
           - staticcheck
-        text: 'SA1019:'
-      - linters:
-          - staticcheck
         text: 'ST1001:' # should not use dot imports
       - linters:
           - staticcheck
         text: 'ST1006:' # receiver name should be a reflection of its identity; don't use generic names such as "this" or "self"
       - path: (.+)\.go$
-        text: Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked
-      - path: (.+)\.go$
-        text: var-naming
-      - path: (.+)\.go$
-        text: dot-imports
-      - path: (.+)\.go$
-        text: package-comments
-      - path: (.+)\.go$
-        text: unexported-return
-      - path: (.+)\.go$
-        text: indent-error-flow
-      - path: (.+)\.go$
-        text: 'exported: (type|func) name will be used as .* by other packages, and that stutters;'
-      - path: (.+)\.go$
-        text: 'undeclared name: `.*`'
-      - path: (.+)\.go$
-        text: '".*" imported but not used'
-      - path: (.+)\.go$
-        text: 'structured logging message should be capitalized: "garden(er-apiserver|er-controller-manager|er-admission-controller|er-operator|er-resource-manager|let)'
-      - path: (.+)\.go$
         text: Error return value of `testEnv.*` is not checked
+      - path: pkg/controller/provider/remote/handler\.go$
+        text: 'Will be supported throughout 1.x.' # use grpc.WithAuthority instead
+      - path: pkg/server/remote/embed/dynamictransportcreds\.go$
+        text: 'Will be supported throughout 1.x.' # use grpc.WithAuthority instead
+      - path: pkg/dns/provider/lookupprocessor\.go$
+        text: 'netErr.Temporary has been deprecated since Go 1.18'
     paths:
       - zz_generated.*\.go$
       - test/functional/config

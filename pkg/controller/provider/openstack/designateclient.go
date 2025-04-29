@@ -101,7 +101,6 @@ func createDesignateServiceClient(logger logger.LogContext, clientAuthConfig *cl
 			return nil, err
 		}
 		tlscfg.Certificates = []tls.Certificate{cert}
-		tlscfg.BuildNameToCertificate()
 	}
 
 	transport := &http.Transport{

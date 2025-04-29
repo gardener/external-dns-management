@@ -15,6 +15,7 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
 	googledns "google.golang.org/api/dns/v1"
+	"google.golang.org/api/option"
 	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -68,7 +69,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	h.client = oauth2.NewClient(h.ctx, h.credentials.TokenSource)
 	// h.client=cfg.Client(ctx)
 
-	h.service, err = googledns.New(h.client)
+	h.service, err = googledns.NewService(h.ctx, option.WithHTTPClient(h.client))
 	if err != nil {
 		return nil, err
 	}
