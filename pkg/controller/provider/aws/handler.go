@@ -41,7 +41,7 @@ type AWSConfig struct {
 var _ provider.DNSHandler = &Handler{}
 
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
-	advancedConfig := c.Options.AdvancedOptions.GetAdvancedConfig()
+	advancedConfig := c.Options.GetAdvancedConfig()
 	c.Logger.Infof("advanced options: %s", advancedConfig)
 
 	awsConfig := AWSConfig{BatchSize: advancedConfig.BatchSize}
@@ -137,7 +137,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
-	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
+	blockedZones := h.config.Options.GetBlockedZones()
 
 	rt := provider.M_LISTZONES
 	var zones provider.DNSHostedZones

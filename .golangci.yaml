@@ -26,6 +26,12 @@ linters:
       - linters:
           - staticcheck
         text: 'SA1019:'
+      - linters:
+          - staticcheck
+        text: 'ST1001:' # should not use dot imports
+      - linters:
+          - staticcheck
+        text: 'ST1006:' # receiver name should be a reflection of its identity; don't use generic names such as "this" or "self"
       - path: (.+)\.go$
         text: Error return value of .((os\.)?std(out|err)\..*|.*Close|.*Flush|os\.Remove(All)?|.*printf?|os\.(Un)?Setenv). is not checked
       - path: (.+)\.go$

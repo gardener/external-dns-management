@@ -33,7 +33,7 @@ func (this *StatusUpdate) SetInvalid(err error) {
 	if !this.done {
 		this.done = true
 		this.modified = false
-		if err := this.fhandler.RemoveFinalizer(this.Entry.object); err != nil {
+		if err := this.fhandler.RemoveFinalizer(this.object); err != nil {
 			this.logger.Errorf("cannot remove finalizer: %s", err)
 		}
 		_, err := this.UpdateStatus(this.logger, api.STATE_INVALID, err.Error())
@@ -48,8 +48,8 @@ func (this *StatusUpdate) Failed(err error) {
 		this.done = true
 		this.modified = false
 		newState := api.STATE_ERROR
-		if this.Entry.status.State != api.STATE_READY && this.Entry.status.State != api.STATE_STALE {
-			if err2 := this.fhandler.RemoveFinalizer(this.Entry.Object()); err2 != nil {
+		if this.status.State != api.STATE_READY && this.status.State != api.STATE_STALE {
+			if err2 := this.fhandler.RemoveFinalizer(this.Object()); err2 != nil {
 				this.logger.Errorf("cannot remove finalizer: %s", err2)
 			}
 		} else {
@@ -68,12 +68,12 @@ func (this *StatusUpdate) Succeeded() {
 		this.modified = false
 		if this.delete {
 			this.logger.Infof("removing finalizer for deleted entry %s", this.ZonedDNSName())
-			if err2 := this.fhandler.RemoveFinalizer(this.Entry.Object()); err2 != nil {
+			if err2 := this.fhandler.RemoveFinalizer(this.Object()); err2 != nil {
 				this.logger.Errorf("cannot remove finalizer: %s", err2)
 			}
 		} else {
-			this.Entry.activezone = this.ZoneId()
-			if err2 := this.fhandler.SetFinalizer(this.Entry.Object()); err2 != nil {
+			this.activezone = this.ZoneId()
+			if err2 := this.fhandler.SetFinalizer(this.Object()); err2 != nil {
 				this.logger.Errorf("cannot set finalizer: %s", err2)
 			}
 			_, err := this.UpdateStatus(this.logger, api.STATE_READY, "dns entry active")

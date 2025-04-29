@@ -87,7 +87,7 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 	zones := provider.DNSHostedZones{}
 	h.config.RateLimiter.Accept()
 
-	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
+	blockedZones := h.config.Options.GetBlockedZones()
 	pager := h.zonesClient.NewListPager(nil)
 	for pager.More() {
 		h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
@@ -203,19 +203,19 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 		case bs_dryrun:
 			continue
 		case bs_invalidType:
-			err := fmt.Errorf("Unexpected record type: %s", r.Type)
+			err := fmt.Errorf("unexpected record type: %s", r.Type)
 			if r.Done != nil {
 				r.Done.SetInvalid(err)
 			}
 			continue
 		case bs_invalidName:
-			err := fmt.Errorf("Unexpected dns name: %s", *rset.Name)
+			err := fmt.Errorf("unexpected dns name: %s", *rset.Name)
 			if r.Done != nil {
 				r.Done.SetInvalid(err)
 			}
 			continue
 		case bs_invalidRoutingPolicy:
-			err := fmt.Errorf("Routing policies not supported for " + TYPE_CODE)
+			err := fmt.Errorf("routing policies not supported for " + TYPE_CODE)
 			if r.Done != nil {
 				r.Done.SetInvalid(err)
 			}

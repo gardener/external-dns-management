@@ -150,7 +150,7 @@ func (this *state) updateProviderRateLimiter(logger logger.LogContext, obj *dnsu
 	rateLimit := obj.Spec().RateLimit
 	if rateLimit != nil {
 		data, ok := this.providerRateLimiter[obj.ObjectName()]
-		if !ok || data.RateLimit.RequestsPerDay != rateLimit.RequestsPerDay || data.RateLimit.Burst != rateLimit.Burst {
+		if !ok || data.RequestsPerDay != rateLimit.RequestsPerDay || data.Burst != rateLimit.Burst {
 			qps := float32(rateLimit.RequestsPerDay) / 86400
 			data = &rateLimiterData{
 				RateLimit:   *rateLimit,

@@ -46,7 +46,7 @@ type Handler struct {
 var _ provider.DNSHandler = &Handler{}
 
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
-	advancedConfig := c.Options.AdvancedOptions.GetAdvancedConfig()
+	advancedConfig := c.Options.GetAdvancedConfig()
 	c.Logger.Infof("advanced options: %s", advancedConfig)
 
 	h := &Handler{

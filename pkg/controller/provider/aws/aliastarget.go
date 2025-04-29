@@ -52,7 +52,7 @@ func buildResourceRecordSetForAliasTarget(ctx context.Context, name dns.DNSSetNa
 	target := dns.NormalizeHostname(rset.Records[0].Value)
 	hostedZone := mapping.CanonicalHostedZone(target)
 	if hostedZone == "" {
-		return nil, fmt.Errorf("Corrupted alias record set")
+		return nil, fmt.Errorf("corrupted alias record set")
 	}
 	aliasTarget := &route53types.AliasTarget{
 		DNSName:              aws.String(target),
