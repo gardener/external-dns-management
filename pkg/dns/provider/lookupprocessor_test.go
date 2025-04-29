@@ -304,7 +304,9 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		time.Sleep(10 * time.Millisecond)
 		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "not-existing-host"), 1*time.Millisecond)
 		mlh.lock.Lock()
-		mlh.lookupMap["host2"].ips[0] = changedIP
+		mlh.lookupMap["host2"] = mockLookupHostResult{
+			ips: []net.IP{changedIP},
+		}
 		mlh.lock.Unlock()
 		time.Sleep(20 * time.Millisecond)
 		cancel()
