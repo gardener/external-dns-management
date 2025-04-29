@@ -71,8 +71,8 @@ func (lh *mockLookupHost) LookupHost(hostname string) ([]net.IP, error) {
 			Server:    "mock",
 		}
 	}
-	lh.lock.Unlock()
 	result, ok := lh.lookupMap[hostname]
+	lh.lock.Unlock()
 	if !ok {
 		return nil, &net.DNSError{
 			Err:        "no such host",
