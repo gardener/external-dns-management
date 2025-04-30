@@ -186,22 +186,22 @@ func (this *Execution) tryFixChanges(ctx context.Context, message string, change
 	var unclear []*Change
 outer:
 	for _, change := range changes {
-		switch change.Change.Action {
+		switch change.Action {
 		case route53types.ChangeActionDelete:
 			for _, m := range submatchNotFound {
-				if dns.NormalizeHostname(m[1]) == dns.NormalizeHostname(*change.Change.ResourceRecordSet.Name) && m[2] == string(change.Change.ResourceRecordSet.Type) {
+				if dns.NormalizeHostname(m[1]) == dns.NormalizeHostname(*change.ResourceRecordSet.Name) && m[2] == string(change.ResourceRecordSet.Type) {
 					this.Infof("Ignoring already deleted record: %s (%s)",
-						*change.Change.ResourceRecordSet.Name, change.Change.ResourceRecordSet.Type)
+						*change.ResourceRecordSet.Name, change.ResourceRecordSet.Type)
 					succeeded = append(succeeded, change)
 					continue outer
 				}
 			}
 		case route53types.ChangeActionCreate:
 			for _, m := range submatchExists {
-				if dns.NormalizeHostname(m[1]) == dns.NormalizeHostname(*change.Change.ResourceRecordSet.Name) && m[2] == string(change.Change.ResourceRecordSet.Type) {
+				if dns.NormalizeHostname(m[1]) == dns.NormalizeHostname(*change.ResourceRecordSet.Name) && m[2] == string(change.ResourceRecordSet.Type) {
 					if this.isFetchedRecordSetEqual(ctx, change) {
 						this.Infof("Ignoring already created record: %s (%s)",
-							*change.Change.ResourceRecordSet.Name, change.Change.ResourceRecordSet.Type)
+							*change.ResourceRecordSet.Name, change.ResourceRecordSet.Type)
 						succeeded = append(succeeded, change)
 						continue outer
 					}
@@ -233,13 +233,13 @@ func (this *Execution) isFetchedRecordSetEqual(ctx context.Context, change *Chan
 		HostedZoneId:          aws.String(this.zone.Id().ID),
 		MaxItems:              aws.Int32(1),
 		StartRecordIdentifier: nil,
-		StartRecordName:       change.Change.ResourceRecordSet.Name,
-		StartRecordType:       change.Change.ResourceRecordSet.Type,
+		StartRecordName:       change.ResourceRecordSet.Name,
+		StartRecordType:       change.ResourceRecordSet.Type,
 	})
 	if err != nil || len(output.ResourceRecordSets) == 0 {
 		return false
 	}
-	crrs := change.Change.ResourceRecordSet
+	crrs := change.ResourceRecordSet
 	orrs := output.ResourceRecordSets[0]
 	if dns.NormalizeHostname(*crrs.Name) != dns.NormalizeHostname(*orrs.Name) || crrs.Type != orrs.Type || !safeCompareInt64(crrs.TTL, orrs.TTL) || len(crrs.ResourceRecords) != len(orrs.ResourceRecords) {
 		return false
@@ -267,7 +267,7 @@ func limitChangeSet(changesByName map[dns.DNSSetName][]*Change, max int) [][]*Ch
 	batch := make([]*Change, 0)
 	for _, changes := range changesByName {
 		for _, change := range changes {
-			if change.Change.Action == route53types.ChangeActionDelete {
+			if change.Action == route53types.ChangeActionDelete {
 				batch, batches = addLimited(change, batch, batches, max)
 			} else {
 				arr := updateChanges[change.UpdateGroup]

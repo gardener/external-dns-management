@@ -178,7 +178,7 @@ func (this *AccountCache) Get(logger logger.LogContext, provider *dnsutils.DNSPr
 		a = NewDNSAccount(props, nil, hash)
 		syncPeriod := state.GetContext().GetPoolPeriod("dns")
 		if syncPeriod == nil {
-			return nil, fmt.Errorf("Pool dns not found")
+			return nil, fmt.Errorf("pool dns not found")
 		}
 		cacheFactory := ZoneCacheFactory{
 			context:               state.GetContext().GetContext(),

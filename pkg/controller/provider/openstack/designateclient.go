@@ -65,7 +65,7 @@ type clientAuthConfig struct {
 func createDesignateServiceClient(logger logger.LogContext, clientAuthConfig *clientAuthConfig) (*gophercloud.ServiceClient, error) {
 	clientOpts := new(clientconfig.ClientOpts)
 	clientOpts.AuthInfo = &clientAuthConfig.AuthInfo
-	if clientAuthConfig.AuthInfo.ApplicationCredentialSecret != "" {
+	if clientAuthConfig.ApplicationCredentialSecret != "" {
 		clientOpts.AuthType = clientconfig.AuthV3ApplicationCredential
 	}
 	clientOpts.EnvPrefix = "_NEVER_OVERWRITE_FROM_ENV_"
@@ -101,7 +101,6 @@ func createDesignateServiceClient(logger logger.LogContext, clientAuthConfig *cl
 			return nil, err
 		}
 		tlscfg.Certificates = []tls.Certificate{cert}
-		tlscfg.BuildNameToCertificate()
 	}
 
 	transport := &http.Transport{

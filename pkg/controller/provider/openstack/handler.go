@@ -140,7 +140,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
-	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
+	blockedZones := h.config.Options.GetBlockedZones()
 	hostedZones := provider.DNSHostedZones{}
 
 	zoneHandler := func(zone *zones.Zone) error {
@@ -188,7 +188,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 
 	h.config.RateLimiter.Accept()
 	if err := h.client.ForEachRecordSet(zone.Id().ID, recordSetHandler); err != nil {
-		return nil, fmt.Errorf("Listing DNS zones failed for %s. Details: %s", zone.Id(), err.Error())
+		return nil, fmt.Errorf("listing DNS zones failed for %s. Details: %s", zone.Id(), err.Error())
 	}
 
 	return provider.NewDNSZoneState(dnssets), nil
@@ -211,7 +211,7 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 			continue
 		}
 		if status == bsInvalidRoutingPolicy {
-			err := fmt.Errorf("Routing policies unsupported for " + TYPE_CODE)
+			err := fmt.Errorf("routing policies unsupported for " + TYPE_CODE)
 			if r.Done != nil {
 				r.Done.SetInvalid(err)
 			}

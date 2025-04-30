@@ -179,7 +179,7 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 		return nil, err
 	}
 
-	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
+	blockedZones := h.config.Options.GetBlockedZones()
 	zones := provider.DNSHostedZones{}
 	for _, z := range raw {
 		if blockedZones.Contains(z.Ref) {

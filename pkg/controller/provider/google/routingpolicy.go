@@ -212,12 +212,12 @@ func extractRoutingPolicy(set *dns.DNSSet) (*googleRoutingPolicyData, error) {
 		keys = []string{keyWeight}
 		index, err = strconv.Atoi(set.Name.SetIdentifier)
 		if index < 0 || index >= routingPolicyMaxIndices || err != nil {
-			return nil, fmt.Errorf("For %s with weighted routing policy, the setIdentifier must be an number >= 0 and < %d, but got: %s", TYPE_CODE, routingPolicyMaxIndices, set.Name.SetIdentifier)
+			return nil, fmt.Errorf("for %s with weighted routing policy, the setIdentifier must be an number >= 0 and < %d, but got: %s", TYPE_CODE, routingPolicyMaxIndices, set.Name.SetIdentifier)
 		}
 	case dns.RoutingPolicyGeoLocation:
 		keys = []string{keyLocation}
 		if set.Name.SetIdentifier != set.RoutingPolicy.Parameters[keyLocation] {
-			return nil, fmt.Errorf("For %s with geolocation routing policy, the setIdentifier must be identical to the location, but: %s != %s", TYPE_CODE, set.Name.SetIdentifier, set.RoutingPolicy.Parameters[keyLocation])
+			return nil, fmt.Errorf("for %s with geolocation routing policy, the setIdentifier must be identical to the location, but: %s != %s", TYPE_CODE, set.Name.SetIdentifier, set.RoutingPolicy.Parameters[keyLocation])
 		}
 	default:
 		return nil, fmt.Errorf("unsupported routing policy: %s", set.RoutingPolicy.Type)
@@ -306,7 +306,7 @@ func describeRoutingPolicy(rrset *googledns.ResourceRecordSet) string {
 		buf := new(bytes.Buffer)
 		for i, item := range rrset.RoutingPolicy.Wrr.Items {
 			if !isWrrPlaceHolderItem(rrset.Type, item) {
-				buf.WriteString(fmt.Sprintf("wrr:[%d]%.1f:%s;", i, item.Weight, strings.Join(item.Rrdatas, ",")))
+				fmt.Fprintf(buf, "wrr:[%d]%.1f:%s;", i, item.Weight, strings.Join(item.Rrdatas, ","))
 			}
 		}
 		return buf.String()
@@ -315,7 +315,7 @@ func describeRoutingPolicy(rrset *googledns.ResourceRecordSet) string {
 	if rrset.RoutingPolicy.Geo != nil {
 		buf := new(bytes.Buffer)
 		for _, item := range rrset.RoutingPolicy.Geo.Items {
-			buf.WriteString(fmt.Sprintf("geo:%s:%s;", item.Location, strings.Join(item.Rrdatas, ",")))
+			fmt.Fprintf(buf, "geo:%s:%s;", item.Location, strings.Join(item.Rrdatas, ","))
 		}
 		return buf.String()
 	}

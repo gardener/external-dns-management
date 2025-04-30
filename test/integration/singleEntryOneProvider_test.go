@@ -109,7 +109,7 @@ var _ = Describe("SingleEntryOneProvider", func() {
 		if err == nil {
 			Fail("delete must fail, as deleting mock DNS record has failed")
 		}
-		Ω(err.Error()).Should(ContainSubstring("Timeout"))
+		Ω(err.Error()).Should(ContainSubstring("timeout during check"))
 		err = testEnv.MockInMemoryHasEntry(e)
 		Ω(err).ShouldNot(HaveOccurred())
 

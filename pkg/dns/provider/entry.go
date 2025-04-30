@@ -653,7 +653,7 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 			mod.Modify(o.AcknowledgeRoutingPolicy(nil))
 		}
 		mod.AssureInt64Value(&b.ObservedGeneration, o.GetGeneration())
-		if !(this.status.State == api.STATE_STALE && this.status.State == state) {
+		if this.status.State != api.STATE_STALE || this.status.State != state {
 			mod.AssureStringPtrValue(&b.Message, msg)
 			this.status.Message = &msg
 		}

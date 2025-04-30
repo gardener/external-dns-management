@@ -71,8 +71,8 @@ func (lh *mockLookupHost) LookupHost(hostname string) ([]net.IP, error) {
 			Server:    "mock",
 		}
 	}
-	lh.lock.Unlock()
 	result, ok := lh.lookupMap[hostname]
+	lh.lock.Unlock()
 	if !ok {
 		return nil, &net.DNSError{
 			Err:        "no such host",
@@ -281,9 +281,11 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		time.Sleep(30 * time.Millisecond)
 		cancel()
 
+		mlh.lock.Lock()
 		count1 := mlh.lookupCount["host1"]
 		count3a := mlh.lookupCount["host3a"]
 		count3c := mlh.lookupCount["host3c"]
+		mlh.lock.Unlock()
 		expectCountBetween("count1", count1, 10, 20)
 		expectCountBetween("count3a", count3a, 10, 20)
 		expectCountBetween("count3c-count3a", count3c-count3a, -1, 1)
@@ -302,7 +304,9 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		time.Sleep(10 * time.Millisecond)
 		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "not-existing-host"), 1*time.Millisecond)
 		mlh.lock.Lock()
-		mlh.lookupMap["host2"].ips[0] = changedIP
+		mlh.lookupMap["host2"] = mockLookupHostResult{
+			ips: []net.IP{changedIP},
+		}
 		mlh.lock.Unlock()
 		time.Sleep(20 * time.Millisecond)
 		cancel()

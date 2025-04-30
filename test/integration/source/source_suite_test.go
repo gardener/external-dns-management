@@ -95,7 +95,7 @@ var _ = BeforeSuite(func() {
 		Expect(tc.restConfig).NotTo(BeNil())
 		tc.kubeconfigFile = createKubeconfigFile(tc.restConfig)
 		if i == 0 {
-			os.Setenv("KUBECONFIG", tc.kubeconfigFile)
+			Expect(os.Setenv("KUBECONFIG", tc.kubeconfigFile)).To(Succeed())
 		}
 	}
 
