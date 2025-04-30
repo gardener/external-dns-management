@@ -43,8 +43,8 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 		checkMockDatabaseSize = func(expected int) {
 			dump := mock.TestMock[testRunID].BuildFullDump()
 			for _, zoneDump := range dump.InMemory {
-				switch {
-				case zoneDump.HostedZone.Domain == "first.example.com":
+				switch zoneDump.HostedZone.Domain {
+				case "first.example.com":
 					ExpectWithOffset(1, zoneDump.DNSSets).To(HaveLen(expected), "unexpected number of DNS sets in first.example.com")
 				default:
 					Fail("unexpected zone domain " + zoneDump.HostedZone.Domain)

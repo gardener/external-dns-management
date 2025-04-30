@@ -122,15 +122,15 @@ func (te *TestEnv) WaitForCRDs() error {
 
 	err := awaitCRD(30, "dnsproviders.dns.gardener.cloud")
 	if err != nil {
-		return fmt.Errorf("Wait for CRD failed: %s", err)
+		return fmt.Errorf("wait for CRD failed: %s", err)
 	}
 	err = awaitCRD(30, "dnsentries.dns.gardener.cloud")
 	if err != nil {
-		return fmt.Errorf("Wait for CRD failed: %s", err)
+		return fmt.Errorf("wait for CRD failed: %s", err)
 	}
 	err = awaitCRD(30, "dnsannotations.dns.gardener.cloud")
 	if err != nil {
-		return fmt.Errorf("Wait for CRD failed: %s", err)
+		return fmt.Errorf("wait for CRD failed: %s", err)
 	}
 	return nil
 }
@@ -364,7 +364,7 @@ func (te *TestEnv) CreateProviderEx(providerIndex int, setSpec ProviderSpecSette
 func (te *TestEnv) CreateSecretAndProvider(baseDomain string, index int, options ...ProviderTestOption) (resources.Object, string, string, error) {
 	secret, err := te.CreateSecret(index)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("Creation of secret failed with: %s", err.Error())
+		return nil, "", "", fmt.Errorf("creation of secret failed with: %s", err.Error())
 	}
 	return te.CreateProvider(baseDomain, index, secret.GetName(), options...)
 }
@@ -532,7 +532,7 @@ func (te *TestEnv) FindEntryByOwner(kind, name string) (resources.Object, error)
 	case 1:
 		return objs[0], nil
 	case 0:
-		return nil, fmt.Errorf("Entry for %s of kind %s not found", name, kind)
+		return nil, fmt.Errorf("entry for %s of kind %s not found", name, kind)
 	default:
 		return nil, fmt.Errorf("multiple entries for %s of kind %s", name, kind)
 	}
@@ -1169,9 +1169,9 @@ func (te *TestEnv) AwaitWithTimeout(msg string, check CheckFunc, timeout time.Du
 		time.Sleep(50 * time.Millisecond)
 	}
 	if err != nil {
-		return fmt.Errorf("Timeout during check %s with error %s", msg, err.Error())
+		return fmt.Errorf("timeout during check %s with error %s", msg, err.Error())
 	}
-	return fmt.Errorf("Timeout during check  %s", msg)
+	return fmt.Errorf("timeout during check  %s", msg)
 }
 
 func (te *TestEnv) AwaitProviderDeletion(name string) error {

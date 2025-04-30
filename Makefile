@@ -78,12 +78,11 @@ release:
 
 .PHONY: unittests
 unittests: $(GINKGO)
-	go test -race -timeout=3m ./pkg/... | grep -v 'no test files'
+	hack/go-test.sh -race -timeout=3m ./pkg/...
 
 .PHONY: new-test-integration
 new-test-integration: $(REPORT_COLLECTOR) $(SETUP_ENVTEST)
-	@bash $(GARDENER_HACK_DIR)/test-integration.sh ./test/integration/compound
-	@bash $(GARDENER_HACK_DIR)/test-integration.sh ./test/integration/source
+	@bash $(GARDENER_HACK_DIR)/test-integration.sh ./test/integration/compound ./test/integration/source
 
 .PHONY: test
 test: $(GINKGO) unittests new-test-integration

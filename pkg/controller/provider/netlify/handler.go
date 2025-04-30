@@ -61,7 +61,7 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 }
 
 func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
-	blockedZones := h.config.Options.AdvancedOptions.GetBlockedZones()
+	blockedZones := h.config.Options.GetBlockedZones()
 	rawZones := []models.DNSZone{}
 	{
 		f := func(zone models.DNSZone) (bool, error) {

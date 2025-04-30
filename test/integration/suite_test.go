@@ -59,7 +59,7 @@ var _ = BeforeSuite(func() {
 	Expect(restConfig).ToNot(BeNil())
 
 	kubeconfigFile := createKubeconfigFile(restConfig)
-	os.Setenv("KUBECONFIG", kubeconfigFile)
+	Expect(os.Setenv("KUBECONFIG", kubeconfigFile)).To(Succeed())
 
 	testEnv, err = NewTestEnv(kubeconfigFile, "test")
 	Ω(err).ShouldNot(HaveOccurred())

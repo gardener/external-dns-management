@@ -34,11 +34,11 @@ func init() {
 		istionetworkingv1.AddToScheme,
 		istionetworkingv1alpha3.AddToScheme,
 		istionetworkingv1beta1.AddToScheme,
-		gatewayapisv1.AddToScheme,
-		gatewayapisv1alpha2.AddToScheme,
-		gatewayapisv1beta1.AddToScheme,
 	)
 
 	utilruntime.Must(clusterSchemeBuilder.AddToScheme(ClusterScheme))
+	utilruntime.Must(gatewayapisv1.Install(ClusterScheme))
+	utilruntime.Must(gatewayapisv1alpha2.Install(ClusterScheme))
+	utilruntime.Must(gatewayapisv1beta1.Install(ClusterScheme))
 	apiextensionsinstall.Install(ClusterScheme)
 }

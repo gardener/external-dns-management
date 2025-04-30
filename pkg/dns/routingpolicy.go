@@ -48,7 +48,7 @@ func (p *RoutingPolicy) Clone() *RoutingPolicy {
 func (p *RoutingPolicy) CheckParameterKeys(keys, optionalKeys []string) error {
 	for _, k := range keys {
 		if _, ok := p.Parameters[k]; !ok {
-			return fmt.Errorf("Missing parameter key %s", k)
+			return fmt.Errorf("missing parameter key %s", k)
 		}
 	}
 	if len(keys) != len(p.Parameters) {
@@ -64,7 +64,7 @@ func (p *RoutingPolicy) CheckParameterKeys(keys, optionalKeys []string) error {
 					continue outer
 				}
 			}
-			return fmt.Errorf("Unsupported parameter key %s", k)
+			return fmt.Errorf("unsupported parameter key %s", k)
 		}
 	}
 	return nil

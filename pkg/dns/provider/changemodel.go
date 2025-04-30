@@ -291,7 +291,7 @@ func (this *ChangeModel) Domain() string {
 func (this *ChangeModel) getDefaultProvider() DNSProvider {
 	var oldest DNSProvider
 	for _, p := range this.context.providers {
-		if oldest == nil || oldest.Object().GetCreationTimestamp().Time.After(p.Object().GetCreationTimestamp().Time) {
+		if oldest == nil || oldest.Object().GetCreationTimestamp().After(p.Object().GetCreationTimestamp().Time) {
 			oldest = p
 		}
 	}
