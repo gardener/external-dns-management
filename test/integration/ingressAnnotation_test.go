@@ -49,6 +49,14 @@ var _ = Describe("IngressAnnotation", func() {
 		testEnv.AwaitEntryState(entryObj.GetName(), "Ignored")
 		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "")
 		testEnv.AwaitEntryState(entryObj.GetName(), "Ready")
+		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "reconcile")
+		testEnv.AwaitEntryState(entryObj.GetName(), "Ignored")
+		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "")
+		testEnv.AwaitEntryState(entryObj.GetName(), "Ready")
+		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "full")
+		testEnv.AwaitEntryState(entryObj.GetName(), "Ignored")
+		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "")
+		testEnv.AwaitEntryState(entryObj.GetName(), "Ready")
 
 		// keep old targets if ingress lost its load balancers
 		err = testEnv.PatchIngressLoadBalancer(ingress, "")

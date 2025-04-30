@@ -32,7 +32,7 @@ func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSName
 			}
 		}
 	}
-	ignore := false
+
 	var resolveTargetsToAddresses *bool
 	ipstack := ""
 	set := utils.StringSet{}
@@ -54,23 +54,21 @@ func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSName
 				set.Add(i.IP)
 			}
 		}
-		if svc.Annotations[dns.AnnotationIPStack] != "" {
-			ipstack = svc.Annotations[dns.AnnotationIPStack]
-		}
-		if svc.Annotations["service.beta.kubernetes.io/aws-load-balancer-ip-address-type"] == "dualstack" {
-			ipstack = dns.AnnotationValueIPStackIPDualStack
-		}
-		if v := svc.Annotations[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
-			resolveTargetsToAddresses = ptr.To(v == "true")
-		}
-		if v := svc.Annotations[dns.AnnotationIgnore]; v != "" {
-			ignore = v == "true"
-		}
 	}
+	if svc.Annotations[dns.AnnotationIPStack] != "" {
+		ipstack = svc.Annotations[dns.AnnotationIPStack]
+	}
+	if svc.Annotations["service.beta.kubernetes.io/aws-load-balancer-ip-address-type"] == "dualstack" {
+		ipstack = dns.AnnotationValueIPStackIPDualStack
+	}
+	if v := svc.Annotations[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
+		resolveTargetsToAddresses = ptr.To(v == "true")
+	}
+
 	return &source.TargetExtraction{
 		Targets:                   set,
 		IPStack:                   ipstack,
 		ResolveTargetsToAddresses: resolveTargetsToAddresses,
-		Ignore:                    ignore,
+		Ignore:                    svc.Annotations[dns.AnnotationIgnore],
 	}, nil
 }

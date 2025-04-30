@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -38,6 +39,7 @@ var (
 	testEnv                  *TestEnv
 	testEnv2                 *TestEnv
 	testCerts                *certFileAndSecret
+	dnsDelay                 = 2 * time.Second
 )
 
 func TestIntegration(t *testing.T) {
@@ -82,6 +84,7 @@ var _ = BeforeSuite(func() {
 		"--reschedule-delay", "15s",
 		"--lock-status-check-period", "5s",
 		"--pool.size", "10",
+		"--dns-delay", "2s",
 	}
 	go runControllerManager(args)
 

@@ -472,9 +472,12 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 		resources.RemoveAnnotation(entry, dns.AnnotationIPStack)
 	}
 	entry.Spec.ResolveTargetsToAddresses = info.ResolveTargetsToAddresses
-	if info.Ignore {
-		resources.SetAnnotation(entry, dns.AnnotationIgnore, "true")
-	} else {
+	switch info.Ignore {
+	case dns.AnnotationIgnoreValueTrue, dns.AnnotationIgnoreValueReconcile:
+		resources.SetAnnotation(entry, dns.AnnotationIgnore, dns.AnnotationIgnoreValueReconcile)
+	case dns.AnnotationIgnoreValueFull:
+		resources.SetAnnotation(entry, dns.AnnotationIgnore, dns.AnnotationIgnoreValueFull)
+	default:
 		resources.RemoveAnnotation(entry, dns.AnnotationIgnore)
 	}
 
@@ -568,9 +571,12 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 		} else {
 			mod.Modify(resources.RemoveAnnotation(o, dns.AnnotationIPStack))
 		}
-		if info.Ignore {
-			mod.Modify(resources.SetAnnotation(o, dns.AnnotationIgnore, "true"))
-		} else {
+		switch info.Ignore {
+		case dns.AnnotationIgnoreValueTrue, dns.AnnotationIgnoreValueReconcile:
+			mod.Modify(resources.SetAnnotation(o, dns.AnnotationIgnore, dns.AnnotationIgnoreValueReconcile))
+		case dns.AnnotationIgnoreValueFull:
+			mod.Modify(resources.SetAnnotation(o, dns.AnnotationIgnore, dns.AnnotationIgnoreValueFull))
+		default:
 			mod.Modify(resources.RemoveAnnotation(o, dns.AnnotationIgnore))
 		}
 
