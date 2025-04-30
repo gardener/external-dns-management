@@ -238,8 +238,13 @@ metadata:
     dns.gardener.cloud/ttl: "500"
     # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
     #dns.gardener.cloud/class: garden
+    #service.beta.kubernetes.io/aws-load-balancer-ip-address-type: dualstack   # AWS-route 53 only: enable both A and AAAA alias targets
+    #dns.gardener.cloud/ip-stack: dual-stack                                   # AWS-route 53 only: alternative way to enable A and AAAA alias targets
+    #dns.gardener.cloud/resolve-targets-to-addresses: "true"
     # To temporarily skip reconciliation of created entries
-    #dns.gardener.cloud/ignore: "true"
+    #dns.gardener.cloud/ignore: "reconcile" # or "true"
+    # To skip reconciliation and cleanup of DNS records on deletion
+    #dns.gardener.cloud/ignore: "full"
   name: test-service
   namespace: default
 spec:
@@ -251,6 +256,13 @@ spec:
   sessionAffinity: None
   type: LoadBalancer
 ```
+
+The annotation `dns.gardener.cloud/ignore` has multiple values.
+With value `reconcile` or `true` the entry is not reconciled, i.e., the existing DNS records are left untouched on updates of the load balancer addresses.
+But on deleting of the `Service` object, the DNS records are cleaned up. 
+If you want to move the service without intermediate deletion of the DNS records (e.g. to another namespace or cluster), you may use the value `full`.
+In this case, the DNS records are left untouched, even if the `Service` object is deleted.
+Please note that inproper use may result in orphaned DNS records in this case.
 
 #### `A` DNS records with alias targets for provider type AWS-Route53 and AWS load balancers
 
@@ -297,7 +309,9 @@ metadata:
     # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
     #dns.gardener.cloud/class: garden
     # To temporarily skip reconciliation of created entries
-    #dns.gardener.cloud/ignore: "true"
+    #dns.gardener.cloud/ignore: "reconcile" # or "true"
+    # To skip reconciliation and cleanup of DNS records on deletion
+    #dns.gardener.cloud/ignore: "full"
   name: my-gateway
   namespace: default
 spec:
@@ -363,7 +377,9 @@ metadata:
     # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
     #dns.gardener.cloud/class: garden
     # To temporarily skip reconciliation of created entries
-    #dns.gardener.cloud/ignore: "true"
+    #dns.gardener.cloud/ignore: "reconcile" # or "true"
+    # To skip reconciliation and cleanup of DNS records on deletion
+    #dns.gardener.cloud/ignore: "full"
   name: my-gateway
   namespace: default
 spec:

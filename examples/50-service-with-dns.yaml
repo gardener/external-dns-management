@@ -10,7 +10,9 @@ metadata:
     #dns.gardener.cloud/ip-stack: dual-stack                                   # AWS-route 53 only: alternative way to enable A and AAAA alias targets
     #dns.gardener.cloud/resolve-targets-to-addresses: "true"
     # To temporarily skip reconciliation of created entries
-    #dns.gardener.cloud/ignore: "true"
+    #dns.gardener.cloud/ignore: "reconcile" # or "true"
+    # To skip reconciliation and cleanup of DNS records on deletion
+    #dns.gardener.cloud/ignore: "full"
   name: test-service
   namespace: default
 spec:
