@@ -23,5 +23,5 @@ Currently the available states are:
 - `Invalid` means there is a conflict with another DNS entry or owner. See `message` for details in this case.
 - `Stale` means the DNS records in the backend service are existing but there is a problem with the provider. See `message` for details in this case.
 - `Deleting` means the deletion of the DNS records in the DNS backend service is in progress.
-- `Ignored` means the entry is annotated with `dns.gardener.cloud/ignore=true` and reconciliation is skipped.
+- `Ignored` means the entry is annotated with `dns.gardener.cloud/ignore=true|reconcile|full`. For values `true` and `reconcile`, the reconciliation is skipped. `true` is an alias for `reconcile`. For value `full` both reconciliation and deletion operations are skipped. 
 - An empty state ` ` means that no matching provider has been found.

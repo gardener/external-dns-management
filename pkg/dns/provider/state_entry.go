@@ -425,11 +425,16 @@ func (this *state) IsUpdateOperationsBlocked(entryName resources.ObjectName) boo
 }
 
 func ignoredByAnnotation(object *dnsutils.DNSEntryObject) (bool, string) {
-	if !object.IsDeleting() && object.GetAnnotations()[dns.AnnotationIgnore] == "true" {
-		return true, dns.AnnotationIgnore
+	switch value := object.GetAnnotations()[dns.AnnotationIgnore]; value {
+	case dns.AnnotationIgnoreValueTrue, dns.AnnotationIgnoreValueReconcile:
+		if !object.IsDeleting() {
+			return true, dns.AnnotationIgnore + "=" + value
+		}
+	case dns.AnnotationIgnoreValueFull:
+		return true, dns.AnnotationIgnore + "=" + value
 	}
 	if object.GetAnnotations()[dns.AnnotationHardIgnore] == "true" {
-		return true, dns.AnnotationHardIgnore
+		return true, dns.AnnotationHardIgnore + "=true"
 	}
 	return false, ""
 }

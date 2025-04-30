@@ -29,7 +29,7 @@ type DNSInfo struct {
 	RoutingPolicy             *v1alpha1.RoutingPolicy
 	IPStack                   string
 	ResolveTargetsToAddresses *bool
-	Ignore                    bool
+	Ignore                    string
 }
 
 type DNSFeedback interface {
@@ -63,7 +63,7 @@ type TargetExtraction struct {
 	Texts                     utils.StringSet
 	IPStack                   string
 	ResolveTargetsToAddresses *bool
-	Ignore                    bool
+	Ignore                    string
 }
 
 type (

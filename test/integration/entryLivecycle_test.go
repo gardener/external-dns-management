@@ -38,19 +38,19 @@ var _ = Describe("EntryLivecycle", func() {
 			if entry.Annotations == nil {
 				entry.Annotations = map[string]string{}
 			}
-			entry.Annotations["dns.gardener.cloud/ignore"] = "true"
+			entry.Annotations["dns.gardener.cloud/ignore"] = "reconcile"
 			entry.Spec.Targets[0] = newTarget
 			return nil
 		})
 		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitEntryState(e.GetName(), "Ignored", "")
+		err = testEnv.AwaitEntryState(e.GetName(), "Ignored")
 		Ω(err).ShouldNot(HaveOccurred())
 		e, err = testEnv.GetEntry(e.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(UnwrapEntry(e).Status.Targets).To(Equal([]string{orgTarget}))
 		err = testEnv.AnnotateObject(e, "dns.gardener.cloud/ignore", "")
 		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitEntryState(e.GetName(), "Ready", "")
+		err = testEnv.AwaitEntryState(e.GetName(), "Ready")
 		Ω(err).ShouldNot(HaveOccurred())
 		e, err = testEnv.GetEntry(e.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
@@ -62,7 +62,7 @@ var _ = Describe("EntryLivecycle", func() {
 		err = testEnv.AwaitEntryState(e.GetName(), "Error", "")
 		Ω(err).ShouldNot(HaveOccurred())
 
-		time.Sleep(10 * time.Second)
+		time.Sleep(dnsDelay)
 
 		err = testEnv.AwaitEntryState(e.GetName(), "Error")
 		Ω(err).ShouldNot(HaveOccurred())
@@ -87,21 +87,65 @@ var _ = Describe("EntryLivecycle", func() {
 
 		checkEntry(e, pr)
 
+		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).ShouldNot(HaveOccurred())
+
 		err = testEnv.DeleteProviderAndSecret(pr)
 		Ω(err).ShouldNot(HaveOccurred())
+	})
 
-		err = testEnv.AwaitEntryState(e.GetName(), "Error", "")
+	It("has correct behaviour for ignored entries", func() {
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		time.Sleep(10 * time.Second)
+		defer testEnv.DeleteProviderAndSecret(pr)
 
-		err = testEnv.AwaitEntryState(e.GetName(), "Error")
+		e0, err := testEnv.CreateEntry(0, domain)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = testEnv.AwaitFinalizers(e)
+		e1, err := testEnv.CreateEntry(1, domain)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = testEnv.DeleteEntryAndWait(e)
+		checkProvider(pr)
+
+		checkEntry(e0, pr)
+		checkEntry(e1, pr)
+
+		_, err = testEnv.UpdateEntry(e0, func(entry *v1alpha1.DNSEntry) error {
+			if entry.Annotations == nil {
+				entry.Annotations = map[string]string{}
+			}
+			entry.Annotations["dns.gardener.cloud/ignore"] = "reconcile"
+			return nil
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+
+		_, err = testEnv.UpdateEntry(e1, func(entry *v1alpha1.DNSEntry) error {
+			if entry.Annotations == nil {
+				entry.Annotations = map[string]string{}
+			}
+			entry.Annotations["dns.gardener.cloud/ignore"] = "full"
+			return nil
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = testEnv.AwaitEntryState(e0.GetName(), "Ignored")
+		Ω(err).ShouldNot(HaveOccurred())
+		err = testEnv.AwaitEntryState(e1.GetName(), "Ignored")
+		Ω(err).ShouldNot(HaveOccurred())
+
+		Ω(testEnv.MockInMemoryHasEntry(e0)).ShouldNot(HaveOccurred())
+		Ω(testEnv.MockInMemoryHasEntry(e1)).ShouldNot(HaveOccurred())
+
+		err = testEnv.DeleteEntryAndWait(e0)
+		Ω(err).ShouldNot(HaveOccurred())
+		err = testEnv.DeleteEntryAndWait(e1)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		Ω(testEnv.MockInMemoryHasNotEntry(e0)).ShouldNot(HaveOccurred())
+		Ω(testEnv.MockInMemoryHasEntry(e1)).ShouldNot(HaveOccurred())
+
+		err = testEnv.DeleteProviderAndSecret(pr)
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
