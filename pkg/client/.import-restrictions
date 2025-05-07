@@ -1,0 +1,7 @@
+rules:
+  - selectorRegexp: github[.]com/gardener/external-dns-management
+    allowedPrefixes:
+      - ''
+    forbiddenPrefixes:
+      - github.com/gardener/external-dns-management/cmd/dnsman2
+      - github.com/gardener/external-dns-management/pkg/dnsman2

@@ -36,11 +36,15 @@ clean:
 	@rm -rf /pkg/client/dns
 
 .PHONY: check
-check: sast-report fastcheck
+check: sast-report fastcheck check-imports
 
 .PHONY: check-generate
 check-generate:
 	@bash $(GARDENER_HACK_DIR)/check-generate.sh $(REPO_ROOT)
+
+.PHONY: check-imports
+check-imports: $(IMPORT_BOSS)
+	$(IMPORT_BOSS) ./cmd/... ./pkg/... ./test/...
 
 .PHONY: fastcheck
 fastcheck: format $(GOIMPORTS) $(GOLANGCI_LINT)
