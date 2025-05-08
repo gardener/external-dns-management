@@ -6,6 +6,7 @@ package source
 
 import (
 	"sync"
+	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
@@ -16,6 +17,9 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 )
 
+// feedbackInterval is the interval for reporting feedback events.
+const feedbackInterval = 15 * time.Minute
+
 ////////////////////////////////////////////////////////////////////////////////
 // Events
 ////////////////////////////////////////////////////////////////////////////////
@@ -23,12 +27,34 @@ import (
 // Events stores events per cluster object key.
 type Events struct {
 	lock   sync.Mutex
-	Events map[resources.ClusterObjectKey]map[string]string
+	Events map[resources.ClusterObjectKey]map[string]TimestampedMessage
+}
+
+// TimestampedMessage stores a message with a timestamp.
+type TimestampedMessage struct {
+	Message   string
+	Timestamp time.Time
+}
+
+// NewTimestampedMessage creates a new TimestampedMessage with the current time.
+func NewTimestampedMessage(msg string) TimestampedMessage {
+	return TimestampedMessage{
+		Message:   msg,
+		Timestamp: time.Now(),
+	}
+}
+
+// IsOutdated checks if the message is outdated based on the given duration.
+func (m TimestampedMessage) IsOutdated(duration time.Duration) bool {
+	if m.Message == "" {
+		return false
+	}
+	return m.Timestamp.Add(duration).Before(time.Now())
 }
 
 // NewEvents creates a new Events object.
 func NewEvents() *Events {
-	return &Events{Events: map[resources.ClusterObjectKey]map[string]string{}}
+	return &Events{Events: map[resources.ClusterObjectKey]map[string]TimestampedMessage{}}
 }
 
 func (this *Events) HasEvents(key resources.ClusterObjectKey) bool {
@@ -37,12 +63,12 @@ func (this *Events) HasEvents(key resources.ClusterObjectKey) bool {
 	return this.Events[key] != nil
 }
 
-func (this *Events) GetEvents(key resources.ClusterObjectKey) map[string]string {
+func (this *Events) GetEvents(key resources.ClusterObjectKey) map[string]TimestampedMessage {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	events := this.Events[key]
 	if events == nil {
-		events = map[string]string{}
+		events = map[string]TimestampedMessage{}
 		this.Events[key] = events
 	}
 	return events
