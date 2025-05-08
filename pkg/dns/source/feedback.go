@@ -18,10 +18,10 @@ import (
 
 type EventFeedback struct {
 	source resources.Object
-	events map[string]string
+	events map[string]TimestampedMessage
 }
 
-func NewEventFeedback(obj resources.Object, events map[string]string) DNSFeedback {
+func NewEventFeedback(obj resources.Object, events map[string]TimestampedMessage) DNSFeedback {
 	return &EventFeedback{obj, events}
 }
 
@@ -64,9 +64,9 @@ func (this *EventFeedback) Succeeded(_ logger.LogContext) {
 }
 
 func (this *EventFeedback) event(logger logger.LogContext, dnsname, msg string) {
-	if this.events == nil || msg != this.events[dnsname] {
+	if this.events == nil || msg != this.events[dnsname].Message || this.events[dnsname].IsOutdated(feedbackInterval) {
 		key := this.source.ClusterKey()
-		this.events[dnsname] = msg
+		this.events[dnsname] = NewTimestampedMessage(msg)
 		if dnsname != "" {
 			logger.Infof("event for %q(%s): %s", key, dnsname, msg)
 			this.source.Event(corev1.EventTypeNormal, "dns-annotation",

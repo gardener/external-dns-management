@@ -104,12 +104,18 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 						msg = fmt.Errorf("%s: %s", msg, *s.Message)
 					}
 					fb.Failed(logger, n, msg, &stateCopy)
+					if stat.IsSucceeded() {
+						stat = stat.RescheduleAfter(feedbackInterval)
+					}
 				case api.STATE_INVALID:
 					msg := fmt.Errorf("dns entry invalid")
 					if s.Message != nil {
 						msg = fmt.Errorf("%s: %s", msg, *s.Message)
 					}
 					fb.Invalid(logger, n, msg, &stateCopy)
+					if stat.IsSucceeded() {
+						stat = stat.RescheduleAfter(feedbackInterval)
+					}
 				case api.STATE_PENDING:
 					msg := "dns entry pending"
 					if s.Message != nil {
