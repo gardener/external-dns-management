@@ -50,7 +50,7 @@ var _ = Describe("ValidateServiceAccountJSON", func() {
 
 	for _, tt := range tests {
 		It(tt.name, func() {
-			err := validateServiceAccountJSON([]byte(tt.data))
+			_, err := validateServiceAccountJSON([]byte(tt.data))
 			if tt.wantErr {
 				Expect(err).To(HaveOccurred())
 			} else {
