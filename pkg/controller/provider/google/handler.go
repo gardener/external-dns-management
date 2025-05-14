@@ -13,8 +13,8 @@ import (
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"golang.org/x/oauth2"
 	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/jwt"
 	googledns "google.golang.org/api/dns/v1"
 	"google.golang.org/api/option"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -28,11 +28,21 @@ type Handler struct {
 	provider.DefaultDNSHandler
 	config      provider.DNSHandlerConfig
 	cache       provider.ZoneCache
-	credentials *google.Credentials
+	jwtConfig   *jwt.Config
+	info        lightCredentialsFile
 	client      *http.Client
 	ctx         context.Context
 	service     *googledns.Service
 	rateLimiter flowcontrol.RateLimiter
+}
+
+type lightCredentialsFile struct {
+	Type string `json:"type"`
+
+	// Service Account fields
+	ClientEmail  string `json:"client_email"`
+	PrivateKeyID string `json:"private_key_id"`
+	ProjectID    string `json:"project_id"`
 }
 
 const epsilon = 0.00001
@@ -48,31 +58,31 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		rateLimiter:       config.RateLimiter,
 	}
 	scopes := []string{
-		//	"https://www.googleapis.com/auth/compute",
-		//	"https://www.googleapis.com/auth/cloud-platform",
 		"https://www.googleapis.com/auth/ndev.clouddns.readwrite",
-		//	"https://www.googleapis.com/auth/devstorage.full_control",
 	}
 
-	json := h.config.Properties["serviceaccount.json"]
-	if json == "" {
+	serviceAccountJSON := h.config.Properties["serviceaccount.json"]
+	if serviceAccountJSON == "" {
 		return nil, fmt.Errorf("'serviceaccount.json' required in secret")
 	}
 
-	// c:=*http.DefaultClient
-	// h.ctx=context.WithValue(config.Context,oauth2.HTTPClient,&c)
 	h.ctx = config.Context
 
-	if err := validateServiceAccountJSON([]byte(json)); err != nil {
+	h.info, err = validateServiceAccountJSON([]byte(serviceAccountJSON))
+	if err != nil {
 		return nil, err
 	}
-	h.credentials, err = google.CredentialsFromJSON(h.ctx, []byte(json), scopes...)
-	// cfg, err:=google.JWTConfigFromJSON([]byte(json))
+
+	config.Logger.Infof("using service account %s", h.info.ClientEmail)
+	config.Logger.Infof("using project id %s", h.info.ProjectID)
+	config.Logger.Infof("using private key id %s", h.info.PrivateKeyID)
+
+	h.jwtConfig, err = google.JWTConfigFromJSON([]byte(serviceAccountJSON), scopes...)
+
 	if err != nil {
 		return nil, fmt.Errorf("serviceaccount is invalid: %s", err)
 	}
-	h.client = oauth2.NewClient(h.ctx, h.credentials.TokenSource)
-	// h.client=cfg.Client(ctx)
+	h.client = h.jwtConfig.Client(h.ctx)
 
 	h.service, err = googledns.NewService(h.ctx, option.WithHTTPClient(h.client))
 	if err != nil {
@@ -115,7 +125,7 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 	}
 
 	h.config.RateLimiter.Accept()
-	if err := h.service.ManagedZones.List(h.credentials.ProjectID).Pages(h.ctx, f); err != nil {
+	if err := h.service.ManagedZones.List(h.info.ProjectID).Pages(h.ctx, f); err != nil {
 		return nil, err
 	}
 
@@ -207,7 +217,7 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 }
 
 func (h *Handler) makeZoneID(name string) string {
-	return fmt.Sprintf("%s/%s", h.credentials.ProjectID, name)
+	return fmt.Sprintf("%s/%s", h.info.ProjectID, name)
 }
 
 func (h *Handler) getResourceRecordSet(project, managedZone, name, typ string) (*googledns.ResourceRecordSet, error) {
@@ -218,24 +228,19 @@ func (h *Handler) getResourceRecordSet(project, managedZone, name, typ string) (
 
 var projectIDRegexp = regexp.MustCompile(`^(?P<project>[a-z][a-z0-9-]{4,28}[a-z0-9])$`)
 
-func validateServiceAccountJSON(data []byte) error {
-	credentials := map[string]interface{}{}
-	if err := json.Unmarshal(data, &credentials); err != nil {
-		return fmt.Errorf("'serviceaccount.json' data field does not contain a valid JSON: %s", err)
+func validateServiceAccountJSON(data []byte) (lightCredentialsFile, error) {
+	var credInfo lightCredentialsFile
+
+	if err := json.Unmarshal(data, &credInfo); err != nil {
+		return credInfo, fmt.Errorf("'serviceaccount.json' data field does not contain a valid JSON: %s", err)
 	}
-	if projectID, ok := credentials["project_id"]; !ok {
-		return fmt.Errorf("'serviceaccount.json' does not contain a 'project_id' field")
-	} else if v, ok := projectID.(string); !ok || !projectIDRegexp.MatchString(v) {
-		return fmt.Errorf("'serviceaccount.json' field 'project_id' is not a valid project")
+	if !projectIDRegexp.MatchString(credInfo.ProjectID) {
+		return credInfo, fmt.Errorf("'serviceaccount.json' field 'project_id' is not a valid project")
 	}
-	value, ok := credentials["type"]
-	if !ok {
-		return fmt.Errorf("'serviceaccount.json' does not contain a 'type' field")
+	if credInfo.Type != "service_account" {
+		return credInfo, fmt.Errorf("'serviceaccount.json' field 'type' is not 'service_account'")
 	}
-	if v, ok := value.(string); !ok || v != "service_account" {
-		return fmt.Errorf("'serviceaccount.json' field 'type' is not 'service_account'")
-	}
-	return nil
+	return credInfo, nil
 }
 
 // SplitZoneID splits the zone id into project id and zone name
