@@ -8,5 +8,4 @@ set -e
 
 echo "Running integration tests..."
 cd "$(dirname "$0")/.."
-echo disabled temporarily
-#make integrationtests
+make integrationtests
