@@ -5,26 +5,30 @@
 package alicloud
 
 import (
-	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
+	alidns "github.com/alibabacloud-go/alidns-20150109/v4/client"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
 )
 
-type Record alidns.Record
+type Record alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord
 
 var _ raw.Record = &Record{}
 
-func (r *Record) GetType() string          { return r.Type }
-func (r *Record) GetId() string            { return r.RecordId }
-func (r *Record) GetDNSName() string       { return GetDNSName(alidns.Record(*r)) }
+func (r *Record) GetType() string          { return ptr.Deref(r.Type, "") }
+func (r *Record) GetId() string            { return ptr.Deref(r.RecordId, "") }
+func (r *Record) GetDNSName() string {
+	return GetDNSName(alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord(*r))
+}
 func (r *Record) GetSetIdentifier() string { return "" }
 func (r *Record) GetValue() string {
-	if r.Type == dns.RS_TXT {
-		return raw.EnsureQuotedText(r.Value)
+	v := ptr.Deref(r.Value, "")
+	if ptr.Deref(r.Type, "") == dns.RS_TXT {
+		return raw.EnsureQuotedText(v)
 	}
-	return r.Value
+	return v
 }
-func (r *Record) GetTTL() int64    { return int64(r.TTL) }
-func (r *Record) SetTTL(ttl int64) { r.TTL = int(ttl) }
+func (r *Record) GetTTL() int64    { return ptr.Deref(r.TTL, 0) }
+func (r *Record) SetTTL(ttl int64) { r.TTL = ptr.To(ttl) }
 func (r *Record) Copy() raw.Record { n := *r; return &n }

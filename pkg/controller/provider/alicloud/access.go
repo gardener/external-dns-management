@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aliyun/alibaba-cloud-sdk-go/sdk/requests"
-	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
+	alidns "github.com/alibabacloud-go/alidns-20150109/v4/client"
+	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
+	"k8s.io/utils/ptr"
+
 	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -17,15 +19,19 @@ import (
 )
 
 var (
-	nullHost        = "@"
-	defaultPageSize = 20
+	nullHost = "@"
+	// defaultPageSize. According to the documentation, the maximum page size is 100.
+	// @see https://www.alibabacloud.com/help/en/dns/api-alidns-2015-01-09-describedomains
+	defaultPageSize int64 = 100
 )
 
-func GetDNSName(r alidns.Record) string {
-	if r.RR == nullHost {
-		return r.DomainName
+func GetDNSName(r alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord) string {
+	rr := ptr.Deref(r.RR, "")
+	domain := ptr.Deref(r.DomainName, "")
+	if rr == nullHost {
+		return domain
 	}
-	return r.RR + "." + r.DomainName
+	return rr + "." + domain
 }
 
 func GetRR(dnsname, domain string) string {
@@ -40,8 +46,8 @@ func GetRR(dnsname, domain string) string {
 }
 
 type Access interface {
-	ListDomains(consume func(domain alidns.Domain) (bool, error)) error
-	ListRecords(zoneID, domain string, consume func(record alidns.Record) (bool, error)) error
+	ListDomains(consume func(domain *alidns.DescribeDomainsResponseBodyDomainsDomain) (bool, error)) error
+	ListRecords(zoneID, domain string, consume func(record *alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord) (bool, error)) error
 
 	raw.Executor
 }
@@ -53,141 +59,160 @@ type access struct {
 }
 
 func NewAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter) (Access, error) {
-	client, err := alidns.NewClientWithAccessKey("cn-shanghai", accessKeyId, accessKeySecret)
+	config := &openapi.Config{
+		AccessKeyId:     &accessKeyId,
+		AccessKeySecret: &accessKeySecret,
+		RegionId:        ptr.To("cn-shanghai"),
+	}
+	client, err := alidns.NewClient(config)
 	if err != nil {
 		return nil, err
 	}
 	return &access{client, metrics, rateLimiter}, nil
 }
 
-func (this *access) nextPageNumber(pageNumber, pageSize, totalCount int) int {
-	if pageNumber*pageSize >= totalCount {
+func (a *access) nextPageNumber(pageNumber *int64, pageSize, totalCount int64) int64 {
+	if pageNumber == nil {
 		return 0
 	}
-	return pageNumber + 1
+	if (*pageNumber)*pageSize >= totalCount {
+		return 0
+	}
+	return (*pageNumber) + 1
 }
 
-func (this *access) ListDomains(consume func(domain alidns.Domain) (bool, error)) error {
-	request := alidns.CreateDescribeDomainsRequest()
-	request.PageSize = requests.NewInteger(defaultPageSize)
-	nextPage := 1
+func (a *access) ListDomains(consume func(domain *alidns.DescribeDomainsResponseBodyDomainsDomain) (bool, error)) error {
+	request := &alidns.DescribeDomainsRequest{}
+	request.PageSize = ptr.To(defaultPageSize)
+	var nextPage int64 = 1
 	rt := provider.M_LISTZONES
 	for {
-		this.metrics.AddGenericRequests(rt, 1)
+		a.metrics.AddGenericRequests(rt, 1)
 		rt = provider.M_PLISTZONES
-		request.PageNumber = requests.NewInteger(nextPage)
-		this.rateLimiter.Accept()
-		resp, err := this.client.DescribeDomains(request)
+		request.PageNumber = ptr.To(nextPage)
+		a.rateLimiter.Accept()
+		resp, err := a.client.DescribeDomains(request)
 		if err != nil {
 			return err
 		}
-		for _, d := range resp.Domains.Domain {
+		if resp.Body == nil || resp.Body.Domains == nil {
+			return fmt.Errorf("unexpected empty response: %v", resp)
+		}
+		for _, d := range resp.Body.Domains.Domain {
 			if cont, err := consume(d); !cont || err != nil {
 				return err
 			}
 		}
-		if nextPage = this.nextPageNumber(resp.PageNumber, defaultPageSize, resp.TotalCount); nextPage == 0 {
+		if nextPage = a.nextPageNumber(resp.Body.PageNumber, defaultPageSize, ptr.Deref(resp.Body.TotalCount, 0)); nextPage == 0 {
 			return nil
 		}
 	}
 }
 
-func (this *access) ListRecords(zoneID, domain string, consume func(record alidns.Record) (bool, error)) error {
-	return this.listRecords(zoneID, domain, consume, nil)
+func (a *access) ListRecords(zoneID, domain string, consume func(record *alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord) (bool, error)) error {
+	return a.listRecords(zoneID, domain, consume, nil)
 }
 
-func (this *access) listRecords(zoneID, domain string, consume func(record alidns.Record) (bool, error),
+func (a *access) listRecords(zoneID, domain string, consume func(record *alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord) (bool, error),
 	requestModifier func(request *alidns.DescribeDomainRecordsRequest),
 ) error {
-	request := alidns.CreateDescribeDomainRecordsRequest()
-	request.DomainName = domain
+	request := &alidns.DescribeDomainRecordsRequest{}
+	request.DomainName = ptr.To(domain)
 	if requestModifier != nil {
 		requestModifier(request)
 	}
-	request.PageSize = requests.NewInteger(defaultPageSize)
-	nextPage := 1
+	request.PageSize = ptr.To(defaultPageSize)
+	var nextPage int64 = 1
 	rt := provider.M_LISTRECORDS
 	for {
-		this.metrics.AddZoneRequests(zoneID, rt, 1)
+		a.metrics.AddZoneRequests(zoneID, rt, 1)
 		rt = provider.M_PLISTRECORDS
-		request.PageNumber = requests.NewInteger(nextPage)
-		this.rateLimiter.Accept()
-		resp, err := this.client.DescribeDomainRecords(request)
+		request.PageNumber = ptr.To(nextPage)
+		a.rateLimiter.Accept()
+		resp, err := a.client.DescribeDomainRecords(request)
 		if err != nil {
 			return err
 		}
-		for _, r := range resp.DomainRecords.Record {
+		if resp.Body == nil || resp.Body.DomainRecords == nil {
+			return fmt.Errorf("unexpected empty response: %v", resp)
+		}
+		for _, r := range resp.Body.DomainRecords.Record {
 			if cont, err := consume(r); !cont || err != nil {
 				return err
 			}
 		}
-		if nextPage = this.nextPageNumber(resp.PageNumber, defaultPageSize, resp.TotalCount); nextPage == 0 {
+		if nextPage = a.nextPageNumber(resp.Body.PageNumber, defaultPageSize, ptr.Deref(resp.Body.TotalCount, 0)); nextPage == 0 {
 			return nil
 		}
 	}
 }
 
-func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) error {
-	a := r.(*Record)
-	req := alidns.CreateAddDomainRecordRequest()
-	req.DomainName = a.DomainName
-	req.RR = a.RR
-	req.Type = a.Type
-	req.TTL = requests.NewInteger(a.TTL)
-	req.Value = a.Value
-	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
-	this.rateLimiter.Accept()
-	_, err := this.client.AddDomainRecord(req)
+func (a *access) CreateRecord(record raw.Record, zone provider.DNSHostedZone) error {
+	r := record.(*Record)
+	req := &alidns.AddDomainRecordRequest{}
+	req.DomainName = r.DomainName
+	req.RR = r.RR
+	req.Type = r.Type
+	req.TTL = r.TTL
+	req.Value = r.Value
+	a.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
+	a.rateLimiter.Accept()
+	_, err := a.client.AddDomainRecord(req)
 	return err
 }
 
-func (this *access) UpdateRecord(r raw.Record, zone provider.DNSHostedZone) error {
-	a := r.(*Record)
-	req := alidns.CreateUpdateDomainRecordRequest()
-	req.RecordId = a.RecordId
-	req.RR = a.RR
-	req.Type = a.Type
-	req.TTL = requests.NewInteger(a.TTL)
-	req.Value = a.Value
-	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
-	this.rateLimiter.Accept()
-	_, err := this.client.UpdateDomainRecord(req)
+func (a *access) UpdateRecord(record raw.Record, zone provider.DNSHostedZone) error {
+	r := record.(*Record)
+	req := &alidns.UpdateDomainRecordRequest{}
+	req.RecordId = r.RecordId
+	req.RR = r.RR
+	req.Type = r.Type
+	req.TTL = r.TTL
+	req.Value = r.Value
+	a.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
+	a.rateLimiter.Accept()
+	_, err := a.client.UpdateDomainRecord(req)
 	return err
 }
 
-func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
-	req := alidns.CreateDeleteDomainRecordRequest()
-	req.RecordId = r.GetId()
-	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
-	this.rateLimiter.Accept()
-	_, err := this.client.DeleteDomainRecord(req)
+func (a *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
+	req := &alidns.DeleteDomainRecordRequest{}
+	req.RecordId = ptr.To(r.GetId())
+	a.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
+	a.rateLimiter.Accept()
+	_, err := a.client.DeleteDomainRecord(req)
 	return err
 }
 
-func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+func (a *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
 	rr := GetRR(dnsName, zone.Domain())
 	requestModifier := func(request *alidns.DescribeDomainRecordsRequest) {
-		request.RRKeyWord = rr
-		request.TypeKeyWord = rtype
+		request.RRKeyWord = ptr.To(rr)
+		request.TypeKeyWord = ptr.To(rtype)
 	}
 
 	rs := raw.RecordSet{}
-	consume := func(record alidns.Record) (bool, error) {
-		a := (*Record)(&record)
-		if a.RR == rr {
-			rs = append(rs, a)
+	consume := func(record *alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord) (bool, error) {
+		if ptr.Deref(record.RR, "") == rr {
+			rs = append(rs, (*Record)(record))
 		}
 		return true, nil
 	}
 
-	err := this.listRecords(zone.Id().ID, zone.Domain(), consume, requestModifier)
+	err := a.listRecords(zone.Id().ID, zone.Domain(), consume, requestModifier)
 	if err != nil {
 		return nil, err
 	}
 	return rs, nil
 }
 
-func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) raw.Record {
+func (a *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) raw.Record {
 	rr := GetRR(fqdn, zone.Domain())
-	return (*Record)(&alidns.Record{RR: rr, Type: rtype, Value: value, DomainName: zone.Domain(), TTL: int(ttl)})
+	return (*Record)(&alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord{
+		RR:         ptr.To(rr),
+		Type:       ptr.To(rtype),
+		Value:      ptr.To(value),
+		DomainName: ptr.To(zone.Domain()),
+		TTL:        ptr.To(ttl),
+	})
 }

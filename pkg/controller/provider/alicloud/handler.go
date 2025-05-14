@@ -5,8 +5,9 @@
 package alicloud
 
 import (
-	"github.com/aliyun/alibaba-cloud-sdk-go/services/alidns"
+	alidns "github.com/alibabacloud-go/alidns-20150109/v4/client"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
@@ -64,13 +65,14 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 
 func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	blockedZones := h.config.Options.GetBlockedZones()
-	raw := []alidns.Domain{}
+	rawZones := []*alidns.DescribeDomainsResponseBodyDomainsDomain{}
 	{
-		f := func(zone alidns.Domain) (bool, error) {
-			if blockedZones.Contains(zone.DomainId) {
-				h.config.Logger.Infof("ignoring blocked zone id: %s", zone.DomainId)
+		f := func(zone *alidns.DescribeDomainsResponseBodyDomainsDomain) (bool, error) {
+			domainID := ptr.Deref(zone.DomainId, "")
+			if blockedZones.Contains(domainID) {
+				h.config.Logger.Infof("ignoring blocked zone id: %s", domainID)
 			} else {
-				raw = append(raw, zone)
+				rawZones = append(rawZones, zone)
 			}
 			return true, nil
 		}
@@ -82,8 +84,10 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 
 	zones := provider.DNSHostedZones{}
 	{
-		for _, z := range raw {
-			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.DomainId, z.DomainName, z.DomainName, false)
+		for _, z := range rawZones {
+			domainID := ptr.Deref(z.DomainId, "")
+			domainName := ptr.Deref(z.DomainName, "")
+			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), domainID, domainName, domainName, false)
 			zones = append(zones, hostedZone)
 		}
 	}
@@ -98,10 +102,9 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	state := raw.NewState()
 
-	f := func(r alidns.Record) (bool, error) {
-		a := (*Record)(&r)
-		state.AddRecord(a)
-		// fmt.Printf("**** found %s %s: %s\n", a.GetType(), a.GetDNSName(), a.GetValue() )
+	f := func(record *alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord) (bool, error) {
+		r := (*Record)(record)
+		state.AddRecord(r)
 		return true, nil
 	}
 	err := h.access.ListRecords(zone.Id().ID, zone.Key(), f)
