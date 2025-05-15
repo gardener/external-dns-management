@@ -10,7 +10,7 @@ report_dir="$(git rev-parse --show-toplevel)"
 
 gosec_report="false"
 gosec_report_parse_flags=""
-exclude_dirs="hack"
+exclude_dirs="hack,local"
 
 parse_flags() {
   while test $# -gt 1; do

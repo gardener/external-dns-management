@@ -5,10 +5,13 @@
 package alicloud
 
 import (
+	"strconv"
+
 	alidns "github.com/alibabacloud-go/alidns-20150109/v4/client"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"k8s.io/utils/ptr"
 
+	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
@@ -104,7 +107,19 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 
 	f := func(record *alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord) (bool, error) {
 		r := (*Record)(record)
-		state.AddRecord(r)
+		if id := r.GetSetIdentifier(); id != "" {
+			switch r.GetType() {
+			case dns.RS_A, dns.RS_AAAA:
+				// ok
+			default:
+				// ignore
+				return true, nil
+			}
+			policy := dns.NewRoutingPolicy(dns.RoutingPolicyWeighted, "weight", strconv.FormatInt(int64(ptr.Deref(r.Weight, 0)), 10))
+			state.AddRecordWithRoutingPolicy(r, policy)
+		} else {
+			state.AddRecord(r)
+		}
 		return true, nil
 	}
 	err := h.access.ListRecords(zone.Id().ID, zone.Key(), f)
@@ -116,7 +131,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	err := raw.ExecuteRequests(logger, &h.config, h.access, zone, state, reqs)
+	err := raw.ExecuteRequests(logger, &h.config, h.access, zone, state, reqs, checkValidRoutingPolicy)
 	h.cache.ApplyRequests(logger, err, zone, reqs)
 	return err
 }

@@ -10,9 +10,9 @@ import (
 
 	alidns "github.com/alibabacloud-go/alidns-20150109/v4/client"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
-	"k8s.io/utils/ptr"
-
+	"github.com/alibabacloud-go/tea/tea"
 	"k8s.io/client-go/util/flowcontrol"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
@@ -157,8 +157,69 @@ func (a *access) CreateRecord(record raw.Record, zone provider.DNSHostedZone) er
 	req.Value = r.Value
 	a.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
 	a.rateLimiter.Accept()
-	_, err := a.client.AddDomainRecord(req)
-	return err
+	resp, err := a.client.AddDomainRecord(req)
+	if err != nil {
+		return err
+	}
+	if record.GetSetIdentifier() != "" {
+		if err := a.setRecordWeight(resp.Body.RecordId, record); err != nil {
+			return fmt.Errorf("failed to set record weight: %w", err)
+		}
+	}
+	return nil
+}
+
+func (a *access) setRecordWeight(recordId *string, record raw.Record) error {
+	r := record.(*Record)
+	req := &alidns.UpdateDomainRecordRemarkRequest{}
+	req.RecordId = recordId
+	if ptr.Deref(r.Remark, "") == deleteRemark {
+		req.Remark = nil
+	} else {
+		req.Remark = ptr.To(routingPolicySetRemarkPrefix + record.GetSetIdentifier())
+	}
+	if _, err := a.client.UpdateDomainRecordRemark(req); err != nil {
+		return err
+	}
+
+	req2 := &alidns.UpdateDNSSLBWeightRequest{}
+	req2.RecordId = recordId
+	req2.Weight = r.Weight
+	if _, err := a.client.UpdateDNSSLBWeight(req2); err != nil {
+		if !isSDKErrorWithCode(err, "DisableDNSSLB") {
+			return err
+		}
+
+		// Need to enable weighted round-robin
+		req3 := &alidns.SetDNSSLBStatusRequest{}
+		req3.Type = r.Type
+		req3.DomainName = r.DomainName
+		req3.SubDomain = ptr.To(r.GetDNSName())
+		if _, err := a.client.SetDNSSLBStatus(req3); err != nil {
+			return fmt.Errorf("setDNSSLBStatus failed: %w", err)
+		}
+		if _, err := a.client.UpdateDNSSLBWeight(req2); err != nil {
+			return fmt.Errorf("UpdateDNSSLBWeight failed on second try: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (a *access) clearRecordWeight(recordId *string) error {
+	req := &alidns.UpdateDomainRecordRemarkRequest{}
+	req.RecordId = recordId
+	if _, err := a.client.UpdateDomainRecordRemark(req); err != nil {
+		return err
+	}
+
+	req2 := &alidns.UpdateDNSSLBWeightRequest{}
+	req2.RecordId = recordId
+	if _, err := a.client.UpdateDNSSLBWeight(req2); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (a *access) UpdateRecord(record raw.Record, zone provider.DNSHostedZone) error {
@@ -171,8 +232,21 @@ func (a *access) UpdateRecord(record raw.Record, zone provider.DNSHostedZone) er
 	req.Value = r.Value
 	a.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
 	a.rateLimiter.Accept()
-	_, err := a.client.UpdateDomainRecord(req)
-	return err
+	if _, err := a.client.UpdateDomainRecord(req); err != nil {
+		if !isSDKErrorWithCode(err, "DomainRecordDuplicate") {
+			return err
+		}
+	}
+	if record.GetSetIdentifier() != "" {
+		if err := a.setRecordWeight(r.RecordId, record); err != nil {
+			return fmt.Errorf("failed to set record weight: %w", err)
+		}
+	} else if ptr.Deref(r.Remark, "") == deleteRemark {
+		if err := a.clearRecordWeight(r.RecordId); err != nil {
+			return fmt.Errorf("failed to clear record weight: %w", err)
+		}
+	}
+	return nil
 }
 
 func (a *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
@@ -215,4 +289,11 @@ func (a *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZon
 		DomainName: ptr.To(zone.Domain()),
 		TTL:        ptr.To(ttl),
 	})
+}
+
+func isSDKErrorWithCode(err error, code string) bool {
+	if sdkErr := err.(*tea.SDKError); sdkErr != nil {
+		return ptr.Deref(sdkErr.Code, "") == code
+	}
+	return false
 }
