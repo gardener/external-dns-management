@@ -123,11 +123,11 @@ docker-images:
 
 .PHONY: sast
 sast: $(GOSEC)
-	@./hack/sast.sh
+	@./hack/sast.sh --exclude-dirs hack,local
 
 .PHONY: sast-report
 sast-report: $(GOSEC)
-	@./hack/sast.sh --gosec-report true
+	@./hack/sast.sh --exclude-dirs hack,local --gosec-report true
 
 .PHONY: verify
 verify: fastcheck format sast

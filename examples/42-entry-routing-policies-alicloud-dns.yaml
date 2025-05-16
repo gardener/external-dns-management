@@ -1,0 +1,37 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: alicloud-weighted-1
+  namespace: default
+spec:
+  dnsName: "my.service.example.com"
+  ttl: 60
+  targets:
+    - 1.2.3.4
+  routingPolicy:
+    type: weighted # Alibaba Cloud DNS specific example
+    setIdentifier: "route1"
+    parameters:
+      weight: "10"
+---
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+  #dns.gardener.cloud/class: garden
+  name: alicloud-weighted-2
+  namespace: default
+spec:
+  dnsName: "my.service.example.com"
+  ttl: 60
+  targets:
+    - 5.6.7.8
+  routingPolicy:
+    type: weighted # Alibaba Cloud DNS specific example
+    setIdentifier: "route2"
+    parameters:
+      weight: "1"
