@@ -29,4 +29,4 @@ func (r *Record) GetTTL() int64    { return r.TTL }
 func (r *Record) SetTTL(ttl int64) { r.TTL = ttl }
 func (r *Record) Copy() raw.Record { n := *r; return &n }
 
-func (r *Record) SetRoutingPolicy(setIdentifier string, policy *dns.RoutingPolicy) {}
+func (r *Record) SetRoutingPolicy(string, *dns.RoutingPolicy) {}

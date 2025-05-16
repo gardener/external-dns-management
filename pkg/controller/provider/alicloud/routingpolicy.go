@@ -38,7 +38,7 @@ func checkRoutingPolicyForDNSSet(set *dns.DNSSet) error {
 	if set.RoutingPolicy.Type != dns.RoutingPolicyWeighted {
 		return fmt.Errorf("unsupported routing policy")
 	}
-	for t, _ := range set.Sets {
+	for t := range set.Sets {
 		switch t {
 		case dns.RS_A, dns.RS_AAAA:
 			// ok

@@ -34,7 +34,7 @@ func (r *RecordA) PrepareUpdate() raw.Record {
 	n.View = ""
 	return &n
 }
-func (r *RecordA) SetRoutingPolicy(setIdentifier string, policy *dns.RoutingPolicy) {}
+func (r *RecordA) SetRoutingPolicy(string, *dns.RoutingPolicy) {}
 
 type RecordAAAA ibclient.RecordAAAA
 
@@ -54,7 +54,7 @@ func (r *RecordAAAA) PrepareUpdate() raw.Record {
 	return &n
 }
 
-func (r *RecordAAAA) SetRoutingPolicy(setIdentifier string, policy *dns.RoutingPolicy) {}
+func (r *RecordAAAA) SetRoutingPolicy(string, *dns.RoutingPolicy) {}
 
 type RecordCNAME ibclient.RecordCNAME
 
@@ -68,7 +68,7 @@ func (r *RecordCNAME) SetTTL(ttl int64)          { r.Ttl = utils.TTLToUint32(ttl
 func (r *RecordCNAME) Copy() raw.Record          { n := *r; return &n }
 func (r *RecordCNAME) PrepareUpdate() raw.Record { n := *r; n.Zone = ""; n.View = ""; return &n }
 
-func (r *RecordCNAME) SetRoutingPolicy(setIdentifier string, policy *dns.RoutingPolicy) {}
+func (r *RecordCNAME) SetRoutingPolicy(string, *dns.RoutingPolicy) {}
 
 type RecordTXT ibclient.RecordTXT
 
@@ -82,7 +82,7 @@ func (r *RecordTXT) SetTTL(ttl int64)          { r.Ttl = utils.TTLToUint32(ttl);
 func (r *RecordTXT) Copy() raw.Record          { n := *r; return &n }
 func (r *RecordTXT) PrepareUpdate() raw.Record { n := *r; n.Zone = ""; n.View = ""; return &n }
 
-func (r *RecordTXT) SetRoutingPolicy(setIdentifier string, policy *dns.RoutingPolicy) {}
+func (r *RecordTXT) SetRoutingPolicy(string, *dns.RoutingPolicy) {}
 
 var (
 	_ raw.Record = (*RecordA)(nil)
