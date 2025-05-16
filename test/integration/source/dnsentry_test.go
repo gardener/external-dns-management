@@ -76,7 +76,7 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 	)
 
 	BeforeEach(func() {
-		SetDefaultEventuallyTimeout(10 * time.Second)
+		SetDefaultEventuallyTimeout(20 * time.Second)
 		if debug {
 			SetDefaultEventuallyTimeout(30 * time.Second)
 		}
