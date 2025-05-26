@@ -7,7 +7,7 @@ metadata:
     # If you are delegating the DNS Management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/dns_names/)
     #dns.gardener.cloud/class: garden
     # routing-policy annotation provides the `.spec.routingPolicy` section as JSON
-    # Note: Currently only supported for aws-route53 or google-clouddns (see https://github.com/gardener/external-dns-management/tree/master/docs/aws-route53#weighted-routing-policy)
+    # Note: Currently only supported for aws-route53, google-clouddns, alicloud-dns (see https://github.com/gardener/external-dns-management/tree/master/docs/aws-route53#weighted-routing-policy)
     dns.gardener.cloud/routing-policy: '{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}'
   name: test-service-weighted
   namespace: default

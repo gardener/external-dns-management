@@ -237,7 +237,7 @@ After a second wait round for DNS propagation, all DNS resolution should now onl
 
 To specify the routing policy, add an annotation `dns.gardener.cloud/routing-policy`
 containing the routing policy section in JSON format to the `Ingress` or `Service` resource.
-E.g. for an ingress resource:
+Example for an `Ingress` resource:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -250,7 +250,7 @@ metadata:
     # If you are delegating the certificate management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/x509_certificates/)
     #cert.gardener.cloud/purpose: managed
     # routing-policy annotation provides the `.spec.routingPolicy` section as JSON
-    # Note: Currently only supported for aws-route53 or google-clouddns (see https://github.com/gardener/external-dns-management/tree/master/docs/aws-route53#weighted-routing-policy)
+    # Note: Currently only supported for aws-route53, google-clouddns, alicloud-dns (see https://github.com/gardener/external-dns-management/tree/master/docs/aws-route53#weighted-routing-policy)
     dns.gardener.cloud/routing-policy: '{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}'
   name: test-ingress-weighted-routing-policy
   namespace: default

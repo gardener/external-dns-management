@@ -171,21 +171,21 @@ func (a *access) CreateRecord(record raw.Record, zone provider.DNSHostedZone) er
 
 func (a *access) setRecordWeight(recordId *string, record raw.Record) error {
 	r := record.(*Record)
-	req := &alidns.UpdateDomainRecordRemarkRequest{}
-	req.RecordId = recordId
+	remarkRequest := &alidns.UpdateDomainRecordRemarkRequest{}
+	remarkRequest.RecordId = recordId
 	if ptr.Deref(r.Remark, "") == deleteRemark {
-		req.Remark = nil
+		remarkRequest.Remark = nil
 	} else {
-		req.Remark = ptr.To(routingPolicySetRemarkPrefix + record.GetSetIdentifier())
+		remarkRequest.Remark = ptr.To(routingPolicySetRemarkPrefix + record.GetSetIdentifier())
 	}
-	if _, err := a.client.UpdateDomainRecordRemark(req); err != nil {
+	if _, err := a.client.UpdateDomainRecordRemark(remarkRequest); err != nil {
 		return err
 	}
 
-	req2 := &alidns.UpdateDNSSLBWeightRequest{}
-	req2.RecordId = recordId
-	req2.Weight = r.Weight
-	if _, err := a.client.UpdateDNSSLBWeight(req2); err != nil {
+	weightRequest := &alidns.UpdateDNSSLBWeightRequest{}
+	weightRequest.RecordId = recordId
+	weightRequest.Weight = r.Weight
+	if _, err := a.client.UpdateDNSSLBWeight(weightRequest); err != nil {
 		if !isSDKErrorWithCode(err, "DisableDNSSLB") {
 			return err
 		}
@@ -198,7 +198,7 @@ func (a *access) setRecordWeight(recordId *string, record raw.Record) error {
 		if _, err := a.client.SetDNSSLBStatus(req3); err != nil {
 			return fmt.Errorf("setDNSSLBStatus failed: %w", err)
 		}
-		if _, err := a.client.UpdateDNSSLBWeight(req2); err != nil {
+		if _, err := a.client.UpdateDNSSLBWeight(weightRequest); err != nil {
 			return fmt.Errorf("UpdateDNSSLBWeight failed on second try: %w", err)
 		}
 	}
@@ -207,15 +207,15 @@ func (a *access) setRecordWeight(recordId *string, record raw.Record) error {
 }
 
 func (a *access) clearRecordWeight(recordId *string) error {
-	req := &alidns.UpdateDomainRecordRemarkRequest{}
-	req.RecordId = recordId
-	if _, err := a.client.UpdateDomainRecordRemark(req); err != nil {
+	remarkRequest := &alidns.UpdateDomainRecordRemarkRequest{}
+	remarkRequest.RecordId = recordId
+	if _, err := a.client.UpdateDomainRecordRemark(remarkRequest); err != nil {
 		return err
 	}
 
-	req2 := &alidns.UpdateDNSSLBWeightRequest{}
-	req2.RecordId = recordId
-	if _, err := a.client.UpdateDNSSLBWeight(req2); err != nil {
+	weightRequest := &alidns.UpdateDNSSLBWeightRequest{}
+	weightRequest.RecordId = recordId
+	if _, err := a.client.UpdateDNSSLBWeight(weightRequest); err != nil {
 		return err
 	}
 

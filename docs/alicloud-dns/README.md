@@ -34,7 +34,7 @@ data:
 
 ## Routing Policy
 
-The Alibaba Cloud DNS provider supports only the weighted robin-round routing policy:
+The Alibaba Cloud DNS provider supports only the weighted round-robin routing policy:
 
 - `weighted` [Weighted Routing Policy](#weighted-routing-policy)
 
@@ -45,7 +45,7 @@ For more details, please see the Alibaba Cloud DNS documentation at
 
 Each weighted record set is defined by a separate `DNSEntry`. In this way, it is possible to use different dns-controller-manager deployments acting on the same domain names.
 
-As it is a robin-round routing policy returning only a single IP address per DNS query, it is recommended to use only one target per `DNSEntry` resource.
+As it is a round-robin routing policy returning only a single IP address per DNS query, it is recommended to use only one target per `DNSEntry` resource.
 If multiple targets are specified in the same `DNSEntry`, this is equivalent to creating separate `DNSEntry` resources for each target with the same domain name and weight.
 
 Every record set needs a `SetIdentifier` which must be a string containing only letters, digits, and '-'.
@@ -81,7 +81,7 @@ spec:
 
 To specify the routing policy, add an annotation `dns.gardener.cloud/routing-policy`
 containing the routing policy section in JSON format to the `Ingress` or `Service` resource.
-E.g. for an ingress resource:
+Example for an `Ingress` resource:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -94,7 +94,7 @@ metadata:
     # If you are delegating the certificate management to Gardener, uncomment the following line (see https://gardener.cloud/documentation/guides/administer_shoots/x509_certificates/)
     #cert.gardener.cloud/purpose: managed
     # routing-policy annotation provides the `.spec.routingPolicy` section as JSON
-    # Note: Currently only supported for aws-route53 and google-clouddns
+    # Note: Currently only supported for aws-route53, google-clouddns, alicloud-dns
     dns.gardener.cloud/routing-policy: '{"type": "weighted", "setIdentifier": "route1", "parameters": {"weight": "10"}}'
   name: test-ingress-weighted-routing-policy
   namespace: default
