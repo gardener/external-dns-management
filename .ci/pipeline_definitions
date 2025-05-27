@@ -25,10 +25,6 @@ external-dns-management:
         output_dir: binary
       check:
         image: golang:1.24
-      integrationtest:
-        image: golang:1.24
-      test:
-        image: golang:1.24
       verify:
         image: golang:1.24
     traits:
