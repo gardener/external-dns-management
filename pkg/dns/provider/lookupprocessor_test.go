@@ -333,7 +333,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		stat3 := metrics.lookups[nameE3]
 		metrics.lock.Unlock()
 		expectCountBetween("stat3.count-count3a", stat3.count-count3a, -1, 1)
-		Expect(stat3.targetCount).To(Equal(count3a * 3))
+		Expect(stat3.targetCount).To(Equal(stat3.count * 3))
 		expectCountBetween("count not-existing-host", stat3.errorCount, 10, 30)
 	})
 })
