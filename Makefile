@@ -110,12 +110,17 @@ generate: $(VGOPATH) $(CONTROLLER_GEN) $(HELM)
 	$(MAKE) format
 	@go mod tidy
 
+.PHONY: alltests
 alltests: $(GINKGO)
 	$(GINKGO) -r ./pkg
 	GINKGO=$(shell realpath $(GINKGO)) test/integration/run.sh $(kindargs) -- $(args)
 
+.PHONY: integrationtests
 integrationtests: $(GINKGO)
 	GINKGO=$(shell realpath $(GINKGO)) test/integration/run.sh -l $(kindargs) -- $(args)
+
+.PHONY: test-integration
+test-integration: integrationtests new-test-integration
 
 .PHONY: docker-images
 docker-images:
