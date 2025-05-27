@@ -1,0 +1,9 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+aliases:
+  external-dns-management-reviewers:
+  - MartinWeindel
+  - marc1404
+  external-dns-management-approvers:
+  - MartinWeindel
+  - marc1404
