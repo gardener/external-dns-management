@@ -6,6 +6,7 @@ package raw
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
@@ -34,6 +35,8 @@ type Execution struct {
 	state    *ZoneState
 	domain   string
 
+	routingPolicyChecker RoutingPolicyChecker
+
 	additions RecordSet
 	updates   RecordSet
 	deletions RecordSet
@@ -41,59 +44,88 @@ type Execution struct {
 	results map[dns.DNSSetName]*result
 }
 
-func NewExecution(logger logger.LogContext, e Executor, state *ZoneState, zone provider.DNSHostedZone) *Execution {
+type RoutingPolicyChecker func(req *provider.ChangeRequest) error
+
+func defaultRoutingPolicyChecker(req *provider.ChangeRequest) error {
+	var name dns.DNSSetName
+
+	if req.Addition != nil {
+		name = req.Addition.Name
+	}
+	if req.Deletion != nil {
+		name = req.Deletion.Name
+	}
+
+	if name.SetIdentifier != "" || (req.Addition != nil && req.Addition.RoutingPolicy != nil) || (req.Deletion != nil && req.Deletion.RoutingPolicy != nil) {
+		return fmt.Errorf("routing policy not supported")
+	}
+	return nil
+}
+
+func NewExecution(logger logger.LogContext, e Executor, state *ZoneState, zone provider.DNSHostedZone, checker RoutingPolicyChecker) *Execution {
+	if checker == nil {
+		checker = defaultRoutingPolicyChecker
+	}
 	return &Execution{
-		LogContext: logger,
-		executor:   e,
-		zone:       zone,
-		state:      state,
-		domain:     zone.Domain(),
-		results:    map[dns.DNSSetName]*result{},
-		additions:  RecordSet{},
-		updates:    RecordSet{},
-		deletions:  RecordSet{},
+		LogContext:           logger,
+		executor:             e,
+		zone:                 zone,
+		state:                state,
+		domain:               zone.Domain(),
+		routingPolicyChecker: checker,
+		results:              map[dns.DNSSetName]*result{},
+		additions:            RecordSet{},
+		updates:              RecordSet{},
+		deletions:            RecordSet{},
 	}
 }
 
 func (this *Execution) AddChange(req *provider.ChangeRequest) {
-	var name dns.DNSSetName
-	var newset, oldset *dns.RecordSet
+	var (
+		name                 dns.DNSSetName
+		newset, oldset       *dns.RecordSet
+		newPolicy, oldPolicy *dns.RoutingPolicy
+	)
 
 	if req.Addition != nil {
 		name = req.Addition.Name
 		newset = req.Addition.Sets[req.Type]
+		newPolicy = req.Addition.RoutingPolicy
 	}
 	if req.Deletion != nil {
 		name = req.Deletion.Name
 		oldset = req.Deletion.Sets[req.Type]
+		oldPolicy = req.Deletion.RoutingPolicy
 	}
 	if name.DNSName == "" || (newset.Length() == 0 && oldset.Length() == 0) {
 		return
 	}
-	if name.SetIdentifier != "" || (req.Addition != nil && req.Addition.RoutingPolicy != nil) || (req.Deletion != nil && req.Deletion.RoutingPolicy != nil) {
-		err := fmt.Errorf("routing policy not supported")
+
+	err := this.routingPolicyChecker(req)
+	if err != nil {
 		this.Warnf("record set %s[%s]: %s", name, this.zone.Id(), err)
 		if req.Done != nil {
 			req.Done.SetInvalid(err)
 		}
 		return
 	}
+
 	switch req.Action {
 	case provider.R_CREATE:
 		this.Infof("%s %s record set %s[%s]: %s(%d)", req.Action, req.Type, name, this.zone.Id(), newset.RecordString(), newset.TTL)
-		this.add(name, newset, true, &this.updates, &this.additions)
+		this.add(name, newset, newPolicy, true, &this.updates, &this.additions)
 	case provider.R_DELETE:
 		this.Infof("%s %s record set %s[%s]: %s", req.Action, req.Type, name, this.zone.Id(), oldset.RecordString())
-		this.add(name, oldset, false, &this.deletions, nil)
+		this.add(name, oldset, oldPolicy, false, &this.deletions, nil)
 	case provider.R_UPDATE:
 		this.Infof("%s %s record set %s[%s]: %s(%d)", req.Action, req.Type, name, this.zone.Id(), newset.RecordString(), newset.TTL)
 		if oldset != nil {
 			_, _, del := newset.DiffTo(oldset)
 			if len(del) > 0 {
-				this.add(name, dns.NewRecordSet(oldset.Type, oldset.TTL, del), false, &this.deletions, nil)
+				this.add(name, dns.NewRecordSet(oldset.Type, oldset.TTL, del), oldPolicy, false, &this.deletions, nil)
 			}
 		}
-		this.add(name, newset, true, &this.updates, &this.additions)
+		this.add(name, newset, newPolicy, true, &this.updates, &this.additions)
 	}
 
 	r := this.results[name]
@@ -106,19 +138,22 @@ func (this *Execution) AddChange(req *provider.ChangeRequest) {
 	}
 }
 
-func (this *Execution) add(name dns.DNSSetName, rset *dns.RecordSet, modonly bool, found *RecordSet, notfound *RecordSet) {
+func (this *Execution) add(name dns.DNSSetName, rset *dns.RecordSet, policy *dns.RoutingPolicy, modonly bool, found *RecordSet, notfound *RecordSet) {
 	rtype := rset.Type
 	for _, r := range rset.Records {
 		old := this.state.GetRecord(name, rtype, r.Value)
+		oldRoutingPolicy := this.state.GetRoutingPolicy(name)
 		if old != nil {
-			if (!modonly) || (old.GetTTL() != rset.TTL) {
+			if (!modonly) || (old.GetTTL() != rset.TTL) || !reflect.DeepEqual(oldRoutingPolicy, policy) {
 				or := old.Copy()
 				or.SetTTL(rset.TTL)
+				or.SetRoutingPolicy(name.SetIdentifier, policy)
 				*found = append(*found, or)
 			}
 		} else {
 			if notfound != nil {
 				record := this.executor.NewRecord(name.DNSName, rset.Type, r.Value, this.zone, rset.TTL)
+				record.SetRoutingPolicy(name.SetIdentifier, policy)
 				*notfound = append(*notfound, record)
 			}
 		}
@@ -181,8 +216,16 @@ func (this *Execution) submit(f func(record Record, zone provider.DNSHostedZone)
 	}
 }
 
-func ExecuteRequests(logger logger.LogContext, config *provider.DNSHandlerConfig, e Executor, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	exec := NewExecution(logger, e, state.(*ZoneState), zone)
+func ExecuteRequests(
+	logger logger.LogContext,
+	config *provider.DNSHandlerConfig,
+	e Executor,
+	zone provider.DNSHostedZone,
+	state provider.DNSZoneState,
+	reqs []*provider.ChangeRequest,
+	checker RoutingPolicyChecker,
+) error {
+	exec := NewExecution(logger, e, state.(*ZoneState), zone, checker)
 	for _, r := range reqs {
 		exec.AddChange(r)
 	}
