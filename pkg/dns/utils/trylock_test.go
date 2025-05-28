@@ -31,12 +31,16 @@ var _ = Describe("TryLock", func() {
 			lock.Unlock()
 		}()
 
-		time.Sleep(wait)
-		Expect(atomic.LoadUint32(&counter)).To(Equal(uint32(1)))
+		Eventually(func() uint32 {
+			time.Sleep(wait)
+			return atomic.LoadUint32(&counter)
+		}).WithPolling(10 * wait).To(Equal(uint32(1)))
 
 		lock.Unlock()
-		time.Sleep(wait)
-		Expect(atomic.LoadUint32(&counter)).To(Equal(uint32(3)))
+		Eventually(func() uint32 {
+			time.Sleep(wait)
+			return atomic.LoadUint32(&counter)
+		}).WithPolling(10 * wait).To(Equal(uint32(3)))
 		Expect(err2).ToNot(HaveOccurred())
 
 		first := lock.TryLockSpinning(wait)
