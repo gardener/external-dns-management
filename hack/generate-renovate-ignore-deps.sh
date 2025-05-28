@@ -19,25 +19,25 @@ echo "🪧 Generating ignoreDeps section for 'renovate.json5'"
 echo "🛜 Downloading the latest 'go.mod' from gardener/gardener..."
 
 # Only the dependencies in a `go.mod` file are indented with a tab.
-certman_go_mod=$(grep -P '^\t' go.mod) # Uses Perl-style regular expressions to match a tab at the beginning of a line.
+local_go_mod=$(grep -P '^\t' go.mod) # Uses Perl-style regular expressions to match a tab at the beginning of a line.
 gardener_go_mod=$(curl -s https://raw.githubusercontent.com/gardener/gardener/refs/heads/master/go.mod | grep -P '^\t')
 
-certman_dependencies=()
+local_dependencies=()
 gardener_dependencies=()
 
-extract_dependencies "$certman_go_mod" certman_dependencies
+extract_dependencies "$local_go_mod" local_dependencies
 extract_dependencies "$gardener_go_mod" gardener_dependencies
 
-echo "📜 Found ${#certman_dependencies[@]} cert-manager dependencies."
+echo "📜 Found ${#local_dependencies[@]} local dependencies."
 echo "🚜 Found ${#gardener_dependencies[@]} gardener dependencies."
 
 # Extract the intersection of the two arrays by iterating over them in a nested fashion.
 common_dependencies=()
 
-for certman_dependency in "${certman_dependencies[@]}"; do
+for local_dependency in "${local_dependencies[@]}"; do
     for gardener_dependency in "${gardener_dependencies[@]}"; do
-        if [[ "$certman_dependency" == "$gardener_dependency" ]]; then
-            common_dependencies+=("$certman_dependency")
+        if [[ "$local_dependency" == "$gardener_dependency" ]]; then
+            common_dependencies+=("$local_dependency")
             break # Continue with the next element of the outer loop.
         fi
     done
