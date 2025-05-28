@@ -18,6 +18,8 @@ import (
 	"go.uber.org/atomic"
 )
 
+const quantum = 5 * time.Millisecond
+
 type testEnqueuer struct {
 	enqueuedCount map[resources.ObjectName]int
 	stopped       atomic.Bool
@@ -144,7 +146,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 			mlh.stopped.Store(true)
 			metrics.stopped.Store(true)
 			ctxCancel()
-			time.Sleep(10 * time.Millisecond)
+			time.Sleep(10 * quantum)
 			Expect(processor.running.Load()).To(BeFalse())
 		}
 	)
@@ -152,7 +154,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 	ginkgov2.BeforeEach(func() {
 		enqueuer = &testEnqueuer{enqueuedCount: map[resources.ObjectName]int{}}
 		metrics = &testMetrics{lookups: map[resources.ObjectName]lookupStat{}}
-		processor = newLookupProcessor(logger.New(), enqueuer, 2, 10*time.Millisecond, "default", metrics)
+		processor = newLookupProcessor(logger.New(), enqueuer, 2, 10*quantum, "default", metrics)
 		mlh = &mockLookupHost{
 			delay: 1 * time.Microsecond,
 			lookupMap: map[string]mockLookupHostResult{
@@ -168,7 +170,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		lookupHost.lock.Lock()
 		lookupHost.lookupHost = mlh.LookupHost
 		lookupHost.lock.Unlock()
-		lookupHost.waitLookupRetry = 5 * time.Millisecond
+		lookupHost.waitLookupRetry = 5 * quantum
 		ctx, ctxCancel = context.WithCancel(context.Background())
 	})
 
@@ -245,15 +247,15 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 
 	ginkgov2.It("performs multiple lookup jobs regularly", func() {
 		go processor.Run(ctx)
-		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*time.Millisecond)
-		processor.Upsert(nameE2, lookupAllHostnamesIPs(ctx, "host2"), 2*time.Millisecond)
-		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 3*time.Millisecond)
+		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
+		processor.Upsert(nameE2, lookupAllHostnamesIPs(ctx, "host2"), 2*quantum)
+		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 3*quantum)
 		time.Sleep(processor.checkPeriod)
 
-		time.Sleep(18 * time.Millisecond)
+		time.Sleep(18 * quantum)
 		processor.Delete(nameE3)
 		processor.Delete(nameE3)
-		time.Sleep(18 * time.Millisecond)
+		time.Sleep(18 * quantum)
 		cancel()
 
 		mlh.lock.Lock()
@@ -272,13 +274,13 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 	})
 
 	ginkgov2.It("performs multiple lookup jobs but skips on overload", func() {
-		mlh.delay = 1900 * time.Microsecond
+		mlh.delay = 19 * quantum / 10
 		go processor.Run(ctx)
-		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*time.Millisecond)
-		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 1*time.Millisecond)
+		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
+		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 1*quantum)
 		time.Sleep(processor.checkPeriod)
 
-		time.Sleep(30 * time.Millisecond)
+		time.Sleep(30 * quantum)
 		cancel()
 
 		mlh.lock.Lock()
@@ -296,19 +298,19 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 	ginkgov2.It("performs multiple lookup jobs and enqueues keys on lookup changes", func() {
 		changedIP := net.ParseIP("1.1.1.42")
 		go processor.Run(ctx)
-		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*time.Millisecond)
-		processor.Upsert(nameE2, lookupAllHostnamesIPs(ctx, "host2"), 1*time.Millisecond)
-		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 1*time.Millisecond)
+		processor.Upsert(nameE1, lookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
+		processor.Upsert(nameE2, lookupAllHostnamesIPs(ctx, "host2"), 1*quantum)
+		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 1*quantum)
 		time.Sleep(processor.checkPeriod)
 
-		time.Sleep(10 * time.Millisecond)
-		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "not-existing-host"), 1*time.Millisecond)
+		time.Sleep(10 * quantum)
+		processor.Upsert(nameE3, lookupAllHostnamesIPs(ctx, "host3a", "host3b", "not-existing-host"), 1*quantum)
 		mlh.lock.Lock()
 		mlh.lookupMap["host2"] = mockLookupHostResult{
 			ips: []net.IP{changedIP},
 		}
 		mlh.lock.Unlock()
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(20 * quantum)
 		cancel()
 
 		mlh.lock.Lock()
