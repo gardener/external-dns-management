@@ -5,6 +5,7 @@
 package openstack
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -12,8 +13,8 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets"
-	"github.com/gophercloud/gophercloud/openstack/dns/v2/zones"
+	"github.com/gophercloud/gophercloud/v2/openstack/dns/v2/recordsets"
+	"github.com/gophercloud/gophercloud/v2/openstack/dns/v2/zones"
 	. "github.com/onsi/gomega"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -67,7 +68,7 @@ var _ designateClientInterface = &designateMockClient{}
 
 var mockMetrics provider.Metrics = &provider.NullMetrics{}
 
-func (c *designateMockClient) ForEachZone(handler func(zone *zones.Zone) error) error {
+func (c *designateMockClient) ForEachZone(_ context.Context, handler func(zone *zones.Zone) error) error {
 	for _, tz := range c.tzmap {
 		if err := handler(tz.zone); err != nil {
 			return err
@@ -76,11 +77,11 @@ func (c *designateMockClient) ForEachZone(handler func(zone *zones.Zone) error) 
 	return nil
 }
 
-func (c *designateMockClient) ForEachRecordSet(zoneID string, handler func(recordSet *recordsets.RecordSet) error) error {
-	return c.ForEachRecordSetFilterByTypeAndName(zoneID, "", "", handler)
+func (c *designateMockClient) ForEachRecordSet(ctx context.Context, zoneID string, handler func(recordSet *recordsets.RecordSet) error) error {
+	return c.ForEachRecordSetFilterByTypeAndName(ctx, zoneID, "", "", handler)
 }
 
-func (c *designateMockClient) ForEachRecordSetFilterByTypeAndName(zoneID string, rrtype string, name string, handler func(recordSet *recordsets.RecordSet) error) error {
+func (c *designateMockClient) ForEachRecordSetFilterByTypeAndName(_ context.Context, zoneID string, rrtype string, name string, handler func(recordSet *recordsets.RecordSet) error) error {
 	tz := c.tzmap[zoneID]
 	if tz == nil {
 		return nil
@@ -101,13 +102,13 @@ func (c *designateMockClient) ForEachRecordSetFilterByTypeAndName(zoneID string,
 	return nil
 }
 
-func (c *designateMockClient) CreateRecordSet(zoneID string, opts recordsets.CreateOpts) (string, error) {
+func (c *designateMockClient) CreateRecordSet(_ context.Context, zoneID string, opts recordsets.CreateOpts) (string, error) {
 	tz := c.tzmap[zoneID]
 	if tz == nil {
-		return "", fmt.Errorf("Zone %s not found", zoneID)
+		return "", fmt.Errorf("zone %s not found", zoneID)
 	}
 	if !strings.HasSuffix(opts.Name, tz.zone.Name) {
-		return "", fmt.Errorf("Zone %s (%s): Invalid domain name: %s", zoneID, tz.zone.Name, opts.Name)
+		return "", fmt.Errorf("zone %s (%s): Invalid domain name: %s", zoneID, tz.zone.Name, opts.Name)
 	}
 	rssub, ok := tz.rsmap[opts.Name]
 	if !ok {
@@ -115,7 +116,7 @@ func (c *designateMockClient) CreateRecordSet(zoneID string, opts recordsets.Cre
 		tz.rsmap[opts.Name] = rssub
 	}
 	if _, ok := rssub[opts.Type]; ok {
-		return "", fmt.Errorf("Domain %s: duplicate recordsets %s", opts.Name, opts.Type)
+		return "", fmt.Errorf("domain %s: duplicate recordsets %s", opts.Name, opts.Type)
 	}
 	rs := recordsets.RecordSet{
 		ID:      tz.buildNextId(),
@@ -132,16 +133,16 @@ func (c *designateMockClient) CreateRecordSet(zoneID string, opts recordsets.Cre
 func (c *designateMockClient) getRecordSet(zoneID, recordSetID string) (*testzone, *recordsets.RecordSet, error) {
 	tz := c.tzmap[zoneID]
 	if tz == nil {
-		return nil, nil, fmt.Errorf("Zone %s not found", zoneID)
+		return nil, nil, fmt.Errorf("zone %s not found", zoneID)
 	}
 	rs, ok := tz.id2rs[recordSetID]
 	if !ok {
-		return nil, nil, fmt.Errorf("RecordSet not found: zone=%s, id=%s", zoneID, recordSetID)
+		return nil, nil, fmt.Errorf("recordSet not found: zone=%s, id=%s", zoneID, recordSetID)
 	}
 	return tz, rs, nil
 }
 
-func (c *designateMockClient) UpdateRecordSet(zoneID, recordSetID string, opts recordsets.UpdateOpts) error {
+func (c *designateMockClient) UpdateRecordSet(_ context.Context, zoneID, recordSetID string, opts recordsets.UpdateOpts) error {
 	_, rs, err := c.getRecordSet(zoneID, recordSetID)
 	if err != nil {
 		return err
@@ -151,7 +152,7 @@ func (c *designateMockClient) UpdateRecordSet(zoneID, recordSetID string, opts r
 	return nil
 }
 
-func (c *designateMockClient) DeleteRecordSet(zoneID, recordSetID string) error {
+func (c *designateMockClient) DeleteRecordSet(_ context.Context, zoneID, recordSetID string) error {
 	tz, rs, err := c.getRecordSet(zoneID, recordSetID)
 	if err != nil {
 		return err
@@ -234,7 +235,7 @@ func TestGetZones(t *testing.T) {
 func getDNSHostedZone(h *Handler, zoneID string) (provider.DNSHostedZone, error) {
 	tz, ok := h.client.(*designateMockClient).tzmap[zoneID]
 	if !ok {
-		return nil, fmt.Errorf("Zone %s not found", zoneID)
+		return nil, fmt.Errorf("zone %s not found", zoneID)
 	}
 	return tz, nil
 }
@@ -259,6 +260,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 	dnssets := zoneState.GetDNSSets()
 	Ω(dnssets).Should(BeEmpty(), "dnssets should be empty initially")
 
+	ctx := context.Background()
 	initial := []recordsets.CreateOpts{
 		{
 			Name:    "sub1.z1.test.",
@@ -280,7 +282,7 @@ func TestGetZoneStateAndExecuteRequests(t *testing.T) {
 		},
 	}
 	for _, opts := range initial {
-		_, err = h.client.CreateRecordSet("z1", opts)
+		_, err = h.client.CreateRecordSet(ctx, "z1", opts)
 		Ω(err).ShouldNot(HaveOccurred(), fmt.Sprintf("CreateRecordSet failed for %s %s", opts.Name, opts.Type))
 	}
 

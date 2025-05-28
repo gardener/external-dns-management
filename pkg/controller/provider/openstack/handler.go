@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets"
-	"github.com/gophercloud/gophercloud/openstack/dns/v2/zones"
-	"github.com/gophercloud/utils/openstack/clientconfig"
+	"github.com/gophercloud/gophercloud/v2/openstack/dns/v2/recordsets"
+	"github.com/gophercloud/gophercloud/v2/openstack/dns/v2/zones"
+	"github.com/gophercloud/utils/v2/openstack/clientconfig"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -37,7 +37,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		return nil, err
 	}
 
-	serviceClient, err := createDesignateServiceClient(config.Logger, authConfig)
+	serviceClient, err := createDesignateServiceClient(config.Context, config.Logger, authConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +155,7 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 	}
 
 	h.config.RateLimiter.Accept()
-	if err := h.client.ForEachZone(zoneHandler); err != nil {
+	if err := h.client.ForEachZone(h.ctx, zoneHandler); err != nil {
 		return nil, fmt.Errorf("listing DNS zones failed. Details: %s", err.Error())
 	}
 
@@ -187,7 +187,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 	}
 
 	h.config.RateLimiter.Accept()
-	if err := h.client.ForEachRecordSet(zone.Id().ID, recordSetHandler); err != nil {
+	if err := h.client.ForEachRecordSet(h.ctx, zone.Id().ID, recordSetHandler); err != nil {
 		return nil, fmt.Errorf("listing DNS zones failed for %s. Details: %s", zone.Id(), err.Error())
 	}
 
@@ -218,7 +218,7 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 			continue
 		}
 
-		err := exec.apply(r.Action, rset)
+		err := exec.apply(h.ctx, r.Action, rset)
 		if err != nil {
 			failed++
 			logger.Infof("Apply failed with %s", err.Error())
