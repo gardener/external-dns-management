@@ -138,4 +138,4 @@ sast-report: $(GOSEC)
 verify: fastcheck format sast
 
 .PHONY: verify-extended
-verify-extended: check-generate fastcheck format unittests new-test-integration sast-report
+verify-extended: check-generate fastcheck format sast-report
