@@ -212,4 +212,4 @@ require (
 )
 
 // need open PR https://github.com/infobloxopen/infoblox-go-client/pull/195
-replace github.com/infobloxopen/infoblox-go-client/v2 => github.com/MartinWeindel/infoblox-go-client/v2 v2.0.0-20221122085954-b7d80ebb106b
+replace github.com/infobloxopen/infoblox-go-client/v2 => github.com/MartinWeindel/infoblox-go-client/v2 0632f4c02428
