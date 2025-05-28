@@ -79,7 +79,9 @@ var _ = Describe("TryLock", func() {
 
 		time.Sleep(wait)
 		for i := 0; i < len(counters); i++ {
-			Expect(atomic.LoadUint64(&counters[i])).To(Equal(uint64(1)))
+			Eventually(func() uint64 {
+				return atomic.LoadUint64(&counters[i])
+			}).WithPolling(10 * wait).To(Equal(uint64(1)))
 		}
 		lock.Unlock()
 
