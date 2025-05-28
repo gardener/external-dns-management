@@ -13,11 +13,11 @@ require (
 	github.com/alibabacloud-go/alidns-20150109/v4 v4.5.9
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.0.11
 	github.com/alibabacloud-go/tea v1.2.2
-	github.com/aws/aws-sdk-go-v2 v1.32.5
+	github.com/aws/aws-sdk-go-v2 v1.36.3
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.46
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.46.1
-	github.com/aws/smithy-go v1.22.1
+	github.com/aws/smithy-go v1.22.2
 	github.com/cloudflare/cloudflare-go v0.11.4
 	github.com/gardener/controller-manager-library v0.2.1-0.20250528062543-a441a28ac225
 	github.com/gardener/gardener v1.119.0
