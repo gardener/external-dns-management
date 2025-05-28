@@ -18,4 +18,5 @@ import (
 	_ "sigs.k8s.io/kind"
 
 	_ "github.com/gardener/controller-manager-library/hack"
+	_ "k8s.io/klog/v2" // import for klog to be available in the go.mod file, so that it is not removed by go mod tidy (used in hack/tools/bin/work/import-boss/main.go)
 )
