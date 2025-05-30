@@ -5,6 +5,7 @@
 package raw
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -15,12 +16,12 @@ import (
 )
 
 type Executor interface {
-	CreateRecord(r Record, zone provider.DNSHostedZone) error
-	UpdateRecord(r Record, zone provider.DNSHostedZone) error
-	DeleteRecord(r Record, zone provider.DNSHostedZone) error
+	CreateRecord(ctx context.Context, r Record, zone provider.DNSHostedZone) error
+	UpdateRecord(ctx context.Context, r Record, zone provider.DNSHostedZone) error
+	DeleteRecord(ctx context.Context, r Record, zone provider.DNSHostedZone) error
 
 	NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) Record
-	GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (RecordSet, error)
+	GetRecordSet(ctx context.Context, dnsName, rtype string, zone provider.DNSHostedZone) (RecordSet, error)
 }
 
 type result struct {
@@ -160,7 +161,7 @@ func (this *Execution) add(name dns.DNSSetName, rset *dns.RecordSet, policy *dns
 	}
 }
 
-func (this *Execution) SubmitChanges() error {
+func (this *Execution) SubmitChanges(ctx context.Context) error {
 	if len(this.additions) == 0 && len(this.updates) == 0 && len(this.deletions) == 0 {
 		return nil
 	}
@@ -168,15 +169,15 @@ func (this *Execution) SubmitChanges() error {
 	this.Infof("processing changes for zone %s", this.zone.Id())
 	for _, r := range this.additions {
 		this.Infof("desired change: Addition %s %s: %s (%d)", r.GetDNSName(), r.GetType(), r.GetValue(), r.GetTTL())
-		this.submit(this.executor.CreateRecord, r)
+		this.submit(ctx, this.executor.CreateRecord, r)
 	}
 	for _, r := range this.updates {
 		this.Infof("desired change: Update %s %s: %s (%d)", r.GetDNSName(), r.GetType(), r.GetValue(), r.GetTTL())
-		this.submit(this.executor.UpdateRecord, r)
+		this.submit(ctx, this.executor.UpdateRecord, r)
 	}
 	for _, r := range this.deletions {
 		this.Infof("desired change: Deletion %s %s: %s", r.GetDNSName(), r.GetType(), r.GetValue())
-		this.submit(this.executor.DeleteRecord, r)
+		this.submit(ctx, this.executor.DeleteRecord, r)
 	}
 
 	err_cnt := 0
@@ -205,8 +206,8 @@ func (this *Execution) SubmitChanges() error {
 	return nil
 }
 
-func (this *Execution) submit(f func(record Record, zone provider.DNSHostedZone) error, r Record) {
-	err := f(r, this.zone)
+func (this *Execution) submit(ctx context.Context, f func(ctx context.Context, record Record, zone provider.DNSHostedZone) error, r Record) {
+	err := f(ctx, r, this.zone)
 	if err != nil {
 		res := this.results[dns.DNSSetName{DNSName: r.GetDNSName(), SetIdentifier: r.GetSetIdentifier()}]
 		if res != nil {
@@ -217,6 +218,7 @@ func (this *Execution) submit(f func(record Record, zone provider.DNSHostedZone)
 }
 
 func ExecuteRequests(
+	ctx context.Context,
 	logger logger.LogContext,
 	config *provider.DNSHandlerConfig,
 	e Executor,
@@ -233,5 +235,5 @@ func ExecuteRequests(
 		logger.Infof("no changes in dryrun mode")
 		return nil
 	}
-	return exec.SubmitChanges()
+	return exec.SubmitChanges(ctx)
 }

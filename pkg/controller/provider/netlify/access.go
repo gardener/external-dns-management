@@ -5,6 +5,8 @@
 package netlify
 
 import (
+	"context"
+
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/strfmt"
 	"github.com/netlify/open-api/go/models"
@@ -76,7 +78,7 @@ func (this *access) ListRecords(zoneID string, consume func(record models.DNSRec
 	return nil
 }
 
-func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) error {
+func (this *access) CreateRecord(_ context.Context, r raw.Record, zone provider.DNSHostedZone) error {
 	a := r.(*Record)
 	ttl := r.GetTTL()
 	testTTL(&ttl)
@@ -95,17 +97,17 @@ func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) erro
 	return err
 }
 
-func (this *access) UpdateRecord(r raw.Record, zone provider.DNSHostedZone) error {
+func (this *access) UpdateRecord(ctx context.Context, r raw.Record, zone provider.DNSHostedZone) error {
 	// Netlify does not support updating a record
 	// Delete the existing record and re-create it
-	err := this.DeleteRecord(r, zone)
+	err := this.DeleteRecord(ctx, r, zone)
 	if err != nil {
 		return err
 	}
-	return this.CreateRecord(r, zone)
+	return this.CreateRecord(ctx, r, zone)
 }
 
-func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
+func (this *access) DeleteRecord(_ context.Context, r raw.Record, zone provider.DNSHostedZone) error {
 	a := r.(*Record)
 	deleteParams := operations.NewDeleteDNSRecordParams()
 	deleteParams.SetZoneID(a.DNSZoneID)
@@ -126,7 +128,7 @@ func (this *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHosted
 	})
 }
 
-func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+func (this *access) GetRecordSet(_ context.Context, dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
 	rs := raw.RecordSet{}
 	consume := func(record models.DNSRecord) (bool, error) {
 		a := (*Record)(&record)

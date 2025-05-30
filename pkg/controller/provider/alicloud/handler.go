@@ -5,6 +5,7 @@
 package alicloud
 
 import (
+	"context"
 	"strconv"
 
 	alidns "github.com/alibabacloud-go/alidns-20150109/v4/client"
@@ -22,6 +23,7 @@ type Handler struct {
 	config provider.DNSHandlerConfig
 	cache  provider.ZoneCache
 	access Access
+	ctx    context.Context
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -32,6 +34,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	h := &Handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
 		config:            *c,
+		ctx:               c.Context,
 	}
 
 	accessKeyID, err := c.GetRequiredProperty("ACCESS_KEY_ID", "accessKeyID")
@@ -131,13 +134,13 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 }
 
 func (h *Handler) ExecuteRequests(logger logger.LogContext, zone provider.DNSHostedZone, state provider.DNSZoneState, reqs []*provider.ChangeRequest) error {
-	err := raw.ExecuteRequests(logger, &h.config, h.access, zone, state, reqs, checkValidRoutingPolicy)
+	err := raw.ExecuteRequests(h.ctx, logger, &h.config, h.access, zone, state, reqs, checkValidRoutingPolicy)
 	h.cache.ApplyRequests(logger, err, zone, reqs)
 	return err
 }
 
 func (h *Handler) GetRecordSet(zone provider.DNSHostedZone, dnsName, recordType string) (provider.DedicatedRecordSet, error) {
-	rs, err := h.access.GetRecordSet(dnsName, recordType, zone)
+	rs, err := h.access.GetRecordSet(h.ctx, dnsName, recordType, zone)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +158,7 @@ func (h *Handler) CreateOrUpdateRecordSet(logger logger.LogContext, zone provide
 	}
 	for _, r := range new {
 		r0 := h.access.NewRecord(r.GetDNSName(), r.GetType(), r.GetValue(), zone, int64(r.GetTTL()))
-		err = h.access.CreateRecord(r0, zone)
+		err = h.access.CreateRecord(h.ctx, r0, zone)
 		if err != nil {
 			return err
 		}
@@ -166,7 +169,7 @@ func (h *Handler) CreateOrUpdateRecordSet(logger logger.LogContext, zone provide
 func (h *Handler) DeleteRecordSet(_ logger.LogContext, zone provider.DNSHostedZone, rs provider.DedicatedRecordSet) error {
 	for _, r := range rs {
 		if r.(*Record).GetId() != "" {
-			err := h.access.DeleteRecord(r.(*Record), zone)
+			err := h.access.DeleteRecord(h.ctx, r.(*Record), zone)
 			if err != nil {
 				return err
 			}
