@@ -5,10 +5,11 @@
 package openstack
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
-	"github.com/gophercloud/gophercloud/openstack/dns/v2/recordsets"
+	"github.com/gophercloud/gophercloud/v2/openstack/dns/v2/recordsets"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -80,20 +81,20 @@ func (exec *Execution) buildMappedRecordSet(name string, rset *dns.RecordSet) (b
 	return bsOk, &osRSet
 }
 
-func (exec *Execution) apply(action string, rset *recordsets.RecordSet) error {
+func (exec *Execution) apply(ctx context.Context, action string, rset *recordsets.RecordSet) error {
 	var err error
 	switch action {
 	case provider.R_CREATE:
-		err = exec.create(rset)
+		err = exec.create(ctx, rset)
 	case provider.R_UPDATE:
-		err = exec.update(rset)
+		err = exec.update(ctx, rset)
 	case provider.R_DELETE:
-		err = exec.delete(rset)
+		err = exec.delete(ctx, rset)
 	}
 	return err
 }
 
-func (exec *Execution) create(rset *recordsets.RecordSet) error {
+func (exec *Execution) create(ctx context.Context, rset *recordsets.RecordSet) error {
 	opts := recordsets.CreateOpts{
 		Name:    dns.AlignHostname(rset.Name),
 		Type:    rset.Type,
@@ -101,11 +102,11 @@ func (exec *Execution) create(rset *recordsets.RecordSet) error {
 		Records: rset.Records,
 	}
 	exec.handler.config.RateLimiter.Accept()
-	_, err := exec.handler.client.CreateRecordSet(exec.zone.Id().ID, opts)
+	_, err := exec.handler.client.CreateRecordSet(ctx, exec.zone.Id().ID, opts)
 	return err
 }
 
-func (exec *Execution) lookupRecordSetID(rset *recordsets.RecordSet) (string, error) {
+func (exec *Execution) lookupRecordSetID(ctx context.Context, rset *recordsets.RecordSet) (string, error) {
 	name := dns.AlignHostname(rset.Name)
 	recordSetID := ""
 	handler := func(recordSet *recordsets.RecordSet) error {
@@ -115,7 +116,7 @@ func (exec *Execution) lookupRecordSetID(rset *recordsets.RecordSet) (string, er
 		return nil
 	}
 	exec.handler.config.RateLimiter.Accept()
-	err := exec.handler.client.ForEachRecordSetFilterByTypeAndName(exec.zone.Id().ID, rset.Type, name, handler)
+	err := exec.handler.client.ForEachRecordSetFilterByTypeAndName(ctx, exec.zone.Id().ID, rset.Type, name, handler)
 	if err != nil {
 		return "", fmt.Errorf("RecordSet lookup for %s %s failed with: %s", rset.Type, rset.Name, err)
 	}
@@ -125,8 +126,8 @@ func (exec *Execution) lookupRecordSetID(rset *recordsets.RecordSet) (string, er
 	return recordSetID, nil
 }
 
-func (exec *Execution) update(rset *recordsets.RecordSet) error {
-	recordSetID, err := exec.lookupRecordSetID(rset)
+func (exec *Execution) update(ctx context.Context, rset *recordsets.RecordSet) error {
+	recordSetID, err := exec.lookupRecordSetID(ctx, rset)
 	if err != nil {
 		return err
 	}
@@ -136,16 +137,16 @@ func (exec *Execution) update(rset *recordsets.RecordSet) error {
 		Records: rset.Records,
 	}
 	exec.handler.config.RateLimiter.Accept()
-	err = exec.handler.client.UpdateRecordSet(exec.zone.Id().ID, recordSetID, opts)
+	err = exec.handler.client.UpdateRecordSet(ctx, exec.zone.Id().ID, recordSetID, opts)
 	return err
 }
 
-func (exec *Execution) delete(rset *recordsets.RecordSet) error {
-	recordSetID, err := exec.lookupRecordSetID(rset)
+func (exec *Execution) delete(ctx context.Context, rset *recordsets.RecordSet) error {
+	recordSetID, err := exec.lookupRecordSetID(ctx, rset)
 	if err != nil {
 		return err
 	}
 	exec.handler.config.RateLimiter.Accept()
-	err = exec.handler.client.DeleteRecordSet(exec.zone.Id().ID, recordSetID)
+	err = exec.handler.client.DeleteRecordSet(ctx, exec.zone.Id().ID, recordSetID)
 	return err
 }
