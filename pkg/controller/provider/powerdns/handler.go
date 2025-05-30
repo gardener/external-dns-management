@@ -58,7 +58,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	headers := map[string]string{"X-API-Key": apiKey}
 	httpClient := newHttpClient(insecureSkipVerify, trustedCaCert)
 
-	h.powerdns = powerdns.NewClient(server, virtualHost, headers, httpClient)
+	h.powerdns = powerdns.New(server, virtualHost, powerdns.WithHeaders(headers), powerdns.WithHTTPClient(httpClient))
 
 	h.cache, err = c.ZoneCacheFactory.CreateZoneCache(provider.CacheZoneState, c.Metrics, h.getZones, h.getZoneState)
 	if err != nil {
