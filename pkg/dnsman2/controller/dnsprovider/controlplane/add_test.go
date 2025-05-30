@@ -46,6 +46,20 @@ var _ = Describe("Add", func() {
 				},
 			})).To(Succeed())
 			Expect(fakeClient.Create(ctx, &v1alpha1.DNSProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "provider1b",
+					Namespace: "test",
+					Annotations: map[string]string{
+						"dns.gardener.cloud/class": "foo",
+					},
+				},
+				Spec: v1alpha1.DNSProviderSpec{
+					SecretRef: &corev1.SecretReference{
+						Name: "secret1",
+					},
+				},
+			})).To(Succeed())
+			Expect(fakeClient.Create(ctx, &v1alpha1.DNSProvider{
 				ObjectMeta: metav1.ObjectMeta{Name: "provider2", Namespace: "test"},
 				Spec: v1alpha1.DNSProviderSpec{
 					SecretRef: &corev1.SecretReference{
