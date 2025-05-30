@@ -5,6 +5,7 @@
 package alicloud
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -147,7 +148,7 @@ func (a *access) listRecords(zoneID, domain string, consume func(record *alidns.
 	}
 }
 
-func (a *access) CreateRecord(record raw.Record, zone provider.DNSHostedZone) error {
+func (a *access) CreateRecord(_ context.Context, record raw.Record, zone provider.DNSHostedZone) error {
 	r := record.(*Record)
 	req := &alidns.AddDomainRecordRequest{}
 	req.DomainName = r.DomainName
@@ -222,7 +223,7 @@ func (a *access) clearRecordWeight(recordId *string) error {
 	return nil
 }
 
-func (a *access) UpdateRecord(record raw.Record, zone provider.DNSHostedZone) error {
+func (a *access) UpdateRecord(_ context.Context, record raw.Record, zone provider.DNSHostedZone) error {
 	r := record.(*Record)
 	req := &alidns.UpdateDomainRecordRequest{}
 	req.RecordId = r.RecordId
@@ -249,7 +250,7 @@ func (a *access) UpdateRecord(record raw.Record, zone provider.DNSHostedZone) er
 	return nil
 }
 
-func (a *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
+func (a *access) DeleteRecord(_ context.Context, r raw.Record, zone provider.DNSHostedZone) error {
 	req := &alidns.DeleteDomainRecordRequest{}
 	req.RecordId = ptr.To(r.GetId())
 	a.metrics.AddZoneRequests(zone.Id().ID, provider.M_UPDATERECORDS, 1)
@@ -258,7 +259,7 @@ func (a *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
 	return err
 }
 
-func (a *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+func (a *access) GetRecordSet(_ context.Context, dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
 	rr := GetRR(dnsName, zone.Domain())
 	requestModifier := func(request *alidns.DescribeDomainRecordsRequest) {
 		request.RRKeyWord = ptr.To(rr)

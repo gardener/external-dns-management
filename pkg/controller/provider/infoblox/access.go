@@ -5,6 +5,7 @@
 package infoblox
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -37,19 +38,19 @@ func NewAccess(client ibclient.IBConnector, requestBuilder ibclient.HttpRequestB
 	}
 }
 
-func (this *access) CreateRecord(r raw.Record, zone provider.DNSHostedZone) error {
+func (this *access) CreateRecord(_ context.Context, r raw.Record, zone provider.DNSHostedZone) error {
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_CREATERECORDS, 1)
 	_, err := this.CreateObject(r.(ibclient.IBObject))
 	return err
 }
 
-func (this *access) UpdateRecord(r raw.Record, zone provider.DNSHostedZone) error {
+func (this *access) UpdateRecord(_ context.Context, r raw.Record, zone provider.DNSHostedZone) error {
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_CREATERECORDS, 1)
 	_, err := this.UpdateObject(r.(Record).PrepareUpdate().(ibclient.IBObject), r.GetId())
 	return err
 }
 
-func (this *access) DeleteRecord(r raw.Record, zone provider.DNSHostedZone) error {
+func (this *access) DeleteRecord(_ context.Context, r raw.Record, zone provider.DNSHostedZone) error {
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_DELETERECORDS, 1)
 	_, err := this.DeleteObject(r.GetId())
 	return err
@@ -95,7 +96,7 @@ func (this *access) NewRecord(fqdn string, rtype string, value string, _ provide
 	return
 }
 
-func (this *access) GetRecordSet(dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
+func (this *access) GetRecordSet(_ context.Context, dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordSet, error) {
 	this.metrics.AddZoneRequests(zone.Id().ID, provider.M_LISTRECORDS, 1)
 
 	if rtype != dns.RS_TXT {
