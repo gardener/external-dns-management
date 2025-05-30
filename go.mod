@@ -20,7 +20,7 @@ require (
 	github.com/aws/smithy-go v1.22.2
 	github.com/cloudflare/cloudflare-go v0.115.0
 	github.com/gardener/controller-manager-library v0.2.1-0.20250528062543-a441a28ac225
-	github.com/gardener/gardener v1.119.0
+	github.com/gardener/gardener v1.120.0
 	github.com/go-logr/logr v1.4.2
 	github.com/go-openapi/runtime v0.28.0
 	github.com/go-openapi/strfmt v0.23.0
@@ -39,7 +39,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/net v0.40.0
-	golang.org/x/oauth2 v0.28.0
+	golang.org/x/oauth2 v0.30.0
 	golang.org/x/sync v0.14.0
 	golang.org/x/tools v0.33.0
 	google.golang.org/api v0.215.0
@@ -47,12 +47,12 @@ require (
 	google.golang.org/protobuf v1.36.6
 	istio.io/api v1.25.3
 	istio.io/client-go v1.25.1
-	k8s.io/api v0.32.4
-	k8s.io/apiextensions-apiserver v0.32.4
-	k8s.io/apimachinery v0.32.4
-	k8s.io/client-go v0.32.4
-	k8s.io/code-generator v0.32.4
-	k8s.io/component-base v0.32.4
+	k8s.io/api v0.32.5
+	k8s.io/apiextensions-apiserver v0.32.5
+	k8s.io/apimachinery v0.32.5
+	k8s.io/client-go v0.32.5
+	k8s.io/code-generator v0.32.5
+	k8s.io/component-base v0.32.5
 	k8s.io/klog/v2 v2.130.1
 	k8s.io/utils v0.0.0-20250502105355-0f33e8f1c979
 	sigs.k8s.io/controller-runtime v0.20.4
@@ -105,7 +105,7 @@ require (
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.8.0 // indirect
 	github.com/gardener/cert-management v0.17.5 // indirect
-	github.com/gardener/etcd-druid/api v0.29.1 // indirect
+	github.com/gardener/etcd-druid/api v0.30.1 // indirect
 	github.com/gardener/machine-controller-manager v0.58.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
@@ -163,8 +163,8 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.82.2 // indirect
-	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.63.0 // indirect
+	github.com/prometheus/client_model v0.6.2 // indirect
+	github.com/prometheus/common v0.64.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
@@ -204,10 +204,10 @@ require (
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240911193312-2b36238f13e9 // indirect
 	k8s.io/klog v1.0.0 // indirect
-	k8s.io/kube-aggregator v0.32.4 // indirect
+	k8s.io/kube-aggregator v0.32.5 // indirect
 	k8s.io/kube-openapi v0.0.0-20241212222426-2c72e554b1e7 // indirect
-	k8s.io/kubelet v0.32.4 // indirect
-	k8s.io/metrics v0.32.4 // indirect
+	k8s.io/kubelet v0.32.5 // indirect
+	k8s.io/metrics v0.32.5 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0 // indirect
 )
