@@ -4,21 +4,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package controlplane
+package dnsentry
 
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -28,7 +27,7 @@ import (
 )
 
 // ControllerName is the name of this controller.
-const ControllerName = "dnsprovider-controlplane"
+const ControllerName = "dnsentry"
 
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster) error {
@@ -36,31 +35,25 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
 	}
-	if r.Recorder == nil {
-		r.Recorder = mgr.GetEventRecorderFor(ControllerName + "-controller")
-	}
 	r.state = state.GetState()
 
 	return builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(
-			&v1alpha1.DNSProvider{},
+			&v1alpha1.DNSEntry{},
 			builder.WithPredicates(
-				predicate.NewPredicateFuncs(func(obj client.Object) bool {
-					return obj.GetNamespace() == r.Config.Controllers.DNSProvider.Namespace
-				}),
-				dnsman2controller.DNSClassPredicate(r.Config.Class),
+				dnsman2controller.DNSClassPredicate(r.Class),
 			),
+			builder.WithPredicates(dnsman2controller.FilterPredicate(func(obj client.Object) bool {
+				return obj.GetNamespace() == r.Namespace
+			})),
 		).
 		Watches(
-			&corev1.Secret{},
-			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, secret client.Object) []reconcile.Request {
-				return r.providersToReconcileOnSecretChanges(ctx, secret)
+			&v1alpha1.DNSProvider{},
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, provider client.Object) []reconcile.Request {
+				return r.entriesToReconcileOnProviderChanges(ctx, provider)
 			}),
-			builder.WithPredicates(dnsman2controller.FilterPredicate(func(obj client.Object) bool {
-				return obj.GetNamespace() == r.Config.Controllers.DNSProvider.Namespace
-			})),
 		).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: 1,
@@ -68,26 +61,48 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		Complete(r)
 }
 
-func (r *Reconciler) providersToReconcileOnSecretChanges(ctx context.Context, secret client.Object) []reconcile.Request {
+func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, obj client.Object) []reconcile.Request {
 	var requests []reconcile.Request
-	secret, ok := secret.(*corev1.Secret)
+	provider, ok := obj.(*v1alpha1.DNSProvider)
 	if !ok {
 		return nil
 	}
-	providerList := &v1alpha1.DNSProviderList{}
-	if err := r.Client.List(ctx, providerList, client.InNamespace(r.Config.Controllers.DNSProvider.Namespace)); err != nil {
+	entryList := &v1alpha1.DNSEntryList{}
+	if err := r.Client.List(ctx, entryList, client.InNamespace(r.Namespace)); err != nil {
 		return nil
 	}
-	for _, provider := range dns.FilterProvidersByClass(providerList.Items, r.Config.Class) {
-		if provider.Spec.SecretRef.Name == secret.GetName() &&
-			(provider.Spec.SecretRef.Namespace == "" || provider.Spec.SecretRef.Namespace == secret.GetNamespace()) {
+	for _, entry := range entryList.Items {
+		providerName := ptr.Deref(entry.Status.Provider, "")
+		add := false
+		switch {
+		case providerName == provider.Name:
+			add = true
+		case providerName == "" && entry.Status.State != v1alpha1.StateReady && provider.Status.State == v1alpha1.StateReady:
+			add = domainMatches(entry.Spec.DNSName, provider.Status.Domains)
+		}
+		if add {
 			requests = append(requests, reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Name:      provider.Name,
-					Namespace: provider.Namespace,
+					Name:      entry.Name,
+					Namespace: entry.Namespace,
 				},
 			})
 		}
 	}
 	return requests
+}
+
+func domainMatches(dnsName string, domains v1alpha1.DNSSelectionStatus) bool {
+	dnsName = dns.NormalizeDomainName(dnsName)
+	for _, domain := range domains.Excluded {
+		if matchesSuffix(dnsName, domain) {
+			return false
+		}
+	}
+	for _, domain := range domains.Included {
+		if matchesSuffix(dnsName, domain) {
+			return true
+		}
+	}
+	return false
 }

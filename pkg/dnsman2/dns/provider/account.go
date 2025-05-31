@@ -8,6 +8,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -146,8 +148,8 @@ func (a *DNSAccount) cleanZoneQueryCache(zones []DNSHostedZone) {
 	}
 }
 
-func (a *DNSAccount) ExecuteRequests(ctx context.Context, zone DNSHostedZone, reqs []*ChangeRequest) error {
-	return a.handler.ExecuteRequests(ctx, zone, reqs)
+func (a *DNSAccount) ExecuteRequests(ctx context.Context, zone DNSHostedZone, requests ChangeRequests) error {
+	return a.handler.ExecuteRequests(ctx, zone, requests)
 }
 
 func (a *DNSAccount) MapTargets(dnsName string, targets []dns.Target) []dns.Target {
@@ -207,6 +209,32 @@ func (m *AccountMap) Get(log logr.Logger, provider *v1alpha1.DNSProvider, props 
 	return a, nil
 }
 
+func (m *AccountMap) FindAccountForZone(ctx context.Context, zoneID dns.ZoneID) (*DNSAccount, *DNSHostedZone, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	var errs []error
+
+	for _, account := range m.accounts {
+		if account.ProviderType() != zoneID.ProviderType {
+			continue
+		}
+
+		zones, err := account.GetZones(ctx)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("failed to get zones for account %s: %w", account.Hash(), err))
+			continue
+		}
+		for _, zone := range zones {
+			if zone.ZoneID() == zoneID {
+				return account, &zone, nil
+			}
+		}
+	}
+	errs = append([]error{fmt.Errorf("no account found for zone %s", zoneID)}, errs...)
+	return nil, nil, errors.Join(errs...)
+}
+
 var null = []byte{0}
 
 func (m *AccountMap) Release(log logr.Logger, a *DNSAccount, key client.ObjectKey) {
@@ -250,4 +278,22 @@ func (m *AccountMap) Hash(props utils.Properties, ptype string, extension *runti
 	h.Write(null)
 	h.Write([]byte(ptype))
 	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (m *AccountMap) GetDNSCachesByZone(zoneID dns.ZoneID) ([]*utils.DNSCache, error) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	var result []*utils.DNSCache
+	for _, account := range m.accounts {
+		for _, zone := range account.cachedZones {
+			if zone.ZoneID() == zoneID {
+				result = append(result, account.getZoneQueryCache(zone))
+			}
+		}
+	}
+	if len(result) == 0 {
+		return nil, fmt.Errorf("no DNS caches found for zone %s", zoneID)
+	}
+	return result, nil
 }

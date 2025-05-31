@@ -23,6 +23,15 @@ const (
 	RoutingPolicyFailover RoutingPolicyType = "failover"
 )
 
+// AllRoutingPolicyTypes contains all known routing policy types.
+var AllRoutingPolicyTypes = []RoutingPolicyType{
+	RoutingPolicyWeighted,
+	RoutingPolicyLatency,
+	RoutingPolicyGeoLocation,
+	RoutingPolicyIPBased,
+	RoutingPolicyFailover,
+}
+
 type RoutingPolicy struct {
 	Type       RoutingPolicyType
 	Parameters map[string]string

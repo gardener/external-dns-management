@@ -59,13 +59,53 @@ outer:
 	return true
 }
 
+type MetricsRequestType string
+
+const (
+	MetricsRequestTypeListZones      = "list_zones"
+	MetricsRequestTypeListZonesPages = "list_zones_pages"
+
+	MetricsRequestTypeListRecords     = "list_records"
+	MetricsRequestTypeListRecordPages = "list_records_pages"
+
+	MetricsRequestTypeUpdateRecords     = "update_records"
+	MetricsRequestTypeUpdateRecordPages = "update_records_pages"
+
+	MetricsRequestTypeCreateRecords = "create_records"
+	MetricsRequestTypeDeleteRecords = "delete_records"
+
+	MetricsRequestTypeCachedGetZones = "cached_getzones"
+)
+
 type Metrics interface {
 	AddGenericRequests(requestType string, n int)
 	AddZoneRequests(zoneID, requestType string, n int)
 }
 
-type ChangeRequest struct {
-	// TODO
+type DoneHandler interface {
+	SetInvalid(err error)
+	Failed(err error)
+	Throttled()
+	Succeeded()
+}
+
+type ChangeRequests struct {
+	Name    dns.DNSSetName
+	Updates map[dns.RecordType]*ChangeRequestUpdate
+	Done    DoneHandler
+}
+
+func NewChangeRequests(name dns.DNSSetName, done DoneHandler) *ChangeRequests {
+	return &ChangeRequests{
+		Name:    name,
+		Updates: make(map[dns.RecordType]*ChangeRequestUpdate),
+		Done:    done,
+	}
+}
+
+type ChangeRequestUpdate struct {
+	Old *dns.RecordSet
+	New *dns.RecordSet
 }
 
 // DNSHandler is the interface for DNS providers.
@@ -77,7 +117,7 @@ type DNSHandler interface {
 	// QueryDNS queries the DNS provider for the given DNS name and record type.
 	QueryDNS(ctx context.Context, zone DNSHostedZone, dnsName string, recordType dns.RecordType) ([]dns.Record, int64, error)
 	// ExecuteRequests executes the given change requests in the given zone.
-	ExecuteRequests(ctx context.Context, zone DNSHostedZone, reqs []*ChangeRequest) error
+	ExecuteRequests(ctx context.Context, zone DNSHostedZone, requests ChangeRequests) error
 	// MapTargets can transform the given targets to the DNS provider special targets.
 	MapTargets(dnsName string, targets []dns.Target) []dns.Target
 	// Release releases the DNS provider.

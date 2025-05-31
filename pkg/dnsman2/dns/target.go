@@ -23,8 +23,9 @@ type Targets []Target
 func (t Targets) Has(target Target) bool {
 	for _, t := range t {
 		if t.GetRecordType() == target.GetRecordType() &&
-			t.GetHostName() == target.GetHostName() &&
-			t.GetIPStack() == target.GetIPStack() {
+			t.GetRecordValue() == target.GetRecordValue() &&
+			t.GetIPStack() == target.GetIPStack() &&
+			t.GetTTL() == target.GetTTL() {
 			return true
 		}
 	}
@@ -44,7 +45,7 @@ func (t Targets) DifferFrom(targets Targets) bool {
 }
 
 type Target interface {
-	GetHostName() string
+	GetRecordValue() string
 	GetRecordType() RecordType
 	GetTTL() int64
 	AsRecord() *Record
@@ -53,34 +54,34 @@ type Target interface {
 
 type target struct {
 	rtype   RecordType
-	host    string
+	value   string
 	ttl     int64
 	ipstack string
 }
 
 func NewText(t string, ttl int64) Target {
-	return NewTarget(TypeTXT, fmt.Sprintf("%q", t), ttl)
+	return NewTarget(TypeTXT, t, ttl)
 }
 
 func NewTarget(rtype RecordType, ta string, ttl int64) Target {
-	return &target{rtype: rtype, host: ta, ttl: ttl}
+	return &target{rtype: rtype, value: ta, ttl: ttl}
 }
 
 func NewTargetWithIPStack(rtype RecordType, ta string, ttl int64, ipstack string) Target {
-	return &target{rtype: rtype, host: ta, ttl: ttl, ipstack: ipstack}
+	return &target{rtype: rtype, value: ta, ttl: ttl, ipstack: ipstack}
 }
 
 func (t *target) GetTTL() int64             { return t.ttl }
-func (t *target) GetHostName() string       { return t.host }
+func (t *target) GetRecordValue() string    { return t.value }
 func (t *target) GetRecordType() RecordType { return t.rtype }
 func (t *target) GetIPStack() string        { return t.ipstack }
 
 func (t *target) AsRecord() *Record {
-	return &Record{Value: t.host}
+	return &Record{Value: t.value}
 }
 
 func (t *target) String() string {
-	return fmt.Sprintf("%s(%s)", t.GetRecordType(), t.GetHostName())
+	return fmt.Sprintf("%s(%s)", t.GetRecordType(), t.GetRecordValue())
 }
 
 ////////////////////////////////////////////////////////////////////////////////

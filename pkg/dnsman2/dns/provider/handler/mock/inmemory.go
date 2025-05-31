@@ -6,6 +6,7 @@ package mock
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -22,20 +23,24 @@ type zonedata struct {
 
 // InMemory is a simple in-memory DNS provider implementation
 type InMemory struct {
-	lock            sync.Mutex
-	zones           map[dns.ZoneID]zonedata
-	failSimulations map[string]*inMemoryApplyFailSimulation
+	lock                 sync.Mutex
+	zones                map[dns.ZoneID]zonedata
+	failSimulations      map[string]*inMemoryApplyFailSimulation
+	supportRoutingPolicy bool
 }
 
 // inMemoryApplyFailSimulation is a struct to simulate apply failures.
 type inMemoryApplyFailSimulation struct {
 	zoneID       dns.ZoneID
-	request      *provider.ChangeRequest
+	request      *provider.ChangeRequests
 	appliedCount int
 }
 
-func NewInMemory() *InMemory {
-	return &InMemory{zones: map[dns.ZoneID]zonedata{}}
+func NewInMemory(supportRoutingPolicy bool) *InMemory {
+	return &InMemory{
+		zones:                map[dns.ZoneID]zonedata{},
+		supportRoutingPolicy: supportRoutingPolicy,
+	}
 }
 
 func (m *InMemory) GetZones() []provider.DNSHostedZone {
@@ -75,8 +80,40 @@ func (m *InMemory) AddZone(zone provider.DNSHostedZone) bool {
 		return false
 	}
 
-	m.zones[zone.ZoneID()] = zonedata{zone: zone, dnssets: dns.DNSSets{}}
+	m.zones[zone.ZoneID()] = zonedata{
+		zone:    zone,
+		dnssets: dns.DNSSets{},
+	}
 	return true
+}
+
+func (m *InMemory) GetDNSSets(zoneID dns.ZoneID) dns.DNSSets {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	data, ok := m.zones[zoneID]
+	if !ok {
+		return nil
+	}
+
+	return data.dnssets.Clone()
+}
+
+func (m *InMemory) GetCounts(zoneID dns.ZoneID) (nameCount, recordSetCount int) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	data, ok := m.zones[zoneID]
+	if !ok {
+		return 0, 0
+	}
+
+	nameCount = len(data.dnssets)
+	recordSetCount = 0
+	for _, sets := range data.dnssets {
+		recordSetCount += len(sets.Sets)
+	}
+	return nameCount, recordSetCount
 }
 
 func (m *InMemory) GetRecordset(zoneID dns.ZoneID, name dns.DNSSetName, rtype dns.RecordType) *dns.RecordSet {
@@ -88,54 +125,44 @@ func (m *InMemory) GetRecordset(zoneID dns.ZoneID, name dns.DNSSetName, rtype dn
 		return nil
 	}
 
-	return data.dnssets[name].Sets[rtype].Clone()
+	dnsSets, ok := data.dnssets[name]
+	if !ok {
+		return nil
+	}
+
+	return dnsSets.Sets[rtype].Clone()
 }
 
-// TODO(marc1404): Implement and remove nolint
-// nolint:revive
-func (m *InMemory) Apply(zoneID dns.ZoneID, request *provider.ChangeRequest, metrics provider.Metrics) error {
+func (m *InMemory) Apply(zoneID dns.ZoneID, name dns.DNSSetName, rtype dns.RecordType, update *provider.ChangeRequestUpdate, metrics provider.Metrics) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	return fmt.Errorf("not implemented")
-	// TODO
-	/*
-			data, ok := m.zones[zoneID]
-			if !ok {
-				return fmt.Errorf("DNSZone %s not hosted", zoneID)
-			}
+	data, ok := m.zones[zoneID]
+	if !ok {
+		return fmt.Errorf("DNSZone %s not hosted", zoneID)
+	}
 
-			for _, fail := range m.failSimulations {
-				if fail.zoneID == zoneID && fail.request.IsSemanticEqualTo(request) {
-					fail.appliedCount++
-					return fmt.Errorf("simulated failure")
-				}
-			}
-
-			name, rset := buildRecordSet(request)
-			switch request.Action {
-			case R_CREATE, R_UPDATE:
-				data.dnssets.AddRecordSet(name, request.Addition.RoutingPolicy, rset)
-				metrics.AddZoneRequests(zoneID.ID, M_UPDATERECORDS, 1)
-			case R_DELETE:
-				data.dnssets.RemoveRecordSet(name, rset.Type)
-				metrics.AddZoneRequests(zoneID.ID, M_DELETERECORDS, 1)
-			}
-			return nil
+	for _, fail := range m.failSimulations {
+		if fail.zoneID == zoneID && isIncluded(fail.request, name, rtype, update) {
+			fail.appliedCount++
+			return fmt.Errorf("simulated failure")
 		}
+	}
 
-		func buildRecordSet(req *provider.ChangeRequest) (dns.DNSSetName, *dns.RecordSet) {
-			var dnsset *dns.DNSSet
-			switch req.Action {
-			case R_CREATE, R_UPDATE:
-				dnsset = req.Addition
-			case R_DELETE:
-				dnsset = req.Deletion
-			}
-
-			return dnsset.Name, dnsset.Sets[req.Type]
-
-	*/
+	if !m.supportRoutingPolicy {
+		if name.SetIdentifier != "" || (update.Old != nil && update.Old.RoutingPolicy != nil) || (update.New != nil && update.New.RoutingPolicy != nil) {
+			return fmt.Errorf("in-memory provider does not support routing policies")
+		}
+	}
+	if update.Old != nil {
+		data.dnssets.RemoveRecordSet(name, update.Old.Type)
+		metrics.AddZoneRequests(zoneID.ID, provider.MetricsRequestTypeDeleteRecords, 1)
+	}
+	if update.New != nil {
+		data.dnssets.AddRecordSet(name, update.New)
+		metrics.AddZoneRequests(zoneID.ID, provider.MetricsRequestTypeCreateRecords, 1)
+	}
+	return nil
 }
 
 type DumpDNSHostedZone struct {
@@ -153,7 +180,7 @@ type FullDump struct {
 	InMemory map[dns.ZoneID]*ZoneDump
 }
 
-func (m *InMemory) AddApplyFailSimulation(id dns.ZoneID, request *provider.ChangeRequest) string {
+func (m *InMemory) AddApplyFailSimulation(id dns.ZoneID, request *provider.ChangeRequests) string {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -226,4 +253,11 @@ func (d *FullDump) ToYAMLString() string {
 		return "error: " + err.Error()
 	}
 	return string(data)
+}
+
+func isIncluded(cr *provider.ChangeRequests, name dns.DNSSetName, recordType dns.RecordType, update *provider.ChangeRequestUpdate) bool {
+	if cr.Name != name {
+		return false
+	}
+	return reflect.DeepEqual(cr.Updates[recordType], update)
 }
