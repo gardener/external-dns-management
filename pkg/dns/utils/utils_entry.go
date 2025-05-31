@@ -95,6 +95,15 @@ func (this *DNSEntryObject) AcknowledgeTargets(targets []string) bool {
 	return false
 }
 
+func (this *DNSEntryObject) AcknowledgeDNSName(name *string) bool {
+	s := this.Status()
+	if !reflect.DeepEqual(s.DNSName, name) {
+		s.DNSName = name
+		return true
+	}
+	return false
+}
+
 func (this *DNSEntryObject) AcknowledgeRoutingPolicy(policy *dns.RoutingPolicy) bool {
 	s := this.Status()
 	if s.RoutingPolicy == nil && policy == nil {
