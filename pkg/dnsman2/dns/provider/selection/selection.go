@@ -6,6 +6,7 @@ package selection
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -24,6 +25,11 @@ type SelectionResult struct {
 	DomainSel     SubSelection
 	Error         string
 	Warnings      []string
+}
+
+func (r SelectionResult) SetProviderStatusZonesAndDomains(status *v1alpha1.DNSProviderStatus) {
+	status.Zones = v1alpha1.DNSSelectionStatus{Included: toSortedList(r.ZoneSel.Include), Excluded: toSortedList(r.ZoneSel.Exclude)}
+	status.Domains = v1alpha1.DNSSelectionStatus{Included: toSortedList(r.DomainSel.Include), Excluded: toSortedList(r.DomainSel.Exclude)}
 }
 
 // SubSelection contains an included and an excluded string set
@@ -269,4 +275,13 @@ func normalizeDomains(domains sets.Set[string]) sets.Set[string] {
 		normalized.Insert(k)
 	}
 	return normalized
+}
+
+func toSortedList(set sets.Set[string]) []string {
+	if len(set) == 0 {
+		return nil
+	}
+	list := set.UnsortedList()
+	sort.Strings(list)
+	return list
 }

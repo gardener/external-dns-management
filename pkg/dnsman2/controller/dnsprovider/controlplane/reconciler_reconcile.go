@@ -156,17 +156,3 @@ func toLightZones(zones []dnsprovider.DNSHostedZone) []selection.LightDNSHostedZ
 	}
 	return lzones
 }
-
-func setProviderStatusZonesAndDomains(status *v1alpha1.DNSProviderStatus, selectionResult selection.SelectionResult) {
-	status.Zones = v1alpha1.DNSSelectionStatus{Included: toSortedList(selectionResult.ZoneSel.Include), Excluded: toSortedList(selectionResult.ZoneSel.Exclude)}
-	status.Domains = v1alpha1.DNSSelectionStatus{Included: toSortedList(selectionResult.DomainSel.Include), Excluded: toSortedList(selectionResult.DomainSel.Exclude)}
-}
-
-func toSortedList(set sets.Set[string]) []string {
-	if len(set) == 0 {
-		return nil
-	}
-	list := set.UnsortedList()
-	sort.Strings(list)
-	return list
-}
