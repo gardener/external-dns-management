@@ -170,6 +170,9 @@ spec:
                   to IP addresses
                 format: int64
                 type: integer
+              dnsName:
+                description: full qualified domain name applied
+                type: string
               lastUpdateTime:
                 description: lastUpdateTime contains the timestamp of the last status
                   update
