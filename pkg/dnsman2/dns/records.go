@@ -7,6 +7,7 @@ package dns
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 )
 
 // RecordType represents the type of record set.
@@ -55,14 +56,21 @@ func (r *Record) Clone() *Record {
 }
 
 type RecordSet struct {
-	Type      RecordType
-	TTL       int64
-	IgnoreTTL bool
-	Records   []*Record
+	Type          RecordType
+	TTL           int64
+	Records       []*Record
+	RoutingPolicy *RoutingPolicy
 }
 
 func NewRecordSet(rtype RecordType, ttl int64, records []*Record) *RecordSet {
 	return &RecordSet{Type: rtype, TTL: ttl, Records: records}
+}
+
+func (rs *RecordSet) IsTTLIgnored() bool {
+	if rs == nil {
+		return false
+	}
+	return rs.Type == TypeAWS_ALIAS_A || rs.Type == TypeAWS_ALIAS_AAAA
 }
 
 func (rs *RecordSet) Clone() *RecordSet {
@@ -70,9 +78,12 @@ func (rs *RecordSet) Clone() *RecordSet {
 		return nil
 	}
 
-	set := &RecordSet{Type: rs.Type, TTL: rs.TTL, IgnoreTTL: rs.IgnoreTTL}
+	set := &RecordSet{Type: rs.Type, TTL: rs.TTL}
 	for _, r := range rs.Records {
 		set.Records = append(set.Records, r.Clone())
+	}
+	if rs.RoutingPolicy != nil {
+		set.RoutingPolicy = rs.RoutingPolicy.Clone()
 	}
 	return set
 }
@@ -107,11 +118,8 @@ func (rs *RecordSet) Match(set *RecordSet) bool {
 		return false
 	}
 
-	if rs.Type != TypeAWS_ALIAS_A && rs.Type != TypeAWS_ALIAS_AAAA {
-		// ignore TTL for alias records
-		if !rs.IgnoreTTL && !set.IgnoreTTL && rs.TTL != set.TTL {
-			return false
-		}
+	if !rs.IsTTLIgnored() && rs.TTL != set.TTL {
+		return false
 	}
 
 	for _, r := range rs.Records {
@@ -126,7 +134,8 @@ func (rs *RecordSet) Match(set *RecordSet) bool {
 			return false
 		}
 	}
-	return true
+
+	return reflect.DeepEqual(rs.RoutingPolicy, set.RoutingPolicy)
 }
 
 func (rs *RecordSet) DiffTo(set *RecordSet) (new, update, delete []*Record) {

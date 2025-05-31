@@ -7,14 +7,12 @@ package controlplane
 import (
 	"context"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -80,7 +78,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		status.Message = nil
 		status.State = v1alpha1.StateReady
 		status.ObservedGeneration = provider.Generation
-		setProviderStatusZonesAndDomains(status, providerState.GetSelection())
+		providerState.GetSelection().SetProviderStatusZonesAndDomains(status)
 		status.DefaultTTL = ptr.To[int64](providerState.GetDefaultTTL())
 		if config.RateLimits != nil && config.RateLimits.Enabled {
 			status.RateLimit = &v1alpha1.RateLimit{
@@ -155,18 +153,4 @@ func toLightZones(zones []dnsprovider.DNSHostedZone) []selection.LightDNSHostedZ
 		lzones[i] = z
 	}
 	return lzones
-}
-
-func setProviderStatusZonesAndDomains(status *v1alpha1.DNSProviderStatus, selectionResult selection.SelectionResult) {
-	status.Zones = v1alpha1.DNSSelectionStatus{Included: toSortedList(selectionResult.ZoneSel.Include), Excluded: toSortedList(selectionResult.ZoneSel.Exclude)}
-	status.Domains = v1alpha1.DNSSelectionStatus{Included: toSortedList(selectionResult.DomainSel.Include), Excluded: toSortedList(selectionResult.DomainSel.Exclude)}
-}
-
-func toSortedList(set sets.Set[string]) []string {
-	if len(set) == 0 {
-		return nil
-	}
-	list := set.UnsortedList()
-	sort.Strings(list)
-	return list
 }

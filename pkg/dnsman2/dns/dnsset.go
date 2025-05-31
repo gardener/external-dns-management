@@ -4,10 +4,6 @@
 
 package dns
 
-import (
-	"reflect"
-)
-
 // DNSSet contains record sets for a DNS name. The name is given without
 // trailing dot. If the provider requires this dot, it must be removed or added
 // whe reading or writing record sets, respectively.
@@ -20,32 +16,30 @@ import (
 // If multiple CNAME records are given they will be mapped to A records
 // by resolving the cnames. This resolution will be updated periodically.
 type DNSSet struct {
-	Name          DNSSetName
-	UpdateGroup   string
-	Sets          RecordSets
-	RoutingPolicy *RoutingPolicy
+	Name DNSSetName
+	Sets RecordSets
 }
 
 // Clone returns a deep copy of the DNSSet.
 func (s *DNSSet) Clone() *DNSSet {
 	return &DNSSet{
-		Name: s.Name, Sets: s.Sets.Clone(), UpdateGroup: s.UpdateGroup,
-		RoutingPolicy: s.RoutingPolicy.Clone(),
+		Name: s.Name,
+		Sets: s.Sets.Clone(),
 	}
 }
 
 // SetRecordSet sets a record set for the given record type.
-func (s *DNSSet) SetRecordSet(recordType RecordType, ttl int64, values ...string) {
+func (s *DNSSet) SetRecordSet(recordType RecordType, policy *RoutingPolicy, ttl int64, values ...string) {
 	records := make([]*Record, len(values))
 	for i, r := range values {
 		records[i] = &Record{Value: r}
 	}
-	s.Sets[recordType] = &RecordSet{Type: recordType, TTL: ttl, IgnoreTTL: false, Records: records}
+	s.Sets[recordType] = &RecordSet{Type: recordType, TTL: ttl, Records: records, RoutingPolicy: policy}
 }
 
 // NewDNSSet creates a new DNSSet.
-func NewDNSSet(name DNSSetName, routingPolicy *RoutingPolicy) *DNSSet {
-	return &DNSSet{Name: name.Normalize(), RoutingPolicy: routingPolicy, Sets: RecordSets{}}
+func NewDNSSet(name DNSSetName) *DNSSet {
+	return &DNSSet{Name: name.Normalize(), Sets: RecordSets{}}
 }
 
 // Match matches DNSSet equality
@@ -66,12 +60,6 @@ func (s *DNSSet) match(that *DNSSet, restrictToRecordType *RecordType) bool {
 		return false
 	}
 	if s.Name != that.Name {
-		return false
-	}
-	if s.UpdateGroup != that.UpdateGroup {
-		return false
-	}
-	if s.RoutingPolicy != that.RoutingPolicy && !reflect.DeepEqual(s.RoutingPolicy, that.RoutingPolicy) {
 		return false
 	}
 	if restrictToRecordType != nil {
@@ -103,11 +91,11 @@ func (s *DNSSet) match(that *DNSSet, restrictToRecordType *RecordType) bool {
 type DNSSets map[DNSSetName]*DNSSet
 
 // AddRecordSet adds a record set to the DNSSets.
-func (s DNSSets) AddRecordSet(name DNSSetName, policy *RoutingPolicy, recordSet *RecordSet) {
+func (s DNSSets) AddRecordSet(name DNSSetName, recordSet *RecordSet) {
 	name = name.Normalize()
 	dnsset := s[name]
 	if dnsset == nil {
-		dnsset = NewDNSSet(name, policy)
+		dnsset = NewDNSSet(name)
 		s[name] = dnsset
 	}
 	dnsset.Sets[recordSet.Type] = recordSet
@@ -116,7 +104,6 @@ func (s DNSSets) AddRecordSet(name DNSSetName, policy *RoutingPolicy, recordSet 
 			recordSet.Records[i].Value = NormalizeDomainName(recordSet.Records[i].Value)
 		}
 	}
-	dnsset.RoutingPolicy = policy
 }
 
 // RemoveRecordSet removes a record set from the DNSSets.

@@ -71,10 +71,10 @@ var _ = Describe("Reconcile", func() {
 			Data:       map[string][]byte{"foo": []byte("bar")},
 		})).To(Succeed())
 		rawMockConfig, err := mock2.MarshallMockConfig(mock2.MockConfig{
-			Name: "mock",
+			Account: "test",
 			Zones: []mock2.MockZone{
-				{ZonePrefix: "test:", DNSName: "example.com"},
-				{ZonePrefix: "test:", DNSName: "example2.com"},
+				{DNSName: "example.com"},
+				{DNSName: "example2.com"},
 			},
 		})
 		Expect(err).ToNot(HaveOccurred())
@@ -157,8 +157,8 @@ var _ = Describe("Reconcile", func() {
 
 	It("should update status if account has no zones", func() {
 		rawMockConfig, err := mock2.MarshallMockConfig(mock2.MockConfig{
-			Name:  "mock",
-			Zones: []mock2.MockZone{},
+			Account: "account1",
+			Zones:   []mock2.MockZone{},
 		})
 		Expect(err).ToNot(HaveOccurred())
 		provider.Spec.ProviderConfig = rawMockConfig
