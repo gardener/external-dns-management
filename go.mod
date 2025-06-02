@@ -8,7 +8,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.18.0
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.10.0
 	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns v1.2.0
-	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns v1.2.0
+	github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns v1.3.0
 	github.com/ahmetb/gen-crd-api-reference-docs v0.3.0
 	github.com/alibabacloud-go/alidns-20150109/v4 v4.5.9
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.0.11
