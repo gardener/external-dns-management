@@ -112,6 +112,7 @@
     "github.com/xeipuuv/gojsonpointer",
     "github.com/xeipuuv/gojsonreference",
     "github.com/xeipuuv/gojsonschema",
+    "go.opentelemetry.io/auto/sdk",
     "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp",
     "go.opentelemetry.io/otel",
     "go.opentelemetry.io/otel/metric",
