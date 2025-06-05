@@ -735,12 +735,13 @@ func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject,
 ///////////////////////////////////////////////////////////////////////////////
 
 type Entry struct {
-	lock       *dnsutils.TryLock
-	key        string
-	createdAt  time.Time
-	modified   bool
-	activezone dns.ZoneID
-	state      *state
+	lock               *dnsutils.TryLock
+	key                string
+	createdAt          time.Time
+	modified           bool
+	activezone         dns.ZoneID
+	state              *state
+	ignoredForDeletion bool
 
 	*EntryVersion
 }
