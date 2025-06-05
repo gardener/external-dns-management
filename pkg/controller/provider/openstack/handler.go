@@ -58,7 +58,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 }
 
 func readAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
-	authURL, err := c.GetRequiredProperty("OS_AUTH_URL")
+	authURL, err := c.GetRequiredProperty("OS_AUTH_URL", "authURL")
 	if err != nil {
 		return nil, err
 	}
