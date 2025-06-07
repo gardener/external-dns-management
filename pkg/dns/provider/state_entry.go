@@ -252,7 +252,8 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		}
 	}
 
-	if ignored, annotation := ignoredByAnnotation(object); ignored {
+	if ignored, ignoredForDeletion, annotation := ignoredByAnnotation(object); ignored {
+		old.ignoredForDeletion = ignoredForDeletion
 		var err error
 		if !object.IsDeleting() {
 			_, err = object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
@@ -269,6 +270,8 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 			return reconcile.Delay(logger, err)
 		}
 		return reconcile.Succeeded(logger, "ignored")
+	} else if old != nil {
+		old.ignoredForDeletion = false
 	}
 
 	p, err := this.entryPremise(object)
@@ -338,6 +341,10 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *d
 	this.smartInfof(logger, "cleanup old entry (duplicate=%t)", e.duplicate)
 	this.entries.Delete(e)
 	this.DeleteLookupJob(e.ObjectName())
+	if e.ignoredForDeletion {
+		this.smartInfof(logger, "ignoredForDeletion - no cleanup in backend")
+		return
+	}
 	if this.dnsnames[e.ZonedDNSName()] == e {
 		var found *Entry
 		for _, a := range this.entries {
@@ -402,19 +409,21 @@ func (this *state) IsUpdateOperationsBlocked(entryName resources.ObjectName) boo
 	return blocked
 }
 
-func ignoredByAnnotation(object *dnsutils.DNSEntryObject) (bool, string) {
+// ignoredByAnnotation checks if the entry is ignored by annotation.
+// If the entry is ignored, it returns true and the reason for ignoring. Second return value indicates if the entry is ignored for deletion.
+func ignoredByAnnotation(object *dnsutils.DNSEntryObject) (bool, bool, string) {
 	switch value := object.GetAnnotations()[dns.AnnotationIgnore]; value {
 	case dns.AnnotationIgnoreValueTrue, dns.AnnotationIgnoreValueReconcile:
 		if !object.IsDeleting() {
-			return true, dns.AnnotationIgnore + "=" + value
+			return true, false, dns.AnnotationIgnore + "=" + value
 		}
 	case dns.AnnotationIgnoreValueFull:
-		return true, dns.AnnotationIgnore + "=" + value
+		return true, true, dns.AnnotationIgnore + "=" + value
 	}
 	if object.GetAnnotations()[dns.AnnotationHardIgnore] == "true" {
-		return true, dns.AnnotationHardIgnore + "=true"
+		return true, true, dns.AnnotationHardIgnore + "=true"
 	}
-	return false, ""
+	return false, false, ""
 }
 
 func (this *state) dnsSetFromEntry(e *Entry) *dns.DNSSet {
