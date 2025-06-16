@@ -8,7 +8,10 @@ package dnsentry
 
 import (
 	"context"
+	"time"
 
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
@@ -22,6 +25,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/lookup"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
@@ -36,7 +40,12 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		r.Clock = clock.RealClock{}
 	}
 	r.state = state.GetState()
-
+	r.lookupProcessor = lookup.NewLookupProcessor(
+		mgr.GetLogger().WithName(ControllerName).WithName("lookupProcessor"),
+		newReconcileTrigger(r.Client),
+		max(ptr.Deref(r.Config.MaxConcurrentLookups, 2), 2),
+		15*time.Second,
+	)
 	return builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
@@ -56,7 +65,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 			}),
 		).
 		WithOptions(controller.Options{
-			MaxConcurrentReconciles: 1,
+			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 10),
 		}).
 		Complete(r)
 }
@@ -105,4 +114,32 @@ func domainMatches(dnsName string, domains v1alpha1.DNSSelectionStatus) bool {
 		}
 	}
 	return false
+}
+
+type reconcileTrigger struct {
+	client client.Client
+}
+
+var _ lookup.EntryTrigger = &reconcileTrigger{}
+
+func newReconcileTrigger(c client.Client) lookup.EntryTrigger {
+	return &reconcileTrigger{
+		client: c,
+	}
+}
+
+func (r *reconcileTrigger) TriggerReconciliation(ctx context.Context, key client.ObjectKey) error {
+	entry := &v1alpha1.DNSEntry{}
+	if err := r.client.Get(ctx, key, entry); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil // Entry is gone, no need to trigger reconciliation
+		}
+		return err
+	}
+	patch := client.MergeFrom(entry.DeepCopy())
+	if entry.Annotations == nil {
+		entry.Annotations = make(map[string]string)
+	}
+	entry.Annotations[v1beta1constants.GardenerOperation] = v1beta1constants.GardenerOperationReconcile
+	return r.client.Patch(ctx, entry, patch)
 }

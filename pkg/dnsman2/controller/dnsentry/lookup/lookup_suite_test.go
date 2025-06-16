@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package dnsentry
+package lookup
 
 import (
 	"testing"
@@ -19,7 +19,7 @@ import (
 
 func TestLandscape(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "DNSEntry Controller Suite")
+	RunSpecs(t, "Lookup Processor Suite")
 }
 
 var log logr.Logger

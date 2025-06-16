@@ -5,21 +5,65 @@
 package dnsentry
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
 	"strings"
+	"time"
 
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/lookup"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
-// SpecToTargets converts a DNSEntrySpec to dns.Targets.
+// maxCNAMETargets is the maximum number of CNAME targets. It is restricted, as it needs regular DNS lookups.
+const maxCNAMETargets = 25
+
+type TargetsResult struct {
+	EntryKey client.ObjectKey
+	Targets  dns.Targets
+	Warnings []string
+}
+
+func (r *TargetsResult) AddTarget(target dns.Target) {
+	if r.Targets.Has(target) {
+		field := "target"
+		if target.GetRecordType() == dns.TypeTXT {
+			field = "text"
+		}
+		r.AddWarning(fmt.Sprintf("dns entry %q has duplicate %s %q", r.EntryKey, field, target))
+	} else {
+		r.Targets = append(r.Targets, target)
+	}
+}
+
+func (r *TargetsResult) HasTargets() bool {
+	return len(r.Targets) > 0
+}
+
+func (r *TargetsResult) HasWarnings() bool {
+	return len(r.Warnings) > 0
+}
+
+func (r *TargetsResult) AddWarning(warning string) {
+	r.Warnings = append(r.Warnings, warning)
+}
+
+type TargetsProducer struct {
+	ctx                        context.Context
+	defaultTTL                 int64
+	defaultCNAMELookupInterval int64
+	processor                  lookup.LookupProcessor
+}
+
+// FromSpec extracts dns.Targets form a DNSEntrySpec.
 // It validates the spec and returns warnings for duplicate targets or empty text.
-func SpecToTargets(key client.ObjectKey, spec *v1alpha1.DNSEntrySpec, ipstack string, defaultTTL int64) (targets dns.Targets, warnings []string, err error) {
+func (p *TargetsProducer) FromSpec(key client.ObjectKey, spec *v1alpha1.DNSEntrySpec, ipstack string) (result *TargetsResult, err error) {
 	if err = dns.ValidateDomainName(spec.DNSName); err != nil {
 		return
 	}
@@ -39,51 +83,134 @@ func SpecToTargets(key client.ObjectKey, spec *v1alpha1.DNSEntrySpec, ipstack st
 		return
 	}
 
+	result = &TargetsResult{EntryKey: key}
 	for i, t := range spec.Targets {
 		if strings.TrimSpace(t) == "" {
 			err = fmt.Errorf("target %d must not be empty", i+1)
 			return
 		}
 		var newTarget dns.Target
-		newTarget, err = newAddressTarget(t, ptr.Deref(spec.TTL, defaultTTL), ipstack)
+		newTarget, err = newAddressTarget(t, ptr.Deref(spec.TTL, p.defaultTTL), ipstack)
 		if err != nil {
 			return
 		}
-		if targets.Has(newTarget) {
-			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate target %q", key, newTarget))
-		} else {
-			targets = append(targets, newTarget)
-		}
+		result.AddTarget(newTarget)
 	}
-	count := 0
+	emptyCount := 0
 	for _, t := range spec.Text {
 		if t == "" {
-			warnings = append(warnings, fmt.Sprintf("dns entry %q has empty text", key))
+			result.AddWarning(fmt.Sprintf("dns entry %q has empty text", key))
+			emptyCount++
 			continue
 		}
-		newTarget := dns.NewText(t, ptr.Deref(spec.TTL, defaultTTL))
-		if targets.Has(newTarget) {
-			warnings = append(warnings, fmt.Sprintf("dns entry %q has duplicate text %q", key, newTarget))
-		} else {
-			targets = append(targets, newTarget)
-			count++
-		}
+		newTarget := dns.NewText(t, ptr.Deref(spec.TTL, p.defaultTTL))
+		result.AddTarget(newTarget)
 	}
-	if len(spec.Text) > 0 && count == 0 {
+	if emptyCount > 0 && len(spec.Text) == emptyCount {
 		err = fmt.Errorf("dns entry has only empty text")
 		return
 	}
 
-	if len(targets) == 0 {
+	if !result.HasTargets() {
 		err = fmt.Errorf("no target or text specified")
 		return
 	}
 
-	if err = checkCNAMETargets(targets); err != nil {
+	resolveTargetsToAddresses, err := checkCNAMETargets(spec, result.Targets)
+	if err != nil {
 		return
 	}
 
+	if resolveTargetsToAddresses {
+		err = p.upsertLookupJob(p.ctx, key, spec, result)
+		if err != nil {
+			return
+		}
+		// TODO(MartinWeindel) update lookup processor, retrieve addresses for CNAME targets
+	} else {
+		err = p.deleteLookupJob(key)
+		if err != nil {
+			return
+		}
+	}
+
 	return
+}
+
+func (p *TargetsProducer) upsertLookupJob(ctx context.Context, key client.ObjectKey, spec *v1alpha1.DNSEntrySpec, result *TargetsResult) error {
+	if p.processor == nil {
+		return fmt.Errorf("lookup processor is not initialized")
+	}
+
+	var ttl int64
+	if len(result.Targets) > 0 {
+		ttl = result.Targets[0].GetTTL()
+	}
+	lookupInterval := p.defaultCNAMELookupInterval
+	if iv := spec.CNameLookupInterval; iv != nil && *iv > 0 {
+		lookupInterval = *iv
+		if lookupInterval < 30 {
+			lookupInterval = 30
+		}
+		if len(result.Targets) > 0 {
+			if ttl > 0 && lookupInterval < ttl/3 {
+				lookupInterval = ttl / 3
+			}
+		}
+	}
+
+	hostnames := make([]string, 0, len(result.Targets))
+	for _, target := range result.Targets {
+		if target.GetRecordType() != dns.TypeCNAME {
+			return fmt.Errorf("unexpected target type %s for CNAME lookup", target.GetRecordType())
+		}
+		hostnames = append(hostnames, target.GetRecordValue())
+	}
+
+	lookupAllResults := lookup.LookupAllHostnamesIPs(ctx, hostnames...)
+	p.processor.Upsert(ctx, key, lookupAllResults, time.Duration(lookupInterval)*time.Second)
+	if lookupAllResults.HasErrors() && !lookupAllResults.HasOnlyNotFoundError() {
+		return fmt.Errorf("lookup failed for some targets: %s", errors.Join(lookupAllResults.Errs...))
+	}
+
+	var resolvedTargets dns.Targets
+	for _, ip := range lookupAllResults.IPv4Addrs {
+		resolvedTargets = append(resolvedTargets, dns.NewTarget(dns.TypeA, ip, ttl))
+	}
+	for _, ip := range lookupAllResults.IPv6Addrs {
+		resolvedTargets = append(resolvedTargets, dns.NewTarget(dns.TypeAAAA, ip, ttl))
+	}
+	result.Targets = resolvedTargets
+	return nil
+}
+
+func (p *TargetsProducer) deleteLookupJob(key client.ObjectKey) error {
+	if p.processor == nil {
+		return nil
+	}
+	p.processor.Delete(key)
+	return nil
+}
+
+// checkCNAMETargets checks if the targets contain CNAME records and returns true if CNAME should be resolved to addresses.
+func checkCNAMETargets(spec *v1alpha1.DNSEntrySpec, targets dns.Targets) (bool, error) {
+	cnameCount := 0
+	otherCount := 0
+	for _, t := range targets {
+		if t.GetRecordType() == dns.TypeCNAME {
+			cnameCount++
+		} else {
+			otherCount++
+		}
+	}
+	if cnameCount > 0 && otherCount > 0 {
+		return false, fmt.Errorf("cannot mix CNAME and other record types in targets")
+	}
+	if cnameCount > maxCNAMETargets {
+		return false, fmt.Errorf("too many CNAME targets (%d), maximum is %d", cnameCount, maxCNAMETargets)
+	}
+	resolveTargetsToAddresses := cnameCount > 1 || (cnameCount == 1 && ptr.Deref(spec.ResolveTargetsToAddresses, false))
+	return resolveTargetsToAddresses, nil
 }
 
 // StatusToTargets converts a DNSEntryStatus to dns.Targets.
@@ -139,25 +266,6 @@ func newAddressTarget(name string, ttl int64, ipstack string) (dns.Target, error
 	} else {
 		return nil, fmt.Errorf("unexpected IP address (neither IPv4 or IPv6): %s (%s)", ip.String(), name)
 	}
-}
-
-func checkCNAMETargets(targets dns.Targets) error {
-	cnameCount := 0
-	otherCount := 0
-	for _, t := range targets {
-		if t.GetRecordType() == dns.TypeCNAME {
-			cnameCount++
-		} else {
-			otherCount++
-		}
-	}
-	if cnameCount > 0 && otherCount > 0 {
-		return fmt.Errorf("cannot mix CNAME and other record types in targets")
-	}
-	if cnameCount > 1 {
-		return fmt.Errorf("cannot have multiple CNAME targets")
-	}
-	return nil
 }
 
 // TODO(MartinWeindel) move this check to the provider

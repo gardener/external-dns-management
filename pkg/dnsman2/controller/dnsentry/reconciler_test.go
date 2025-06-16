@@ -2,10 +2,9 @@ package dnsentry
 
 import (
 	"context"
+	"net"
 	"time"
 
-	"github.com/gardener/gardener/pkg/logger"
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -15,15 +14,13 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/lookup"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	mock2 "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/selection"
@@ -31,25 +28,25 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
-// TODO(MartinWeindel) add tests for routing policy
-// TODO(MartinWeindel) add tests for CNAME to A lookups
+// TODO(MartinWeindel) add tests for dynamic changes of CNAME to A lookups
 // TODO(MartinWeindel) add tests for alias targets
 
 var _ = Describe("Reconcile", func() {
 	var (
-		ctx               = context.Background()
-		fakeClient        client.Client
-		reconciler        *Reconciler
-		registry          *dnsprovider.DNSHandlerRegistry
-		accounts          []*dnsprovider.DNSAccount
-		entryA            *v1alpha1.DNSEntry
-		entryB            *v1alpha1.DNSEntry
-		entryC            *v1alpha1.DNSEntry
-		clock             = &testing.FakeClock{}
-		startTime         = time.Now().Truncate(time.Second)
-		skipProviderState bool
-		log               logr.Logger
-		defaultTTL        = int64(360)
+		ctx                   = context.Background()
+		fakeClient            client.Client
+		mlh                   *lookup.MockLookupHost
+		cancelLookupProcessor context.CancelFunc
+		reconciler            *Reconciler
+		registry              *dnsprovider.DNSHandlerRegistry
+		accounts              []*dnsprovider.DNSAccount
+		entryA                *v1alpha1.DNSEntry
+		entryB                *v1alpha1.DNSEntry
+		entryC                *v1alpha1.DNSEntry
+		clock                 = &testing.FakeClock{}
+		startTime             = time.Now().Truncate(time.Second)
+		skipProviderState     bool
+		defaultTTL            = int64(360)
 
 		mockConfig1 = &mock2.MockConfig{
 			Account: "test",
@@ -120,7 +117,7 @@ var _ = Describe("Reconcile", func() {
 			Records: []*dns.Record{{Value: "This is a text!"}, {Value: "blabla"}},
 		}
 
-		prepareAccount = func(p *v1alpha1.DNSProvider) *provider.DNSAccount {
+		prepareAccount = func(p *v1alpha1.DNSProvider) *dnsprovider.DNSAccount {
 			account, err := reconciler.state.GetAccount(log, p, utils.Properties{}, dnsprovider.DNSAccountConfig{
 				ZoneCacheTTL: 5 * time.Minute,
 				DefaultTTL:   defaultTTL,
@@ -276,14 +273,34 @@ var _ = Describe("Reconcile", func() {
 		}
 		clock.SetTime(startTime)
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSEntry{}).Build()
-		logf.SetLogger(logger.MustNewZapLogger(logger.DebugLevel, logger.FormatJSON, zap.WriteTo(GinkgoWriter)))
-		log = logf.Log
+
 		reconciler = &Reconciler{
-			Client:    fakeClient,
-			Namespace: "test",
-			Clock:     clock,
-			state:     state.GetState(),
+			Client:          fakeClient,
+			Namespace:       "test",
+			Clock:           clock,
+			state:           state.GetState(),
+			lookupProcessor: lookup.NewLookupProcessor(log.WithName("lookup-processor"), lookup.NewNullTrigger(), 1, 250*time.Millisecond),
 		}
+
+		mlh = lookup.NewMockLookupHost(map[string]lookup.MockLookupHostResult{
+			"service-1.example.com": {
+				IPs: []net.IP{net.ParseIP("127.0.1.1"), net.ParseIP("2001:db8::1:1")},
+			},
+			"service-2.example.com": {
+				IPs: []net.IP{net.ParseIP("127.0.2.1"), net.ParseIP("127.0.2.2")},
+			},
+		})
+
+		lookup.SetLookupFunc(mlh.LookupHost)
+		lookupCtx, ctxCancel := context.WithCancel(ctx)
+
+		cancelLookupProcessor = func() {
+			mlh.Stop()
+			ctxCancel()
+			time.Sleep(10 * time.Millisecond)
+			Expect(reconciler.lookupProcessor.IsRunning()).To(BeFalse())
+		}
+		go reconciler.lookupProcessor.Run(lookupCtx)
 
 		Expect(fakeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test"}})).To(Succeed())
 
@@ -298,6 +315,10 @@ var _ = Describe("Reconcile", func() {
 			account.Release()
 		}
 		accounts = nil
+		if cancelLookupProcessor != nil {
+			cancelLookupProcessor()
+			cancelLookupProcessor = nil
+		}
 	})
 
 	It("should assign correct provider", func() {
@@ -367,6 +388,23 @@ var _ = Describe("Reconcile", func() {
 		Expect(fakeClient.Create(ctx, entryC)).To(Succeed())
 
 		checkEntryStatus(entryC, "p1", zoneID1, "Ready", 120, "www.somewhere.com")
+	})
+
+	It("should create entry with multiple CNAME targets and resolve the addresses", func() {
+		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+		entryC.Spec.Targets = []string{"service-1.example.com", "service-2.example.com"}
+		Expect(fakeClient.Create(ctx, entryC)).To(Succeed())
+
+		checkEntryStatus(entryC, "p1", zoneID1, "Ready", 120, "127.0.1.1", "127.0.2.1", "127.0.2.2", "2001:db8::1:1")
+	})
+
+	It("should create entry with single CNAME target and resolve the address as configured", func() {
+		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+		entryC.Spec.Targets = []string{"service-1.example.com"}
+		entryC.Spec.ResolveTargetsToAddresses = ptr.To(true)
+		Expect(fakeClient.Create(ctx, entryC)).To(Succeed())
+
+		checkEntryStatus(entryC, "p1", zoneID1, "Ready", 120, "127.0.1.1", "2001:db8::1:1")
 	})
 
 	It("should update TTL", func() {
@@ -463,7 +501,7 @@ var _ = Describe("Reconcile", func() {
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 		deleteProvider("p1")
-		checkEntryStatus(entryA, "", zoneID1, "Stale", defaultTTL, "1.2.3.4") // zone should not be removed
+		checkEntryStatus(entryA, "", zoneID1, "Stale", defaultTTL, "1.2.3.4") // the zone should not be removed
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 	})
 

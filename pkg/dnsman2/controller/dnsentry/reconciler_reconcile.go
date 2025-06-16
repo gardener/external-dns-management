@@ -7,19 +7,19 @@ package dnsentry
 import (
 	"context"
 	"fmt"
-	"strings"
 
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/lookup"
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/selection"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 type fullDNSSetName struct {
@@ -34,151 +34,200 @@ type fullRecordSetKey struct {
 
 type fullRecordKeySet = sets.Set[fullRecordSetKey]
 
-func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, entry *v1alpha1.DNSEntry) (reconcile.Result, error) {
-	if annotation, b := ignoreByAnnotation(entry); b {
-		log.V(1).Info("Ignoring entry due to annotation", "annotation", annotation)
-		if entry.DeletionTimestamp != nil {
-			if err := removeFinalizer(ctx, r.Client, entry); err != nil {
-				log.Error(err, "failed to remove finalizer to DNSEntry", "entry", entry.Name)
-				return reconcile.Result{}, err
-			}
-		}
-		return reconcile.Result{}, nil
+type entryContext struct {
+	client client.Client
+	clock  clock.Clock
+	ctx    context.Context
+	log    logr.Logger
+	entry  *v1alpha1.DNSEntry
+}
+
+func (ec *entryContext) statusUpdater() *entryStatusUpdater {
+	return &entryStatusUpdater{entryContext: *ec}
+}
+
+type entryReconciliation struct {
+	entryContext
+	namespace       string
+	class           string
+	state           *state.State
+	lookupProcessor lookup.LookupProcessor
+}
+
+type reconcileResult struct {
+	result reconcile.Result
+	err    error
+}
+
+type newTargetsData struct {
+	providerKey   client.ObjectKey
+	providerType  string
+	zoneID        dns.ZoneID
+	dnsSet        *dns.DNSSet
+	targets       dns.Targets
+	routingPolicy *dns.RoutingPolicy
+	warnings      []string
+}
+
+type zonedRequests = map[dns.ZoneID]map[dns.DNSSetName]*provider.ChangeRequests
+
+func (r *entryReconciliation) reconcile() reconcileResult {
+	if res := r.ignoredByAnnotation(); res != nil {
+		return *res
 	}
-	ctx = logr.NewContext(ctx, log)
-	newProvider, err := r.findBestMatchingProvider(ctx, entry.Spec.DNSName, entry.Status.Provider)
-	if err != nil {
-		log.Error(err, "failed to find a matching DNS provider for the entry", "entry", entry.Name)
-		return reconcile.Result{}, err
-	}
-	var (
-		newZone       *string
-		providerState *state.ProviderState
-		defaultTTL    int64
-	)
-	if newProvider != nil {
-		var result *reconcile.Result
-		newZone, result, err = r.getZoneForProvider(newProvider, entry.Spec.DNSName)
-		if result != nil {
-			log.Error(err, "failed to get zone for provider", "provider", client.ObjectKeyFromObject(newProvider))
-			return *result, err
-		}
-		if err != nil {
-			log.Error(err, "failed to get zone for provider", "provider", client.ObjectKeyFromObject(newProvider))
-			return reconcile.Result{}, err
-		}
-		if err := addFinalizer(ctx, r.Client, entry); err != nil {
-			log.Error(err, "failed to add finalizer to DNSEntry")
-			return reconcile.Result{}, err
-		}
-		providerState = r.state.GetProviderState(client.ObjectKeyFromObject(newProvider))
-		if providerState == nil {
-			log.Error(err, "failed to get provider state", "provider", client.ObjectKeyFromObject(newProvider))
-			return reconcile.Result{}, err
-		}
-		defaultTTL = providerState.GetDefaultTTL()
+
+	newProviderData, res := r.providerSelector().calcNewProvider()
+	if res != nil {
+		return *res
 	}
 
 	recordsToCheck := fullRecordKeySet{}
-	oldTargets, err := StatusToTargets(&entry.Status, entry.Annotations[dns.AnnotationIPStack])
+	if res := r.calcOldTargets(recordsToCheck); res != nil {
+		return *res
+	}
+
+	if newProviderData == nil {
+		return r.statusUpdater().updateStatusWithoutProvider()
+	}
+
+	if res := r.checkProviderNotReady(newProviderData); res != nil {
+		return *res
+	}
+
+	targetsData, res := r.calcNewTargets(newProviderData, recordsToCheck)
+	if res != nil {
+		return *res
+	}
+
+	actualRecords, res := r.queryRecords(recordsToCheck)
+	if res != nil {
+		return *res
+	}
+
+	var doneHandler provider.DoneHandler // TODO(MartinWeindel): Implement a done handler if needed
+	zonedRequests := calculateZonedChangeRequests(targetsData, doneHandler, actualRecords)
+
+	if res := r.applyChangeRequests(newProviderData, zonedRequests); res != nil {
+		return *res
+	}
+
+	return r.statusUpdater().updateStatusWithProvider(targetsData)
+}
+
+func (r *entryReconciliation) providerSelector() *providerSelector {
+	return &providerSelector{
+		entryContext: r.entryContext,
+		namespace:    r.namespace,
+		class:        r.class,
+		state:        r.state,
+	}
+}
+
+func (r *entryReconciliation) ignoredByAnnotation() *reconcileResult {
+	if annotation, b := ignoreByAnnotation(r.entry); b {
+		r.log.V(1).Info("Ignoring entry due to annotation", "annotation", annotation)
+		if r.entry.DeletionTimestamp != nil {
+			if res := r.statusUpdater().removeFinalizer(); res != nil {
+				return res
+			}
+		}
+		return &reconcileResult{}
+	}
+	return nil
+}
+
+func (r *entryReconciliation) calcOldTargets(recordsToCheck fullRecordKeySet) *reconcileResult {
+	status := r.entry.Status
+	oldTargets, err := StatusToTargets(&status, r.entry.Annotations[dns.AnnotationIPStack])
 	if err != nil {
 		// should not happen, but if it does, we want to log it
-		return reconcile.Result{}, err
+		return &reconcileResult{err: err}
 	}
-	if entry.Status.ProviderType != nil && entry.Status.Zone != nil && entry.Status.DNSName != nil {
-		name, _, err := toDNSSetName(*entry.Status.DNSName, entry.Status.RoutingPolicy)
+	if status.ProviderType != nil && status.Zone != nil && status.DNSName != nil {
+		name, _, err := toDNSSetName(*status.DNSName, status.RoutingPolicy)
 		if err != nil {
-			return reconcile.Result{}, err
+			return &reconcileResult{err: err}
 		}
-		oldZoneID := &dns.ZoneID{ID: *entry.Status.Zone, ProviderType: *entry.Status.ProviderType}
+		oldZoneID := &dns.ZoneID{ID: *status.Zone, ProviderType: *status.ProviderType}
 		// targets from status are already mapped to the provider, so we can use them directly
 		insertRecordKeys(recordsToCheck, fullDNSSetName{zoneID: *oldZoneID, name: name}, oldTargets)
 	}
+	return nil
+}
 
-	if newProvider == nil || newZone == nil || !providerState.IsValid() {
-		if err := r.updateStatus(ctx, entry, func(status *v1alpha1.DNSEntryStatus) error {
-			status.Provider = nil
-			status.ObservedGeneration = entry.Generation
-			if len(status.Targets) > 0 && status.Zone != nil {
-				status.State = v1alpha1.StateStale
-			} else {
-				status.State = v1alpha1.StateError
-				status.ProviderType = nil
-			}
-			status.Message = ptr.To("no matching DNS provider found")
-			return nil
-		}); err != nil {
-			log.Error(err, "failed to update DNSEntry status", "entry", entry.Name)
-			return reconcile.Result{}, err
-		}
-		if len(entry.Status.Targets) == 0 {
-			if err := removeFinalizer(ctx, r.Client, entry); err != nil {
-				log.Error(err, "failed to remove finalizer to DNSEntry", "entry", entry.Name)
-				return reconcile.Result{}, err
-			}
-		}
-		return reconcile.Result{}, nil // No provider or zone found, nothing to do
-	}
-
-	if newProvider.Status.State != v1alpha1.StateReady {
+func (r *entryReconciliation) checkProviderNotReady(data *newProviderData) *reconcileResult {
+	if data.provider.Status.State != v1alpha1.StateReady {
 		var err error
-		if newProvider.Status.State != "" {
-			err = fmt.Errorf("provider %s has status %s: %s", client.ObjectKeyFromObject(newProvider), newProvider.Status.State, ptr.Deref(newProvider.Status.Message, "unknown error"))
+		if data.provider.Status.State != "" {
+			err = fmt.Errorf("provider %s has status %s: %s", data.providerKey, data.provider.Status.State, ptr.Deref(data.provider.Status.Message, "unknown error"))
 		} else {
-			err = fmt.Errorf("provider %s is not ready yet", client.ObjectKeyFromObject(newProvider))
+			err = fmt.Errorf("provider %s is not ready yet", data.providerKey)
 		}
-		return r.failWithStatusStale(ctx, log, entry, err)
+		res := r.statusUpdater().failWithStatusStale(err)
+		return &res
+	}
+	return nil
+}
+
+func (r *entryReconciliation) calcNewTargets(providerData *newProviderData, recordsToCheck fullRecordKeySet) (*newTargetsData, *reconcileResult) {
+	producer := &TargetsProducer{
+		ctx:                        r.ctx,
+		defaultTTL:                 providerData.defaultTTL,
+		defaultCNAMELookupInterval: 600,
+		processor:                  r.lookupProcessor,
+	}
+	result, err := producer.FromSpec(client.ObjectKeyFromObject(r.entry), &r.entry.Spec, r.entry.Annotations[dns.AnnotationIPStack])
+	if err != nil {
+		return nil, r.statusUpdater().updateStatusInvalid(err)
+	}
+	name, rp, err := toDNSSetName(r.entry.Spec.DNSName, r.entry.Spec.RoutingPolicy)
+	if err != nil {
+		return nil, &reconcileResult{err: err}
 	}
 
-	rawNewTargets, warnings, err := SpecToTargets(client.ObjectKeyFromObject(entry), &entry.Spec, entry.Annotations[dns.AnnotationIPStack], defaultTTL)
-	if err != nil {
-		err2 := r.updateStatusInvalid(ctx, entry, err)
-		return reconcile.Result{}, err2
-	}
-	name, rp, err := toDNSSetName(entry.Spec.DNSName, entry.Spec.RoutingPolicy)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	account := providerState.GetAccount()
+	account := providerData.providerState.GetAccount()
 	if account == nil {
-		return r.failWithStatusError(ctx, log, entry, fmt.Errorf("provider %s is not ready yet", client.ObjectKeyFromObject(newProvider)))
+		res := r.statusUpdater().failWithStatusError(fmt.Errorf("provider %s is not ready yet", providerData.providerKey))
+		return nil, &res
 	}
-	newTargets := account.MapTargets(entry.Spec.DNSName, rawNewTargets)
+	newTargets := account.MapTargets(r.entry.Spec.DNSName, result.Targets)
 	newDNSSet := dns.NewDNSSet(name)
-	newZoneID := dns.ZoneID{ProviderType: newProvider.Spec.Type, ID: *newZone}
+	newZoneID := providerData.zoneID
 	insertRecordKeys(recordsToCheck, fullDNSSetName{zoneID: newZoneID, name: name}, newTargets)
-	if entry.DeletionTimestamp == nil {
+	if r.entry.DeletionTimestamp == nil {
 		insertRecordSets(*newDNSSet, rp, newTargets)
 	} else {
 		newTargets = nil
 	}
+	return &newTargetsData{
+		providerKey:   providerData.providerKey,
+		providerType:  providerData.provider.Spec.Type,
+		zoneID:        newZoneID,
+		dnsSet:        newDNSSet,
+		targets:       newTargets,
+		routingPolicy: rp,
+		warnings:      result.Warnings,
+	}, nil
+}
 
-	actualRecords, err := r.queryRecords(ctx, recordsToCheck)
-	if err != nil {
-		log.Error(err, "failed to query DNS records")
-		return reconcile.Result{}, err
-	}
-
-	var doneHandler provider.DoneHandler // TODO(MartinWeindel): Implement a done handler if needed
-	zonedRequests := calculateZonedChangeRequests(*newDNSSet, doneHandler, newZoneID, actualRecords)
+func (r *entryReconciliation) applyChangeRequests(providerData *newProviderData, zonedRequests zonedRequests) *reconcileResult {
+	newZoneID := providerData.zoneID
 	for zoneID, perName := range zonedRequests {
 		if zoneID == newZoneID {
 			continue
 		}
-		providerAccount := providerState.GetAccount()
-		result, err := r.cleanupCrossZoneRecords(ctx, log, entry, zoneID, perName, providerAccount)
-		if err != nil {
-			return result, err
+		providerAccount := providerData.providerState.GetAccount()
+		if res := r.cleanupCrossZoneRecords(zoneID, perName, providerAccount); res != nil {
+			return res
 		}
 	}
 
 	changeRequestsPerName := zonedRequests[newZoneID]
 	if len(changeRequestsPerName) > 0 {
-		zones, err := providerState.GetAccount().GetZones(ctx)
+		zones, err := providerData.providerState.GetAccount().GetZones(r.ctx)
 		if err != nil {
-			log.Error(err, "failed to get zones from DNS account", "provider", client.ObjectKeyFromObject(newProvider))
-			return reconcile.Result{}, err
+			r.log.Error(err, "failed to get zones from DNS account", "provider", providerData.providerKey)
+			return &reconcileResult{err: err}
 		}
 		var zone provider.DNSHostedZone
 		for _, z := range zones {
@@ -188,94 +237,21 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, entry *v1al
 			}
 		}
 		if zone == nil {
-			err := fmt.Errorf("zone %s not found in provider %s", newZoneID.ID, client.ObjectKeyFromObject(newProvider))
-			log.Error(err, "failed to find zone for DNS entry")
-			return reconcile.Result{}, err
+			err := fmt.Errorf("zone %s not found in provider %s", newZoneID.ID, providerData.providerKey)
+			r.log.Error(err, "failed to find zone for DNS entry")
+			return &reconcileResult{err: err}
 		}
 		for _, changeRequests := range changeRequestsPerName {
-			if err := providerState.GetAccount().ExecuteRequests(ctx, zone, *changeRequests); err != nil {
-				log.Error(err, "failed to execute DNS change requests", "provider", client.ObjectKeyFromObject(newProvider))
-				return reconcile.Result{}, err
+			if err := providerData.providerState.GetAccount().ExecuteRequests(r.ctx, zone, *changeRequests); err != nil {
+				r.log.Error(err, "failed to execute DNS change requests", "provider", providerData.providerKey)
+				return &reconcileResult{err: err}
 			}
 		}
 	}
-
-	if err := r.updateStatus(ctx, entry, func(status *v1alpha1.DNSEntryStatus) error {
-		status.Provider = &newProvider.Name
-		status.ProviderType = ptr.To(newProvider.Spec.Type)
-		status.Zone = newZone
-		status.DNSName = ptr.To(name.DNSName)
-		if name.SetIdentifier != "" && rp != nil {
-			status.RoutingPolicy = &v1alpha1.RoutingPolicy{
-				Type:          string(rp.Type),
-				Parameters:    rp.Parameters,
-				SetIdentifier: name.SetIdentifier,
-			}
-		} else {
-			status.RoutingPolicy = nil
-		}
-		status.Targets = TargetsToStrings(newTargets)
-		if len(newTargets) > 0 {
-			status.TTL = ptr.To(newTargets[0].GetTTL())
-		} else {
-			status.TTL = nil
-		}
-
-		status.ObservedGeneration = entry.Generation
-		status.State = v1alpha1.StateReady
-		if len(warnings) > 0 {
-			status.Message = ptr.To(fmt.Sprintf("reconciled with warnings: %s", strings.Join(warnings, ", ")))
-		} else {
-			status.Message = ptr.To("dns entry active")
-		}
-		return nil
-	}); err != nil {
-		log.Error(err, "failed to update DNSEntry status", "entry", entry.Name)
-		return reconcile.Result{}, err
-	}
-
-	if len(entry.Status.Targets) == 0 {
-		if err := removeFinalizer(ctx, r.Client, entry); err != nil {
-			log.Error(err, "failed to remove finalizer to DNSEntry", "entry", entry.Name)
-			return reconcile.Result{}, err
-		}
-	}
-
-	_ = warnings // TODO: handle warnings if necessary
-	// TODO: implement logic
-	return reconcile.Result{}, nil
+	return nil
 }
 
-func (r *Reconciler) findBestMatchingProvider(ctx context.Context, dnsName string, currentProviderName *string) (*v1alpha1.DNSProvider, error) {
-	providerList := &v1alpha1.DNSProviderList{}
-	if err := r.Client.List(ctx, providerList, client.InNamespace(r.Namespace)); err != nil {
-		return nil, err
-	}
-	return findBestMatchingProvider(dns.FilterProvidersByClass(providerList.Items, r.Class), dnsName, currentProviderName)
-}
-
-func (r *Reconciler) getZoneForProvider(provider *v1alpha1.DNSProvider, dnsName string) (*string, *reconcile.Result, error) {
-	pstate := r.state.GetProviderState(client.ObjectKeyFromObject(provider))
-	if pstate == nil {
-		return nil, &reconcile.Result{Requeue: true}, nil // Provider state not yet available, requeue to wait for its reconciliation
-	}
-	var (
-		bestZone  selection.LightDNSHostedZone
-		bestMatch int
-	)
-	for _, zone := range pstate.GetSelection().Zones {
-		if m := matchDomains(dnsName, []string{zone.Domain()}); m > bestMatch {
-			bestMatch = m
-			bestZone = zone
-		}
-	}
-	if bestMatch == 0 {
-		return nil, nil, fmt.Errorf("no matching zone found for DNS name %q in provider %q", dnsName, provider.Name)
-	}
-	return ptr.To(bestZone.ZoneID().ID), nil, nil
-}
-
-func (r *Reconciler) queryRecords(ctx context.Context, keys fullRecordKeySet) (map[fullRecordSetKey]*dns.RecordSet, error) {
+func (r *entryReconciliation) queryRecords(keys fullRecordKeySet) (map[fullRecordSetKey]*dns.RecordSet, *reconcileResult) {
 	zonesToCheck := sets.Set[dns.ZoneID]{}
 	for key := range keys {
 		zonesToCheck.Insert(key.zoneID)
@@ -285,15 +261,17 @@ func (r *Reconciler) queryRecords(ctx context.Context, keys fullRecordKeySet) (m
 	for zoneID := range zonesToCheck {
 		queryHandler, err := r.state.GetDNSQueryHandler(zoneID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get query handler for zone %s: %w", zoneID.ID, err)
+			r.log.Error(err, "failed to get DNS query handler for zone", "zoneID", zoneID.ID)
+			return nil, &reconcileResult{err: fmt.Errorf("failed to get query handler for zone %s: %w", zoneID.ID, err)}
 		}
 		for key := range keys {
 			if key.zoneID != zoneID {
 				continue
 			}
-			targets, policy, err := queryHandler.Query(ctx, key.name.DNSName, key.name.SetIdentifier, key.recordType)
+			targets, policy, err := queryHandler.Query(r.ctx, key.name.DNSName, key.name.SetIdentifier, key.recordType)
 			if err != nil {
-				return nil, fmt.Errorf("failed to query DNS records for %s, type %s in zone %s: %w", key.name, key.recordType, zoneID.ID, err)
+				r.log.Error(err, "failed to query DNS records", "name", key.name, "type", key.recordType, "zoneID", zoneID.ID)
+				return nil, &reconcileResult{err: fmt.Errorf("failed to query DNS records for %s, type %s in zone %s: %w", key.name, key.recordType, zoneID.ID, err)}
 			}
 			if len(targets) > 0 {
 				dnsSet := dns.NewDNSSet(key.name)
@@ -305,16 +283,16 @@ func (r *Reconciler) queryRecords(ctx context.Context, keys fullRecordKeySet) (m
 	return results, nil
 }
 
-func (r *Reconciler) cleanupCrossZoneRecords(ctx context.Context, log logr.Logger, entry *v1alpha1.DNSEntry, zoneID dns.ZoneID, perName map[dns.DNSSetName]*provider.ChangeRequests, account *provider.DNSAccount) (reconcile.Result, error) {
+func (r *entryReconciliation) cleanupCrossZoneRecords(zoneID dns.ZoneID, perName map[dns.DNSSetName]*provider.ChangeRequests, account *provider.DNSAccount) *reconcileResult {
 	if len(perName) == 0 {
-		return reconcile.Result{}, nil // Nothing to clean up
+		return nil // Nothing to clean up
 	}
 
 	var zone *provider.DNSHostedZone
-	zones, err := account.GetZones(ctx)
+	zones, err := account.GetZones(r.ctx)
 	if err != nil {
-		log.Error(err, "failed to get zones from DNS account")
-		return reconcile.Result{}, err
+		r.log.Error(err, "failed to get zones from DNS account")
+		return &reconcileResult{err: err}
 	}
 	for _, z := range zones {
 		if z.ZoneID() == zoneID {
@@ -323,10 +301,11 @@ func (r *Reconciler) cleanupCrossZoneRecords(ctx context.Context, log logr.Logge
 		}
 	}
 	if zone == nil {
-		account, zone, err = r.state.FindAccountForZone(ctx, zoneID) // Ensure the account is loaded for the zone
+		account, zone, err = r.state.FindAccountForZone(r.ctx, zoneID) // Ensure the account is loaded for the zone
 		if err != nil {
-			log.Error(err, "failed to find account for zone", "zoneID", zoneID)
-			return r.failWithStatusError(ctx, log, entry, fmt.Errorf("failed to find account for old zone %q to clean up old records", zoneID))
+			r.log.Error(err, "failed to find account for zone", "zoneID", zoneID)
+			res := r.statusUpdater().failWithStatusError(fmt.Errorf("failed to find account for old zone %q to clean up old records", zoneID))
+			return &res
 		}
 	}
 
@@ -334,13 +313,13 @@ func (r *Reconciler) cleanupCrossZoneRecords(ctx context.Context, log logr.Logge
 		if len(changeRequests.Updates) == 0 {
 			continue // Nothing to delete for this name
 		}
-		log.Info("Deleting cross-zone records", "zoneID", zoneID, "name", name)
-		if err := account.ExecuteRequests(ctx, *zone, *changeRequests); err != nil {
-			log.Error(err, "failed to delete cross-zone records", "zoneID", zoneID, "name", name)
-			return reconcile.Result{}, err
+		r.log.Info("Deleting cross-zone records", "zoneID", zoneID, "name", name)
+		if err := account.ExecuteRequests(r.ctx, *zone, *changeRequests); err != nil {
+			r.log.Error(err, "failed to delete cross-zone records", "zoneID", zoneID, "name", name)
+			return &reconcileResult{err: err}
 		}
 	}
-	return reconcile.Result{}, nil
+	return nil
 }
 
 func insertRecordKeys(keys fullRecordKeySet, fullDNSSetName fullDNSSetName, targets dns.Targets) {
@@ -362,14 +341,15 @@ type changeSet struct {
 	deletions map[fullRecordSetKey]*dns.RecordSet
 }
 
-func calculateZonedChangeRequests(newDNSSet dns.DNSSet, doneHandler provider.DoneHandler, newZone dns.ZoneID, actual map[fullRecordSetKey]*dns.RecordSet) map[dns.ZoneID]map[dns.DNSSetName]*provider.ChangeRequests {
+func calculateZonedChangeRequests(targetsData *newTargetsData, doneHandler provider.DoneHandler, actual map[fullRecordSetKey]*dns.RecordSet) zonedRequests {
 	changeSet := changeSet{
 		additions: make(map[fullRecordSetKey]*dns.RecordSet),
 		updates:   make(map[fullRecordSetKey]*updatePair),
 		deletions: make(map[fullRecordSetKey]*dns.RecordSet),
 	}
 
-	newFullDNSSetName := fullDNSSetName{name: newDNSSet.Name, zoneID: newZone}
+	newDNSSet := targetsData.dnsSet
+	newFullDNSSetName := fullDNSSetName{name: newDNSSet.Name, zoneID: targetsData.zoneID}
 	for key, recordSet := range actual {
 		if key.fullDNSSetName != newFullDNSSetName || newDNSSet.Sets[key.recordType] == nil {
 			changeSet.deletions[key] = recordSet
@@ -393,12 +373,12 @@ func calculateZonedChangeRequests(newDNSSet dns.DNSSet, doneHandler provider.Don
 	return convertChangeSetToZoneRequests(changeSet, doneHandler)
 }
 
-func convertChangeSetToZoneRequests(changeSet changeSet, doneHandler provider.DoneHandler) map[dns.ZoneID]map[dns.DNSSetName]*provider.ChangeRequests {
+func convertChangeSetToZoneRequests(changeSet changeSet, doneHandler provider.DoneHandler) zonedRequests {
 	if len(changeSet.additions)+len(changeSet.updates)+len(changeSet.deletions) == 0 {
 		return nil // No changes to apply
 	}
 
-	zoneRequests := make(map[dns.ZoneID]map[dns.DNSSetName]*provider.ChangeRequests)
+	zoneRequests := make(zonedRequests)
 	addChangeRequest := func(key fullRecordSetKey, old, new *dns.RecordSet) {
 		m := zoneRequests[key.zoneID]
 		if m == nil {
@@ -487,8 +467,7 @@ func ignoreByAnnotation(entry *v1alpha1.DNSEntry) (string, bool) {
 		return dns.AnnotationIgnore + "=" + dns.AnnotationIgnoreValueFull, true
 	}
 	if entry.DeletionTimestamp == nil {
-		if value := entry.Annotations[dns.AnnotationIgnore];
-			value == dns.AnnotationIgnoreValueReconcile || value == dns.AnnotationIgnoreValueTrue {
+		if value := entry.Annotations[dns.AnnotationIgnore]; value == dns.AnnotationIgnoreValueReconcile || value == dns.AnnotationIgnoreValueTrue {
 			return dns.AnnotationIgnore + "=" + value, true
 		}
 	}
