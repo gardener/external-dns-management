@@ -74,7 +74,7 @@ var _ = Describe("Reconcile", func() {
 		zoneID3         = dns.ZoneID{ProviderType: "mock-inmemory", ID: "test2:sub.example.com"}
 		entryAPrototype = &v1alpha1.DNSEntry{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "entry-a",
+				Name:       "Entry-a",
 				Namespace:  "test",
 				Generation: 1,
 			},
@@ -85,7 +85,7 @@ var _ = Describe("Reconcile", func() {
 		}
 		entryBPrototype = &v1alpha1.DNSEntry{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "entry-b",
+				Name:       "Entry-b",
 				Namespace:  "test",
 				Generation: 1,
 			},
@@ -96,7 +96,7 @@ var _ = Describe("Reconcile", func() {
 		}
 		entryCPrototype = &v1alpha1.DNSEntry{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:       "entry-c",
+				Name:       "Entry-c",
 				Namespace:  "test",
 				Generation: 1,
 			},
@@ -201,7 +201,7 @@ var _ = Describe("Reconcile", func() {
 			ExpectWithOffset(1, fakeClient.Get(ctx, key, entry)).To(Succeed())
 			ExpectWithOffset(1, entry.Status.State).To(Equal(state), "state should match")
 			if state != "Stale" || entry.Status.Provider == nil {
-				ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to reconcile entry")
+				ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to reconcile Entry")
 				ExpectWithOffset(1, result).To(Equal(reconcile.Result{}))
 			} else {
 				ExpectWithOffset(1, err).To(HaveOccurred(), "expected failed reconcile for state %s", state)
@@ -235,11 +235,11 @@ var _ = Describe("Reconcile", func() {
 		}
 		checkEntryStatusDeleted = func(entry *v1alpha1.DNSEntry) {
 			key := client.ObjectKeyFromObject(entry)
-			Expect(fakeClient.Get(ctx, key, entry)).To(Succeed(), "entry should still exist because of finalizer")
+			Expect(fakeClient.Get(ctx, key, entry)).To(Succeed(), "Entry should still exist because of finalizer")
 			result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
-			ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to reconcile entry on deletion")
+			ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to reconcile Entry on deletion")
 			ExpectWithOffset(1, result).To(Equal(reconcile.Result{}))
-			ExpectWithOffset(1, apierrors.IsNotFound(fakeClient.Get(ctx, key, entry))).To(BeTrue(), "entry should be deleted")
+			ExpectWithOffset(1, apierrors.IsNotFound(fakeClient.Get(ctx, key, entry))).To(BeTrue(), "Entry should be deleted")
 		}
 		expectRecordSetsInternal = func(zoneID dns.ZoneID, dnsSetName dns.DNSSetName, expectedNameCount, expectedRecordSetCount int, rsArray ...dns.RecordSet) {
 			zoneState := mock2.GetInMemoryMockByZoneID(zoneID)
@@ -357,7 +357,7 @@ var _ = Describe("Reconcile", func() {
 		checkEntryStatusDeleted(entryA)
 		expectRecordSets(zoneID1, "test.sub.example.com")
 
-		Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryA), entryA))).To(BeTrue(), "entry should be not found")
+		Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryA), entryA))).To(BeTrue(), "Entry should be not found")
 	})
 
 	It("should create/update/delete TXT record", func() {
@@ -380,7 +380,7 @@ var _ = Describe("Reconcile", func() {
 		checkEntryStatusDeleted(entryB)
 		expectRecordSets(zoneID1, "txt.sub.example.com")
 
-		Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryB), entryB))).To(BeTrue(), "entry should be not found")
+		Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryB), entryB))).To(BeTrue(), "Entry should be not found")
 	})
 
 	It("should create correct CNAME record", func() {
@@ -390,7 +390,7 @@ var _ = Describe("Reconcile", func() {
 		checkEntryStatus(entryC, "p1", zoneID1, "Ready", 120, "www.somewhere.com")
 	})
 
-	It("should create entry with multiple CNAME targets and resolve the addresses", func() {
+	It("should create Entry with multiple CNAME targets and resolve the addresses", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		entryC.Spec.Targets = []string{"service-1.example.com", "service-2.example.com"}
 		Expect(fakeClient.Create(ctx, entryC)).To(Succeed())
@@ -398,7 +398,7 @@ var _ = Describe("Reconcile", func() {
 		checkEntryStatus(entryC, "p1", zoneID1, "Ready", 120, "127.0.1.1", "127.0.2.1", "127.0.2.2", "2001:db8::1:1")
 	})
 
-	It("should create entry with single CNAME target and resolve the address as configured", func() {
+	It("should create Entry with single CNAME target and resolve the address as configured", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		entryC.Spec.Targets = []string{"service-1.example.com"}
 		entryC.Spec.ResolveTargetsToAddresses = ptr.To(true)
@@ -591,7 +591,7 @@ var _ = Describe("Reconcile", func() {
 			} else {
 				expectRecordSets(zoneID1, "test.sub.example.com")
 			}
-			Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryA), entryA))).To(BeTrue(), "entry should be not found")
+			Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryA), entryA))).To(BeTrue(), "Entry should be not found")
 		},
 		Entry("ignore=true", map[string]string{dns.AnnotationIgnore: "true"}, false),
 		Entry("ignore=reconcile", map[string]string{dns.AnnotationIgnore: "reconcile"}, false),
@@ -677,11 +677,11 @@ var _ = Describe("Reconcile", func() {
 			checkEntryStatusDeleted(entryA2)
 			expectRecordSetsWithSetIdentifier(zoneID1, "test.sub.example.com", "set2", 0, 0)
 
-			Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryA), entryA))).To(BeTrue(), "entry should be not found")
-			Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryA2), entryA2))).To(BeTrue(), "entry should be not found")
+			Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryA), entryA))).To(BeTrue(), "Entry should be not found")
+			Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryA2), entryA2))).To(BeTrue(), "Entry should be not found")
 		})
 
-		It("should update entry by adding set identifier and routing policy", func() {
+		It("should update Entry by adding set identifier and routing policy", func() {
 			createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1RoutingPolicy)
 			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 			checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
@@ -707,7 +707,7 @@ var _ = Describe("Reconcile", func() {
 			})
 		})
 
-		It("should update entry by removing set identifier and routing policy", func() {
+		It("should update Entry by removing set identifier and routing policy", func() {
 			createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1RoutingPolicy)
 
 			rp := dns.RoutingPolicy{

@@ -111,6 +111,8 @@ type DNSEntryControllerConfig struct {
 	SyncPeriod *metav1.Duration
 	// MaxConcurrentLookups is the number of concurrent DNS lookups for the lookup processor.
 	MaxConcurrentLookups *int
+	// DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.
+	DefaultCNAMELookupInterval *int64
 }
 
 // RateLimiterOptions defines the rate limiter configuration.

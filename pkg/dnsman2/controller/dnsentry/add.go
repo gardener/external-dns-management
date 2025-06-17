@@ -26,6 +26,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/lookup"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/providerselector"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
@@ -46,6 +47,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		max(ptr.Deref(r.Config.MaxConcurrentLookups, 2), 2),
 		15*time.Second,
 	)
+	r.defaultCNAMELookupInterval = ptr.Deref(r.Config.DefaultCNAMELookupInterval, 600)
 	return builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
@@ -104,12 +106,12 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, ob
 func domainMatches(dnsName string, domains v1alpha1.DNSSelectionStatus) bool {
 	dnsName = dns.NormalizeDomainName(dnsName)
 	for _, domain := range domains.Excluded {
-		if matchesSuffix(dnsName, domain) {
+		if providerselector.MatchesSuffix(dnsName, domain) {
 			return false
 		}
 	}
 	for _, domain := range domains.Included {
-		if matchesSuffix(dnsName, domain) {
+		if providerselector.MatchesSuffix(dnsName, domain) {
 			return true
 		}
 	}

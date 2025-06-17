@@ -6,6 +6,7 @@ package provider
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -101,6 +102,10 @@ func NewChangeRequests(name dns.DNSSetName, done DoneHandler) *ChangeRequests {
 		Updates: make(map[dns.RecordType]*ChangeRequestUpdate),
 		Done:    done,
 	}
+}
+
+func (cr *ChangeRequests) String() string {
+	return fmt.Sprintf("ChangeRequests(Name: %s, Updates: %v)", cr.Name, cr.Updates)
 }
 
 type ChangeRequestUpdate struct {

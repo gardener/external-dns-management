@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package dnsentry
+package targets
 
 import (
 	"context"
@@ -24,6 +24,7 @@ import (
 // maxCNAMETargets is the maximum number of CNAME targets. It is restricted, as it needs regular DNS lookups.
 const maxCNAMETargets = 25
 
+// TargetsResult holds the result of extracting targets from a DNSEntrySpec.
 type TargetsResult struct {
 	EntryKey client.ObjectKey
 	Targets  dns.Targets
@@ -36,7 +37,7 @@ func (r *TargetsResult) AddTarget(target dns.Target) {
 		if target.GetRecordType() == dns.TypeTXT {
 			field = "text"
 		}
-		r.AddWarning(fmt.Sprintf("dns entry %q has duplicate %s %q", r.EntryKey, field, target))
+		r.AddWarning(fmt.Sprintf("dns Entry %q has duplicate %s %q", r.EntryKey, field, target))
 	} else {
 		r.Targets = append(r.Targets, target)
 	}
@@ -54,11 +55,22 @@ func (r *TargetsResult) AddWarning(warning string) {
 	r.Warnings = append(r.Warnings, warning)
 }
 
+// TargetsProducer is responsible for producing dns.Targets from a DNSEntrySpec.
 type TargetsProducer struct {
 	ctx                        context.Context
 	defaultTTL                 int64
 	defaultCNAMELookupInterval int64
 	processor                  lookup.LookupProcessor
+}
+
+// NewTargetsProducer creates a new TargetsProducer.
+func NewTargetsProducer(ctx context.Context, defaultTTL, defaultCNAMELookupInterval int64, processor lookup.LookupProcessor) *TargetsProducer {
+	return &TargetsProducer{
+		ctx:                        ctx,
+		defaultTTL:                 defaultTTL,
+		defaultCNAMELookupInterval: defaultCNAMELookupInterval,
+		processor:                  processor,
+	}
 }
 
 // FromSpec extracts dns.Targets form a DNSEntrySpec.
@@ -99,7 +111,7 @@ func (p *TargetsProducer) FromSpec(key client.ObjectKey, spec *v1alpha1.DNSEntry
 	emptyCount := 0
 	for _, t := range spec.Text {
 		if t == "" {
-			result.AddWarning(fmt.Sprintf("dns entry %q has empty text", key))
+			result.AddWarning(fmt.Sprintf("dns Entry %q has empty text", key))
 			emptyCount++
 			continue
 		}
@@ -107,7 +119,7 @@ func (p *TargetsProducer) FromSpec(key client.ObjectKey, spec *v1alpha1.DNSEntry
 		result.AddTarget(newTarget)
 	}
 	if emptyCount > 0 && len(spec.Text) == emptyCount {
-		err = fmt.Errorf("dns entry has only empty text")
+		err = fmt.Errorf("dns Entry has only empty text")
 		return
 	}
 
@@ -269,10 +281,10 @@ func newAddressTarget(name string, ttl int64, ipstack string) (dns.Target, error
 }
 
 // TODO(MartinWeindel) move this check to the provider
-//if p.zonedomain == entry.dnsSetName.DNSName {
+//if p.zonedomain == Entry.dnsSetName.DNSName {
 //	for _, t := range []string{"azure-dns", "azure-private-dns"} {
 //		if p.provider != nil && p.provider.TypeCode() == t {
-//			err = fmt.Errorf("usage of dns name (%s) identical to domain of hosted zone (%s) is not supported. Please use apex prefix '@.'", p.zonedomain, p.zoneid)
+//			Err = fmt.Errorf("usage of dns name (%s) identical to domain of hosted zone (%s) is not supported. Please use apex prefix '@.'", p.zonedomain, p.zoneid)
 //			return
 //		}
 //	}

@@ -19,17 +19,19 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/lookup"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 // Reconciler is a reconciler for DNSProvider resources on the control plane.
 type Reconciler struct {
-	Client    client.Client
-	Config    config.DNSEntryControllerConfig
-	Clock     clock.Clock
-	Namespace string
-	Class     string
+	Client                     client.Client
+	Config                     config.DNSEntryControllerConfig
+	Clock                      clock.Clock
+	Namespace                  string
+	Class                      string
+	defaultCNAMELookupInterval int64
 
 	state           *state.State
 	lookupProcessor lookup.LookupProcessor
@@ -49,18 +51,19 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	}
 
 	er := entryReconciliation{
-		entryContext: entryContext{
-			client: r.Client,
-			clock:  r.Clock,
-			ctx:    logr.NewContext(ctx, log),
-			log:    log,
-			entry:  entry,
+		EntryContext: common.EntryContext{
+			Client: r.Client,
+			Clock:  r.Clock,
+			Ctx:    logr.NewContext(ctx, log),
+			Log:    log,
+			Entry:  entry,
 		},
-		namespace:       r.Namespace,
-		class:           r.Class,
-		lookupProcessor: r.lookupProcessor,
-		state:           r.state,
+		namespace:                  r.Namespace,
+		class:                      r.Class,
+		lookupProcessor:            r.lookupProcessor,
+		state:                      r.state,
+		defaultCNAMELookupInterval: r.defaultCNAMELookupInterval,
 	}
 	res := er.reconcile()
-	return res.result, res.err
+	return res.Result, res.Err
 }

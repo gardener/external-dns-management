@@ -1,0 +1,100 @@
+// SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
+//
+// SPDX-License-Identifier: Apache-2.0
+
+package common
+
+import (
+	"fmt"
+	"reflect"
+
+	"github.com/gardener/gardener/pkg/controllerutils"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+)
+
+// EntryStatusUpdater is a utility to update the status of a DNSEntry resource and handle finalizers.
+type EntryStatusUpdater struct {
+	EntryContext
+}
+
+func (u *EntryStatusUpdater) UpdateStatus(modifier func(status *v1alpha1.DNSEntryStatus) error) ReconcileResult {
+	if res := u.updateStatus(modifier); res != nil {
+		return *res
+	}
+
+	if len(u.Entry.Status.Targets) == 0 {
+		if res := u.RemoveFinalizer(); res != nil {
+			return *res
+		}
+	}
+
+	return ReconcileResult{}
+}
+
+func (u *EntryStatusUpdater) updateStatus(modifier func(status *v1alpha1.DNSEntryStatus) error) *ReconcileResult {
+	patch := client.MergeFrom(u.Entry.DeepCopy())
+	oldStatus := u.Entry.Status.DeepCopy()
+
+	if err := modifier(&u.Entry.Status); err != nil {
+		u.Log.Error(err, "failed to modify status")
+		return &ReconcileResult{Err: err}
+	}
+	if !reflect.DeepEqual(oldStatus, &u.Entry.Status) {
+		u.Entry.Status.LastUpdateTime = &metav1.Time{Time: u.Clock.Now()}
+	}
+
+	if err := u.Client.Status().Patch(u.Ctx, u.Entry, patch); err != nil {
+		u.Log.Error(err, "failed to update status")
+		return &ReconcileResult{Err: err}
+	}
+	return nil
+}
+
+func (u *EntryStatusUpdater) updateStatusFailed(state string, err error) *ReconcileResult {
+	return u.updateStatus(func(status *v1alpha1.DNSEntryStatus) error {
+		status.Message = ptr.To(err.Error())
+		status.State = state
+		status.ObservedGeneration = u.Entry.Generation
+		return nil
+	})
+}
+
+func (u *EntryStatusUpdater) UpdateStatusInvalid(err error) *ReconcileResult {
+	return u.updateStatusFailed(v1alpha1.StateInvalid, err)
+}
+
+func (u *EntryStatusUpdater) FailWithStatusStale(err error) ReconcileResult {
+	if res := u.updateStatusFailed(v1alpha1.StateStale, err); res != nil {
+		return *res
+	}
+	return ReconcileResult{Result: reconcile.Result{Requeue: true}, Err: fmt.Errorf("failed with state stale: %w", err)}
+}
+
+func (u *EntryStatusUpdater) FailWithStatusError(err error) ReconcileResult {
+	if res := u.updateStatusFailed(v1alpha1.StateError, err); res != nil {
+		return *res
+	}
+	return ReconcileResult{Err: fmt.Errorf("failed to reconcile: %w", err)}
+}
+
+func (u *EntryStatusUpdater) AddFinalizer() *ReconcileResult {
+	if err := controllerutils.AddFinalizers(u.Ctx, u.Client, u.Entry, dns.FinalizerCompound); err != nil {
+		u.Log.Error(err, "failed to add finalizer")
+		return &ReconcileResult{Err: err}
+	}
+	return nil
+}
+
+func (u *EntryStatusUpdater) RemoveFinalizer() *ReconcileResult {
+	if err := controllerutils.RemoveFinalizers(u.Ctx, u.Client, u.Entry, dns.FinalizerCompound); err != nil {
+		u.Log.Error(err, "failed to remove finalizer")
+		return &ReconcileResult{Err: err}
+	}
+	return nil
+}

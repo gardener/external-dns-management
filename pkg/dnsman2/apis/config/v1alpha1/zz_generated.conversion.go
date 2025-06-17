@@ -197,6 +197,7 @@ func autoConvert_v1alpha1_DNSEntryControllerConfig_To_config_DNSEntryControllerC
 	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
 	out.SyncPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncPeriod))
 	out.MaxConcurrentLookups = (*int)(unsafe.Pointer(in.MaxConcurrentLookups))
+	out.DefaultCNAMELookupInterval = (*int64)(unsafe.Pointer(in.DefaultCNAMELookupInterval))
 	return nil
 }
 
@@ -209,6 +210,7 @@ func autoConvert_config_DNSEntryControllerConfig_To_v1alpha1_DNSEntryControllerC
 	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
 	out.SyncPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncPeriod))
 	out.MaxConcurrentLookups = (*int)(unsafe.Pointer(in.MaxConcurrentLookups))
+	out.DefaultCNAMELookupInterval = (*int64)(unsafe.Pointer(in.DefaultCNAMELookupInterval))
 	return nil
 }
 

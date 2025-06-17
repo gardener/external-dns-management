@@ -127,6 +127,9 @@ type DNSEntryControllerConfig struct {
 	// MaxConcurrentLookups is the number of concurrent DNS lookups for the lookup processor.
 	// +optional
 	MaxConcurrentLookups *int `json:"maxConcurrentLookups,omitempty"`
+	// DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.
+	// +optional
+	DefaultCNAMELookupInterval *int64 `json:"defaultCNAMELookupInterval,omitempty"`
 }
 
 // RateLimiterOptions defines the rate limiter configuration.

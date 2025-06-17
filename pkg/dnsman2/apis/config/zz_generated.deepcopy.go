@@ -94,6 +94,11 @@ func (in *DNSEntryControllerConfig) DeepCopyInto(out *DNSEntryControllerConfig) 
 		*out = new(int)
 		**out = **in
 	}
+	if in.DefaultCNAMELookupInterval != nil {
+		in, out := &in.DefaultCNAMELookupInterval, &out.DefaultCNAMELookupInterval
+		*out = new(int64)
+		**out = **in
+	}
 	return
 }
 
