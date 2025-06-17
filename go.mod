@@ -17,7 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.69
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.46.1
-	github.com/aws/smithy-go v1.22.2
+	github.com/aws/smithy-go v1.22.4
 	github.com/cloudflare/cloudflare-go v0.115.0
 	github.com/gardener/controller-manager-library v0.2.1-0.20250528062543-a441a28ac225
 	github.com/gardener/gardener v1.121.0
