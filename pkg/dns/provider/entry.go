@@ -388,6 +388,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			this.status.Provider = nil
 			this.status.ProviderType = nil
 			this.status.Zone = nil
+			this.status.DNSName = nil
 			msg := "No responsible provider found"
 			if err != nil {
 				msg = fmt.Sprintf("%s: %s", msg, err)
@@ -412,6 +413,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		this.status.Provider = nil
 		this.status.ProviderType = nil
 		this.status.Zone = nil
+		this.status.DNSName = nil
 		err := this.updateStatus(logger, "", "not valid for known provider anymore -> releasing provider type %s", oldType)
 		if err != nil {
 			return reconcile.Delay(logger, err)
@@ -424,6 +426,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	provider := ""
 	this.status.Zone = &p.zoneid
+	this.status.DNSName = ptr.To(this.DNSName())
 	this.status.ProviderType = &p.ptype
 	this.responsible = true
 	if p.provider != nil {
@@ -567,6 +570,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		mod.AssureStringValue(&status.State, this.status.State).
 			AssureStringPtrPtr(&status.Message, this.status.Message).
 			AssureStringPtrPtr(&status.Zone, this.status.Zone).
+			AssureStringPtrPtr(&status.DNSName, this.status.DNSName).
 			AssureStringPtrPtr(&status.Provider, this.status.Provider)
 		if mod.IsModified() {
 			dnsutils.SetLastUpdateTime(&status.LastUpdateTime)
@@ -603,6 +607,7 @@ func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg stri
 			AssureStringValue(&status.State, state).
 			AssureStringPtrValue(&status.Message, logmsg.Get()).
 			AssureStringPtrPtr(&status.Zone, this.status.Zone).
+			AssureStringPtrPtr(&status.DNSName, this.status.DNSName).
 			AssureStringPtrPtr(&status.Provider, this.status.Provider).
 			AssureInt64PtrPtr(&status.TTL, this.status.TTL)
 		if state != "" && status.ObservedGeneration < this.object.GetGeneration() {
@@ -610,6 +615,7 @@ func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg stri
 		}
 		if utils.StringValue(this.status.Provider) == "" {
 			mod.Modify(o.AcknowledgeTargets(nil))
+			mod.Modify(o.AcknowledgeDNSName(nil))
 			mod.Modify(o.AcknowledgeRoutingPolicy(nil))
 		}
 		if mod.IsModified() {
@@ -642,7 +648,7 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 				logger.Infof("update effective targets: [%s]", strings.Join(targets, ", "))
 				mod.Modify(true)
 			}
-			if o.AcknowledgeRoutingPolicy(this.routingPolicy) {
+			if o.AcknowledgeDNSName(&this.dnsSetName.DNSName) {
 				mod.Modify(true)
 			}
 			if this.status.Provider != nil {
@@ -650,6 +656,7 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 			}
 		} else if state != api.STATE_STALE {
 			mod.Modify(o.AcknowledgeTargets(nil))
+			mod.Modify(o.AcknowledgeDNSName(nil))
 			mod.Modify(o.AcknowledgeRoutingPolicy(nil))
 		}
 		mod.AssureInt64Value(&b.ObservedGeneration, o.GetGeneration())

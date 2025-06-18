@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
@@ -23,6 +24,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
@@ -62,7 +64,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 			})),
 		).
 		WithOptions(controller.Options{
-			MaxConcurrentReconciles: 1,
+			MaxConcurrentReconciles: ptr.Deref(r.Config.Controllers.DNSProvider.ConcurrentSyncs, 2),
 		}).
 		Complete(r)
 }
@@ -77,7 +79,7 @@ func (r *Reconciler) providersToReconcileOnSecretChanges(ctx context.Context, se
 	if err := r.Client.List(ctx, providerList, client.InNamespace(r.Config.Controllers.DNSProvider.Namespace)); err != nil {
 		return nil
 	}
-	for _, provider := range providerList.Items {
+	for _, provider := range dns.FilterProvidersByClass(providerList.Items, r.Config.Class) {
 		if provider.Spec.SecretRef.Name == secret.GetName() &&
 			(provider.Spec.SecretRef.Namespace == "" || provider.Spec.SecretRef.Namespace == secret.GetNamespace()) {
 			requests = append(requests, reconcile.Request{

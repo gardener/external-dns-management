@@ -5,15 +5,23 @@
 package dns
 
 const (
+	// ControllerGroupDNSControllers is the group name for DNS controller resources.
 	ControllerGroupDNSControllers = "dnscontrollers"
-	ControllerGroupDNSSources     = "dnssources"
-	ControllerGroupReplication    = "replication"
+	// ControllerGroupDNSSources is the group name for DNS source resources.
+	ControllerGroupDNSSources = "dnssources"
+	// ControllerGroupReplication is the group name for replication resources.
+	ControllerGroupReplication = "replication"
 
-	DefaultClass             = "gardendns"
-	AnnotationGroup          = "dns.gardener.cloud"
-	AnnotationClass          = AnnotationGroup + "/class"
+	// DefaultClass is the default DNS class used by the controller.
+	DefaultClass = "gardendns"
+	// AnnotationGroup is the base annotation group for DNS-related annotations.
+	AnnotationGroup = "dns.gardener.cloud"
+	// AnnotationClass is the annotation key for specifying the DNS class.
+	AnnotationClass = AnnotationGroup + "/class"
+	// AnnotationNotRateLimited is the annotation key to disable rate limiting.
 	AnnotationNotRateLimited = AnnotationGroup + "/not-rate-limited"
-	AnnotationDNSNames       = AnnotationGroup + "/dnsnames"
+	// AnnotationDNSNames is the annotation key for specifying DNS names.
+	AnnotationDNSNames = AnnotationGroup + "/dnsnames"
 
 	// FinalizerCompound is the finalizer for provider resources ("compound" to be backwards-compatible).
 	FinalizerCompound = "dns.gardener.cloud/compound"
@@ -21,10 +29,13 @@ const (
 	// AnnotationIPStack is an optional annotation for DNSEntries to specify the IP stack.
 	// Values are 'ipv4', 'dual-stack', and 'ipv6'. If not specified, 'ipv4' is assumed.
 	// This annotation is currently only relevant for AWS-Route53 to generate alias target A and/or AAAA records.
-	AnnotationIPStack                 = AnnotationGroup + "/ip-stack"
-	AnnotationValueIPStackIPv4        = "ipv4"
+	AnnotationIPStack = AnnotationGroup + "/ip-stack"
+	// AnnotationValueIPStackIPv4 is the annotation value for specifying IPv4-only IP stack.
+	AnnotationValueIPStackIPv4 = "ipv4"
+	// AnnotationValueIPStackIPDualStack is the annotation value for specifying dual-stack (IPv4 and IPv6) IP stack.
 	AnnotationValueIPStackIPDualStack = "dual-stack"
-	AnnotationValueIPStackIPv6        = "ipv6"
+	// AnnotationValueIPStackIPv6 is the annotation value for specifying IPv6-only IP stack.
+	AnnotationValueIPStackIPv6 = "ipv6"
 
 	// AnnotationIgnore is an optional annotation for DNSEntries and source resources to ignore them on reconciliation.
 	AnnotationIgnore = AnnotationGroup + "/ignore"

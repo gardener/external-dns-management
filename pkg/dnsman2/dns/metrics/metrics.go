@@ -32,6 +32,7 @@ func init() {
 }
 
 var (
+	// Requests tracks the total number of requests per provider type and account.
 	Requests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "external_dns_management_total_provider_requests",
@@ -40,6 +41,7 @@ var (
 		[]string{"providertype", "accounthash", "requesttype"},
 	)
 
+	// ZoneRequests tracks the total number of requests per provider type, account, request type, and zone.
 	ZoneRequests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "external_dns_management_requests_per_zone",
@@ -48,6 +50,7 @@ var (
 		[]string{"providertype", "accounthash", "requesttype", "zone"},
 	)
 
+	// ZoneCacheDiscardings tracks the number of discarding of zone cache per provider type and zone.
 	ZoneCacheDiscardings = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "external_dns_management_zone_cache_discardings",
@@ -56,6 +59,7 @@ var (
 		[]string{"providertype", "zone"},
 	)
 
+	// Accounts tracks the number of providers per account.
 	Accounts = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "external_dns_management_account_providers",
@@ -64,6 +68,7 @@ var (
 		[]string{"providertype", "accounthash"},
 	)
 
+	// Entries tracks the total number of DNS entries per hosted zone.
 	Entries = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "external_dns_management_dns_entries",
@@ -72,6 +77,7 @@ var (
 		[]string{"providertype", "zone"},
 	)
 
+	// StaleEntries tracks the number of stale DNS entries per hosted zone.
 	StaleEntries = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "external_dns_management_dns_entries_stale",
@@ -80,6 +86,7 @@ var (
 		[]string{"providertype", "zone"},
 	)
 
+	// LookupProcessorJobs tracks the number of jobs in the lookup processor.
 	LookupProcessorJobs = prometheus.NewGauge(
 		prometheus.GaugeOpts{
 			Name: "external_dns_management_lookup_processor_jobs",
@@ -87,6 +94,7 @@ var (
 		},
 	)
 
+	// LookupProcessorSkips counts the number of skipped lookups due to overload.
 	LookupProcessorSkips = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "external_dns_management_lookup_processor_skips",
@@ -94,6 +102,7 @@ var (
 		},
 	)
 
+	// LookupProcessorLookups counts the number of lookups per object.
 	LookupProcessorLookups = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "external_dns_management_lookup_processor_lookups",
@@ -102,6 +111,7 @@ var (
 		[]string{"namespace"},
 	)
 
+	// LookupProcessorLookupChanged counts the number of lookup results that have changed per object.
 	LookupProcessorLookupChanged = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "external_dns_management_lookup_processor_lookup_changed",
@@ -110,6 +120,7 @@ var (
 		[]string{"namespace"},
 	)
 
+	// LookupProcessorHosts counts the number of hosts looked up per object.
 	LookupProcessorHosts = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "external_dns_management_lookup_processor_hosts",
@@ -118,6 +129,7 @@ var (
 		[]string{"namespace"},
 	)
 
+	// LookupProcessorErrors counts the number of errors during host lookups per object.
 	LookupProcessorErrors = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "external_dns_management_lookup_processor_errors",
@@ -126,6 +138,7 @@ var (
 		[]string{"namespace"},
 	)
 
+	// LookupProcessorSeconds measures the duration of lookups in seconds.
 	LookupProcessorSeconds = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
 			Name:    "external_dns_management_lookup_processor_seconds",
@@ -170,6 +183,7 @@ func (this *requestLabels) Delete(ptype, account string) sets.Set[string] {
 	return set
 }
 
+// DeleteAccount removes all metrics for a given provider type and account.
 func DeleteAccount(ptype, account string) {
 	Accounts.DeleteLabelValues(ptype, account)
 	requestTypes := theRequestLabels.Delete(ptype, account)
@@ -179,10 +193,12 @@ func DeleteAccount(ptype, account string) {
 	Entries.DeleteLabelValues(ptype, account)
 }
 
+// ReportAccountProviders sets the number of providers for a given provider type and account.
 func ReportAccountProviders(ptype, account string, amount int) {
 	Accounts.WithLabelValues(ptype, account).Set(float64(amount))
 }
 
+// AddRequests adds the given number of requests for a provider type, account, request type, and optionally a zone.
 func AddRequests(ptype, account, requestType string, no int, zone *string) {
 	theRequestLabels.AddRequestLabel(ptype, account, requestType)
 	Requests.WithLabelValues(ptype, account, requestType).Add(float64(no))
@@ -191,21 +207,25 @@ func AddRequests(ptype, account, requestType string, no int, zone *string) {
 	}
 }
 
+// AddZoneCacheDiscarding increments the zone cache discarding metric for the given zone.
 func AddZoneCacheDiscarding(id dns.ZoneID) {
 	ZoneCacheDiscardings.WithLabelValues(id.ProviderType, id.ID).Add(float64(1))
 }
 
+// ZoneProviderTypes tracks provider types for zones.
 type ZoneProviderTypes struct {
 	lock      sync.Mutex
 	providers map[dns.ZoneID]struct{}
 }
 
+// Add adds a zone to the set of known providers.
 func (this *ZoneProviderTypes) Add(zone dns.ZoneID) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
 	this.providers[zone] = struct{}{}
 }
 
+// Remove removes a zone from the set of known providers.
 func (this *ZoneProviderTypes) Remove(zone dns.ZoneID) {
 	this.lock.Lock()
 	defer this.lock.Unlock()
@@ -214,21 +234,25 @@ func (this *ZoneProviderTypes) Remove(zone dns.ZoneID) {
 
 var zoneProviders = &ZoneProviderTypes{providers: map[dns.ZoneID]struct{}{}}
 
+// ReportZoneEntries sets the number of entries and stale entries for a zone.
 func ReportZoneEntries(zoneid dns.ZoneID, amount int, stale int) {
 	Entries.WithLabelValues(zoneid.ProviderType, zoneid.ID).Set(float64(amount))
 	StaleEntries.WithLabelValues(zoneid.ProviderType, zoneid.ID).Set(float64(stale))
 	zoneProviders.Add(zoneid)
 }
 
+// DeleteZone removes metrics for a given zone.
 func DeleteZone(zoneid dns.ZoneID) {
 	zoneProviders.Remove(zoneid)
 	Entries.DeleteLabelValues(zoneid.ProviderType, zoneid.ID)
 }
 
+// ReportLookupProcessorIncrSkipped increments the skipped lookups metric.
 func ReportLookupProcessorIncrSkipped() {
 	LookupProcessorSkips.Inc()
 }
 
+// ReportLookupProcessorIncrHostnameLookups reports metrics for hostname lookups.
 func ReportLookupProcessorIncrHostnameLookups(name client.ObjectKey, hosts, errorCount int, duration time.Duration) {
 	addLookupName(name)
 	LookupProcessorLookups.WithLabelValues(name.Namespace).Inc()
@@ -237,15 +261,18 @@ func ReportLookupProcessorIncrHostnameLookups(name client.ObjectKey, hosts, erro
 	LookupProcessorSeconds.Observe(duration.Seconds())
 }
 
+// ReportLookupProcessorJobs sets the number of jobs in the lookup processor.
 func ReportLookupProcessorJobs(jobs int) {
 	LookupProcessorJobs.Set(float64(jobs))
 }
 
+// ReportLookupProcessorIncrLookupChanged increments the lookup changed metric for a given object.
 func ReportLookupProcessorIncrLookupChanged(name client.ObjectKey) {
 	addLookupName(name)
 	LookupProcessorLookupChanged.WithLabelValues(name.Namespace).Inc()
 }
 
+// ReportRemovedJob removes metrics for a given object key if it was the last in the namespace.
 func ReportRemovedJob(name client.ObjectKey) {
 	if removeLookupName(name) {
 		LookupProcessorLookups.DeleteLabelValues(name.Namespace)

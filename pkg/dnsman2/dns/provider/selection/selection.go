@@ -6,6 +6,7 @@ package selection
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -15,24 +16,37 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
-// SelectionResult contains the result of the CalcZoneAndDomainSelection function
+// SelectionResult contains the result of the CalcZoneAndDomainSelection function.
 type SelectionResult struct {
-	Zones         []LightDNSHostedZone
-	SpecZoneSel   SubSelection
+	// Zones is the list of selected DNS hosted zones.
+	Zones []LightDNSHostedZone
+	// SpecZoneSel is the zone selection from the provider spec.
+	SpecZoneSel SubSelection
+	// SpecDomainSel is the domain selection from the provider spec.
 	SpecDomainSel SubSelection
-	ZoneSel       SubSelection
-	DomainSel     SubSelection
-	Error         string
-	Warnings      []string
+	// ZoneSel is the effective zone selection after processing.
+	ZoneSel SubSelection
+	// DomainSel is the effective domain selection after processing.
+	DomainSel SubSelection
+	// Error contains an error message if selection failed.
+	Error string
+	// Warnings contains warning messages encountered during selection.
+	Warnings []string
 }
 
-// SubSelection contains an included and an excluded string set
+// SetProviderStatusZonesAndDomains sets the included and excluded zones and domains in the provider status.
+func (r SelectionResult) SetProviderStatusZonesAndDomains(status *v1alpha1.DNSProviderStatus) {
+	status.Zones = v1alpha1.DNSSelectionStatus{Included: toSortedList(r.ZoneSel.Include), Excluded: toSortedList(r.ZoneSel.Exclude)}
+	status.Domains = v1alpha1.DNSSelectionStatus{Included: toSortedList(r.DomainSel.Include), Excluded: toSortedList(r.DomainSel.Exclude)}
+}
+
+// SubSelection contains an included and an excluded string set.
 type SubSelection struct {
 	Include sets.Set[string]
 	Exclude sets.Set[string]
 }
 
-// NewSubSelection creates an empty SubSelection
+// NewSubSelection creates an empty SubSelection.
 func NewSubSelection() SubSelection {
 	return SubSelection{
 		Include: sets.New[string](),
@@ -40,29 +54,31 @@ func NewSubSelection() SubSelection {
 	}
 }
 
-// LightDNSHostedZone contains the info of a DNSHostedZone needed for selection
+// LightDNSHostedZone contains the info of a DNSHostedZone needed for selection.
 type LightDNSHostedZone interface {
+	// ZoneID returns the zone ID of the hosted zone.
 	ZoneID() dns.ZoneID
+	// Domain returns the domain name of the hosted zone.
 	Domain() string
 }
 
 // CalcZoneAndDomainSelection calculates the effective included/excluded domains and zones for the given spec and
 // zones supported by a provider.
 func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, allzones []LightDNSHostedZone) SelectionResult {
-	this := SelectionResult{
+	result := SelectionResult{
 		SpecDomainSel: PrepareSelection(spec.Domains),
 		SpecZoneSel:   PrepareSelection(spec.Zones),
 		ZoneSel:       NewSubSelection(),
 		DomainSel:     NewSubSelection(),
 	}
 
-	if err := validateDomains(this.SpecDomainSel.Include, "domains include"); err != nil {
-		this.Error = err.Error()
-		return this
+	if err := validateDomains(result.SpecDomainSel.Include, "domains include"); err != nil {
+		result.Error = err.Error()
+		return result
 	}
-	if err := validateDomains(this.SpecDomainSel.Exclude, "domains exclude"); err != nil {
-		this.Error = err.Error()
-		return this
+	if err := validateDomains(result.SpecDomainSel.Exclude, "domains exclude"); err != nil {
+		result.Error = err.Error()
+		return result
 	}
 
 	forwardedZones := map[string][]LightDNSHostedZone{}
@@ -84,78 +100,78 @@ func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, allzones []LightD
 		}
 	}
 
-	if len(this.SpecZoneSel.Include) > 0 {
+	if len(result.SpecZoneSel.Include) > 0 {
 		for _, z := range zones {
-			if this.SpecZoneSel.Include.Has(z.ZoneID().ID) {
-				this.ZoneSel.Include.Insert(z.ZoneID().ID)
+			if result.SpecZoneSel.Include.Has(z.ZoneID().ID) {
+				result.ZoneSel.Include.Insert(z.ZoneID().ID)
 			} else {
-				this.ZoneSel.Exclude.Insert(z.ZoneID().ID)
+				result.ZoneSel.Exclude.Insert(z.ZoneID().ID)
 			}
 		}
 	} else {
 		for _, z := range zones {
-			this.ZoneSel.Include.Insert(z.ZoneID().ID)
+			result.ZoneSel.Include.Insert(z.ZoneID().ID)
 		}
 	}
-	if len(this.SpecZoneSel.Exclude) > 0 {
-		for id := range this.ZoneSel.Include {
-			if this.SpecZoneSel.Exclude.Has(id) {
-				this.ZoneSel.Include.Delete(id)
-				this.ZoneSel.Exclude.Insert(id)
+	if len(result.SpecZoneSel.Exclude) > 0 {
+		for id := range result.ZoneSel.Include {
+			if result.SpecZoneSel.Exclude.Has(id) {
+				result.ZoneSel.Include.Delete(id)
+				result.ZoneSel.Exclude.Insert(id)
 			}
 		}
 	}
 	for _, z := range zones {
-		if this.ZoneSel.Include.Has(z.ZoneID().ID) {
-			this.Zones = append(this.Zones, z)
+		if result.ZoneSel.Include.Has(z.ZoneID().ID) {
+			result.Zones = append(result.Zones, z)
 		}
 	}
 
-	if len(zones) > 0 && len(this.Zones) == 0 {
-		this.Error = "no zone available in account matches zone filter"
-		return this
+	if len(zones) > 0 && len(result.Zones) == 0 {
+		result.Error = "no zone available in account matches zone filter"
+		return result
 	}
 
 	var err error
-	this.DomainSel.Include, err = filterByZones(normalizeDomains(this.SpecDomainSel.Include), this.Zones)
+	result.DomainSel.Include, err = filterByZones(normalizeDomains(result.SpecDomainSel.Include), result.Zones)
 	if err != nil {
-		this.Warnings = append(this.Warnings, err.Error())
+		result.Warnings = append(result.Warnings, err.Error())
 	}
-	this.DomainSel.Exclude, err = filterByZones(normalizeDomains(this.SpecDomainSel.Exclude), this.Zones)
+	result.DomainSel.Exclude, err = filterByZones(normalizeDomains(result.SpecDomainSel.Exclude), result.Zones)
 	if err != nil {
-		this.Warnings = append(this.Warnings, err.Error())
+		result.Warnings = append(result.Warnings, err.Error())
 	}
 
-	if len(this.SpecDomainSel.Include) == 0 {
-		if len(this.Zones) == 0 {
-			this.Error = "no hosted zones found"
-			return this
+	if len(result.SpecDomainSel.Include) == 0 {
+		if len(result.Zones) == 0 {
+			result.Error = "no hosted zones found"
+			return result
 		}
-		for _, z := range this.Zones {
-			this.DomainSel.Include.Insert(z.Domain())
+		for _, z := range result.Zones {
+			result.DomainSel.Include.Insert(z.Domain())
 		}
 	} else {
-		if len(this.DomainSel.Include) == 0 {
-			this.ZoneSel.Exclude.Insert(this.ZoneSel.Include.UnsortedList()...)
-			this.ZoneSel.Include = sets.New[string]()
+		if len(result.DomainSel.Include) == 0 {
+			result.ZoneSel.Exclude.Insert(result.ZoneSel.Include.UnsortedList()...)
+			result.ZoneSel.Include = sets.New[string]()
 			zoneDomains := []string{}
-			for _, z := range this.Zones {
+			for _, z := range result.Zones {
 				zoneDomains = append(zoneDomains, z.Domain())
 			}
-			this.Zones = nil
-			this.Error = fmt.Sprintf("no domain matching hosting zones. Need to be a (sub)domain of [%s]",
+			result.Zones = nil
+			result.Error = fmt.Sprintf("no domain matching hosting zones. Need to be a (sub)domain of [%s]",
 				strings.Join(zoneDomains, ", "))
 			for _, z := range allzones {
-				this.DomainSel.Exclude.Insert(z.Domain())
+				result.DomainSel.Exclude.Insert(z.Domain())
 			}
-			return this
+			return result
 		}
 	}
 
 	zoneExcludeCandidates := sets.New[LightDNSHostedZone]()
 outer:
-	for _, zone := range this.Zones {
-		for domain := range this.DomainSel.Include {
+	for _, zone := range result.Zones {
+		for domain := range result.DomainSel.Include {
 			if dnsutils.Match(domain, zone.Domain()) {
 				isMatching := true
 				for _, forwardedZone := range forwardedZones[zone.ZoneID().ID] {
@@ -172,10 +188,10 @@ outer:
 		zoneExcludeCandidates.Insert(zone)
 	}
 
-	for id := range this.ZoneSel.Include {
+	for id := range result.ZoneSel.Include {
 		for _, forwardedZone := range forwardedZones[id] {
 			isMatching := false
-			for domain := range this.DomainSel.Include {
+			for domain := range result.DomainSel.Include {
 				if dnsutils.Match(forwardedZone.Domain(), domain) {
 					isMatching = true
 					break
@@ -188,8 +204,8 @@ outer:
 	}
 
 outerExclude:
-	for _, zone := range this.Zones {
-		for domain := range this.DomainSel.Exclude {
+	for _, zone := range result.Zones {
+		for domain := range result.DomainSel.Exclude {
 			if dnsutils.Match(zone.Domain(), domain) {
 				zoneExcludeCandidates.Insert(zone)
 				continue outerExclude
@@ -198,31 +214,31 @@ outerExclude:
 	}
 
 	for zone := range zoneExcludeCandidates {
-		this.ZoneSel.Include.Delete(zone.ZoneID().ID)
-		this.ZoneSel.Exclude.Insert(zone.ZoneID().ID)
+		result.ZoneSel.Include.Delete(zone.ZoneID().ID)
+		result.ZoneSel.Exclude.Insert(zone.ZoneID().ID)
 	}
 
 outerExcludeDomain:
 	for _, z := range allzones {
-		if !this.ZoneSel.Include.Has(z.ZoneID().ID) && !this.DomainSel.Include.Has(z.Domain()) {
-			for domain := range this.DomainSel.Include {
+		if !result.ZoneSel.Include.Has(z.ZoneID().ID) && !result.DomainSel.Include.Has(z.Domain()) {
+			for domain := range result.DomainSel.Include {
 				if dnsutils.Match(domain, z.Domain()) && domain != z.Domain() {
 					continue outerExcludeDomain
 				}
 			}
-			this.DomainSel.Exclude.Insert(z.Domain())
+			result.DomainSel.Exclude.Insert(z.Domain())
 		}
 	}
-	if len(this.ZoneSel.Include) != len(this.Zones) {
-		this.Zones = nil
+	if len(result.ZoneSel.Include) != len(result.Zones) {
+		result.Zones = nil
 		for _, z := range zones {
-			if this.ZoneSel.Include.Has(z.ZoneID().ID) {
-				this.Zones = append(this.Zones, z)
+			if result.ZoneSel.Include.Has(z.ZoneID().ID) {
+				result.Zones = append(result.Zones, z)
 			}
 		}
 	}
 
-	return this
+	return result
 }
 
 func validateDomains(domains sets.Set[string], name string) error {
@@ -234,6 +250,7 @@ func validateDomains(domains sets.Set[string], name string) error {
 	return nil
 }
 
+// PrepareSelection creates a SubSelection from a DNSSelection.
 func PrepareSelection(sel *v1alpha1.DNSSelection) SubSelection {
 	subSel := NewSubSelection()
 	if sel != nil {
@@ -269,4 +286,13 @@ func normalizeDomains(domains sets.Set[string]) sets.Set[string] {
 		normalized.Insert(k)
 	}
 	return normalized
+}
+
+func toSortedList(set sets.Set[string]) []string {
+	if len(set) == 0 {
+		return nil
+	}
+	list := set.UnsortedList()
+	sort.Strings(list)
+	return list
 }

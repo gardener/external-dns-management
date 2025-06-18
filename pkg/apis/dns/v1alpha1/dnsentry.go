@@ -99,6 +99,9 @@ type DNSEntryStatus struct {
 	// zone used for the entry
 	// +optional
 	Zone *string `json:"zone,omitempty"`
+	// full qualified domain name applied
+	// +optional
+	DNSName *string `json:"dnsName"`
 	// time to live used for the entry
 	// +optional
 	TTL *int64 `json:"ttl,omitempty"`

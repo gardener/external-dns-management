@@ -6,6 +6,7 @@ package mock
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -20,24 +21,30 @@ type zonedata struct {
 	dnssets dns.DNSSets
 }
 
-// InMemory is a simple in-memory DNS provider implementation
+// InMemory is a simple in-memory DNS provider implementation.
 type InMemory struct {
-	lock            sync.Mutex
-	zones           map[dns.ZoneID]zonedata
-	failSimulations map[string]*inMemoryApplyFailSimulation
+	lock                 sync.Mutex
+	zones                map[dns.ZoneID]zonedata
+	failSimulations      map[string]*inMemoryApplyFailSimulation
+	supportRoutingPolicy bool
 }
 
 // inMemoryApplyFailSimulation is a struct to simulate apply failures.
 type inMemoryApplyFailSimulation struct {
 	zoneID       dns.ZoneID
-	request      *provider.ChangeRequest
+	request      *provider.ChangeRequests
 	appliedCount int
 }
 
-func NewInMemory() *InMemory {
-	return &InMemory{zones: map[dns.ZoneID]zonedata{}}
+// NewInMemory creates a new InMemory DNS provider.
+func NewInMemory(supportRoutingPolicy bool) *InMemory {
+	return &InMemory{
+		zones:                map[dns.ZoneID]zonedata{},
+		supportRoutingPolicy: supportRoutingPolicy,
+	}
 }
 
+// GetZones returns all hosted zones in the in-memory provider.
 func (m *InMemory) GetZones() []provider.DNSHostedZone {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -49,6 +56,7 @@ func (m *InMemory) GetZones() []provider.DNSHostedZone {
 	return zones
 }
 
+// FindHostedZone finds a hosted zone by its ZoneID.
 func (m *InMemory) FindHostedZone(zoneid dns.ZoneID) provider.DNSHostedZone {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -60,12 +68,14 @@ func (m *InMemory) FindHostedZone(zoneid dns.ZoneID) provider.DNSHostedZone {
 	return data.zone
 }
 
+// DeleteZone deletes a hosted zone by its ZoneID.
 func (m *InMemory) DeleteZone(zoneID dns.ZoneID) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	delete(m.zones, zoneID)
 }
 
+// AddZone adds a hosted zone to the in-memory provider.
 func (m *InMemory) AddZone(zone provider.DNSHostedZone) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -75,10 +85,45 @@ func (m *InMemory) AddZone(zone provider.DNSHostedZone) bool {
 		return false
 	}
 
-	m.zones[zone.ZoneID()] = zonedata{zone: zone, dnssets: dns.DNSSets{}}
+	m.zones[zone.ZoneID()] = zonedata{
+		zone:    zone,
+		dnssets: dns.DNSSets{},
+	}
 	return true
 }
 
+// GetDNSSets returns the DNS sets for a given zone.
+func (m *InMemory) GetDNSSets(zoneID dns.ZoneID) dns.DNSSets {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	data, ok := m.zones[zoneID]
+	if !ok {
+		return nil
+	}
+
+	return data.dnssets.Clone()
+}
+
+// GetCounts returns the number of DNS set names and record sets for a zone.
+func (m *InMemory) GetCounts(zoneID dns.ZoneID) (nameCount, recordSetCount int) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
+	data, ok := m.zones[zoneID]
+	if !ok {
+		return 0, 0
+	}
+
+	nameCount = len(data.dnssets)
+	recordSetCount = 0
+	for _, sets := range data.dnssets {
+		recordSetCount += len(sets.Sets)
+	}
+	return nameCount, recordSetCount
+}
+
+// GetRecordset returns a specific record set for a zone, name, and record type.
 func (m *InMemory) GetRecordset(zoneID dns.ZoneID, name dns.DNSSetName, rtype dns.RecordType) *dns.RecordSet {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -88,56 +133,48 @@ func (m *InMemory) GetRecordset(zoneID dns.ZoneID, name dns.DNSSetName, rtype dn
 		return nil
 	}
 
-	return data.dnssets[name].Sets[rtype].Clone()
+	dnsSets, ok := data.dnssets[name]
+	if !ok {
+		return nil
+	}
+
+	return dnsSets.Sets[rtype].Clone()
 }
 
-// TODO(marc1404): Implement and remove nolint
-// nolint:revive
-func (m *InMemory) Apply(zoneID dns.ZoneID, request *provider.ChangeRequest, metrics provider.Metrics) error {
+// Apply applies a DNS change request update to the in-memory provider.
+func (m *InMemory) Apply(zoneID dns.ZoneID, name dns.DNSSetName, rtype dns.RecordType, update *provider.ChangeRequestUpdate, metrics provider.Metrics) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
-	return fmt.Errorf("not implemented")
-	// TODO
-	/*
-			data, ok := m.zones[zoneID]
-			if !ok {
-				return fmt.Errorf("DNSZone %s not hosted", zoneID)
-			}
+	data, ok := m.zones[zoneID]
+	if !ok {
+		return fmt.Errorf("DNSZone %s not hosted", zoneID)
+	}
 
-			for _, fail := range m.failSimulations {
-				if fail.zoneID == zoneID && fail.request.IsSemanticEqualTo(request) {
-					fail.appliedCount++
-					return fmt.Errorf("simulated failure")
-				}
-			}
-
-			name, rset := buildRecordSet(request)
-			switch request.Action {
-			case R_CREATE, R_UPDATE:
-				data.dnssets.AddRecordSet(name, request.Addition.RoutingPolicy, rset)
-				metrics.AddZoneRequests(zoneID.ID, M_UPDATERECORDS, 1)
-			case R_DELETE:
-				data.dnssets.RemoveRecordSet(name, rset.Type)
-				metrics.AddZoneRequests(zoneID.ID, M_DELETERECORDS, 1)
-			}
-			return nil
+	for _, fail := range m.failSimulations {
+		if fail.zoneID == zoneID && isIncluded(fail.request, name, rtype, update) {
+			fail.appliedCount++
+			return fmt.Errorf("simulated failure")
 		}
+	}
 
-		func buildRecordSet(req *provider.ChangeRequest) (dns.DNSSetName, *dns.RecordSet) {
-			var dnsset *dns.DNSSet
-			switch req.Action {
-			case R_CREATE, R_UPDATE:
-				dnsset = req.Addition
-			case R_DELETE:
-				dnsset = req.Deletion
-			}
-
-			return dnsset.Name, dnsset.Sets[req.Type]
-
-	*/
+	if !m.supportRoutingPolicy {
+		if name.SetIdentifier != "" || (update.Old != nil && update.Old.RoutingPolicy != nil) || (update.New != nil && update.New.RoutingPolicy != nil) {
+			return fmt.Errorf("in-memory provider does not support routing policies")
+		}
+	}
+	if update.Old != nil {
+		data.dnssets.RemoveRecordSet(name, update.Old.Type)
+		metrics.AddZoneRequests(zoneID.ID, provider.MetricsRequestTypeDeleteRecords, 1)
+	}
+	if update.New != nil {
+		data.dnssets.AddRecordSet(name, update.New)
+		metrics.AddZoneRequests(zoneID.ID, provider.MetricsRequestTypeCreateRecords, 1)
+	}
+	return nil
 }
 
+// DumpDNSHostedZone represents a hosted zone for dumping purposes.
 type DumpDNSHostedZone struct {
 	ProviderType string
 	Key          string
@@ -145,15 +182,19 @@ type DumpDNSHostedZone struct {
 	Domain       string
 }
 
+// ZoneDump represents a dump of a hosted zone and its DNS sets.
 type ZoneDump struct {
 	HostedZone DumpDNSHostedZone
 	DNSSets    dns.DNSSets
 }
+
+// FullDump represents a dump of all in-memory zones.
 type FullDump struct {
 	InMemory map[dns.ZoneID]*ZoneDump
 }
 
-func (m *InMemory) AddApplyFailSimulation(id dns.ZoneID, request *provider.ChangeRequest) string {
+// AddApplyFailSimulation adds a simulation for apply failures for a zone and request.
+func (m *InMemory) AddApplyFailSimulation(id dns.ZoneID, request *provider.ChangeRequests) string {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -165,6 +206,7 @@ func (m *InMemory) AddApplyFailSimulation(id dns.ZoneID, request *provider.Chang
 	return uid
 }
 
+// GetApplyFailSimulationCount returns the number of times a simulated failure has occurred for a given simulation ID.
 func (m *InMemory) GetApplyFailSimulationCount(uid string) int {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -179,6 +221,7 @@ func (m *InMemory) GetApplyFailSimulationCount(uid string) int {
 	return fail.appliedCount
 }
 
+// RemoveApplyFailSimulation removes a simulated apply failure by its ID.
 func (m *InMemory) RemoveApplyFailSimulation(uid string) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -193,6 +236,7 @@ func (m *InMemory) RemoveApplyFailSimulation(uid string) bool {
 	return ok
 }
 
+// BuildFullDump creates a full dump of all zones and their DNS sets.
 func (m *InMemory) BuildFullDump() *FullDump {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -220,10 +264,18 @@ func (m *InMemory) buildZoneDump(zoneId dns.ZoneID) *ZoneDump {
 	return &ZoneDump{HostedZone: hostedZone, DNSSets: data.dnssets}
 }
 
+// ToYAMLString returns the YAML representation of the full dump.
 func (d *FullDump) ToYAMLString() string {
 	data, err := yaml.Marshal(d.InMemory)
 	if err != nil {
 		return "error: " + err.Error()
 	}
 	return string(data)
+}
+
+func isIncluded(cr *provider.ChangeRequests, name dns.DNSSetName, recordType dns.RecordType, update *provider.ChangeRequestUpdate) bool {
+	if cr.Name != name {
+		return false
+	}
+	return reflect.DeepEqual(cr.Updates[recordType], update)
 }
