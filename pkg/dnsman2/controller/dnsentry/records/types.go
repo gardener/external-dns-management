@@ -10,18 +10,22 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
+// FullDNSSetName represents a DNS set name with its associated zone.
 type FullDNSSetName struct {
 	ZoneID dns.ZoneID
 	Name   dns.DNSSetName
 }
 
+// FullRecordSetKey represents a unique key for a DNS record set, including zone, name, and record type.
 type FullRecordSetKey struct {
 	FullDNSSetName
 	RecordType dns.RecordType
 }
 
+// FullRecordKeySet is a set of FullRecordSetKey.
 type FullRecordKeySet = sets.Set[FullRecordSetKey]
 
+// InsertRecordKeys inserts record keys for the given targets into the provided key set.
 func InsertRecordKeys(keys FullRecordKeySet, fullDNSSetName FullDNSSetName, targets dns.Targets) {
 	for _, target := range targets {
 		keys.Insert(FullRecordSetKey{
@@ -31,6 +35,7 @@ func InsertRecordKeys(keys FullRecordKeySet, fullDNSSetName FullDNSSetName, targ
 	}
 }
 
+// InsertRecordSets inserts record sets for the given targets and routing policy into the provided DNSSet.
 func InsertRecordSets(dnsSet dns.DNSSet, policy *dns.RoutingPolicy, targets dns.Targets) {
 	recordSets := map[dns.RecordType]*dns.RecordSet{}
 	for _, target := range targets {

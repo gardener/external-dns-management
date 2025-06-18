@@ -16,13 +16,16 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
+// DNSRecordManager manages DNS record changes and queries for DNS entries.
 type DNSRecordManager struct {
 	common.EntryContext
 	State *state.State
 }
 
+// ZonedRequests maps a ZoneID to a map of DNSSetName and their corresponding ChangeRequests.
 type ZonedRequests = map[dns.ZoneID]map[dns.DNSSetName]*provider.ChangeRequests
 
+// ApplyChangeRequests applies the given change requests to the appropriate DNS zones and providers.
 func (m *DNSRecordManager) ApplyChangeRequests(providerData *providerselector.NewProviderData, zonedRequests ZonedRequests) *common.ReconcileResult {
 	newZoneID := providerData.ZoneID
 	for zoneID, perName := range zonedRequests {
@@ -65,6 +68,7 @@ func (m *DNSRecordManager) ApplyChangeRequests(providerData *providerselector.Ne
 	return nil
 }
 
+// QueryRecords queries DNS records for the given set of record keys.
 func (m *DNSRecordManager) QueryRecords(keys FullRecordKeySet) (map[FullRecordSetKey]*dns.RecordSet, *common.ReconcileResult) {
 	zonesToCheck := sets.Set[dns.ZoneID]{}
 	for key := range keys {
@@ -97,6 +101,7 @@ func (m *DNSRecordManager) QueryRecords(keys FullRecordKeySet) (map[FullRecordSe
 	return results, nil
 }
 
+// cleanupCrossZoneRecords cleans up DNS records that exist in zones other than the current one.
 func (m *DNSRecordManager) cleanupCrossZoneRecords(zoneID dns.ZoneID, perName map[dns.DNSSetName]*provider.ChangeRequests, account *provider.DNSAccount) *common.ReconcileResult {
 	if len(perName) == 0 {
 		return nil // Nothing to clean up

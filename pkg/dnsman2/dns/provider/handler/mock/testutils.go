@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
+// MarshallMockConfig marshals a MockConfig into a runtime.RawExtension.
 func MarshallMockConfig(input MockConfig) (*runtime.RawExtension, error) {
 	bytes, err := json.Marshal(&input)
 	if err != nil {

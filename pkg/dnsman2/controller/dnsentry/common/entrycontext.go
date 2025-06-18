@@ -15,6 +15,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
+// EntryContext holds context and references for a DNSEntry reconciliation.
 type EntryContext struct {
 	Client client.Client
 	Clock  clock.Clock
@@ -23,10 +24,12 @@ type EntryContext struct {
 	Entry  *v1alpha1.DNSEntry
 }
 
+// StatusUpdater returns a new EntryStatusUpdater for this EntryContext.
 func (ec *EntryContext) StatusUpdater() *EntryStatusUpdater {
 	return &EntryStatusUpdater{EntryContext: *ec}
 }
 
+// ReconcileResult wraps a controller-runtime reconcile result and error.
 type ReconcileResult struct {
 	Result reconcile.Result
 	Err    error

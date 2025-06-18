@@ -20,6 +20,7 @@ linters:
         - name: unreachable-code
         - name: context-as-argument
         - name: early-return
+        - name: exported
   exclusions:
     generated: lax
     rules:
@@ -37,6 +38,12 @@ linters:
         text: 'Will be supported throughout 1.x.' # use grpc.WithAuthority instead
       - path: pkg/dns/provider/lookupprocessor\.go$
         text: 'netErr.Temporary has been deprecated since Go 1.18'
+      - path: pkg/(apis|controller|dns|server)/(.+)\.go$
+        text: 'exported: '
+      - path: test/(.+)\.go$
+        text: 'exported: '
+      - path: pkg/dnsman2/(.+)\.go$
+        text: ' by other packages, and that stutters'
     paths:
       - zz_generated.*\.go$
       - test/functional/config

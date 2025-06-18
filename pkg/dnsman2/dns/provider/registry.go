@@ -52,6 +52,7 @@ func (r *DNSHandlerRegistry) ListProviderTypes() []string {
 	return types
 }
 
+// Supports checks if the registry supports the given provider type.
 func (r *DNSHandlerRegistry) Supports(providerType string) bool {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
@@ -59,6 +60,7 @@ func (r *DNSHandlerRegistry) Supports(providerType string) bool {
 	return ok
 }
 
+// Create creates a DNSHandler for the given provider type and config.
 func (r *DNSHandlerRegistry) Create(providerType string, config *DNSHandlerConfig) (DNSHandler, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()

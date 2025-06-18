@@ -43,6 +43,7 @@ func GetState() *State {
 	return instance.Load()
 }
 
+// State holds the global state for DNS providers and accounts.
 type State struct {
 	providers providerMap
 	accounts  *provider.AccountMap
@@ -59,11 +60,13 @@ func newProviderMap() providerMap {
 	}
 }
 
+// DNSQueryHandler defines an interface for querying DNS records.
 type DNSQueryHandler interface {
 	// Query performs either a DNS query to the authoritative nameservers or uses the provider API.
 	Query(ctx context.Context, fqdn, setIdentifier string, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error)
 }
 
+// GetOrCreateProviderState returns the ProviderState for the given DNSProvider, creating it if necessary.
 func (s *State) GetOrCreateProviderState(provider *v1alpha1.DNSProvider, config config.DNSProviderControllerConfig) *ProviderState {
 	s.providers.lock.Lock()
 	defer s.providers.lock.Unlock()
@@ -77,26 +80,31 @@ func (s *State) GetOrCreateProviderState(provider *v1alpha1.DNSProvider, config 
 	return state
 }
 
+// GetProviderState returns the ProviderState for the given provider key.
 func (s *State) GetProviderState(providerKey client.ObjectKey) *ProviderState {
 	s.providers.lock.Lock()
 	defer s.providers.lock.Unlock()
 	return s.providers.providers[providerKey]
 }
 
+// GetAccount retrieves the DNSAccount for the given provider and configuration.
 func (s *State) GetAccount(log logr.Logger, provider *v1alpha1.DNSProvider, props utils.Properties, config provider.DNSAccountConfig) (*provider.DNSAccount, error) {
 	return s.accounts.Get(log, provider, props, config)
 }
 
+// FindAccountForZone finds the DNSAccount and DNSHostedZone for the given zone ID.
 func (s *State) FindAccountForZone(ctx context.Context, zoneID dns.ZoneID) (*provider.DNSAccount, *provider.DNSHostedZone, error) {
 	return s.accounts.FindAccountForZone(ctx, zoneID)
 }
 
+// DeleteProviderState removes the ProviderState for the given provider key.
 func (s *State) DeleteProviderState(providerKey client.ObjectKey) {
 	s.providers.lock.Lock()
 	defer s.providers.lock.Unlock()
 	delete(s.providers.providers, providerKey)
 }
 
+// GetDNSQueryHandler returns a DNSQueryHandler for the given zone ID.
 func (s *State) GetDNSQueryHandler(zoneID dns.ZoneID) (DNSQueryHandler, error) {
 	if zoneID.ProviderType == mock.ProviderType {
 		return newMockDNSQueryHandler(zoneID)

@@ -20,6 +20,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 )
 
+// Handler implements the provider.DNSHandler interface for the mock in-memory DNS provider.
 type Handler struct {
 	provider.DefaultDNSHandler
 	config      provider.DNSHandlerConfig
@@ -28,15 +29,18 @@ type Handler struct {
 	rateLimiter flowcontrol.RateLimiter
 }
 
+// MockZone represents a mock DNS zone for testing.
 type MockZone struct {
 	ZoneSuffix string `json:"zoneSuffix"`
 	DNSName    string `json:"dnsName"`
 }
 
+// ZoneID returns the dns.ZoneID for the mock zone and account.
 func (m MockZone) ZoneID(account string) dns.ZoneID {
 	return dns.NewZoneID(ProviderType, account+":"+m.ZoneSuffix+m.DNSName)
 }
 
+// MockConfig holds configuration for the mock DNS provider.
 type MockConfig struct {
 	Account              string     `json:"account"`
 	Zones                []MockZone `json:"zones"`
@@ -48,7 +52,7 @@ type MockConfig struct {
 
 var _ provider.DNSHandler = &Handler{}
 
-// GetInMemoryMock allows tests to access mocked DNSHosted Zones
+// GetInMemoryMock allows tests to access mocked DNSHosted Zones by account name.
 func GetInMemoryMock(account string) *InMemory {
 	testInMemoryLock.Lock()
 	defer testInMemoryLock.Unlock()
@@ -98,6 +102,7 @@ var (
 	testInMemoryLock     sync.Mutex
 )
 
+// NewHandler creates a new mock DNS handler with the given configuration.
 func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	var tmp MockConfig
 	err := json.Unmarshal(config.Config.Raw, &tmp)
@@ -132,10 +137,12 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	return h, nil
 }
 
+// Release removes the in-memory mock for the handler's account.
 func (h *Handler) Release() {
 	deleteInMemoryMock(h.mockConfig.Account)
 }
 
+// GetZones returns the hosted zones for the mock provider.
 func (h *Handler) GetZones(_ context.Context) ([]provider.DNSHostedZone, error) {
 	if h.mockConfig.FailGetZones {
 		return nil, fmt.Errorf("forced error by mockConfig.FailGetZones")
@@ -145,6 +152,7 @@ func (h *Handler) GetZones(_ context.Context) ([]provider.DNSHostedZone, error) 
 	return zones, nil
 }
 
+// QueryDNS queries DNS records in the mock provider.
 func (h *Handler) QueryDNS(_ context.Context, zone provider.DNSHostedZone, domainName string, recordType dns.RecordType) ([]dns.Record, int64, error) {
 	result := h.mock.GetRecordset(zone.ZoneID(), dns.DNSSetName{DNSName: dns.NormalizeDomainName(domainName)}, recordType)
 	if result == nil {
@@ -157,6 +165,7 @@ func (h *Handler) QueryDNS(_ context.Context, zone provider.DNSHostedZone, domai
 	return records, result.TTL, nil
 }
 
+// ExecuteRequests executes DNS change requests in the mock provider.
 func (h *Handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZone, requests provider.ChangeRequests) error {
 	err := h.executeRequests(ctx, zone, requests)
 	if h.mockConfig.LatencyMillis > 0 {

@@ -21,7 +21,7 @@ type zonedata struct {
 	dnssets dns.DNSSets
 }
 
-// InMemory is a simple in-memory DNS provider implementation
+// InMemory is a simple in-memory DNS provider implementation.
 type InMemory struct {
 	lock                 sync.Mutex
 	zones                map[dns.ZoneID]zonedata
@@ -36,6 +36,7 @@ type inMemoryApplyFailSimulation struct {
 	appliedCount int
 }
 
+// NewInMemory creates a new InMemory DNS provider.
 func NewInMemory(supportRoutingPolicy bool) *InMemory {
 	return &InMemory{
 		zones:                map[dns.ZoneID]zonedata{},
@@ -43,6 +44,7 @@ func NewInMemory(supportRoutingPolicy bool) *InMemory {
 	}
 }
 
+// GetZones returns all hosted zones in the in-memory provider.
 func (m *InMemory) GetZones() []provider.DNSHostedZone {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -54,6 +56,7 @@ func (m *InMemory) GetZones() []provider.DNSHostedZone {
 	return zones
 }
 
+// FindHostedZone finds a hosted zone by its ZoneID.
 func (m *InMemory) FindHostedZone(zoneid dns.ZoneID) provider.DNSHostedZone {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -65,12 +68,14 @@ func (m *InMemory) FindHostedZone(zoneid dns.ZoneID) provider.DNSHostedZone {
 	return data.zone
 }
 
+// DeleteZone deletes a hosted zone by its ZoneID.
 func (m *InMemory) DeleteZone(zoneID dns.ZoneID) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	delete(m.zones, zoneID)
 }
 
+// AddZone adds a hosted zone to the in-memory provider.
 func (m *InMemory) AddZone(zone provider.DNSHostedZone) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -87,6 +92,7 @@ func (m *InMemory) AddZone(zone provider.DNSHostedZone) bool {
 	return true
 }
 
+// GetDNSSets returns the DNS sets for a given zone.
 func (m *InMemory) GetDNSSets(zoneID dns.ZoneID) dns.DNSSets {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -99,6 +105,7 @@ func (m *InMemory) GetDNSSets(zoneID dns.ZoneID) dns.DNSSets {
 	return data.dnssets.Clone()
 }
 
+// GetCounts returns the number of DNS set names and record sets for a zone.
 func (m *InMemory) GetCounts(zoneID dns.ZoneID) (nameCount, recordSetCount int) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -116,6 +123,7 @@ func (m *InMemory) GetCounts(zoneID dns.ZoneID) (nameCount, recordSetCount int) 
 	return nameCount, recordSetCount
 }
 
+// GetRecordset returns a specific record set for a zone, name, and record type.
 func (m *InMemory) GetRecordset(zoneID dns.ZoneID, name dns.DNSSetName, rtype dns.RecordType) *dns.RecordSet {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -133,6 +141,7 @@ func (m *InMemory) GetRecordset(zoneID dns.ZoneID, name dns.DNSSetName, rtype dn
 	return dnsSets.Sets[rtype].Clone()
 }
 
+// Apply applies a DNS change request update to the in-memory provider.
 func (m *InMemory) Apply(zoneID dns.ZoneID, name dns.DNSSetName, rtype dns.RecordType, update *provider.ChangeRequestUpdate, metrics provider.Metrics) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -165,6 +174,7 @@ func (m *InMemory) Apply(zoneID dns.ZoneID, name dns.DNSSetName, rtype dns.Recor
 	return nil
 }
 
+// DumpDNSHostedZone represents a hosted zone for dumping purposes.
 type DumpDNSHostedZone struct {
 	ProviderType string
 	Key          string
@@ -172,14 +182,18 @@ type DumpDNSHostedZone struct {
 	Domain       string
 }
 
+// ZoneDump represents a dump of a hosted zone and its DNS sets.
 type ZoneDump struct {
 	HostedZone DumpDNSHostedZone
 	DNSSets    dns.DNSSets
 }
+
+// FullDump represents a dump of all in-memory zones.
 type FullDump struct {
 	InMemory map[dns.ZoneID]*ZoneDump
 }
 
+// AddApplyFailSimulation adds a simulation for apply failures for a zone and request.
 func (m *InMemory) AddApplyFailSimulation(id dns.ZoneID, request *provider.ChangeRequests) string {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -192,6 +206,7 @@ func (m *InMemory) AddApplyFailSimulation(id dns.ZoneID, request *provider.Chang
 	return uid
 }
 
+// GetApplyFailSimulationCount returns the number of times a simulated failure has occurred for a given simulation ID.
 func (m *InMemory) GetApplyFailSimulationCount(uid string) int {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -206,6 +221,7 @@ func (m *InMemory) GetApplyFailSimulationCount(uid string) int {
 	return fail.appliedCount
 }
 
+// RemoveApplyFailSimulation removes a simulated apply failure by its ID.
 func (m *InMemory) RemoveApplyFailSimulation(uid string) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -220,6 +236,7 @@ func (m *InMemory) RemoveApplyFailSimulation(uid string) bool {
 	return ok
 }
 
+// BuildFullDump creates a full dump of all zones and their DNS sets.
 func (m *InMemory) BuildFullDump() *FullDump {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -247,6 +264,7 @@ func (m *InMemory) buildZoneDump(zoneId dns.ZoneID) *ZoneDump {
 	return &ZoneDump{HostedZone: hostedZone, DNSSets: data.dnssets}
 }
 
+// ToYAMLString returns the YAML representation of the full dump.
 func (d *FullDump) ToYAMLString() string {
 	data, err := yaml.Marshal(d.InMemory)
 	if err != nil {

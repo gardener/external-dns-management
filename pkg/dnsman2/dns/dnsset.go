@@ -42,7 +42,7 @@ func NewDNSSet(name DNSSetName) *DNSSet {
 	return &DNSSet{Name: name.Normalize(), Sets: RecordSets{}}
 }
 
-// Match matches DNSSet equality
+// Match matches DNSSet equality.
 func (s *DNSSet) Match(that *DNSSet) bool {
 	return s.match(that, nil)
 }

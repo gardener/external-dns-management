@@ -16,29 +16,37 @@ import (
 	dnsutils "github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
-// SelectionResult contains the result of the CalcZoneAndDomainSelection function
+// SelectionResult contains the result of the CalcZoneAndDomainSelection function.
 type SelectionResult struct {
-	Zones         []LightDNSHostedZone
-	SpecZoneSel   SubSelection
+	// Zones is the list of selected DNS hosted zones.
+	Zones []LightDNSHostedZone
+	// SpecZoneSel is the zone selection from the provider spec.
+	SpecZoneSel SubSelection
+	// SpecDomainSel is the domain selection from the provider spec.
 	SpecDomainSel SubSelection
-	ZoneSel       SubSelection
-	DomainSel     SubSelection
-	Error         string
-	Warnings      []string
+	// ZoneSel is the effective zone selection after processing.
+	ZoneSel SubSelection
+	// DomainSel is the effective domain selection after processing.
+	DomainSel SubSelection
+	// Error contains an error message if selection failed.
+	Error string
+	// Warnings contains warning messages encountered during selection.
+	Warnings []string
 }
 
+// SetProviderStatusZonesAndDomains sets the included and excluded zones and domains in the provider status.
 func (r SelectionResult) SetProviderStatusZonesAndDomains(status *v1alpha1.DNSProviderStatus) {
 	status.Zones = v1alpha1.DNSSelectionStatus{Included: toSortedList(r.ZoneSel.Include), Excluded: toSortedList(r.ZoneSel.Exclude)}
 	status.Domains = v1alpha1.DNSSelectionStatus{Included: toSortedList(r.DomainSel.Include), Excluded: toSortedList(r.DomainSel.Exclude)}
 }
 
-// SubSelection contains an included and an excluded string set
+// SubSelection contains an included and an excluded string set.
 type SubSelection struct {
 	Include sets.Set[string]
 	Exclude sets.Set[string]
 }
 
-// NewSubSelection creates an empty SubSelection
+// NewSubSelection creates an empty SubSelection.
 func NewSubSelection() SubSelection {
 	return SubSelection{
 		Include: sets.New[string](),
@@ -46,9 +54,11 @@ func NewSubSelection() SubSelection {
 	}
 }
 
-// LightDNSHostedZone contains the info of a DNSHostedZone needed for selection
+// LightDNSHostedZone contains the info of a DNSHostedZone needed for selection.
 type LightDNSHostedZone interface {
+	// ZoneID returns the zone ID of the hosted zone.
 	ZoneID() dns.ZoneID
+	// Domain returns the domain name of the hosted zone.
 	Domain() string
 }
 
@@ -240,6 +250,7 @@ func validateDomains(domains sets.Set[string], name string) error {
 	return nil
 }
 
+// PrepareSelection creates a SubSelection from a DNSSelection.
 func PrepareSelection(sel *v1alpha1.DNSSelection) SubSelection {
 	subSel := NewSubSelection()
 	if sel != nil {

@@ -28,6 +28,7 @@ type LookupProcessor interface {
 
 	// Run starts the lookup processor, which periodically checks for jobs to run.
 	Run(ctx context.Context)
+	// IsRunning returns true if the processor is running.
 	IsRunning() bool
 }
 
@@ -37,6 +38,7 @@ type EntryTrigger interface {
 	TriggerReconciliation(ctx context.Context, key client.ObjectKey) error
 }
 
+// LookupIPFunc defines a function type for looking up IPs for a hostname.
 type LookupIPFunc func(string) ([]net.IP, error)
 
 type lookupHostConfig struct {
@@ -136,6 +138,7 @@ type lookupProcessor struct {
 	metrics        LookupMetrics
 }
 
+// NewLookupProcessor creates a new lookupProcessor.
 func NewLookupProcessor(
 	log logr.Logger,
 	entryTrigger EntryTrigger,

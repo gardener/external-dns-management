@@ -23,6 +23,7 @@ type EntryStatusUpdater struct {
 	EntryContext
 }
 
+// UpdateStatus updates the status of the DNSEntry using the provided modifier function.
 func (u *EntryStatusUpdater) UpdateStatus(modifier func(status *v1alpha1.DNSEntryStatus) error) ReconcileResult {
 	if res := u.updateStatus(modifier); res != nil {
 		return *res
@@ -37,6 +38,7 @@ func (u *EntryStatusUpdater) UpdateStatus(modifier func(status *v1alpha1.DNSEntr
 	return ReconcileResult{}
 }
 
+// updateStatus applies the modifier to the status and patches the resource.
 func (u *EntryStatusUpdater) updateStatus(modifier func(status *v1alpha1.DNSEntryStatus) error) *ReconcileResult {
 	patch := client.MergeFrom(u.Entry.DeepCopy())
 	oldStatus := u.Entry.Status.DeepCopy()
@@ -65,10 +67,12 @@ func (u *EntryStatusUpdater) updateStatusFailed(state string, err error) *Reconc
 	})
 }
 
+// UpdateStatusInvalid sets the DNSEntry status to invalid with the given error.
 func (u *EntryStatusUpdater) UpdateStatusInvalid(err error) *ReconcileResult {
 	return u.updateStatusFailed(v1alpha1.StateInvalid, err)
 }
 
+// FailWithStatusStale sets the DNSEntry status to stale and returns a requeue result.
 func (u *EntryStatusUpdater) FailWithStatusStale(err error) ReconcileResult {
 	if res := u.updateStatusFailed(v1alpha1.StateStale, err); res != nil {
 		return *res
@@ -76,6 +80,7 @@ func (u *EntryStatusUpdater) FailWithStatusStale(err error) ReconcileResult {
 	return ReconcileResult{Result: reconcile.Result{Requeue: true}, Err: fmt.Errorf("failed with state stale: %w", err)}
 }
 
+// FailWithStatusError sets the DNSEntry status to error and returns a reconcile error.
 func (u *EntryStatusUpdater) FailWithStatusError(err error) ReconcileResult {
 	if res := u.updateStatusFailed(v1alpha1.StateError, err); res != nil {
 		return *res
@@ -83,6 +88,7 @@ func (u *EntryStatusUpdater) FailWithStatusError(err error) ReconcileResult {
 	return ReconcileResult{Err: fmt.Errorf("failed to reconcile: %w", err)}
 }
 
+// AddFinalizer adds the DNS finalizer to the DNSEntry resource.
 func (u *EntryStatusUpdater) AddFinalizer() *ReconcileResult {
 	if err := controllerutils.AddFinalizers(u.Ctx, u.Client, u.Entry, dns.FinalizerCompound); err != nil {
 		u.Log.Error(err, "failed to add finalizer")
@@ -91,6 +97,7 @@ func (u *EntryStatusUpdater) AddFinalizer() *ReconcileResult {
 	return nil
 }
 
+// RemoveFinalizer removes the DNS finalizer from the DNSEntry resource.
 func (u *EntryStatusUpdater) RemoveFinalizer() *ReconcileResult {
 	if err := controllerutils.RemoveFinalizers(u.Ctx, u.Client, u.Entry, dns.FinalizerCompound); err != nil {
 		u.Log.Error(err, "failed to remove finalizer")

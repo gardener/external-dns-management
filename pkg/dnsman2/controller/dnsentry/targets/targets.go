@@ -31,6 +31,7 @@ type TargetsResult struct {
 	Warnings []string
 }
 
+// AddTarget adds a target to the TargetsResult, avoiding duplicates and adding a warning if duplicate.
 func (r *TargetsResult) AddTarget(target dns.Target) {
 	if r.Targets.Has(target) {
 		field := "target"
@@ -43,14 +44,17 @@ func (r *TargetsResult) AddTarget(target dns.Target) {
 	}
 }
 
+// HasTargets returns true if there are any targets in the result.
 func (r *TargetsResult) HasTargets() bool {
 	return len(r.Targets) > 0
 }
 
+// HasWarnings returns true if there are any warnings in the result.
 func (r *TargetsResult) HasWarnings() bool {
 	return len(r.Warnings) > 0
 }
 
+// AddWarning adds a warning message to the result.
 func (r *TargetsResult) AddWarning(warning string) {
 	r.Warnings = append(r.Warnings, warning)
 }
@@ -73,7 +77,7 @@ func NewTargetsProducer(ctx context.Context, defaultTTL, defaultCNAMELookupInter
 	}
 }
 
-// FromSpec extracts dns.Targets form a DNSEntrySpec.
+// FromSpec extracts dns.Targets from a DNSEntrySpec.
 // It validates the spec and returns warnings for duplicate targets or empty text.
 func (p *TargetsProducer) FromSpec(key client.ObjectKey, spec *v1alpha1.DNSEntrySpec, ipstack string) (result *TargetsResult, err error) {
 	if err = dns.ValidateDomainName(spec.DNSName); err != nil {

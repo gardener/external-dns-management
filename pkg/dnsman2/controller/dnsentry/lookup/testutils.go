@@ -40,6 +40,7 @@ func NewMockLookupHost(lookupMap map[string]MockLookupHostResult) *MockLookupHos
 	}
 }
 
+// LookupHost performs a mock DNS lookup for the given hostname.
 func (lh *MockLookupHost) LookupHost(hostname string) ([]net.IP, error) {
 	time.Sleep(lh.delay)
 	lh.lock.Lock()
@@ -77,6 +78,7 @@ func (lh *MockLookupHost) LookupHost(hostname string) ([]net.IP, error) {
 	return result.IPs, result.Err
 }
 
+// Stop stops the mock lookup host from counting further lookups.
 func (lh *MockLookupHost) Stop() {
 	lh.stopped.Store(true)
 }
@@ -88,6 +90,7 @@ func NewNullTrigger() EntryTrigger {
 	return &nullTrigger{}
 }
 
+// TriggerReconciliation is a no-op implementation for nullTrigger.
 func (t *nullTrigger) TriggerReconciliation(_ context.Context, _ client.ObjectKey) error {
 	return nil
 }

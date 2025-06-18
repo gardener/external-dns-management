@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
+// ValidateDomainName validates a DNS domain name according to DNS1123 rules and some provider-specific exceptions.
 func ValidateDomainName(name string) error {
 	check := NormalizeDomainName(name)
 	if strings.HasPrefix(check, "_") {

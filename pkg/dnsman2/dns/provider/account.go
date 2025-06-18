@@ -27,6 +27,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
+// DNSAccountConfig holds configuration for a DNSAccount.
 type DNSAccountConfig struct {
 	// DefaultTTL is the default TTL for DNS records.
 	DefaultTTL int64
@@ -40,7 +41,7 @@ type DNSAccountConfig struct {
 	RateLimits *config.RateLimiterOptions
 }
 
-// DNSAccount represents a DNS account
+// DNSAccount represents a DNS account.
 type DNSAccount struct {
 	*utils.RateLimiter
 	handler DNSHandler
@@ -74,6 +75,7 @@ func (h *handlerZoneQueryDNS) Query(ctx context.Context, dnsName string, recordT
 	return utils.QueryDNSResult{Records: records, TTL: utils.TTLToUint32(ttl)}
 }
 
+// NewDNSAccount creates a new DNSAccount with the given handler, hash, and config.
 func NewDNSAccount(handler DNSHandler, hash string, config DNSAccountConfig) *DNSAccount {
 	return &DNSAccount{
 		RateLimiter: utils.NewRateLimiter(3*time.Second, 10*time.Minute),
@@ -85,22 +87,27 @@ func NewDNSAccount(handler DNSHandler, hash string, config DNSAccountConfig) *DN
 	}
 }
 
+// AddGenericRequests adds generic request metrics for the account.
 func (a *DNSAccount) AddGenericRequests(requestType string, n int) {
 	metrics.AddRequests(a.handler.ProviderType(), a.hash, requestType, n, nil)
 }
 
+// AddZoneRequests adds zone-specific request metrics for the account.
 func (a *DNSAccount) AddZoneRequests(zoneID, requestType string, n int) {
 	metrics.AddRequests(a.handler.ProviderType(), a.hash, requestType, n, &zoneID)
 }
 
+// ProviderType returns the provider type of the DNS account.
 func (a *DNSAccount) ProviderType() string {
 	return a.handler.ProviderType()
 }
 
+// Hash returns the hash of the DNS account.
 func (a *DNSAccount) Hash() string {
 	return a.hash
 }
 
+// GetZones returns the hosted zones for the DNS account, using a cache.
 func (a *DNSAccount) GetZones(ctx context.Context) ([]DNSHostedZone, error) {
 	a.lock.Lock()
 	if a.config.Clock.Since(a.lastGetZones) < a.config.ZoneCacheTTL {
@@ -121,6 +128,7 @@ func (a *DNSAccount) GetZones(ctx context.Context) ([]DNSHostedZone, error) {
 	return zones, err
 }
 
+// QueryDNS queries DNS records for the given zone, name, and record type.
 func (a *DNSAccount) QueryDNS(ctx context.Context, zone DNSHostedZone, dnsName string, recordType dns.RecordType) ([]dns.Record, int64, error) {
 	cache := a.getZoneQueryCache(zone)
 	result := cache.Get(ctx, dnsName, recordType)
@@ -148,29 +156,35 @@ func (a *DNSAccount) cleanZoneQueryCache(zones []DNSHostedZone) {
 	}
 }
 
+// ExecuteRequests executes DNS change requests for the given zone.
 func (a *DNSAccount) ExecuteRequests(ctx context.Context, zone DNSHostedZone, requests ChangeRequests) error {
 	return a.handler.ExecuteRequests(ctx, zone, requests)
 }
 
+// MapTargets maps DNS targets using the underlying handler.
 func (a *DNSAccount) MapTargets(dnsName string, targets []dns.Target) []dns.Target {
 	return a.handler.MapTargets(dnsName, targets)
 }
 
+// Release releases the DNS account and its handler.
 func (a *DNSAccount) Release() {
 	a.handler.Release()
 }
 
+// AccountMap manages a set of DNS accounts.
 type AccountMap struct {
 	lock     sync.Mutex
 	accounts map[string]*DNSAccount
 }
 
+// NewAccountMap creates a new AccountMap.
 func NewAccountMap() *AccountMap {
 	return &AccountMap{
 		accounts: map[string]*DNSAccount{},
 	}
 }
 
+// Get returns a DNSAccount for the given provider, creating it if necessary.
 func (m *AccountMap) Get(log logr.Logger, provider *v1alpha1.DNSProvider, props utils.Properties, config DNSAccountConfig) (*DNSAccount, error) {
 	key := client.ObjectKeyFromObject(provider)
 	hash := m.Hash(props, provider.Spec.Type, provider.Spec.ProviderConfig)
@@ -209,6 +223,7 @@ func (m *AccountMap) Get(log logr.Logger, provider *v1alpha1.DNSProvider, props 
 	return a, nil
 }
 
+// FindAccountForZone finds the DNSAccount and DNSHostedZone for a given zone ID.
 func (m *AccountMap) FindAccountForZone(ctx context.Context, zoneID dns.ZoneID) (*DNSAccount, *DNSHostedZone, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()
@@ -237,6 +252,7 @@ func (m *AccountMap) FindAccountForZone(ctx context.Context, zoneID dns.ZoneID) 
 
 var null = []byte{0}
 
+// Release releases a DNSAccount for a given provider key.
 func (m *AccountMap) Release(log logr.Logger, a *DNSAccount, key client.ObjectKey) {
 	if a == nil {
 		return
@@ -255,6 +271,7 @@ func (m *AccountMap) Release(log logr.Logger, a *DNSAccount, key client.ObjectKe
 	}
 }
 
+// Hash computes a hash for the given properties, provider type, and provider config.
 func (m *AccountMap) Hash(props utils.Properties, ptype string, extension *runtime.RawExtension) string {
 	keys := make([]string, len(props))
 	i := 0
@@ -280,6 +297,7 @@ func (m *AccountMap) Hash(props utils.Properties, ptype string, extension *runti
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+// GetDNSCachesByZone returns all DNS caches for a given zone ID.
 func (m *AccountMap) GetDNSCachesByZone(zoneID dns.ZoneID) ([]*utils.DNSCache, error) {
 	m.lock.Lock()
 	defer m.lock.Unlock()

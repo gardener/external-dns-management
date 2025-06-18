@@ -19,6 +19,7 @@ type DefaultDNSHostedZone struct {
 
 var _ DNSHostedZone = &DefaultDNSHostedZone{}
 
+// Key returns the provider specific key of the hosted zone.
 func (z *DefaultDNSHostedZone) Key() string {
 	if z.key != "" {
 		return z.key
@@ -26,18 +27,22 @@ func (z *DefaultDNSHostedZone) Key() string {
 	return z.zoneid.ID
 }
 
+// ZoneID returns the unique ID of the hosted zone.
 func (z *DefaultDNSHostedZone) ZoneID() dns.ZoneID {
 	return z.zoneid
 }
 
+// Domain returns the domain of the hosted zone.
 func (z *DefaultDNSHostedZone) Domain() string {
 	return z.domain
 }
 
+// IsPrivate returns true if the hosted zone is private.
 func (z *DefaultDNSHostedZone) IsPrivate() bool {
 	return z.isPrivate
 }
 
+// MatchLevel returns the match level of the given DNS name with the hosted zone.
 func (z *DefaultDNSHostedZone) MatchLevel(dnsname string) int {
 	return MatchLevel(z, dnsname)
 }

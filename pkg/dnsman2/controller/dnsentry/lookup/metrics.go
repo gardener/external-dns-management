@@ -12,11 +12,17 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/metrics"
 )
 
+// LookupMetrics defines metrics reporting for DNS lookup processing.
 type LookupMetrics interface {
+	// IncrSkipped increments the skipped lookups counter.
 	IncrSkipped()
+	// IncrHostnameLookups records a hostname lookup event.
 	IncrHostnameLookups(name client.ObjectKey, hosts, errorCount int, duration time.Duration)
+	// ReportCurrentJobCount reports the current number of lookup jobs.
 	ReportCurrentJobCount(count int)
+	// IncrLookupChanged increments the counter for changed lookups.
 	IncrLookupChanged(name client.ObjectKey)
+	// RemoveJob records the removal of a lookup job.
 	RemoveJob(name client.ObjectKey)
 }
 
