@@ -29,7 +29,7 @@ type mockNameserversProvider struct {
 	nameservers []string
 }
 
-func (m mockNameserversProvider) Nameservers() ([]string, error) {
+func (m mockNameserversProvider) Nameservers(_ context.Context) ([]string, error) {
 	return m.nameservers, nil
 }
 
@@ -38,6 +38,7 @@ var _ = Describe("QueryDNS", func() {
 		mockNameservers NameserversProvider
 		queryDNS        QueryDNS
 		ctx             context.Context
+		setName         = dns.DNSSetName{DNSName: "example.com"}
 	)
 
 	BeforeEach(func() {
@@ -47,11 +48,12 @@ var _ = Describe("QueryDNS", func() {
 	})
 
 	It("should return A records", func() {
-		result := queryDNS.Query(ctx, "example.com", dns.TypeA)
+		result := queryDNS.Query(ctx, setName, dns.TypeA)
 		Expect(result.Err).NotTo(HaveOccurred())
-		Expect(result.TTL).NotTo(BeZero())
-		Expect(result.Records).NotTo(BeEmpty())
-		for _, record := range result.Records {
+		Expect(result.RecordSet).NotTo(BeNil())
+		Expect(result.RecordSet.TTL).NotTo(BeZero())
+		Expect(result.RecordSet.Records).NotTo(BeEmpty())
+		for _, record := range result.RecordSet.Records {
 			ip := net.ParseIP(record.Value)
 			Expect(ip).NotTo(BeNil())
 			Expect(ip.To4()).NotTo(BeNil())
@@ -59,11 +61,12 @@ var _ = Describe("QueryDNS", func() {
 	})
 
 	It("should return AAAA records", func() {
-		result := queryDNS.Query(ctx, "example.com", dns.TypeAAAA)
+		result := queryDNS.Query(ctx, setName, dns.TypeAAAA)
 		Expect(result.Err).NotTo(HaveOccurred())
-		Expect(result.TTL).NotTo(BeZero())
-		Expect(result.Records).NotTo(BeEmpty())
-		for _, record := range result.Records {
+		Expect(result.RecordSet).NotTo(BeNil())
+		Expect(result.RecordSet.TTL).NotTo(BeZero())
+		Expect(result.RecordSet.Records).NotTo(BeEmpty())
+		for _, record := range result.RecordSet.Records {
 			ip := net.ParseIP(record.Value)
 			Expect(ip).NotTo(BeNil())
 			Expect(ip.To16()).NotTo(BeNil())
@@ -71,29 +74,38 @@ var _ = Describe("QueryDNS", func() {
 	})
 
 	It("should return TXT records", func() {
-		result := queryDNS.Query(ctx, "example.com", dns.TypeTXT)
-		Expect(result.TTL).NotTo(BeZero())
+		result := queryDNS.Query(ctx, setName, dns.TypeTXT)
+		Expect(result.RecordSet).NotTo(BeNil())
+		Expect(result.RecordSet.TTL).NotTo(BeZero())
 		Expect(result.Err).NotTo(HaveOccurred())
-		Expect(result.Records).NotTo(BeEmpty())
+		Expect(result.RecordSet.Records).NotTo(BeEmpty())
 	})
 
 	It("should return NS records", func() {
-		result := queryDNS.Query(ctx, "example.com", dns.TypeNS)
-		Expect(result.TTL).NotTo(BeZero())
+		result := queryDNS.Query(ctx, setName, dns.TypeNS)
 		Expect(result.Err).NotTo(HaveOccurred())
-		Expect(result.Records).To(ConsistOf(dns.Record{Value: "a.iana-servers.net."}, dns.Record{Value: "b.iana-servers.net."}))
+		Expect(result.RecordSet).NotTo(BeNil())
+		Expect(result.RecordSet.TTL).NotTo(BeZero())
+		Expect(result.RecordSet.Records).To(ConsistOf(&dns.Record{Value: "a.iana-servers.net."}, &dns.Record{Value: "b.iana-servers.net."}))
 	})
 
 	It("should return CNAME records", func() {
-		result := queryDNS.Query(ctx, "www.example.com", dns.TypeCNAME)
+		result := queryDNS.Query(ctx, dns.DNSSetName{DNSName: "www.example.com"}, dns.TypeCNAME)
 		Expect(result.Err).NotTo(HaveOccurred())
-		Expect(result.TTL).NotTo(BeZero())
-		Expect(result.Records).NotTo(BeEmpty())
+		Expect(result.RecordSet).NotTo(BeNil())
+		Expect(result.RecordSet.TTL).NotTo(BeZero())
+		Expect(result.RecordSet.Records).NotTo(BeEmpty())
 	})
 
 	It("should return an error for unsupported record type", func() {
-		result := queryDNS.Query(ctx, "example.com", dns.TypeAWS_ALIAS_A)
+		result := queryDNS.Query(ctx, setName, dns.TypeAWS_ALIAS_A)
 		Expect(result.Err).To(HaveOccurred())
 		Expect(result.Err.Error()).To(ContainSubstring("unsupported record type"))
+	})
+
+	It("should return an error if setIdentifier is set", func() {
+		result := queryDNS.Query(ctx, dns.DNSSetName{DNSName: "example.com", SetIdentifier: "set1"}, dns.TypeA)
+		Expect(result.Err).To(HaveOccurred())
+		Expect(result.Err.Error()).To(ContainSubstring("set identifier is not supported for DNS queries"))
 	})
 })

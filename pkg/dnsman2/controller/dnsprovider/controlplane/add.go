@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
+	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
@@ -25,11 +26,17 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/aws"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 // ControllerName is the name of this controller.
 const ControllerName = "dnsprovider-controlplane"
+
+var allTypes = map[string]provider.AddToRegistryFunc{
+	aws.ProviderType: aws.RegisterTo,
+}
 
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster) error {
@@ -40,7 +47,23 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	if r.Recorder == nil {
 		r.Recorder = mgr.GetEventRecorderFor(ControllerName + "-controller")
 	}
+	if r.DNSHandlerFactory == nil {
+		registry := provider.NewDNSHandlerRegistry(r.Clock)
+		disabledTypes := r.Config.Controllers.DNSProvider.DisabledProviderTypes
+		enabledTypes := r.Config.Controllers.DNSProvider.EnabledProviderTypes
+		for providerType, addToRegistry := range allTypes {
+			if len(enabledTypes) > 0 && !slices.Contains(enabledTypes, providerType) {
+				continue
+			}
+			if slices.Contains(disabledTypes, providerType) {
+				continue
+			}
+			addToRegistry(registry)
+		}
+		r.DNSHandlerFactory = registry
+	}
 	r.state = state.GetState()
+	r.state.SetDNSHandlerFactory(r.DNSHandlerFactory)
 
 	return builder.
 		ControllerManagedBy(mgr).

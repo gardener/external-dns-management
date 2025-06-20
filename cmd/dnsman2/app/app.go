@@ -91,6 +91,7 @@ func NewCommand() *cobra.Command {
 // options is a struct to support packages command.
 type options struct {
 	configFile string
+	verbose    bool
 	config     *config.DNSManagerConfiguration
 }
 
@@ -102,6 +103,7 @@ func newOptions() *options {
 // addFlags binds the command options to a given flagset.
 func (o *options) addFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.configFile, "config", o.configFile, "Path to configuration file.")
+	flags.BoolVar(&o.verbose, "v", o.verbose, "If true, overwrites log level in config with value 'debug'.")
 }
 
 // Complete adapts from the command line args to the data required.
@@ -130,7 +132,12 @@ func (o *options) Validate() error {
 
 // LogConfig returns the logging config.
 func (o *options) LogConfig() (logLevel, logFormat string) {
-	return o.config.LogLevel, o.config.LogFormat
+	logLevel = o.config.LogLevel
+	logFormat = o.config.LogFormat
+	if o.verbose {
+		logLevel = "debug"
+	}
+	return
 }
 
 // run does the actual work of the command.
@@ -171,17 +178,26 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 		GracefulShutdownTimeout: ptr.To(5 * time.Second),
 		Cache: cache.Options{
 			SyncPeriod: &cfg.ClientConnection.CacheResyncPeriod.Duration,
+			// TODO(MartinWeindel) Revisit this, when introducing flag to allow DNSProvider in all namespaces
 			ByObject: map[client.Object]cache.ByObject{
 				&corev1.Secret{}: {
-					Transform: func(i interface{}) (interface{}, error) {
-						return corev1.Secret{
-							ObjectMeta: i.(*corev1.Secret).ObjectMeta,
-							Type:       i.(*corev1.Secret).Type,
-							Immutable:  i.(*corev1.Secret).Immutable,
-						}, nil
-					},
+					Namespaces: map[string]cache.Config{cfg.Controllers.DNSProvider.Namespace: {}},
 				},
 			},
+
+			/*
+				ByObject: map[client.Object]cache.ByObject{
+					&corev1.Secret{}: {
+						Transform: func(i interface{}) (interface{}, error) {
+							return corev1.Secret{
+								ObjectMeta: i.(*corev1.Secret).ObjectMeta,
+								Type:       i.(*corev1.Secret).Type,
+								Immutable:  i.(*corev1.Secret).Immutable,
+							}, nil
+						},
+					},
+				},
+			*/
 		},
 
 		HealthProbeBindAddress: net.JoinHostPort(cfg.Server.HealthProbes.BindAddress, strconv.Itoa(cfg.Server.HealthProbes.Port)),
@@ -253,7 +269,8 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 		return fmt.Errorf("failed adding control plane DNSProvider controller: %w", err)
 	}
 	if err := (&dnsentry.Reconciler{
-		Config: cfg.Controllers.DNSEntry,
+		Config:    cfg.Controllers.DNSEntry,
+		Namespace: cfg.Controllers.DNSProvider.Namespace,
 	}).AddToManager(mgr, controlPlaneCluster); err != nil {
 		return fmt.Errorf("failed adding control plane DNSEntry controller: %w", err)
 	}

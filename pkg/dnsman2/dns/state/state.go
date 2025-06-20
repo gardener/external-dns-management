@@ -47,6 +47,7 @@ func GetState() *State {
 type State struct {
 	providers providerMap
 	accounts  *provider.AccountMap
+	factory   atomic.Pointer[provider.DNSHandlerFactory]
 }
 
 type providerMap struct {
@@ -63,7 +64,7 @@ func newProviderMap() providerMap {
 // DNSQueryHandler defines an interface for querying DNS records.
 type DNSQueryHandler interface {
 	// Query performs either a DNS query to the authoritative nameservers or uses the provider API.
-	Query(ctx context.Context, fqdn, setIdentifier string, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error)
+	Query(ctx context.Context, setName dns.DNSSetName, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error)
 }
 
 // GetOrCreateProviderState returns the ProviderState for the given DNSProvider, creating it if necessary.
@@ -92,9 +93,34 @@ func (s *State) GetAccount(log logr.Logger, provider *v1alpha1.DNSProvider, prop
 	return s.accounts.Get(log, provider, props, config)
 }
 
+// SetDNSHandlerFactory sets the DNSHandlerFactory for the state.
+func (s *State) SetDNSHandlerFactory(factory provider.DNSHandlerFactory) {
+	s.factory.Store(&factory)
+}
+
+// GetDNSHandlerFactory returns the DNSHandlerFactory set in the state.
+func (s *State) GetDNSHandlerFactory() provider.DNSHandlerFactory {
+	factory := s.factory.Load()
+	if factory == nil {
+		return nil
+	}
+	return *factory
+}
+
 // FindAccountForZone finds the DNSAccount and DNSHostedZone for the given zone ID.
 func (s *State) FindAccountForZone(ctx context.Context, zoneID dns.ZoneID) (*provider.DNSAccount, *provider.DNSHostedZone, error) {
 	return s.accounts.FindAccountForZone(ctx, zoneID)
+}
+
+func (s *State) ClearDNSCaches(ctx context.Context, zoneID dns.ZoneID, keys ...utils.RecordSetKey) error {
+	caches, err := s.accounts.GetDNSCachesByZone(ctx, zoneID)
+	if err != nil {
+		return err
+	}
+	for _, cache := range caches {
+		cache.ClearKeys(keys...)
+	}
+	return nil
 }
 
 // DeleteProviderState removes the ProviderState for the given provider key.
@@ -105,12 +131,12 @@ func (s *State) DeleteProviderState(providerKey client.ObjectKey) {
 }
 
 // GetDNSQueryHandler returns a DNSQueryHandler for the given zone ID.
-func (s *State) GetDNSQueryHandler(zoneID dns.ZoneID) (DNSQueryHandler, error) {
+func (s *State) GetDNSQueryHandler(ctx context.Context, zoneID dns.ZoneID) (DNSQueryHandler, error) {
 	if zoneID.ProviderType == mock.ProviderType {
 		return newMockDNSQueryHandler(zoneID)
 	}
 
-	dnscaches, err := s.accounts.GetDNSCachesByZone(zoneID)
+	dnscaches, err := s.accounts.GetDNSCachesByZone(ctx, zoneID)
 	if err != nil {
 		return nil, err
 	}
@@ -130,21 +156,21 @@ func newDNSCachesQueryHandler(dnscaches []*utils.DNSCache) DNSQueryHandler {
 	return &dnsCachesQueryHandler{dnscaches: dnscaches}
 }
 
-func (h *dnsCachesQueryHandler) Query(ctx context.Context, fqdn, setIdentifier string, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error) {
-	if setIdentifier != "" {
+func (h *dnsCachesQueryHandler) Query(ctx context.Context, setName dns.DNSSetName, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error) {
+	if setName.SetIdentifier != "" {
 		return nil, nil, fmt.Errorf("setIdentifier is not supported by DNSCachesQueryHandler") // TODO(MartinWeindel): support setIdentifier
 	}
 	var err error
 	for _, cache := range h.dnscaches {
-		err = nil
-		result := cache.Get(ctx, fqdn, rstype)
-		if result.Err != nil {
-			err = result.Err
+		rs, err := cache.Get(ctx, setName, rstype)
+		if err != nil {
 			continue
 		}
 		var targets dns.Targets
-		for _, record := range result.Records {
-			targets = append(targets, dns.NewTarget(rstype, record.Value, int64(result.TTL)))
+		if rs != nil {
+			for _, record := range rs.Records {
+				targets = append(targets, dns.NewTarget(rstype, record.Value, rs.TTL))
+			}
 		}
 		return targets, nil, err
 	}
@@ -164,8 +190,8 @@ func newMockDNSQueryHandler(zoneID dns.ZoneID) (DNSQueryHandler, error) {
 	return &mockDNSQueryHandler{inMemory: inMemory, zoneID: zoneID}, nil
 }
 
-func (h *mockDNSQueryHandler) Query(_ context.Context, fqdn, setIdentifier string, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error) {
-	recordSet := h.inMemory.GetRecordset(h.zoneID, dns.DNSSetName{DNSName: fqdn, SetIdentifier: setIdentifier}, rstype)
+func (h *mockDNSQueryHandler) Query(_ context.Context, setName dns.DNSSetName, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error) {
+	recordSet := h.inMemory.GetRecordset(h.zoneID, setName, rstype)
 	if recordSet == nil {
 		return nil, nil, nil
 	}

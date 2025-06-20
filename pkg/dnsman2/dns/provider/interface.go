@@ -8,22 +8,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/util/flowcontrol"
-
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
-
-// DNSHandlerConfig holds configuration for creating a DNSHandler.
-type DNSHandlerConfig struct {
-	Log         logr.Logger
-	Properties  utils.Properties
-	Config      *runtime.RawExtension
-	Metrics     Metrics
-	RateLimiter flowcontrol.RateLimiter
-}
 
 // DNSHandlerFactory is the interface for DNS handler factories.
 type DNSHandlerFactory interface {
@@ -31,6 +18,8 @@ type DNSHandlerFactory interface {
 	Create(providerType string, config *DNSHandlerConfig) (DNSHandler, error)
 	// Supports returns true if the factory supports the given provider type.
 	Supports(providerType string) bool
+	// GetTargetsMapper returns a TargetsMapper for the given provider type.
+	GetTargetsMapper(providerType string) (TargetsMapper, error)
 }
 
 // DNSHostedZone is the interface for DNS hosted zones.
@@ -70,35 +59,35 @@ type MetricsRequestType string
 // Metrics request type constants for various DNS provider operations.
 const (
 	// MetricsRequestTypeListZones is the metrics used for listing DNS zones.
-	MetricsRequestTypeListZones = "list_zones"
+	MetricsRequestTypeListZones MetricsRequestType = "list_zones"
 	// MetricsRequestTypeListZonesPages is the metrics used for paginated listing of DNS zones.
-	MetricsRequestTypeListZonesPages = "list_zones_pages"
+	MetricsRequestTypeListZonesPages MetricsRequestType = "list_zones_pages"
 
 	// MetricsRequestTypeListRecords is the metrics used for listing DNS records.
-	MetricsRequestTypeListRecords = "list_records"
+	MetricsRequestTypeListRecords MetricsRequestType = "list_records"
 	// MetricsRequestTypeListRecordPages is the metrics used for paginated listing of DNS records.
-	MetricsRequestTypeListRecordPages = "list_records_pages"
+	MetricsRequestTypeListRecordPages MetricsRequestType = "list_records_pages"
 
 	// MetricsRequestTypeUpdateRecords is the metrics used for updating DNS records.
-	MetricsRequestTypeUpdateRecords = "update_records"
+	MetricsRequestTypeUpdateRecords MetricsRequestType = "update_records"
 	// MetricsRequestTypeUpdateRecordPages is the metrics used for paginated updating of DNS records.
-	MetricsRequestTypeUpdateRecordPages = "update_records_pages"
+	MetricsRequestTypeUpdateRecordPages MetricsRequestType = "update_records_pages"
 
 	// MetricsRequestTypeCreateRecords is the metrics used for creating DNS records.
-	MetricsRequestTypeCreateRecords = "create_records"
+	MetricsRequestTypeCreateRecords MetricsRequestType = "create_records"
 	// MetricsRequestTypeDeleteRecords is the metrics used for deleting DNS records.
-	MetricsRequestTypeDeleteRecords = "delete_records"
+	MetricsRequestTypeDeleteRecords MetricsRequestType = "delete_records"
 
 	// MetricsRequestTypeCachedGetZones is the metrics used for cached retrieval of DNS zones.
-	MetricsRequestTypeCachedGetZones = "cached_getzones"
+	MetricsRequestTypeCachedGetZones MetricsRequestType = "cached_getzones"
 )
 
 // Metrics is the interface for reporting DNS provider metrics.
 type Metrics interface {
 	// AddGenericRequests adds generic request metrics.
-	AddGenericRequests(requestType string, n int)
+	AddGenericRequests(requestType MetricsRequestType, n int)
 	// AddZoneRequests adds zone-specific request metrics.
-	AddZoneRequests(zoneID, requestType string, n int)
+	AddZoneRequests(zoneID string, requestType MetricsRequestType, n int)
 }
 
 // DoneHandler is the interface for handling completion of DNS change requests.
@@ -146,15 +135,22 @@ type DNSHandler interface {
 	ProviderType() string
 	// GetZones returns the hosted zones reachable by the DNS provider.
 	GetZones(ctx context.Context) ([]DNSHostedZone, error)
-	// QueryDNS queries the DNS provider for the given DNS name and record type.
-	QueryDNS(ctx context.Context, zone DNSHostedZone, dnsName string, recordType dns.RecordType) ([]dns.Record, int64, error)
+	// GetCustomQueryDNSFunc returns a custom query function if required as the authoritative DNS server is not reachable.
+	GetCustomQueryDNSFunc(zoneID dns.ZoneID, factory utils.QueryDNSFactoryFunc) (CustomQueryDNSFunc, error)
 	// ExecuteRequests executes the given change requests in the given zone.
 	ExecuteRequests(ctx context.Context, zone DNSHostedZone, requests ChangeRequests) error
-	// MapTargets can transform the given targets to the DNS provider special targets.
-	MapTargets(dnsName string, targets []dns.Target) []dns.Target
 	// Release releases the DNS provider.
 	Release()
 }
+
+// TargetsMapper is an interface for mapping DNS targets to provider-specific targets.
+type TargetsMapper interface {
+	// MapTargets can transform the given targets to the DNS provider special targets.
+	MapTargets(targets []dns.Target) []dns.Target
+}
+
+// CustomQueryDNSFunc is a function type for custom DNS queries.
+type CustomQueryDNSFunc func(ctx context.Context, zoneID dns.ZoneID, dnsName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error)
 
 // DefaultDNSHandler is a default implementation of DNSHandler for a provider type.
 type DefaultDNSHandler struct {
@@ -169,11 +165,6 @@ func NewDefaultDNSHandler(providerType string) DefaultDNSHandler {
 // ProviderType returns the provider type.
 func (this *DefaultDNSHandler) ProviderType() string {
 	return this.providerType
-}
-
-// MapTargets returns the given targets unchanged.
-func (this *DefaultDNSHandler) MapTargets(_ string, targets []dns.Target) []dns.Target {
-	return targets
 }
 
 // DNSHandlerCreatorFunction is a function type for creating DNSHandler instances.

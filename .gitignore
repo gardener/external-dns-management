@@ -6,6 +6,7 @@ bin/
 tmp/
 dev/
 local/
+dev/
 cmd/dns
 cmd/compound/dns-controller-manager
 dns-controller-manager

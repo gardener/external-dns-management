@@ -195,9 +195,17 @@ var _ = Describe("Reconcile", func() {
 			deleteProvider(name)
 			createProvider(name, included, excluded, state, ptrMockConfig)
 		}
+		reconcileEntry = func(key client.ObjectKey) (reconcile.Result, error) {
+			result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			if result.RequeueAfter == reconciler.reconciliationDelayAfterUpdate {
+				time.Sleep(reconciler.reconciliationDelayAfterUpdate * 10)
+				result, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			}
+			return result, err
+		}
 		checkEntryStatus = func(entry *v1alpha1.DNSEntry, providerName string, zoneID dns.ZoneID, state string, ttl int64, targets ...string) {
 			key := client.ObjectKeyFromObject(entry)
-			result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			result, err := reconcileEntry(key)
 			ExpectWithOffset(1, fakeClient.Get(ctx, key, entry)).To(Succeed())
 			ExpectWithOffset(1, entry.Status.State).To(Equal(state), "state should match")
 			if state != "Stale" || entry.Status.Provider == nil {
@@ -236,7 +244,7 @@ var _ = Describe("Reconcile", func() {
 		checkEntryStatusDeleted = func(entry *v1alpha1.DNSEntry) {
 			key := client.ObjectKeyFromObject(entry)
 			Expect(fakeClient.Get(ctx, key, entry)).To(Succeed(), "Entry should still exist because of finalizer")
-			result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+			result, err := reconcileEntry(key)
 			ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to reconcile Entry on deletion")
 			ExpectWithOffset(1, result).To(Equal(reconcile.Result{}))
 			ExpectWithOffset(1, apierrors.IsNotFound(fakeClient.Get(ctx, key, entry))).To(BeTrue(), "Entry should be deleted")
@@ -268,7 +276,7 @@ var _ = Describe("Reconcile", func() {
 
 	BeforeEach(func() {
 		if registry == nil {
-			registry = dnsprovider.NewDNSHandlerRegistry()
+			registry = dnsprovider.NewDNSHandlerRegistry(clock)
 			mock2.RegisterTo(registry)
 		}
 		clock.SetTime(startTime)
@@ -281,6 +289,8 @@ var _ = Describe("Reconcile", func() {
 			state:           state.GetState(),
 			lookupProcessor: lookup.NewLookupProcessor(log.WithName("lookup-processor"), lookup.NewNullTrigger(), 1, 250*time.Millisecond),
 		}
+		reconciler.setReconciliationDelayAfterUpdate(1 * time.Microsecond)
+		state.GetState().SetDNSHandlerFactory(registry)
 
 		mlh = lookup.NewMockLookupHost(map[string]lookup.MockLookupHostResult{
 			"service-1.example.com": {
@@ -566,7 +576,7 @@ var _ = Describe("Reconcile", func() {
 
 		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
 		ExpectWithOffset(1, err).ToNot(HaveOccurred())
-		ExpectWithOffset(1, result).To(Equal(reconcile.Result{Requeue: true}))
+		ExpectWithOffset(1, result).To(Equal(reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}))
 	})
 
 	DescribeTable("should respect ignore annotations",

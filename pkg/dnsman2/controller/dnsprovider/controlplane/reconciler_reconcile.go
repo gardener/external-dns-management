@@ -72,6 +72,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 	providerState.SetSelection(selection.CalcZoneAndDomainSelection(provider.Spec, toLightZones(zones)))
 
 	// TODO implement the rest of the reconcile logic
+	providerState.SetAccount(newAccount)
 	println(oldAccount == newAccount)
 
 	return reconcile.Result{}, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {

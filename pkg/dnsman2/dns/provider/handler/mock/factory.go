@@ -13,5 +13,5 @@ const ProviderType = "mock-inmemory"
 
 // RegisterTo registers the mock DNS handler to the given registry.
 func RegisterTo(registry *provider.DNSHandlerRegistry) {
-	registry.Register(ProviderType, NewHandler)
+	registry.Register(ProviderType, NewHandler, nil, nil)
 }

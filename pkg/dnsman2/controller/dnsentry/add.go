@@ -8,9 +8,11 @@ package dnsentry
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	"github.com/jellydator/ttlcache/v3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
@@ -40,6 +42,9 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
 	}
+	if r.Namespace == "" {
+		return fmt.Errorf("namespace must be set for %s controller", ControllerName)
+	}
 	r.state = state.GetState()
 	r.lookupProcessor = lookup.NewLookupProcessor(
 		mgr.GetLogger().WithName(ControllerName).WithName("lookupProcessor"),
@@ -48,6 +53,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		15*time.Second,
 	)
 	r.defaultCNAMELookupInterval = ptr.Deref(r.Config.DefaultCNAMELookupInterval, 600)
+	r.setReconciliationDelayAfterUpdate(defaultReconciliationDelayAfterUpdate)
 	return builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
@@ -101,6 +107,13 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, ob
 		}
 	}
 	return requests
+}
+
+func (r *Reconciler) setReconciliationDelayAfterUpdate(reconciliationDelayAfterUpdate time.Duration) {
+	r.reconciliationDelayAfterUpdate = reconciliationDelayAfterUpdate
+	r.lastUpdate = ttlcache.New[client.ObjectKey, struct{}](
+		ttlcache.WithTTL[client.ObjectKey, struct{}](reconciliationDelayAfterUpdate),
+		ttlcache.WithDisableTouchOnHit[client.ObjectKey, struct{}]())
 }
 
 func domainMatches(dnsName string, domains v1alpha1.DNSSelectionStatus) bool {

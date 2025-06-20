@@ -9,8 +9,10 @@ package dnsentry
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/jellydator/ttlcache/v3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/utils/clock"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,22 +26,36 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
-// Reconciler is a reconciler for DNSProvider resources on the control plane.
+const defaultReconciliationDelayAfterUpdate = 5 * time.Second
+
+// Reconciler is a reconciler for DNSEntry resources on the control plane.
 type Reconciler struct {
-	Client                     client.Client
-	Config                     config.DNSEntryControllerConfig
-	Clock                      clock.Clock
-	Namespace                  string
-	Class                      string
-	defaultCNAMELookupInterval int64
+	Client                         client.Client
+	Config                         config.DNSEntryControllerConfig
+	Clock                          clock.Clock
+	Namespace                      string
+	Class                          string
+	defaultCNAMELookupInterval     int64
+	reconciliationDelayAfterUpdate time.Duration
 
 	state           *state.State
 	lookupProcessor lookup.LookupProcessor
+	lastUpdate      *ttlcache.Cache[client.ObjectKey, struct{}]
 }
 
-// Reconcile reconciles DNSProvider resources.
+// Reconcile reconciles DNSEntry resources.
 func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
-	log := logf.FromContext(ctx).WithName(ControllerName).WithName(req.String())
+	log := logf.FromContext(ctx).WithName(ControllerName)
+
+	r.lastUpdate.DeleteExpired()
+	if r.lastUpdate.Has(req.NamespacedName) {
+		// Delay reconciliation for a short time as authoritative DNS servers may not be updated immediately.
+		// The same update may be triggered again otherwise.
+		log.V(1).Info("Entry was already updated recently, postponing reconciliation")
+		return reconcile.Result{RequeueAfter: r.reconciliationDelayAfterUpdate}, nil
+	}
+
+	log.Info("reconciling DNSEntry")
 
 	entry := &v1alpha1.DNSEntry{}
 	if err := r.Client.Get(ctx, req.NamespacedName, entry); err != nil {
@@ -63,7 +79,13 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		lookupProcessor:            r.lookupProcessor,
 		state:                      r.state,
 		defaultCNAMELookupInterval: r.defaultCNAMELookupInterval,
+		lastUpdate:                 r.lastUpdate,
 	}
 	res := er.reconcile()
+	if res.Err != nil {
+		log.Error(res.Err, "reconciliation failed")
+	} else {
+		log.Info("reconciliation succeeded")
+	}
 	return res.Result, res.Err
 }
