@@ -8,6 +8,7 @@ import (
 	"fmt"
 )
 
+// RoutingPolicyType defines the type of routing policy for DNS records.
 type RoutingPolicyType string
 
 const (
@@ -23,11 +24,22 @@ const (
 	RoutingPolicyFailover RoutingPolicyType = "failover"
 )
 
+// AllRoutingPolicyTypes contains all known routing policy types.
+var AllRoutingPolicyTypes = []RoutingPolicyType{
+	RoutingPolicyWeighted,
+	RoutingPolicyLatency,
+	RoutingPolicyGeoLocation,
+	RoutingPolicyIPBased,
+	RoutingPolicyFailover,
+}
+
+// RoutingPolicy represents a DNS routing policy with type and parameters.
 type RoutingPolicy struct {
 	Type       RoutingPolicyType
 	Parameters map[string]string
 }
 
+// NewRoutingPolicy creates a new RoutingPolicy with the given type and key-value parameters.
 func NewRoutingPolicy(typ RoutingPolicyType, keyvalues ...string) *RoutingPolicy {
 	policy := &RoutingPolicy{Type: typ, Parameters: map[string]string{}}
 	for i := 0; i < len(keyvalues)-1; i += 2 {
@@ -36,6 +48,7 @@ func NewRoutingPolicy(typ RoutingPolicyType, keyvalues ...string) *RoutingPolicy
 	return policy
 }
 
+// Clone returns a deep copy of the RoutingPolicy.
 func (p *RoutingPolicy) Clone() *RoutingPolicy {
 	if p == nil {
 		return nil
@@ -50,6 +63,7 @@ func (p *RoutingPolicy) Clone() *RoutingPolicy {
 	return copy
 }
 
+// CheckParameterKeys validates that the required and optional parameter keys are present in the RoutingPolicy.
 func (p *RoutingPolicy) CheckParameterKeys(keys, optionalKeys []string) error {
 	for _, k := range keys {
 		if _, ok := p.Parameters[k]; !ok {

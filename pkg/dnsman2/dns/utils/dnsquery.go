@@ -15,6 +15,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
+// ToFQDN returns the fully qualified domain name for the given domain name.
 func ToFQDN(domainName string) string {
 	if strings.HasSuffix(domainName, ".") {
 		return domainName

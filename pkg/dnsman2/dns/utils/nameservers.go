@@ -63,6 +63,7 @@ func getSystemNameservers(path string, defaults []string) []string {
 	return systemNameservers
 }
 
+// HostedZoneNameserversProvider provides nameservers for a specific DNS hosted zone.
 type HostedZoneNameserversProvider struct {
 	lock              sync.Mutex
 	fqdnZone          string

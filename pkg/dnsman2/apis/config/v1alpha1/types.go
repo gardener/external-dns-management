@@ -83,6 +83,8 @@ type Server struct {
 type ControllerConfiguration struct {
 	// DNSProvider is the configuration for the DNSProvider controller.
 	DNSProvider DNSProviderControllerConfig `json:"dnsProvider"`
+	// DNSEntry is the configuration for the DNSEntry controller.
+	DNSEntry DNSEntryControllerConfig `json:"dnsEntry"`
 }
 
 // DNSProviderControllerConfig is the configuration for the DNSProvider controller.
@@ -112,6 +114,22 @@ type DNSProviderControllerConfig struct {
 	// ZoneCacheTTL is the TTL for the cache for the `GetZones` method.
 	// +optional
 	ZoneCacheTTL *metav1.Duration `json:"zoneCacheTTL,omitempty"`
+}
+
+// DNSEntryControllerConfig is the configuration for the DNSEntry controller.
+type DNSEntryControllerConfig struct {
+	// ConcurrentSyncs is the number of concurrent worker routines for this controller.
+	// +optional
+	ConcurrentSyncs *int `json:"concurrentSyncs,omitempty"`
+	// SyncPeriod is the duration how often the controller performs its reconciliation.
+	// +optional
+	SyncPeriod *metav1.Duration `json:"syncPeriod,omitempty"`
+	// MaxConcurrentLookups is the number of concurrent DNS lookups for the lookup processor.
+	// +optional
+	MaxConcurrentLookups *int `json:"maxConcurrentLookups,omitempty"`
+	// DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.
+	// +optional
+	DefaultCNAMELookupInterval *int64 `json:"defaultCNAMELookupInterval,omitempty"`
 }
 
 // RateLimiterOptions defines the rate limiter configuration.

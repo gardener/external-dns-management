@@ -77,6 +77,8 @@ type Server struct {
 type ControllerConfiguration struct {
 	// DNSProvider is the configuration for the DNSProvider controller.
 	DNSProvider DNSProviderControllerConfig
+	// DNSEntry is the configuration for the DNSEntry controller.
+	DNSEntry DNSEntryControllerConfig
 }
 
 // DNSProviderControllerConfig is the configuration for the DNSProvider controller.
@@ -99,6 +101,18 @@ type DNSProviderControllerConfig struct {
 	DefaultTTL *int64
 	// ZoneCacheTTL is the TTL for the cache for the `GetZones` method.
 	ZoneCacheTTL *metav1.Duration
+}
+
+// DNSEntryControllerConfig is the configuration for the DNSEntry controller.
+type DNSEntryControllerConfig struct {
+	// ConcurrentSyncs is the number of concurrent reconciliations for this controller.
+	ConcurrentSyncs *int
+	// SyncPeriod is the duration how often the controller performs its reconciliation.
+	SyncPeriod *metav1.Duration
+	// MaxConcurrentLookups is the number of concurrent DNS lookups for the lookup processor.
+	MaxConcurrentLookups *int
+	// DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.
+	DefaultCNAMELookupInterval *int64
 }
 
 // RateLimiterOptions defines the rate limiter configuration.

@@ -56,6 +56,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/server/remote/embed"
 )
 
+// Version the version which may be injected at build time
 var Version string
 
 func init() {

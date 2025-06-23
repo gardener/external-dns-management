@@ -10,6 +10,7 @@ import (
 	"go.uber.org/atomic"
 )
 
+// RateLimiter provides a mechanism to limit the rate of operations with exponential backoff.
 type RateLimiter struct {
 	min time.Duration
 	max time.Duration
@@ -17,6 +18,7 @@ type RateLimiter struct {
 	rate atomic.Duration
 }
 
+// NewRateLimiter creates a new RateLimiter with the given minimum and maximum durations.
 func NewRateLimiter(min, max time.Duration) *RateLimiter {
 	if min <= 0 {
 		min = time.Second
@@ -30,6 +32,7 @@ func NewRateLimiter(min, max time.Duration) *RateLimiter {
 	}
 }
 
+// RateLimit returns the current rate limit duration.
 func (this *RateLimiter) RateLimit() time.Duration {
 	rate := this.rate.Load()
 	if rate == 0 {
@@ -38,10 +41,12 @@ func (this *RateLimiter) RateLimit() time.Duration {
 	return rate
 }
 
+// Succeeded resets the rate limiter after a successful operation.
 func (this *RateLimiter) Succeeded() {
 	this.rate.Store(0)
 }
 
+// Failed increases the rate limit duration after a failed operation.
 func (this *RateLimiter) Failed() {
 	newRate := this.min
 	rate := this.rate.Load()
