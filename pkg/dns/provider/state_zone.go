@@ -18,6 +18,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
@@ -70,6 +71,10 @@ func (this *state) reconcileZoneBlockingEntries(logger logger.LogContext) int {
 func (this *state) ReconcileZone(logger logger.LogContext, zoneid dns.ZoneID) reconcile.Status {
 	logger.Infof("Initiate reconcilation of zone %s", zoneid)
 	defer logger.Infof("zone %s done", zoneid)
+
+	if zone := this.addPotentialZoneReconciliation(zoneid); zone != nil {
+		defer this.removePotentialZoneReconciliation(zone)
+	}
 
 	blockingCount := this.reconcileZoneBlockingEntries(logger)
 	if blockingCount > 0 {
@@ -141,6 +146,44 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 		return true, this.reconcileZone(logger, req)
 	}
 	return false, nil
+}
+
+func (this *state) addPotentialZoneReconciliation(zoneID dns.ZoneID) *dnsHostedZone {
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	if this.potentialZoneReconciliations[zoneID] != nil {
+		return nil
+	}
+
+	zone := this.zones[zoneID]
+	if zone == nil {
+		return nil
+	}
+	this.potentialZoneReconciliations[zone.Id()] = zone
+
+	return zone
+}
+
+func (this *state) removePotentialZoneReconciliation(zone *dnsHostedZone) {
+	if zone == nil {
+		return
+	}
+
+	this.lock.Lock()
+	defer this.lock.Unlock()
+
+	delete(this.potentialZoneReconciliations, zone.Id())
+}
+
+func (this *state) isPotentialZoneReconciliation(dnsName string) bool {
+	dnsName = dns.NormalizeHostname(dnsName)
+	for _, zone := range this.potentialZoneReconciliations {
+		if dnsutils.Match(dnsName, zone.Domain()) {
+			return true
+		}
+	}
+	return false
 }
 
 func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliation) error {

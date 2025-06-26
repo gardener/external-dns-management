@@ -21,6 +21,7 @@ var _ = Describe("IngressAnnotation", func() {
 
 		fakeExternalIP := "1.2.3.4"
 		ingressDomain := "myingress." + domain
+		ingressDomain3 := "myingress3." + domain
 		ttl := 456
 		ingress, err := testEnv.CreateIngressWithAnnotation("myingress", ingressDomain, fakeExternalIP, ttl, nil,
 			map[string]string{"dns.gardener.cloud/ip-stack": "dual-stack"})
@@ -28,7 +29,7 @@ var _ = Describe("IngressAnnotation", func() {
 		routingPolicy := `{"type": "weighted", "setIdentifier": "my-id", "parameters": {"weight": "10"}}`
 		ingress2, err := testEnv.CreateIngressWithAnnotation("myingress2", ingressDomain, fakeExternalIP, ttl, &routingPolicy, nil)
 		Ω(err).ShouldNot(HaveOccurred())
-		ingress3, err := testEnv.CreateIngressWithAnnotation("myingress3", ingressDomain, fakeExternalIP, ttl, nil,
+		ingress3, err := testEnv.CreateIngressWithAnnotation("myingress3", ingressDomain3, fakeExternalIP, ttl, nil,
 			map[string]string{"dns.gardener.cloud/resolve-targets-to-addresses": "true"})
 		Ω(err).ShouldNot(HaveOccurred())
 

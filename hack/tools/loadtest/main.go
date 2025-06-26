@@ -38,10 +38,11 @@ import (
 )
 
 var (
-	kubeconfig string
-	baseDomain string
-	labelValue string
-	count      int
+	kubeconfig    string
+	baseDomain    string
+	labelValue    string
+	routingPolicy bool
+	count         int
 )
 
 func main() {
@@ -49,6 +50,7 @@ func main() {
 	flag.IntVar(&count, "count", 10, "number of entries to create")
 	flag.StringVar(&baseDomain, "base-domain", "", "base domain for the entries")
 	flag.StringVar(&labelValue, "label", "true", "label value for label 'loadtest' to set on the entries")
+	flag.BoolVar(&routingPolicy, "with-routing-policy", false, "entries should have a routing policy set (default false)")
 	flag.Parse()
 
 	if baseDomain == "" {
@@ -90,6 +92,17 @@ func createEntries(ctx context.Context, c client.Client, count int, nameTemplate
 				DNSName: fmt.Sprintf("%s.%s", fmt.Sprintf(nameTemplate, i), baseDomain),
 				Targets: []string{fmt.Sprintf("2.%d.%d.%d", i>>16, (i&0xff00)>>8, i&0xff)},
 				TTL:     ptr.To[int64](120),
+			}
+			if routingPolicy {
+				entry.Spec.RoutingPolicy = &dnsv1alpha1.RoutingPolicy{
+					Type:          "weighted",
+					SetIdentifier: "set1",
+					Parameters: map[string]string{
+						"weight": "100",
+					},
+				}
+			} else {
+				entry.Spec.RoutingPolicy = nil
 			}
 			return nil
 		}); err != nil {

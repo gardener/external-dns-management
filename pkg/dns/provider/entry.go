@@ -651,6 +651,9 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 			if o.AcknowledgeDNSName(&this.dnsSetName.DNSName) {
 				mod.Modify(true)
 			}
+			if o.AcknowledgeRoutingPolicy(this.routingPolicy) {
+				mod.Modify(true)
+			}
 			if this.status.Provider != nil {
 				mod.AssureStringPtrPtr(&b.Provider, this.status.Provider)
 			}
