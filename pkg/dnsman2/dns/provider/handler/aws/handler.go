@@ -184,12 +184,41 @@ func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDN
 		return nil, fmt.Errorf("failed to create default query function: %w", err)
 	}
 	return func(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-		if recordType == dns.TypeAWS_ALIAS_A || recordType == dns.TypeAWS_ALIAS_AAAA || setName.SetIdentifier != "" {
+		switch {
+		case setName.SetIdentifier != "":
+			// routing policies with set identifiers are not supported by the default query function
 			return h.queryDNS(ctx, zone, setName, recordType)
+		case recordType == dns.TypeAWS_ALIAS_A, recordType == dns.TypeAWS_ALIAS_AAAA:
+			// For AWS alias records, we query A/AAAA/TXT records by DNS queries.
+			// It is expected that the DNS query will return the alias target as a TXT record.
+			var queryRecordType dns.RecordType
+			switch recordType {
+			case dns.TypeAWS_ALIAS_A:
+				queryRecordType = dns.TypeA
+			case dns.TypeAWS_ALIAS_AAAA:
+				queryRecordType = dns.TypeAAAA
+			}
+			queryResultIP := defaultQueryFunc.Query(ctx, setName, queryRecordType)
+			if queryResultIP.Err != nil {
+				return nil, queryResultIP.Err
+			}
+			queryResult := defaultQueryFunc.Query(ctx, setName, dns.TypeTXT)
+			if queryResult.Err != nil {
+				return nil, queryResult.Err
+			}
+			if queryResult.RecordSet == nil || len(queryResult.RecordSet.Records) != 1 {
+				return nil, nil
+			}
+			// fake an alias record set from the TXT record
+			queryResult.RecordSet.Records[0].Value = strings.TrimSuffix(queryResult.RecordSet.Records[0].Value, ".")
+			queryResult.RecordSet.Type = recordType
+			queryResult.RecordSet.TTL = 0
+			return queryResult.RecordSet, nil
+		default:
+			// For all other record types, we can use the default query function
+			queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
+			return queryResult.RecordSet, queryResult.Err
 		}
-		// For all other record types, we can use the default query function
-		queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
-		return queryResult.RecordSet, queryResult.Err
 	}, nil
 }
 

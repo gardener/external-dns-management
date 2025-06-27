@@ -23,6 +23,7 @@ func CanonicalHostedZone(hostname string) string {
 }
 
 // MapTargets maps CNAME records to A/AAAA records for hosted zones used for AWS load balancers.
+// Additionally, it adds a TXT record for the CNAME value to query the value via standard DNS queries.
 func MapTargets(targets []dns.Target) []dns.Target {
 	mapped := make([]dns.Target, 0, len(targets)+1)
 	for _, t := range targets {
@@ -39,6 +40,7 @@ func MapTargets(targets []dns.Target) []dns.Target {
 				default:
 					mapped = append(mapped, dns.NewTarget(dns.TypeAWS_ALIAS_A, t.GetRecordValue(), t.GetTTL()))
 				}
+				mapped = append(mapped, dns.NewTarget(dns.TypeTXT, t.GetRecordValue(), t.GetTTL()))
 			} else {
 				mapped = append(mapped, t)
 			}
