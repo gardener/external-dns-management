@@ -657,6 +657,9 @@ func (this *EntryVersion) UpdateStatus(logger logger.LogContext, state string, m
 			if this.status.Provider != nil {
 				mod.AssureStringPtrPtr(&b.Provider, this.status.Provider)
 			}
+			if o.AcknowledgeRoutingPolicy(this.routingPolicy) {
+				mod.Modify(true)
+			}
 		} else if state != api.STATE_STALE {
 			mod.Modify(o.AcknowledgeTargets(nil))
 			mod.Modify(o.AcknowledgeDNSName(nil))
