@@ -427,7 +427,7 @@ func (r *routingPolicyContext) extractRoutingPolicy(ctx context.Context, rrset *
 			return nil
 		}
 		keyvalues = append(keyvalues, keyCollection, collectioName, keyLocation, aws.ToString(rrset.CidrRoutingConfig.LocationName))
-		return dns.NewRoutingPolicy(dns.RoutingPolicyGeoLocation, keyvalues...)
+		return dns.NewRoutingPolicy(dns.RoutingPolicyIPBased, keyvalues...)
 	}
 
 	if rrset.Failover != "" {

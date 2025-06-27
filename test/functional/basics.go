@@ -449,7 +449,7 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 					}),
 					"status": MatchKeys(IgnoreExtras, Keys{
 						"state":   Equal("Error"),
-						"message": Or(ContainSubstring("no matching provider"), ContainSubstring("No responsible provider found")),
+						"message": Or(ContainSubstring("no matching provider"), ContainSubstring("No responsible provider found"), ContainSubstring("no matching DNS provider found")),
 					}),
 				}),
 			}))

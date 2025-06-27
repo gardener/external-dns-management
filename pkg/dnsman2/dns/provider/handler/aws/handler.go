@@ -268,13 +268,10 @@ func (h *handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZo
 			errs = append(errs, err)
 		}
 	}
-	if len(errs) > 0 {
-		err := errors.Join(errs...)
-		if reqs.Done != nil {
-			reqs.Done.SetInvalid(err)
-		}
+	if err := exec.submitChanges(ctx, h.config.Metrics); err != nil {
+		errs = append(errs, err)
 	}
-	return exec.submitChanges(ctx, h.config.Metrics)
+	return errors.Join(errs...)
 }
 
 // AssociateVPCWithHostedZone associates a VPC with a private hosted zone

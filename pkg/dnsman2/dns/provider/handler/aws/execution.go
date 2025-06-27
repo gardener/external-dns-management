@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
@@ -24,7 +25,6 @@ import (
 
 type wrappedChange struct {
 	*route53types.Change
-	Done provider.DoneHandler
 }
 
 type execution struct {
@@ -59,8 +59,12 @@ func buildResourceRecordSet(ctx context.Context, name dns.DNSSetName, policy *dn
 	rrs.TTL = aws.Int64(rset.TTL)
 	rrs.ResourceRecords = make([]route53types.ResourceRecord, len(rset.Records))
 	for i, r := range rset.Records {
+		value := r.Value
+		if rrs.Type == route53types.RRTypeTxt {
+			value = strconv.Quote(value)
+		}
 		rrs.ResourceRecords[i] = route53types.ResourceRecord{
-			Value: aws.String(r.Value),
+			Value: aws.String(value),
 		}
 	}
 	if err := policyContext.addRoutingPolicy(ctx, rrs, name, policy); err != nil {
@@ -81,7 +85,7 @@ func (ex *execution) addChange(ctx context.Context, action route53types.ChangeAc
 	}
 
 	change := &route53types.Change{Action: action, ResourceRecordSet: rrs}
-	ex.changes = append(ex.changes, &wrappedChange{Change: change, Done: reqs.Done})
+	ex.changes = append(ex.changes, &wrappedChange{Change: change})
 
 	return nil
 }
@@ -133,20 +137,10 @@ func (ex *execution) submitChanges(ctx context.Context, metrics provider.Metrics
 			succeededChanges = changes
 		}
 		if len(failedChanges) > 0 {
-			for _, c := range failedChanges {
-				failed++
-				if c.Done != nil {
-					c.Done.Failed(err)
-				}
-			}
-			ex.log.Error(err, fmt.Sprintf("%d records failed", len(changes)), "zoneID", ex.zoneID)
+			failed += len(failedChanges)
+			ex.log.Error(err, fmt.Sprintf("%d records failed", len(failedChanges)), "zoneID", ex.zoneID)
 		}
 		if len(succeededChanges) > 0 {
-			for _, c := range succeededChanges {
-				if c.Done != nil {
-					c.Done.Succeeded()
-				}
-			}
 			ex.log.Info(fmt.Sprintf("%d records were successfully updated", len(succeededChanges)), "zoneID", ex.zoneID)
 		}
 	}

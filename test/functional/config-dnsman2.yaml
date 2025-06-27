@@ -1,0 +1,8 @@
+apiVersion: config.dns.gardener.cloud/v1alpha1
+kind: DNSManagerConfiguration
+logFormat: text
+controllers:
+  dnsProvider:
+    namespace: default
+leaderElection:
+  leaderElect: false

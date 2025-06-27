@@ -249,6 +249,9 @@ var _ = Describe("Reconcile", func() {
 			ExpectWithOffset(1, result).To(Equal(reconcile.Result{}))
 			ExpectWithOffset(1, apierrors.IsNotFound(fakeClient.Get(ctx, key, entry))).To(BeTrue(), "Entry should be deleted")
 		}
+		checkEntryStatusRoutingPolicy = func(entry *v1alpha1.DNSEntry) {
+			ExpectWithOffset(1, entry.Status.RoutingPolicy).To(Equal(entry.Spec.RoutingPolicy), "routing policy status does not match spec")
+		}
 		expectRecordSetsInternal = func(zoneID dns.ZoneID, dnsSetName dns.DNSSetName, expectedNameCount, expectedRecordSetCount int, rsArray ...dns.RecordSet) {
 			zoneState := mock2.GetInMemoryMockByZoneID(zoneID)
 			ExpectWithOffset(2, zoneState).ToNot(BeNil(), "zone state should not be nil for zone %s", zoneID)
@@ -336,7 +339,7 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p2", []string{"example2.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 	})
 
@@ -344,12 +347,12 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 		entryA.Spec.Targets = []string{"5.6.7.8", "1234::5678"}
 		Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "5.6.7.8", "1234::5678")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "5.6.7.8", "1234::5678")
 		expectRecordSets(zoneID1, "test.sub.example.com",
 			dns.RecordSet{
 				Type:    dns.TypeA,
@@ -374,12 +377,12 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		Expect(fakeClient.Create(ctx, entryB)).To(Succeed())
 
-		checkEntryStatus(entryB, "p1", zoneID1, "Ready", defaultTTL, "\"This is a text!\"", "\"blabla\"")
+		checkEntryStatus(entryB, "test/p1", zoneID1, "Ready", defaultTTL, "\"This is a text!\"", "\"blabla\"")
 		expectRecordSets(zoneID1, "txt.sub.example.com", recordSetB)
 
 		entryB.Spec.Text = []string{"This is the *UPDATED* text!!!!"}
 		Expect(fakeClient.Update(ctx, entryB)).To(Succeed())
-		checkEntryStatus(entryB, "p1", zoneID1, "Ready", defaultTTL, "\"This is the *UPDATED* text!!!!\"")
+		checkEntryStatus(entryB, "test/p1", zoneID1, "Ready", defaultTTL, "\"This is the *UPDATED* text!!!!\"")
 		expectRecordSets(zoneID1, "txt.sub.example.com", dns.RecordSet{
 			Type:    dns.TypeTXT,
 			TTL:     defaultTTL,
@@ -397,7 +400,7 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		Expect(fakeClient.Create(ctx, entryC)).To(Succeed())
 
-		checkEntryStatus(entryC, "p1", zoneID1, "Ready", 120, "www.somewhere.com")
+		checkEntryStatus(entryC, "test/p1", zoneID1, "Ready", 120, "www.somewhere.com")
 	})
 
 	It("should create Entry with multiple CNAME targets and resolve the addresses", func() {
@@ -405,7 +408,7 @@ var _ = Describe("Reconcile", func() {
 		entryC.Spec.Targets = []string{"service-1.example.com", "service-2.example.com"}
 		Expect(fakeClient.Create(ctx, entryC)).To(Succeed())
 
-		checkEntryStatus(entryC, "p1", zoneID1, "Ready", 120, "127.0.1.1", "127.0.2.1", "127.0.2.2", "2001:db8::1:1")
+		checkEntryStatus(entryC, "test/p1", zoneID1, "Ready", 120, "127.0.1.1", "127.0.2.1", "127.0.2.2", "2001:db8::1:1")
 	})
 
 	It("should create Entry with single CNAME target and resolve the address as configured", func() {
@@ -414,20 +417,20 @@ var _ = Describe("Reconcile", func() {
 		entryC.Spec.ResolveTargetsToAddresses = ptr.To(true)
 		Expect(fakeClient.Create(ctx, entryC)).To(Succeed())
 
-		checkEntryStatus(entryC, "p1", zoneID1, "Ready", 120, "127.0.1.1", "2001:db8::1:1")
+		checkEntryStatus(entryC, "test/p1", zoneID1, "Ready", 120, "127.0.1.1", "2001:db8::1:1")
 	})
 
 	It("should update TTL", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 		entryA.Spec.TTL = ptr.To[int64](120)
 		Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
 
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", 120, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", 120, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", dns.RecordSet{
 			Type:    dns.TypeA,
 			TTL:     120,
@@ -439,13 +442,13 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 		entryA.Spec.Targets = []string{"1234::5678"} // change to AAAA record
 		Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
 
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1234::5678")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1234::5678")
 		expectRecordSets(zoneID1, "test.sub.example.com", dns.RecordSet{
 			Type:    dns.TypeAAAA,
 			TTL:     defaultTTL,
@@ -459,24 +462,24 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p3", []string{"sub.example.com"}, nil, v1alpha1.StateReady, mockConfig2)
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
-		checkEntryStatus(entryA, "p3", zoneID3, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p3", zoneID3, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID3, "test.sub.example.com", recordSetA)
 
 		By("should reassign second best provider after removing the best one / cross-zone assignment")
 		deleteProvider("p3")
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID3, "test.sub.example.com")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 		By("should reassign better provider")
 		createProvider("p3", []string{"sub.example.com"}, nil, v1alpha1.StateReady, mockConfig2)
-		checkEntryStatus(entryA, "p3", zoneID3, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p3", zoneID3, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com")
 		expectRecordSets(zoneID3, "test.sub.example.com", recordSetA)
 
 		By("should reassign after old provider excludes domain")
 		updateProvider("p3", []string{"sub.example.com"}, []string{"test.sub.example.com"}, v1alpha1.StateReady, mockConfig2)
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID3, "test.sub.example.com")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 	})
@@ -486,17 +489,17 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p2", []string{"example2.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 		By("should keep old provider if it changes state to error")
 		updateProvider("p1", []string{"example.com"}, nil, v1alpha1.StateError, mockConfig1)
-		checkEntryStatus(entryA, "p1", zoneID1, "Stale", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Stale", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 		By("but should change to new matching, ready provider")
 		createProvider("p3", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
-		checkEntryStatus(entryA, "p3", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p3", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 	})
 
@@ -507,7 +510,7 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		createProvider("p2", []string{"example2.com"}, nil, v1alpha1.StateReady, mockConfig1)
 
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 		deleteProvider("p1")
@@ -520,11 +523,11 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p2", []string{"example2.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 		createProvider("p4", []string{"example.com"}, nil, v1alpha1.StateReady, nil)
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 	})
 
@@ -533,13 +536,13 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p2", []string{"example2.com"}, nil, v1alpha1.StateReady, mockConfig1)
 
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 		expectRecordSets(zoneID2, "*.example2.com")
 
 		entryA.Spec.DNSName = "*.example2.com"
 		Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
-		checkEntryStatus(entryA, "p2", zoneID2, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p2", zoneID2, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com")
 		expectRecordSets(zoneID2, "*.example2.com", recordSetA)
 	})
@@ -548,7 +551,7 @@ var _ = Describe("Reconcile", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
-		checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 		entryA.Spec.DNSName = "*.unknown-example.com"
@@ -585,13 +588,13 @@ var _ = Describe("Reconcile", func() {
 			entryA = entryAPrototype.DeepCopy()
 			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
-			checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 			expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 			entryA.Annotations = ignoreAnnotations
 			entryA.Spec.Targets = []string{"5.6.7.8"}
 			Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
-			checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 			expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 			Expect(fakeClient.Delete(ctx, entryA)).To(Succeed())
@@ -633,14 +636,16 @@ var _ = Describe("Reconcile", func() {
 			}
 			Expect(fakeClient.Create(ctx, entryA2)).To(Succeed())
 
-			checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatusRoutingPolicy(entryA)
 			expectRecordSetsWithSetIdentifier(zoneID1, "test.sub.example.com", "set1", 1, 1, dns.RecordSet{
 				Type:          dns.TypeA,
 				TTL:           defaultTTL,
 				Records:       []*dns.Record{{Value: "1.2.3.4"}},
 				RoutingPolicy: &rp,
 			})
-			checkEntryStatus(entryA2, "p1", zoneID1, "Ready", defaultTTL, "10.20.30.40")
+			checkEntryStatus(entryA2, "test/p1", zoneID1, "Ready", defaultTTL, "10.20.30.40")
+			checkEntryStatusRoutingPolicy(entryA2)
 			expectRecordSetsWithSetIdentifier(zoneID1, "test.sub.example.com", "set2", 2, 2, dns.RecordSet{
 				Type:          dns.TypeA,
 				TTL:           defaultTTL,
@@ -655,7 +660,8 @@ var _ = Describe("Reconcile", func() {
 			}
 			entryA.Spec.RoutingPolicy.Parameters = rp2.Parameters
 			Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
-			checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "5.6.7.8", "1234::5678")
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "5.6.7.8", "1234::5678")
+			checkEntryStatusRoutingPolicy(entryA)
 			expectRecordSetsWithSetIdentifier(zoneID1, "test.sub.example.com", "set1", 2, 3,
 				dns.RecordSet{
 					Type:          dns.TypeA,
@@ -675,7 +681,7 @@ var _ = Describe("Reconcile", func() {
 			checkEntryStatusDeleted(entryA)
 			expectRecordSetsWithSetIdentifier(zoneID1, "test.sub.example.com", "set1", 1, 1)
 
-			checkEntryStatus(entryA2, "p1", zoneID1, "Ready", defaultTTL, "10.20.30.40")
+			checkEntryStatus(entryA2, "test/p1", zoneID1, "Ready", defaultTTL, "10.20.30.40")
 			expectRecordSetsWithSetIdentifier(zoneID1, "test.sub.example.com", "set2", 1, 1, dns.RecordSet{
 				Type:          dns.TypeA,
 				TTL:           defaultTTL,
@@ -694,7 +700,7 @@ var _ = Describe("Reconcile", func() {
 		It("should update Entry by adding set identifier and routing policy", func() {
 			createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1RoutingPolicy)
 			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
-			checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 			expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 			rp := dns.RoutingPolicy{
@@ -707,7 +713,7 @@ var _ = Describe("Reconcile", func() {
 				Parameters:    rp.Parameters,
 			}
 			Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
-			checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 			expectRecordSetsWithSetIdentifier(zoneID1, "test.sub.example.com", "", 1, 1)
 			expectRecordSetsWithSetIdentifier(zoneID1, "test.sub.example.com", "set1", 1, 1, dns.RecordSet{
 				Type:          dns.TypeA,
@@ -730,7 +736,8 @@ var _ = Describe("Reconcile", func() {
 				Parameters:    rp.Parameters,
 			}
 			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
-			checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatusRoutingPolicy(entryA)
 			expectRecordSetsWithSetIdentifier(zoneID1, "test.sub.example.com", "set1", 1, 1, dns.RecordSet{
 				Type:          dns.TypeA,
 				TTL:           defaultTTL,
@@ -740,7 +747,8 @@ var _ = Describe("Reconcile", func() {
 
 			entryA.Spec.RoutingPolicy = nil
 			Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
-			checkEntryStatus(entryA, "p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatusRoutingPolicy(entryA)
 			expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 		})
 	})

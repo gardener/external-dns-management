@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"k8s.io/utils/ptr"
+	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -268,6 +269,9 @@ func TargetsToStrings(targets dns.Targets) []string {
 		}
 		strs[i] = value
 	}
+	if len(targets) > 1 && targets[0].GetRecordType() != dns.TypeTXT {
+		strs = makeUniqueStrings(strs)
+	}
 	return strs
 }
 
@@ -282,6 +286,17 @@ func newAddressTarget(name string, ttl int64, ipstack string) (dns.Target, error
 	} else {
 		return nil, fmt.Errorf("unexpected IP address (neither IPv4 or IPv6): %s (%s)", ip.String(), name)
 	}
+}
+
+// makeUniqueStrings removes duplicates from a slice of strings and returns a new slice.
+func makeUniqueStrings(array []string) []string {
+	uniqArray := make([]string, 0, len(array))
+	for _, str := range array {
+		if !slices.Contains(uniqArray, str) {
+			uniqArray = append(uniqArray, str)
+		}
+	}
+	return uniqArray
 }
 
 // TODO(MartinWeindel) move this check to the provider

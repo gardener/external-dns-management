@@ -197,14 +197,8 @@ func (h *Handler) executeRequests(ctx context.Context, zone provider.DNSHostedZo
 		if err != nil {
 			failed++
 			log.Error(err, "Apply failed")
-			if requests.Done != nil {
-				requests.Done.Failed(err)
-			}
 		} else {
 			succeeded++
-			if requests.Done != nil {
-				requests.Done.Succeeded()
-			}
 		}
 	}
 	if succeeded > 0 {

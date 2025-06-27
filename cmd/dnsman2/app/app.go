@@ -263,6 +263,11 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 		return err
 	}
 
+	log.Info("Adding field indexes to informers")
+	if err := addAllFieldIndexes(ctx, mgr.GetFieldIndexer()); err != nil {
+		return fmt.Errorf("failed adding indexes: %w", err)
+	}
+
 	if err := (&dnsprovidercontrolplane.Reconciler{
 		Config: *cfg,
 	}).AddToManager(mgr, controlPlaneCluster); err != nil {
@@ -277,4 +282,16 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 
 	log.Info("Starting manager")
 	return mgr.Start(ctx)
+}
+
+func addAllFieldIndexes(ctx context.Context, i client.FieldIndexer) error {
+	for _, fn := range []func(context.Context, client.FieldIndexer) error{
+		dnsprovidercontrolplane.AddProjectNamespace,
+	} {
+		if err := fn(ctx, i); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

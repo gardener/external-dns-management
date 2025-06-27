@@ -157,22 +157,23 @@ func newDNSCachesQueryHandler(dnscaches []*utils.DNSCache) DNSQueryHandler {
 }
 
 func (h *dnsCachesQueryHandler) Query(ctx context.Context, setName dns.DNSSetName, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error) {
-	if setName.SetIdentifier != "" {
-		return nil, nil, fmt.Errorf("setIdentifier is not supported by DNSCachesQueryHandler") // TODO(MartinWeindel): support setIdentifier
-	}
 	var err error
 	for _, cache := range h.dnscaches {
 		rs, err := cache.Get(ctx, setName, rstype)
 		if err != nil {
 			continue
 		}
-		var targets dns.Targets
+		var (
+			targets       dns.Targets
+			routingPolicy *dns.RoutingPolicy
+		)
 		if rs != nil {
 			for _, record := range rs.Records {
 				targets = append(targets, dns.NewTarget(rstype, record.Value, rs.TTL))
 			}
+			routingPolicy = rs.RoutingPolicy
 		}
-		return targets, nil, err
+		return targets, routingPolicy, err
 	}
 	return nil, nil, err
 }

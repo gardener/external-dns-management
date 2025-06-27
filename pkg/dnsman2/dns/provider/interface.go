@@ -90,31 +90,17 @@ type Metrics interface {
 	AddZoneRequests(zoneID string, requestType MetricsRequestType, n int)
 }
 
-// DoneHandler is the interface for handling completion of DNS change requests.
-type DoneHandler interface {
-	// SetInvalid marks the request as invalid.
-	SetInvalid(err error)
-	// Failed marks the request as failed.
-	Failed(err error)
-	// Throttled marks the request as throttled.
-	Throttled()
-	// Succeeded marks the request as succeeded.
-	Succeeded()
-}
-
 // ChangeRequests holds a set of DNS record change requests for a DNS name.
 type ChangeRequests struct {
 	Name    dns.DNSSetName
 	Updates map[dns.RecordType]*ChangeRequestUpdate
-	Done    DoneHandler
 }
 
-// NewChangeRequests creates a new ChangeRequests for the given DNS name and DoneHandler.
-func NewChangeRequests(name dns.DNSSetName, done DoneHandler) *ChangeRequests {
+// NewChangeRequests creates a new ChangeRequests for the given DNS name.
+func NewChangeRequests(name dns.DNSSetName) *ChangeRequests {
 	return &ChangeRequests{
 		Name:    name,
 		Updates: make(map[dns.RecordType]*ChangeRequestUpdate),
-		Done:    done,
 	}
 }
 

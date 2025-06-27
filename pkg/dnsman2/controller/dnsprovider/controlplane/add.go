@@ -8,6 +8,7 @@ package controlplane
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -114,4 +115,23 @@ func (r *Reconciler) providersToReconcileOnSecretChanges(ctx context.Context, se
 		}
 	}
 	return requests
+}
+
+const EntryStatusProvider = "status.provider"
+
+// AddEntryStatusProvider adds an index for core.ProjectNamespace to the given indexer.
+func AddProjectNamespace(ctx context.Context, indexer client.FieldIndexer) error {
+	if err := indexer.IndexField(ctx, &v1alpha1.DNSEntry{}, EntryStatusProvider, entryStatusProviderIndexerFunc); err != nil {
+		return fmt.Errorf("failed to add indexer for %s to DNSEntry Informer: %w", EntryStatusProvider, err)
+	}
+	return nil
+}
+
+// entryStatusProviderIndexerFunc extracts the .status.provider field of a DNSEntry.
+func entryStatusProviderIndexerFunc(obj client.Object) []string {
+	entry, ok := obj.(*v1alpha1.DNSEntry)
+	if !ok {
+		return []string{""}
+	}
+	return []string{ptr.Deref(entry.Status.Provider, "")}
 }
