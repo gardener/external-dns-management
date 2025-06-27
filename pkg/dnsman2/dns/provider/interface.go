@@ -122,7 +122,7 @@ type DNSHandler interface {
 	// GetZones returns the hosted zones reachable by the DNS provider.
 	GetZones(ctx context.Context) ([]DNSHostedZone, error)
 	// GetCustomQueryDNSFunc returns a custom query function if required as the authoritative DNS server is not reachable.
-	GetCustomQueryDNSFunc(zoneID dns.ZoneID, factory utils.QueryDNSFactoryFunc) (CustomQueryDNSFunc, error)
+	GetCustomQueryDNSFunc(zoneInfo dns.ZoneInfo, factory utils.QueryDNSFactoryFunc) (CustomQueryDNSFunc, error)
 	// ExecuteRequests executes the given change requests in the given zone.
 	ExecuteRequests(ctx context.Context, zone DNSHostedZone, requests ChangeRequests) error
 	// Release releases the DNS provider.
@@ -136,7 +136,7 @@ type TargetsMapper interface {
 }
 
 // CustomQueryDNSFunc is a function type for custom DNS queries.
-type CustomQueryDNSFunc func(ctx context.Context, zoneID dns.ZoneID, dnsName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error)
+type CustomQueryDNSFunc func(ctx context.Context, zoneInfo dns.ZoneInfo, dnsName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error)
 
 // DefaultDNSHandler is a default implementation of DNSHandler for a provider type.
 type DefaultDNSHandler struct {

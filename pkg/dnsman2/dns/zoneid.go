@@ -23,3 +23,9 @@ func (z ZoneID) String() string {
 func (z ZoneID) IsEmpty() bool {
 	return len(z.ProviderType)+len(z.ID) == 0
 }
+
+type ZoneInfo struct {
+	ZoneID  ZoneID
+	Private bool
+	Domain  string
+}

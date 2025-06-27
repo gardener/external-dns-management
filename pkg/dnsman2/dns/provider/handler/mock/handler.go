@@ -156,13 +156,13 @@ func (h *Handler) GetZones(_ context.Context) ([]provider.DNSHostedZone, error) 
 }
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the mock provider.
-func (h *Handler) GetCustomQueryDNSFunc(_ dns.ZoneID, _ utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
+func (h *Handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, _ utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
 	return h.queryDNS, nil
 }
 
 // QueryDNS queries DNS records in the mock provider.
-func (h *Handler) queryDNS(_ context.Context, zoneID dns.ZoneID, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-	result := h.mock.GetRecordset(zoneID, setName.Normalize(), recordType)
+func (h *Handler) queryDNS(_ context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+	result := h.mock.GetRecordset(zone.ZoneID, setName.Normalize(), recordType)
 	if result == nil {
 		return nil, nil
 	}

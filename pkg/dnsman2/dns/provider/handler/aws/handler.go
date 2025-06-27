@@ -175,29 +175,26 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 }
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the AWS Route53 provider if the zone is private.
-func (h *handler) GetCustomQueryDNSFunc(_ dns.ZoneID, factory utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
-	if false {
-		// TODO(MartinWeindel) implement custom query function for private zones
+func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
+	if zone.Private {
 		return h.queryDNS, nil
 	}
 	defaultQueryFunc, err := factory()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create default query function: %w", err)
 	}
-	return func(ctx context.Context, zoneID dns.ZoneID, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-		switch {
-		case recordType == dns.TypeAWS_ALIAS_A, recordType == dns.TypeAWS_ALIAS_AAAA, setName.SetIdentifier != "":
-			return h.queryDNS(ctx, zoneID, setName, recordType)
-		default:
-			// For all other record types, we can use the default query function
-			queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
-			return queryResult.RecordSet, queryResult.Err
+	return func(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+		if recordType == dns.TypeAWS_ALIAS_A || recordType == dns.TypeAWS_ALIAS_AAAA || setName.SetIdentifier != "" {
+			return h.queryDNS(ctx, zone, setName, recordType)
 		}
+		// For all other record types, we can use the default query function
+		queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
+		return queryResult.RecordSet, queryResult.Err
 	}, nil
 }
 
 // queryDNS queries the DNS provider for the given DNS name and record type.
-func (h *handler) queryDNS(ctx context.Context, zoneID dns.ZoneID, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
 	setName = setName.EnsureTrailingDot()
 	var recordIdentifier *string
 	if setName.SetIdentifier != "" {
@@ -208,7 +205,7 @@ func (h *handler) queryDNS(ctx context.Context, zoneID dns.ZoneID, setName dns.D
 		return nil, err
 	}
 	sets, err := h.r53.ListResourceRecordSets(ctx, &route53.ListResourceRecordSetsInput{
-		HostedZoneId:          aws.String(zoneID.ID),
+		HostedZoneId:          aws.String(zone.ZoneID.ID),
 		MaxItems:              aws.Int32(1),
 		StartRecordIdentifier: recordIdentifier,
 		StartRecordName:       &setName.DNSName,

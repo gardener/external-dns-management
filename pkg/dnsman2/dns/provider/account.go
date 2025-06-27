@@ -62,13 +62,13 @@ var (
 
 type handlerZoneQueryDNS struct {
 	queryFunc CustomQueryDNSFunc
-	zoneID    dns.ZoneID
+	zone      dns.ZoneInfo
 }
 
 var _ utils.QueryDNS = &handlerZoneQueryDNS{}
 
 func (h *handlerZoneQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, recordType dns.RecordType) utils.QueryDNSResult {
-	rs, err := h.queryFunc(ctx, h.zoneID, setName, recordType)
+	rs, err := h.queryFunc(ctx, h.zone, setName, recordType)
 	if err != nil {
 		return utils.QueryDNSResult{Err: err}
 	}
@@ -128,31 +128,31 @@ func (a *DNSAccount) GetZones(ctx context.Context) ([]DNSHostedZone, error) {
 	return zones, err
 }
 
-// GetCustomQueryDNSFunc returns a custom query DNS function for the given zone ID.
-func (a *DNSAccount) GetCustomQueryDNSFunc(zoneID dns.ZoneID, factory utils.QueryDNSFactoryFunc) (CustomQueryDNSFunc, error) {
-	return a.handler.GetCustomQueryDNSFunc(zoneID, factory)
+// GetCustomQueryDNSFunc returns a custom query DNS function for the given zone.
+func (a *DNSAccount) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDNSFactoryFunc) (CustomQueryDNSFunc, error) {
+	return a.handler.GetCustomQueryDNSFunc(zone, factory)
 }
 
-func (a *DNSAccount) getZoneQueryCache(ctx context.Context, zoneID dns.ZoneID, zoneDomain string) (*utils.DNSCache, error) {
+func (a *DNSAccount) getZoneQueryCache(ctx context.Context, zone dns.ZoneInfo) (*utils.DNSCache, error) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	cache, ok := a.dnsCaches[zoneID]
+	cache, ok := a.dnsCaches[zone.ZoneID]
 	if !ok {
 		factory := func() (utils.QueryDNS, error) {
-			nsProvider, err := utils.NewHostedZoneNameserversProvider(ctx, zoneDomain, 12*time.Hour, utils.SystemNameservers) // TODO make minRefreshPeriod configurable
+			nsProvider, err := utils.NewHostedZoneNameserversProvider(ctx, zone.Domain, 12*time.Hour, utils.SystemNameservers) // TODO make minRefreshPeriod configurable
 			if err != nil {
-				return nil, fmt.Errorf("failed to create nameservers provider for zone %s: %w", zoneID, err)
+				return nil, fmt.Errorf("failed to create nameservers provider for zone %s: %w", zone.ZoneID, err)
 			}
 			return utils.NewStandardQueryDNS(nsProvider), nil
 		}
 
-		queryFunc, err := a.handler.GetCustomQueryDNSFunc(zoneID, factory)
+		queryFunc, err := a.handler.GetCustomQueryDNSFunc(zone, factory)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get custom query DNS function for zone %s: %w", zoneID, err)
+			return nil, fmt.Errorf("failed to get custom query DNS function for zone %s: %w", zone.ZoneID, err)
 		}
 		if queryFunc != nil {
-			cache = utils.NewDNSCache(&handlerZoneQueryDNS{queryFunc: queryFunc, zoneID: zoneID}, 30*time.Second) // TODO set default TTL
+			cache = utils.NewDNSCache(&handlerZoneQueryDNS{queryFunc: queryFunc, zone: zone}, 30*time.Second) // TODO set default TTL
 		} else {
 			dnsQuery, err := factory()
 			if err != nil {
@@ -160,7 +160,7 @@ func (a *DNSAccount) getZoneQueryCache(ctx context.Context, zoneID dns.ZoneID, z
 			}
 			cache = utils.NewDNSCache(dnsQuery, 30*time.Second) // TODO set default TTL
 		}
-		a.dnsCaches[zoneID] = cache
+		a.dnsCaches[zone.ZoneID] = cache
 	}
 	return cache, nil
 }
@@ -322,7 +322,12 @@ func (m *AccountMap) GetDNSCachesByZone(ctx context.Context, zoneID dns.ZoneID) 
 	for _, account := range m.accounts {
 		for _, zone := range account.cachedZones {
 			if zone.ZoneID() == zoneID {
-				cache, err := account.getZoneQueryCache(ctx, zoneID, zone.Domain())
+				zoneInfo := dns.ZoneInfo{
+					ZoneID:  zone.ZoneID(),
+					Private: zone.IsPrivate(),
+					Domain:  zone.Domain(),
+				}
+				cache, err := account.getZoneQueryCache(ctx, zoneInfo)
 				if err != nil {
 					return nil, fmt.Errorf("failed to get DNS cache for zone %s: %w", zoneID, err)
 				}
