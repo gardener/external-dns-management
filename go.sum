@@ -84,8 +84,8 @@ github.com/alibabacloud-go/alibabacloud-gateway-pop v0.0.6/go.mod h1:4EUIoxs/do2
 github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.4/go.mod h1:sCavSAvdzOjul4cEqeVtvlSaSScfNsTQ+46HwlTL1hc=
 github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5 h1:zE8vH9C7JiZLNJJQ5OwjU9mSi4T9ef9u3BURT6LCLC8=
 github.com/alibabacloud-go/alibabacloud-gateway-spi v0.0.5/go.mod h1:tWnyE9AjF8J8qqLk645oUmVUnFybApTQWklQmi5tY6g=
-github.com/alibabacloud-go/alidns-20150109/v4 v4.5.9 h1:TivLiZjU7XLYPvg8dwcpN8VFJZQdLAjJYsf1HIs7ofc=
-github.com/alibabacloud-go/alidns-20150109/v4 v4.5.9/go.mod h1:EdHRU3Y2j8OXc2ljp00A0zMLQ8sORHxI4yPnODNztRc=
+github.com/alibabacloud-go/alidns-20150109/v4 v4.5.10 h1:lEYfSDh8puQigWN2pyOxE1gaI6o2bxFhJSSeX+ZJSf4=
+github.com/alibabacloud-go/alidns-20150109/v4 v4.5.10/go.mod h1:EdHRU3Y2j8OXc2ljp00A0zMLQ8sORHxI4yPnODNztRc=
 github.com/alibabacloud-go/darabonba-array v0.1.0 h1:vR8s7b1fWAQIjEjWnuF0JiKsCvclSRTfDzZHTYqfufY=
 github.com/alibabacloud-go/darabonba-array v0.1.0/go.mod h1:BLKxr0brnggqOJPqT09DFJ8g3fsDshapUD3C3aOEFaI=
 github.com/alibabacloud-go/darabonba-encode-util v0.0.2 h1:1uJGrbsGEVqWcWxrS9MyC2NG0Ax+GpOM5gtupki31XE=
