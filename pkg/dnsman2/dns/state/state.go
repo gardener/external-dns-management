@@ -132,10 +132,6 @@ func (s *State) DeleteProviderState(providerKey client.ObjectKey) {
 
 // GetDNSQueryHandler returns a DNSQueryHandler for the given zone ID.
 func (s *State) GetDNSQueryHandler(ctx context.Context, zoneID dns.ZoneID) (DNSQueryHandler, error) {
-	if zoneID.ProviderType == mock.ProviderType {
-		return newMockDNSQueryHandler(zoneID)
-	}
-
 	dnscaches, err := s.accounts.GetDNSCachesByZone(ctx, zoneID)
 	if err != nil {
 		return nil, err
