@@ -49,13 +49,25 @@ func NewFilteredDNSHostedZonePolicyInformer(client versioned.Interface, namespac
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.DnsV1alpha1().DNSHostedZonePolicies(namespace).List(context.TODO(), options)
+				return client.DnsV1alpha1().DNSHostedZonePolicies(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.DnsV1alpha1().DNSHostedZonePolicies(namespace).Watch(context.TODO(), options)
+				return client.DnsV1alpha1().DNSHostedZonePolicies(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.DnsV1alpha1().DNSHostedZonePolicies(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.DnsV1alpha1().DNSHostedZonePolicies(namespace).Watch(ctx, options)
 			},
 		},
 		&apisdnsv1alpha1.DNSHostedZonePolicy{},
