@@ -6,26 +6,11 @@
 
 set -e
 
+repo_root="$(git rev-parse --show-toplevel)"
 
-# add full-fleshed tar and helm
-BASE_URL="https://get.helm.sh"
-HELM_VERSION=v3.13.1
-TAR_FILE="helm-${HELM_VERSION}-linux-amd64.tar.gz"
 
-apk add --update --no-cache curl ca-certificates tar 
-curl -L ${BASE_URL}/${TAR_FILE} |tar xvz 
-mv linux-amd64/helm /usr/bin/helm 
-chmod +x /usr/bin/helm 
-export HELM=/usr/bin/helm
+version_file="$(readlink -f "${repo_root}/VERSION")"
+version="$(cat "${version_file}")"
+versiontag="${version//-dev/-master}"
 
-if [[ -z "${SOURCE_PATH}" ]]; then
-  export SOURCE_PATH="$(readlink -f "$(dirname ${0})/..")"
-else
-  export SOURCE_PATH="$(readlink -f "${SOURCE_PATH}")"
-fi
-
-VERSION_FILE="$(readlink -f "${SOURCE_PATH}/VERSION")"
-VERSION="$(cat "${VERSION_FILE}")"
-VERSIONTAG="${VERSION//-dev/-master}"
-
-sed -i -e "s/  tag: .*/  tag: ${VERSIONTAG}/" "${SOURCE_PATH}/charts/external-dns-management/values.yaml"
+sed -i -e "s/  tag: .*/  tag: ${versiontag}/" "${repo_root}/charts/external-dns-management/values.yaml"
