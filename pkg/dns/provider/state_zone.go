@@ -275,6 +275,10 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 	} else {
 		req.zone.Failed()
 	}
+
+	// give some time to reconcile rescheduled entries
+	req.zone.SetNext(time.Now().Add(this.config.Delay))
+
 	return err
 }
 
