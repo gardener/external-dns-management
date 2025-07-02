@@ -9,15 +9,22 @@
 //	go run main.go
 //
 //  Command line options:
-//     -base-domain string
+//     --base-domain string
 //     		base domain for the entries (mandatory)
-//     -count int
+//     --base-entry int
+//     		base index for the entries (default 0, i.e. e00000, e00001, ...)
+//     --count int
 //     		number of entries to create (default 10)
-//     -kubeconfig string
+//     --kubeconfig string
 //     		absolute path to the kubeconfig file (defaults to the env variable `KUBECONFIG`)
-//     -label string
+//     --label string
 //     		label value for label 'loadtest' to set on the entries (default "true")
-//
+//     --with-routing-policy=true
+//     		entries should have a routing policy set (default false)
+//     --latency duration
+//     		latency between creation of two entries (default 0)
+//     --ttl int
+//     		TTL for the entries in seconds (default 120)
 // You may use `kubectl delete dnsentry -l loadtest=<label-value>` to delete them all at once.
 
 package main
@@ -27,6 +34,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
@@ -40,17 +48,23 @@ import (
 var (
 	kubeconfig    string
 	baseDomain    string
+	baseEntry     int
 	labelValue    string
 	routingPolicy bool
 	count         int
+	latency       time.Duration
+	ttl           int64
 )
 
 func main() {
 	flag.StringVar(&kubeconfig, "kubeconfig", os.Getenv("KUBECONFIG"), "absolute path to the kubeconfig file")
 	flag.IntVar(&count, "count", 10, "number of entries to create")
+	flag.IntVar(&baseEntry, "base-entry", 0, "base index for the entries (default 0, i.e. e00000, e00001, ...)")
 	flag.StringVar(&baseDomain, "base-domain", "", "base domain for the entries")
 	flag.StringVar(&labelValue, "label", "true", "label value for label 'loadtest' to set on the entries")
 	flag.BoolVar(&routingPolicy, "with-routing-policy", false, "entries should have a routing policy set (default false)")
+	flag.DurationVar(&latency, "latency", 0, "latency between creation of two entries (default 0)")
+	flag.Int64Var(&ttl, "ttl", 120, "TTL for the entries in seconds (default 120)")
 	flag.Parse()
 
 	if baseDomain == "" {
@@ -78,20 +92,22 @@ func main() {
 
 func createEntries(ctx context.Context, c client.Client, count int, nameTemplate, baseDomain, labelKey, labelValue string) error {
 	for i := 0; i < count; i++ {
+		name := fmt.Sprintf(nameTemplate, i+baseEntry)
 		entry := &dnsv1alpha1.DNSEntry{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: "default",
-				Name:      fmt.Sprintf(nameTemplate, i),
+				Name:      name,
 			},
 		}
 		if _, err := controllerutils.CreateOrGetAndMergePatch(ctx, c, entry, func() error {
 			entry.Labels = map[string]string{
 				labelKey: labelValue,
 			}
+
 			entry.Spec = dnsv1alpha1.DNSEntrySpec{
-				DNSName: fmt.Sprintf("%s.%s", fmt.Sprintf(nameTemplate, i), baseDomain),
+				DNSName: fmt.Sprintf("%s.%s", name, baseDomain),
 				Targets: []string{fmt.Sprintf("2.%d.%d.%d", i>>16, (i&0xff00)>>8, i&0xff)},
-				TTL:     ptr.To[int64](120),
+				TTL:     ptr.To(ttl),
 			}
 			if routingPolicy {
 				entry.Spec.RoutingPolicy = &dnsv1alpha1.RoutingPolicy{
@@ -110,6 +126,9 @@ func createEntries(ctx context.Context, c client.Client, count int, nameTemplate
 		}
 		if i > 0 && i%100 == 0 {
 			fmt.Fprintf(os.Stdout, "%d/%d entries created...\n", i, count)
+		}
+		if latency > 0 {
+			time.Sleep(latency)
 		}
 	}
 
