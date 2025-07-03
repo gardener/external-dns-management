@@ -1,0 +1,111 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        required: true
+        type: string
+        default: snapshot
+        description: |
+          the mode to use. either `snapshot` or `release`. Will affect effective version, as well
+          as target-oci-registry.
+
+jobs:
+  prepare:
+    uses: gardener/cc-utils/.github/workflows/prepare.yaml@master
+    with:
+      mode: ${{ inputs.mode }}
+      version-commit-callback-action-path: .github/actions/prepare-release
+    permissions:
+      contents: read
+
+  oci-images:
+    name: Build OCI-Images
+    needs:
+      - prepare
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    secrets: inherit
+    uses: gardener/cc-utils/.github/workflows/oci-ocm.yaml@master
+    strategy:
+      matrix:
+        args:
+          - name: dns-controller-manager
+            oci-repository: dns-controller-manager
+    with:
+      name: ${{ matrix.args.name }}
+      version: ${{ needs.prepare.outputs.version }}
+      oci-registry: ${{ needs.prepare.outputs.oci-registry }}
+      oci-repository: ${{ matrix.args.oci-repository }}
+      oci-platforms: linux/amd64,linux/arm64
+
+  helmcharts:
+    name: Build Helmcharts
+    needs:
+      - prepare
+      - oci-images
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    uses: gardener/cc-utils/.github/workflows/helmchart-ocm.yaml@master
+    with:
+      name: dns-controller-manager
+      dir: charts/external-dns-management
+      oci-registry: ${{ needs.prepare.outputs.oci-registry }}
+      oci-repository: charts
+      ocm-mappings: |
+        - ref: ocm-resource:dns-controller-manager.repository
+          attribute: image.repository
+        - ref: ocm-resource:dns-controller-manager.tag
+          attribute: image.tag
+
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@master
+      - name: run-verify
+        run: |
+          set -eu
+          .ci/verify
+
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@master
+      - name: run-check
+        run: |
+          set -eu
+          .ci/check
+          # check calls `make sast-report`, which generates `gosec-report.sarif`
+          mkdir /tmp/blobs.d
+          tar czf /tmp/blobs.d/gosec-report.tar.gz gosec-report.sarif
+      - name: add-sast-report-to-component-descriptor
+        uses: gardener/cc-utils/.github/actions/export-ocm-fragments@master
+        with:
+          blobs-directory: /tmp/blobs.d
+          ocm-resources: |
+            name: gosec-report
+            relation: local
+            access:
+              type: localBlob
+              localReference: gosec-report.tar.gz
+            labels:
+              - name: gardener.cloud/purposes
+                value:
+                  - lint
+                  - sast
+                  - gosec
+              - name: gardener.cloud/comment
+                value: |
+                  we use gosec (linter) for SAST scans
+                  see: https://github.com/securego/gosec

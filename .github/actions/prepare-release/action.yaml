@@ -1,0 +1,11 @@
+name: Prepare Release
+
+runs:
+  using: composite
+  steps:
+    - uses: azure/setup-helm@v4
+    - name: prepare-release
+      shell: bash
+      run: |
+        set -eu
+        .ci/prepare_release
