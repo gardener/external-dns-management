@@ -95,6 +95,7 @@
     "github.com/mattn/go-colorable",
     "github.com/mattn/go-isatty",
     "github.com/mitchellh/copystructure",
+    "github.com/mitchellh/mapstructure",
     "github.com/mitchellh/reflectwalk",
     "github.com/moby/spdystream",
     "github.com/modern-go/concurrent",

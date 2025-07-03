@@ -381,6 +381,14 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		return this, this.failed(logger, false, fmt.Errorf("error reading secret for provider %q", provider.Description()), true)
 	}
 
+	adapter, err := state.GetHandlerFactory().GetDNSHandlerAdapter(provider.TypeCode())
+	if err != nil {
+		return this, this.failed(logger, false, err, false)
+	}
+	if err := adapter.ValidateCredentialsAndProviderConfig(props, provider.Spec().ProviderConfig); err != nil {
+		return this, this.failed(logger, false, err, false)
+	}
+
 	this.account, err = state.GetDNSAccount(logger, provider, props)
 	if err != nil {
 		return this, this.failed(logger, false, err, true)
