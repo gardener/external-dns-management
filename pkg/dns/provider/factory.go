@@ -20,6 +20,7 @@ type DNSHandlerCreatorFunction func(config *DNSHandlerConfig) (DNSHandler, error
 type Factory struct {
 	typecode              string
 	create                DNSHandlerCreatorFunction
+	adapter               DNSHandlerAdapter
 	optionCreator         extension.OptionSourceCreator
 	genericDefaults       *GenericFactoryOptions
 	supportZoneStateCache bool
@@ -27,7 +28,7 @@ type Factory struct {
 
 var _ DNSHandlerFactory = &Factory{}
 
-func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction, disableZoneStateCache ...bool) *Factory {
+func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction, adapter DNSHandlerAdapter, disableZoneStateCache ...bool) *Factory {
 	disable := false
 	for _, b := range disableZoneStateCache {
 		disable = disable || b
@@ -35,6 +36,7 @@ func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction, dis
 	return &Factory{
 		typecode:              typecode,
 		create:                create,
+		adapter:               adapter,
 		supportZoneStateCache: !disable,
 	}
 }
@@ -80,6 +82,16 @@ func (this *Factory) Create(typecode string, config *DNSHandlerConfig) (DNSHandl
 			return nil, err
 		}
 		return this.create(config)
+	}
+	return nil, fmt.Errorf("not responsible for %q", typecode)
+}
+
+func (this *Factory) GetDNSHandlerAdapter(typecode string) (DNSHandlerAdapter, error) {
+	if typecode == this.typecode {
+		if this.adapter != nil {
+			return this.adapter, nil
+		}
+		return nil, fmt.Errorf("no adapter available for %q", typecode)
 	}
 	return nil, fmt.Errorf("not responsible for %q", typecode)
 }
@@ -174,6 +186,14 @@ func HandlerStringMapper(name string) func(s string) string {
 	return func(s string) string {
 		return fmt.Sprintf("%s for provider type %q", s, name)
 	}
+}
+
+func (this *CompoundFactory) GetDNSHandlerAdapter(typecode string) (DNSHandlerAdapter, error) {
+	f := this.factories[typecode]
+	if f != nil {
+		return f.GetDNSHandlerAdapter(typecode)
+	}
+	return nil, fmt.Errorf("not responsible for %q", typecode)
 }
 
 func (this *CompoundFactory) CreateOptionSource() (config.OptionSource, *GenericFactoryOptions) {
