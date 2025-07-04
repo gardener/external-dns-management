@@ -16,14 +16,15 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/compound"
+	"github.com/gardener/external-dns-management/pkg/dns"
+	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dns/source"
+	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/dns"
-	"github.com/gardener/external-dns-management/pkg/dns/source"
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
 const AnnotationSecretResourceVersion = dns.ANNOTATION_GROUP + "/secretResourceVersion"
@@ -72,6 +73,7 @@ func DNSProviderReplicationReconciler(c controller.Interface) (reconcile.Interfa
 		classes:          classes,
 		targetclasses:    targetclasses,
 		targetrealms:     realms,
+		factory:          compound.Factory,
 	}
 
 	//		reconciler.state.source = xsource
@@ -98,6 +100,7 @@ type sourceReconciler struct {
 	nameprefix        string
 	creatorLabelName  string
 	creatorLabelValue string
+	factory           dnsprovider.DNSHandlerFactory
 }
 
 func (this *sourceReconciler) ObjectUpdated(key resources.ClusterObjectKey) {
@@ -352,6 +355,11 @@ func (this *sourceReconciler) updateSecretIfNeeded(logger logger.LogContext, tar
 }
 
 func (this *sourceReconciler) writeTargetSecret(logger logger.LogContext, target *api.DNSProvider, slave resources.Object, inputSecret *core.Secret) error {
+	adapter, err := this.factory.GetDNSHandlerAdapter(target.Spec.Type)
+	if err != nil {
+		return fmt.Errorf("cannot get provider adapter for type %s: %w", target.Spec.Type, err)
+	}
+
 	secret := &core.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      target.Name,
@@ -359,9 +367,16 @@ func (this *sourceReconciler) writeTargetSecret(logger logger.LogContext, target
 		},
 		Data: inputSecret.Data,
 	}
+
+	props := resources.GetSecretPropertiesFrom(inputSecret)
+	validationErr := adapter.ValidateCredentialsAndProviderConfig(props, target.Spec.ProviderConfig)
+	if validationErr != nil {
+		secret.Annotations = map[string]string{"dns.gardener.cloud/validation-error": validationErr.Error()}
+		secret.Data = nil // remove data if validation fails
+	}
+
 	resources.SetOwnerReference(secret, slave.GetOwnerReference())
-	_, err := this.resTargetSecrets.CreateOrUpdate(secret)
-	if err != nil {
+	if _, err := this.resTargetSecrets.CreateOrUpdate(secret); err != nil {
 		return fmt.Errorf("cannot write secret %s for slave provider %s/%s: %w", secret.Name, target.Namespace, target.Name, err)
 	}
 	target.Spec.SecretRef = &core.SecretReference{
@@ -369,6 +384,10 @@ func (this *sourceReconciler) writeTargetSecret(logger logger.LogContext, target
 		Namespace: secret.Namespace,
 	}
 	logger.Infof("written secret %s for slave provider %s/%s", secret.Name, target.Namespace, target.Name)
+
+	if validationErr != nil {
+		return fmt.Errorf("validation failed for provider secret (and provider config): %w", validationErr)
+	}
 	return nil
 }
 
