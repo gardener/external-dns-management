@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
@@ -136,25 +137,25 @@ var _ = Describe("PrivateZones", func() {
 			return nil
 		})
 		Ω(err).ShouldNot(HaveOccurred())
-		found := false
-		for i := 0; i < 20; i++ {
-			time.Sleep(10 * time.Millisecond)
-			var data *v1alpha1.DNSProvider
-			pr, data, err = testEnv.GetProvider(pr.GetName())
-			Ω(err).ShouldNot(HaveOccurred())
-			if data.Status.Zones.Included[0] == "z1:private:pr1.mock.xx" {
-				found = true
-				break
-			}
-		}
-		Ω(found).Should(BeTrue())
+		Eventually(func(g Gomega) string {
+			_, data, err := testEnv.GetProvider(pr.GetName())
+			g.Expect(err).ShouldNot(HaveOccurred())
+			return data.Status.Zones.Included[0]
+		}).Should(Equal("z1:private:pr1.mock.xx"))
 
 		testEnv.AwaitProviderReady(pr.GetName())
 
-		time.Sleep(100 * time.Millisecond)
+		Eventually(func(g Gomega) *string {
+			obj, err := testEnv.GetEntry(e.GetName())
+			g.Expect(err).ShouldNot(HaveOccurred())
+			e := UnwrapEntry(obj)
+			g.Expect(e.Status.State).Should(Equal("Ready"))
+			return e.Status.Zone
+		}).WithPolling(1 * time.Second).WithTimeout(15 * time.Second).Should(Equal(ptr.To("z1:private:pr1.mock.xx")))
 		testEnv.AwaitEntryReady(e.GetName())
-		err = testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, "z1:private:", e)
-		Ω(err).ShouldNot(HaveOccurred())
+		Eventually(func() error {
+			return testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, "z1:private:", e)
+		}).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteEntryAndWait(e)
 		Ω(err).ShouldNot(HaveOccurred())
