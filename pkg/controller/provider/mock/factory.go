@@ -5,6 +5,9 @@
 package mock
 
 import (
+	"github.com/gardener/controller-manager-library/pkg/utils"
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/gardener/external-dns-management/pkg/controller/provider/compound"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
@@ -17,9 +20,21 @@ var rateLimiterDefaults = provider.RateLimiterOptions{
 	Burst:   20,
 }
 
-var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler).
+var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler, &adapter{}).
 	SetGenericFactoryOptionDefaults(provider.GenericFactoryOptionDefaults.SetRateLimiterOptions(rateLimiterDefaults))
 
 func init() {
 	compound.MustRegister(Factory)
+}
+
+type adapter struct {
+}
+
+func (a *adapter) ProviderType() string {
+	return TYPE_CODE
+}
+
+func (a *adapter) ValidateCredentialsAndProviderConfig(_ utils.Properties, _ *runtime.RawExtension) error {
+	// no validation as it is only used for testing
+	return nil
 }
