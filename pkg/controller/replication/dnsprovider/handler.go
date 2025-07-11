@@ -371,7 +371,10 @@ func (this *sourceReconciler) writeTargetSecret(logger logger.LogContext, target
 	props := resources.GetSecretPropertiesFrom(inputSecret)
 	validationErr := adapter.ValidateCredentialsAndProviderConfig(props, target.Spec.ProviderConfig)
 	if validationErr != nil {
-		secret.Annotations = map[string]string{"dns.gardener.cloud/validation-error": validationErr.Error()}
+		// If validation fails, we store the error in the secret annotations.
+		// The annotations will be used to fill the status message of the replicated provider and will
+		// be pushed back to the source provider.
+		secret.Annotations = map[string]string{dns.AnnotationValidationError: validationErr.Error()}
 		secret.Data = nil // remove data if validation fails
 	}
 

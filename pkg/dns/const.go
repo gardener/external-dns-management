@@ -45,4 +45,7 @@ const (
 	// This annotation is not propagated from source objects to the target DNSEntry.
 	// IMPORTANT NOTE: The entry is even ignored on deletion. Use with caution to avoid orphaned entries!
 	AnnotationHardIgnore = ANNOTATION_GROUP + "/target-hard-ignore"
+
+	// AnnotationValidationError is an optional annotation for replicated provider secrets to indicate a validation error.
+	AnnotationValidationError = ANNOTATION_GROUP + "/validation-error"
 )
