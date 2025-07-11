@@ -261,4 +261,45 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 		By("check mock database")
 		checkMockDatabaseSize(0)
 	})
+
+	It("should create providers on target", func() {
+		providerSecret2 := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testRunID,
+				Name:      "mock2-secret",
+			},
+			StringData: map[string]string{"bad_key": "bad-value"},
+			Type:       corev1.SecretTypeOpaque,
+		}
+		Expect(tc1.client.Create(ctx, providerSecret2)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(tc1.client.Delete(ctx, providerSecret2)).To(Succeed())
+		})
+		provider2 := &v1alpha1.DNSProvider{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testRunID,
+				Name:      "mock2",
+			},
+			Spec: v1alpha1.DNSProviderSpec{
+				Type:           "mock-inmemory",
+				ProviderConfig: &runtime.RawExtension{Raw: []byte{}},
+				SecretRef:      &corev1.SecretReference{Name: "mock2-secret", Namespace: testRunID},
+			},
+		}
+		Expect(tc1.client.Create(ctx, provider2)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(tc1.client.Delete(ctx, provider2)).To(Succeed())
+		})
+
+		Eventually(func(g Gomega) {
+			list := &v1alpha1.DNSProviderList{}
+			if err := tc2.client.List(ctx, list, client.InNamespace(testRunID2)); err != nil {
+				g.Expect(err).NotTo(HaveOccurred())
+			}
+			g.Expect(list.Items).To(HaveLen(2))
+			g.Expect(tc1.client.Get(ctx, client.ObjectKeyFromObject(provider2), provider2)).To(Succeed())
+			g.Expect(provider2.Status.State).To(Equal("Error"))
+			g.Expect(provider2.Status.Message).To(ContainSubstring("bad_key"))
+		})
+	})
 })
