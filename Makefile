@@ -56,12 +56,6 @@ fastcheck: format $(GOIMPORTS) $(GOLANGCI_LINT)
 format: $(GOIMPORTS) $(GOIMPORTSREVISER)
 	@bash $(GARDENER_HACK_DIR)/format.sh ./cmd ./pkg ./test
 
-.PHONY: build
-build:
-	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(EXECUTABLE) \
-	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
-	    ./cmd/compound
-
 .PHONY: build-local
 build-local:
 	@CGO_ENABLED=1 go build -o $(EXECUTABLE) \
@@ -75,7 +69,7 @@ build-local:
 
 .PHONY: release
 release:
-	@CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o $(EXECUTABLE) \
+	@CGO_ENABLED=0 go build -o $(EXECUTABLE) \
 	    -a \
 	    -ldflags "-w -X main.Version=$(VERSION)" \
 	    ./cmd/compound
