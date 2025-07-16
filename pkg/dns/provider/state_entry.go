@@ -229,6 +229,11 @@ func (this *state) entryPremise(e *dnsutils.DNSEntryObject) (*EntryPremise, erro
 }
 
 func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object *dnsutils.DNSEntryObject) reconcile.Status {
+	if !this.entriesLocking.TryLockEntryReconciliation(object.ObjectName(), object.DNSSetName().DNSName) {
+		return reconcile.Succeeded(logger, "entry reconciliation cannot be locked, waiting for a zone reconciliation to finish")
+	}
+	defer this.entriesLocking.UnlockEntryReconciliation(object.ObjectName())
+
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
@@ -239,11 +244,6 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 			return reconcile.RescheduleAfter(logger, millis)
 		}
 		defer old.lock.Unlock()
-	}
-	if this.isPotentialZoneReconciliation(object.DNSSetName().DNSName) {
-		logger.Infof("entry %q is a potential part of zone reconcilation -> reschedule", object.ObjectName())
-		millis := time.Millisecond * time.Duration(3000+rand.Int32N(3000)) // #nosec G404  -- not used for cryptographic purposes
-		return reconcile.RescheduleAfter(logger, millis)
 	}
 
 	if object.GetAnnotations()[constants.GardenerOperation] == constants.GardenerOperationReconcile {

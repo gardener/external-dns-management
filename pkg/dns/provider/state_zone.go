@@ -12,13 +12,14 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/ctxutil"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/gardener/controller-manager-library/pkg/resources"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 
+	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
@@ -72,14 +73,44 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid dns.ZoneID) re
 	logger.Infof("Initiate reconcilation of zone %s", zoneid)
 	defer logger.Infof("zone %s done", zoneid)
 
-	if zone := this.addPotentialZoneReconciliation(zoneid); zone != nil {
-		defer this.removePotentialZoneReconciliation(zone)
+	zoneDomain := this.getZoneDomain(zoneid)
+	if zoneDomain == "" {
+		logger.Warnf("zone %s not found -> stop reconciling", zoneid)
+		return reconcile.Succeeded(logger, fmt.Sprintf("zone %s not found", zoneid))
 	}
 
 	blockingCount := this.reconcileZoneBlockingEntries(logger)
 	if blockingCount > 0 {
 		logger.Infof("reconciliation of zone %s is blocked due to %d pending entry reconciliations", zoneid, blockingCount)
 		return reconcile.Succeeded(logger).RescheduleAfter(5 * time.Second)
+	}
+
+	startTime := time.Now()
+	blockingEntries := this.getZoneEntries(zoneid)
+	for i := 0; i < 50; i++ {
+		blockingEntries = this.entriesLocking.TryLockZoneReconciliation(startTime, zoneid, zoneDomain, blockingEntries)
+		if len(blockingEntries) == 0 {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+		if i%10 == 0 {
+			logger.Infof("waiting for %d entries to be unlocked for zone %s", len(blockingEntries), zoneid)
+		}
+	}
+	defer func() {
+		cluster := this.context.GetCluster(TARGET_CLUSTER).GetId()
+		entryGroupKind = resources.NewGroupKind(api.GroupName, api.DNSEntryKind)
+		toBeTrigged := this.entriesLocking.UnlockZoneReconciliation(zoneid)
+		for _, e := range toBeTrigged {
+			logger.Infof("triggering entry %s for zone %s", e, zoneid)
+			if err := this.context.EnqueueKey(resources.NewClusterKey(cluster, entryGroupKind, e.Namespace(), e.Name())); err != nil {
+				logger.Errorf("failed to enqueue entry %s for zone %s: %s", e, zoneid, err)
+			}
+		}
+	}()
+	if len(blockingEntries) > 0 {
+		logger.Infof("zone %s blocked by %d entries -> skip and reschedule", zoneid, len(blockingEntries))
+		return reconcile.Succeeded(logger).RescheduleAfter(10 * time.Second)
 	}
 
 	delay, hasProviders, req := this.GetZoneReconcilation(logger, zoneid)
@@ -116,6 +147,30 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid dns.ZoneID) re
 	return reconcile.Succeeded(logger).RescheduleAfter(10 * time.Second)
 }
 
+func (this *state) getZoneDomain(id dns.ZoneID) string {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+
+	zone := this.zones[id]
+	if zone == nil {
+		return ""
+	}
+	return zone.Domain()
+}
+
+func (this *state) getZoneEntries(id dns.ZoneID) []resources.ObjectName {
+	this.lock.RLock()
+	defer this.lock.RUnlock()
+
+	var zoneEntries []resources.ObjectName
+	for _, e := range this.entries {
+		if e.ZoneId() == id {
+			zoneEntries = append(zoneEntries, e.ObjectName())
+		}
+	}
+	return zoneEntries
+}
+
 func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneReconciliation) (bool, error) {
 	if req.deleting {
 		ctxutil.Tick(this.GetContext().GetContext(), controller.DeletionActivity)
@@ -146,44 +201,6 @@ func (this *state) StartZoneReconcilation(logger logger.LogContext, req *zoneRec
 		return true, this.reconcileZone(logger, req)
 	}
 	return false, nil
-}
-
-func (this *state) addPotentialZoneReconciliation(zoneID dns.ZoneID) *dnsHostedZone {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-
-	if this.potentialZoneReconciliations[zoneID] != nil {
-		return nil
-	}
-
-	zone := this.zones[zoneID]
-	if zone == nil {
-		return nil
-	}
-	this.potentialZoneReconciliations[zone.Id()] = zone
-
-	return zone
-}
-
-func (this *state) removePotentialZoneReconciliation(zone *dnsHostedZone) {
-	if zone == nil {
-		return
-	}
-
-	this.lock.Lock()
-	defer this.lock.Unlock()
-
-	delete(this.potentialZoneReconciliations, zone.Id())
-}
-
-func (this *state) isPotentialZoneReconciliation(dnsName string) bool {
-	dnsName = dns.NormalizeHostname(dnsName)
-	for _, zone := range this.potentialZoneReconciliations {
-		if dnsutils.Match(dnsName, zone.Domain()) {
-			return true
-		}
-	}
-	return false
 }
 
 func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliation) error {
