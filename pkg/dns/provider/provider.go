@@ -372,13 +372,27 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		ref.Namespace = provider.GetNamespace()
 	}
 	this.secret = resources.NewObjectName(ref.Namespace, ref.Name)
-	props, _, err = state.GetContext().GetSecretPropertiesByRef(provider, ref)
+	var secretObj *resources.SecretObject
+	props, secretObj, err = state.GetContext().GetSecretPropertiesByRef(provider, ref)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return this, this.failed(logger, false, fmt.Errorf("cannot get secret %s/%s for provider %s: %s",
 				ref.Namespace, ref.Name, provider.Description(), err), false)
 		}
 		return this, this.failed(logger, false, fmt.Errorf("error reading secret for provider %q", provider.Description()), true)
+	}
+
+	if validationError := secretObj.GetAnnotations()[dns.AnnotationValidationError]; validationError != "" {
+		// propagate validation error from the target secret (if it is a replicated provider)
+		return this, this.failed(logger, false, fmt.Errorf("%s", validationError), false)
+	}
+
+	adapter, err := state.GetHandlerFactory().GetDNSHandlerAdapter(provider.TypeCode())
+	if err != nil {
+		return this, this.failed(logger, false, err, false)
+	}
+	if err := adapter.ValidateCredentialsAndProviderConfig(props, provider.Spec().ProviderConfig); err != nil {
+		return this, this.failed(logger, false, err, false)
 	}
 
 	this.account, err = state.GetDNSAccount(logger, provider, props)

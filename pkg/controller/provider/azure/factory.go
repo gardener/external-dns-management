@@ -5,6 +5,7 @@
 package azure
 
 import (
+	"github.com/gardener/external-dns-management/pkg/controller/provider/azure/utils"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/compound"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
@@ -17,7 +18,7 @@ var rateLimiterDefaults = provider.RateLimiterOptions{
 	Burst:   10,
 }
 
-var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler).
+var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler, utils.NewAdapter(TYPE_CODE)).
 	SetGenericFactoryOptionDefaults(provider.GenericFactoryOptionDefaults.SetRateLimiterOptions(rateLimiterDefaults))
 
 func init() {
