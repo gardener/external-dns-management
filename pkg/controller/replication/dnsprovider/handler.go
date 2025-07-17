@@ -16,15 +16,16 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/compound"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
-	core "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const AnnotationSecretResourceVersion = dns.ANNOTATION_GROUP + "/secretResourceVersion"
@@ -387,10 +388,6 @@ func (this *sourceReconciler) writeTargetSecret(logger logger.LogContext, target
 		Namespace: secret.Namespace,
 	}
 	logger.Infof("written secret %s for slave provider %s/%s", secret.Name, target.Namespace, target.Name)
-
-	if validationErr != nil {
-		return fmt.Errorf("validation failed for provider secret (and provider config): %w", validationErr)
-	}
 	return nil
 }
 

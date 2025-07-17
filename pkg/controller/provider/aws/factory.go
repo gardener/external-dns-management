@@ -70,7 +70,7 @@ func (a *adapter) ValidateCredentialsAndProviderConfig(properties utils.Properti
 		var cfg AWSConfig
 		err := json.Unmarshal(config.Raw, &cfg)
 		if err != nil {
-			return fmt.Errorf("unmarshal providerConfig failed with: %s", err)
+			return fmt.Errorf("unmarshal providerConfig failed with: %w", err)
 		}
 		if cfg.BatchSize < 1 || cfg.BatchSize > 50 {
 			return fmt.Errorf("invalid batch size %d, must be between 1 and 50", cfg.BatchSize)
