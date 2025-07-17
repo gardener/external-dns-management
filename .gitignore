@@ -4,6 +4,7 @@ bin/
 *.sw[pq]
 .DS_Store
 tmp/
+dev/
 local/
 cmd/dns
 cmd/compound/dns-controller-manager

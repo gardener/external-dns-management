@@ -190,6 +190,11 @@ type DNSHandler interface {
 	Release()
 }
 
+type DNSHandlerAdapter interface {
+	ProviderType() string
+	ValidateCredentialsAndProviderConfig(properties utils.Properties, config *runtime.RawExtension) error
+}
+
 type DefaultDNSHandler struct {
 	providerType string
 }
@@ -216,6 +221,7 @@ type DNSHandlerFactory interface {
 	Name() string
 	TypeCodes() utils.StringSet
 	Create(typecode string, config *DNSHandlerConfig) (DNSHandler, error)
+	GetDNSHandlerAdapter(typecode string) (DNSHandlerAdapter, error)
 	IsResponsibleFor(object *dnsutils.DNSProviderObject) bool
 	SupportZoneStateCache(typecode string) (bool, error)
 }
