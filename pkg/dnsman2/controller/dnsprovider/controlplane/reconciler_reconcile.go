@@ -48,6 +48,15 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		}
 		return reconcile.Result{}, err
 	}
+
+	adapter, err := r.state.GetDNSHandlerFactory().GetDNSHandlerAdapter(provider.Spec.Type)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+	if err := adapter.ValidateCredentialsAndProviderConfig(props, provider.Spec.ProviderConfig); err != nil {
+		return reconcile.Result{}, r.updateStatusError(ctx, provider, fmt.Errorf("secret %s/%s validation failed: %s", secretRef.Namespace, secretRef.Name, err))
+	}
+
 	oldAccount := providerState.GetAccount()
 	config := dnsprovider.DNSAccountConfig{
 		DefaultTTL:   providerState.GetDefaultTTL(),

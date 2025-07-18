@@ -8,6 +8,8 @@ import (
 	"context"
 	"fmt"
 
+	"k8s.io/apimachinery/pkg/runtime"
+
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
@@ -16,6 +18,8 @@ import (
 type DNSHandlerFactory interface {
 	// Create creates a DNSHandler for the given provider type and config.
 	Create(providerType string, config *DNSHandlerConfig) (DNSHandler, error)
+	// GetAdapter returns a DNSHandlerAdapter for the given provider type code.
+	GetDNSHandlerAdapter(typecode string) (DNSHandlerAdapter, error)
 	// Supports returns true if the factory supports the given provider type.
 	Supports(providerType string) bool
 	// GetTargetsMapper returns a TargetsMapper for the given provider type.
@@ -127,6 +131,14 @@ type DNSHandler interface {
 	ExecuteRequests(ctx context.Context, zone DNSHostedZone, requests ChangeRequests) error
 	// Release releases the DNS provider.
 	Release()
+}
+
+// DNSHandlerAdapter is an interface for input validation of provider secrets and configuration.
+type DNSHandlerAdapter interface {
+	// ProviderType returns the type of the DNS provider.
+	ProviderType() string
+	// ValidateCredentialsAndProviderConfig validates the provider credentials and configuration.
+	ValidateCredentialsAndProviderConfig(properties utils.Properties, config *runtime.RawExtension) error
 }
 
 // TargetsMapper is an interface for mapping DNS targets to provider-specific targets.

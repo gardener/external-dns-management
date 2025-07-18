@@ -22,6 +22,7 @@ type DNSHandlerRegistry struct {
 
 type dnsHandlerCreatorConfig struct {
 	creator           DNSHandlerCreatorFunction
+	adapter           DNSHandlerAdapter
 	defaultRateLimits *config.RateLimiterOptions
 	mapper            TargetsMapper
 }
@@ -43,6 +44,7 @@ func NewDNSHandlerRegistry(clock clock.Clock) *DNSHandlerRegistry {
 func (r *DNSHandlerRegistry) Register(
 	providerType string,
 	creator DNSHandlerCreatorFunction,
+	adapter DNSHandlerAdapter,
 	defaultRateLimits *config.RateLimiterOptions,
 	mapper TargetsMapper,
 ) {
@@ -53,6 +55,7 @@ func (r *DNSHandlerRegistry) Register(
 	}
 	r.registry[providerType] = dnsHandlerCreatorConfig{
 		creator:           creator,
+		adapter:           adapter,
 		defaultRateLimits: defaultRateLimits,
 		mapper:            mapper,
 	}
@@ -99,6 +102,20 @@ func (r *DNSHandlerRegistry) Create(providerType string, config *DNSHandlerConfi
 	return creatorConfig.creator(config)
 }
 
+// GetDNSHandlerAdapter returns the DNSHandlerAdapter for the given provider type.
+func (r *DNSHandlerRegistry) GetDNSHandlerAdapter(providerType string) (DNSHandlerAdapter, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	creatorConfig, ok := r.registry[providerType]
+	if !ok {
+		return nil, fmt.Errorf("provider type %q not found in registry", providerType)
+	}
+
+	return creatorConfig.adapter, nil
+}
+
+// GetTargetsMapper returns the TargetsMapper for the given provider type.
 func (r *DNSHandlerRegistry) GetTargetsMapper(providerType string) (TargetsMapper, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
