@@ -15,7 +15,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
-func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1alpha1.DNSProvider) (reconcile.Result, error) {
+func (r *Reconciler) delete(ctx context.Context, _ logr.Logger, provider *v1alpha1.DNSProvider) (reconcile.Result, error) {
 	// TODO: implement/complete deletion logic
 
 	entries := v1alpha1.DNSEntryList{}

@@ -24,6 +24,7 @@ func (z ZoneID) IsEmpty() bool {
 	return len(z.ProviderType)+len(z.ID) == 0
 }
 
+// ZoneInfo holds information about a DNS zone, including its ID, whether it is private, and its domain.
 type ZoneInfo struct {
 	ZoneID  ZoneID
 	Private bool

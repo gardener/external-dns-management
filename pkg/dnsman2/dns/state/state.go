@@ -6,7 +6,6 @@ package state
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -18,7 +17,6 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
@@ -112,6 +110,7 @@ func (s *State) FindAccountForZone(ctx context.Context, zoneID dns.ZoneID) (*pro
 	return s.accounts.FindAccountForZone(ctx, zoneID)
 }
 
+// ClearDNSCaches clears the DNS caches for the given zone ID and optional record set keys.
 func (s *State) ClearDNSCaches(ctx context.Context, zoneID dns.ZoneID, keys ...utils.RecordSetKey) error {
 	caches, err := s.accounts.GetDNSCachesByZone(ctx, zoneID)
 	if err != nil {
@@ -172,34 +171,4 @@ func (h *dnsCachesQueryHandler) Query(ctx context.Context, setName dns.DNSSetNam
 		return targets, routingPolicy, err
 	}
 	return nil, nil, err
-}
-
-type mockDNSQueryHandler struct {
-	inMemory *mock.InMemory
-	zoneID   dns.ZoneID
-}
-
-func newMockDNSQueryHandler(zoneID dns.ZoneID) (DNSQueryHandler, error) {
-	inMemory := mock.GetInMemoryMockByZoneID(zoneID)
-	if inMemory == nil {
-		return nil, fmt.Errorf("no mock handler found for zoneID %s", zoneID)
-	}
-	return &mockDNSQueryHandler{inMemory: inMemory, zoneID: zoneID}, nil
-}
-
-func (h *mockDNSQueryHandler) Query(_ context.Context, setName dns.DNSSetName, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error) {
-	recordSet := h.inMemory.GetRecordset(h.zoneID, setName, rstype)
-	if recordSet == nil {
-		return nil, nil, nil
-	}
-
-	var targets dns.Targets
-	var ttl int64
-	if !recordSet.IsTTLIgnored() {
-		ttl = recordSet.TTL
-	}
-	for _, record := range recordSet.Records {
-		targets = append(targets, dns.NewTarget(rstype, record.Value, ttl))
-	}
-	return targets, nil, nil
 }

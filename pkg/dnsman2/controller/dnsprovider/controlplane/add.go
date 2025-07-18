@@ -117,10 +117,11 @@ func (r *Reconciler) providersToReconcileOnSecretChanges(ctx context.Context, se
 	return requests
 }
 
+// EntryStatusProvider is the index name for the status.provider field of a DNSEntry.
 const EntryStatusProvider = "status.provider"
 
-// AddEntryStatusProvider adds an index for core.ProjectNamespace to the given indexer.
-func AddProjectNamespace(ctx context.Context, indexer client.FieldIndexer) error {
+// AddEntryStatusProvider adds an index for 'status.provider' to the given indexer.
+func AddEntryStatusProvider(ctx context.Context, indexer client.FieldIndexer) error {
 	if err := indexer.IndexField(ctx, &v1alpha1.DNSEntry{}, EntryStatusProvider, entryStatusProviderIndexerFunc); err != nil {
 		return fmt.Errorf("failed to add indexer for %s to DNSEntry Informer: %w", EntryStatusProvider, err)
 	}

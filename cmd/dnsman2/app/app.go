@@ -286,7 +286,7 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 
 func addAllFieldIndexes(ctx context.Context, i client.FieldIndexer) error {
 	for _, fn := range []func(context.Context, client.FieldIndexer) error{
-		dnsprovidercontrolplane.AddProjectNamespace,
+		dnsprovidercontrolplane.AddEntryStatusProvider,
 	} {
 		if err := fn(ctx, i); err != nil {
 			return err
