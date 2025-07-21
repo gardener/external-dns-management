@@ -144,10 +144,10 @@ type state struct {
 
 	providerEventListeners []ProviderEventListener
 
-	potentialZoneReconciliations map[dns.ZoneID]*dnsHostedZone
-
 	zoneTransactions     map[dns.ZoneID]*zonetxn.PendingTransaction
 	zoneTransactionsLock sync.Mutex
+
+	entriesLocking *entriesLocking
 }
 
 type rateLimiterData struct {
@@ -173,31 +173,31 @@ func NewDNSState(pctx ProviderContext, secretresc resources.Interface, classes *
 	realms := access.RealmTypes{"use": access.NewRealmType(dns.REALM_ANNOTATION)}
 
 	return &state{
-		setup:                        newSetup(),
-		classes:                      classes,
-		context:                      pctx,
-		secretresc:                   secretresc,
-		config:                       config,
-		realms:                       realms,
-		accountCache:                 NewAccountCache(config.CacheTTL, config.Options),
-		foreign:                      map[resources.ObjectName]*foreignProvider{},
-		providers:                    map[resources.ObjectName]*dnsProviderVersion{},
-		deleting:                     map[resources.ObjectName]*dnsProviderVersion{},
-		zones:                        map[dns.ZoneID]*dnsHostedZone{},
-		secrets:                      map[resources.ObjectName]resources.ObjectNameSet{},
-		zoneproviders:                map[dns.ZoneID]resources.ObjectNameSet{},
-		providerzones:                map[resources.ObjectName]map[dns.ZoneID]*dnsHostedZone{},
-		providersecrets:              map[resources.ObjectName]resources.ObjectName{},
-		zonePolicies:                 map[string]*dnsHostedZonePolicy{},
-		entries:                      Entries{},
-		zoneTransactions:             map[dns.ZoneID]*zonetxn.PendingTransaction{},
-		outdated:                     newSynchronizedEntries(),
-		blockingEntries:              map[resources.ObjectName]time.Time{},
-		dnsnames:                     map[ZonedDNSSetName]*Entry{},
-		references:                   NewReferenceCache(),
-		providerRateLimiter:          map[resources.ObjectName]*rateLimiterData{},
-		updateEntryBlocked:           map[resources.ObjectName]struct{}{},
-		potentialZoneReconciliations: map[dns.ZoneID]*dnsHostedZone{},
+		setup:               newSetup(),
+		classes:             classes,
+		context:             pctx,
+		secretresc:          secretresc,
+		config:              config,
+		realms:              realms,
+		accountCache:        NewAccountCache(config.CacheTTL, config.Options),
+		foreign:             map[resources.ObjectName]*foreignProvider{},
+		providers:           map[resources.ObjectName]*dnsProviderVersion{},
+		deleting:            map[resources.ObjectName]*dnsProviderVersion{},
+		zones:               map[dns.ZoneID]*dnsHostedZone{},
+		secrets:             map[resources.ObjectName]resources.ObjectNameSet{},
+		zoneproviders:       map[dns.ZoneID]resources.ObjectNameSet{},
+		providerzones:       map[resources.ObjectName]map[dns.ZoneID]*dnsHostedZone{},
+		providersecrets:     map[resources.ObjectName]resources.ObjectName{},
+		zonePolicies:        map[string]*dnsHostedZonePolicy{},
+		entries:             Entries{},
+		zoneTransactions:    map[dns.ZoneID]*zonetxn.PendingTransaction{},
+		outdated:            newSynchronizedEntries(),
+		blockingEntries:     map[resources.ObjectName]time.Time{},
+		dnsnames:            map[ZonedDNSSetName]*Entry{},
+		references:          NewReferenceCache(),
+		providerRateLimiter: map[resources.ObjectName]*rateLimiterData{},
+		updateEntryBlocked:  map[resources.ObjectName]struct{}{},
+		entriesLocking:      newEntriesLocking(),
 	}
 }
 
