@@ -253,7 +253,9 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	}
 
 	if ignored, ignoredForDeletion, annotation := ignoredByAnnotation(object); ignored {
-		old.ignoredForDeletion = ignoredForDeletion
+		if old != nil {
+			old.ignoredForDeletion = ignoredForDeletion
+		}
 		var err error
 		if !object.IsDeleting() {
 			_, err = object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
