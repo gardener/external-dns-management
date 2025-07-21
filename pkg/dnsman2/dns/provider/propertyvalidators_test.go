@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/pem"
 	"math/big"
 	"regexp"
@@ -15,8 +16,6 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
-	"github.com/gardener/external-dns-management/pkg/controller/remoteaccesscertificates"
 )
 
 var _ = Describe("Property Validators", func() {
@@ -175,8 +174,13 @@ var _ = Describe("Property Validators", func() {
 
 func generateCACert() (string, error) {
 	ca := &x509.Certificate{
-		SerialNumber:          big.NewInt(1),
-		Subject:               remoteaccesscertificates.CreateSubject(""),
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Country:            []string{"DE"},
+			Organization:       []string{"SAP SE"},
+			OrganizationalUnit: []string{"Gardener External DNS Management"},
+			CommonName:         "",
+		},
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().Add(2 * time.Hour),
 		IsCA:                  true,
