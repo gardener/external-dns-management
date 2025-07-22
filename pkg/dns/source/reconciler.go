@@ -451,7 +451,7 @@ func (this *sourceReconciler) createEntryFor(logger logger.LogContext, obj resou
 		} else {
 			logger.Infof("using target reference %s", ref(info.TargetRef))
 		}
-		entry.Spec.Reference = info.TargetRef
+		entry.Spec.Reference = info.TargetRef //nolint:staticcheck // will be removed in a future release
 	} else {
 		entry.Spec.Targets = info.Targets.AsArray()
 		if info.Text != nil {
@@ -546,16 +546,16 @@ func (this *sourceReconciler) updateEntryFor(logger logger.LogContext, obj resou
 
 		this.mapRef(obj, info)
 		if info.TargetRef != nil {
-			if spec.Reference == nil ||
-				spec.Reference.Name != info.TargetRef.Name || spec.Reference.Namespace != info.TargetRef.Namespace {
-				spec.Reference = info.TargetRef
+			if spec.Reference == nil || //nolint:staticcheck // will be removed in a future release
+				spec.Reference.Name != info.TargetRef.Name || spec.Reference.Namespace != info.TargetRef.Namespace { //nolint:staticcheck // will be removed in a future release
+				spec.Reference = info.TargetRef //nolint:staticcheck // will be removed in a future release
 				targets = nil
 				text = nil
 				mod.Modify(true)
 			}
 		} else {
-			if spec.Reference != nil {
-				spec.Reference = nil
+			if spec.Reference != nil { //nolint:staticcheck // will be removed in a future release
+				spec.Reference = nil //nolint:staticcheck // will be removed in a future release
 				mod.Modify(true)
 			}
 		}

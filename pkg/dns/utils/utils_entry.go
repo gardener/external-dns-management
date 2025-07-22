@@ -79,7 +79,7 @@ func (this *DNSEntryObject) ResolveTargetsToAddresses() *bool {
 }
 
 func (this *DNSEntryObject) GetReference() *api.EntryReference {
-	return this.DNSEntry().Spec.Reference
+	return this.DNSEntry().Spec.Reference //nolint:staticcheck // will be removed in a future release
 }
 
 func (this *DNSEntryObject) GetRoutingPolicy() *dns.RoutingPolicy {
