@@ -235,7 +235,9 @@ spec:
                   removed in a future release.'
                 type: string
               reference:
-                description: reference to base entry used to inherit attributes from
+                description: |-
+                  Deprecated: This field will be removed in a future release.
+                  Until removed, it references a base entry used to inherit attributes from.
                 properties:
                   name:
                     description: name of the referenced DNSEntry object

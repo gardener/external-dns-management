@@ -48,7 +48,9 @@ type DNSEntry struct {
 type DNSEntrySpec struct {
 	// full qualified domain name
 	DNSName string `json:"dnsName"`
-	// reference to base entry used to inherit attributes from
+	// Deprecated: This field will be removed in a future release.
+	// Until removed, it references a base entry used to inherit attributes from.
+	// +kubebuilder:validation:Deprecated
 	// +optional
 	Reference *EntryReference `json:"reference,omitempty"`
 	// Deprecated: This field is no longer used and will be removed in a future release.
