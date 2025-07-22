@@ -426,6 +426,7 @@ spec:
               defaultTTL:
                 description: default TTL used for DNS entries if not specified explicitly
                 format: int64
+                maximum: 8640000
                 minimum: 1
                 type: integer
               domains:

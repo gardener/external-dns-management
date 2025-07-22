@@ -63,6 +63,7 @@ type DNSProviderSpec struct {
 	Zones *DNSSelection `json:"zones,omitempty"`
 	// default TTL used for DNS entries if not specified explicitly
 	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=8640000
 	// +optional
 	DefaultTTL *int64 `json:"defaultTTL,omitempty"`
 	// rate limit for create/update operations on DNSEntries assigned to this provider
