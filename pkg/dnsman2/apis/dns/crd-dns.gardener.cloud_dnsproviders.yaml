@@ -67,6 +67,8 @@ spec:
               defaultTTL:
                 description: default TTL used for DNS entries if not specified explicitly
                 format: int64
+                maximum: 8640000
+                minimum: 1
                 type: integer
               domains:
                 description: |-
@@ -76,12 +78,16 @@ spec:
                   exclude:
                     description: values that should be ignored (domains or zones)
                     items:
+                      minLength: 1
                       type: string
+                    maxItems: 100
                     type: array
                   include:
                     description: values that should be observed (domains or zones)
                     items:
+                      minLength: 1
                       type: string
+                    maxItems: 100
                     type: array
                 type: object
               providerConfig:
@@ -96,10 +102,12 @@ spec:
                     description: |-
                       Burst allows bursts of up to 'burst' to exceed the rate defined by 'RequestsPerDay', while still maintaining a
                       smoothed rate of 'RequestsPerDay'
+                    minimum: 0
                     type: integer
                   requestsPerDay:
                     description: RequestsPerDay is create/update request rate per
                       DNS entry given by requests per day
+                    minimum: 1
                     type: integer
                 required:
                 - burst
@@ -122,6 +130,20 @@ spec:
               type:
                 description: type of the provider (selecting the responsible type
                   of DNS controller)
+                enum:
+                - aws-route53
+                - alicloud-dns
+                - azure-dns
+                - azure-private-dns
+                - cloudflare-dns
+                - google-clouddns
+                - infoblox-dns
+                - mock-inmemory
+                - netlify-dns
+                - openstack-designate
+                - powerdns
+                - remote
+                - rfc2136
                 type: string
               zones:
                 description: |-
@@ -132,12 +154,16 @@ spec:
                   exclude:
                     description: values that should be ignored (domains or zones)
                     items:
+                      minLength: 1
                       type: string
+                    maxItems: 100
                     type: array
                   include:
                     description: values that should be observed (domains or zones)
                     items:
+                      minLength: 1
                       type: string
+                    maxItems: 100
                     type: array
                 type: object
             type: object
@@ -181,10 +207,12 @@ spec:
                     description: |-
                       Burst allows bursts of up to 'burst' to exceed the rate defined by 'RequestsPerDay', while still maintaining a
                       smoothed rate of 'RequestsPerDay'
+                    minimum: 0
                     type: integer
                   requestsPerDay:
                     description: RequestsPerDay is create/update request rate per
                       DNS entry given by requests per day
+                    minimum: 1
                     type: integer
                 required:
                 - burst

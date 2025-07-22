@@ -43,6 +43,7 @@ type DNSProvider struct {
 
 type DNSProviderSpec struct {
 	// type of the provider (selecting the responsible type of DNS controller)
+	// +kubebuilder:validation:Enum=aws-route53;alicloud-dns;azure-dns;azure-private-dns;cloudflare-dns;google-clouddns;infoblox-dns;mock-inmemory;netlify-dns;openstack-designate;powerdns;remote;rfc2136
 	Type string `json:"type,omitempty"`
 	// optional additional provider specific configuration values
 	// +kubebuilder:validation:XPreserveUnknownFields
@@ -61,6 +62,8 @@ type DNSProviderSpec struct {
 	// +optional
 	Zones *DNSSelection `json:"zones,omitempty"`
 	// default TTL used for DNS entries if not specified explicitly
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=8640000
 	// +optional
 	DefaultTTL *int64 `json:"defaultTTL,omitempty"`
 	// rate limit for create/update operations on DNSEntries assigned to this provider
@@ -70,17 +73,23 @@ type DNSProviderSpec struct {
 
 type RateLimit struct {
 	// RequestsPerDay is create/update request rate per DNS entry given by requests per day
+	// +kubebuilder:validation:Minimum=1
 	RequestsPerDay int `json:"requestsPerDay"`
 	// Burst allows bursts of up to 'burst' to exceed the rate defined by 'RequestsPerDay', while still maintaining a
 	// smoothed rate of 'RequestsPerDay'
+	// +kubebuilder:validation:Minimum=0
 	Burst int `json:"burst"`
 }
 
 type DNSSelection struct {
 	// values that should be observed (domains or zones)
+	// +kubebuilder:validation:items:MinLength=1
+	// +kubebuilder:validation:MaxItems=100
 	// + optional
 	Include []string `json:"include,omitempty"`
 	// values that should be ignored (domains or zones)
+	// +kubebuilder:validation:items:MinLength=1
+	// +kubebuilder:validation:MaxItems=100
 	// + optional
 	Exclude []string `json:"exclude,omitempty"`
 }
