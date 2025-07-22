@@ -50,7 +50,7 @@ func (this *DNSEntrySource) GetDNSInfo(_ logger.LogContext, obj resources.Object
 		Names:                     dns.NewDNSNameSet(name),
 		Targets:                   utils.NewStringSetByArray(entry.Spec.Targets),
 		Text:                      utils.NewStringSetByArray(entry.Spec.Text),
-		OrigRef:                   entry.Spec.Reference,
+		OrigRef:                   entry.Spec.Reference, //nolint:staticcheck // will be removed in a future release
 		TTL:                       entry.Spec.TTL,
 		Interval:                  entry.Spec.CNameLookupInterval,
 		RoutingPolicy:             entry.Spec.RoutingPolicy,

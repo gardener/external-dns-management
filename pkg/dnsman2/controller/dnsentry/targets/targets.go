@@ -84,7 +84,7 @@ func (p *TargetsProducer) FromSpec(key client.ObjectKey, spec *v1alpha1.DNSEntry
 		return
 	}
 
-	if spec.Reference != nil {
+	if spec.Reference != nil { //nolint:staticcheck // will be removed in a future release
 		// TODO(MartinWeindel) document that reference field is not supported anymore
 		err = fmt.Errorf("`reference` field is not supported anymore")
 		return
