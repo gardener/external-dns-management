@@ -582,6 +582,61 @@ var _ = Describe("Reconcile", func() {
 		ExpectWithOffset(1, result).To(Equal(reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}))
 	})
 
+	Context("DNSEntry validation", func() {
+		BeforeEach(func() {
+			createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+		})
+
+		It("rejects an invalid DNSName", func() {
+			entryA.Spec.DNSName = "foo_bar.example.com"
+			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
+			Expect(err).To(MatchError(HavePrefix("invalid DNSName: ")))
+		})
+
+		It("rejects setting both Targets and Text", func() {
+			entryA.Spec.Targets = []string{"1.1.1.1"}
+			entryA.Spec.Text = []string{"foo"}
+			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
+			Expect(err).To(MatchError("cannot specify both Targets and Text"))
+		})
+
+		It("rejects an empty target", func() {
+			entryA.Spec.Targets = []string{""}
+			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
+			Expect(err).To(MatchError("target 1 is empty"))
+		})
+
+		It("rejects duplicate targets", func() {
+			entryA.Spec.Targets = []string{"1.1.1.1", "1.1.1.1"}
+			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
+			Expect(err).To(MatchError("target 2 is a duplicate: 1.1.1.1"))
+		})
+
+		It("rejects an empty text", func() {
+			entryB.Spec.Text = []string{""}
+			Expect(fakeClient.Create(ctx, entryB)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryB)})
+			Expect(err).To(MatchError("text 1 is empty"))
+		})
+
+		It("rejects duplicate text", func() {
+			entryB.Spec.Text = []string{"foo", "foo"}
+			Expect(fakeClient.Create(ctx, entryB)).To(Succeed())
+
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryB)})
+			Expect(err).To(MatchError("text 2 is a duplicate: foo"))
+		})
+	})
+
 	DescribeTable("should respect ignore annotations",
 		func(ignoreAnnotations map[string]string, shouldKeepRecords bool) {
 			createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
