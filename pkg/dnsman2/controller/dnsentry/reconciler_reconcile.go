@@ -55,8 +55,8 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 	}
 
 	names := getDNSNames(r.Entry.Spec.DNSName, r.Entry.Status.DNSName)
-	if r.state.GetDNSNameLocking().Lock(names...) {
-		defer r.state.GetDNSNameLocking().Unlock(names...)
+	if locking := r.state.GetDNSNameLocking(); locking.Lock(names...) {
+		defer locking.Unlock(names...)
 	} else {
 		// already locked by another entry, requeue
 		return common.ReconcileResult{
