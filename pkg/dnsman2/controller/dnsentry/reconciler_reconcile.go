@@ -71,7 +71,7 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 		return *res
 	}
 
-	if err := validateDNSEntry(r.EntryContext.Entry); err != nil {
+	if err := validateDNSEntry(r.Entry); err != nil {
 		return common.ReconcileResult{Err: err}
 	}
 
