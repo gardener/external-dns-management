@@ -7,10 +7,13 @@ package dnsentry
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jellydator/ttlcache/v3"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/common"
@@ -49,6 +52,16 @@ type zonedRequests = map[dns.ZoneID]map[dns.DNSSetName]*provider.ChangeRequests
 func (r *entryReconciliation) reconcile() common.ReconcileResult {
 	if res := r.ignoredByAnnotation(); res != nil {
 		return *res
+	}
+
+	names := getDNSNames(r.Entry.Spec.DNSName, r.Entry.Status.DNSName)
+	if r.state.GetDNSNameLocking().Lock(names...) {
+		defer r.state.GetDNSNameLocking().Unlock(names...)
+	} else {
+		// already locked by another entry, requeue
+		return common.ReconcileResult{
+			Result: reconcile.Result{RequeueAfter: 3*time.Second + time.Duration(rand.Intn(500))*time.Millisecond},
+		}
 	}
 
 	newProviderData, res := providerselector.CalcNewProvider(r.EntryContext, r.namespace, r.class, r.state)
@@ -393,4 +406,11 @@ func makeTargetsUnique(targets dns.Targets) dns.Targets {
 		uniqueTargets = append(uniqueTargets, target)
 	}
 	return uniqueTargets
+}
+
+func getDNSNames(dnsName string, statusDNSName *string) []string {
+	if statusDNSName != nil && *statusDNSName != "" && dnsName != *statusDNSName {
+		return []string{dnsName, *statusDNSName}
+	}
+	return []string{dnsName}
 }
