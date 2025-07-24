@@ -71,6 +71,10 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 		return *res
 	}
 
+	if err := validateDNSEntry(r.EntryContext.Entry); err != nil {
+		return common.ReconcileResult{Err: err}
+	}
+
 	recordsToCheck := records.FullRecordKeySet{}
 	if res := r.calcOldTargets(recordsToCheck); res != nil {
 		return *res
@@ -110,6 +114,43 @@ func (r *entryReconciliation) lockDNSNames() (func(), *common.ReconcileResult) {
 	return func() {
 		locking.Unlock(names...)
 	}, nil
+}
+
+func validateDNSEntry(entry *v1alpha1.DNSEntry) error {
+	if err := dns.ValidateDomainName(entry.Spec.DNSName); err != nil {
+		return fmt.Errorf("invalid DNSName: %w", err)
+	}
+
+	if len(entry.Spec.Targets) > 0 && len(entry.Spec.Text) > 0 {
+		return fmt.Errorf("cannot specify both Targets and Text")
+	}
+
+	recordData := map[string]struct{}{}
+	for i, target := range entry.Spec.Targets {
+		if strings.TrimSpace(target) == "" {
+			return fmt.Errorf("target %d is empty", i+1)
+		}
+
+		if _, exists := recordData[target]; exists {
+			return fmt.Errorf("target %d is a duplicate: %s", i+1, target)
+		}
+
+		recordData[target] = struct{}{}
+	}
+
+	for i, text := range entry.Spec.Text {
+		if strings.TrimSpace(text) == "" {
+			return fmt.Errorf("text %d is empty", i+1)
+		}
+
+		if _, exists := recordData[text]; exists {
+			return fmt.Errorf("text %d is a duplicate: %s", i+1, text)
+		}
+
+		recordData[text] = struct{}{}
+	}
+
+	return nil
 }
 
 func (r *entryReconciliation) updateStatusWithoutProvider() common.ReconcileResult {
