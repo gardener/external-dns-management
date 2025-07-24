@@ -55,14 +55,14 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 	}
 
 	names := getDNSNames(r.Entry.Spec.DNSName, r.Entry.Status.DNSName)
-	if locking := r.state.GetDNSNameLocking(); locking.Lock(names...) {
-		defer locking.Unlock(names...)
-	} else {
+	locking := r.state.GetDNSNameLocking()
+	if !locking.Lock(names...) {
 		// already locked by another entry, requeue
 		return common.ReconcileResult{
 			Result: reconcile.Result{RequeueAfter: 3*time.Second + time.Duration(rand.Intn(500))*time.Millisecond},
 		}
 	}
+	defer locking.Unlock(names...)
 
 	newProviderData, res := providerselector.CalcNewProvider(r.EntryContext, r.namespace, r.class, r.state)
 	if res != nil {
