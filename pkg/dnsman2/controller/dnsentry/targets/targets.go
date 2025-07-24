@@ -262,14 +262,20 @@ func StatusToTargets(status *v1alpha1.DNSEntryStatus, ipstack string) (targets d
 // TargetsToStrings converts values of dns.Targets to a slice of strings.
 func TargetsToStrings(targets dns.Targets) []string {
 	strs := make([]string, len(targets))
+	var recordType dns.RecordType
 	for i, t := range targets {
 		value := t.GetRecordValue()
-		if t.GetRecordType() == dns.TypeTXT {
+		if i == 0 {
+			// use the record type of the first target to determine how to format the value
+			// this is important for ALIAS records, where the first targets are the alias target followed by a TXT record
+			recordType = t.GetRecordType()
+		}
+		if recordType == dns.TypeTXT {
 			value = strconv.Quote(value)
 		}
 		strs[i] = value
 	}
-	if len(targets) > 1 && targets[0].GetRecordType() != dns.TypeTXT {
+	if recordType != dns.TypeTXT {
 		strs = makeUniqueStrings(strs)
 	}
 	return strs
