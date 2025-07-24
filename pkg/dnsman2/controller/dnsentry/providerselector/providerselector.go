@@ -7,6 +7,7 @@ package providerselector
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -90,7 +91,7 @@ func (s *providerSelector) findBestMatchingProvider(dnsName string, currentProvi
 func (s *providerSelector) getZoneForProvider(provider *v1alpha1.DNSProvider, dnsName string) (*dns.ZoneID, *common.ReconcileResult) {
 	pstate := s.state.GetProviderState(client.ObjectKeyFromObject(provider))
 	if pstate == nil {
-		return nil, &common.ReconcileResult{Result: reconcile.Result{Requeue: true}} // Provider state not yet available, requeue to wait for its reconciliation
+		return nil, &common.ReconcileResult{Result: reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}} // Provider state not yet available, requeue to wait for its reconciliation
 	}
 	var (
 		bestZone  selection.LightDNSHostedZone

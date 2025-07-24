@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"reflect"
 
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/controllerutils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
@@ -55,7 +56,7 @@ func (u *EntryStatusUpdater) updateStatus(modifier func(status *v1alpha1.DNSEntr
 		u.Log.Error(err, "failed to update status")
 		return &ReconcileResult{Err: err}
 	}
-	return nil
+	return u.dropReconcileAnnotation()
 }
 
 func (u *EntryStatusUpdater) updateStatusFailed(state string, err error) *ReconcileResult {
@@ -101,6 +102,20 @@ func (u *EntryStatusUpdater) AddFinalizer() *ReconcileResult {
 func (u *EntryStatusUpdater) RemoveFinalizer() *ReconcileResult {
 	if err := controllerutils.RemoveFinalizers(u.Ctx, u.Client, u.Entry, dns.FinalizerCompound); err != nil {
 		u.Log.Error(err, "failed to remove finalizer")
+		return &ReconcileResult{Err: err}
+	}
+	return nil
+}
+
+// dropReconcileAnnotation removes the reconcile annotation from the DNSEntry resource if it exists.
+func (u *EntryStatusUpdater) dropReconcileAnnotation() *ReconcileResult {
+	if u.Entry.GetAnnotations()[v1beta1constants.GardenerOperation] != v1beta1constants.GardenerOperationReconcile {
+		return nil
+	}
+	patch := client.MergeFrom(u.Entry.DeepCopy())
+	delete(u.Entry.GetAnnotations(), v1beta1constants.GardenerOperation)
+	if err := u.Client.Patch(u.Ctx, u.Entry, patch); err != nil {
+		u.Log.Error(err, "failed to remove reconcile annotation")
 		return &ReconcileResult{Err: err}
 	}
 	return nil

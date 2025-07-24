@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/jellydator/ttlcache/v3"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 type entryReconciliation struct {
@@ -29,6 +31,7 @@ type entryReconciliation struct {
 	state                      *state.State
 	lookupProcessor            lookup.LookupProcessor
 	defaultCNAMELookupInterval int64
+	lastUpdate                 *ttlcache.Cache[client.ObjectKey, struct{}]
 }
 
 type newTargetsData struct {
@@ -69,14 +72,16 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 		return *res
 	}
 
-	actualRecords, res := r.dnsRecordManager().QueryRecords(recordsToCheck)
+	actualRecords, res := r.dnsRecordManager().QueryRecords(r.Ctx, recordsToCheck)
 	if res != nil {
 		return *res
 	}
 
-	var doneHandler provider.DoneHandler // TODO(MartinWeindel): Implement a done handler if needed
-	zonedRequests := calculateZonedChangeRequests(targetsData, doneHandler, actualRecords)
-
+	zonedRequests := calculateZonedChangeRequests(targetsData, actualRecords)
+	if len(zonedRequests) > 0 {
+		r.clearDNSCaches(zonedRequests)
+		r.lastUpdate.Set(client.ObjectKeyFromObject(r.Entry), struct{}{}, ttlcache.DefaultTTL)
+	}
 	if res := r.dnsRecordManager().ApplyChangeRequests(newProviderData, zonedRequests); res != nil {
 		return *res
 	}
@@ -101,7 +106,7 @@ func (r *entryReconciliation) updateStatusWithoutProvider() common.ReconcileResu
 
 func (r *entryReconciliation) updateStatusWithProvider(targetsData *newTargetsData) common.ReconcileResult {
 	return r.StatusUpdater().UpdateStatus(func(status *v1alpha1.DNSEntryStatus) error {
-		status.Provider = &targetsData.providerKey.Name
+		status.Provider = ptr.To(targetsData.providerKey.String())
 		status.ProviderType = ptr.To(targetsData.providerType)
 		status.Zone = &targetsData.zoneID.ID
 		name := targetsData.dnsSet.Name
@@ -128,7 +133,7 @@ func (r *entryReconciliation) updateStatusWithProvider(targetsData *newTargetsDa
 		if len(targetsData.warnings) > 0 {
 			status.Message = ptr.To(fmt.Sprintf("reconciled with warnings: %s", strings.Join(targetsData.warnings, ", ")))
 		} else {
-			status.Message = ptr.To("dns Entry active")
+			status.Message = ptr.To("dns entry active")
 		}
 		return nil
 	})
@@ -160,8 +165,11 @@ func (r *entryReconciliation) calcOldTargets(recordsToCheck records.FullRecordKe
 			return &common.ReconcileResult{Err: err}
 		}
 		oldZoneID := &dns.ZoneID{ID: *status.Zone, ProviderType: *status.ProviderType}
-		// targets from status are already mapped to the provider, so we can use them directly
-		records.InsertRecordKeys(recordsToCheck, records.FullDNSSetName{ZoneID: *oldZoneID, Name: name}, oldTargets)
+		oldMappedTargets, err := r.mapTargets(oldTargets, *status.ProviderType)
+		if err != nil {
+			return &common.ReconcileResult{Err: fmt.Errorf("failed to map old targets: %w", err)}
+		}
+		records.InsertRecordKeys(recordsToCheck, records.FullDNSSetName{ZoneID: *oldZoneID, Name: name}, oldMappedTargets)
 	}
 	return nil
 }
@@ -192,12 +200,11 @@ func (r *entryReconciliation) calcNewTargets(providerData *providerselector.NewP
 		return nil, &common.ReconcileResult{Err: err}
 	}
 
-	account := providerData.ProviderState.GetAccount()
-	if account == nil {
-		res := r.StatusUpdater().FailWithStatusError(fmt.Errorf("provider %s is not ready yet", providerData.ProviderKey))
-		return nil, &res
+	newTargets, err := r.mapTargets(result.Targets, providerData.Provider.Spec.Type)
+	if err != nil {
+		return nil, &common.ReconcileResult{Err: err}
 	}
-	newTargets := account.MapTargets(r.Entry.Spec.DNSName, result.Targets)
+
 	newDNSSet := dns.NewDNSSet(name)
 	newZoneID := providerData.ZoneID
 	records.InsertRecordKeys(recordsToCheck, records.FullDNSSetName{ZoneID: newZoneID, Name: name}, newTargets)
@@ -217,6 +224,32 @@ func (r *entryReconciliation) calcNewTargets(providerData *providerselector.NewP
 	}, nil
 }
 
+func (r *entryReconciliation) mapTargets(targets dns.Targets, providerType string) (dns.Targets, error) {
+	mapper, err := r.state.GetDNSHandlerFactory().GetTargetsMapper(providerType)
+	if err != nil {
+		return nil, err
+	}
+	if mapper == nil {
+		return targets, nil
+	}
+	return makeTargetsUnique(mapper.MapTargets(targets)), nil
+}
+
+// clearDNSCaches clears the DNS caches for the zones that are being updated
+func (r *entryReconciliation) clearDNSCaches(zonedRequests zonedRequests) {
+	for zoneID, requests := range zonedRequests {
+		var keys []utils.RecordSetKey
+		for name, changes := range requests {
+			for recordType := range changes.Updates {
+				keys = append(keys, utils.RecordSetKey{Name: name, RecordType: recordType})
+			}
+		}
+		if err := r.state.ClearDNSCaches(r.Ctx, zoneID, keys...); err != nil {
+			r.Log.Error(err, "failed to clear DNS caches for zone", "zoneID", zoneID.ID)
+		}
+	}
+}
+
 func (r *entryReconciliation) dnsRecordManager() *records.DNSRecordManager {
 	return &records.DNSRecordManager{
 		EntryContext: r.EntryContext,
@@ -234,7 +267,7 @@ type changeSet struct {
 	deletions map[records.FullRecordSetKey]*dns.RecordSet
 }
 
-func calculateZonedChangeRequests(targetsData *newTargetsData, doneHandler provider.DoneHandler, actual map[records.FullRecordSetKey]*dns.RecordSet) zonedRequests {
+func calculateZonedChangeRequests(targetsData *newTargetsData, actual map[records.FullRecordSetKey]*dns.RecordSet) zonedRequests {
 	changeSet := changeSet{
 		additions: make(map[records.FullRecordSetKey]*dns.RecordSet),
 		updates:   make(map[records.FullRecordSetKey]*updatePair),
@@ -263,10 +296,10 @@ func calculateZonedChangeRequests(targetsData *newTargetsData, doneHandler provi
 		}
 	}
 
-	return convertChangeSetToZoneRequests(changeSet, doneHandler)
+	return convertChangeSetToZoneRequests(changeSet)
 }
 
-func convertChangeSetToZoneRequests(changeSet changeSet, doneHandler provider.DoneHandler) zonedRequests {
+func convertChangeSetToZoneRequests(changeSet changeSet) zonedRequests {
 	if len(changeSet.additions)+len(changeSet.updates)+len(changeSet.deletions) == 0 {
 		return nil // No changes to apply
 	}
@@ -280,7 +313,7 @@ func convertChangeSetToZoneRequests(changeSet changeSet, doneHandler provider.Do
 		}
 		reqs := m[key.Name]
 		if reqs == nil {
-			reqs = provider.NewChangeRequests(key.Name, doneHandler)
+			reqs = provider.NewChangeRequests(key.Name)
 			m[key.Name] = reqs
 		}
 		reqs.Updates[key.RecordType] = &provider.ChangeRequestUpdate{Old: old, New: new}
@@ -349,4 +382,15 @@ func ignoreByAnnotation(entry *v1alpha1.DNSEntry) (string, bool) {
 	}
 
 	return "", false
+}
+
+func makeTargetsUnique(targets dns.Targets) dns.Targets {
+	uniqueTargets := make(dns.Targets, 0, len(targets))
+	for _, target := range targets {
+		if uniqueTargets.Has(target) {
+			continue
+		}
+		uniqueTargets = append(uniqueTargets, target)
+	}
+	return uniqueTargets
 }

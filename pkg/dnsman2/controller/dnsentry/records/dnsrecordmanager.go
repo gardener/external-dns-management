@@ -5,6 +5,7 @@
 package records
 
 import (
+	"context"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -69,7 +70,7 @@ func (m *DNSRecordManager) ApplyChangeRequests(providerData *providerselector.Ne
 }
 
 // QueryRecords queries DNS records for the given set of record keys.
-func (m *DNSRecordManager) QueryRecords(keys FullRecordKeySet) (map[FullRecordSetKey]*dns.RecordSet, *common.ReconcileResult) {
+func (m *DNSRecordManager) QueryRecords(ctx context.Context, keys FullRecordKeySet) (map[FullRecordSetKey]*dns.RecordSet, *common.ReconcileResult) {
 	zonesToCheck := sets.Set[dns.ZoneID]{}
 	for key := range keys {
 		zonesToCheck.Insert(key.ZoneID)
@@ -77,7 +78,7 @@ func (m *DNSRecordManager) QueryRecords(keys FullRecordKeySet) (map[FullRecordSe
 
 	results := make(map[FullRecordSetKey]*dns.RecordSet)
 	for zoneID := range zonesToCheck {
-		queryHandler, err := m.State.GetDNSQueryHandler(zoneID)
+		queryHandler, err := m.State.GetDNSQueryHandler(ctx, zoneID)
 		if err != nil {
 			m.Log.Error(err, "failed to get DNS query handler for zone", "zoneID", zoneID.ID)
 			return nil, &common.ReconcileResult{Err: fmt.Errorf("failed to get query handler for zone %s: %w", zoneID.ID, err)}
@@ -86,7 +87,7 @@ func (m *DNSRecordManager) QueryRecords(keys FullRecordKeySet) (map[FullRecordSe
 			if key.ZoneID != zoneID {
 				continue
 			}
-			targets, policy, err := queryHandler.Query(m.Ctx, key.Name.DNSName, key.Name.SetIdentifier, key.RecordType)
+			targets, policy, err := queryHandler.Query(m.Ctx, key.Name, key.RecordType)
 			if err != nil {
 				m.Log.Error(err, "failed to query DNS records", "name", key.Name, "type", key.RecordType, "zoneID", zoneID.ID)
 				return nil, &common.ReconcileResult{Err: fmt.Errorf("failed to query DNS records for %s, type %s in zone %s: %w", key.Name, key.RecordType, zoneID.ID, err)}

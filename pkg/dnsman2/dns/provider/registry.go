@@ -7,38 +7,65 @@ package provider
 import (
 	"fmt"
 	"sync"
+
+	"k8s.io/utils/clock"
+
+	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 )
 
 // DNSHandlerRegistry is a registry for DNSHandlerCreatorFunction.
 type DNSHandlerRegistry struct {
 	lock     sync.RWMutex
-	registry map[string]DNSHandlerCreatorFunction
+	clock    clock.Clock
+	registry map[string]dnsHandlerCreatorConfig
+}
+
+type dnsHandlerCreatorConfig struct {
+	creator           DNSHandlerCreatorFunction
+	adapter           DNSHandlerAdapter
+	defaultRateLimits *config.RateLimiterOptions
+	mapper            TargetsMapper
 }
 
 var _ DNSHandlerFactory = &DNSHandlerRegistry{}
 
+// AddToRegistryFunc is a function type that can be used to add a DNS handler to the registry.
+type AddToRegistryFunc func(registry *DNSHandlerRegistry)
+
 // NewDNSHandlerRegistry creates a new DNSHandlerRegistry.
-func NewDNSHandlerRegistry() *DNSHandlerRegistry {
+func NewDNSHandlerRegistry(clock clock.Clock) *DNSHandlerRegistry {
 	return &DNSHandlerRegistry{
-		registry: make(map[string]DNSHandlerCreatorFunction),
+		clock:    clock,
+		registry: make(map[string]dnsHandlerCreatorConfig),
 	}
 }
 
 // Register registers a DNSHandler.
-func (r *DNSHandlerRegistry) Register(providerType string, creator DNSHandlerCreatorFunction) {
+func (r *DNSHandlerRegistry) Register(
+	providerType string,
+	creator DNSHandlerCreatorFunction,
+	adapter DNSHandlerAdapter,
+	defaultRateLimits *config.RateLimiterOptions,
+	mapper TargetsMapper,
+) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 	if _, ok := r.registry[providerType]; ok {
 		panic("handler already registered")
 	}
-	r.registry[providerType] = creator
+	r.registry[providerType] = dnsHandlerCreatorConfig{
+		creator:           creator,
+		adapter:           adapter,
+		defaultRateLimits: defaultRateLimits,
+		mapper:            mapper,
+	}
 }
 
 // Get returns a DNSHandler by provider type.
 func (r *DNSHandlerRegistry) Get(providerType string) DNSHandlerCreatorFunction {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
-	return r.registry[providerType]
+	return r.registry[providerType].creator
 }
 
 // ListProviderTypes returns a list of all registered provider types.
@@ -64,9 +91,38 @@ func (r *DNSHandlerRegistry) Supports(providerType string) bool {
 func (r *DNSHandlerRegistry) Create(providerType string, config *DNSHandlerConfig) (DNSHandler, error) {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
-	creator, ok := r.registry[providerType]
+	creatorConfig, ok := r.registry[providerType]
 	if !ok {
 		return nil, fmt.Errorf("provider type %q not found in registry", providerType)
 	}
-	return creator(config)
+
+	if err := config.SetRateLimiter(config.GlobalConfig.ProviderAdvancedOptions[providerType].RateLimits, creatorConfig.defaultRateLimits, r.clock); err != nil {
+		return nil, fmt.Errorf("failed to set rate limiter for provider type %q: %w", providerType, err)
+	}
+	return creatorConfig.creator(config)
+}
+
+// GetDNSHandlerAdapter returns the DNSHandlerAdapter for the given provider type.
+func (r *DNSHandlerRegistry) GetDNSHandlerAdapter(providerType string) (DNSHandlerAdapter, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	creatorConfig, ok := r.registry[providerType]
+	if !ok {
+		return nil, fmt.Errorf("provider type %q not found in registry", providerType)
+	}
+
+	return creatorConfig.adapter, nil
+}
+
+// GetTargetsMapper returns the TargetsMapper for the given provider type.
+func (r *DNSHandlerRegistry) GetTargetsMapper(providerType string) (TargetsMapper, error) {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	creatorConfig, ok := r.registry[providerType]
+	if !ok {
+		return nil, fmt.Errorf("provider type %q not found in registry", providerType)
+	}
+	return creatorConfig.mapper, nil
 }

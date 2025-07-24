@@ -19,7 +19,7 @@ import (
 // NameserversProvider is a function that returns the current nameservers to use for DNS queries.
 type NameserversProvider interface {
 	// Nameservers returns the current nameservers to use for DNS queries.
-	Nameservers() ([]string, error)
+	Nameservers(ctx context.Context) ([]string, error)
 }
 
 var defaultNameservers = []string{
@@ -37,7 +37,7 @@ type systemNameserversProvider struct {
 }
 
 // Nameservers returns the current nameservers to use for DNS queries.
-func (s *systemNameserversProvider) Nameservers() ([]string, error) {
+func (s *systemNameserversProvider) Nameservers(_ context.Context) ([]string, error) {
 	s.once.Do(func() {
 		s.nameservers = getSystemNameservers("/etc/resolv.conf", defaultNameservers)
 	})
@@ -74,14 +74,14 @@ type HostedZoneNameserversProvider struct {
 }
 
 // NewHostedZoneNameserversProvider creates a new HostedZoneNameserversProvider.
-func NewHostedZoneNameserversProvider(fqdnZone string, minRefreshPeriod time.Duration, systemNameservers NameserversProvider) (*HostedZoneNameserversProvider, error) {
+func NewHostedZoneNameserversProvider(ctx context.Context, fqdnZone string, minRefreshPeriod time.Duration, systemNameservers NameserversProvider) (*HostedZoneNameserversProvider, error) {
 	instance := &HostedZoneNameserversProvider{
-		fqdnZone:          fqdnZone,
+		fqdnZone:          dns.EnsureTrailingDot(fqdnZone),
 		minRefreshPeriod:  minRefreshPeriod,
 		systemNameservers: systemNameservers,
 	}
 
-	if servers, err := instance.Nameservers(); err != nil {
+	if servers, err := instance.Nameservers(ctx); err != nil {
 		return nil, err
 	} else if len(servers) == 0 {
 		return nil, fmt.Errorf("no nameservers found for zone %s", fqdnZone)
@@ -91,12 +91,12 @@ func NewHostedZoneNameserversProvider(fqdnZone string, minRefreshPeriod time.Dur
 }
 
 // Nameservers returns the current nameservers to use for DNS queries.
-func (h *HostedZoneNameserversProvider) Nameservers() ([]string, error) {
+func (h *HostedZoneNameserversProvider) Nameservers(ctx context.Context) ([]string, error) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
 	if time.Now().After(h.nextUpdate) {
-		ns, ttl, err := h.retrieveNameservers()
+		ns, ttl, err := h.retrieveNameservers(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -107,16 +107,15 @@ func (h *HostedZoneNameserversProvider) Nameservers() ([]string, error) {
 	return h.nameservers, nil
 }
 
-func (h *HostedZoneNameserversProvider) retrieveNameservers() ([]string, uint32, error) {
-	ctx := context.Background()
+func (h *HostedZoneNameserversProvider) retrieveNameservers(ctx context.Context) ([]string, int64, error) {
 	queryDNS := NewStandardQueryDNS(h.systemNameservers)
-	result := queryDNS.Query(ctx, h.fqdnZone, dns.TypeNS)
-	if result.Err != nil {
+	result := queryDNS.Query(ctx, dns.DNSSetName{DNSName: h.fqdnZone}.Normalize(), dns.TypeNS)
+	if result.Err != nil || result.RecordSet == nil || len(result.RecordSet.Records) == 0 {
 		return nil, 0, result.Err
 	}
 	var nameservers []string
-	for _, record := range result.Records {
-		nameservers = append(nameservers, record.Value)
+	for _, record := range result.RecordSet.Records {
+		nameservers = append(nameservers, record.Value+":53") // Ensure all nameservers have a port number
 	}
-	return nameservers, result.TTL, nil
+	return nameservers, result.RecordSet.TTL, nil
 }

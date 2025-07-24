@@ -18,7 +18,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
-	mock2 "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
@@ -48,8 +48,9 @@ var _ = Describe("Reconcile", func() {
 
 	BeforeEach(func() {
 		clock.SetTime(startTime)
-		factory = dnsprovider.NewDNSHandlerRegistry()
-		mock2.RegisterTo(factory)
+		factory = dnsprovider.NewDNSHandlerRegistry(clock)
+		mock.RegisterTo(factory)
+		state.GetState().SetDNSHandlerFactory(factory)
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSProvider{}).Build()
 		reconciler = &Reconciler{
 			Client: fakeClient,
@@ -70,9 +71,9 @@ var _ = Describe("Reconcile", func() {
 			ObjectMeta: metav1.ObjectMeta{Name: "secret1", Namespace: providerKey.Namespace},
 			Data:       map[string][]byte{"foo": []byte("bar")},
 		})).To(Succeed())
-		rawMockConfig, err := mock2.MarshallMockConfig(mock2.MockConfig{
+		rawMockConfig, err := mock.MarshallMockConfig(mock.MockConfig{
 			Account: "test",
-			Zones: []mock2.MockZone{
+			Zones: []mock.MockZone{
 				{DNSName: "example.com"},
 				{DNSName: "example2.com"},
 			},
@@ -156,9 +157,9 @@ var _ = Describe("Reconcile", func() {
 	})
 
 	It("should update status if account has no zones", func() {
-		rawMockConfig, err := mock2.MarshallMockConfig(mock2.MockConfig{
+		rawMockConfig, err := mock.MarshallMockConfig(mock.MockConfig{
 			Account: "account1",
-			Zones:   []mock2.MockZone{},
+			Zones:   []mock.MockZone{},
 		})
 		Expect(err).ToNot(HaveOccurred())
 		provider.Spec.ProviderConfig = rawMockConfig
@@ -168,5 +169,18 @@ var _ = Describe("Reconcile", func() {
 		Expect(result).To(Equal(reconcile.Result{RequeueAfter: 5 * time.Minute}))
 
 		checkFailed(v1alpha1.StateError, "no hosted zones available in account")
+	})
+
+	It("should update status for if validation of secret fails", func() {
+		Expect(fakeClient.Update(ctx, &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{Name: "secret1", Namespace: providerKey.Namespace},
+			Data:       map[string][]byte{"bad_key": []byte("some-value")},
+		})).To(Succeed())
+		Expect(fakeClient.Create(ctx, provider)).To(Succeed())
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: providerKey})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+
+		checkFailed(v1alpha1.StateError, "secret test/secret1 validation failed: 'bad_key' is not allowed in mock provider properties: some-value")
 	})
 })

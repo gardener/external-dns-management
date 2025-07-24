@@ -37,6 +37,8 @@ type DNSManagerConfiguration struct {
 	// Class is the "dns.gardener.cloud/class" the dns-controller-manager is responsible for.
 	// If not set, the default class "gardendns" is used.
 	Class string
+	// ProviderAdvancedOptions contains advanced options for the DNS provider types.
+	ProviderAdvancedOptions map[string]AdvancedOptions
 }
 
 // ClientConnection contains client connection configurations
@@ -120,4 +122,16 @@ type RateLimiterOptions struct {
 	Enabled bool
 	QPS     int
 	Burst   int
+}
+
+// AdvancedOptions contains advanced options for a DNS provider type.
+type AdvancedOptions struct {
+	// RateLimits contains the rate limiter configuration for the provider.
+	RateLimits *RateLimiterOptions
+	// BatchSize is the batch size for change requests (currently only used for aws-route53).
+	BatchSize *int
+	// MaxRetries is the maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53).
+	MaxRetries *int
+	// BlockedZones is a list of zone IDs that are blocked from being used by the provider.
+	BlockedZones []string
 }

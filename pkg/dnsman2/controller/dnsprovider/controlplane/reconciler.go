@@ -63,8 +63,6 @@ func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSPr
 	return controllerutils.AddFinalizers(ctx, c, provider, dns.FinalizerCompound)
 }
 
-// TODO(marc1404): Use this function or remove it
-// nolint:unused
 func removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
 	return controllerutils.RemoveFinalizers(ctx, c, provider, dns.FinalizerCompound)
 }

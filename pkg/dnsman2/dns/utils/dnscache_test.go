@@ -27,14 +27,17 @@ var _ = Describe("DNSCache", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		sampleResult = QueryDNSResult{
-			Records: []dns.Record{{Value: "1.2.3.4"}},
-			TTL:     1,
+			RecordSet: &dns.RecordSet{
+				Type:    dns.TypeA,
+				Records: []*dns.Record{{Value: "1.2.3.4"}},
+				TTL:     1,
+			},
 		}
 
 		mockQuery = &mockQueryDNS{
-			records: map[string]map[dns.RecordType][]dns.Record{
-				"example.com.": map[dns.RecordType][]dns.Record{
-					dns.TypeA: []dns.Record{{Value: "1.2.3.4"}},
+			records: map[string]map[dns.RecordType][]*dns.Record{
+				"example.com.": {
+					dns.TypeA: []*dns.Record{{Value: "1.2.3.4"}},
 				},
 			},
 			ttl: 1,
@@ -46,10 +49,11 @@ var _ = Describe("DNSCache", func() {
 	Describe("Get", func() {
 		It("should query DNS and cache the result if not present", func() {
 			for i := 0; i < 7; i++ {
-				result := dnsCache.Get(ctx, "example.com", dns.TypeA)
-				Expect(result.Err).NotTo(HaveOccurred())
-				Expect(result.TTL).To(Equal(uint32(1)))
-				Expect(result.Records).To(ConsistOf(dns.Record{Value: "1.2.3.4"}))
+				rs, err := dnsCache.Get(ctx, dns.DNSSetName{DNSName: "example.com"}, dns.TypeA)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rs).NotTo(BeNil())
+				Expect(rs.TTL).To(Equal(int64(1)))
+				Expect(rs.Records).To(ConsistOf(&dns.Record{Value: "1.2.3.4"}))
 				if i < 3 {
 					Expect(mockQuery.queryCount).To(Equal(1))
 				} else if i > 4 {
@@ -62,7 +66,7 @@ var _ = Describe("DNSCache", func() {
 
 	Describe("Len and Clear", func() {
 		It("should remove all entries from the cache", func() {
-			dnsCache.cache.Set(cacheKey{fqdn: "example.com.", rstype: dns.TypeA}, sampleResult, ttlcache.DefaultTTL)
+			dnsCache.cache.Set(RecordSetKey{Name: dns.DNSSetName{DNSName: "example.com"}, RecordType: dns.TypeA}, sampleResult, ttlcache.DefaultTTL)
 
 			Expect(dnsCache.cache.Len()).To(Equal(1))
 			dnsCache.Clear()
@@ -72,21 +76,21 @@ var _ = Describe("DNSCache", func() {
 })
 
 type mockQueryDNS struct {
-	records    map[string]map[dns.RecordType][]dns.Record
+	records    map[string]map[dns.RecordType][]*dns.Record
 	ttl        uint32
 	queryCount int
 }
 
-func (m *mockQueryDNS) Query(_ context.Context, fqdn string, rtype dns.RecordType) QueryDNSResult {
-	rsmap := m.records[fqdn]
+func (m *mockQueryDNS) Query(_ context.Context, setName dns.DNSSetName, rtype dns.RecordType) QueryDNSResult {
+	rsmap := m.records[setName.EnsureTrailingDot().DNSName]
 	if rsmap == nil {
-		return QueryDNSResult{TTL: 10, Err: errors.New("domain name not found")}
+		return QueryDNSResult{Err: errors.New("domain name not found")}
 	}
-	rs := rsmap[rtype]
-	if rs == nil {
-		return QueryDNSResult{TTL: 10, Err: errors.New("record type not found")}
+	records := rsmap[rtype]
+	if records == nil {
+		return QueryDNSResult{Err: errors.New("record type not found")}
 	}
 
 	m.queryCount++
-	return QueryDNSResult{Records: rs, TTL: m.ttl}
+	return QueryDNSResult{RecordSet: dns.NewRecordSet(rtype, int64(m.ttl), records)}
 }

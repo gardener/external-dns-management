@@ -18,6 +18,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 // Handler implements the provider.DNSHandler interface for the mock in-memory DNS provider.
@@ -28,6 +29,8 @@ type Handler struct {
 	mockConfig  MockConfig
 	rateLimiter flowcontrol.RateLimiter
 }
+
+var _ provider.DNSHandler = &Handler{}
 
 // MockZone represents a mock DNS zone for testing.
 type MockZone struct {
@@ -152,17 +155,18 @@ func (h *Handler) GetZones(_ context.Context) ([]provider.DNSHostedZone, error) 
 	return zones, nil
 }
 
+// GetCustomQueryDNSFunc returns a custom DNS query function for the mock provider.
+func (h *Handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, _ utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
+	return h.queryDNS, nil
+}
+
 // QueryDNS queries DNS records in the mock provider.
-func (h *Handler) QueryDNS(_ context.Context, zone provider.DNSHostedZone, domainName string, recordType dns.RecordType) ([]dns.Record, int64, error) {
-	result := h.mock.GetRecordset(zone.ZoneID(), dns.DNSSetName{DNSName: dns.NormalizeDomainName(domainName)}, recordType)
+func (h *Handler) queryDNS(_ context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+	result := h.mock.GetRecordset(zone.ZoneID, setName.Normalize(), recordType)
 	if result == nil {
-		return nil, 0, nil
+		return nil, nil
 	}
-	records := make([]dns.Record, len(result.Records))
-	for i, r := range result.Records {
-		records[i] = dns.Record{Value: r.Value}
-	}
-	return records, result.TTL, nil
+	return result, nil
 }
 
 // ExecuteRequests executes DNS change requests in the mock provider.
@@ -193,14 +197,8 @@ func (h *Handler) executeRequests(ctx context.Context, zone provider.DNSHostedZo
 		if err != nil {
 			failed++
 			log.Error(err, "Apply failed")
-			if requests.Done != nil {
-				requests.Done.Failed(err)
-			}
 		} else {
 			succeeded++
-			if requests.Done != nil {
-				requests.Done.Succeeded()
-			}
 		}
 	}
 	if succeeded > 0 {
