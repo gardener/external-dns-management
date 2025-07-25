@@ -58,10 +58,13 @@ type DNSEntrySpec struct {
 	// +optional
 	OwnerId *string `json:"ownerId,omitempty"`
 	// time to live for records in external DNS system
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=8640000
 	// +optional
 	TTL *int64 `json:"ttl,omitempty"`
 	// lookup interval for CNAMEs that must be resolved to IP addresses.
 	// Only used if `resolveTargetsToAddresses` is set to true or targets consists of multiple domain names.
+	// +kubebuilder:validation:Minimum=30
 	// +optional
 	CNameLookupInterval *int64 `json:"cnameLookupInterval,omitempty"`
 	// enables translation of a target domain name in the resolved IPv4 and IPv6 addresses.
@@ -70,9 +73,13 @@ type DNSEntrySpec struct {
 	// +optional
 	ResolveTargetsToAddresses *bool `json:"resolveTargetsToAddresses,omitempty"`
 	// text records, either text or targets must be specified
+	// +kubebuilder:validation:items:MinLength=1
+	// +kubebuilder:validation:MaxItems=100
 	// +optional
 	Text []string `json:"text,omitempty"`
 	// target records (CNAME or A records), either text or targets must be specified
+	// +kubebuilder:validation:items:MinLength=1
+	// +kubebuilder:validation:MaxItems=100
 	// +optional
 	Targets []string `json:"targets,omitempty"`
 	// optional routing policy
@@ -128,6 +135,7 @@ type EntryReference struct {
 
 type RoutingPolicy struct {
 	// Policy is the policy type. Allowed values are provider dependent, e.g. `weighted`
+	// +kubebuilder:validation:Enum=weighted;latency;geolocation;ip-based;failover
 	Type string `json:"type"`
 	// SetIdentifier is the identifier of the record set
 	SetIdentifier string `json:"setIdentifier"`
