@@ -96,7 +96,6 @@ var _ = Describe("Compound controller tests", func() {
 	)
 
 	BeforeEach(func() {
-		SetDefaultEventuallyTimeout(10 * time.Second)
 		if debug {
 			SetDefaultEventuallyTimeout(30 * time.Second)
 		}

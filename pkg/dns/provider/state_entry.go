@@ -240,11 +240,6 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		}
 		defer old.lock.Unlock()
 	}
-	if this.isPotentialZoneReconciliation(object.DNSSetName().DNSName) {
-		logger.Infof("entry %q is a potential part of zone reconcilation -> reschedule", object.ObjectName())
-		millis := time.Millisecond * time.Duration(3000+rand.Int32N(3000)) // #nosec G404  -- not used for cryptographic purposes
-		return reconcile.RescheduleAfter(logger, millis)
-	}
 
 	if object.GetAnnotations()[constants.GardenerOperation] == constants.GardenerOperationReconcile {
 		_, err := object.Modify(func(data resources.ObjectData) (bool, error) {
