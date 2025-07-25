@@ -32,8 +32,9 @@ func GetState() *State {
 	}
 
 	state = &State{
-		providers: newProviderMap(),
-		accounts:  provider.NewAccountMap(),
+		providers:      newProviderMap(),
+		accounts:       provider.NewAccountMap(),
+		dnsNameLocking: newDNSNameLocking(),
 	}
 	if instance.CompareAndSwap(nil, state) {
 		return state
@@ -46,6 +47,8 @@ type State struct {
 	providers providerMap
 	accounts  *provider.AccountMap
 	factory   atomic.Pointer[provider.DNSHandlerFactory]
+
+	dnsNameLocking *dnsNameLocking
 }
 
 type providerMap struct {
@@ -136,6 +139,11 @@ func (s *State) GetDNSQueryHandler(ctx context.Context, zoneID dns.ZoneID) (DNSQ
 		return nil, err
 	}
 	return newDNSCachesQueryHandler(dnscaches), nil
+}
+
+// GetDNSNameLocking returns the dnsNameLocking instance used for managing DNS name locks.
+func (s *State) GetDNSNameLocking() *dnsNameLocking {
+	return s.dnsNameLocking
 }
 
 // ClearState clears the singleton state instance (for testing purposes).
