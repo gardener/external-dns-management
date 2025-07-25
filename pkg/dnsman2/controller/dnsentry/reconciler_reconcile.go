@@ -54,15 +54,11 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 		return *res
 	}
 
-	names := getDNSNames(r.Entry.Spec.DNSName, r.Entry.Status.DNSName)
-	locking := r.state.GetDNSNameLocking()
-	if !locking.Lock(names...) {
-		// already locked by another entry, requeue
-		return common.ReconcileResult{
-			Result: reconcile.Result{RequeueAfter: 3*time.Second + time.Duration(rand.Intn(500))*time.Millisecond},
-		}
+	unlockFunc, res := r.lockDNSNames()
+	if res != nil {
+		return *res
 	}
-	defer locking.Unlock(names...)
+	defer unlockFunc()
 
 	newProviderData, res := providerselector.CalcNewProvider(r.EntryContext, r.namespace, r.class, r.state)
 	if res != nil {
@@ -100,6 +96,20 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 	}
 
 	return r.updateStatusWithProvider(targetsData)
+}
+
+func (r *entryReconciliation) lockDNSNames() (func(), *common.ReconcileResult) {
+	names := getDNSNames(r.Entry.Spec.DNSName, r.Entry.Status.DNSName)
+	locking := r.state.GetDNSNameLocking()
+	if !locking.Lock(names...) {
+		// already locked by another entry, requeue
+		return nil, &common.ReconcileResult{
+			Result: reconcile.Result{RequeueAfter: 3*time.Second + time.Duration(rand.Intn(500))*time.Millisecond},
+		}
+	}
+	return func() {
+		locking.Unlock(names...)
+	}, nil
 }
 
 func (r *entryReconciliation) updateStatusWithoutProvider() common.ReconcileResult {
