@@ -226,6 +226,7 @@ spec:
                   lookup interval for CNAMEs that must be resolved to IP addresses.
                   Only used if ` + "`" + `resolveTargetsToAddresses` + "`" + ` is set to true or targets consists of multiple domain names.
                 format: int64
+                minimum: 30
                 type: integer
               dnsName:
                 description: full qualified domain name
@@ -268,6 +269,12 @@ spec:
                   type:
                     description: Policy is the policy type. Allowed values are provider
                       dependent, e.g. ` + "`" + `weighted` + "`" + `
+                    enum:
+                    - weighted
+                    - latency
+                    - geolocation
+                    - ip-based
+                    - failover
                     type: string
                 required:
                 - parameters
@@ -278,16 +285,22 @@ spec:
                 description: target records (CNAME or A records), either text or targets
                   must be specified
                 items:
+                  minLength: 1
                   type: string
+                maxItems: 100
                 type: array
               text:
                 description: text records, either text or targets must be specified
                 items:
+                  minLength: 1
                   type: string
+                maxItems: 100
                 type: array
               ttl:
                 description: time to live for records in external DNS system
                 format: int64
+                maximum: 8640000
+                minimum: 1
                 type: integer
             required:
             - dnsName
@@ -333,6 +346,12 @@ spec:
                   type:
                     description: Policy is the policy type. Allowed values are provider
                       dependent, e.g. ` + "`" + `weighted` + "`" + `
+                    enum:
+                    - weighted
+                    - latency
+                    - geolocation
+                    - ip-based
+                    - failover
                     type: string
                 required:
                 - parameters
