@@ -65,6 +65,7 @@ type DNSEntrySpec struct {
 	// lookup interval for CNAMEs that must be resolved to IP addresses.
 	// Only used if `resolveTargetsToAddresses` is set to true or targets consists of multiple domain names.
 	// +kubebuilder:validation:Minimum=30
+	// +kubebuilder:validation:Maximum=8640000
 	// +optional
 	CNameLookupInterval *int64 `json:"cnameLookupInterval,omitempty"`
 	// enables translation of a target domain name in the resolved IPv4 and IPv6 addresses.
