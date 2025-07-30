@@ -13,7 +13,7 @@ require (
 	github.com/alibabacloud-go/alidns-20150109/v4 v4.5.11
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.9
 	github.com/alibabacloud-go/tea v1.3.10
-	github.com/aws/aws-sdk-go-v2 v1.37.0
+	github.com/aws/aws-sdk-go-v2 v1.37.1
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.71
 	github.com/aws/aws-sdk-go-v2/service/route53 v1.53.1
