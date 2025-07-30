@@ -38,7 +38,7 @@ func newAdapter() provider.DNSHandlerAdapter {
 	checks.Add(provider.RequiredProperty("Server", "server").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.PrintableValidator, provider.URLValidator("https", "http"), provider.MaxLengthValidator(256)))
 	checks.Add(provider.RequiredProperty("ApiKey", "apiKey").
-		Validators(provider.NoTrailingWhitespaceValidator, provider.PrintableValidator, provider.MaxLengthValidator(8192)).
+		Validators(provider.NoTrailingWhitespaceValidator, provider.PrintableValidator, provider.MaxLengthValidator(8192)). // PowerDNS does not impose a maximum length for API keys. Therefore, the typical maximum length of HTTP headers is used.
 		HideValue())
 	checks.Add(provider.OptionalProperty("VirtualHost", "virtualHost").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.PrintableValidator, provider.MaxLengthValidator(128)))
