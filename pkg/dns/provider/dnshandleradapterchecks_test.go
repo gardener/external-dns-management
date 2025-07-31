@@ -155,5 +155,44 @@ var _ = g.Describe("DNSHandlerAdapterChecks", func() {
 			Expect(err).ToNot(Succeed())
 			Expect(err.Error()).To(ContainSubstring("invalid secret: (hidden)"))
 		})
+
+		g.Context("RequiredIfUnset", func() {
+			g.It("should require a property if the depending property is not set", func() {
+				checks.Add(OptionalProperty("optprop").
+					RequiredIfUnset([]string{"baz"}))
+				props["foo"] = "good"
+				err := checks.ValidateProperties("test", props)
+				Expect(err).ToNot(Succeed())
+				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"baz\" is not set"))
+			})
+
+			g.It("should require a property if the depending property is empty", func() {
+				checks.Add(OptionalProperty("optprop").
+					RequiredIfUnset([]string{"baz"}))
+				props["foo"] = "good"
+				props["baz"] = ""
+				err := checks.ValidateProperties("test", props)
+				Expect(err).ToNot(Succeed())
+				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"baz\" is not set"))
+			})
+
+			g.It("should require a property if any depending property is not set", func() {
+				checks.Add(OptionalProperty("optprop").
+					RequiredIfUnset([]string{"baz", "qux"}))
+				props["foo"] = "good"
+				props["baz"] = "good"
+				err := checks.ValidateProperties("test", props)
+				Expect(err).ToNot(Succeed())
+				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"qux\" is not set"))
+			})
+
+			g.It("should not require a property if the depending property is set", func() {
+				checks.Add(OptionalProperty("optprop").
+					RequiredIfUnset([]string{"baz"}))
+				props["foo"] = "good"
+				props["baz"] = "good"
+				Expect(checks.ValidateProperties("test", props)).To(Succeed())
+			})
+		})
 	})
 })
