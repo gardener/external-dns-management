@@ -45,15 +45,18 @@ var regionRegex = regexp.MustCompile("^[a-z0-9-]*$") // empty string is explicit
 
 func newAdapter() provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
-	checks.Add(provider.RequiredProperty("AWS_ACCESS_KEY_ID", "accessKeyID").
+	checks.Add(provider.OptionalProperty("AWS_ACCESS_KEY_ID", "accessKeyID").
+		RequiredIfUnset([]string{"AWS_USE_CREDENTIALS_CHAIN"}).
 		Validators(provider.NoTrailingWhitespaceValidator, provider.AlphaNumericValidator, provider.MaxLengthValidator(128)))
-	checks.Add(provider.RequiredProperty("AWS_SECRET_ACCESS_KEY", "secretAccessKey").
+	checks.Add(provider.OptionalProperty("AWS_SECRET_ACCESS_KEY", "secretAccessKey").
+		RequiredIfUnset([]string{"AWS_USE_CREDENTIALS_CHAIN"}).
 		Validators(provider.NoTrailingWhitespaceValidator, provider.MaxLengthValidator(128)).
 		HideValue())
 	checks.Add(provider.OptionalProperty("AWS_REGION", "region").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.MaxLengthValidator(32), provider.RegExValidator(regionRegex)).
 		AllowEmptyValue())
 	checks.Add(provider.OptionalProperty("AWS_USE_CREDENTIALS_CHAIN").
+		RequiredIfUnset([]string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"}).
 		Validators(provider.NoTrailingWhitespaceValidator, provider.BoolValidator))
 	checks.Add(provider.OptionalProperty("AWS_SESSION_TOKEN").
 		Validators(provider.MaxLengthValidator(512)).
