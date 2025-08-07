@@ -28,13 +28,13 @@ type Factory struct {
 
 var _ DNSHandlerFactory = &Factory{}
 
-func NewDNSHandlerFactory(typecode string, create DNSHandlerCreatorFunction, adapter DNSHandlerAdapter, disableZoneStateCache ...bool) *Factory {
+func NewDNSHandlerFactory(create DNSHandlerCreatorFunction, adapter DNSHandlerAdapter, disableZoneStateCache ...bool) *Factory {
 	disable := false
 	for _, b := range disableZoneStateCache {
 		disable = disable || b
 	}
 	return &Factory{
-		typecode:              typecode,
+		typecode:              adapter.ProviderType(),
 		create:                create,
 		adapter:               adapter,
 		supportZoneStateCache: !disable,

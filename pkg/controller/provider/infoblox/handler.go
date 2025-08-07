@@ -15,6 +15,8 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	ibclient "github.com/infobloxopen/infoblox-go-client/v2"
 
+	"github.com/gardener/external-dns-management/pkg/controller/provider/infoblox/config"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/infoblox/validation"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
@@ -24,81 +26,67 @@ type Handler struct {
 	provider.ZoneCache
 	provider.DefaultDNSHandler
 	config         provider.DNSHandlerConfig
-	infobloxConfig *InfobloxConfig
+	infobloxConfig *config.InfobloxConfig
 	access         *access
 	ctx            context.Context
 }
 
-type InfobloxConfig struct {
-	Host            *string            `json:"host,omitempty"`
-	Port            *int               `json:"port,omitempty"`
-	SSLVerify       *bool              `json:"sslVerify,omitempty"`
-	Version         *string            `json:"version,omitempty"`
-	View            *string            `json:"view,omitempty"`
-	PoolConnections *int               `json:"httpPoolConnections,omitempty"`
-	RequestTimeout  *int               `json:"httpRequestTimeout,omitempty"`
-	CaCert          *string            `json:"caCert,omitempty"`
-	MaxResults      int                `json:"maxResults,omitempty"`
-	ProxyURL        *string            `json:"proxyUrl,omitempty"`
-	ExtAttrs        *map[string]string `json:"extAttrs,omitempty"`
-}
-
 var _ provider.DNSHandler = &Handler{}
 
-func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
-	infobloxConfig := &InfobloxConfig{}
-	if config.Config != nil {
-		err := json.Unmarshal(config.Config.Raw, infobloxConfig)
+func NewHandler(cfg *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
+	infobloxConfig := &config.InfobloxConfig{}
+	if cfg.Config != nil {
+		err := json.Unmarshal(cfg.Config.Raw, infobloxConfig)
 		if err != nil {
 			return nil, fmt.Errorf("unmarshal infoblox providerConfig failed with: %s", err)
 		}
 	}
 
 	h := &Handler{
-		DefaultDNSHandler: provider.NewDefaultDNSHandler(TYPE_CODE),
-		config:            *config,
+		DefaultDNSHandler: provider.NewDefaultDNSHandler(validation.ProviderType),
+		config:            *cfg,
 		infobloxConfig:    infobloxConfig,
-		ctx:               config.Context,
+		ctx:               cfg.Context,
 	}
 
-	username, err := config.GetRequiredProperty("USERNAME", "username")
+	username, err := cfg.GetRequiredProperty("USERNAME", "username")
 	if err != nil {
 		return nil, err
 	}
-	password, err := config.GetRequiredProperty("PASSWORD", "password")
+	password, err := cfg.GetRequiredProperty("PASSWORD", "password")
 	if err != nil {
 		return nil, err
 	}
 
-	if err := config.FillDefaultedProperty(&infobloxConfig.Version, "2.10", "VERSION", "version"); err != nil {
+	if err := cfg.FillDefaultedProperty(&infobloxConfig.Version, "2.10", "VERSION", "version"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedProperty(&infobloxConfig.View, "default", "VIEW", "view"); err != nil {
+	if err := cfg.FillDefaultedProperty(&infobloxConfig.View, "default", "VIEW", "view"); err != nil {
 		return nil, err
 	}
-	if err := config.FillRequiredProperty(&infobloxConfig.Host, "HOST", "host"); err != nil {
+	if err := cfg.FillRequiredProperty(&infobloxConfig.Host, "HOST", "host"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedIntProperty(&infobloxConfig.Port, 443, "PORT", "port"); err != nil {
+	if err := cfg.FillDefaultedIntProperty(&infobloxConfig.Port, 443, "PORT", "port"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedIntProperty(&infobloxConfig.PoolConnections, 10, "HTTP_POOL_CONNECTIONS", "http_pool_connections", "httpPoolConnections"); err != nil {
+	if err := cfg.FillDefaultedIntProperty(&infobloxConfig.PoolConnections, 10, "HTTP_POOL_CONNECTIONS", "http_pool_connections", "httpPoolConnections"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedIntProperty(&infobloxConfig.RequestTimeout, 60, "HTTP_REQUEST_TIMEOUT", "http_request_timeout", "httpRequestTimeout"); err != nil {
+	if err := cfg.FillDefaultedIntProperty(&infobloxConfig.RequestTimeout, 60, "HTTP_REQUEST_TIMEOUT", "http_request_timeout", "httpRequestTimeout"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedProperty(&infobloxConfig.ProxyURL, "", "PROXY_URL", "proxy_url", "proxyUrl"); err != nil {
+	if err := cfg.FillDefaultedProperty(&infobloxConfig.ProxyURL, "", "PROXY_URL", "proxy_url", "proxyUrl"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedProperty(&infobloxConfig.CaCert, "", "CA_CERT", "ca_cert", "caCert"); err != nil {
+	if err := cfg.FillDefaultedProperty(&infobloxConfig.CaCert, "", "CA_CERT", "ca_cert", "caCert"); err != nil {
 		return nil, err
 	}
-	if err := config.FillDefaultedBoolProperty(&infobloxConfig.SSLVerify, true, "SSL_VERIFY", "ssl_verify", "sslVerify"); err != nil {
+	if err := cfg.FillDefaultedBoolProperty(&infobloxConfig.SSLVerify, true, "SSL_VERIFY", "ssl_verify", "sslVerify"); err != nil {
 		return nil, err
 	}
 
-	config.Logger.Infof("creating infoblox handler for %s", *infobloxConfig.Host)
+	cfg.Logger.Infof("creating infoblox handler for %s", *infobloxConfig.Host)
 
 	hostConfig := ibclient.HostConfig{
 		Host:    *infobloxConfig.Host,
@@ -157,9 +145,9 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		}
 	}
 
-	h.access = NewAccess(client, requestBuilder, *h.infobloxConfig.View, config.Metrics, ea)
+	h.access = NewAccess(client, requestBuilder, *h.infobloxConfig.View, cfg.Metrics, ea)
 
-	h.ZoneCache, err = config.ZoneCacheFactory.CreateZoneCache(provider.CacheZonesOnly, config.Metrics, h.getZones, h.getZoneState)
+	h.ZoneCache, err = cfg.ZoneCacheFactory.CreateZoneCache(provider.CacheZonesOnly, cfg.Metrics, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}

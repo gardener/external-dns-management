@@ -14,6 +14,11 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
+const (
+	ProviderTypeAzureDNS        = "azure-dns"
+	ProviderTypeAzurePrivateDNS = "azure-private-dns"
+)
+
 type adapter struct {
 	providerType string
 	checks       *provider.DNSHandlerAdapterChecks

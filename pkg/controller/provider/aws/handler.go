@@ -19,6 +19,7 @@ import (
 	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
+	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/config"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/mapping"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -28,14 +29,10 @@ import (
 type Handler struct {
 	provider.DefaultDNSHandler
 	config        provider.DNSHandlerConfig
-	awsConfig     AWSConfig
+	awsConfig     config.AWSConfig
 	cache         provider.ZoneCache
 	r53           route53.Client
 	policyContext *routingPolicyContext
-}
-
-type AWSConfig struct {
-	BatchSize int `json:"batchSize"`
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -44,7 +41,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	advancedConfig := c.Options.GetAdvancedConfig()
 	c.Logger.Infof("advanced options: %s", advancedConfig)
 
-	awsConfig := AWSConfig{BatchSize: advancedConfig.BatchSize}
+	awsConfig := config.AWSConfig{BatchSize: advancedConfig.BatchSize}
 	if c.Config != nil {
 		err := json.Unmarshal(c.Config.Raw, &awsConfig)
 		if err != nil {

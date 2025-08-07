@@ -9,6 +9,8 @@ package google
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/gardener/external-dns-management/pkg/controller/provider/google/validation"
 )
 
 var _ = Describe("ValidateServiceAccountJSON", func() {
@@ -50,7 +52,7 @@ var _ = Describe("ValidateServiceAccountJSON", func() {
 
 	for _, tt := range tests {
 		It(tt.name, func() {
-			_, err := validateServiceAccountJSON([]byte(tt.data))
+			_, err := validation.ValidateServiceAccountJSON([]byte(tt.data))
 			if tt.wantErr {
 				Expect(err).To(HaveOccurred())
 			} else {

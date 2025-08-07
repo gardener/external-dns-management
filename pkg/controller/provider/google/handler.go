@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -17,9 +16,9 @@ import (
 	"golang.org/x/oauth2/jwt"
 	googledns "google.golang.org/api/dns/v1"
 	"google.golang.org/api/option"
-	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/client-go/util/flowcontrol"
 
+	"github.com/gardener/external-dns-management/pkg/controller/provider/google/validation"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
@@ -29,20 +28,11 @@ type Handler struct {
 	config      provider.DNSHandlerConfig
 	cache       provider.ZoneCache
 	jwtConfig   *jwt.Config
-	info        lightCredentialsFile
+	info        validation.LightCredentialsFile
 	client      *http.Client
 	ctx         context.Context
 	service     *googledns.Service
 	rateLimiter flowcontrol.RateLimiter
-}
-
-type lightCredentialsFile struct {
-	Type string `json:"type"`
-
-	// Service Account fields
-	ClientEmail  string `json:"client_email"`
-	PrivateKeyID string `json:"private_key_id"`
-	ProjectID    string `json:"project_id"`
 }
 
 const epsilon = 0.00001
@@ -68,7 +58,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 
 	h.ctx = config.Context
 
-	h.info, err = validateServiceAccountJSON([]byte(serviceAccountJSON))
+	h.info, err = validation.ValidateServiceAccountJSON([]byte(serviceAccountJSON))
 	if err != nil {
 		return nil, err
 	}
@@ -224,23 +214,6 @@ func (h *Handler) getResourceRecordSet(project, managedZone, name, typ string) (
 	h.config.RateLimiter.Accept()
 	h.config.Metrics.AddGenericRequests("getrecordset", 1)
 	return h.service.ResourceRecordSets.Get(project, managedZone, name, typ).Do()
-}
-
-var projectIDRegexp = regexp.MustCompile(`^(?P<project>[a-z][a-z0-9-]{4,28}[a-z0-9])$`)
-
-func validateServiceAccountJSON(data []byte) (lightCredentialsFile, error) {
-	var credInfo lightCredentialsFile
-
-	if err := json.Unmarshal(data, &credInfo); err != nil {
-		return credInfo, fmt.Errorf("'serviceaccount.json' data field does not contain a valid JSON: %s", err)
-	}
-	if !projectIDRegexp.MatchString(credInfo.ProjectID) {
-		return credInfo, fmt.Errorf("'serviceaccount.json' field 'project_id' is not a valid project")
-	}
-	if credInfo.Type != "service_account" {
-		return credInfo, fmt.Errorf("'serviceaccount.json' field 'type' is not 'service_account'")
-	}
-	return credInfo, nil
 }
 
 // SplitZoneID splits the zone id into project id and zone name

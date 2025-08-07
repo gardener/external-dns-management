@@ -22,7 +22,7 @@ var rateLimiterDefaults = provider.RateLimiterOptions{
 	Burst:   20,
 }
 
-var Factory = provider.NewDNSHandlerFactory(TYPE_CODE, NewHandler, &adapter{}).
+var Factory = provider.NewDNSHandlerFactory(NewHandler, &adapter{}).
 	SetGenericFactoryOptionDefaults(provider.GenericFactoryOptionDefaults.SetRateLimiterOptions(rateLimiterDefaults))
 
 func init() {
