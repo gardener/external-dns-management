@@ -226,6 +226,7 @@ spec:
                   lookup interval for CNAMEs that must be resolved to IP addresses.
                   Only used if ` + "`" + `resolveTargetsToAddresses` + "`" + ` is set to true or targets consists of multiple domain names.
                 format: int64
+                maximum: 8640000
                 minimum: 30
                 type: integer
               dnsName:
