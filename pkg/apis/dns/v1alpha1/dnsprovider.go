@@ -43,7 +43,7 @@ type DNSProvider struct {
 
 type DNSProviderSpec struct {
 	// type of the provider (selecting the responsible type of DNS controller)
-	// +kubebuilder:validation:Enum=aws-route53;alicloud-dns;azure-dns;azure-private-dns;cloudflare-dns;google-clouddns;infoblox-dns;mock-inmemory;netlify-dns;openstack-designate;powerdns;remote;rfc2136
+	// +kubebuilder:validation:Enum=aws-route53;alicloud-dns;azure-dns;azure-private-dns;cloudflare-dns;gdch-dns;google-clouddns;infoblox-dns;local;mock-inmemory;netlify-dns;openstack-designate;powerdns;remote;rfc2136
 	Type string `json:"type,omitempty"`
 	// optional additional provider specific configuration values
 	// +kubebuilder:validation:XPreserveUnknownFields
