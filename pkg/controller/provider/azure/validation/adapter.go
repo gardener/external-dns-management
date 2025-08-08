@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package utils
+package validation
 
 import (
 	"fmt"
@@ -12,6 +12,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
+)
+
+const (
+	ProviderTypeAzureDNS        = "azure-dns"
+	ProviderTypeAzurePrivateDNS = "azure-private-dns"
 )
 
 type adapter struct {

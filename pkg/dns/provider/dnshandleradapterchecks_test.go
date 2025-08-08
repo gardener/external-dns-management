@@ -157,40 +157,47 @@ var _ = g.Describe("DNSHandlerAdapterChecks", func() {
 		})
 
 		g.Context("RequiredIfUnset", func() {
-			g.It("should require a property if the depending property is not set", func() {
+			g.BeforeEach(func() {
+				checks.Add(OptionalProperty("baz", "baz-alias").
+					RequiredIfUnset("optprop"))
 				checks.Add(OptionalProperty("optprop").
-					RequiredIfUnset([]string{"baz"}))
+					RequiredIfUnset("baz"))
+			})
+
+			g.It("should require a property if the depending property is not set", func() {
 				props["foo"] = "good"
 				err := checks.ValidateProperties("test", props)
 				Expect(err).ToNot(Succeed())
-				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"baz\" is not set"))
+				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"baz (aliases [baz-alias])\" is not set"))
 			})
 
 			g.It("should require a property if the depending property is empty", func() {
-				checks.Add(OptionalProperty("optprop").
-					RequiredIfUnset([]string{"baz"}))
 				props["foo"] = "good"
 				props["baz"] = ""
 				err := checks.ValidateProperties("test", props)
 				Expect(err).ToNot(Succeed())
-				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"baz\" is not set"))
+				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"baz (aliases [baz-alias])\" is not set"))
 			})
 
 			g.It("should require a property if any depending property is not set", func() {
-				checks.Add(OptionalProperty("optprop").
-					RequiredIfUnset([]string{"baz", "qux"}))
+				checks.Add(OptionalProperty("qux").
+					RequiredIfUnset("optprop"))
 				props["foo"] = "good"
 				props["baz"] = "good"
 				err := checks.ValidateProperties("test", props)
 				Expect(err).ToNot(Succeed())
-				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"qux\" is not set"))
+				Expect(err.Error()).To(ContainSubstring("property \"qux\" is required if property \"optprop\" is not set"))
 			})
 
 			g.It("should not require a property if the depending property is set", func() {
-				checks.Add(OptionalProperty("optprop").
-					RequiredIfUnset([]string{"baz"}))
 				props["foo"] = "good"
 				props["baz"] = "good"
+				Expect(checks.ValidateProperties("test", props)).To(Succeed())
+			})
+
+			g.It("should not require a property if the depending property alias is set", func() {
+				props["foo"] = "good"
+				props["baz-alias"] = "good"
 				Expect(checks.ValidateProperties("test", props)).To(Succeed())
 			})
 		})

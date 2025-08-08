@@ -13,6 +13,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	miekgdns "github.com/miekg/dns"
 
+	"github.com/gardener/external-dns-management/pkg/controller/provider/rfc2136/validation"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
@@ -40,9 +41,6 @@ type Handler struct {
 }
 
 var _ provider.DNSHandler = &Handler{}
-
-// tsigAlgs are the supported TSIG algorithms
-var tsigAlgs = []string{miekgdns.HmacSHA1, miekgdns.HmacSHA224, miekgdns.HmacSHA256, miekgdns.HmacSHA384, miekgdns.HmacSHA512}
 
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	h := &Handler{
@@ -85,7 +83,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	}
 	h.tsigSecret = secret
 
-	h.tsigAlgorithm, err = findTsigAlgorithm(c.GetProperty("TSIGSecretAlgorithm"))
+	h.tsigAlgorithm, err = validation.FindTsigAlgorithm(c.GetProperty("TSIGSecretAlgorithm"))
 	if err != nil {
 		return nil, err
 	}
@@ -243,18 +241,4 @@ func (h *Handler) executeRequests(logger logger.LogContext, zone provider.DNSHos
 	}
 
 	return nil
-}
-
-func findTsigAlgorithm(alg string) (string, error) {
-	if alg == "" {
-		return miekgdns.HmacSHA256, nil
-	}
-
-	fqdnAlg := miekgdns.Fqdn(alg)
-	for _, a := range tsigAlgs {
-		if fqdnAlg == a {
-			return fqdnAlg, nil
-		}
-	}
-	return "", fmt.Errorf("invalid TSIG secret algorithm: %s (supported: %s)", alg, strings.ReplaceAll(strings.Join(tsigAlgs, ","), ".", ""))
 }

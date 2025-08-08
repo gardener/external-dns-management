@@ -136,8 +136,10 @@ spec:
                 - azure-dns
                 - azure-private-dns
                 - cloudflare-dns
+                - gdch-dns
                 - google-clouddns
                 - infoblox-dns
+                - local
                 - mock-inmemory
                 - netlify-dns
                 - openstack-designate

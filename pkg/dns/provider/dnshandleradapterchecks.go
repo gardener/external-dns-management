@@ -56,7 +56,7 @@ func (b *DNSHandlerAdapterBuilder) HideValue() *DNSHandlerAdapterBuilder {
 	return b
 }
 
-func (b *DNSHandlerAdapterBuilder) RequiredIfUnset(propertyNames []string) *DNSHandlerAdapterBuilder {
+func (b *DNSHandlerAdapterBuilder) RequiredIfUnset(propertyNames ...string) *DNSHandlerAdapterBuilder {
 	b.check.requiredIfUnset = propertyNames
 	return b
 }
@@ -144,7 +144,7 @@ func (c *DNSHandlerAdapterChecks) ValidateProperties(providerType string, proper
 		allowedKeys.Insert(name)
 
 		if !found && !check.required {
-			if err := validateRequiredIfUnset(name, check, properties); err != nil {
+			if err := c.validateRequiredIfUnset(name, check, properties); err != nil {
 				errs = append(errs, err)
 			}
 			continue
@@ -218,12 +218,28 @@ func niceNameAndAliases(pc propertyCheck) string {
 	return fmt.Sprintf("%s (aliases [%s])", pc.name, strings.Join(pc.aliases, ","))
 }
 
-func validateRequiredIfUnset(name string, check propertyCheck, properties utils.Properties) error {
+func (c *DNSHandlerAdapterChecks) validateRequiredIfUnset(name string, check propertyCheck, properties utils.Properties) error {
 	for _, otherPropertyName := range check.requiredIfUnset {
-		otherValue, ok := properties[otherPropertyName]
+		var pc propertyCheck
+		for _, item := range c.propertyChecks {
+			if item.name == otherPropertyName {
+				pc = item
+			}
+		}
+		if pc.name == "" {
+			return fmt.Errorf("internal error: %q is required if property %q is not set, but property %q does not exist", niceName(check.name, name), otherPropertyName, otherPropertyName)
+		}
+		found := false
+		for _, otherPropertyName := range append([]string{pc.name}, pc.aliases...) {
+			otherValue, ok := properties[otherPropertyName]
 
-		if !ok || otherValue == "" {
-			return fmt.Errorf("property %q is required if property %q is not set", niceName(check.name, name), otherPropertyName)
+			if ok && otherValue != "" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("property %q is required if property %q is not set", niceName(check.name, name), niceNameAndAliases(pc))
 		}
 	}
 
