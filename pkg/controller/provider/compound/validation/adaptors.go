@@ -7,7 +7,7 @@ package validation
 import (
 	alicloudvalidation "github.com/gardener/external-dns-management/pkg/controller/provider/alicloud/validation"
 	awsvalidation "github.com/gardener/external-dns-management/pkg/controller/provider/aws/validation"
-	azureutils "github.com/gardener/external-dns-management/pkg/controller/provider/azure/utils"
+	azurevalidation "github.com/gardener/external-dns-management/pkg/controller/provider/azure/validation"
 	cloudflarevalidation "github.com/gardener/external-dns-management/pkg/controller/provider/cloudflare/validation"
 	googlevalidation "github.com/gardener/external-dns-management/pkg/controller/provider/google/validation"
 	infobloxvalidation "github.com/gardener/external-dns-management/pkg/controller/provider/infoblox/validation"
@@ -26,8 +26,8 @@ func init() {
 	for _, adaptor := range []provider.DNSHandlerAdapter{
 		alicloudvalidation.NewAdapter(),
 		awsvalidation.NewAdapter(),
-		azureutils.NewAdapter(azureutils.ProviderTypeAzureDNS),
-		azureutils.NewAdapter(azureutils.ProviderTypeAzurePrivateDNS),
+		azurevalidation.NewAdapter(azurevalidation.ProviderTypeAzureDNS),
+		azurevalidation.NewAdapter(azurevalidation.ProviderTypeAzurePrivateDNS),
 		cloudflarevalidation.NewAdapter(),
 		googlevalidation.NewAdapter(),
 		infobloxvalidation.NewAdapter(),
