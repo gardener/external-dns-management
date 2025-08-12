@@ -38,14 +38,14 @@ func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSName
 	set := utils.StringSet{}
 	for _, i := range svc.Status.LoadBalancer.Ingress {
 		if i.Hostname != "" && i.IP == "" {
-			if svc.Annotations["loadbalancer.openstack.org/load-balancer-address"] != "" {
+			if svc.Annotations[dns.AnnotationOpenStackLoadBalancerAddress] != "" {
 				// Support for PROXY protocol on Openstack (which needs a hostname as ingress)
 				// If the user sets the annotation `loadbalancer.openstack.org/hostname`, the
 				// annotation `loadbalancer.openstack.org/load-balancer-address` contains the IP address.
 				// This address can then be used to create a DNS record for the hostname specified both
 				// in annotation `loadbalancer.openstack.org/hostname` and `dns.gardener.cloud/dnsnames`
 				// see https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/expose-applications-using-loadbalancer-type-service.md#service-annotations
-				set.Add(svc.Annotations["loadbalancer.openstack.org/load-balancer-address"])
+				set.Add(svc.Annotations[dns.AnnotationOpenStackLoadBalancerAddress])
 			} else {
 				set.Add(i.Hostname)
 			}
@@ -58,7 +58,7 @@ func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSName
 	if svc.Annotations[dns.AnnotationIPStack] != "" {
 		ipstack = svc.Annotations[dns.AnnotationIPStack]
 	}
-	if svc.Annotations["service.beta.kubernetes.io/aws-load-balancer-ip-address-type"] == "dualstack" {
+	if svc.Annotations[dns.AnnotationAwsLoadBalancerIpAddressType] == dns.AnnotationAwsLoadBalancerIpAddressTypeValueDualStack {
 		ipstack = dns.AnnotationValueIPStackIPDualStack
 	}
 	if v := svc.Annotations[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
