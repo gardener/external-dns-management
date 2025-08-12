@@ -482,8 +482,8 @@ The handling of this resource is done by a dedicated controller, the `annotation
 controller. It caches the annotation settings declared by those objects and
 makes them accessible for the DNS source controllers.
 
-The DNS source controller responsible for a dedicated kind of resource
-,for example Service, reads the object, analyses the annotations, and then decides
+The DNS source controller responsible for a dedicated kind of resource, 
+for example Service, reads the object, analyses the annotations, and then decides
 what to do with it. Most of the flow is handled by a central library, only
 some dedicated resource dependent steps are implemented separately by a
 dedicated source controller. The `DNSAnnotation` resource slightly extends this
