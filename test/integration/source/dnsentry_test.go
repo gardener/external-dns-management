@@ -363,7 +363,7 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 			Consistently(func(g Gomega) {
 				g.Expect(tc1.client.Get(ctx, client.ObjectKeyFromObject(dnsAnnotation), dnsAnnotation)).To(Succeed())
 				g.Expect(dnsAnnotation.Status.Message).To(BeEmpty())
-			}).WithTimeout(1 * time.Second)
+			}).WithTimeout(1 * time.Second).Should(Succeed())
 		})
 	})
 })

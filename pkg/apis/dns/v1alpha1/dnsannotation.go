@@ -54,7 +54,7 @@ type ResourceReference struct {
 	APIVersion string `json:"apiVersion"`
 	// Kind of the annotated object
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
-	// +kubebuilder:validation:Enum=Service,Ingress,Gateway
+	// +kubebuilder:validation:Enum=Service;Ingress;Gateway
 	Kind string `json:"kind"`
 	// Name of the annotated object
 	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names

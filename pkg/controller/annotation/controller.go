@@ -112,7 +112,7 @@ func (this *reconciler) validate(obj resources.Object) error {
 		return fmt.Errorf("not a DNSAnnotation, unexpected type: %T", obj)
 	}
 
-	for annotation, _ := range dnsAnnotation.Spec.Annotations {
+	for annotation := range dnsAnnotation.Spec.Annotations {
 		group := strings.SplitN(annotation, "/", 2)[0]
 
 		switch group {
