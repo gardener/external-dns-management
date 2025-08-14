@@ -51,7 +51,7 @@ var _ provider.DNSHandler = &handler{}
 // NewHandler creates a new Google Cloud DNS handler based on the provided configuration.
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	advancedOptions := c.GlobalConfig.ProviderAdvancedOptions[ProviderType]
-	c.Log.Info("advanced options", "options", advancedOptions) // TODO fix logging of advanced options
+	c.Log.Info("advanced options", "options", advancedOptions) // TODO(MartinWeindel) fix logging of advanced options
 
 	var err error
 
@@ -79,7 +79,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	ctx := context.Background()
 	if err != nil {
-		return nil, fmt.Errorf("serviceaccount is invalid: %s", err)
+		return nil, fmt.Errorf("serviceaccount is invalid: %w", err)
 	}
 	h.client = h.jwtConfig.Client(ctx)
 
@@ -104,19 +104,14 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 		return nil, err
 	}
 
-	blockedZones := h.getAdvancedOptions().BlockedZones
-
 	rt := provider.MetricsRequestTypeListZones
 	var raw []*googledns.ManagedZone
 	f := func(resp *googledns.ManagedZonesListResponse) error {
-	outer:
 		for _, zone := range resp.ManagedZones {
 			zoneID := h.makeZoneID(zone.Name)
-			for _, zone := range blockedZones {
-				if zone == zoneID {
-					log.Info("ignoring blocked zone", "zone", zoneID)
-					continue outer
-				}
+			if h.isBlockedZone(zoneID) {
+				log.Info("ignoring blocked zone", "zone", zoneID)
+				continue
 			}
 			raw = append(raw, zone)
 		}
@@ -138,6 +133,15 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 	}
 
 	return zones, nil
+}
+
+func (h *handler) isBlockedZone(zoneID string) bool {
+	for _, zone := range h.getAdvancedOptions().BlockedZones {
+		if zone == zoneID {
+			return true
+		}
+	}
+	return false
 }
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the Google Cloud DNS provider if the zone is private.
@@ -164,38 +168,28 @@ func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDN
 
 // queryDNS queries the DNS provider for the given DNS name and record type.
 func (h *handler) queryDNS(_ context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-	projectID, zoneName := SplitZoneID(zone.ZoneID.ID)
+	projectID, zoneName, err := splitZoneID(zone.ZoneID.ID)
+	if err != nil {
+		return nil, err
+	}
 	r, err := h.getResourceRecordSet(projectID, zoneName, dns.EnsureTrailingDot(setName.DNSName), string(recordType))
 	if err != nil {
 		return nil, err
 	}
 
-	if setName.SetIdentifier == "" && len(r.Rrdatas) > 0 {
+	switch {
+	case setName.SetIdentifier == "":
+		// standard record set without routing policy
 		return buildRecordSet(recordType, r.Ttl, r.Rrdatas), nil
-	} else if setName.SetIdentifier != "" && r.RoutingPolicy != nil && r.RoutingPolicy.Wrr != nil {
-		for i, item := range r.RoutingPolicy.Wrr.Items {
-			if fmt.Sprintf("%d", i) != setName.SetIdentifier {
-				continue // only return the record set for the requested set identifier
-			}
-			if isWrrPlaceHolderItem(toRecordType(r.Type), item) {
-				continue
-			}
-			rs := buildRecordSet(recordType, r.Ttl, item.Rrdatas)
-			rs.RoutingPolicy = dns.NewRoutingPolicy(dns.RoutingPolicyWeighted, keyWeight, strconv.FormatInt(int64(item.Weight+epsilon), 10))
-			return rs, nil
-		}
-	} else if setName.SetIdentifier != "" && r.RoutingPolicy != nil && r.RoutingPolicy.Geo != nil {
-		for _, item := range r.RoutingPolicy.Geo.Items {
-			if item.Location != setName.SetIdentifier {
-				continue // only return the record set for the requested set identifier
-			}
-			rs := buildRecordSet(recordType, r.Ttl, item.Rrdatas)
-			rs.RoutingPolicy = dns.NewRoutingPolicy(dns.RoutingPolicyGeoLocation, keyLocation, item.Location)
-			return rs, nil
-		}
+	case setName.SetIdentifier != "" && r.RoutingPolicy != nil && r.RoutingPolicy.Wrr != nil:
+		// weighted round-robin record set with set identifier
+		return buildRecordSetWeightedRoundRobin(r, setName, recordType)
+	case setName.SetIdentifier != "" && r.RoutingPolicy != nil && r.RoutingPolicy.Geo != nil:
+		// geo location record set with set identifier
+		return buildRecordSetGeoLocation(r, setName, recordType)
+	default:
+		return nil, fmt.Errorf("unsupported record set type for %s[%s] with set identifier %s", setName.DNSName, recordType, setName.SetIdentifier)
 	}
-
-	return nil, nil
 }
 
 func (h *handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZone, reqs provider.ChangeRequests) error {
@@ -272,16 +266,20 @@ func validateServiceAccountJSON(data []byte) (lightCredentialsFile, error) {
 	return credInfo, nil
 }
 
-// SplitZoneID splits the zone id into project id and zone name
-func SplitZoneID(id string) (string, string) {
+// splitZoneID splits the zone id into project id and zone name
+func splitZoneID(id string) (string, string, error) {
 	parts := strings.SplitN(id, "/", 2)
 	if len(parts) != 2 {
-		return "???", id
+		return "", id, fmt.Errorf("invalid zone ID format: %s", id)
 	}
-	return parts[0], parts[1]
+	return parts[0], parts[1], nil
 }
 
 func buildRecordSet(recordType dns.RecordType, ttl int64, rrdata []string) *dns.RecordSet {
+	if len(rrdata) == 0 {
+		return nil
+	}
+
 	rs := dns.NewRecordSet(recordType, ttl, nil)
 	for _, rr := range rrdata {
 		value := rr
@@ -296,4 +294,31 @@ func buildRecordSet(recordType dns.RecordType, ttl int64, rrdata []string) *dns.
 		rs.Add(&dns.Record{Value: value})
 	}
 	return rs
+}
+
+func buildRecordSetWeightedRoundRobin(r *googledns.ResourceRecordSet, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+	for i, item := range r.RoutingPolicy.Wrr.Items {
+		if fmt.Sprintf("%d", i) != setName.SetIdentifier {
+			continue // only return the record set for the requested set identifier
+		}
+		if isWrrPlaceHolderItem(toRecordType(r.Type), item) {
+			continue
+		}
+		rs := buildRecordSet(recordType, r.Ttl, item.Rrdatas)
+		rs.RoutingPolicy = dns.NewRoutingPolicy(dns.RoutingPolicyWeighted, keyWeight, strconv.FormatInt(int64(item.Weight+epsilon), 10))
+		return rs, nil
+	}
+	return nil, nil
+}
+
+func buildRecordSetGeoLocation(r *googledns.ResourceRecordSet, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+	for _, item := range r.RoutingPolicy.Geo.Items {
+		if item.Location != setName.SetIdentifier {
+			continue // only return the record set for the requested set identifier
+		}
+		rs := buildRecordSet(recordType, r.Ttl, item.Rrdatas)
+		rs.RoutingPolicy = dns.NewRoutingPolicy(dns.RoutingPolicyGeoLocation, keyLocation, item.Location)
+		return rs, nil
+	}
+	return nil, nil
 }

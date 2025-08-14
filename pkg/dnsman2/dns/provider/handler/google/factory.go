@@ -17,7 +17,7 @@ import (
 // ProviderType is the type identifier for the Google Cloud DNS handler.
 const ProviderType = "google-clouddns"
 
-// RegisterTo registers the AWS Route53 DNS handler to the given registry.
+// RegisterTo registers the Google Cloud DNS handler to the given registry.
 func RegisterTo(registry *provider.DNSHandlerRegistry) {
 	registry.Register(
 		ProviderType,

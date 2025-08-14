@@ -15,7 +15,6 @@ import (
 	googledns "google.golang.org/api/dns/v1"
 	"google.golang.org/api/googleapi"
 	"k8s.io/apimachinery/pkg/util/sets"
-	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
@@ -33,11 +32,10 @@ const (
 )
 
 type execution struct {
-	log         logr.Logger
-	handler     *handler
-	zoneID      dns.ZoneID
-	rateLimiter flowcontrol.RateLimiter
-	change      *googledns.Change
+	log     logr.Logger
+	handler *handler
+	zoneID  dns.ZoneID
+	change  *googledns.Change
 
 	routingPolicyChanges routingPolicyChanges
 }
@@ -53,9 +51,6 @@ func newExecution(log logr.Logger, h *handler, zoneID dns.ZoneID) *execution {
 		zoneID:               zoneID,
 		change:               change,
 		routingPolicyChanges: routingPolicyChanges{},
-	}
-	if h != nil {
-		ex.rateLimiter = h.config.RateLimiter
 	}
 	return ex
 }
@@ -127,12 +122,15 @@ func (ex *execution) submitChanges(metrics provider.Metrics) error {
 	}
 
 	ex.log.Info("processing changes", "zone", ex.zoneID)
-	projectID, zoneName := SplitZoneID(ex.zoneID.ID)
+	projectID, zoneName, err := splitZoneID(ex.zoneID.ID)
+	if err != nil {
+		ex.log.Error(err, "failed to split zone ID", "zoneID", ex.zoneID.ID)
+		return err
+	}
 	rrsetGetter := func(name string, typ dns.RecordType) (*googledns.ResourceRecordSet, error) {
 		return ex.handler.getResourceRecordSet(projectID, zoneName, name, string(typ))
 	}
-	err := ex.prepareSubmission(rrsetGetter)
-	if err != nil {
+	if err := ex.prepareSubmission(rrsetGetter); err != nil {
 		ex.log.Error(err, "failed to prepare submission", "zoneID", ex.zoneID)
 		return err
 	}
@@ -140,7 +138,7 @@ func (ex *execution) submitChanges(metrics provider.Metrics) error {
 	metrics.AddZoneRequests(ex.zoneID.ID, provider.MetricsRequestTypeUpdateRecords, 1)
 	ex.handler.config.RateLimiter.Accept()
 	if _, err := ex.handler.service.Changes.Create(projectID, zoneName, ex.change).Do(); err != nil {
-		if e2, ok := err.(*googleapi.Error); ok && e2.Code == 412 {
+		if apiErr, ok := err.(*googleapi.Error); ok && apiErr.Code == 412 {
 			// Check if the order of the records is the problem
 			// Background: The record order for A and AAAA records is not guaranteed for DNS queries.
 			// Most DNS servers, including authoritative ones, may randomize or rotate the order for load balancing or other reasons.
@@ -152,7 +150,7 @@ func (ex *execution) submitChanges(metrics provider.Metrics) error {
 		}
 	}
 
-	ex.log.Info(fmt.Sprintf("%d records in zone %s were successfully updated", len(ex.change.Additions)+len(ex.change.Deletions), ex.zoneID))
+	ex.log.Info(fmt.Sprintf("%d records added and %d deleted in zone %s", len(ex.change.Additions), len(ex.change.Deletions), ex.zoneID))
 	return nil
 }
 

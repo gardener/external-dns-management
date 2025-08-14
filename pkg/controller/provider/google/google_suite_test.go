@@ -14,5 +14,5 @@ import (
 func TestIntegration(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecs(t, "Google CloudDNS Suite")
+	RunSpecs(t, "Google Cloud DNS Suite")
 }

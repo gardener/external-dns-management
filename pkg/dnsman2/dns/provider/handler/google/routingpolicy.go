@@ -36,7 +36,7 @@ type routingPolicyChanges map[dnsname]map[dns.RecordType]*googledns.ResourceReco
 
 type rrsetGetterFunc func(name string, typ dns.RecordType) (*googledns.ResourceRecordSet, error)
 
-var _deleteddeletedMarkerWrr_ = &googledns.RRSetRoutingPolicyWrrPolicyWrrPolicyItem{}
+var deletedMarkerWrr = &googledns.RRSetRoutingPolicyWrrPolicyWrrPolicyItem{}
 
 func (c routingPolicyChanges) addChange(set *googledns.ResourceRecordSet, add bool) {
 	perType := c[set.Name]
@@ -69,7 +69,7 @@ func (c routingPolicyChanges) addChange(set *googledns.ResourceRecordSet, add bo
 		if add {
 			current.RoutingPolicy.Wrr.Items[index] = set.RoutingPolicy.Wrr.Items[index]
 		} else {
-			current.RoutingPolicy.Wrr.Items[index] = _deleteddeletedMarkerWrr_
+			current.RoutingPolicy.Wrr.Items[index] = deletedMarkerWrr
 		}
 	case dns.RoutingPolicyGeoLocation:
 		item := set.RoutingPolicy.Geo.Items[0]
@@ -137,7 +137,7 @@ func (c routingPolicyChanges) calcDeletionsAndAdditionsWrr(
 
 	maxIndex := len(rrset.RoutingPolicy.Wrr.Items) - 1
 	for i := len(rrset.RoutingPolicy.Wrr.Items) - 1; i >= 0; i-- {
-		if rrset.RoutingPolicy.Wrr.Items[i] == _deleteddeletedMarkerWrr_ {
+		if rrset.RoutingPolicy.Wrr.Items[i] == deletedMarkerWrr {
 			if maxIndex == i {
 				rrset.RoutingPolicy.Wrr.Items = rrset.RoutingPolicy.Wrr.Items[:i]
 				maxIndex = i - 1
@@ -203,9 +203,12 @@ func extractRoutingPolicy(dnsSetName dns.DNSSetName, rs *dns.RecordSet) (*google
 	if rs.RoutingPolicy == nil {
 		return nil, fmt.Errorf("missing routing policy")
 	}
-	var index int
-	var err error
-	var keys []string
+
+	var (
+		index int
+		err   error
+		keys  []string
+	)
 	switch rs.RoutingPolicy.Type {
 	case dns.RoutingPolicyWeighted:
 		keys = []string{keyWeight}
