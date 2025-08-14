@@ -45,7 +45,7 @@ type AWSConfig struct {
 // NewHandler creates a new AWS Route53 DNS handler based on the provided configuration.
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	advancedOptions := c.GlobalConfig.ProviderAdvancedOptions[ProviderType]
-	c.Log.Info("advanced options", "options", advancedOptions) // TODO fix logging of advanced options
+	c.Log.Info("advanced options", "options", advancedOptions) // TODO(MartinWeindel) fix logging of advanced options
 
 	awsConfig := AWSConfig{BatchSize: ptr.Deref(advancedOptions.BatchSize, defaultBatchSize)}
 	if c.Config != nil {
