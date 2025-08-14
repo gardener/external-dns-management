@@ -65,6 +65,8 @@ jobs:
 
   verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/setup-go@v5
         with:
@@ -95,6 +97,8 @@ jobs:
 
   check:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/setup-go@v5
         with:
