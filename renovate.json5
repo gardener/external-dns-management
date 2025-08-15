@@ -129,6 +129,7 @@
     "github.com/prometheus/otlptranslator",
     "github.com/prometheus/procfs",
     "github.com/russross/blackfriday/v2",
+    "github.com/santhosh-tekuri/jsonschema/v6",
     "github.com/shopspring/decimal",
     "github.com/sirupsen/logrus",
     "github.com/spf13/cast",
