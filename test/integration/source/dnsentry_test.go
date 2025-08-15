@@ -325,8 +325,8 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 				},
 				Spec: v1alpha1.DNSAnnotationSpec{
 					ResourceRef: v1alpha1.ResourceReference{
-						APIVersion: "v1alpha1",
-						Kind:       "DNSEntry",
+						APIVersion: "v1",
+						Kind:       "Service",
 						Name:       "does-not-need-to-exist",
 						Namespace:  testRunID,
 					},
