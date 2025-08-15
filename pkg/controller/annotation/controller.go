@@ -5,6 +5,8 @@
 package annotation
 
 import (
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/config"
@@ -86,6 +88,10 @@ func (this *reconciler) Setup() error {
 ///////////////////////////////////////////////////////////////////////////////
 
 func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
+	if err := this.validate(obj); err != nil {
+		this.annotations.Remove(logger, obj.ClusterKey())
+		return this.handleValidationError(logger, obj, err)
+	}
 	err := this.annotations.Add(logger, obj)
 	return reconcile.FailedOnError(logger, err)
 }
@@ -98,4 +104,43 @@ func (this *reconciler) Delete(logger logger.LogContext, obj resources.Object) r
 func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
 	this.annotations.Remove(logger, key)
 	return reconcile.Succeeded(logger)
+}
+
+func (this *reconciler) validate(obj resources.Object) error {
+	dnsAnnotation, ok := obj.Data().(*api.DNSAnnotation)
+
+	if !ok {
+		return fmt.Errorf("not a DNSAnnotation, unexpected type: %T", obj)
+	}
+
+	for annotation := range dnsAnnotation.Spec.Annotations {
+		group := strings.SplitN(annotation, "/", 2)[0]
+
+		switch group {
+		case dns.ANNOTATION_GROUP:
+		case dns.AnnotationServiceBetaGroup:
+		case dns.AnnotationOpenStackLoadBalancerGroup:
+			continue
+		default:
+			return fmt.Errorf("annotation %q is not allowed in DNSAnnotation", annotation)
+		}
+	}
+
+	return nil
+}
+
+func (this *reconciler) handleValidationError(logger logger.LogContext, obj resources.Object, validationError error) reconcile.Status {
+	_, err := obj.ModifyStatus(func(data resources.ObjectData) (bool, error) {
+		dnsAnnotation := data.(*api.DNSAnnotation)
+		message := fmt.Sprintf("invalid DNSAnnotation: %s", validationError)
+		if message != dnsAnnotation.Status.Message {
+			dnsAnnotation.Status.Message = message
+			return true, nil
+		}
+		return false, nil
+	})
+	if err != nil {
+		return reconcile.Failed(logger, err)
+	}
+	return reconcile.Failed(logger, validationError)
 }

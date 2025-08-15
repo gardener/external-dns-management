@@ -329,24 +329,48 @@ spec:
               annotations:
                 additionalProperties:
                   type: string
+                description: Annotations to be added to the referenced resource.
+                maxProperties: 20
+                minProperties: 1
                 type: object
               resourceRef:
+                description: ResourceRef specifies the resource that should be annotated.
                 properties:
                   apiVersion:
                     description: API Version of the annotated object
+                    enum:
+                    - v1
+                    - networking.k8s.io/v1
+                    - gateway.networking.k8s.io/v1
+                    - gateway.networking.k8s.io/v1beta1
+                    - networking.istio.io/v1
+                    - networking.istio.io/v1beta1
+                    - networking.istio.io/v1alpha3
                     type: string
                   kind:
                     description: |-
                       Kind of the annotated object
                       More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+                    enum:
+                    - Service
+                    - Ingress
+                    - Gateway
                     type: string
                   name:
-                    description: Name of the annotated object
+                    description: |-
+                      Name of the annotated object
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
+                    maxLength: 63
+                    minLength: 1
+                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                     type: string
                   namespace:
                     description: |-
-                      Namspace of the annotated object
+                      Namespace of the annotated object
                       Defaulted by the namespace of the containing resource.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
+                    maxLength: 63
+                    pattern: ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$
                     type: string
                 required:
                 - apiVersion
@@ -359,7 +383,7 @@ spec:
           status:
             properties:
               active:
-                description: Indicates that annotation is observed by a DNS sorce
+                description: Indicates that annotation is observed by a DNS source
                   controller
                 type: boolean
               message:

@@ -120,7 +120,7 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 				"--target", tc2.kubeconfigFile,
 				"--target.id=target-id",
 				"--target.disable-deploy-crds",
-				"--controllers", "compound,dnsentry-source,dnsprovider-replication",
+				"--controllers", "compound,dnsentry-source,dnsprovider-replication,annotation",
 				"--omit-lease",
 				"--dns-delay", "1s",
 				"--reschedule-delay", "2s",
@@ -312,5 +312,58 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 			g.Expect(provider2.Status.State).To(Equal("Error"))
 			g.Expect(provider2.Status.Message).To(PointTo(ContainSubstring("bad_key")))
 		}).To(Succeed())
+	})
+
+	Context("DNSAnnotation", func() {
+		var dnsAnnotation *v1alpha1.DNSAnnotation
+
+		BeforeEach(func() {
+			dnsAnnotation = &v1alpha1.DNSAnnotation{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace:    testRunID,
+					GenerateName: "dnsentry-annotation-",
+				},
+				Spec: v1alpha1.DNSAnnotationSpec{
+					ResourceRef: v1alpha1.ResourceReference{
+						APIVersion: "v1",
+						Kind:       "Service",
+						Name:       "does-not-need-to-exist",
+						Namespace:  testRunID,
+					},
+				},
+			}
+		})
+
+		It("rejects unknown annotation groups", func() {
+			dnsAnnotation.Spec.Annotations = map[string]string{
+				"not.recognized.cloud": "will-be-rejected",
+			}
+			Expect(tc1.client.Create(ctx, dnsAnnotation)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(tc1.client.Delete(ctx, dnsAnnotation)).To(Succeed())
+			})
+
+			Eventually(func(g Gomega) {
+				g.Expect(tc1.client.Get(ctx, client.ObjectKeyFromObject(dnsAnnotation), dnsAnnotation)).To(Succeed())
+				g.Expect(dnsAnnotation.Status.Message).To(ContainSubstring("invalid DNSAnnotation"))
+			}).Should(Succeed())
+		})
+
+		It("recognizes known annotation groups", func() {
+			dnsAnnotation.Spec.Annotations = map[string]string{
+				"dns.gardener.cloud/foo":         "bar",
+				"service.beta.kubernetes.io/foo": "bar",
+				"loadbalancer.openstack.org/foo": "bar",
+			}
+			Expect(tc1.client.Create(ctx, dnsAnnotation)).To(Succeed())
+			DeferCleanup(func() {
+				Expect(tc1.client.Delete(ctx, dnsAnnotation)).To(Succeed())
+			})
+
+			Consistently(func(g Gomega) {
+				g.Expect(tc1.client.Get(ctx, client.ObjectKeyFromObject(dnsAnnotation), dnsAnnotation)).To(Succeed())
+				g.Expect(dnsAnnotation.Status.Message).To(BeEmpty())
+			}).WithTimeout(1 * time.Second).Should(Succeed())
+		})
 	})
 })

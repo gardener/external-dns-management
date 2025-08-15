@@ -40,27 +40,39 @@ type DNSAnnotation struct {
 }
 
 type DNSAnnotationSpec struct {
+	// ResourceRef specifies the resource that should be annotated.
 	ResourceRef ResourceReference `json:"resourceRef"`
+	// Annotations to be added to the referenced resource.
+	// +kubebuilder:validation:MinProperties=1
+	// +kubebuilder:validation:MaxProperties=20
 	Annotations map[string]string `json:"annotations"`
 }
 
 type ResourceReference struct {
 	// API Version of the annotated object
+	// +kubebuilder:validation:Enum=v1;networking.k8s.io/v1;gateway.networking.k8s.io/v1;gateway.networking.k8s.io/v1beta1;networking.istio.io/v1;networking.istio.io/v1beta1;networking.istio.io/v1alpha3
 	APIVersion string `json:"apiVersion"`
 	// Kind of the annotated object
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+	// +kubebuilder:validation:Enum=Service;Ingress;Gateway
 	Kind string `json:"kind"`
 	// Name of the annotated object
-	// +optional
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
+	// +kubebuilder:validation:MinLength=1
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 	Name string `json:"name,omitempty"`
-	// Namspace of the annotated object
+	// Namespace of the annotated object
 	// Defaulted by the namespace of the containing resource.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-label-names
 	// +optional
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
 	Namespace string `json:"namespace,omitempty"`
 }
 
 type DNSAnnotationStatus struct {
-	// Indicates that annotation is observed by a DNS sorce controller
+	// Indicates that annotation is observed by a DNS source controller
 	// +optional
 	Active bool `json:"active,omitempty"`
 	// In case of a configuration problem this field describes the reason
