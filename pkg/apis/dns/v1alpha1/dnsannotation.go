@@ -50,7 +50,7 @@ type DNSAnnotationSpec struct {
 
 type ResourceReference struct {
 	// API Version of the annotated object
-	// +kubebuilder:validation:Enum=v1;networking.k8s.io/v1;gateway.networking.k8s.io/v1;networking.istio.io/v1
+	// +kubebuilder:validation:Enum=v1;networking.k8s.io/v1;gateway.networking.k8s.io/v1;gateway.networking.k8s.io/v1beta1;networking.istio.io/v1;networking.istio.io/v1beta1;networking.istio.io/v1alpha3
 	APIVersion string `json:"apiVersion"`
 	// Kind of the annotated object
 	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
