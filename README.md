@@ -1,6 +1,7 @@
 # External DNS Management
 
 [![REUSE status](https://api.reuse.software/badge/github.com/gardener/external-dns-management)](https://api.reuse.software/info/github.com/gardener/external-dns-management)
+[![Build](https://github.com/gardener/external-dns-management/actions/workflows/non-release.yaml/badge.svg)](https://github.com/gardener/external-dns-management/actions/workflows/non-release.yaml)
 
 The main artefact of this project is the **DNS controller manager** for managing DNS records, also
 nicknamed as the Gardener "DNS Controller".
