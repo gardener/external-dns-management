@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gardener/controller-manager-library/pkg/utils"
 	"github.com/go-logr/logr"
 	googledns "google.golang.org/api/dns/v1"
 	"google.golang.org/api/googleapi"
@@ -100,14 +99,14 @@ func (ex *execution) prepareSubmission(rrsetGetter rrsetGetterFunc) error {
 	}
 
 	for _, c := range ex.change.Deletions {
-		ex.log.Info(fmt.Sprintf("desired change: Deletion %s %s: %s", c.Name, c.Type, utils.Strings(c.Rrdatas...)))
+		ex.log.Info(fmt.Sprintf("desired change: Deletion %s %s: %s", c.Name, c.Type, toStrings(c.Rrdatas...)))
 	}
 	for _, c := range routingPolicyDeletions {
 		ex.log.Info(fmt.Sprintf("desired change: Deletion %s %s (routing policy: %s)", c.Name, c.Type, describeRoutingPolicy(c)))
 		ex.change.Deletions = append(ex.change.Deletions, c)
 	}
 	for _, c := range ex.change.Additions {
-		ex.log.Info(fmt.Sprintf("desired change: Addition %s %s: %s", c.Name, c.Type, utils.Strings(c.Rrdatas...)))
+		ex.log.Info(fmt.Sprintf("desired change: Addition %s %s: %s", c.Name, c.Type, toStrings(c.Rrdatas...)))
 	}
 	for _, c := range routingPolicyAdditions {
 		ex.log.Info(fmt.Sprintf("desired change: Addition %s %s (routing policy: %s)", c.Name, c.Type, describeRoutingPolicy(c)))
@@ -236,4 +235,8 @@ func mapRecordSet(name dns.DNSSetName, rs *dns.RecordSet, policy *googleRoutingP
 	}
 	rrset = mapPolicyRecordSet(rrset, policy)
 	return rrset
+}
+
+func toStrings(s ...string) string {
+	return "[" + strings.Join(s, ", ") + "]"
 }
