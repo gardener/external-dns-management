@@ -74,7 +74,7 @@ jobs:
       - uses: gardener/cc-utils/.github/actions/trusted-checkout@master
       - name: run-verify
         run: |
-          set -eu
+          set -euo pipefail
           mkdir /tmp/blobs.d
           .ci/verify |& tee /tmp/blobs.d/verify-log.txt
           tar czf /tmp/blobs.d/verify-log.tar.gz -C/tmp/blobs.d verify-log.txt
@@ -106,7 +106,7 @@ jobs:
       - uses: gardener/cc-utils/.github/actions/trusted-checkout@master
       - name: run-check
         run: |
-          set -eu
+          set -euo pipefail
           mkdir /tmp/blobs.d
           .ci/check |& tee /tmp/blobs.d/check-log.txt
           # check calls `make sast-report`, which generates `gosec-report.sarif`
