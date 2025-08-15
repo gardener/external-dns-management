@@ -89,6 +89,7 @@ func (this *reconciler) Setup() error {
 
 func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	if err := this.validate(obj); err != nil {
+		this.annotations.Remove(logger, obj.ClusterKey())
 		return this.handleValidationError(logger, obj, err)
 	}
 	err := this.annotations.Add(logger, obj)
