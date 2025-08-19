@@ -544,8 +544,8 @@ github.com/gophercloud/gophercloud v1.14.1 h1:DTCNaTVGl8/cFu58O1JwWgis9gtISAFONq
 github.com/gophercloud/gophercloud v1.14.1/go.mod h1:aAVqcocTSXh2vYFZ1JTvx4EQmfgzxRcNupUfxZbBNDM=
 github.com/gophercloud/gophercloud/v2 v2.7.0 h1:o0m4kgVcPgHlcXiWAjoVxGd8QCmvM5VU+YM71pFbn0E=
 github.com/gophercloud/gophercloud/v2 v2.7.0/go.mod h1:Ki/ILhYZr/5EPebrPL9Ej+tUg4lqx71/YH2JWVeU+Qk=
-github.com/gophercloud/utils/v2 v2.0.0-20250808094129-719028187fb5 h1:SpU3tW3cUVGVGZqSLi/Kgi4/V5cKWQ+v7x13MKumKJQ=
-github.com/gophercloud/utils/v2 v2.0.0-20250808094129-719028187fb5/go.mod h1:LzITNtOz9eRj/Yt4vheymXTHGC1ksIsKNtLXhaX8+I0=
+github.com/gophercloud/utils/v2 v2.0.0-20250819195638-e4fc39f0eda4 h1:AjEgLZlPwlXQvWpJJcgfb/1MfIm4NcSV4PkBmW0im4Q=
+github.com/gophercloud/utils/v2 v2.0.0-20250819195638-e4fc39f0eda4/go.mod h1:LzITNtOz9eRj/Yt4vheymXTHGC1ksIsKNtLXhaX8+I0=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gopherjs/gopherjs v0.0.0-20200217142428-fce0ec30dd00/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/gorilla/handlers v1.4.2/go.mod h1:Qkdc/uu4tH4g6mTK6auzZ766c4CA0Ng8+o/OAirnOIQ=
