@@ -58,7 +58,7 @@ require (
 	sigs.k8s.io/controller-runtime v0.21.0
 	sigs.k8s.io/controller-tools v0.18.0
 	sigs.k8s.io/gateway-api v1.3.0
-	sigs.k8s.io/kind v0.29.0
+	sigs.k8s.io/kind v0.30.0
 	sigs.k8s.io/yaml v1.5.0
 )
 
@@ -225,7 +225,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	go.yaml.in/yaml/v3 v3.0.3 // indirect
+	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b // indirect
 	golang.org/x/lint v0.0.0-20241112194109-818c5a804067 // indirect
