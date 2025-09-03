@@ -13,6 +13,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"k8s.io/utils/ptr"
 
@@ -291,6 +292,10 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	defer this.references.NotifyHolder(this.context, object.ClusterKey())
 
 	logger = this.RefineLogger(logger, p.ptype)
+	if p.ptype != "" && p.zoneid != "" {
+		metrics.ReportEntryReconciliation(p.ptype, p.zoneid)
+	}
+
 	v := NewEntryVersion(object, old)
 	if p.fallback != nil {
 		v.obsolete = true
