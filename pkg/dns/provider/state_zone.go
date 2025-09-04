@@ -73,19 +73,26 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid dns.ZoneID) re
 	logger.Infof("Initiate reconcilation of zone %s", zoneid)
 	defer logger.Infof("zone %s done", zoneid)
 
-	zoneDomain := this.getZoneDomain(zoneid)
+	zoneDomain, next := this.getZoneDomainAndNext(zoneid)
 	if zoneDomain == "" {
 		logger.Warnf("zone %s not found -> stop reconciling", zoneid)
 		return reconcile.Succeeded(logger, fmt.Sprintf("zone %s not found", zoneid))
 	}
 
+	startTime := time.Now()
+	if delay := next.Sub(startTime); delay > 0 {
+		logger.Infof("too early (required delay between two reconcilations: %s) -> skip and reschedule", this.config.Delay)
+		metrics.ReportNotCompletedZoneReconciliation(zoneid.ProviderType, zoneid.ID, "delayed1")
+		return reconcile.Succeeded(logger).RescheduleAfter(delay)
+	}
+
 	blockingCount := this.reconcileZoneBlockingEntries(logger)
 	if blockingCount > 0 {
 		logger.Infof("reconciliation of zone %s is blocked due to %d pending entry reconciliations", zoneid, blockingCount)
+		metrics.ReportNotCompletedZoneReconciliation(zoneid.ProviderType, zoneid.ID, "rescheduled1")
 		return reconcile.Succeeded(logger).RescheduleAfter(5 * time.Second)
 	}
 
-	startTime := time.Now()
 	blockingEntries := this.getZoneEntries(zoneid)
 	for i := 0; i < 50; i++ {
 		blockingEntries = this.entriesLocking.TryLockZoneReconciliation(startTime, zoneid, zoneDomain, blockingEntries)
@@ -110,6 +117,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid dns.ZoneID) re
 	}()
 	if len(blockingEntries) > 0 {
 		logger.Infof("zone %s blocked by %d entries -> skip and reschedule", zoneid, len(blockingEntries))
+		metrics.ReportNotCompletedZoneReconciliation(zoneid.ProviderType, zoneid.ID, "rescheduled2")
 		return reconcile.Succeeded(logger).RescheduleAfter(10 * time.Second)
 	}
 
@@ -123,6 +131,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid dns.ZoneID) re
 	logger = this.RefineLogger(logger, zoneid.ProviderType)
 	if delay > 0 {
 		logger.Infof("too early (required delay between two reconcilations: %s) -> skip and reschedule", this.config.Delay)
+		metrics.ReportNotCompletedZoneReconciliation(zoneid.ProviderType, zoneid.ID, "delayed2")
 		return reconcile.Succeeded(logger).RescheduleAfter(delay)
 	}
 	logger.Infof("precondition fulfilled for zone %s", zoneid)
@@ -136,26 +145,29 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid dns.ZoneID) re
 				return reconcile.Succeeded(logger)
 			}
 			logger.Infof("zone reconcilation failed for %s: %s", req.zone.Id(), err)
+			metrics.ReportNotCompletedZoneReconciliation(zoneid.ProviderType, zoneid.ID, "failed")
 			return reconcile.Succeeded(logger).RescheduleAfter(req.zone.RateLimit())
 		}
+		metrics.ReportCompletedZoneReconciliation(zoneid.ProviderType, zoneid.ID, time.Since(startTime))
 		if req.zone.nextTrigger > 0 {
 			return reconcile.Succeeded(logger).RescheduleAfter(req.zone.nextTrigger)
 		}
 		return reconcile.Succeeded(logger)
 	}
 	logger.Infof("reconciling zone %q (%s) already busy and skipped", zoneid, req.zone.Domain())
+	metrics.ReportNotCompletedZoneReconciliation(zoneid.ProviderType, zoneid.ID, "busyskipped")
 	return reconcile.Succeeded(logger).RescheduleAfter(10 * time.Second)
 }
 
-func (this *state) getZoneDomain(id dns.ZoneID) string {
+func (this *state) getZoneDomainAndNext(id dns.ZoneID) (string, time.Time) {
 	this.lock.RLock()
 	defer this.lock.RUnlock()
 
 	zone := this.zones[id]
 	if zone == nil {
-		return ""
+		return "", time.Time{}
 	}
-	return zone.Domain()
+	return zone.Domain(), zone.GetNext()
 }
 
 func (this *state) getZoneEntries(id dns.ZoneID) []resources.ObjectName {

@@ -37,6 +37,9 @@ func init() {
 	prometheus.MustRegister(LookupProcessorErrors)
 	prometheus.MustRegister(LookupProcessorLookupChanged)
 	prometheus.MustRegister(LookupProcessorSeconds)
+	prometheus.MustRegister(EntryReconciliations)
+	prometheus.MustRegister(ZoneReconciliations)
+	prometheus.MustRegister(CompletedZoneReconciliationSeconds)
 
 	server.RegisterHandler("/metrics", promhttp.Handler())
 }
@@ -175,6 +178,31 @@ var (
 			Buckets: []float64{.01, .02, .05, .1, .2, .5, 1, 2, 5, 10, 20},
 		},
 	)
+
+	EntryReconciliations = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_entry_reconciliations_total",
+			Help: "Total number of DNS entry reconciliations per provider type and zone",
+		},
+		[]string{"providertype", "zone"},
+	)
+
+	ZoneReconciliations = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "external_dns_management_zone_reconciliations_total",
+			Help: "Total number of zone reconciliations per provider type, zone and completion status",
+		},
+		[]string{"providertype", "zone", "completionstatus"},
+	)
+
+	CompletedZoneReconciliationSeconds = prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "external_dns_management_zone_reconciliations_seconds",
+			Help:    "Completed zone reconciliation in seconds",
+			Buckets: []float64{.01, .02, .05, .1, .2, .5, 1, 2, 5, 10, 20},
+		},
+		[]string{"providertype", "zone"},
+	)
 )
 
 var theRequestLabels = &requestLabels{lock: sync.Mutex{}, known: map[ptypeAccount]utils.StringSet{}}
@@ -311,6 +339,19 @@ func ReportRemovedJob(name resources.ObjectName) {
 		LookupProcessorErrors.DeleteLabelValues(name.Namespace())
 		LookupProcessorLookupChanged.DeleteLabelValues(name.Namespace())
 	}
+}
+
+func ReportCompletedZoneReconciliation(ptype, zone string, duration time.Duration) {
+	CompletedZoneReconciliationSeconds.WithLabelValues(ptype, zone).Observe(duration.Seconds())
+	ZoneReconciliations.WithLabelValues(ptype, zone, "success").Inc()
+}
+
+func ReportNotCompletedZoneReconciliation(ptype, zone, reason string) {
+	ZoneReconciliations.WithLabelValues(ptype, zone, reason).Inc()
+}
+
+func ReportEntryReconciliation(ptype, zone string) {
+	EntryReconciliations.WithLabelValues(ptype, zone).Inc()
 }
 
 var knownLookupNames = sets.New[resources.ObjectName]()

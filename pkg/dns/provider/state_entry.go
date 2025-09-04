@@ -21,6 +21,7 @@ import (
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/zonetxn"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
+	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,6 +292,10 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	defer this.references.NotifyHolder(this.context, object.ClusterKey())
 
 	logger = this.RefineLogger(logger, p.ptype)
+	if p.ptype != "" && p.zoneid != "" {
+		metrics.ReportEntryReconciliation(p.ptype, p.zoneid)
+	}
+
 	v := NewEntryVersion(object, old)
 	if p.fallback != nil {
 		v.obsolete = true
