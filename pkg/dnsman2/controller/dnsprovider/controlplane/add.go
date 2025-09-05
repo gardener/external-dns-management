@@ -30,6 +30,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/aws"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/google"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/openstack"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
@@ -37,8 +38,9 @@ import (
 const ControllerName = "dnsprovider-controlplane"
 
 var allTypes = map[string]provider.AddToRegistryFunc{
-	aws.ProviderType:    aws.RegisterTo,
-	google.ProviderType: google.RegisterTo,
+	aws.ProviderType:       aws.RegisterTo,
+	google.ProviderType:    google.RegisterTo,
+	openstack.ProviderType: openstack.RegisterTo,
 }
 
 // AddToManager adds Reconciler to the given manager.
