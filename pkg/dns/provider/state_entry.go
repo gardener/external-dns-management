@@ -372,7 +372,11 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *d
 			}
 		}
 		if txn := this.getActiveZoneTransaction(e.activezone); txn != nil {
-			txn.AddEntryChange(e.ObjectKey(), e.object.GetGeneration(), oldDNSSet, nil)
+			if !e.obsolete {
+				txn.AddEntryChange(e.ObjectKey(), e.object.GetGeneration(), oldDNSSet, nil)
+			} else {
+				logger.Warnf("cannot cleanup stale entry %s(%s)", e.ObjectName(), e.DNSSetName())
+			}
 		}
 		if found == nil {
 			logger.Infof("no duplicate found to reactivate")

@@ -465,7 +465,11 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 	if this.IsDeleting() {
 		logger.Infof("update state to %s", api.STATE_DELETING)
 		this.status.State = api.STATE_DELETING
-		this.status.Message = StatusMessage("entry is scheduled to be deleted")
+		msg := "entry is scheduled to be deleted"
+		if this.obsolete {
+			msg += "; no suitable provider available"
+		}
+		this.status.Message = StatusMessage(msg)
 		this.valid = true
 		state.DeleteLookupJob(this.object.ObjectName())
 	} else {

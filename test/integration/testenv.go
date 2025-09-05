@@ -758,6 +758,9 @@ func (te *TestEnv) HasProviderState(name string, states ...string) (bool, error)
 	if err != nil {
 		return false, err
 	}
+	if provider.Status.ObservedGeneration != provider.Generation {
+		return false, fmt.Errorf("provider status not updated to latest generation")
+	}
 	found := false
 	for _, state := range states {
 		found = found || provider.Status.State == state
