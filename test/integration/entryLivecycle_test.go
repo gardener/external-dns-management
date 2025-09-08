@@ -340,4 +340,58 @@ var _ = Describe("EntryLivecycle", func() {
 		err = testEnv.DeleteProviderAndSecret(pr)
 		Ω(err).ShouldNot(HaveOccurred())
 	})
+
+	It("does not delete a stale entry", func() {
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		e, err := testEnv.CreateEntry(0, domain)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		checkProvider(pr)
+
+		checkEntry(e, pr)
+
+		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
+			spec.Domains = &v1alpha1.DNSSelection{
+				Include: []string{"restricted." + domain},
+			}
+			return nil
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+		checkProvider(pr)
+
+		err = testEnv.AwaitEntryStale(e.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = testEnv.DeleteEntryAndWait(e)
+		// we expect an error here, i.e. the deletion should be blocked, as entry is stale (outside of provider domain)
+		Ω(err).Should(HaveOccurred())
+
+		e, err = testEnv.GetEntry(e.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+		Ω(e.Data().(*v1alpha1.DNSEntry).Status.Message).To(Equal(ptr.To("entry is scheduled to be deleted; no suitable provider available")))
+
+		// revert domain to include entry domain
+		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
+			spec.Domains = &v1alpha1.DNSSelection{
+				Include: []string{domain},
+			}
+			return nil
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+		checkProvider(pr)
+
+		// speed up reconciliation
+		e.SetAnnotations(map[string]string{"foo": "bar"})
+		Ω(e.Update()).To(Succeed())
+
+		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = testEnv.DeleteProviderAndSecret(pr)
+		Ω(err).ShouldNot(HaveOccurred())
+	})
 })

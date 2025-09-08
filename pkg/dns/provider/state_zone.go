@@ -313,9 +313,13 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 
 func (this *state) addDeleteToNextTransaction(logger logger.LogContext, req *zoneReconciliation, zoneid dns.ZoneID, e *Entry, oldSet *dns.DNSSet) {
 	if txn := this.getActiveZoneTransaction(zoneid); txn != nil {
-		txn.AddEntryChange(e.ObjectKey(), e.Object().GetGeneration(), oldSet, nil)
-		if req.zone.nextTrigger == 0 {
-			req.zone.nextTrigger = this.config.Delay
+		if !e.obsolete {
+			txn.AddEntryChange(e.ObjectKey(), e.Object().GetGeneration(), oldSet, nil)
+			if req.zone.nextTrigger == 0 {
+				req.zone.nextTrigger = this.config.Delay
+			}
+		} else {
+			logger.Warnf("cannot cleanup stale entry %s(%s)", e.ObjectName(), e.DNSSetName())
 		}
 	} else {
 		logger.Warnf("cleanup postpone failure: missing zone for %s", e.ObjectName())
