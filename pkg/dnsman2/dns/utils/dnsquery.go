@@ -83,6 +83,9 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 		return QueryDNSResult{Err: err}
 	}
 	if msg.Rcode != miekgdns.RcodeSuccess {
+		if msg.Rcode == miekgdns.RcodeNameError {
+			return QueryDNSResult{} // NXDOMAIN is not an error, just no records
+		}
 		return QueryDNSResult{Err: fmt.Errorf("DNS lookup failed with rcode %d", msg.Rcode)}
 	}
 	rs := dns.NewRecordSet(rstype, 0, nil)
