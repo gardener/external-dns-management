@@ -131,8 +131,8 @@ var _ = ginkgo.Describe("BUG: provider selection collapses project-scoped names"
 		nameProject1 := dns.DNSSetName{DNSName: "project1-service.example.test"}
 		nameProject2 := dns.DNSSetName{DNSName: "project2-service.example.test"}
 
-		Expect(model.Apply(nameProject1, "", nil, target).Error).To(BeNil())
-		Expect(model.Apply(nameProject2, "", nil, target).Error).To(BeNil())
+		Expect(model.Apply(nameProject1, "", nil, target).Error).ToNot(HaveOccurred())
+		Expect(model.Apply(nameProject2, "", nil, target).Error).ToNot(HaveOccurred())
 
 		hash1, ok1 := chosenProviderHash(model, nameProject1)
 		hash2, ok2 := chosenProviderHash(model, nameProject2)
@@ -162,8 +162,8 @@ var _ = ginkgo.Describe("BUG: provider selection collapses project-scoped names"
 		nameProject1 := dns.DNSSetName{DNSName: "project1-service.example.test"}
 		nameProject2 := dns.DNSSetName{DNSName: "project2-service.example.test"}
 
-		Expect(model.Apply(nameProject1, "", nil, target).Error).To(BeNil())
-		Expect(model.Apply(nameProject2, "", nil, target).Error).To(BeNil())
+		Expect(model.Apply(nameProject1, "", nil, target).Error).ToNot(HaveOccurred())
+		Expect(model.Apply(nameProject2, "", nil, target).Error).ToNot(HaveOccurred())
 
 		Expect(model.providergroups).To(HaveLen(1))
 		_, secondGroup := model.providergroups[proj2.AccountHash()]
