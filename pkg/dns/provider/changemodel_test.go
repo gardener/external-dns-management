@@ -2,7 +2,6 @@ package provider
 
 import (
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -85,11 +84,6 @@ func (z *tinyZone) Domain() string             { return z.domain }
 func (z *tinyZone) ForwardedDomains() []string { return nil }
 func (z *tinyZone) Match(_ string) int         { return 1 }
 func (z *tinyZone) IsPrivate() bool            { return false }
-
-func TestChangeModelProviderSelectionProvenanceLoss(t *testing.T) {
-	RegisterFailHandler(ginkgo.Fail)
-	ginkgo.RunSpecs(t, "ChangeModel Provider Selection (Provenance Bug)")
-}
 
 var _ = ginkgo.Describe("ChangeModel Provider Selection (Provenance)", func() {
 	var (
