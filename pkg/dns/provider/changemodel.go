@@ -275,7 +275,7 @@ func (this *ChangeModel) Setup() error {
 	this.dangling = newChangeGroup("dangling entries", provider, this)
 	for setName, set := range sets {
 		var view *ChangeGroup
-		provider = this.context.providers.LookupFor(setName.DNSName)
+		provider = this.context.providers.LookupFor(setName.DNSName, "")
 		if provider != nil {
 			this.dumpf("  %s: %d types (provider %s)", setName, len(set.Sets), provider.ObjectName())
 			view = this.getProviderView(provider)
@@ -318,7 +318,7 @@ func (this *ChangeModel) Exec(apply bool, delete bool, name dns.DNSSetName, upda
 		this.applied[name] = nil
 		done = this.wrappedDoneHandler(name, done)
 	}
-	p := this.context.providers.LookupFor(name.DNSName)
+	p := this.context.providers.LookupFor(name.DNSName, updateGroup)
 	if p == nil {
 		err := fmt.Errorf("no provider found for %q", name)
 		if done != nil {

@@ -31,19 +31,34 @@ import (
 
 const ZoneCachePrefix = "zc-"
 
-func (this DNSProviders) LookupFor(dns string) DNSProvider {
+func (this DNSProviders) LookupFor(dns, updateGroup string) DNSProvider {
 	var found DNSProvider
 	match := -1
 	for _, p := range this {
 		n := p.Match(dns)
 		if n > 0 {
-			if match < n || match == n && found != nil && strings.Compare(p.AccountHash(), found.AccountHash()) < 0 {
+			if match < n || match == n && found != nil && compareProviders(p, found, updateGroup) < 0 {
 				found = p
 				match = n
 			}
 		}
 	}
 	return found
+}
+
+func compareProviders(p1, p2 DNSProvider, updateGroup string) int {
+	if p1 == p2 {
+		return 0
+	}
+	if updateGroup != "" && p1.UpdateGroup() != p2.UpdateGroup() {
+		if p1.UpdateGroup() == updateGroup {
+			return -1
+		}
+		if p2.UpdateGroup() == updateGroup {
+			return 1
+		}
+	}
+	return strings.Compare(p1.AccountHash(), p2.AccountHash())
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -491,6 +506,10 @@ func fromLightZones(lzones []selection.LightDNSHostedZone) DNSHostedZones {
 
 func (this *dnsProviderVersion) AccountHash() string {
 	return this.account.Hash()
+}
+
+func (this *dnsProviderVersion) UpdateGroup() string {
+	return this.object.GetNamespace()
 }
 
 func (this *dnsProviderVersion) ObjectName() resources.ObjectName {

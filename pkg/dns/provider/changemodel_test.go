@@ -31,18 +31,19 @@ func chosenProviderHash(m *ChangeModel, name dns.DNSSetName) (string, bool) {
 }
 
 type domainProvider struct {
+	namespace string
 	name      string
 	hash      string
 	includes  []string
 	createdAt time.Time
 }
 
-func newDomainProvider(name, hash string, includes []string, created time.Time) *domainProvider {
-	return &domainProvider{name: name, hash: hash, includes: includes, createdAt: created}
+func newDomainProvider(namespace, name, hash string, includes []string, created time.Time) *domainProvider {
+	return &domainProvider{namespace: namespace, name: name, hash: hash, includes: includes, createdAt: created}
 }
 
 func (p *domainProvider) ObjectName() resources.ObjectName {
-	return resources.NewObjectName("default", p.name)
+	return resources.NewObjectName(p.namespace, p.name)
 }
 func (p *domainProvider) Object() resources.Object                         { return nil }
 func (p *domainProvider) TypeCode() string                                 { return "test" }
@@ -70,6 +71,7 @@ func (p *domainProvider) Match(dnsName string) int {
 func (p *domainProvider) MatchZone(string) int                                       { return 0 }
 func (p *domainProvider) IsValid() bool                                              { return true }
 func (p *domainProvider) AccountHash() string                                        { return p.hash }
+func (p *domainProvider) UpdateGroup() string                                        { return p.ObjectName().Namespace() }
 func (p *domainProvider) MapTargets(_ string, t []dnsutils.Target) []dnsutils.Target { return t }
 
 type tinyZone struct {
@@ -89,20 +91,23 @@ func TestChangeModelProviderSelectionProvenanceLoss(t *testing.T) {
 	ginkgo.RunSpecs(t, "ChangeModel Provider Selection (Provenance Bug)")
 }
 
-var _ = ginkgo.Describe("BUG: provider selection collapses project-scoped names", func() {
+var _ = ginkgo.Describe("ChangeModel Provider Selection (Provenance)", func() {
 	var (
 		log    logger.LogContext
 		proj1  *domainProvider
 		proj2  *domainProvider
+		proj3  *domainProvider
 		model  *ChangeModel
 		target dnsutils.TargetSpec
 	)
 
 	ginkgo.BeforeEach(func() {
 		log = logger.New()
+		now := time.Now()
 		// Both providers include the SAME zone domain => identical Match() result for test names.
-		proj1 = newDomainProvider("provider-project1", "aaa111", []string{"example.test"}, time.Now().Add(-2*time.Hour))
-		proj2 = newDomainProvider("provider-project2", "zzz999", []string{"example.test"}, time.Now())
+		proj1 = newDomainProvider("ns1", "provider-project1", "aaa111", []string{"example.test"}, now.Add(-2*time.Hour))
+		proj2 = newDomainProvider("ns2", "provider-project2", "zzz999", []string{"example.test"}, now)
+		proj3 = newDomainProvider("ns3", "provider-project3", "aaa111", []string{"example.test"}, now)
 
 		zone := newDNSHostedZone(0, &tinyZone{
 			id:     dns.NewZoneID("generic", "zone-01"),
@@ -122,28 +127,29 @@ var _ = ginkgo.Describe("BUG: provider selection collapses project-scoped names"
 		}
 	})
 
-	ginkgo.It("BUG: two different project hostnames both assigned to the first (tie-break) provider", func() {
-		// External intent (not visible to ChangeModel):
-		//   project1-service.example.test -> provider-project1
-		//   project2-service.example.test -> provider-project2
-		// Internally: only FQDN used; both providers Match equally -> tie broken by AccountHash -> proj1.
-
+	ginkgo.It("Don't perform updates with random provider, but ensure that same account is used if backend stores provenance information", func() {
 		nameProject1 := dns.DNSSetName{DNSName: "project1-service.example.test"}
 		nameProject2 := dns.DNSSetName{DNSName: "project2-service.example.test"}
+		nameProject3 := dns.DNSSetName{DNSName: "project3-service.example.test"}
 
-		Expect(model.Apply(nameProject1, "", nil, target).Error).ToNot(HaveOccurred())
-		Expect(model.Apply(nameProject2, "", nil, target).Error).ToNot(HaveOccurred())
+		Expect(model.Apply(nameProject1, "ns1", nil, target).Error).ToNot(HaveOccurred())
+		Expect(model.Apply(nameProject2, "ns2", nil, target).Error).ToNot(HaveOccurred())
+		Expect(model.Apply(nameProject3, "ns3", nil, target).Error).ToNot(HaveOccurred())
 
 		hash1, ok1 := chosenProviderHash(model, nameProject1)
 		hash2, ok2 := chosenProviderHash(model, nameProject2)
+		hash3, ok3 := chosenProviderHash(model, nameProject3)
 
 		Expect(ok1).To(BeTrue(), "project1 name queued")
 		Expect(ok2).To(BeTrue(), "project2 name queued")
+		Expect(ok3).To(BeTrue(), "project3 name queued")
 
 		Expect(hash1).To(Equal(proj1.AccountHash()))
-		Expect(hash2).To(Equal(proj1.AccountHash()), "collapse: both routed to same provider (provenance absent)")
+		Expect(hash2).To(Equal(proj2.AccountHash()))
+		Expect(hash3).To(Equal(proj3.AccountHash()))
+		Expect(hash3).To(Equal(hash1))
 
-		Expect(model.providergroups).To(HaveLen(1), "only one provider group created (unexpected if provenance mattered)")
+		Expect(model.providergroups).To(HaveLen(2))
 
 		group := model.providergroups[hash1]
 		var additions []string
@@ -154,19 +160,17 @@ var _ = ginkgo.Describe("BUG: provider selection collapses project-scoped names"
 		}
 		Expect(additions).To(ContainElements(
 			nameProject1.DNSName,
+			nameProject3.DNSName,
+		))
+		group2 := model.providergroups[hash2]
+		var additions2 []string
+		for _, r := range group2.requests {
+			if r.Addition != nil {
+				additions2 = append(additions2, r.Addition.Name.DNSName)
+			}
+		}
+		Expect(additions2).To(ContainElements(
 			nameProject2.DNSName,
-		), "both hostnames queued together; project separation not represented")
-	})
-
-	ginkgo.It("BUG: second provider receives no ChangeRequests (further evidence of collapse)", func() {
-		nameProject1 := dns.DNSSetName{DNSName: "project1-service.example.test"}
-		nameProject2 := dns.DNSSetName{DNSName: "project2-service.example.test"}
-
-		Expect(model.Apply(nameProject1, "", nil, target).Error).ToNot(HaveOccurred())
-		Expect(model.Apply(nameProject2, "", nil, target).Error).ToNot(HaveOccurred())
-
-		Expect(model.providergroups).To(HaveLen(1))
-		_, secondGroup := model.providergroups[proj2.AccountHash()]
-		Expect(secondGroup).To(BeFalse(), "no ChangeRequests routed to second provider; provenance lost")
+		))
 	})
 })
