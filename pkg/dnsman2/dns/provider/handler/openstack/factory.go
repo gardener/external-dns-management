@@ -2,26 +2,42 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package validation
+package openstack
 
 import (
 	"fmt"
 
-	"github.com/gardener/controller-manager-library/pkg/utils"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/gardener/external-dns-management/pkg/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 // ProviderType is the type identifier for the OpenStack Designate DNS provider.
 const ProviderType = "openstack-designate"
 
+// RegisterTo registers the OpenStack Designate DNS handler to the given registry.
+func RegisterTo(registry *provider.DNSHandlerRegistry) {
+	registry.Register(
+		ProviderType,
+		NewHandler,
+		newAdapter(),
+		&config.RateLimiterOptions{
+			Enabled: true,
+			QPS:     100,
+			Burst:   20,
+		},
+		nil,
+	)
+}
+
 type adapter struct {
 	checks *provider.DNSHandlerAdapterChecks
 }
 
-// NewAdapter creates a new DNSHandlerAdapter for the OpenStack Designate provider.
-func NewAdapter() provider.DNSHandlerAdapter {
+// newAdapter creates a new DNSHandlerAdapter for the OpenStack Designate provider.
+func newAdapter() provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
 	checks.Add(provider.RequiredProperty("OS_AUTH_URL", "authURL").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.URLValidator("http", "https"), provider.MaxLengthValidator(256)))
