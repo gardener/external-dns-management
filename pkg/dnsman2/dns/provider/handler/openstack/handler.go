@@ -31,7 +31,7 @@ var _ provider.DNSHandler = &handler{}
 
 // NewHandler constructs a new DNSHandler object.
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
-	authConfig, err := readAuthConfig(c)
+	authConfig, err := buildAndValidateAuthConfig(c)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +50,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	return h, nil
 }
 
-func readAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
+func buildAndValidateAuthConfig(c *provider.DNSHandlerConfig) (*clientAuthConfig, error) {
 	authURL, err := c.GetRequiredProperty("OS_AUTH_URL", "authURL")
 	if err != nil {
 		return nil, err
@@ -199,8 +199,10 @@ func (h *handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZo
 
 	exec := newExecution(log, h, zone)
 
-	var succeeded, failed int
-	var errs []error
+	var (
+		succeeded, failed int
+		errs              []error
+	)
 	for _, r := range reqs.Updates {
 		if err := exec.apply(ctx, reqs.Name, r); err != nil {
 			failed++

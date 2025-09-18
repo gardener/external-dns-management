@@ -59,7 +59,7 @@ func newAdapter() provider.DNSHandlerAdapter {
 		Validators(provider.NoTrailingWhitespaceValidator, provider.AlphaNumericPunctuationValidator, provider.MaxLengthValidator(128)))
 	// tenantName must not be longer than 64 characters, see https://docs.openstack.org/api-ref/identity/v3/?expanded=show-project-details-detail
 	checks.Add(provider.OptionalProperty("OS_PROJECT_NAME", "tenantName").
-		Validators(provider.NoTrailingWhitespaceValidator, provider.PrintableValidator, provider.MaxLengthValidator(128)))
+		Validators(provider.NoTrailingWhitespaceValidator, provider.PrintableValidator, provider.MaxLengthValidator(64)))
 	checks.Add(provider.OptionalProperty("OS_PROJECT_ID", "tenantID").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.AlphaNumericPunctuationValidator, provider.MaxLengthValidator(128)))
 	checks.Add(provider.OptionalProperty("OS_USER_DOMAIN_NAME", "userDomainName").
