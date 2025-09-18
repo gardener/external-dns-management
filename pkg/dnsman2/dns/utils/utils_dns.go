@@ -4,7 +4,9 @@
 
 package utils
 
-import "strings"
+import (
+	"strings"
+)
 
 // TTLToUint32 converts a TTL value to an uint32 value.
 func TTLToUint32(ttl int64) uint32 {

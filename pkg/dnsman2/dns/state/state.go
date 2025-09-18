@@ -6,6 +6,7 @@ package state
 
 import (
 	"context"
+	"errors"
 	"sync"
 
 	"github.com/go-logr/logr"
@@ -160,10 +161,11 @@ func newDNSCachesQueryHandler(dnscaches []*utils.DNSCache) DNSQueryHandler {
 }
 
 func (h *dnsCachesQueryHandler) Query(ctx context.Context, setName dns.DNSSetName, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error) {
-	var err error
+	var errs []error
 	for _, cache := range h.dnscaches {
 		rs, err := cache.Get(ctx, setName, rstype)
 		if err != nil {
+			errs = append(errs, err)
 			continue
 		}
 		var (
@@ -178,5 +180,5 @@ func (h *dnsCachesQueryHandler) Query(ctx context.Context, setName dns.DNSSetNam
 		}
 		return targets, routingPolicy, err
 	}
-	return nil, nil, err
+	return nil, nil, errors.Join(errs...)
 }
