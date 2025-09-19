@@ -8,9 +8,12 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/go-logr/logr"
 	miekgdns "github.com/miekg/dns"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
@@ -94,6 +97,21 @@ func NewHostedZoneNameserversProvider(ctx context.Context, fqdnZone string, minR
 func (h *HostedZoneNameserversProvider) Nameservers(ctx context.Context) ([]string, error) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
+
+	// Check for environment variable override.
+	// Example: for zone "example.com.", the env var is "DNSMAN_NAMESERVER_EXAMPLE_COM"
+	// Note: only a single nameserver can be specified via the env var
+	// This may be useful for testing or in environments where the nameservers are known and static
+	// and should not be looked up dynamically
+	envVar := "DNSMAN_NAMESERVER_" + strings.ReplaceAll(strings.TrimSuffix(strings.ToUpper(h.fqdnZone), "."), ".", "_")
+	if envValue := os.Getenv(envVar); envValue != "" {
+		log, err := logr.FromContext(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get logger from context: %w", err)
+		}
+		log.Info("Using nameservers from environment variable", "zone", h.fqdnZone, envVar, envValue)
+		return []string{envValue}, nil
+	}
 
 	if time.Now().After(h.nextUpdate) {
 		ns, ttl, err := h.retrieveNameservers(ctx)
