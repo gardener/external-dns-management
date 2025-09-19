@@ -34,8 +34,6 @@ type DNSHostedZone interface {
 	Key() string
 	// Domain returns the domain of the hosted zone.
 	Domain() string
-	// MatchLevel returns the match level of the given DNS name with the hosted zone.
-	MatchLevel(dnsname string) int
 	// IsPrivate returns true if the hosted zone is private.
 	IsPrivate() bool
 }

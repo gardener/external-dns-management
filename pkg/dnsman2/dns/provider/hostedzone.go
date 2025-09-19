@@ -5,7 +5,6 @@
 package provider
 
 import (
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
@@ -40,19 +39,6 @@ func (z *DefaultDNSHostedZone) Domain() string {
 // IsPrivate returns true if the hosted zone is private.
 func (z *DefaultDNSHostedZone) IsPrivate() bool {
 	return z.isPrivate
-}
-
-// MatchLevel returns the match level of the given DNS name with the hosted zone.
-func (z *DefaultDNSHostedZone) MatchLevel(dnsname string) int {
-	return MatchLevel(z, dnsname)
-}
-
-// MatchLevel returns the match level of the given DNS name with the hosted zone.
-func MatchLevel(zone DNSHostedZone, dnsname string) int {
-	if dnsutils.Match(dnsname, zone.Domain()) {
-		return len(zone.Domain())
-	}
-	return 0
 }
 
 // NewDNSHostedZone creates a new DNS hosted zone.

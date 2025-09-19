@@ -146,7 +146,7 @@ func (h *handler) isBlockedZone(zoneID string) bool {
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the Google Cloud DNS provider if the zone is private.
 func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
-	if zone.Private {
+	if zone.IsPrivate() {
 		return h.queryDNS, nil
 	}
 	defaultQueryFunc, err := factory()
@@ -168,7 +168,7 @@ func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDN
 
 // queryDNS queries the DNS provider for the given DNS name and record type.
 func (h *handler) queryDNS(_ context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-	projectID, zoneName, err := splitZoneID(zone.ZoneID.ID)
+	projectID, zoneName, err := splitZoneID(zone.ZoneID().ID)
 	if err != nil {
 		return nil, err
 	}

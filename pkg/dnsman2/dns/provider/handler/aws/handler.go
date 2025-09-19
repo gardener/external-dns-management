@@ -176,7 +176,7 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the AWS Route53 provider if the zone is private.
 func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
-	if zone.Private {
+	if zone.IsPrivate() {
 		return h.queryDNS, nil
 	}
 	defaultQueryFunc, err := factory()
@@ -234,7 +234,7 @@ func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, setName dns.D
 		return nil, err
 	}
 	sets, err := h.r53.ListResourceRecordSets(ctx, &route53.ListResourceRecordSetsInput{
-		HostedZoneId:          aws.String(zone.ZoneID.ID),
+		HostedZoneId:          aws.String(zone.ZoneID().ID),
 		MaxItems:              aws.Int32(1),
 		StartRecordIdentifier: recordIdentifier,
 		StartRecordName:       &setName.DNSName,

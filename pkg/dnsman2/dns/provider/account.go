@@ -137,19 +137,19 @@ func (a *DNSAccount) getZoneQueryCache(ctx context.Context, zone dns.ZoneInfo) (
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	cache, ok := a.dnsCaches[zone.ZoneID]
+	cache, ok := a.dnsCaches[zone.ZoneID()]
 	if !ok {
 		factory := func() (utils.QueryDNS, error) {
-			nsProvider, err := utils.NewHostedZoneNameserversProvider(ctx, zone.Domain, 12*time.Hour, utils.SystemNameservers) // TODO make minRefreshPeriod configurable
+			nsProvider, err := utils.NewHostedZoneNameserversProvider(ctx, zone.Domain(), 12*time.Hour, utils.SystemNameservers) // TODO make minRefreshPeriod configurable
 			if err != nil {
-				return nil, fmt.Errorf("failed to create nameservers provider for zone %s: %w", zone.ZoneID, err)
+				return nil, fmt.Errorf("failed to create nameservers provider for zone %s: %w", zone.ZoneID(), err)
 			}
 			return utils.NewStandardQueryDNS(nsProvider), nil
 		}
 
 		queryFunc, err := a.handler.GetCustomQueryDNSFunc(zone, factory)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get custom query DNS function for zone %s: %w", zone.ZoneID, err)
+			return nil, fmt.Errorf("failed to get custom query DNS function for zone %s: %w", zone.ZoneID(), err)
 		}
 		if queryFunc != nil {
 			cache = utils.NewDNSCache(&handlerZoneQueryDNS{queryFunc: queryFunc, zone: zone}, 30*time.Second) // TODO set default TTL
@@ -160,7 +160,7 @@ func (a *DNSAccount) getZoneQueryCache(ctx context.Context, zone dns.ZoneInfo) (
 			}
 			cache = utils.NewDNSCache(dnsQuery, 30*time.Second) // TODO set default TTL
 		}
-		a.dnsCaches[zone.ZoneID] = cache
+		a.dnsCaches[zone.ZoneID()] = cache
 	}
 	return cache, nil
 }
@@ -322,11 +322,7 @@ func (m *AccountMap) GetDNSCachesByZone(ctx context.Context, zoneID dns.ZoneID) 
 	for _, account := range m.accounts {
 		for _, zone := range account.cachedZones {
 			if zone.ZoneID() == zoneID {
-				zoneInfo := dns.ZoneInfo{
-					ZoneID:  zone.ZoneID(),
-					Private: zone.IsPrivate(),
-					Domain:  zone.Domain(),
-				}
+				zoneInfo := dns.NewZoneInfo(zone.ZoneID(), zone.Domain(), zone.IsPrivate(), zone.Key())
 				cache, err := account.getZoneQueryCache(ctx, zoneInfo)
 				if err != nil {
 					return nil, fmt.Errorf("failed to get DNS cache for zone %s: %w", zoneID, err)
