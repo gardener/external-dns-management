@@ -5,17 +5,17 @@
 package cloudflare
 
 import (
-	"github.com/cloudflare/cloudflare-go"
+	cloudflaredns "github.com/cloudflare/cloudflare-go/v6/dns"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider/raw"
 )
 
-type Record cloudflare.DNSRecord
+type Record cloudflaredns.RecordResponse
 
 var _ raw.Record = &Record{}
 
-func (r *Record) GetType() string          { return r.Type }
+func (r *Record) GetType() string          { return string(r.Type) }
 func (r *Record) GetId() string            { return r.ID }
 func (r *Record) GetDNSName() string       { return r.Name }
 func (r *Record) GetSetIdentifier() string { return "" }
@@ -26,7 +26,7 @@ func (r *Record) GetValue() string {
 	return r.Content
 }
 func (r *Record) GetTTL() int64    { return int64(r.TTL) }
-func (r *Record) SetTTL(ttl int64) { r.TTL = int(ttl) }
+func (r *Record) SetTTL(ttl int64) { r.TTL = cloudflaredns.TTL(ttl) }
 func (r *Record) Copy() raw.Record { n := *r; return &n }
 
 func (r *Record) SetRoutingPolicy(string, *dns.RoutingPolicy) {}
