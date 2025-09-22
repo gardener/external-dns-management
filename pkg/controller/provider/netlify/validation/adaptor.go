@@ -24,7 +24,7 @@ type adapter struct {
 func NewAdapter() provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
 	checks.Add(provider.RequiredProperty("NETLIFY_AUTH_TOKEN", "NETLIFY_API_TOKEN").
-		Validators(provider.NoTrailingWhitespaceValidator, provider.Base64CharactersValidator, provider.MaxLengthValidator(64)).
+		Validators(provider.NoTrailingWhitespaceValidator, provider.Base64CharactersUnderscoreValidator, provider.MaxLengthValidator(64)).
 		HideValue())
 	return &adapter{checks: checks}
 }
