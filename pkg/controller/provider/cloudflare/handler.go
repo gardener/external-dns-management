@@ -7,7 +7,8 @@ package cloudflare
 import (
 	"context"
 
-	"github.com/cloudflare/cloudflare-go"
+	cloudflaredns "github.com/cloudflare/cloudflare-go/v6/dns"
+	cloudflarezones "github.com/cloudflare/cloudflare-go/v6/zones"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -68,9 +69,9 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 
 func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	blockedZones := h.config.Options.GetBlockedZones()
-	rawZones := []cloudflare.Zone{}
+	rawZones := []cloudflarezones.Zone{}
 	{
-		f := func(zone cloudflare.Zone) (bool, error) {
+		f := func(zone cloudflarezones.Zone) (bool, error) {
 			if blockedZones.Contains(zone.ID) {
 				h.config.Logger.Infof("ignoring blocked zone id: %s", zone.ID)
 			} else {
@@ -101,7 +102,7 @@ func (h *Handler) GetZoneState(zone provider.DNSHostedZone) (provider.DNSZoneSta
 func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache) (provider.DNSZoneState, error) {
 	state := raw.NewState()
 
-	f := func(r cloudflare.DNSRecord) (bool, error) {
+	f := func(r cloudflaredns.RecordResponse) (bool, error) {
 		a := (*Record)(&r)
 		state.AddRecord(a)
 		return true, nil
