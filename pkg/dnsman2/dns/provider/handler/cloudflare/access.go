@@ -1,0 +1,209 @@
+// SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
+//
+// SPDX-License-Identifier: Apache-2.0
+
+package cloudflare
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/cloudflare/cloudflare-go/v6"
+	cloudflaredns "github.com/cloudflare/cloudflare-go/v6/dns"
+	"github.com/cloudflare/cloudflare-go/v6/option"
+	cloudflarezones "github.com/cloudflare/cloudflare-go/v6/zones"
+	"k8s.io/client-go/util/flowcontrol"
+	"k8s.io/utils/ptr"
+
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/raw"
+)
+
+type accessItf interface {
+	ListZones(ctx context.Context, consume func(zone cloudflarezones.Zone) (bool, error)) error
+	ListRecords(ctx context.Context, zoneId string, consume func(record cloudflaredns.RecordResponse) (bool, error)) error
+
+	raw.Executor
+}
+
+type access struct {
+	client      *cloudflare.Client
+	metrics     provider.Metrics
+	rateLimiter flowcontrol.RateLimiter
+}
+
+func newAccess(apiToken string, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter) (accessItf, error) {
+	client := cloudflare.NewClient(option.WithAPIToken(apiToken))
+	return &access{client: client, metrics: metrics, rateLimiter: rateLimiter}, nil
+}
+
+func (a *access) ListZones(ctx context.Context, consume func(zone cloudflarezones.Zone) (bool, error)) error {
+	a.metrics.AddGenericRequests(provider.MetricsRequestTypeListZones, 1)
+	a.rateLimiter.Accept()
+	iter := a.client.Zones.ListAutoPaging(ctx, cloudflarezones.ZoneListParams{})
+	for iter.Next() {
+		zone := iter.Current()
+		if cont, err := consume(zone); !cont || err != nil {
+			return err
+		}
+		// assume paging size of 100 to limit rate. The real page size is not exposed by the iterator.
+		if iter.Index()%100 == 99 {
+			a.metrics.AddGenericRequests(provider.MetricsRequestTypeListZonesPages, 1)
+			a.rateLimiter.Accept()
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("could not list zones: %w", err)
+	}
+	return nil
+}
+
+func (a *access) ListRecords(ctx context.Context, zoneId string, consume func(record cloudflaredns.RecordResponse) (bool, error)) error {
+	return a.listRecords(ctx, zoneId, consume, nil, nil)
+}
+
+func (a *access) listRecords(ctx context.Context, zoneId string, consume func(record cloudflaredns.RecordResponse) (bool, error),
+	recordListType *cloudflaredns.RecordListParamsType, name *cloudflaredns.RecordListParamsName,
+) error {
+	a.metrics.AddZoneRequests(zoneId, provider.MetricsRequestTypeListRecords, 1)
+	params := cloudflaredns.RecordListParams{
+		ZoneID: cloudflare.F(zoneId),
+	}
+	if recordListType != nil {
+		params.Type = cloudflare.F(*recordListType)
+	}
+	if name != nil {
+		params.Name = cloudflare.F(*name)
+	}
+	iter := a.client.DNS.Records.ListAutoPaging(ctx, params)
+	for iter.Next() {
+		record := iter.Current()
+		if cont, err := consume(record); !cont || err != nil {
+			return err
+		}
+		// assume paging size of 100 to limit rate. The real page size is not exposed by the iterator.
+		if iter.Index()%100 == 99 {
+			a.metrics.AddGenericRequests(provider.MetricsRequestTypeListRecordPages, 1)
+			a.rateLimiter.Accept()
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return fmt.Errorf("could not list records: %w", err)
+	}
+	return nil
+}
+
+func (a *access) CreateRecord(ctx context.Context, r raw.Record, zone provider.DNSHostedZone) error {
+	body, err := toRecordParamsBody(r)
+	if err != nil {
+		return err
+	}
+	a.metrics.AddZoneRequests(zone.ZoneID().ID, provider.MetricsRequestTypeCreateRecords, 1)
+	a.rateLimiter.Accept()
+	_, err = a.client.DNS.Records.New(ctx, cloudflaredns.RecordNewParams{
+		ZoneID: cloudflare.F(zone.ZoneID().ID),
+		Body:   body,
+	})
+	return err
+}
+
+func (a *access) UpdateRecord(ctx context.Context, r raw.Record, zone provider.DNSHostedZone) error {
+	body, err := toRecordParamsBody(r)
+	if err != nil {
+		return err
+	}
+	a.metrics.AddZoneRequests(zone.ZoneID().ID, provider.MetricsRequestTypeUpdateRecords, 1)
+	a.rateLimiter.Accept()
+	_, err = a.client.DNS.Records.Update(ctx, r.GetId(), cloudflaredns.RecordUpdateParams{
+		ZoneID: cloudflare.F(zone.ZoneID().ID),
+		Body:   body,
+	})
+	return err
+}
+
+func (a *access) DeleteRecord(ctx context.Context, r raw.Record, zone provider.DNSHostedZone) error {
+	a.metrics.AddZoneRequests(zone.ZoneID().ID, provider.MetricsRequestTypeDeleteRecords, 1)
+	a.rateLimiter.Accept()
+	_, err := a.client.DNS.Records.Delete(ctx, r.GetId(), cloudflaredns.RecordDeleteParams{ZoneID: cloudflare.F(zone.ZoneID().ID)})
+	return err
+}
+
+func (a *access) NewRecord(fqdn, rtype, value string, _ provider.DNSHostedZone, ttl int64) raw.Record {
+	return (*Record)(&cloudflaredns.RecordResponse{
+		Type:    cloudflaredns.RecordResponseType(rtype),
+		Name:    fqdn,
+		Content: value,
+		TTL:     cloudflaredns.TTL(ttl),
+	})
+}
+
+func (a *access) GetRecordList(ctx context.Context, dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordList, []*dns.RoutingPolicy, error) {
+	rs := raw.RecordList{}
+	consume := func(record cloudflaredns.RecordResponse) (bool, error) {
+		r := (*Record)(&record)
+		rs = append(rs, r)
+		return true, nil
+	}
+
+	err := a.listRecords(ctx,
+		zone.ZoneID().ID,
+		consume,
+		ptr.To(cloudflaredns.RecordListParamsType(rtype)),
+		&cloudflaredns.RecordListParamsName{
+			Exact: cloudflare.F(dnsName),
+		})
+	if err != nil {
+		return nil, nil, err
+	}
+	return rs, nil, nil
+}
+
+type bodyunion interface {
+	cloudflaredns.RecordNewParamsBodyUnion
+	cloudflaredns.RecordUpdateParamsBodyUnion
+}
+
+func toRecordParamsBody(r raw.Record) (bodyunion, error) {
+	ttl := r.GetTTL()
+	testTTL(&ttl)
+
+	switch r.GetType() {
+	case string(dns.TypeA):
+		return cloudflaredns.ARecordParam{
+			Name:    cloudflare.F(r.GetDNSName()),
+			Type:    cloudflare.F(cloudflaredns.ARecordTypeA),
+			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
+			Content: cloudflare.F(r.GetValue()),
+		}, nil
+	case string(dns.TypeAAAA):
+		return cloudflaredns.AAAARecordParam{
+			Name:    cloudflare.F(r.GetDNSName()),
+			Type:    cloudflare.F(cloudflaredns.AAAARecordTypeAAAA),
+			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
+			Content: cloudflare.F(r.GetValue()),
+		}, nil
+	case string(dns.TypeCNAME):
+		return cloudflaredns.CNAMERecordParam{
+			Name:    cloudflare.F(r.GetDNSName()),
+			Type:    cloudflare.F(cloudflaredns.CNAMERecordTypeCNAME),
+			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
+			Content: cloudflare.F(r.GetValue()),
+		}, nil
+	case string(dns.TypeTXT):
+		return cloudflaredns.TXTRecordParam{
+			Name:    cloudflare.F(r.GetDNSName()),
+			Type:    cloudflare.F(cloudflaredns.TXTRecordTypeTXT),
+			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
+			Content: cloudflare.F(r.GetValue()),
+		}, nil
+	default:
+		return nil, fmt.Errorf("record type %q not supported", r.GetType())
+	}
+}
+
+func testTTL(ttl *int64) {
+	if *ttl < 120 {
+		*ttl = 1
+	}
+}
