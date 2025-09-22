@@ -57,6 +57,16 @@ func Base64CharactersValidator(value string) error {
 	return nil
 }
 
+var base64UnderscoreRegex = regexp.MustCompile(`^[a-zA-Z0-9=+/_]+$`)
+
+// Base64CharactersUnderscoreValidator checks if the value contains only characters used for base64 encoding or underscore character.
+func Base64CharactersUnderscoreValidator(value string) error {
+	if !base64UnderscoreRegex.MatchString(value) {
+		return fmt.Errorf("value must contain only characters used for base64 encoding (A-Z, a-z, 0-9, +, /, =, and _)")
+	}
+	return nil
+}
+
 // BoolValidator checks if the value is a valid boolean (true/false).
 func BoolValidator(value string) error {
 	if _, err := strconv.ParseBool(value); err != nil {

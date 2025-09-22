@@ -31,6 +31,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/alicloud"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/aws"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/google"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/netlify"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/openstack"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
@@ -42,6 +43,7 @@ var allTypes = map[string]provider.AddToRegistryFunc{
 	alicloud.ProviderType:  alicloud.RegisterTo,
 	aws.ProviderType:       aws.RegisterTo,
 	google.ProviderType:    google.RegisterTo,
+	netlify.ProviderType:   netlify.RegisterTo,
 	openstack.ProviderType: openstack.RegisterTo,
 }
 
