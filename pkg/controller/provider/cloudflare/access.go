@@ -95,7 +95,7 @@ func (a *access) listRecords(ctx context.Context, zoneId string, consume func(re
 }
 
 func (a *access) CreateRecord(ctx context.Context, r raw.Record, zone provider.DNSHostedZone) error {
-	body, err := toNewRecordParamsBody(r)
+	body, err := toRecordParamsBody(r)
 	if err != nil {
 		return err
 	}
@@ -109,7 +109,7 @@ func (a *access) CreateRecord(ctx context.Context, r raw.Record, zone provider.D
 }
 
 func (a *access) UpdateRecord(ctx context.Context, r raw.Record, zone provider.DNSHostedZone) error {
-	body, err := toUpdateRecordParamsBody(r)
+	body, err := toRecordParamsBody(r)
 	if err != nil {
 		return err
 	}
@@ -159,45 +159,12 @@ func (a *access) GetRecordSet(ctx context.Context, dnsName, rtype string, zone p
 	return rs, nil
 }
 
-func toNewRecordParamsBody(r raw.Record) (cloudflaredns.RecordNewParamsBodyUnion, error) {
-	ttl := r.GetTTL()
-	testTTL(&ttl)
-
-	switch r.GetType() {
-	case dns.RS_A:
-		return cloudflaredns.ARecordParam{
-			Name:    cloudflare.F(r.GetDNSName()),
-			Type:    cloudflare.F(cloudflaredns.ARecordTypeA),
-			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
-			Content: cloudflare.F(r.GetValue()),
-		}, nil
-	case dns.RS_AAAA:
-		return cloudflaredns.AAAARecordParam{
-			Name:    cloudflare.F(r.GetDNSName()),
-			Type:    cloudflare.F(cloudflaredns.AAAARecordTypeAAAA),
-			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
-			Content: cloudflare.F(r.GetValue()),
-		}, nil
-	case dns.RS_CNAME:
-		return cloudflaredns.CNAMERecordParam{
-			Name:    cloudflare.F(r.GetDNSName()),
-			Type:    cloudflare.F(cloudflaredns.CNAMERecordTypeCNAME),
-			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
-			Content: cloudflare.F(r.GetValue()),
-		}, nil
-	case dns.RS_TXT:
-		return cloudflaredns.TXTRecordParam{
-			Name:    cloudflare.F(r.GetDNSName()),
-			Type:    cloudflare.F(cloudflaredns.TXTRecordTypeTXT),
-			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
-			Content: cloudflare.F(r.GetValue()),
-		}, nil
-	default:
-		return nil, fmt.Errorf("record type %q not supported", r.GetType())
-	}
+type bodyunion interface {
+	cloudflaredns.RecordNewParamsBodyUnion
+	cloudflaredns.RecordUpdateParamsBodyUnion
 }
 
-func toUpdateRecordParamsBody(r raw.Record) (cloudflaredns.RecordUpdateParamsBodyUnion, error) {
+func toRecordParamsBody(r raw.Record) (bodyunion, error) {
 	ttl := r.GetTTL()
 	testTTL(&ttl)
 
