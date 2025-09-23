@@ -301,9 +301,6 @@ spec:
         {{- if .Values.configuration.compoundGoogleClouddnsRatelimiterQps }}
         - --compound.google-clouddns.ratelimiter.qps={{ .Values.configuration.compoundGoogleClouddnsRatelimiterQps }}
         {{- end }}
-        {{- if .Values.configuration.compoundIdentifier }}
-        - --compound.identifier={{ .Values.configuration.compoundIdentifier }}
-        {{- end }}
         {{- if .Values.configuration.compoundInfobloxDnsAdvancedBatchSize }}
         - --compound.infoblox-dns.advanced.batch-size={{ .Values.configuration.compoundInfobloxDnsAdvancedBatchSize }}
         {{- end }}
@@ -739,6 +736,9 @@ spec:
         {{- if .Values.configuration.kubeconfig }}
         - --kubeconfig={{ .Values.configuration.kubeconfig }}
         {{- end }}
+        {{- if .Values.configuration.kubeconfigBurst }}
+        - --kubeconfig.burst={{ .Values.configuration.kubeconfigBurst }}
+        {{- end }}
         {{- if .Values.configuration.kubeconfigConditionalDeployCrds }}
         - --kubeconfig.conditional-deploy-crds={{ .Values.configuration.kubeconfigConditionalDeployCrds }}
         {{- end }}
@@ -750,6 +750,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.kubeconfigMigrationIds }}
         - --kubeconfig.migration-ids={{ .Values.configuration.kubeconfigMigrationIds }}
+        {{- end }}
+        {{- if .Values.configuration.kubeconfigQps }}
+        - --kubeconfig.qps={{ .Values.configuration.kubeconfigQps }}
         {{- end }}
         {{- if .Values.configuration.leaseDuration }}
         - --lease-duration={{ .Values.configuration.leaseDuration }}
@@ -844,6 +847,9 @@ spec:
         {{- if .Values.configuration.providers }}
         - --providers={{ .Values.configuration.providers }}
         {{- end }}
+        {{- if .Values.configuration.providersBurst }}
+        - --providers.burst={{ .Values.configuration.providersBurst }}
+        {{- end }}
         {{- if .Values.configuration.providersConditionalDeployCrds }}
         - --providers.conditional-deploy-crds={{ .Values.configuration.providersConditionalDeployCrds }}
         {{- end }}
@@ -861,6 +867,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.providersPoolSize }}
         - --providers.pool.size={{ .Values.configuration.providersPoolSize }}
+        {{- end }}
+        {{- if .Values.configuration.providersQps }}
+        - --providers.qps={{ .Values.configuration.providersQps }}
         {{- end }}
         {{- if .Values.configuration.ratelimiterBurst }}
         - --ratelimiter.burst={{ .Values.configuration.ratelimiterBurst }}
@@ -973,6 +982,9 @@ spec:
         {{- if .Values.configuration.targetRealms }}
         - --target-realms={{ .Values.configuration.targetRealms }}
         {{- end }}
+        {{- if .Values.configuration.targetBurst }}
+        - --target.burst={{ .Values.configuration.targetBurst }}
+        {{- end }}
         {{- if .Values.configuration.targetConditionalDeployCrds }}
         - --target.conditional-deploy-crds={{ .Values.configuration.targetConditionalDeployCrds }}
         {{- end }}
@@ -984,6 +996,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.targetMigrationIds }}
         - --target.migration-ids={{ .Values.configuration.targetMigrationIds }}
+        {{- end }}
+        {{- if .Values.configuration.targetQps }}
+        - --target.qps={{ .Values.configuration.targetQps }}
         {{- end }}
         {{- if .Values.configuration.targetsPoolSize }}
         - --targets.pool.size={{ .Values.configuration.targetsPoolSize }}
