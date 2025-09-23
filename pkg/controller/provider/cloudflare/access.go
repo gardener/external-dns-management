@@ -203,7 +203,11 @@ func toRecordParamsBody(r raw.Record) (bodyunion, error) {
 }
 
 func testTTL(ttl *int64) {
-	if *ttl < 120 {
-		*ttl = 1
+	// Value must be between 60 and 86400 for Cloudflare.
+	if *ttl < 60 {
+		// Setting to 1 means 'automatic'.
+		*ttl = int64(cloudflaredns.TTL1)
+	} else if *ttl > 86400 {
+		*ttl = 86400
 	}
 }

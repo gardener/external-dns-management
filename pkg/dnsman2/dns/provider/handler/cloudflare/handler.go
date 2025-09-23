@@ -21,7 +21,7 @@ import (
 type handler struct {
 	provider.DefaultDNSHandler
 	config provider.DNSHandlerConfig
-	access accessItf
+	access accessor
 }
 
 var _ provider.DNSHandler = &handler{}
@@ -39,11 +39,6 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	if err != nil {
 		return nil, err
 	}
-	//Email would be necessary in case of API KEY based auth which I am not supporting now. API token is more secure anyway
-	//email, err := c.GetRequiredProperty("CLOUDFLARE_API_EMAIL", "email")
-	//if err != nil {
-	//	return nil, err
-	//}
 
 	access, err := newAccess(apiToken, c.Metrics, c.RateLimiter)
 	if err != nil {
@@ -114,7 +109,7 @@ func (h *handler) isBlockedZone(zoneID string) bool {
 	return false
 }
 
-// GetCustomQueryDNSFunc returns a custom DNS query function for the Alicloud DNS provider.
+// GetCustomQueryDNSFunc returns a custom DNS query function for the Cloudflare DNS provider.
 func (h *handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, factory utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
 	defaultQueryFunc, err := factory()
 	if err != nil {
