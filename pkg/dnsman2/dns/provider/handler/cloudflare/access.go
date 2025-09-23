@@ -20,7 +20,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/raw"
 )
 
-type accessItf interface {
+type accessor interface {
 	ListZones(ctx context.Context, consume func(zone cloudflarezones.Zone) (bool, error)) error
 	ListRecords(ctx context.Context, zoneId string, consume func(record cloudflaredns.RecordResponse) (bool, error)) error
 
@@ -33,7 +33,7 @@ type access struct {
 	rateLimiter flowcontrol.RateLimiter
 }
 
-func newAccess(apiToken string, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter) (accessItf, error) {
+func newAccess(apiToken string, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter) (accessor, error) {
 	client := cloudflare.NewClient(option.WithAPIToken(apiToken))
 	return &access{client: client, metrics: metrics, rateLimiter: rateLimiter}, nil
 }
@@ -203,7 +203,11 @@ func toRecordParamsBody(r raw.Record) (bodyunion, error) {
 }
 
 func testTTL(ttl *int64) {
-	if *ttl < 120 {
-		*ttl = 1
+	// Value must be between 60 and 86400 for Cloudflare
+	if *ttl < 60 {
+		// Setting to 1 means 'automatic'.
+		*ttl = int64(cloudflaredns.TTL1)
+	} else if *ttl > 86400 {
+		*ttl = 86400
 	}
 }
