@@ -2,7 +2,7 @@
 
 > [!WARNING]
 > The Infoblox DNS provider is deprecated and will be removed in future releases end of 2025, as there is 
-> no maintainer and not test environment available anymore. Please consider using an alternative DNS provider.
+> no maintainer and no test environment available anymore. Please consider using an alternative DNS provider.
 
 This DNS provider allows you to create and manage DNS entries in [Infoblox DNS](https://www.infoblox.com/products/dns/). 
 
