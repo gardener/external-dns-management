@@ -24,7 +24,7 @@ import (
 var (
 	nullHost = "@"
 	// defaultPageSize. According to the documentation, the maximum page size is 100.
-	// @see https://www.alibabacloud.com/help/en/dns/api-alidns-2015-01-09-describedomains
+	// See: https://www.alibabacloud.com/help/en/dns/api-alidns-2015-01-09-describedomains
 	defaultPageSize int64 = 100
 )
 
@@ -50,7 +50,7 @@ func GetRR(dnsname, domain string) string {
 	return dnsname[:len(dnsname)-len(suffix)]
 }
 
-type accessItf interface {
+type accessor interface {
 	ListDomains(consume func(domain *alidns.DescribeDomainsResponseBodyDomainsDomain) (bool, error)) error
 	ListRecords(zoneID, domain string, consume func(record *alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord) (bool, error)) error
 
@@ -63,11 +63,11 @@ type access struct {
 	rateLimiter flowcontrol.RateLimiter
 }
 
-func newAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter) (accessItf, error) {
+func newAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter) (accessor, error) {
 	config := &openapi.Config{
 		AccessKeyId:     &accessKeyId,
 		AccessKeySecret: &accessKeySecret,
-		RegionId:        ptr.To("cn-shanghai"),
+		RegionId:        ptr.To("cn-shanghai"), // Currently hardcoded, the limitation is documented.
 	}
 	client, err := alidns.NewClient(config)
 	if err != nil {
@@ -196,11 +196,11 @@ func (a *access) setRecordWeight(recordId *string, record raw.Record) error {
 		}
 
 		// Need to enable weighted round-robin
-		req3 := &alidns.SetDNSSLBStatusRequest{}
-		req3.Type = r.Type
-		req3.DomainName = r.DomainName
-		req3.SubDomain = ptr.To(r.GetDNSName())
-		if _, err := a.client.SetDNSSLBStatus(req3); err != nil {
+		slbRequest := &alidns.SetDNSSLBStatusRequest{}
+		slbRequest.Type = r.Type
+		slbRequest.DomainName = r.DomainName
+		slbRequest.SubDomain = ptr.To(r.GetDNSName())
+		if _, err := a.client.SetDNSSLBStatus(slbRequest); err != nil {
 			return fmt.Errorf("setDNSSLBStatus failed: %w", err)
 		}
 		if _, err := a.client.UpdateDNSSLBWeight(weightRequest); err != nil {
@@ -238,10 +238,10 @@ func (a *access) UpdateRecord(_ context.Context, record raw.Record, zone provide
 	a.metrics.AddZoneRequests(zone.ZoneID().ID, provider.MetricsRequestTypeUpdateRecords, 1)
 	a.rateLimiter.Accept()
 	if _, err := a.client.UpdateDomainRecord(req); err != nil {
+		// duplicate record can happen if only the weight changed for a weighted record set
 		if !isSDKErrorWithCode(err, "DomainRecordDuplicate") {
 			return err
 		}
-		// duplicate record can happen if only the weight changed for a weighted record set
 	}
 	if record.GetSetIdentifier() != "" {
 		if err := a.setRecordWeight(r.RecordId, record); err != nil {

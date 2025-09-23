@@ -17,7 +17,7 @@ import (
 // ProviderType is the type identifier for the Alicloud DNS provider.
 const ProviderType = "alicloud-dns"
 
-// RegisterTo registers the OpenStack Designate DNS handler to the given registry.
+// RegisterTo registers the Alicloud DNS handler to the given registry.
 func RegisterTo(registry *provider.DNSHandlerRegistry) {
 	registry.Register(
 		ProviderType,

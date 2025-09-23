@@ -23,7 +23,7 @@ import (
 type handler struct {
 	provider.DefaultDNSHandler
 	config provider.DNSHandlerConfig
-	access accessItf
+	access accessor
 }
 
 var _ provider.DNSHandler = &handler{}
@@ -48,7 +48,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	access, err := newAccess(accessKeyID, accessKeySecret, c.Metrics, c.RateLimiter)
 	if err != nil {
-		return nil, perrs.WrapAsHandlerError(err, "Creating alicloud access with client credentials failed")
+		return nil, perrs.WrapAsHandlerError(err, "creating alicloud access with client credentials failed")
 	}
 
 	h.access = access
@@ -83,13 +83,11 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 	}
 
 	var zones []provider.DNSHostedZone
-	{
-		for _, z := range rawZones {
-			domainID := ptr.Deref(z.DomainId, "")
-			domainName := ptr.Deref(z.DomainName, "")
-			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), domainID, domainName, domainName, false)
-			zones = append(zones, hostedZone)
-		}
+	for _, z := range rawZones {
+		domainID := ptr.Deref(z.DomainId, "")
+		domainName := ptr.Deref(z.DomainName, "")
+		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), domainID, domainName, domainName, false)
+		zones = append(zones, hostedZone)
 	}
 
 	return zones, nil
@@ -138,7 +136,6 @@ func (h *handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, factory utils.QueryDNSFa
 	}, nil
 }
 
-// queryDNS queries the DNS provider for the given DNS name and record type.
 func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
 	rl, policies, err := h.access.GetRecordList(ctx, setName.DNSName, string(recordType), zone)
 	if err != nil {
