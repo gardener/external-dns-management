@@ -13,7 +13,7 @@ It contains provisioning controllers for creating DNS records in one of the DNS 
   - [_Azure DNS_](/docs/azure-dns/README.md) and [_Azure Private_DNS_](/docs/azure-private-dns/README.md),
   - [_OpenStack Designate_](/docs/openstack-designate/README.md),
   - [_Cloudflare DNS_](/docs/cloudflare/README.md),
-  - [_Infoblox_](/docs/infoblox/README.md),
+  - [_Infoblox_](/docs/infoblox/README.md) *(deprecated - is not supported or maintained anymore. It will be removed end of 2025)*,
   - [_Netlify DNS_](docs/netlify/README.md),
   - [_remote_](docs/remote/README.md),
   - [_DNS servers supporting RFC 2136 (DNS Update)_](docs/rfc2136/README.md) *(alpha - not recommended for productive usage)*,
@@ -803,10 +803,12 @@ Flags:
       --k8s-gateways-dns.targets.pool.size int                        Worker pool size for pool targets of controller k8s-gateways-dns
       --key string                                                    selecting key for annotation
       --kubeconfig string                                             default cluster access
+      --kubeconfig.burst int                                          option to set the maximum burst to the apiserver of the cluster default
       --kubeconfig.conditional-deploy-crds                            deployment of required crds for cluster default only if there is no managed resource in garden namespace deploying it
       --kubeconfig.disable-deploy-crds                                disable deployment of required crds for cluster default
       --kubeconfig.id string                                          id for cluster default
       --kubeconfig.migration-ids string                               migration id for cluster default
+      --kubeconfig.qps int                                            option to set the maximum QPS to the apiserver of the cluster default
       --lease-duration duration                                       lease duration
       --lease-name string                                             name for lease object
       --lease-renew-deadline duration                                 lease renew deadline
@@ -842,12 +844,14 @@ Flags:
       --powerdns.ratelimiter.qps int                                  maximum requests/queries per second
       --provider-types string                                         comma separated list of provider types to enable
       --providers string                                              cluster to look for provider objects
+      --providers.burst int                                           option to set the maximum burst to the apiserver of the cluster provider
       --providers.conditional-deploy-crds                             deployment of required crds for cluster provider only if there is no managed resource in garden namespace deploying it
       --providers.disable-deploy-crds                                 disable deployment of required crds for cluster provider
       --providers.id string                                           id for cluster provider
       --providers.migration-ids string                                migration id for cluster provider
       --providers.pool.resync-period duration                         Period for resynchronization for pool providers
       --providers.pool.size int                                       Worker pool size for pool providers
+      --providers.qps int                                             option to set the maximum QPS to the apiserver of the cluster provider
       --ratelimiter.burst int                                         number of burst requests for rate limiter
       --ratelimiter.enabled                                           enables rate limiter for DNS provider requests
       --ratelimiter.qps int                                           maximum requests/queries per second
@@ -891,10 +895,12 @@ Flags:
       --target-name-prefix string                                     name prefix in target namespace for cross cluster generation, name prefix in target namespace for cross cluster replication
       --target-namespace string                                       target namespace for cross cluster generation
       --target-realms string                                          realm(s) to use for generated DNS entries, realm(s) to use for replicated DNS provider
+      --target.burst int                                              option to set the maximum burst to the apiserver of the cluster target
       --target.conditional-deploy-crds                                deployment of required crds for cluster target only if there is no managed resource in garden namespace deploying it
       --target.disable-deploy-crds                                    disable deployment of required crds for cluster target
       --target.id string                                              id for cluster target
       --target.migration-ids string                                   migration id for cluster target
+      --target.qps int                                                option to set the maximum QPS to the apiserver of the cluster target
       --targets.pool.size int                                         Worker pool size for pool targets
       --targetsources.pool.size int                                   Worker pool size for pool targetsources
       --ttl int                                                       Default time-to-live for DNS entries. Defines how long the record is kept in cache by DNS servers or resolvers.

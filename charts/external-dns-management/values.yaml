@@ -125,14 +125,12 @@ configuration:
   # compoundGoogleClouddnsRatelimiterBurst:
   # compoundGoogleClouddnsRatelimiterEnabled:
   # compoundGoogleClouddnsRatelimiterQps:
-  # compoundIdentifier: ""
   # compoundInfobloxDnsAdvancedBatchSize:
   # compoundInfobloxDnsAdvancedMaxRetries:
   # compoundInfobloxDnsRatelimiterBurst:
   # compoundInfobloxDnsRatelimiterEnabled:
   # compoundInfobloxDnsRatelimiterQps:
   # compoundLockStatusCheckPeriod:
-  # compoundMaxMetadataRecordDeletionsPerReconciliation:
   # compoundNetlifyDnsAdvancedBatchSize:
   # compoundNetlifyDnsAdvancedMaxRetries:
   # compoundNetlifyDnsRatelimiterBurst:
@@ -272,9 +270,11 @@ configuration:
   # k8sGatewaysDnsTargetsPoolSize:
   # key: ""
   # kubeconfig: ""
+  # kubeconfigBurst:
   # kubeconfigDisableDeployCrds: false
   # kubeconfigId: ""
   # kubeconfigMigrationIds: ""
+  # kubeconfigQps:
   leaseDuration: 30s
   # leaseName:
   # leaseRenewDeadline:
@@ -307,12 +307,14 @@ configuration:
   # powerdnsRatelimiterQps:
   # providerTypes: ""
   # providers: ""
+  # providersBurst:
   # providersConditionalDeployCrds:
   # providersDisableDeployCrds: false
   # providersId: ""
   # providersMigrationIds: ""
   # providersPoolResyncPeriod: 30s
   # providersPoolSize: 1
+  # providersQps:
   # ratelimiterBurst:
   # ratelimiterEnabled:
   # ratelimiterQps:
@@ -350,10 +352,12 @@ configuration:
   # targetNamePrefix: ""
   # targetNamespace: ""
   # targetRealms: ""
+  # targetBurst:
   # targetConditionalDeployCrds:
   # targetDisableDeployCrds: false
   # targetId: ""
   # targetMigrationIds: ""
+  # targetQps:
   # targetsPoolSize:
   # targetsourcesPoolSize:
   ttl: 120
