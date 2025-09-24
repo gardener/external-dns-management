@@ -120,6 +120,9 @@ func (rs *RecordSet) Add(records ...*Record) *RecordSet {
 
 // RecordString returns a string representation of the records in the RecordSet.
 func (rs *RecordSet) RecordString() string {
+	if rs == nil {
+		return "null"
+	}
 	line := ""
 	sep := ""
 	for _, r := range rs.Records {
