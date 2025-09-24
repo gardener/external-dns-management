@@ -25,7 +25,7 @@ require (
 	github.com/go-openapi/runtime v0.28.0
 	github.com/go-openapi/strfmt v0.23.0
 	github.com/gophercloud/gophercloud/v2 v2.8.0
-	github.com/gophercloud/utils/v2 v2.0.0-20250908160916-88fadeedd0ca
+	github.com/gophercloud/utils/v2 v2.0.0-20250924123217-7e7b84132d8a
 	github.com/infobloxopen/infoblox-go-client/v2 v2.1.0
 	github.com/jellydator/ttlcache/v3 v3.4.0
 	github.com/joeig/go-powerdns/v3 v3.18.1
