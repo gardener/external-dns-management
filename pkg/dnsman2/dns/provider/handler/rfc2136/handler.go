@@ -46,7 +46,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		config:            *c,
 	}
 
-	server, err := c.GetRequiredProperty("Server")
+	server, err := c.GetRequiredProperty(PropertyServer)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	}
 	h.nameserver = server
 
-	zone, err := c.GetRequiredProperty("Zone")
+	zone, err := c.GetRequiredProperty(PropertyZone)
 	if err != nil {
 		return nil, err
 	}
@@ -64,22 +64,22 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	}
 	h.zone = zone
 
-	keyname, err := c.GetRequiredProperty("TSIGKeyName")
+	keyname, err := c.GetRequiredProperty(PropertyTSIGKeyName)
 	if err != nil {
 		return nil, err
 	}
 	if keyname != miekgdns.Fqdn(keyname) {
-		return nil, fmt.Errorf("TSIGKeyName must end with '.'")
+		return nil, fmt.Errorf("%s must end with '.'", PropertyTSIGKeyName)
 	}
 	h.tsigKeyname = miekgdns.Fqdn(keyname)
 
-	secret, err := c.GetRequiredProperty("TSIGSecret")
+	secret, err := c.GetRequiredProperty(PropertyTSIGSecret)
 	if err != nil {
 		return nil, err
 	}
 	h.tsigSecret = secret
 
-	h.tsigAlgorithm, err = findTsigAlgorithm(c.GetProperty("TSIGSecretAlgorithm"))
+	h.tsigAlgorithm, err = findTsigAlgorithm(c.GetProperty(PropertyTSIGSecretAlgorithm))
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +98,7 @@ func (h *handler) GetZones(_ context.Context) ([]provider.DNSHostedZone, error) 
 	}, nil
 }
 
-// GetCustomQueryDNSFunc returns a custom DNS query function for the Alicloud DNS provider.
+// GetCustomQueryDNSFunc returns a custom DNS query function for the RFC2136 DNS provider.
 func (h *handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, factory utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
 	defaultQueryFunc, err := factory()
 	if err != nil {

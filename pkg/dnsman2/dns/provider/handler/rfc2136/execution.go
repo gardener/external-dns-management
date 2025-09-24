@@ -51,7 +51,7 @@ func (exec *execution) apply(_ context.Context, setName dns.DNSSetName, req *pro
 			newRecords, updRecords, delRecords := req.New.DiffTo(req.Old)
 			addRecords := append(newRecords, updRecords...)
 			if recreateOnTTLChange {
-				// experience with know-dns: update of TTL needs deletion and insert
+				// experience with knot-dns: update of TTL needs deletion and insert
 				delRecords = append(delRecords, updRecords...)
 			}
 			addRRSet, err = exec.buildResourceRecords(setName, &dns.RecordSet{Type: req.New.Type, TTL: req.New.TTL, Records: addRecords})
@@ -105,10 +105,11 @@ func (exec *execution) buildResourceRecords(setName dns.DNSSetName, rset *dns.Re
 			if ip == nil {
 				return nil, fmt.Errorf("invalid IP address: %s", r.Value)
 			}
-			if ip.To4() == nil {
+			ipv4 := ip.To4()
+			if ipv4 == nil {
 				return nil, fmt.Errorf("not an IPv4 address: %s", r.Value)
 			}
-			records = append(records, &miekgdns.A{Hdr: hdr, A: ip.To4()})
+			records = append(records, &miekgdns.A{Hdr: hdr, A: ipv4})
 		}
 		return records, nil
 	case dns.TypeAAAA:
@@ -118,10 +119,11 @@ func (exec *execution) buildResourceRecords(setName dns.DNSSetName, rset *dns.Re
 			if ip == nil {
 				return nil, fmt.Errorf("invalid IP address: %s", r.Value)
 			}
-			if ip.To16() == nil {
+			ipv6 := ip.To16()
+			if ipv6 == nil {
 				return nil, fmt.Errorf("not an IPv6 address: %s", r.Value)
 			}
-			records = append(records, &miekgdns.AAAA{Hdr: hdr, AAAA: ip.To16()})
+			records = append(records, &miekgdns.AAAA{Hdr: hdr, AAAA: ipv6})
 		}
 		return records, nil
 	case dns.TypeCNAME:
@@ -175,7 +177,7 @@ func (exec *execution) exchange(records []miekgdns.RR, apply func(*miekgdns.Msg,
 
 	apply(msg, records)
 
-	retMsg, _, err := c.Exchange(msg, exec.handler.nameserver) // your DNS server
+	retMsg, _, err := c.Exchange(msg, exec.handler.nameserver)
 	metrics.AddZoneRequests(exec.handler.zone, requestType, 1)
 	if err != nil {
 		return err

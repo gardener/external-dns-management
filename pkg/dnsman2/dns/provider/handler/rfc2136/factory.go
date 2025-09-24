@@ -19,7 +19,7 @@ import (
 // ProviderType is the type of the RFC2136 DNS provider.
 const ProviderType = "rfc2136"
 
-// RegisterTo registers the OpenStack Designate DNS handler to the given registry.
+// RegisterTo registers the RFC2136 DNS handler to the given registry.
 func RegisterTo(registry *provider.DNSHandlerRegistry) {
 	registry.Register(
 		ProviderType,
@@ -41,16 +41,16 @@ type adapter struct {
 // newAdapter creates a new DNSHandlerAdapter for the RFC2136 DNS provider.
 func newAdapter() provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
-	checks.Add(provider.RequiredProperty("Server").
+	checks.Add(provider.RequiredProperty(PropertyServer).
 		Validators(provider.NoTrailingWhitespaceValidator, provider.AlphaNumericPunctuationValidator, provider.MaxLengthValidator(256)))
-	checks.Add(provider.RequiredProperty("Zone").
+	checks.Add(provider.RequiredProperty(PropertyZone).
 		Validators(provider.NoTrailingWhitespaceValidator, provider.AlphaNumericPunctuationValidator, provider.MaxLengthValidator(256), zoneValidator))
-	checks.Add(provider.RequiredProperty("TSIGKeyName").
+	checks.Add(provider.RequiredProperty(PropertyTSIGKeyName).
 		Validators(provider.NoTrailingWhitespaceValidator, provider.AlphaNumericPunctuationValidator, provider.MaxLengthValidator(256), fqdnValidator))
-	checks.Add(provider.RequiredProperty("TSIGSecret").
+	checks.Add(provider.RequiredProperty(PropertyTSIGSecret).
 		Validators(provider.NoTrailingWhitespaceValidator, provider.MaxLengthValidator(128)).
 		HideValue())
-	checks.Add(provider.OptionalProperty("TSIGSecretAlgorithm").
+	checks.Add(provider.OptionalProperty(PropertyTSIGSecretAlgorithm).
 		Validators(algorithmValidator))
 	return &adapter{checks: checks}
 }
