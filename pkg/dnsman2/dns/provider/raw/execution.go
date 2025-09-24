@@ -91,7 +91,7 @@ func (exec *Execution) AddChange(ctx context.Context, req *provider.ChangeReques
 	err := exec.routingPolicyChecker(exec.name, req)
 	if err != nil {
 		exec.log.Info(fmt.Sprintf("warning: record set %s[%s]: %s", exec.name, exec.zone.ZoneID().ID, err))
-		return nil
+		return err
 	}
 
 	beforeCount := len(exec.additions) + len(exec.updates) + len(exec.deletions)
@@ -163,9 +163,15 @@ func (exec *Execution) add(ctx context.Context, rs *dns.RecordSet, modonly bool,
 		}
 	}
 	if diffList != nil {
+	outer:
 		for i, or := range oldRL {
 			if !oldFound[i] {
 				if or.GetSetIdentifier() == exec.name.SetIdentifier {
+					for _, r := range *diffList {
+						if r.GetId() == or.GetId() {
+							continue outer
+						}
+					}
 					*diffList = append(*diffList, or)
 				}
 			}
@@ -218,9 +224,9 @@ func (exec *Execution) SubmitChanges(ctx context.Context) error {
 func (exec *Execution) submit(ctx context.Context, f func(ctx context.Context, record Record, zone provider.DNSHostedZone) error, r Record) {
 	err := f(ctx, r, exec.zone)
 	if err != nil {
-		exec.results[dns.DNSSetName{DNSName: r.GetDNSName(), SetIdentifier: r.GetSetIdentifier()}] = err
 		exec.log.Error(err, "execution failed", "recordType", r.GetType(), "name", r.GetDNSName())
 	}
+	exec.results[dns.DNSSetName{DNSName: r.GetDNSName(), SetIdentifier: r.GetSetIdentifier()}] = err
 }
 
 // ExecuteRequests executes the given change requests in the specified hosted zone using the provided executor.
