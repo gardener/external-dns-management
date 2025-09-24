@@ -162,7 +162,7 @@ func (h *Handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, _ utils.QueryDNSFactoryF
 
 // QueryDNS queries DNS records in the mock provider.
 func (h *Handler) queryDNS(_ context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-	result := h.mock.GetRecordset(zone.ZoneID, setName.Normalize(), recordType)
+	result := h.mock.GetRecordset(zone.ZoneID(), setName.Normalize(), recordType)
 	if result == nil {
 		return nil, nil
 	}
