@@ -19,7 +19,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/raw"
 )
 
-type accessItf interface {
+type accessor interface {
 	ListZones(consume func(zone models.DNSZone) (bool, error)) error
 	ListRecords(zoneId string, consume func(record models.DNSRecord) (bool, error)) error
 
@@ -35,13 +35,13 @@ type access struct {
 
 func clientCredentials(apiToken string) runtime.ClientAuthInfoWriter {
 	return runtime.ClientAuthInfoWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
-		_ = r.SetHeaderParam("User-Agent", "external-dns-manager")
+		_ = r.SetHeaderParam("User-Agent", "gardener-external-dns-management")
 		_ = r.SetHeaderParam("Authorization", "Bearer "+apiToken)
 		return nil
 	})
 }
 
-func newAccess(apiToken string, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter) (accessItf, error) {
+func newAccess(apiToken string, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter) (accessor, error) {
 	client := plumbing.Default.Operations
 	clientCredentials := clientCredentials(apiToken)
 	return &access{client: client, authInfo: clientCredentials, metrics: metrics, rateLimiter: rateLimiter}, nil
@@ -82,7 +82,7 @@ func (this *access) ListRecords(zoneID string, consume func(record models.DNSRec
 func (this *access) CreateRecord(_ context.Context, r raw.Record, zone provider.DNSHostedZone) error {
 	a := r.(*Record)
 	ttl := r.GetTTL()
-	testTTL(&ttl)
+	clampTTL(&ttl)
 	dnsRecord := models.DNSRecordCreate{
 		Type:     r.GetType(),
 		Hostname: r.GetDNSName(),
@@ -101,8 +101,7 @@ func (this *access) CreateRecord(_ context.Context, r raw.Record, zone provider.
 func (this *access) UpdateRecord(ctx context.Context, r raw.Record, zone provider.DNSHostedZone) error {
 	// Netlify does not support updating a record
 	// Delete the existing record and re-create it
-	err := this.DeleteRecord(ctx, r, zone)
-	if err != nil {
+	if err := this.DeleteRecord(ctx, r, zone); err != nil {
 		return err
 	}
 	return this.CreateRecord(ctx, r, zone)
@@ -147,7 +146,7 @@ func (this *access) GetRecordList(_ context.Context, dnsName, rtype string, zone
 	return rl, nil, nil
 }
 
-func testTTL(ttl *int64) {
+func clampTTL(ttl *int64) {
 	if *ttl < 1 {
 		*ttl = 1
 	}

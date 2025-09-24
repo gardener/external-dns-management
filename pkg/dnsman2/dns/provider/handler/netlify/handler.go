@@ -22,7 +22,7 @@ import (
 type handler struct {
 	provider.DefaultDNSHandler
 	config provider.DNSHandlerConfig
-	access accessItf
+	access accessor
 }
 
 var _ provider.DNSHandler = &handler{}
@@ -144,8 +144,5 @@ func (h *handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZo
 }
 
 func checkAccessForbidden(err error) bool {
-	if err != nil && strings.Contains(err.Error(), "403") {
-		return true
-	}
-	return false
+	return err != nil && strings.Contains(err.Error(), "403")
 }

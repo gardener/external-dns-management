@@ -34,7 +34,7 @@ type access struct {
 
 func ClientCredentials(apiToken string) runtime.ClientAuthInfoWriter {
 	return runtime.ClientAuthInfoWriterFunc(func(r runtime.ClientRequest, _ strfmt.Registry) error {
-		_ = r.SetHeaderParam("User-Agent", "external-dns-manager")
+		_ = r.SetHeaderParam("User-Agent", "gardener-external-dns-management")
 		_ = r.SetHeaderParam("Authorization", "Bearer "+apiToken)
 		return nil
 	})
