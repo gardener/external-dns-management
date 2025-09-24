@@ -98,17 +98,17 @@ func (exec *Execution) AddChange(ctx context.Context, req *provider.ChangeReques
 	switch {
 	case req.Old == nil && req.New != nil:
 		exec.log.Info(fmt.Sprintf("create %s record set %s[%s]: %s(%d)", req.New.Type, exec.name, exec.zone.ZoneID().ID, req.New.RecordString(), req.New.TTL))
-		if err := exec.add(ctx, req.New, true, &exec.updates, &exec.additions, &exec.deletions); err != nil {
+		if err := exec.add(ctx, req.New, &exec.updates, &exec.additions, &exec.deletions); err != nil {
 			return err
 		}
 	case req.Old != nil && req.New != nil:
 		exec.log.Info(fmt.Sprintf("update %s record set %s[%s]: %s(%d)", req.New.Type, exec.name, exec.zone.ZoneID().ID, req.New.RecordString(), req.New.TTL))
-		if err := exec.add(ctx, req.New, true, &exec.updates, &exec.additions, &exec.deletions); err != nil {
+		if err := exec.add(ctx, req.New, &exec.updates, &exec.additions, &exec.deletions); err != nil {
 			return err
 		}
 	case req.Old != nil && req.New == nil:
 		exec.log.Info(fmt.Sprintf("delete %s record set %s[%s]: %s", req.Old.Type, exec.name, exec.zone.ZoneID().ID, req.Old.RecordString()))
-		if err := exec.add(ctx, req.Old, false, &exec.deletions, nil, &exec.deletions); err != nil {
+		if err := exec.delete(ctx, req.Old, &exec.deletions); err != nil {
 			return err
 		}
 	}
@@ -119,7 +119,7 @@ func (exec *Execution) AddChange(ctx context.Context, req *provider.ChangeReques
 	return nil
 }
 
-func (exec *Execution) add(ctx context.Context, rs *dns.RecordSet, modonly bool, found *RecordList, notfound *RecordList, diffList *RecordList) error {
+func (exec *Execution) add(ctx context.Context, rs *dns.RecordSet, found *RecordList, notfound *RecordList, diffList *RecordList) error {
 	oldRL, oldRoutingPolicies, err := exec.executor.GetRecordList(ctx, exec.name.DNSName, string(rs.Type), exec.zone)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (exec *Execution) add(ctx context.Context, rs *dns.RecordSet, modonly bool,
 			}
 		}
 		if old != nil {
-			if (!modonly) || (old.GetTTL() != rs.TTL) || !reflect.DeepEqual(oldRoutingPolicy, rs.RoutingPolicy) {
+			if (old.GetTTL() != rs.TTL) || !reflect.DeepEqual(oldRoutingPolicy, rs.RoutingPolicy) {
 				or := old.Clone()
 				or.SetTTL(rs.TTL)
 				or.SetRoutingPolicy(exec.name.SetIdentifier, rs.RoutingPolicy)
@@ -175,6 +175,26 @@ func (exec *Execution) add(ctx context.Context, rs *dns.RecordSet, modonly bool,
 					*diffList = append(*diffList, or)
 				}
 			}
+		}
+	}
+	return nil
+}
+
+func (exec *Execution) delete(ctx context.Context, rs *dns.RecordSet, delList *RecordList) error {
+	oldRL, _, err := exec.executor.GetRecordList(ctx, exec.name.DNSName, string(rs.Type), exec.zone)
+	if err != nil {
+		return err
+	}
+
+outer:
+	for _, or := range oldRL {
+		if or.GetSetIdentifier() == exec.name.SetIdentifier {
+			for _, r := range *delList {
+				if r.GetId() == or.GetId() {
+					continue outer
+				}
+			}
+			*delList = append(*delList, or)
 		}
 	}
 	return nil
