@@ -34,6 +34,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/google"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/netlify"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/openstack"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/powerdns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/rfc2136"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
@@ -49,6 +50,7 @@ var allTypes = map[string]provider.AddToRegistryFunc{
 	netlify.ProviderType:    netlify.RegisterTo,
 	openstack.ProviderType:  openstack.RegisterTo,
 	rfc2136.ProviderType:    rfc2136.RegisterTo,
+	powerdns.ProviderType:   powerdns.RegisterTo,
 }
 
 // AddToManager adds Reconciler to the given manager.
