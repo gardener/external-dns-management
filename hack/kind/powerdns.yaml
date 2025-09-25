@@ -1,10 +1,18 @@
 # partially on https://github.com/owndomainhome/powerdns-stack-over-k8s/tree/main
 #
+# These manifests deploy a powerdns server for testing purposes.
+#
 # - it creates a new sqlite3 db if it is not in the `pdns-data-powerdns-0` PVC.
 # - webserver starts at port 8081 (credentials: admin/test)
 # - authoritative DNS server runs on port 5353
 # - API-Key is 'test'
-# - creates a single zone `example.com.` by a batch job
+# - creates a single zone `example.org.` by a batch job
+#
+# For local debugging, you may use `kubectl -n powerdns port-forward powerdns-0 8081` together with the
+# provider secret data
+#    ApiKey: dGVzdA==
+#    Server: aHR0cDovL2xvY2FsaG9zdDo4MDgxL2FwaS92MQ==
+#    InsecureSkipVerify: dHJ1ZQ==
 
 apiVersion: v1
 kind: Namespace
