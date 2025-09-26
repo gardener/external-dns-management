@@ -18,20 +18,12 @@ config:
 ---
 flowchart TD
     Get("`Get **DNSEntry**`")
-    CheckIgnored{"Has
-    ignore
-    annotation?"}
     Requeue["Requeue"]
-    LockName{"DNSName
-    locked
-    successfully?"}
+    LockName("Lock DNSName")
     CalcNewProvider("Calculate New Provider")
-    ProviderFound{"Provider found?"}
-    ProviderReady{"Provider ready?"}
     UpdateStatus("UpdateStatus")
     StateReady>"State=Ready"]
     StateStale>"State=Stale"]
-    TargetsInStatus{"Has targets in\nDNSEntry status?"}
     StateError>"State=Error"]
     Validate("Validate DNSEntry spec")
     CalcOldTargets("Calculate old targets
@@ -44,23 +36,21 @@ flowchart TD
     (per zone)")
     ApplyChangeRequests("Apply change requests
     (if any)")
-    NoMatchingTxt1[/"no matching DNS provider found"/]
-    NoMatchingTxt2[/"no matching DNS provider found"/]
+    NoMatchingTxt[/"no matching DNS provider found"/]
     ProviderNotReadyTxt[/"provider has status ...
     or is not ready yet"/]
     
-    Start --> Get --> CheckIgnored
-    CheckIgnored -->|no| LockName
-    CheckIgnored -->|yes| Stop
-    LockName -->|yes| CalcNewProvider
+    Start --> Get
+    Get -->|ok| LockName
+    Get -->|ignored by annotation| Stop
+    LockName -->|ok| CalcNewProvider
     LockName -->|already locked by\nanother reconciliation| Requeue --> Stop
-    CalcNewProvider --> ProviderFound
-    ProviderFound -->|yes| ProviderReady
-    ProviderFound -->|no| TargetsInStatus
-    TargetsInStatus -->|yes| NoMatchingTxt1 --> StateStale
-    TargetsInStatus -->|no| NoMatchingTxt2 --> StateError
-    ProviderReady -->|yes| Validate --> CalcOldTargets
-    ProviderReady -->|no| ProviderNotReadyTxt --> StateStale
+    CalcNewProvider -->|ok| Validate
+    CalcNewProvider -->|not found| NoMatchingTxt
+    NoMatchingTxt -->|"No targets in .status"| StateError
+    NoMatchingTxt -->|"Existing targets in .status"| StateStale
+    Validate --> CalcOldTargets
+    CalcNewProvider -->|not ready| ProviderNotReadyTxt --> StateStale
     CalcOldTargets --> CalcNewTargets
     CalcNewTargets --> QueryRecords
     QueryRecords --> CalculateChanges
