@@ -76,6 +76,7 @@
     "github.com/go-openapi/jsonreference",
     "github.com/go-openapi/swag",
     "github.com/go-task/slim-sprig/v3",
+    "github.com/go-viper/mapstructure/v2",
     "github.com/gobuffalo/flect",
     "github.com/gobwas/glob",
     "github.com/goccy/go-yaml",
