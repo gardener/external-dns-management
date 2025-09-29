@@ -168,6 +168,14 @@ func (r *entryReconciliation) updateStatusWithoutProvider() common.ReconcileResu
 	})
 }
 
+func (r *entryReconciliation) updateStatusWithError(op string, err error) common.ReconcileResult {
+	return r.StatusUpdater().UpdateStatus(func(status *v1alpha1.DNSEntryStatus) error {
+		status.State = v1alpha1.StateError
+		status.Message = ptr.To(fmt.Sprintf("%s failed with: %s", op, err.Error()))
+		return nil
+	})
+}
+
 func (r *entryReconciliation) updateStatusWithProvider(targetsData *newTargetsData) common.ReconcileResult {
 	return r.StatusUpdater().UpdateStatus(func(status *v1alpha1.DNSEntryStatus) error {
 		status.Provider = ptr.To(targetsData.providerKey.String())
