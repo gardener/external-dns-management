@@ -14,6 +14,7 @@ import (
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/jellydator/ttlcache/v3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
@@ -53,7 +54,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		15*time.Second,
 	)
 	r.defaultCNAMELookupInterval = ptr.Deref(r.Config.DefaultCNAMELookupInterval, 600)
-	r.setReconciliationDelayAfterUpdate(defaultReconciliationDelayAfterUpdate)
+	r.setReconciliationDelayAfterUpdate(ptr.Deref(r.Config.ReconciliationDelayAfterUpdate, metav1.Duration{Duration: defaultReconciliationDelayAfterUpdate}).Duration)
 	return builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
@@ -74,6 +75,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 10),
+			SkipNameValidation:      r.Config.SkipNameValidation,
 		}).
 		Complete(r)
 }

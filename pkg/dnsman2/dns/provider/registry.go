@@ -6,6 +6,7 @@ package provider
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"k8s.io/utils/clock"
@@ -125,4 +126,16 @@ func (r *DNSHandlerRegistry) GetTargetsMapper(providerType string) (TargetsMappe
 		return nil, fmt.Errorf("provider type %q not found in registry", providerType)
 	}
 	return creatorConfig.mapper, nil
+}
+
+func (r *DNSHandlerRegistry) GetSupportedTypes() []string {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+
+	var types []string
+	for k := range r.registry {
+		types = append(types, k)
+	}
+	slices.Sort(types)
+	return types
 }

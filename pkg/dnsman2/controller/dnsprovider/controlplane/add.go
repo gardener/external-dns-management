@@ -9,6 +9,7 @@ package controlplane
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -32,6 +33,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/aws"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/google"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/netlify"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/openstack"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/rfc2136"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
@@ -71,10 +73,14 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 			}
 			addToRegistry(registry)
 		}
+		if ptr.Deref(r.Config.Controllers.DNSProvider.AllowMockInMemoryProvider, false) {
+			mock.RegisterTo(registry)
+		}
 		r.DNSHandlerFactory = registry
 	}
 	r.state = state.GetState()
 	r.state.SetDNSHandlerFactory(r.DNSHandlerFactory)
+	mgr.GetLogger().Info("Supported provider types", "providerTypes", strings.Join(r.DNSHandlerFactory.GetSupportedTypes(), ","))
 
 	return builder.
 		ControllerManagedBy(mgr).
@@ -85,7 +91,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 				predicate.NewPredicateFuncs(func(obj client.Object) bool {
 					return obj.GetNamespace() == r.Config.Controllers.DNSProvider.Namespace
 				}),
-				dnsman2controller.DNSClassPredicate(r.Config.Class),
+				dnsman2controller.DNSClassPredicate(dns.NormalizeClass(r.Config.Class)),
 			),
 		).
 		Watches(
@@ -99,6 +105,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: ptr.Deref(r.Config.Controllers.DNSProvider.ConcurrentSyncs, 2),
+			SkipNameValidation:      r.Config.Controllers.DNSProvider.SkipNameValidation,
 		}).
 		Complete(r)
 }
