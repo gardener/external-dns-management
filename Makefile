@@ -35,9 +35,6 @@ clean:
 	@rm -f pkg/apis/dns/crds/*
 	@rm -rf /pkg/client/dns
 
-.PHONY: check
-check: sast-report fastcheck check-imports
-
 .PHONY: check-generate
 check-generate:
 	@bash $(GARDENER_HACK_DIR)/check-generate.sh $(REPO_ROOT)
@@ -46,8 +43,8 @@ check-generate:
 check-imports: $(IMPORT_BOSS)
 	$(IMPORT_BOSS) ./cmd/... ./pkg/... ./test/...
 
-.PHONY: fastcheck
-fastcheck: format $(GOIMPORTS) $(GOLANGCI_LINT)
+.PHONY: check
+check: format check-imports $(GOIMPORTS) $(GOLANGCI_LINT)
 	@TOOLS_BIN_DIR="$(TOOLS_BIN_DIR)" bash $(CONTROLLER_MANAGER_LIB_HACK_DIR)/check.sh --golangci-lint-config=./.golangci.yaml ./cmd/... ./pkg/... ./test/...
 	@echo "Running go vet..."
 	@go vet ./cmd/... ./pkg/... ./test/...
@@ -130,7 +127,7 @@ sast-report: $(GOSEC)
 	@./hack/sast.sh --exclude-dirs hack,local --gosec-report true
 
 .PHONY: verify
-verify: fastcheck format sast
+verify: check format sast
 
 .PHONY: verify-extended
-verify-extended: check-generate fastcheck format sast-report
+verify-extended: check-generate check format sast-report

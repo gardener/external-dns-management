@@ -76,42 +76,13 @@ jobs:
         run: |
           set -euo pipefail
           mkdir /tmp/blobs.d
-          .ci/verify |& tee /tmp/blobs.d/verify-log.txt
-          tar czf /tmp/blobs.d/verify-log.tar.gz -C/tmp/blobs.d verify-log.txt
-      - name: add-verify-report-to-component-descriptor
-        uses: gardener/cc-utils/.github/actions/export-ocm-fragments@master
-        with:
-          blobs-directory: /tmp/blobs.d
-          ocm-resources: |
-            name: test-results
-            extraIdentity:
-              test: verify
-            relation: local
-            access:
-              type: localBlob
-              localReference: verify-log.tar.gz
-            labels:
-              - name: gardener.cloud/purposes
-                value:
-                  - test
 
-  check:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/setup-go@v6
-        with:
-          go-version: '1.25'
-      - uses: gardener/cc-utils/.github/actions/trusted-checkout@master
-      - name: run-check
-        run: |
-          set -euo pipefail
-          mkdir /tmp/blobs.d
-          .ci/check |& tee /tmp/blobs.d/check-log.txt
-          # check calls `make sast-report`, which generates `gosec-report.sarif`
-          tar czf /tmp/blobs.d/check-log.tar.gz -C/tmp/blobs.d check-log.txt
+          .ci/verify |& tee /tmp/blobs.d/verify-log.txt
+
+          # verify calls `make sast-report`, which generates `gosec-report.sarif`
+
           tar czf /tmp/blobs.d/gosec-report.tar.gz gosec-report.sarif
+          tar czf /tmp/blobs.d/verify-log.tar.gz -C/tmp/blobs.d verify-log.txt
       - name: add-reports-to-component-descriptor
         uses: gardener/cc-utils/.github/actions/export-ocm-fragments@master
         with:
@@ -133,12 +104,10 @@ jobs:
                     we use gosec (linter) for SAST scans
                     see: https://github.com/securego/gosec
             - name: test-results
-              extraIdentity:
-                test: check
               relation: local
               access:
                 type: localBlob
-                localReference: check-log.tar.gz
+                localReference: verify-log.tar.gz
               labels:
                 - name: gardener.cloud/purposes
                   value:
