@@ -77,7 +77,7 @@ unittests: $(GINKGO)
 
 .PHONY: new-test-integration
 new-test-integration: $(REPORT_COLLECTOR) $(SETUP_ENVTEST)
-	@bash $(GARDENER_HACK_DIR)/test-integration.sh ./test/integration/compound ./test/integration/source
+	@bash $(GARDENER_HACK_DIR)/test-integration.sh ./test/integration/compound ./test/integration/source ./test/integration/dnsman2
 
 .PHONY: test
 test: $(GINKGO) unittests new-test-integration
