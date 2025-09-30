@@ -128,6 +128,7 @@ func (r *DNSHandlerRegistry) GetTargetsMapper(providerType string) (TargetsMappe
 	return creatorConfig.mapper, nil
 }
 
+// GetSupportedTypes returns a sorted list of all supported provider types.
 func (r *DNSHandlerRegistry) GetSupportedTypes() []string {
 	r.lock.RLock()
 	defer r.lock.RUnlock()
