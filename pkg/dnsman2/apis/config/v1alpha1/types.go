@@ -117,6 +117,12 @@ type DNSProviderControllerConfig struct {
 	// ZoneCacheTTL is the TTL for the cache for the `GetZones` method.
 	// +optional
 	ZoneCacheTTL *metav1.Duration `json:"zoneCacheTTL,omitempty"`
+	// AllowMockInMemoryProvider if true, the provider type "mock-inmemory" is allowed, e.g. for testing purposes.
+	// +optional
+	AllowMockInMemoryProvider *bool `json:"allowMockInMemoryProvider,omitempty"`
+	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
+	// +optional
+	SkipNameValidation *bool `json:"skipNameValidation,omitempty"`
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.
@@ -133,6 +139,12 @@ type DNSEntryControllerConfig struct {
 	// DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.
 	// +optional
 	DefaultCNAMELookupInterval *int64 `json:"defaultCNAMELookupInterval,omitempty"`
+	// ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.
+	// +optional
+	ReconciliationDelayAfterUpdate *metav1.Duration `json:"reconciliationDelayAfterUpdate,omitempty"`
+	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
+	// +optional
+	SkipNameValidation *bool `json:"skipNameValidation,omitempty"`
 }
 
 // RateLimiterOptions defines the rate limiter configuration.

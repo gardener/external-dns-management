@@ -135,6 +135,16 @@ func (in *DNSEntryControllerConfig) DeepCopyInto(out *DNSEntryControllerConfig) 
 		*out = new(int64)
 		**out = **in
 	}
+	if in.ReconciliationDelayAfterUpdate != nil {
+		in, out := &in.ReconciliationDelayAfterUpdate, &out.ReconciliationDelayAfterUpdate
+		*out = new(v1.Duration)
+		**out = **in
+	}
+	if in.SkipNameValidation != nil {
+		in, out := &in.SkipNameValidation, &out.SkipNameValidation
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
@@ -234,6 +244,16 @@ func (in *DNSProviderControllerConfig) DeepCopyInto(out *DNSProviderControllerCo
 	if in.ZoneCacheTTL != nil {
 		in, out := &in.ZoneCacheTTL, &out.ZoneCacheTTL
 		*out = new(v1.Duration)
+		**out = **in
+	}
+	if in.AllowMockInMemoryProvider != nil {
+		in, out := &in.AllowMockInMemoryProvider, &out.AllowMockInMemoryProvider
+		*out = new(bool)
+		**out = **in
+	}
+	if in.SkipNameValidation != nil {
+		in, out := &in.SkipNameValidation, &out.SkipNameValidation
+		*out = new(bool)
 		**out = **in
 	}
 	return
