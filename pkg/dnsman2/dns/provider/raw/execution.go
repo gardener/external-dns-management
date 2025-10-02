@@ -162,19 +162,27 @@ func (exec *Execution) add(ctx context.Context, rs *dns.RecordSet, found *Record
 			}
 		}
 	}
-	if diffList != nil {
-	outer:
-		for i, or := range oldRL {
-			if !oldFound[i] {
-				if or.GetSetIdentifier() == exec.name.SetIdentifier {
-					for _, r := range *diffList {
-						if r.GetId() == or.GetId() {
-							continue outer
-						}
-					}
-					*diffList = append(*diffList, or)
-				}
+
+	if diffList == nil {
+		return nil
+	}
+
+	for i, or := range oldRL {
+		if oldFound[i] {
+			continue
+		}
+		if or.GetSetIdentifier() != exec.name.SetIdentifier { // could be combined with the previous if, but maybe it's easier to read having them separated
+			continue
+		}
+		exists := false
+		for _, r := range *diffList {
+			if r.GetId() == or.GetId() {
+				exists = true
+				break
 			}
+		}
+		if !exists {
+			*diffList = append(*diffList, or)
 		}
 	}
 	return nil
@@ -186,14 +194,18 @@ func (exec *Execution) delete(ctx context.Context, rs *dns.RecordSet, delList *R
 		return err
 	}
 
-outer:
 	for _, or := range oldRL {
-		if or.GetSetIdentifier() == exec.name.SetIdentifier {
-			for _, r := range *delList {
-				if r.GetId() == or.GetId() {
-					continue outer
-				}
+		if or.GetSetIdentifier() != exec.name.SetIdentifier {
+			continue
+		}
+		found := false
+		for _, r := range *delList {
+			if r.GetId() == or.GetId() {
+				found = true
+				break
 			}
+		}
+		if !found {
 			*delList = append(*delList, or)
 		}
 	}
