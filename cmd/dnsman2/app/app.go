@@ -39,6 +39,7 @@ import (
 	dnsmanv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	configv1alpha1 "github.com/gardener/external-dns-management/pkg/dnsman2/apis/config/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/app"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry"
 	dnsprovidercontrolplane "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsprovider/controlplane"
@@ -264,7 +265,7 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 	}
 
 	log.Info("Adding field indexes to informers")
-	if err := addAllFieldIndexes(ctx, mgr.GetFieldIndexer()); err != nil {
+	if err := app.AddAllFieldIndexesToManager(ctx, mgr); err != nil {
 		return fmt.Errorf("failed adding indexes: %w", err)
 	}
 
@@ -282,16 +283,4 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 
 	log.Info("Starting manager")
 	return mgr.Start(ctx)
-}
-
-func addAllFieldIndexes(ctx context.Context, i client.FieldIndexer) error {
-	for _, fn := range []func(context.Context, client.FieldIndexer) error{
-		dnsprovidercontrolplane.AddEntryStatusProvider,
-	} {
-		if err := fn(ctx, i); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

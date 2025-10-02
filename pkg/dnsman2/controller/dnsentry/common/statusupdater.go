@@ -10,6 +10,7 @@ import (
 
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/controllerutils"
+	"github.com/go-logr/logr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -81,12 +82,21 @@ func (u *EntryStatusUpdater) FailWithStatusStale(err error) ReconcileResult {
 	return ReconcileResult{Result: reconcile.Result{Requeue: true}, Err: fmt.Errorf("failed with state stale: %w", err)}
 }
 
-// FailWithStatusError sets the DNSEntry status to error and returns a reconcile error.
-func (u *EntryStatusUpdater) FailWithStatusError(err error) ReconcileResult {
+// FailWithLogAndStatusError logs the given message and error, sets the DNSEntry status to error, and returns a reconcile error.
+func (u *EntryStatusUpdater) FailWithLogAndStatusError(err error, msg string, log logr.Logger, keysAndValues ...any) *ReconcileResult {
+	log.Error(err, msg, keysAndValues...)
 	if res := u.updateStatusFailed(v1alpha1.StateError, err); res != nil {
-		return *res
+		return res
 	}
-	return ReconcileResult{Err: fmt.Errorf("failed to reconcile: %w", err)}
+	return &ReconcileResult{Err: fmt.Errorf("%s: %w", msg, err)}
+}
+
+// FailWithStatusError sets the DNSEntry status to error and returns a reconcile error.
+func (u *EntryStatusUpdater) FailWithStatusError(err error) *ReconcileResult {
+	if res := u.updateStatusFailed(v1alpha1.StateError, err); res != nil {
+		return res
+	}
+	return &ReconcileResult{Err: fmt.Errorf("failed to reconcile: %w", err)}
 }
 
 // AddFinalizer adds the DNS finalizer to the DNSEntry resource.

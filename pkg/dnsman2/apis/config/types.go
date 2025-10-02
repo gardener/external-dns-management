@@ -103,6 +103,10 @@ type DNSProviderControllerConfig struct {
 	DefaultTTL *int64
 	// ZoneCacheTTL is the TTL for the cache for the `GetZones` method.
 	ZoneCacheTTL *metav1.Duration
+	// AllowMockInMemoryProvider if true, the provider type "mock-inmemory" is allowed, e.g. for testing purposes.
+	AllowMockInMemoryProvider *bool
+	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
+	SkipNameValidation *bool
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.
@@ -115,6 +119,10 @@ type DNSEntryControllerConfig struct {
 	MaxConcurrentLookups *int
 	// DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.
 	DefaultCNAMELookupInterval *int64
+	// ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.
+	ReconciliationDelayAfterUpdate *metav1.Duration
+	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
+	SkipNameValidation *bool
 }
 
 // RateLimiterOptions defines the rate limiter configuration.
