@@ -4,11 +4,11 @@ This DNS provider allows you to create and manage DNS entries with [PowerDNS](ht
 
 ## Required permissions
 
-There are no special permissions for the `apiToken`.
+There are no special permissions for the `ApiKey`.
 
 ## Credentials
 
-You need to have an `apiToken` and the url of your PowerDNS `server` in place.
+You need to have an `ApiKey` and the url of your PowerDNS `Server` in place.
 
 Create a `Secret` resource. All credentials need to be base64 encoded.
 
@@ -21,6 +21,20 @@ metadata:
 type: Opaque
 data:
   # replace '...' with values encoded as base64
-  apiToken: ... # your PowerDNS token
-  server: ... # your PowerDNS server url
+  ApiKey: ... # your PowerDNS API key
+  Server: ... # your PowerDNS server url
+  #InsecureSkipVerify: ... # true if HTTP is used 
+  #TrustedCaCert: ... # CA for HTTPS
+  #VirtualHost: ...
+```
+
+Supported data keys:
+
+| Key                | Alias              | Description                                                                                    |
+|--------------------|--------------------|------------------------------------------------------------------------------------------------|
+| ApiKey             | apiKey             | PowerDNS API key                                                                               |
+| Server             | server             | PowerDNS server url (must start with https:// or http://)                                      |
+| InsecureSkipVerify | insecureSkipVerify | Optional, set to true if your server is accessed via HTTP (not recommended for production use) |
+| TrustedCaCert      | trustedCaCert      | Optional CA certificate for PowerDNS server certificate                                        |
+| VirtualHost        | virtualHost        | Optional PowerDNS virtual host                                                                 |
 ```

@@ -1,0 +1,305 @@
+# partially on https://github.com/owndomainhome/powerdns-stack-over-k8s/tree/main
+#
+# These manifests deploy a powerdns server for testing purposes.
+#
+# - it creates a new sqlite3 db if it is not in the `pdns-data-powerdns-0` PVC.
+# - webserver starts at port 8081 (credentials: admin/test)
+# - authoritative DNS server runs on port 5353
+# - API-Key is 'test'
+# - creates a single zone `example.org.` by a batch job
+#
+# For local debugging, you may use `kubectl -n powerdns port-forward powerdns-0 8081` together with the
+# provider secret data
+#    ApiKey: dGVzdA==
+#    Server: aHR0cDovL2xvY2FsaG9zdDo4MDgxL2FwaS92MQ==
+#    InsecureSkipVerify: dHJ1ZQ==
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: powerdns
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pdns-schema
+  namespace: powerdns
+data:
+  schema.sql: |
+    PRAGMA foreign_keys = 1;
+
+    CREATE TABLE domains (
+                             id                    INTEGER PRIMARY KEY,
+                             name                  VARCHAR(255) NOT NULL COLLATE NOCASE,
+                             master                VARCHAR(128) DEFAULT NULL,
+                             last_check            INTEGER DEFAULT NULL,
+                             type                  VARCHAR(8) NOT NULL,
+                             notified_serial       INTEGER DEFAULT NULL,
+                             account               VARCHAR(40) DEFAULT NULL,
+                             options               VARCHAR(65535) DEFAULT NULL,
+                             catalog               VARCHAR(255) DEFAULT NULL
+    );
+
+    CREATE UNIQUE INDEX name_index ON domains(name);
+    CREATE INDEX catalog_idx ON domains(catalog);
+
+
+    CREATE TABLE records (
+                             id                    INTEGER PRIMARY KEY,
+                             domain_id             INTEGER DEFAULT NULL,
+                             name                  VARCHAR(255) DEFAULT NULL,
+                             type                  VARCHAR(10) DEFAULT NULL,
+                             content               VARCHAR(65535) DEFAULT NULL,
+                             ttl                   INTEGER DEFAULT NULL,
+                             prio                  INTEGER DEFAULT NULL,
+                             disabled              BOOLEAN DEFAULT 0,
+                             ordername             VARCHAR(255),
+                             auth                  BOOL DEFAULT 1,
+                             FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+
+    CREATE INDEX records_lookup_idx ON records(name, type);
+    CREATE INDEX records_lookup_id_idx ON records(domain_id, name, type);
+    CREATE INDEX records_order_idx ON records(domain_id, ordername);
+
+
+    CREATE TABLE supermasters (
+                                  ip                    VARCHAR(64) NOT NULL,
+                                  nameserver            VARCHAR(255) NOT NULL COLLATE NOCASE,
+                                  account               VARCHAR(40) NOT NULL
+    );
+
+    CREATE UNIQUE INDEX ip_nameserver_pk ON supermasters(ip, nameserver);
+
+
+    CREATE TABLE comments (
+                              id                    INTEGER PRIMARY KEY,
+                              domain_id             INTEGER NOT NULL,
+                              name                  VARCHAR(255) NOT NULL,
+                              type                  VARCHAR(10) NOT NULL,
+                              modified_at           INT NOT NULL,
+                              account               VARCHAR(40) DEFAULT NULL,
+                              comment               VARCHAR(65535) NOT NULL,
+                              FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+
+    CREATE INDEX comments_idx ON comments(domain_id, name, type);
+    CREATE INDEX comments_order_idx ON comments (domain_id, modified_at);
+
+
+    CREATE TABLE domainmetadata (
+                                    id                     INTEGER PRIMARY KEY,
+                                    domain_id              INT NOT NULL,
+                                    kind                   VARCHAR(32) COLLATE NOCASE,
+                                    content                TEXT,
+                                    FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+
+    CREATE INDEX domainmetaidindex ON domainmetadata(domain_id);
+
+
+    CREATE TABLE cryptokeys (
+                                id                     INTEGER PRIMARY KEY,
+                                domain_id              INT NOT NULL,
+                                flags                  INT NOT NULL,
+                                active                 BOOL,
+                                published              BOOL DEFAULT 1,
+                                content                TEXT,
+                                FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE ON UPDATE CASCADE
+    );
+
+    CREATE INDEX domainidindex ON cryptokeys(domain_id);
+
+
+    CREATE TABLE tsigkeys (
+                              id                     INTEGER PRIMARY KEY,
+                              name                   VARCHAR(255) COLLATE NOCASE,
+                              algorithm              VARCHAR(50) COLLATE NOCASE,
+                              secret                 VARCHAR(255)
+    );
+
+    CREATE UNIQUE INDEX namealgoindex ON tsigkeys(name, algorithm);
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pdns.conf
+  namespace: powerdns
+data:
+  pdns.conf: |
+    config-name=as-1
+    local-address=0.0.0.0
+    local-port=5353
+    loglevel=6
+    query-logging=yes
+    version-string=powerdns
+    webserver-loglevel=normal
+    webserver-allow-from=0.0.0.0/0
+    webserver-address=0.0.0.0
+    webserver=yes
+    webserver-password=test
+    api=yes
+    launch=gsqlite3
+    gsqlite3-database=/var/lib/powerdns/pdns.sqlite3
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: api-key-as
+  namespace: powerdns
+stringData:
+  key: "test"
+type: Opaque
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: powerdns
+  namespace: powerdns
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: powerdns
+  template:
+    metadata:
+      labels:
+        app: powerdns
+    spec:
+      volumes:
+        - name: powerdns-clients-as
+          configMap:
+            name: pdns.conf
+            defaultMode: 420
+        - name: pdns-schema
+          configMap:
+            name: pdns-schema
+            defaultMode: 420
+      initContainers:
+        - name: init-sqlite-db
+          image: alpine:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              if [ ! -f /data/pdns.sqlite3 ]; then
+                echo creating sqlite3 database for powerdns
+                apk add --no-cache sqlite
+                sqlite3 /data/pdns.sqlite3 < /schema/schema.sql
+                chmod 666 /data/pdns.sqlite3
+              else
+                echo pdns.sqlite3 exists already
+              fi
+          volumeMounts:
+            - name: pdns-data
+              mountPath: /data
+            - name: pdns-schema
+              mountPath: /schema
+      containers:
+        - name: powerdns
+          image: powerdns/pdns-auth-49:4.9.4
+          env:
+            - name: PDNS_AUTH_API_KEY # this key/secret is shared across roles, you can define individuals secrets for roles
+              valueFrom:
+                secretKeyRef:
+                  name: api-key-as
+                  key: key
+          ports:
+            - containerPort: 5353
+              protocol: UDP
+            - containerPort: 5353
+              protocol: TCP
+            - containerPort: 8081 # webserver endpoint
+              protocol: TCP
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - mountPath: /var/lib/powerdns/
+              name: pdns-data
+            - mountPath: /etc/powerdns/pdns.d/pdns.conf
+              name: powerdns-clients-as
+              subPath: pdns.conf
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 0
+      dnsPolicy: ClusterFirst
+      securityContext: {}
+      schedulerName: default-scheduler
+  volumeClaimTemplates:
+    - apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        labels:
+          app: powerdns
+        name: pdns-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 50Mi
+        volumeMode: Filesystem
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: powerdns
+  namespace: powerdns
+  labels:
+    app: powerdns
+spec:
+  ports:
+    - name: pwds-as-udp
+      protocol: UDP
+      port: 53
+      targetPort: 5353
+    - name: pwds-as-tcp
+      protocol: TCP
+      port: 53
+      targetPort: 5353
+  selector:
+    app: powerdns
+  type: ClusterIP
+  sessionAffinity: None
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: powerdns-gui
+  namespace: powerdns
+  labels:
+    app: powerdns
+spec:
+  ports:
+    - name: pwds-as-web
+      protocol: TCP
+      port: 8081
+      targetPort: 8081
+  selector:
+    app: powerdns
+  type: ClusterIP
+  sessionAffinity: None
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-pdns-zone
+  namespace: powerdns
+spec:
+  template:
+    spec:
+      containers:
+        - name: pdns-api-client
+          image: curlimages/curl:latest
+          command: ["curl"]
+          args:
+            [
+              "--silent",
+              "-X", "POST",
+              "http://powerdns-gui:8081/api/v1/servers/localhost/zones",
+              "-H", "X-API-Key: test",
+              "-H", "Content-Type: application/json",
+              "-d", '{"name": "example.org.", "kind": "Master", "masters": [], "nameservers": ["ns1.example.org.", "ns2.example.org."]}'
+            ]
+      restartPolicy: Never
+  backoffLimit: 3
