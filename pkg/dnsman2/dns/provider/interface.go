@@ -18,7 +18,7 @@ import (
 type DNSHandlerFactory interface {
 	// Create creates a DNSHandler for the given provider type and config.
 	Create(providerType string, config *DNSHandlerConfig) (DNSHandler, error)
-	// GetAdapter returns a DNSHandlerAdapter for the given provider type.
+	// GetDNSHandlerAdapter returns a DNSHandlerAdapter for the given provider type.
 	GetDNSHandlerAdapter(providerType string) (DNSHandlerAdapter, error)
 	// Supports returns true if the factory supports the given provider type.
 	Supports(providerType string) bool
