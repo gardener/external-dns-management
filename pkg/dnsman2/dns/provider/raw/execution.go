@@ -91,24 +91,24 @@ func (exec *Execution) AddChange(ctx context.Context, req *provider.ChangeReques
 	err := exec.routingPolicyChecker(exec.name, req)
 	if err != nil {
 		exec.log.Info(fmt.Sprintf("warning: record set %s[%s]: %s", exec.name, exec.zone.ZoneID().ID, err))
-		return nil
+		return err
 	}
 
 	beforeCount := len(exec.additions) + len(exec.updates) + len(exec.deletions)
 	switch {
 	case req.Old == nil && req.New != nil:
 		exec.log.Info(fmt.Sprintf("create %s record set %s[%s]: %s(%d)", req.New.Type, exec.name, exec.zone.ZoneID().ID, req.New.RecordString(), req.New.TTL))
-		if err := exec.add(ctx, req.New, true, &exec.updates, &exec.additions, &exec.deletions); err != nil {
+		if err := exec.add(ctx, req.New, &exec.updates, &exec.additions, &exec.deletions); err != nil {
 			return err
 		}
 	case req.Old != nil && req.New != nil:
 		exec.log.Info(fmt.Sprintf("update %s record set %s[%s]: %s(%d)", req.New.Type, exec.name, exec.zone.ZoneID().ID, req.New.RecordString(), req.New.TTL))
-		if err := exec.add(ctx, req.New, true, &exec.updates, &exec.additions, &exec.deletions); err != nil {
+		if err := exec.add(ctx, req.New, &exec.updates, &exec.additions, &exec.deletions); err != nil {
 			return err
 		}
 	case req.Old != nil && req.New == nil:
 		exec.log.Info(fmt.Sprintf("delete %s record set %s[%s]: %s", req.Old.Type, exec.name, exec.zone.ZoneID().ID, req.Old.RecordString()))
-		if err := exec.add(ctx, req.Old, false, &exec.deletions, nil, &exec.deletions); err != nil {
+		if err := exec.delete(ctx, req.Old, &exec.deletions); err != nil {
 			return err
 		}
 	}
@@ -119,7 +119,7 @@ func (exec *Execution) AddChange(ctx context.Context, req *provider.ChangeReques
 	return nil
 }
 
-func (exec *Execution) add(ctx context.Context, rs *dns.RecordSet, modonly bool, found *RecordList, notfound *RecordList, diffList *RecordList) error {
+func (exec *Execution) add(ctx context.Context, rs *dns.RecordSet, found *RecordList, notfound *RecordList, diffList *RecordList) error {
 	oldRL, oldRoutingPolicies, err := exec.executor.GetRecordList(ctx, exec.name.DNSName, string(rs.Type), exec.zone)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func (exec *Execution) add(ctx context.Context, rs *dns.RecordSet, modonly bool,
 			}
 		}
 		if old != nil {
-			if (!modonly) || (old.GetTTL() != rs.TTL) || !reflect.DeepEqual(oldRoutingPolicy, rs.RoutingPolicy) {
+			if (old.GetTTL() != rs.TTL) || !reflect.DeepEqual(oldRoutingPolicy, rs.RoutingPolicy) {
 				or := old.Clone()
 				or.SetTTL(rs.TTL)
 				or.SetRoutingPolicy(exec.name.SetIdentifier, rs.RoutingPolicy)
@@ -162,13 +162,51 @@ func (exec *Execution) add(ctx context.Context, rs *dns.RecordSet, modonly bool,
 			}
 		}
 	}
-	if diffList != nil {
-		for i, or := range oldRL {
-			if !oldFound[i] {
-				if or.GetSetIdentifier() == exec.name.SetIdentifier {
-					*diffList = append(*diffList, or)
-				}
+
+	if diffList == nil {
+		return nil
+	}
+
+	for i, or := range oldRL {
+		if oldFound[i] {
+			continue
+		}
+		if or.GetSetIdentifier() != exec.name.SetIdentifier { // could be combined with the previous if, but maybe it's easier to read having them separated
+			continue
+		}
+		exists := false
+		for _, r := range *diffList {
+			if r.GetId() == or.GetId() {
+				exists = true
+				break
 			}
+		}
+		if !exists {
+			*diffList = append(*diffList, or)
+		}
+	}
+	return nil
+}
+
+func (exec *Execution) delete(ctx context.Context, rs *dns.RecordSet, delList *RecordList) error {
+	oldRL, _, err := exec.executor.GetRecordList(ctx, exec.name.DNSName, string(rs.Type), exec.zone)
+	if err != nil {
+		return err
+	}
+
+	for _, or := range oldRL {
+		if or.GetSetIdentifier() != exec.name.SetIdentifier {
+			continue
+		}
+		found := false
+		for _, r := range *delList {
+			if r.GetId() == or.GetId() {
+				found = true
+				break
+			}
+		}
+		if !found {
+			*delList = append(*delList, or)
 		}
 	}
 	return nil
@@ -218,9 +256,9 @@ func (exec *Execution) SubmitChanges(ctx context.Context) error {
 func (exec *Execution) submit(ctx context.Context, f func(ctx context.Context, record Record, zone provider.DNSHostedZone) error, r Record) {
 	err := f(ctx, r, exec.zone)
 	if err != nil {
-		exec.results[dns.DNSSetName{DNSName: r.GetDNSName(), SetIdentifier: r.GetSetIdentifier()}] = err
 		exec.log.Error(err, "execution failed", "recordType", r.GetType(), "name", r.GetDNSName())
 	}
+	exec.results[dns.DNSSetName{DNSName: r.GetDNSName(), SetIdentifier: r.GetSetIdentifier()}] = err
 }
 
 // ExecuteRequests executes the given change requests in the specified hosted zone using the provided executor.
