@@ -80,7 +80,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		return nil, err
 	}
 	if overrideServerName != "" {
-		err = creds.OverrideServerName(overrideServerName)
+		err = creds.OverrideServerName(overrideServerName) //nolint:staticcheck // The remote handler will be removed with the controller-runtime migration (see: https://github.com/gardener/external-dns-management/issues/441).
 		if err != nil {
 			return nil, err
 		}
