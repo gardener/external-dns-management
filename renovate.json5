@@ -52,7 +52,6 @@
     "github.com/andybalholm/brotli",
     "github.com/antlr4-go/antlr/v4",
     "github.com/beorn7/perks",
-    "github.com/blang/semver/v4",
     "github.com/brunoga/deep",
     "github.com/cenkalti/backoff/v5",
     "github.com/cespare/xxhash/v2",
@@ -194,6 +193,5 @@
     "k8s.io/metrics",
     "sigs.k8s.io/json",
     "sigs.k8s.io/randfill",
-    "sigs.k8s.io/structured-merge-diff/v4",
   ],
 }
