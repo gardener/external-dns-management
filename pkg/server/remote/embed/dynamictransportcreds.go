@@ -126,5 +126,5 @@ func (d *dynamicTransportCredentials) Clone() credentials.TransportCredentials {
 }
 
 func (d *dynamicTransportCredentials) OverrideServerName(s string) error {
-	return d.current().OverrideServerName(s)
+	return d.current().OverrideServerName(s) //nolint:staticcheck // The remote handler will be removed with the controller-runtime migration (see: https://github.com/gardener/external-dns-management/issues/441).
 }
