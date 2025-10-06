@@ -30,21 +30,23 @@ flowchart TD
     from DNSEntry status")
     CalcNewTargets("Calculate new targets
     from DNSEntry spec")
-    QueryRecords("Query records\nfrom authoritative DNS server
+    QueryRecords("Query records
+    from authoritative DNS server
     or via API")
     CalculateChanges("Calculate change requests
     (per zone)")
     ApplyChangeRequests("Apply change requests
     (if any)")
     NoMatchingTxt[/"no matching DNS provider found"/]
-    ProviderNotReadyTxt[/"provider has status ...
+    ProviderNotReadyTxt[/"provider has status ≪provider status message≫
     or is not ready yet"/]
     
     Start --> Get
     Get -->|ok| LockName
     Get -->|ignored by annotation| Stop
     LockName -->|ok| CalcNewProvider
-    LockName -->|already locked by\nanother reconciliation| Requeue --> Stop
+    LockName -->|"already locked by
+    another reconciliation"| Requeue --> Stop
     CalcNewProvider -->|ok| Validate
     CalcNewProvider -->|not found| NoMatchingTxt
     NoMatchingTxt -->|"No targets in .status"| StateError
