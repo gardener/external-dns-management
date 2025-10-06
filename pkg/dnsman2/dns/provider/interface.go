@@ -18,12 +18,14 @@ import (
 type DNSHandlerFactory interface {
 	// Create creates a DNSHandler for the given provider type and config.
 	Create(providerType string, config *DNSHandlerConfig) (DNSHandler, error)
-	// GetAdapter returns a DNSHandlerAdapter for the given provider type code.
-	GetDNSHandlerAdapter(typecode string) (DNSHandlerAdapter, error)
+	// GetDNSHandlerAdapter returns a DNSHandlerAdapter for the given provider type.
+	GetDNSHandlerAdapter(providerType string) (DNSHandlerAdapter, error)
 	// Supports returns true if the factory supports the given provider type.
 	Supports(providerType string) bool
 	// GetTargetsMapper returns a TargetsMapper for the given provider type.
 	GetTargetsMapper(providerType string) (TargetsMapper, error)
+	// GetSupportedTypes returns all provider types which are supported and enabled.
+	GetSupportedTypes() []string
 }
 
 // DNSHostedZone is the interface for DNS hosted zones.

@@ -206,7 +206,7 @@ func (h *Handler) executeRequests(ctx context.Context, zone provider.DNSHostedZo
 	}
 	if failed > 0 {
 		log.Info("Failed updates for records in zone", "zoneID", zone.ZoneID(), "failed", failed)
-		return fmt.Errorf("%d changed failed", failed)
+		return fmt.Errorf("%d change failed", failed)
 	}
 
 	return nil
