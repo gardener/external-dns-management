@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	config2 "github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/selection"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
@@ -65,6 +66,13 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		RateLimits:   r.Config.Controllers.DNSProvider.DefaultRateLimits,
 		Factory:      r.DNSHandlerFactory,
 	}
+	if provider.Spec.RateLimit != nil {
+		config.RateLimits = &config2.RateLimiterOptions{
+			Enabled: true,
+			QPS:     float32(1.0 * provider.Spec.RateLimit.RequestsPerDay / (60 * 60 * 24)),
+			Burst:   provider.Spec.RateLimit.Burst,
+		}
+	}
 	newAccount, err := r.state.GetAccount(log, provider, props, config)
 	if err != nil {
 		return reconcile.Result{}, err
@@ -92,7 +100,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		status.DefaultTTL = ptr.To[int64](providerState.GetDefaultTTL())
 		if config.RateLimits != nil && config.RateLimits.Enabled {
 			status.RateLimit = &v1alpha1.RateLimit{
-				RequestsPerDay: config.RateLimits.QPS * 60 * 60 * 24,
+				RequestsPerDay: int(config.RateLimits.QPS * 60 * 60 * 24),
 				Burst:          config.RateLimits.Burst,
 			}
 		} else {
