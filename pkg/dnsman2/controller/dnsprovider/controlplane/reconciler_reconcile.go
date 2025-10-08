@@ -58,7 +58,6 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		return reconcile.Result{}, r.updateStatusError(ctx, provider, fmt.Errorf("secret %s/%s validation failed: %s", secretRef.Namespace, secretRef.Name, err))
 	}
 
-	oldAccount := providerState.GetAccount()
 	config := dnsprovider.DNSAccountConfig{
 		DefaultTTL:   providerState.GetDefaultTTL(),
 		ZoneCacheTTL: ptr.Deref(r.Config.Controllers.DNSProvider.ZoneCacheTTL, metav1.Duration{Duration: 5 * time.Minute}).Duration,
@@ -88,9 +87,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 
 	providerState.SetSelection(selection.CalcZoneAndDomainSelection(provider.Spec, toLightZones(zones)))
 
-	// TODO implement the rest of the reconcile logic
 	providerState.SetAccount(newAccount)
-	println(oldAccount == newAccount)
 
 	return reconcile.Result{}, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
 		status.Message = nil
