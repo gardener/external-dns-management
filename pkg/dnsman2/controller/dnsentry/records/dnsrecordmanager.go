@@ -43,7 +43,7 @@ func (m *DNSRecordManager) ApplyChangeRequests(providerData *providerselector.Ne
 	if len(changeRequestsPerName) > 0 {
 		zones, err := providerData.ProviderState.GetAccount().GetZones(m.Ctx)
 		if err != nil {
-			return m.StatusUpdater().FailWithLogAndStatusError(err, "failed to get zones for DNS account", m.Log)
+			return common.ErrorReconcileResult(fmt.Sprintf("failed to get zones for DNS account: %s", err), true)
 		}
 		var zone provider.DNSHostedZone
 		for _, z := range zones {
@@ -53,13 +53,12 @@ func (m *DNSRecordManager) ApplyChangeRequests(providerData *providerselector.Ne
 			}
 		}
 		if zone == nil {
-			err := fmt.Errorf("zone %s not found in provider %s", newZoneID.ID, providerData.ProviderKey)
-			return m.StatusUpdater().FailWithLogAndStatusError(err, "failed to get zones for DNS account", m.Log)
+			return common.ErrorReconcileResult(fmt.Sprintf("zone %s not found in provider %s", newZoneID.ID, providerData.ProviderKey), true)
 		}
 		for _, changeRequests := range changeRequestsPerName {
 			m.Log.V(1).Info("applying change requests", "zone", zone.ZoneID(), "requests", changeRequests)
 			if err := providerData.ProviderState.GetAccount().ExecuteRequests(m.Ctx, zone, *changeRequests); err != nil {
-				return m.StatusUpdater().FailWithLogAndStatusError(err, "failed to execute DNS change requests", m.Log, "provider", providerData.ProviderKey)
+				return common.ErrorReconcileResult(fmt.Sprintf("failed to execute DNS change requests: %s", err), true)
 			}
 		}
 	}
@@ -77,8 +76,7 @@ func (m *DNSRecordManager) QueryRecords(ctx context.Context, keys FullRecordKeyS
 	for zoneID := range zonesToCheck {
 		queryHandler, err := m.State.GetDNSQueryHandler(ctx, zoneID)
 		if err != nil {
-			m.Log.Error(err, "failed to get DNS query handler for zone", "zoneID", zoneID.ID)
-			return nil, &common.ReconcileResult{Err: fmt.Errorf("failed to get query handler for zone %s: %w", zoneID.ID, err)}
+			return nil, common.ErrorReconcileResult(fmt.Sprintf("failed to get DNS query handler for zone %s: %s", zoneID.ID, err), true)
 		}
 		for key := range keys {
 			if key.ZoneID != zoneID {
@@ -87,7 +85,7 @@ func (m *DNSRecordManager) QueryRecords(ctx context.Context, keys FullRecordKeyS
 			targets, policy, err := queryHandler.Query(m.Ctx, key.Name, key.RecordType)
 			if err != nil {
 				m.Log.Error(err, "failed to query DNS records", "name", key.Name, "type", key.RecordType, "zoneID", zoneID.ID)
-				return nil, &common.ReconcileResult{Err: fmt.Errorf("failed to query DNS records for %s, type %s in zone %s: %w", key.Name, key.RecordType, zoneID.ID, err)}
+				return nil, common.ErrorReconcileResult(fmt.Sprintf("failed to query DNS records for %s, type %s in zone %s: %s", key.Name, key.RecordType, zoneID.ID, err), true)
 			}
 			if len(targets) > 0 {
 				dnsSet := dns.NewDNSSet(key.Name)
@@ -108,7 +106,7 @@ func (m *DNSRecordManager) cleanupCrossZoneRecords(zoneID dns.ZoneID, perName ma
 	var zone *provider.DNSHostedZone
 	zones, err := account.GetZones(m.Ctx)
 	if err != nil {
-		return m.StatusUpdater().FailWithLogAndStatusError(err, "failed to get zones for DNS account", m.Log)
+		return common.ErrorReconcileResult(fmt.Sprintf("failed to get zones for DNS account: %s", err), true)
 	}
 	for _, z := range zones {
 		if z.ZoneID() == zoneID {
@@ -119,7 +117,7 @@ func (m *DNSRecordManager) cleanupCrossZoneRecords(zoneID dns.ZoneID, perName ma
 	if zone == nil {
 		account, zone, err = m.State.FindAccountForZone(m.Ctx, zoneID) // Ensure the account is loaded for the zone
 		if err != nil {
-			return m.StatusUpdater().FailWithLogAndStatusError(err, "failed to find account for zone", m.Log, "zoneID", zoneID)
+			return common.ErrorReconcileResult(fmt.Sprintf("failed to find account for zone %s: %s", zoneID, err), true)
 		}
 	}
 
@@ -130,7 +128,7 @@ func (m *DNSRecordManager) cleanupCrossZoneRecords(zoneID dns.ZoneID, perName ma
 		m.Log.Info("deleting cross-zone records", "zoneID", zoneID, "name", name)
 		m.Log.V(1).Info("deleting cross-zone records by applying change requests", "zone", zoneID, "requests", *changeRequests)
 		if err := account.ExecuteRequests(m.Ctx, *zone, *changeRequests); err != nil {
-			return m.StatusUpdater().FailWithLogAndStatusError(err, "failed to delete cross-zone records", m.Log, "zoneID", zoneID, "name", name)
+			return common.ErrorReconcileResult(fmt.Sprintf("failed to delete cross-zone records for %s[%s]: %s", name, zoneID, err), true)
 		}
 	}
 	return nil
