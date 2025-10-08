@@ -128,7 +128,7 @@ type DNSEntryControllerConfig struct {
 // RateLimiterOptions defines the rate limiter configuration.
 type RateLimiterOptions struct {
 	Enabled bool
-	QPS     int
+	QPS     float32
 	Burst   int
 }
 

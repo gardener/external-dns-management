@@ -149,9 +149,9 @@ type DNSEntryControllerConfig struct {
 
 // RateLimiterOptions defines the rate limiter configuration.
 type RateLimiterOptions struct {
-	Enabled bool `json:"enabled"`
-	QPS     int  `json:"qps"`
-	Burst   int  `json:"burst"`
+	Enabled bool    `json:"enabled"`
+	QPS     float32 `json:"qps"`
+	Burst   int     `json:"burst"`
 }
 
 // AdvancedOptions contains advanced options for a DNS provider type.
