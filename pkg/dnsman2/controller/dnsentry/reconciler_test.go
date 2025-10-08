@@ -7,6 +7,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
+	"github.com/onsi/gomega/types"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -212,7 +214,8 @@ var _ = Describe("Reconcile", func() {
 				ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to reconcile Entry")
 				ExpectWithOffset(1, result).To(Equal(reconcile.Result{}))
 			} else {
-				ExpectWithOffset(1, err).To(HaveOccurred(), "expected failed reconcile for state %s", state)
+				ExpectWithOffset(1, err).ToNot(HaveOccurred(), "expected successful reconciliation with status update")
+				ExpectWithOffset(1, entry.Status.Message).NotTo(BeNil(), "expected non-empty status message")
 			}
 			var ptrName, ptrType, ptrZoneID *string
 			if providerName != "" {
@@ -251,6 +254,11 @@ var _ = Describe("Reconcile", func() {
 		}
 		checkEntryStatusRoutingPolicy = func(entry *v1alpha1.DNSEntry) {
 			ExpectWithOffset(1, entry.Status.RoutingPolicy).To(Equal(entry.Spec.RoutingPolicy), "routing policy status does not match spec")
+		}
+		checkEntryStateAndMessage = func(entry *v1alpha1.DNSEntry, expectedState string, messageMatcher types.GomegaMatcher) {
+			ExpectWithOffset(1, fakeClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
+			ExpectWithOffset(1, entry.Status.State).To(Equal(expectedState), "state should match")
+			ExpectWithOffset(1, entry.Status.Message).To(PointTo(messageMatcher), "message should match")
 		}
 		expectRecordSetsInternal = func(zoneID dns.ZoneID, dnsSetName dns.DNSSetName, expectedNameCount, expectedRecordSetCount int, rsArray ...dns.RecordSet) {
 			zoneState := mock2.GetInMemoryMockByZoneID(zoneID)
@@ -592,7 +600,8 @@ var _ = Describe("Reconcile", func() {
 			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
-			Expect(err).To(MatchError(HavePrefix("invalid DNSName: ")))
+			Expect(err).To(Succeed())
+			checkEntryStateAndMessage(entryA, "Invalid", ContainSubstring("validation failed: invalid DNSName:"))
 		})
 
 		It("rejects setting both Targets and Text", func() {
@@ -601,7 +610,8 @@ var _ = Describe("Reconcile", func() {
 			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
-			Expect(err).To(MatchError("cannot specify both Targets and Text"))
+			Expect(err).To(Succeed())
+			checkEntryStateAndMessage(entryA, "Invalid", ContainSubstring("validation failed: cannot specify both targets and text fields"))
 		})
 
 		It("rejects an empty target", func() {
@@ -609,7 +619,8 @@ var _ = Describe("Reconcile", func() {
 			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
-			Expect(err).To(MatchError("target 1 is empty"))
+			Expect(err).To(Succeed())
+			checkEntryStateAndMessage(entryA, "Invalid", ContainSubstring("validation failed: target 1 is empty"))
 		})
 
 		It("rejects duplicate targets", func() {
@@ -617,7 +628,8 @@ var _ = Describe("Reconcile", func() {
 			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
-			Expect(err).To(MatchError("target 2 is a duplicate: 1.1.1.1"))
+			Expect(err).To(Succeed())
+			checkEntryStateAndMessage(entryA, "Invalid", ContainSubstring("validation failed: target 2 is a duplicate: 1.1.1.1"))
 		})
 
 		It("rejects an empty text", func() {
@@ -625,7 +637,8 @@ var _ = Describe("Reconcile", func() {
 			Expect(fakeClient.Create(ctx, entryB)).To(Succeed())
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryB)})
-			Expect(err).To(MatchError("text 1 is empty"))
+			Expect(err).To(Succeed())
+			checkEntryStateAndMessage(entryB, "Invalid", ContainSubstring("validation failed: text 1 is empty"))
 		})
 
 		It("rejects duplicate text", func() {
@@ -633,7 +646,8 @@ var _ = Describe("Reconcile", func() {
 			Expect(fakeClient.Create(ctx, entryB)).To(Succeed())
 
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryB)})
-			Expect(err).To(MatchError("text 2 is a duplicate: foo"))
+			Expect(err).To(Succeed())
+			checkEntryStateAndMessage(entryB, "Invalid", ContainSubstring("validation failed: text 2 is a duplicate: foo"))
 		})
 	})
 
