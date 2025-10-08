@@ -86,17 +86,18 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, ob
 	if !ok {
 		return nil
 	}
+	providerName := provider.Namespace + "/" + provider.Name
 	entryList := &v1alpha1.DNSEntryList{}
 	if err := r.Client.List(ctx, entryList, client.InNamespace(r.Namespace)); err != nil {
 		return nil
 	}
 	for _, entry := range entryList.Items {
-		providerName := ptr.Deref(entry.Status.Provider, "")
+		entryProviderName := ptr.Deref(entry.Status.Provider, "")
 		add := false
 		switch {
-		case providerName == provider.Name:
+		case entryProviderName == providerName:
 			add = true
-		case providerName == "" && entry.Status.State != v1alpha1.StateReady && provider.Status.State == v1alpha1.StateReady:
+		case entryProviderName == "" && entry.Status.State != v1alpha1.StateReady && provider.Status.State == v1alpha1.StateReady:
 			add = domainMatches(entry.Spec.DNSName, provider.Status.Domains)
 		}
 		if add {
