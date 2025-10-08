@@ -542,6 +542,11 @@ func (in *DNSProviderStatus) DeepCopyInto(out *DNSProviderStatus) {
 		*out = new(RateLimit)
 		**out = **in
 	}
+	if in.SecretRef != nil {
+		in, out := &in.SecretRef, &out.SecretRef
+		*out = new(v1.SecretReference)
+		**out = **in
+	}
 	return
 }
 
