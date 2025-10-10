@@ -49,14 +49,14 @@ const ControllerName = "dnsprovider-controlplane"
 var allTypes = map[string]provider.AddToRegistryFunc{
 	alicloud.ProviderType:     alicloud.RegisterTo,
 	aws.ProviderType:          aws.RegisterTo,
+	azure.ProviderType:        azure.RegisterTo,
+	azureprivate.ProviderType: azureprivate.RegisterTo,
 	cloudflare.ProviderType:   cloudflare.RegisterTo,
 	google.ProviderType:       google.RegisterTo,
 	netlify.ProviderType:      netlify.RegisterTo,
 	openstack.ProviderType:    openstack.RegisterTo,
 	rfc2136.ProviderType:      rfc2136.RegisterTo,
 	powerdns.ProviderType:     powerdns.RegisterTo,
-	azure.ProviderType:        azure.RegisterTo,
-	azureprivate.ProviderType: azureprivate.RegisterTo,
 }
 
 // AddToManager adds Reconciler to the given manager.
