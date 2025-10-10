@@ -89,8 +89,11 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 
 	blockedZones := h.config.Options.GetBlockedZones()
 	pager := h.zonesClient.NewListPager(nil)
+	requestType := provider.M_LISTZONES
 	for pager.More() {
-		h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
+		h.config.Metrics.AddGenericRequests(requestType, 1)
+		requestType = provider.M_PLISTZONES
+
 		page, err := pager.NextPage(h.ctx)
 		if err != nil {
 			if err != nil {
