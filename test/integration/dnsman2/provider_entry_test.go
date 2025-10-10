@@ -7,6 +7,7 @@ package dnsman2_test
 import (
 	"context"
 	"fmt"
+	"net"
 	"strconv"
 	"time"
 
@@ -16,9 +17,11 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/json"
+	utilsnet "k8s.io/utils/net"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,11 +48,13 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 	)
 
 	var (
-		mgrCancel      context.CancelFunc
-		testRunID      string
-		testNamespace  *corev1.Namespace
-		firstZoneID    dns.ZoneID
-		e1, e2, e3, e4 *v1alpha1.DNSEntry
+		mgrCancel       context.CancelFunc
+		testRunID       string
+		testNamespace   *corev1.Namespace
+		firstZoneID     dns.ZoneID
+		e1, e2, e3, e4  *v1alpha1.DNSEntry
+		provider1       *v1alpha1.DNSProvider
+		provider1Secret *corev1.Secret
 
 		checkDeleted = func(g Gomega, ctx context.Context, entry *v1alpha1.DNSEntry) {
 			err := testClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)
@@ -100,6 +105,30 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 				}
 				g.ExpectWithOffset(1, entry.Status.ObservedGeneration).To(Equal(entry.Generation))
 			}).Should(Succeed())
+		}
+
+		prepareSecondProvider = func() *v1alpha1.DNSProvider {
+			mcfg := mock.MockConfig{
+				Account: testRunID + "-2",
+				Zones: []mock.MockZone{
+					{DNSName: "other-domain.com"},
+				},
+			}
+			firstZoneID = mcfg.Zones[0].ZoneID(testRunID)
+			bytes, err := json.Marshal(&mcfg)
+			Expect(err).NotTo(HaveOccurred())
+			return &v1alpha1.DNSProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: testRunID,
+					Name:      "mock2",
+				},
+				Spec: v1alpha1.DNSProviderSpec{
+					Type:           "mock-inmemory",
+					ProviderConfig: &runtime.RawExtension{Raw: bytes},
+					// "mock1-secret" can be reused as it has no data anyway
+					SecretRef: &corev1.SecretReference{Name: "mock1-secret", Namespace: testRunID},
+				},
+			}
 		}
 	)
 
@@ -160,9 +189,6 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		})
 		Expect(err).ToNot(HaveOccurred())
 
-		//Expect(apiextensionsv1.AddToScheme(mgr.GetScheme())).To(Succeed())
-		//Expect(v1alpha1.AddToScheme(mgr.GetScheme())).To(Succeed())
-
 		log.Info("Adding field indexes to informers")
 		Expect(app.AddAllFieldIndexesToManager(ctx, mgr)).To(Succeed())
 
@@ -205,7 +231,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		bytes, err := json.Marshal(&mcfg)
 		Expect(err).NotTo(HaveOccurred())
 
-		providerSecret := &corev1.Secret{
+		provider1Secret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: testRunID,
 				Name:      "mock1-secret",
@@ -213,12 +239,11 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			Data: map[string][]byte{},
 			Type: corev1.SecretTypeOpaque,
 		}
-		Expect(testClient.Create(ctx, providerSecret)).To(Succeed())
+		Expect(testClient.Create(ctx, provider1Secret)).To(Succeed())
 		DeferCleanup(func() {
-			Expect(testClient.Delete(ctx, providerSecret)).To(Succeed())
-			println("Deleted provider secret")
+			Expect(testClient.Delete(ctx, provider1Secret)).To(Succeed())
 		})
-		provider := &v1alpha1.DNSProvider{
+		provider1 = &v1alpha1.DNSProvider{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: testRunID,
 				Name:      "mock1",
@@ -229,17 +254,18 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 				SecretRef:      &corev1.SecretReference{Name: "mock1-secret", Namespace: testRunID},
 			},
 		}
-		Expect(testClient.Create(ctx, provider)).To(Succeed())
+		Expect(testClient.Create(ctx, provider1)).To(Succeed())
 		DeferCleanup(func() {
-			Expect(testClient.Delete(ctx, provider)).To(Succeed())
+			err := testClient.Delete(ctx, provider1)
+			Expect(err == nil || errors.IsNotFound(err)).To(BeTrue())
 			Eventually(func(g Gomega) {
-				g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider), provider)).NotTo(Succeed())
+				g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).NotTo(Succeed())
 			}).Should(Succeed())
 		})
 
 		Eventually(func(g Gomega) {
-			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider), provider)).To(Succeed())
-			g.Expect(provider.Status.State).To(Equal("Ready"))
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).To(Succeed())
+			g.Expect(provider1.Status.State).To(Equal("Ready"))
 		}).Should(Succeed())
 
 		e1 = &v1alpha1.DNSEntry{
@@ -354,7 +380,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		Eventually(func(g Gomega) {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
 			g.Expect(e1.Status.State).To(Equal("Error"))
-			g.Expect(e1.Status.Message).To(PointTo(Equal("1 change failed")))
+			g.Expect(e1.Status.Message).To(PointTo(Equal("failed to execute DNS change requests: 1 change failed")))
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).Should(Succeed())
 
@@ -483,6 +509,356 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
 			g.Expect(e1.Annotations).NotTo(HaveKey(constants.GardenerOperation))
 		}).Should(Succeed())
+	})
+
+	It("should set state of invalid entries to invalid", func() {
+		By("Create new DNS entry with both targets and text specified")
+		e := &v1alpha1.DNSEntry{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testRunID,
+				Name:      "e-both",
+			},
+			Spec: v1alpha1.DNSEntrySpec{
+				DNSName: "e-both.first.example.com",
+				Targets: []string{"1.1.1.1"},
+				Text:    []string{"foo"},
+			},
+		}
+		Expect(testClient.Create(ctx, e)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, e)).To(Succeed())
+		})
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e), e)).To(Succeed())
+			g.Expect(e.Finalizers).To(BeEmpty())
+			g.Expect(e.Status.State).To(Equal("Invalid"))
+			g.Expect(e.Status.Message).To(PointTo(ContainSubstring("cannot specify both targets and text fields")))
+			g.Expect(e.Status.ObservedGeneration).To(Equal(e.Generation))
+		}).Should(Succeed())
+	})
+
+	It("should set state of entry without matching provider to error", func() {
+		By("Create new DNS entry with unknown dns name domain")
+		e := &v1alpha1.DNSEntry{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testRunID,
+				Name:      "e-unknown-domain",
+			},
+			Spec: v1alpha1.DNSEntrySpec{
+				DNSName: "e.unknown.com",
+				Targets: []string{"1.1.1.1"},
+			},
+		}
+		Expect(testClient.Create(ctx, e)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, e)).To(Succeed())
+		})
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e), e)).To(Succeed())
+			g.Expect(e.Finalizers).To(BeEmpty())
+			g.Expect(e.Status.State).To(Equal("Error"))
+			g.Expect(e.Status.Message).To(PointTo(ContainSubstring("no matching DNS provider found")))
+			g.Expect(e.Status.ObservedGeneration).To(Equal(e.Generation))
+		}).Should(Succeed())
+	})
+
+	It("should not delete provider until all its entries have been deleted", func() {
+		Expect(testClient.Create(ctx, e1)).To(Succeed())
+		checkEntry(e1)
+
+		By("Try to delete provider")
+		Expect(testClient.Delete(ctx, provider1)).To(Succeed())
+
+		Eventually(func(g Gomega) {
+			p := &v1alpha1.DNSProvider{}
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), p)).To(Succeed())
+			g.Expect(p.DeletionTimestamp).NotTo(BeNil())
+			g.Expect(p.Status.Message).To(PointTo(Equal("cannot delete provider, 1 DNSEntries still assigned to it")))
+		}).Should(Succeed())
+
+		By("Delete entry")
+		Expect(testClient.Delete(ctx, e1)).To(Succeed())
+		Eventually(func(g Gomega) {
+			checkDeleted(g, ctx, e1)
+		}).Should(Succeed())
+
+		By("Await deletion of provider")
+		Eventually(func(g Gomega) {
+			p := &v1alpha1.DNSProvider{}
+			g.Expect(errors.IsNotFound(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), p))).To(BeTrue())
+		}).Should(Succeed())
+	})
+
+	It("should reassign entry to different provider if dnsName changes", func() {
+		By("Create second provider")
+		p2 := prepareSecondProvider()
+		Expect(testClient.Create(ctx, p2)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, p2)).To(Succeed())
+		})
+
+		By("Create entry in domain of first provider")
+		Expect(testClient.Create(ctx, e1)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, e1)).To(Succeed())
+		})
+
+		checkEntry(e1)
+		Expect(e1.Finalizers).To(ContainElement(dns.FinalizerCompound))
+		Expect(e1.Status.Provider).To(PointTo(Equal(client.ObjectKeyFromObject(provider1).String())))
+		Expect(e1.Status.ProviderType).To(PointTo(Equal("mock-inmemory")))
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(p2), p2)).To(Succeed())
+			g.Expect(p2.Status.State).To(Equal("Ready"))
+		}).Should(Succeed())
+
+		By("Update entry to domain of second provider")
+		e1.Spec.DNSName = "e1.other-domain.com"
+		Expect(testClient.Update(ctx, e1)).To(Succeed())
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
+			g.Expect(e1.Finalizers).To(ContainElement(dns.FinalizerCompound))
+			g.Expect(e1.Status.Provider).To(PointTo(Equal(client.ObjectKeyFromObject(p2).String())))
+			g.Expect(e1.Status.ProviderType).To(PointTo(Equal("mock-inmemory")))
+		}).Should(Succeed())
+		checkEntry(e1)
+	})
+
+	It("should handle an entry with multiple cname targets/resolveTargetsToAddresses correctly", func() {
+		By("Create new DNS entry with multiple cname targets")
+		entry := &v1alpha1.DNSEntry{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testRunID,
+				Name:      "e-multi-cname",
+			},
+			Spec: v1alpha1.DNSEntrySpec{
+				DNSName: "e-multi-cname.first.example.com",
+				Targets: []string{"wikipedia.org", "www.wikipedia.org", "gardener.cloud"},
+			},
+		}
+
+		Expect(testClient.Create(ctx, entry)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, entry)).To(Succeed())
+		})
+
+		By("Check entry is ready and all targets are resolved to addresses")
+		// Note: wikipedia.org has both ipv4 and ipv6 addresses, gardener.cloud has multiple ipv4 and ipv6 addresses
+		// www.wikipedia.org resolves to wikipedia.org and checks for duplicate addresses are done
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
+			g.Expect(entry.Status.State).To(Equal("Ready"))
+			g.Expect(len(entry.Status.Targets)).To(BeNumerically(">=", len(entry.Spec.Targets)))
+			var countIPV4, countIPV6 int
+			for _, t := range entry.Status.Targets {
+				ip := net.ParseIP(t)
+				if ip != nil && utilsnet.IsIPv4(ip) {
+					countIPV4++
+				} else if ip != nil && utilsnet.IsIPv6(ip) {
+					countIPV6++
+				}
+			}
+			g.Expect(countIPV4).To(BeNumerically(">=", len(entry.Spec.Targets)))
+			g.Expect(countIPV6).To(BeNumerically(">=", len(entry.Spec.Targets)))
+			g.Expect(entry.Status.ObservedGeneration).To(Equal(entry.Generation))
+		}).Should(Succeed())
+
+		// check for duplicates of wikipedia.org and www.wikipedia.org addresses
+		addresses := make(map[string]struct{})
+		for _, t := range entry.Status.Targets {
+			_, exists := addresses[t]
+			Expect(exists).To(BeFalse(), "duplicate address "+t)
+			addresses[t] = struct{}{}
+		}
+	})
+
+	It("should not delete a stale entry", func() {
+		Expect(testClient.Create(ctx, e1)).To(Succeed())
+		checkEntry(e1)
+
+		By("change the provider to make the entry stale")
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).To(Succeed())
+		provider1.Spec.Domains = &v1alpha1.DNSSelection{Include: []string{"restricted.first.example.com"}}
+		Expect(testClient.Update(ctx, provider1)).To(Succeed())
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).To(Succeed())
+			g.Expect(provider1.Status.ObservedGeneration).To(Equal(provider1.Generation))
+			g.Expect(provider1.Status.State).To(Equal("Ready"))
+		}).Should(Succeed())
+
+		By("check that the entry is now stale")
+		// entry should be stale as its domain is not covered by the provider anymore
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(e1.Status.State).To(Equal("Stale"))
+		}).Should(Succeed())
+
+		By("Try to delete entry and ensure it is not gone")
+		Expect(testClient.Delete(ctx, e1)).To(Succeed())
+		Consistently(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(e1.Status.State).To(Equal("Stale"))
+		}, 2*time.Second, 500*time.Second).Should(Succeed())
+
+		By("Revert provider change")
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).To(Succeed())
+		provider1.Spec.Domains = nil
+		Expect(testClient.Update(ctx, provider1)).To(Succeed())
+
+		By("check that the entry is deleted now")
+		Eventually(func(g Gomega) {
+			g.Expect(errors.IsNotFound(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1))).To(BeTrue())
+		}).Should(Succeed())
+	})
+
+	It("should respect the provider rate limits", func() {
+		By("Create second provider")
+		p2 := prepareSecondProvider()
+		p2.Spec.RateLimit = &v1alpha1.RateLimit{
+			RequestsPerDay: 60 * 60 * 24, // 2 per 1s
+			Burst:          1,
+		}
+		Expect(testClient.Create(ctx, p2)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, p2)).To(Succeed())
+		})
+
+		By("Create three entries in domain of second provider")
+		// create 3 entries that all get assigned to the second provider
+		// with a rate limit of 1/s this should take at least 2s to create all entries
+		entries := make([]*v1alpha1.DNSEntry, 3)
+		for i := 0; i < len(entries); i++ {
+			entries[i] = &v1alpha1.DNSEntry{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: testRunID,
+					Name:      fmt.Sprintf("e-rate-%d", i),
+				},
+				Spec: v1alpha1.DNSEntrySpec{
+					DNSName: fmt.Sprintf("e-rate-%d.other-domain.com", i),
+					Targets: []string{fmt.Sprintf("2.2.2.%d", i)},
+				},
+			}
+			Expect(testClient.Create(ctx, entries[i])).To(Succeed())
+			DeferCleanup(func() {
+				Expect(testClient.Delete(ctx, entries[i])).To(Succeed())
+			})
+		}
+
+		start := time.Now()
+		for _, entry := range entries {
+			checkEntry(entry)
+		}
+		duration := time.Since(start)
+		Expect(duration).To(BeNumerically(">=", 2*time.Second), "creating 3 entries with rate limit of 1/s should take at least 2s, took %s", duration)
+	})
+
+	It("should update provider and entries when provider secret is created after provider resource", func() {
+		By("Create second provider")
+		p2 := prepareSecondProvider()
+		// initially set secret ref to non-existing secret
+		p2.Spec.SecretRef = &corev1.SecretReference{Name: "mock2-secret", Namespace: testRunID}
+		Expect(testClient.Create(ctx, p2)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, p2)).To(Succeed())
+		})
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(p2), p2)).To(Succeed())
+			g.Expect(p2.Status.State).To(Equal("Error"))
+		}).Should(Succeed())
+
+		By("Create an entry assigned to the second provider")
+		entry := &v1alpha1.DNSEntry{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testRunID,
+				Name:      "e2",
+			},
+			Spec: v1alpha1.DNSEntrySpec{
+				DNSName: "e2.other-domain.com",
+				Targets: []string{"2.2.2.2"},
+			},
+		}
+		Expect(testClient.Create(ctx, entry)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, entry)).To(Succeed())
+		})
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
+			g.Expect(entry.Status.State).To(Equal("Error"))
+		}).Should(Succeed())
+
+		By("create secret")
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testRunID,
+				Name:      "mock2-secret",
+			},
+			Data: map[string][]byte{},
+			Type: corev1.SecretTypeOpaque,
+		}
+		Expect(testClient.Create(ctx, secret)).To(Succeed())
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(p2), p2)).To(Succeed())
+			g.Expect(p2.Status.State).To(Equal("Ready"))
+		}).Should(Succeed())
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
+			g.Expect(entry.Status.State).To(Equal("Ready"))
+		}).Should(Succeed())
+	})
+
+	It("should add and remove finalizer for provider secret", func() {
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1Secret), provider1Secret)).To(Succeed())
+		Expect(provider1Secret.Finalizers).To(ContainElement(dns.FinalizerCompound))
+
+		By("Replace secret")
+		newSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testRunID,
+				Name:      "mock1b-secret",
+			},
+			Data: map[string][]byte{},
+			Type: corev1.SecretTypeOpaque,
+		}
+		Expect(testClient.Create(ctx, newSecret)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, newSecret)).To(Succeed())
+		})
+
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).To(Succeed())
+		provider1.Spec.SecretRef = &corev1.SecretReference{Name: "mock1b-secret", Namespace: testRunID}
+		Expect(testClient.Update(ctx, provider1)).To(Succeed())
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).To(Succeed())
+			g.Expect(provider1.Status.ObservedGeneration).To(Equal(provider1.Generation))
+			g.Expect(provider1.Status.State).To(Equal("Ready"))
+		}).Should(Succeed())
+
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1Secret), provider1Secret)).To(Succeed())
+		Expect(provider1Secret.Finalizers).NotTo(ContainElement(dns.FinalizerCompound))
+
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(newSecret), newSecret)).To(Succeed())
+		Expect(newSecret.Finalizers).To(ContainElement(dns.FinalizerCompound))
+
+		By("Delete provider")
+		Expect(testClient.Delete(ctx, provider1)).To(Succeed())
+		Eventually(func(g Gomega) {
+			g.Expect(errors.IsNotFound(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1))).To(BeTrue())
+		}).Should(Succeed())
+
+		By("Check provider secret has no finalizer anymore")
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1Secret), provider1Secret)).To(Succeed())
+		Expect(provider1Secret.Finalizers).NotTo(ContainElement(dns.FinalizerCompound))
 	})
 })
 

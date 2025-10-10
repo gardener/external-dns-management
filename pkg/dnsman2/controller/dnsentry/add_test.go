@@ -62,7 +62,7 @@ var _ = Describe("Add", func() {
 				},
 				Status: v1alpha1.DNSEntryStatus{
 					State:    v1alpha1.StateReady,
-					Provider: ptr.String("provider1"),
+					Provider: ptr.String("test/provider1"),
 				},
 			})).To(Succeed())
 			key4 = client.ObjectKey{Name: "entry4", Namespace: "test"}

@@ -97,7 +97,7 @@ func (r *DNSHandlerRegistry) Create(providerType string, config *DNSHandlerConfi
 		return nil, fmt.Errorf("provider type %q not found in registry", providerType)
 	}
 
-	if err := config.SetRateLimiter(config.GlobalConfig.ProviderAdvancedOptions[providerType].RateLimits, creatorConfig.defaultRateLimits, r.clock); err != nil {
+	if err := config.SetDefaultRateLimiter(config.GlobalConfig.ProviderAdvancedOptions[providerType].RateLimits, creatorConfig.defaultRateLimits, r.clock); err != nil {
 		return nil, fmt.Errorf("failed to set rate limiter for provider type %q: %w", providerType, err)
 	}
 	return creatorConfig.creator(config)

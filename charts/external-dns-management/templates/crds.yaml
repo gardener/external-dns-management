@@ -625,6 +625,19 @@ spec:
                 - burst
                 - requestsPerDay
                 type: object
+              secretRef:
+                description: actually used access credential
+                properties:
+                  name:
+                    description: name is unique within a namespace to reference a
+                      secret resource.
+                    type: string
+                  namespace:
+                    description: namespace defines the space within which the secret
+                      name must be unique.
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
               state:
                 description: state of the provider
                 type: string
