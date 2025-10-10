@@ -31,6 +31,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/alicloud"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/aws"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/azure"
+	azureprivate "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/azure-private"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/cloudflare"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/google"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
@@ -45,14 +47,16 @@ import (
 const ControllerName = "dnsprovider-controlplane"
 
 var allTypes = map[string]provider.AddToRegistryFunc{
-	alicloud.ProviderType:   alicloud.RegisterTo,
-	aws.ProviderType:        aws.RegisterTo,
-	cloudflare.ProviderType: cloudflare.RegisterTo,
-	google.ProviderType:     google.RegisterTo,
-	netlify.ProviderType:    netlify.RegisterTo,
-	openstack.ProviderType:  openstack.RegisterTo,
-	rfc2136.ProviderType:    rfc2136.RegisterTo,
-	powerdns.ProviderType:   powerdns.RegisterTo,
+	alicloud.ProviderType:     alicloud.RegisterTo,
+	aws.ProviderType:          aws.RegisterTo,
+	azure.ProviderType:        azure.RegisterTo,
+	azureprivate.ProviderType: azureprivate.RegisterTo,
+	cloudflare.ProviderType:   cloudflare.RegisterTo,
+	google.ProviderType:       google.RegisterTo,
+	netlify.ProviderType:      netlify.RegisterTo,
+	openstack.ProviderType:    openstack.RegisterTo,
+	rfc2136.ProviderType:      rfc2136.RegisterTo,
+	powerdns.ProviderType:     powerdns.RegisterTo,
 }
 
 // AddToManager adds Reconciler to the given manager.
