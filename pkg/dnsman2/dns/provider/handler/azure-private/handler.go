@@ -88,8 +88,11 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 
 	var hostedZones []provider.DNSHostedZone
 	pager := h.zonesClient.NewListPager(nil)
+	requestType := provider.MetricsRequestTypeListZones
 	for pager.More() {
-		h.config.Metrics.AddGenericRequests(provider.MetricsRequestTypeListZones, 1)
+		h.config.Metrics.AddGenericRequests(requestType, 1)
+		requestType = provider.MetricsRequestTypeListZonesPages
+
 		page, err := pager.NextPage(ctx)
 		if err != nil {
 			return nil, perrs.WrapAsHandlerError(err, "failed to list zones")
