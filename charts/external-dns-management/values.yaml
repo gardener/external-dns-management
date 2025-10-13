@@ -24,7 +24,7 @@ vpa:
     cpu: 50m
     memory: 50Mi
   updatePolicy:
-    updateMode: "Auto"
+    updateMode: "Recreate"
 
 nodeSelector: {}
 tolerations: []
