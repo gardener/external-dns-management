@@ -805,6 +805,7 @@ Flags:
       --kubeconfig string                                             default cluster access
       --kubeconfig.burst int                                          option to set the maximum burst to the apiserver of the cluster default
       --kubeconfig.conditional-deploy-crds                            deployment of required crds for cluster default only if there is no managed resource in garden namespace deploying it
+      --kubeconfig.crds-shoot-no-cleanup-label                        add the label 'shoot.gardener.cloud/no-cleanup=true' for CRDS deployed on cluster default
       --kubeconfig.disable-deploy-crds                                disable deployment of required crds for cluster default
       --kubeconfig.id string                                          id for cluster default
       --kubeconfig.migration-ids string                               migration id for cluster default
@@ -846,6 +847,7 @@ Flags:
       --providers string                                              cluster to look for provider objects
       --providers.burst int                                           option to set the maximum burst to the apiserver of the cluster provider
       --providers.conditional-deploy-crds                             deployment of required crds for cluster provider only if there is no managed resource in garden namespace deploying it
+      --providers.crds-shoot-no-cleanup-label                         add the label 'shoot.gardener.cloud/no-cleanup=true' for CRDS deployed on cluster provider
       --providers.disable-deploy-crds                                 disable deployment of required crds for cluster provider
       --providers.id string                                           id for cluster provider
       --providers.migration-ids string                                migration id for cluster provider
@@ -897,6 +899,7 @@ Flags:
       --target-realms string                                          realm(s) to use for generated DNS entries, realm(s) to use for replicated DNS provider
       --target.burst int                                              option to set the maximum burst to the apiserver of the cluster target
       --target.conditional-deploy-crds                                deployment of required crds for cluster target only if there is no managed resource in garden namespace deploying it
+      --target.crds-shoot-no-cleanup-label                            add the label 'shoot.gardener.cloud/no-cleanup=true' for CRDS deployed on cluster target
       --target.disable-deploy-crds                                    disable deployment of required crds for cluster target
       --target.id string                                              id for cluster target
       --target.migration-ids string                                   migration id for cluster target

@@ -272,6 +272,7 @@ configuration:
   # kubeconfig: ""
   # kubeconfigBurst:
   # kubeconfigDisableDeployCrds: false
+  # kubeconfigCrdsShootNoCleanupLabel: false
   # kubeconfigId: ""
   # kubeconfigMigrationIds: ""
   # kubeconfigQps:
@@ -310,6 +311,7 @@ configuration:
   # providersBurst:
   # providersConditionalDeployCrds:
   # providersDisableDeployCrds: false
+  # providersCrdsShootNoCleanupLabel: false
   # providersId: ""
   # providersMigrationIds: ""
   # providersPoolResyncPeriod: 30s
@@ -355,6 +357,7 @@ configuration:
   # targetBurst:
   # targetConditionalDeployCrds:
   # targetDisableDeployCrds: false
+  # targetCrdsShootNoCleanupLabel: false
   # targetId: ""
   # targetMigrationIds: ""
   # targetQps:

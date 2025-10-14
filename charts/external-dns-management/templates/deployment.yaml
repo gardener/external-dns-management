@@ -742,6 +742,9 @@ spec:
         {{- if .Values.configuration.kubeconfigConditionalDeployCrds }}
         - --kubeconfig.conditional-deploy-crds={{ .Values.configuration.kubeconfigConditionalDeployCrds }}
         {{- end }}
+        {{- if .Values.configuration.kubeconfigCrdsShootNoCleanupLabel }}
+        - --kubeconfig.crds-shoot-no-cleanup-label={{ .Values.configuration.kubeconfigCrdsShootNoCleanupLabel }}
+        {{- end }}
         {{- if .Values.configuration.kubeconfigDisableDeployCrds }}
         - --kubeconfig.disable-deploy-crds={{ .Values.configuration.kubeconfigDisableDeployCrds }}
         {{- end }}
@@ -852,6 +855,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.providersConditionalDeployCrds }}
         - --providers.conditional-deploy-crds={{ .Values.configuration.providersConditionalDeployCrds }}
+        {{- end }}
+        {{- if .Values.configuration.providersCrdsShootNoCleanupLabel }}
+        - --providers.crds-shoot-no-cleanup-label={{ .Values.configuration.providersCrdsShootNoCleanupLabel }}
         {{- end }}
         {{- if .Values.configuration.providersDisableDeployCrds }}
         - --providers.disable-deploy-crds={{ .Values.configuration.providersDisableDeployCrds }}
@@ -987,6 +993,9 @@ spec:
         {{- end }}
         {{- if .Values.configuration.targetConditionalDeployCrds }}
         - --target.conditional-deploy-crds={{ .Values.configuration.targetConditionalDeployCrds }}
+        {{- end }}
+        {{- if .Values.configuration.targetCrdsShootNoCleanupLabel }}
+        - --target.crds-shoot-no-cleanup-label={{ .Values.configuration.targetCrdsShootNoCleanupLabel }}
         {{- end }}
         {{- if .Values.configuration.targetDisableDeployCrds }}
         - --target.disable-deploy-crds={{ .Values.configuration.targetDisableDeployCrds }}
