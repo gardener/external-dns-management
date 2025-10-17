@@ -48,44 +48,35 @@ type providerSelector struct {
 }
 
 func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.ReconcileResult) {
-	newProvider, err := s.findBestMatchingProvider(s.Entry.Spec.DNSName, s.Entry.Status.Provider)
-	if err != nil {
-		s.Log.Error(err, "failed to find a matching DNS provider for the Entry")
-		return nil, &common.ReconcileResult{Err: err}
-	}
-	if newProvider != nil {
-		providerKey := client.ObjectKeyFromObject(newProvider)
-		newZoneID, res := s.getZoneForProvider(newProvider, s.Entry.Spec.DNSName)
-		if res != nil {
-			s.Log.Error(err, "failed to get zone for provider", "provider", providerKey)
-			return nil, res
-		}
-		if res := s.StatusUpdater().AddFinalizer(); res != nil {
-			return nil, res
-		}
-		providerState := s.state.GetProviderState(providerKey)
-		if providerState == nil {
-			s.Log.Error(err, "failed to get provider state", "provider", providerKey)
-			return nil, &common.ReconcileResult{Err: err}
-		}
-
-		return &NewProviderData{
-			Provider:      newProvider,
-			ProviderKey:   providerKey,
-			ZoneID:        *newZoneID,
-			ProviderState: providerState,
-			DefaultTTL:    providerState.GetDefaultTTL(),
-		}, nil
-	}
-	return nil, nil
-}
-
-func (s *providerSelector) findBestMatchingProvider(dnsName string, currentProviderName *string) (*v1alpha1.DNSProvider, error) {
 	providerList := &v1alpha1.DNSProviderList{}
 	if err := s.Client.List(s.Ctx, providerList, client.InNamespace(s.namespace)); err != nil {
-		return nil, err
+		return nil, &common.ReconcileResult{Err: err}
 	}
-	return findBestMatchingProvider(dns.FilterProvidersByClass(providerList.Items, s.class), dnsName, currentProviderName)
+	newProvider := findBestMatchingProvider(dns.FilterProvidersByClass(providerList.Items, s.class), s.Entry.Spec.DNSName, s.Entry.Status.Provider)
+	if newProvider == nil {
+		return nil, nil
+	}
+
+	providerKey := client.ObjectKeyFromObject(newProvider)
+	newZoneID, res := s.getZoneForProvider(newProvider, s.Entry.Spec.DNSName)
+	if res != nil {
+		return nil, res
+	}
+	if res := s.StatusUpdater().AddFinalizer(); res != nil {
+		return nil, res
+	}
+	providerState := s.state.GetProviderState(providerKey)
+	if providerState == nil {
+		return nil, common.ErrorReconcileResult(fmt.Sprintf("failed to get provider state for provider %s", providerKey), false)
+	}
+
+	return &NewProviderData{
+		Provider:      newProvider,
+		ProviderKey:   providerKey,
+		ZoneID:        *newZoneID,
+		ProviderState: providerState,
+		DefaultTTL:    providerState.GetDefaultTTL(),
+	}, nil
 }
 
 func (s *providerSelector) getZoneForProvider(provider *v1alpha1.DNSProvider, dnsName string) (*dns.ZoneID, *common.ReconcileResult) {
@@ -104,7 +95,7 @@ func (s *providerSelector) getZoneForProvider(provider *v1alpha1.DNSProvider, dn
 		}
 	}
 	if bestZone == nil {
-		return nil, &common.ReconcileResult{Err: fmt.Errorf("no matching zone found for DNS name %q in provider %q", dnsName, provider.Name)}
+		return nil, common.ErrorReconcileResult(fmt.Sprintf("no matching zone found for DNS name %q in provider %q", dnsName, provider.Name), true)
 	}
 	return ptr.To(bestZone.ZoneID()), nil
 }
@@ -114,38 +105,36 @@ type providerMatch struct {
 	match int
 }
 
-func findBestMatchingProvider(providers []v1alpha1.DNSProvider, dnsName string, currentProviderName *string) (*v1alpha1.DNSProvider, error) {
-	handleMatch := func(match *providerMatch, p *v1alpha1.DNSProvider, n int, err error) error {
+func findBestMatchingProvider(providers []v1alpha1.DNSProvider, dnsName string, currentProviderName *string) *v1alpha1.DNSProvider {
+	handleMatch := func(match *providerMatch, p *v1alpha1.DNSProvider, n int) {
 		if match.match > n {
-			return err
+			return
 		}
 		if match.match < n || ptr.Deref(currentProviderName, "") == p.Name {
 			match.found = p
 			match.match = n
-			return nil
+			return
 		}
-		return err
 	}
-	var err error
-	validMatch := &providerMatch{}
-	errorMatch := &providerMatch{}
+	validMatch := providerMatch{}
+	errorMatch := providerMatch{}
 	for _, p := range providers {
 		n := matchSelection(dnsName, p.Status.Domains)
 		if n > 0 {
 			if p.Status.State == v1alpha1.StateReady {
-				err = handleMatch(validMatch, &p, n, err)
+				handleMatch(&validMatch, &p, n)
 			} else {
-				err = handleMatch(errorMatch, &p, n, err)
+				handleMatch(&errorMatch, &p, n)
 			}
 		}
 	}
 	if validMatch.found != nil {
-		return validMatch.found, nil
+		return validMatch.found
 	}
 	if errorMatch.found != nil {
-		return errorMatch.found, nil
+		return errorMatch.found
 	}
-	return nil, err
+	return nil
 }
 
 func matchSelection(name string, selection v1alpha1.DNSSelectionStatus) int {

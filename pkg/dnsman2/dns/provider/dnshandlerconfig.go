@@ -212,15 +212,18 @@ func (c *DNSHandlerConfig) checkNotDefinedInConfig(prop string, alt ...string) e
 	return nil
 }
 
-// SetRateLimiter configures the rate limiter for the DNSHandlerConfig based on the provided options.
-func (c *DNSHandlerConfig) SetRateLimiter(configuredRateLimiter, defaultRateLimiter *config.RateLimiterOptions, clock clock.Clock) error {
+// SetDefaultRateLimiter configures the rate limiter for the DNSHandlerConfig based on the provided options if not already set.
+func (c *DNSHandlerConfig) SetDefaultRateLimiter(configuredRateLimiter, defaultRateLimiter *config.RateLimiterOptions, clock clock.Clock) error {
+	if c.RateLimiter != nil {
+		return nil
+	}
 	c.RateLimiter = flowcontrol.NewFakeAlwaysRateLimiter()
 	rateLimiterConfig := configuredRateLimiter
 	if rateLimiterConfig == nil {
 		rateLimiterConfig = defaultRateLimiter
 	}
 	if rateLimiterConfig != nil && rateLimiterConfig.Enabled {
-		c.RateLimiter = flowcontrol.NewTokenBucketRateLimiterWithClock(float32(rateLimiterConfig.QPS), rateLimiterConfig.Burst, clock)
+		c.RateLimiter = flowcontrol.NewTokenBucketRateLimiterWithClock(rateLimiterConfig.QPS, rateLimiterConfig.Burst, clock)
 		c.Log.Info("rate limiter", "config", rateLimiterConfig)
 	} else {
 		c.Log.Info("no rate limiter configured or enabled, using always rate limiter")

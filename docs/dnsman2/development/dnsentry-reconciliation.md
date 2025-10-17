@@ -44,14 +44,14 @@ flowchart TD
     Start --> Get
     Get -->|ok| LockName
     Get -->|ignored by annotation| Stop
-    LockName -->|ok| CalcNewProvider
+    LockName -->|ok| Validate
     LockName -->|"already locked by
     another reconciliation"| Requeue --> Stop
-    CalcNewProvider -->|ok| Validate
+    Validate --> CalcNewProvider
+    CalcNewProvider -->|ok| CalcOldTargets
     CalcNewProvider -->|not found| NoMatchingTxt
     NoMatchingTxt -->|"No targets in .status"| StateError
     NoMatchingTxt -->|"Existing targets in .status"| StateStale
-    Validate --> CalcOldTargets
     CalcNewProvider -->|not ready| ProviderNotReadyTxt --> StateStale
     CalcOldTargets --> CalcNewTargets
     CalcNewTargets --> QueryRecords
