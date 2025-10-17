@@ -1,36 +1,18 @@
 name: Validate release-notes from PRs
-
 on:
   pull_request:
     types:
-    - opened
-    - edited
-    - reopened
+      - opened
+      - edited
+      - reopened
 
 permissions:
   pull-requests: read
 
 jobs:
   validate-release-notes:
-    runs-on: ${{ vars.DEFAULT_RUNNER || 'ubuntu-latest' }}
-    steps:
-    - name: install-gardener-gha-libs
-      uses: gardener/cc-utils/.github/actions/install-gardener-gha-libs@master
-
-    - name: raise-on-malformed-release-notes
-      shell: python
-      run: |
-        import release_notes.model
-
-
-        pr_body_content = '''\
-        ${{ github.event.pull_request.body }}
-        '''
-
-        _, malformed = release_notes.model.iter_source_blocks(
-            source={},
-            content=pr_body_content,
-        )
-
-        if malformed:
-            raise ValueError(f'do not know how to handle malformed release-notes blocks: {malformed}')
+    uses: gardener/cc-utils/.github/workflows/validate-release-notes.yaml@master
+    permissions:
+      pull-requests: read
+    with:
+      pull-request-body: ${{ github.event.pull_request.body }}
