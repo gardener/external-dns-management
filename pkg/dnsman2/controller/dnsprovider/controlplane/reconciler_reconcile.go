@@ -130,14 +130,10 @@ func (r *Reconciler) getSecretRef(provider *v1alpha1.DNSProvider) *corev1.Secret
 	if provider.Spec.SecretRef == nil {
 		return nil
 	}
-	ref := &corev1.SecretReference{
+	return &corev1.SecretReference{
 		Name:      provider.Spec.SecretRef.Name,
-		Namespace: provider.Spec.SecretRef.Namespace,
+		Namespace: getSecretRefNamespace(provider),
 	}
-	if ref.Namespace == "" {
-		ref.Namespace = provider.Namespace
-	}
-	return ref
 }
 
 func (r *Reconciler) getProperties(ctx context.Context, secretRef *corev1.SecretReference) (utils.Properties, error) {

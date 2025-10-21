@@ -68,12 +68,12 @@ func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSPr
 		return nil
 	}
 	secret := &corev1.Secret{}
-	if err := c.Get(ctx, client.ObjectKey{Namespace: provider.Spec.SecretRef.Namespace, Name: provider.Spec.SecretRef.Name}, secret); err != nil {
+	if err := c.Get(ctx, client.ObjectKey{Namespace: getSecretRefNamespace(provider), Name: provider.Spec.SecretRef.Name}, secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Secret does not exist, cannot add finalizer
 			return nil
 		}
-		return fmt.Errorf("error retrieving secret %s/%s: %w", provider.Spec.SecretRef.Namespace, provider.Spec.SecretRef.Name, err)
+		return fmt.Errorf("error retrieving secret %s/%s: %w", getSecretRefNamespace(provider), provider.Spec.SecretRef.Name, err)
 	}
 	return controllerutils.AddFinalizers(ctx, c, secret, dns.FinalizerCompound)
 }
@@ -86,12 +86,12 @@ func removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DN
 		return nil
 	}
 	secret := &corev1.Secret{}
-	if err := c.Get(ctx, client.ObjectKey{Namespace: provider.Spec.SecretRef.Namespace, Name: provider.Spec.SecretRef.Name}, secret); err != nil {
+	if err := c.Get(ctx, client.ObjectKey{Namespace: getSecretRefNamespace(provider), Name: provider.Spec.SecretRef.Name}, secret); err != nil {
 		if apierrors.IsNotFound(err) {
 			// Secret does not exist, cannot remove finalizer
 			return nil
 		}
-		return fmt.Errorf("error retrieving secret %s/%s: %w", provider.Spec.SecretRef.Namespace, provider.Spec.SecretRef.Name, err)
+		return fmt.Errorf("error retrieving secret %s/%s: %w", getSecretRefNamespace(provider), provider.Spec.SecretRef.Name, err)
 	}
 	return controllerutils.RemoveFinalizers(ctx, c, secret, dns.FinalizerCompound)
 }
@@ -156,4 +156,14 @@ func (r *Reconciler) checkChangedSecretRef(ctx context.Context, provider *v1alph
 	}
 
 	return controllerutils.RemoveFinalizers(ctx, r.Client, secret, dns.FinalizerCompound)
+}
+
+func getSecretRefNamespace(provider *v1alpha1.DNSProvider) string {
+	if provider.Spec.SecretRef == nil {
+		return ""
+	}
+	if provider.Spec.SecretRef.Namespace != "" {
+		return provider.Spec.SecretRef.Namespace
+	}
+	return provider.Namespace
 }
