@@ -29,6 +29,7 @@ var _ = Describe("Reconcile", func() {
 		reconciler  *Reconciler
 		providerKey = client.ObjectKey{Name: "provider1", Namespace: "test"}
 		provider    *v1alpha1.DNSProvider
+		secret1     *corev1.Secret
 		factory     *dnsprovider.DNSHandlerRegistry
 		clock       = &testing.FakeClock{}
 		startTime   = time.Now().Truncate(time.Second)
@@ -67,10 +68,11 @@ var _ = Describe("Reconcile", func() {
 			state:             state.GetState(),
 		}
 
-		Expect(fakeClient.Create(ctx, &corev1.Secret{
+		secret1 = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: "secret1", Namespace: providerKey.Namespace},
 			Data:       map[string][]byte{"foo": []byte("bar")},
-		})).To(Succeed())
+		}
+		Expect(fakeClient.Create(ctx, secret1)).To(Succeed())
 		rawMockConfig, err := mock.MarshallMockConfig(mock.MockConfig{
 			Account: "test",
 			Zones: []mock.MockZone{
@@ -134,6 +136,26 @@ var _ = Describe("Reconcile", func() {
 		Expect(fakeClient.Get(ctx, providerKey, provider)).To(Succeed())
 		Expect(result).To(Equal(reconcile.Result{}))
 		Expect(&provider.Status).To(Equal(oldStatus))
+
+		Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(secret1), secret1)).To(Succeed())
+		Expect(secret1.Finalizers).To(ConsistOf("dns.gardener.cloud/compound"))
+	})
+
+	It("should update status for supported provider type if secret ref namespace is missing", func() {
+		provider.Spec.SecretRef.Namespace = ""
+		Expect(fakeClient.Create(ctx, provider)).To(Succeed())
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: providerKey})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+
+		Expect(fakeClient.Get(ctx, providerKey, provider)).To(Succeed())
+		Expect(provider.Finalizers).To(ConsistOf("dns.gardener.cloud/compound"))
+		Expect(provider.Status.LastUpdateTime.Time).To(Equal(startTime))
+		Expect(provider.Status.State).To(Equal(v1alpha1.StateReady))
+		Expect(provider.Status.ObservedGeneration).To(Equal(provider.Generation))
+
+		Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(secret1), secret1)).To(Succeed())
+		Expect(secret1.Finalizers).To(ConsistOf("dns.gardener.cloud/compound"))
 	})
 
 	It("should update status for if secretref is not set", func() {

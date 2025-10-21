@@ -62,8 +62,10 @@ func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.Reconcil
 	if res != nil {
 		return nil, res
 	}
-	if res := s.StatusUpdater().AddFinalizer(); res != nil {
-		return nil, res
+	if len(s.Entry.Spec.Targets) != 0 || len(s.Entry.Spec.Text) != 0 {
+		if res := s.StatusUpdater().AddFinalizer(); res != nil {
+			return nil, res
+		}
 	}
 	providerState := s.state.GetProviderState(providerKey)
 	if providerState == nil {
