@@ -56,12 +56,13 @@ var _ = Describe("Reconciler", func() {
 			ExpectWithOffset(offset+1, reconciler.Config.TargetNamespace).NotTo(BeNil(), "target namespace must not be nil (test setup error)")
 			ExpectWithOffset(offset+1, fakeClient.List(ctx, &list, client.InNamespace(*reconciler.Config.TargetNamespace))).NotTo(HaveOccurred())
 			var items []*dnsv1alpha1.DNSEntry
+			ownerData := common.OwnerData{
+				Object:    svc,
+				GVK:       reconciler.GVK,
+				ClusterID: ptr.Deref(reconciler.Config.SourceClusterID, ""),
+			}
 			for _, item := range list.Items {
-				if common.HasOwner(&item, ptr.Deref(reconciler.Config.TargetClusterID, ""), common.OwnerData{
-					Object:    svc,
-					GVK:       reconciler.GVK,
-					ClusterID: ptr.Deref(reconciler.Config.SourceClusterID, ""),
-				}) {
+				if ownerData.HasOwner(&item, ptr.Deref(reconciler.Config.TargetClusterID, "")) {
 					h := item
 					items = append(items, &h)
 				}

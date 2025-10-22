@@ -26,6 +26,7 @@ func NormalizeClass(class string) string {
 	return class
 }
 
+// IsDefaultClass returns true if the provided class is the default class.
 func IsDefaultClass(class string) bool {
 	return NormalizeClass(class) == DefaultClass
 }

@@ -143,8 +143,9 @@ func (r *ReconcilerBase) getExistingOwnedDNSEntries(ctx context.Context, owner m
 	return ownedEntries, nil
 }
 
+// IsOwnedByController checks whether the given DNSEntry is owned by the given owner.
 func (r *ReconcilerBase) IsOwnedByController(entry *dnsv1alpha1.DNSEntry, owner metav1.Object) bool {
-	return HasOwner(entry, ptr.Deref(r.Config.TargetClusterID, ""), r.buildOwnerData(owner))
+	return r.buildOwnerData(owner).HasOwner(entry, ptr.Deref(r.Config.TargetClusterID, ""))
 }
 
 func (r *ReconcilerBase) buildOwnerData(owner metav1.Object) OwnerData {
@@ -186,7 +187,7 @@ func (r *ReconcilerBase) newDNSEntry(owner metav1.Object) *dnsv1alpha1.DNSEntry 
 			Namespace:    namespace,
 		},
 	}
-	AddOwner(entry, ptr.Deref(r.Config.TargetClusterID, ""), r.buildOwnerData(owner))
+	r.buildOwnerData(owner).AddOwner(entry, ptr.Deref(r.Config.TargetClusterID, ""))
 	return entry
 }
 
