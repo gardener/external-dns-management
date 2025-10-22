@@ -35,8 +35,10 @@ func Match(hostname, domain string) bool {
 	return strings.HasSuffix(hostname, "."+domain) || domain == hostname
 }
 
+// UniqueStrings is a list of unique strings.
 type UniqueStrings []string
 
+// NewUniqueStrings creates a new UniqueStrings instance.
 func NewUniqueStrings() *UniqueStrings {
 	var u UniqueStrings
 	return &u
