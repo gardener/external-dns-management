@@ -81,6 +81,8 @@ type ControllerConfiguration struct {
 	DNSProvider DNSProviderControllerConfig
 	// DNSEntry is the configuration for the DNSEntry controller.
 	DNSEntry DNSEntryControllerConfig
+	// DNSAnnotation is the configuration for the DNSAnnotation controller.
+	DNSAnnotation DNSAnnotationControllerConfig
 	// Source is the common configuration for source controllers.
 	Source SourceControllerConfig
 }
@@ -123,6 +125,14 @@ type DNSEntryControllerConfig struct {
 	DefaultCNAMELookupInterval *int64
 	// ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.
 	ReconciliationDelayAfterUpdate *metav1.Duration
+	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
+	SkipNameValidation *bool
+}
+
+// DNSAnnotationControllerConfig is the configuration for the DNSAnnotation controller.
+type DNSAnnotationControllerConfig struct {
+	// ConcurrentSyncs is the number of concurrent reconciliations for this controller.
+	ConcurrentSyncs *int
 	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
 	SkipNameValidation *bool
 }

@@ -33,9 +33,10 @@ func GetState() *State {
 	}
 
 	state = &State{
-		providers:      newProviderMap(),
-		accounts:       provider.NewAccountMap(),
-		dnsNameLocking: newDNSNameLocking(),
+		providers:       newProviderMap(),
+		accounts:        provider.NewAccountMap(),
+		dnsNameLocking:  newDNSNameLocking(),
+		annotationState: newAnnotationState(),
 	}
 	if instance.CompareAndSwap(nil, state) {
 		return state
@@ -49,7 +50,8 @@ type State struct {
 	accounts  *provider.AccountMap
 	factory   atomic.Pointer[provider.DNSHandlerFactory]
 
-	dnsNameLocking *dnsNameLocking
+	dnsNameLocking  *dnsNameLocking
+	annotationState *annotationState
 }
 
 type providerMap struct {
@@ -88,6 +90,11 @@ func (s *State) GetProviderState(providerKey client.ObjectKey) *ProviderState {
 	s.providers.lock.Lock()
 	defer s.providers.lock.Unlock()
 	return s.providers.providers[providerKey]
+}
+
+// GetAnnotationState returns the AnnotationState for managing DNS annotations for source resources.
+func (s *State) GetAnnotationState() AnnotationState {
+	return s.annotationState
 }
 
 // GetAccount retrieves the DNSAccount for the given provider and configuration.
