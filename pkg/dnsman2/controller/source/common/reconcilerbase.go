@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"github.com/go-logr/logr"
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +35,7 @@ type ReconcilerBase struct {
 	Class              string
 	GVK                schema.GroupVersionKind
 	Config             config.SourceControllerConfig
+	State              state.AnnotationState
 }
 
 // DoReconcile reconciles for given object and dnsSpecInput.

@@ -9,6 +9,7 @@ package source
 import (
 	"fmt"
 
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -23,6 +24,7 @@ func AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg 
 		ReconcilerBase: common.ReconcilerBase{
 			Class:  cfg.Class,
 			Config: cfg.Controllers.Source,
+			State:  state.GetState().GetAnnotationState(),
 		},
 	}).AddToManager(mgr, controlPlaneCluster); err != nil {
 		return fmt.Errorf("failed adding source Service controller: %w", err)

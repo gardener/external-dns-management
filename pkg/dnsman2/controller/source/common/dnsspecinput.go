@@ -11,8 +11,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/utils/ptr"
 
@@ -36,8 +39,10 @@ type DNSSpecInput struct {
 }
 
 // GetDNSSpecInputForService gets the DNS spec input for a service of type loadbalancer.
-func GetDNSSpecInputForService(log logr.Logger, svc *corev1.Service) (*DNSSpecInput, error) {
-	dnsNames, ok := svc.Annotations[dns.AnnotationDNSNames]
+func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk schema.GroupVersionKind, svc *corev1.Service) (*DNSSpecInput, error) {
+	annotations := GetMergedAnnotation(gvk, state, svc)
+
+	dnsNames, ok := annotations[dns.AnnotationDNSNames]
 	if !ok {
 		log.V(5).Info("No DNS names annotation", "key", dns.AnnotationDNSNames)
 		return nil, nil
@@ -62,14 +67,14 @@ func GetDNSSpecInputForService(log logr.Logger, svc *corev1.Service) (*DNSSpecIn
 	targets := utils.NewUniqueStrings()
 	for _, i := range svc.Status.LoadBalancer.Ingress {
 		if i.Hostname != "" && i.IP == "" {
-			if svc.Annotations[dns.AnnotationOpenStackLoadBalancerAddress] != "" {
+			if annotations[dns.AnnotationOpenStackLoadBalancerAddress] != "" {
 				// Support for PROXY protocol on Openstack (which needs a hostname as ingress)
 				// If the user sets the annotation `loadbalancer.openstack.org/hostname`, the
 				// annotation `loadbalancer.openstack.org/load-balancer-address` contains the IP address.
 				// This address can then be used to create a DNS record for the hostname specified both
 				// in annotation `loadbalancer.openstack.org/hostname` and `dns.gardener.cloud/dnsnames`
 				// see https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/expose-applications-using-loadbalancer-type-service.md#service-annotations
-				targets.Add(svc.Annotations[dns.AnnotationOpenStackLoadBalancerAddress])
+				targets.Add(annotations[dns.AnnotationOpenStackLoadBalancerAddress])
 			} else {
 				targets.Add(i.Hostname)
 			}
@@ -79,17 +84,17 @@ func GetDNSSpecInputForService(log logr.Logger, svc *corev1.Service) (*DNSSpecIn
 			}
 		}
 	}
-	if svc.Annotations[dns.AnnotationIPStack] != "" {
-		ipstack = svc.Annotations[dns.AnnotationIPStack]
+	if annotations[dns.AnnotationIPStack] != "" {
+		ipstack = annotations[dns.AnnotationIPStack]
 	}
-	if svc.Annotations[dns.AnnotationAwsLoadBalancerIpAddressType] == dns.AnnotationAwsLoadBalancerIpAddressTypeValueDualStack {
+	if annotations[dns.AnnotationAwsLoadBalancerIpAddressType] == dns.AnnotationAwsLoadBalancerIpAddressTypeValueDualStack {
 		ipstack = dns.AnnotationValueIPStackIPDualStack
 	}
-	if v := svc.Annotations[dns.AnnotatationResolveTargetsToAddresses]; v != "" {
+	if v := annotations[dns.AnnotatationResolveTargetsToAddresses]; v != "" {
 		resolveTargetsToAddresses = ptr.To(v == "true")
 	}
 
-	return augmentFromCommonAnnotations(svc.Annotations, DNSSpecInput{
+	return augmentFromCommonAnnotations(annotations, DNSSpecInput{
 		Names:                     names,
 		Targets:                   targets,
 		IPStack:                   ipstack,
@@ -149,4 +154,22 @@ func modifyEntryFor(entry *v1alpha1.DNSEntry, cfg config.SourceControllerConfig,
 	default:
 		utils.RemoveAnnotation(entry, dns.AnnotationIgnore)
 	}
+}
+
+// GetMergedAnnotation gets the merged annotations for the given object.
+func GetMergedAnnotation(gvk schema.GroupVersionKind, state state.AnnotationState, obj metav1.Object) map[string]string {
+	annotations := map[string]string{}
+	externalAnnotations, _, _ := state.GetResourceAnnotationStatus(v1alpha1.ResourceReference{
+		APIVersion: gvk.GroupVersion().String(),
+		Kind:       gvk.Kind,
+		Name:       obj.GetName(),
+		Namespace:  obj.GetNamespace(),
+	})
+	for k, v := range externalAnnotations {
+		annotations[k] = v
+	}
+	for k, v := range obj.GetAnnotations() {
+		annotations[k] = v
+	}
+	return annotations
 }

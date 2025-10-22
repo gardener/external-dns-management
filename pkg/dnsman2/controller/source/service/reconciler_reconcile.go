@@ -25,9 +25,9 @@ func (r *Reconciler) reconcile(
 	log.Info("reconcile")
 
 	var input *common.DNSSpecInput
-	if isRelevantService(service, r.Class) {
+	if r.isRelevantService(service) {
 		var err error
-		input, err = common.GetDNSSpecInputForService(log, service)
+		input, err = common.GetDNSSpecInputForService(log, r.State, r.GVK, service)
 		if err != nil {
 			r.Recorder.Eventf(service, corev1.EventTypeWarning, "Invalid", "%s", err)
 			return reconcile.Result{}, err
