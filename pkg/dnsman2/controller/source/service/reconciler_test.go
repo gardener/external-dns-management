@@ -27,6 +27,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	. "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/testutils"
 )
 
@@ -133,6 +134,8 @@ var _ = Describe("Reconciler", func() {
 			TargetNamespace: ptr.To(defaultTargetNamespace),
 		}
 		reconciler.GVK = corev1.SchemeGroupVersion.WithKind("Service")
+		reconciler.State = state.GetState().GetAnnotationState()
+		reconciler.State.Reset()
 		fakeRecorder = record.NewFakeRecorder(32)
 		reconciler.Recorder = fakeRecorder
 		svc = &corev1.Service{
@@ -216,6 +219,27 @@ var _ = Describe("Reconciler", func() {
 				DNSName: "foo.example.com",
 			})
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ")
+		})
+
+		It("should create DNSEntry object for service with DNSAnnotation object", func() {
+			delete(svc.Annotations, dns.AnnotationDNSNames)
+			svc.Annotations[dns.AnnotationTTL] = "123"
+			reconciler.State.SetResourceAnnotations(
+				dnsv1alpha1.ResourceReference{
+					APIVersion: reconciler.GVK.GroupVersion().String(),
+					Kind:       reconciler.GVK.Kind,
+					Namespace:  svc.Namespace,
+					Name:       svc.Name,
+				},
+				client.ObjectKey{Namespace: "dummy-namespace", Name: "dummy-name"},
+				map[string]string{
+					dns.AnnotationDNSNames: "foo.example.com",
+					dns.AnnotationTTL:      "123"},
+			)
+			test(&dnsv1alpha1.DNSEntrySpec{
+				DNSName: "foo.example.com",
+				TTL:     ptr.To[int64](123),
+			})
 		})
 
 		It("should ignore service without dnsnames", func() {

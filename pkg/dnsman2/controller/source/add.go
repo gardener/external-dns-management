@@ -15,6 +15,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 // AddToManager adds all source controllers to the manager.
@@ -23,6 +24,7 @@ func AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg 
 		ReconcilerBase: common.ReconcilerBase{
 			Class:  cfg.Class,
 			Config: cfg.Controllers.Source,
+			State:  state.GetState().GetAnnotationState(),
 		},
 	}).AddToManager(mgr, controlPlaneCluster); err != nil {
 		return fmt.Errorf("failed adding source Service controller: %w", err)

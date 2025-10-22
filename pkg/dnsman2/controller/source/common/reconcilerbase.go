@@ -24,6 +24,7 @@ import (
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 // ReconcilerBase is base for source reconcilers.
@@ -34,6 +35,7 @@ type ReconcilerBase struct {
 	Class              string
 	GVK                schema.GroupVersionKind
 	Config             config.SourceControllerConfig
+	State              state.AnnotationState
 }
 
 // DoReconcile reconciles for given object and dnsSpecInput.
