@@ -36,11 +36,12 @@ var _ = Describe("Reconciler", func() {
 		defaultSourceNamespace = "test"
 	)
 	var (
-		ctx          = context.Background()
-		fakeClient   client.Client
-		fakeRecorder *record.FakeRecorder
-		svc          *corev1.Service
-		reconciler   *Reconciler
+		ctx            = context.Background()
+		fakeClientSrc  client.Client
+		fakeClientCtrl client.Client
+		fakeRecorder   *record.FakeRecorder
+		svc            *corev1.Service
+		reconciler     *Reconciler
 
 		testMultiWithoutCreation = func(specs []*dnsv1alpha1.DNSEntrySpec, offset int, expectedErrorMessage ...string) []*dnsv1alpha1.DNSEntry {
 			req := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}}
@@ -54,7 +55,7 @@ var _ = Describe("Reconciler", func() {
 
 			list := dnsv1alpha1.DNSEntryList{}
 			ExpectWithOffset(offset+1, reconciler.Config.TargetNamespace).NotTo(BeNil(), "target namespace must not be nil (test setup error)")
-			ExpectWithOffset(offset+1, fakeClient.List(ctx, &list, client.InNamespace(*reconciler.Config.TargetNamespace))).NotTo(HaveOccurred())
+			ExpectWithOffset(offset+1, fakeClientCtrl.List(ctx, &list, client.InNamespace(*reconciler.Config.TargetNamespace))).NotTo(HaveOccurred())
 			var items []*dnsv1alpha1.DNSEntry
 			ownerData := common.OwnerData{
 				Object:    svc,
@@ -109,7 +110,7 @@ var _ = Describe("Reconciler", func() {
 		}
 
 		testMulti = func(specs []*dnsv1alpha1.DNSEntrySpec, offset int, expectedErrorMessage ...string) []*dnsv1alpha1.DNSEntry {
-			ExpectWithOffset(offset+1, fakeClient.Create(ctx, svc)).NotTo(HaveOccurred())
+			ExpectWithOffset(offset+1, fakeClientSrc.Create(ctx, svc)).NotTo(HaveOccurred())
 			return testMultiWithoutCreation(specs, offset+1, expectedErrorMessage...)
 		}
 
@@ -123,9 +124,11 @@ var _ = Describe("Reconciler", func() {
 	)
 
 	BeforeEach(func() {
-		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).Build()
+		fakeClientSrc = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).Build()
+		fakeClientCtrl = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).Build()
 		reconciler = &Reconciler{}
-		reconciler.Client = fakeClient
+		reconciler.Client = fakeClientSrc
+		reconciler.ControlPlaneClient = fakeClientCtrl
 		reconciler.Config = config.SourceControllerConfig{
 			TargetNamespace: ptr.To(defaultTargetNamespace),
 		}
@@ -152,13 +155,13 @@ var _ = Describe("Reconciler", func() {
 
 	Describe("#Reconcile", func() {
 		It("should create DNSEntry object for service of type load balancer and IP target", func() {
-			Expect(fakeClient.Create(ctx, svc)).NotTo(HaveOccurred())
+			Expect(fakeClientSrc.Create(ctx, svc)).NotTo(HaveOccurred())
 			svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
 				{
 					IP: "1.2.3.4",
 				},
 			}
-			Expect(fakeClient.SubResource("Status").Update(ctx, svc)).NotTo(HaveOccurred())
+			Expect(fakeClientSrc.SubResource("Status").Update(ctx, svc)).NotTo(HaveOccurred())
 			testMultiWithoutCreation([]*dnsv1alpha1.DNSEntrySpec{
 				{
 					DNSName: "foo.example.com",
@@ -170,13 +173,13 @@ var _ = Describe("Reconciler", func() {
 
 		It("should create DNSEntry object for service of type load balancer in same namespace and cluster and hostname target", func() {
 			reconciler.Config.TargetNamespace = ptr.To(defaultSourceNamespace)
-			Expect(fakeClient.Create(ctx, svc)).NotTo(HaveOccurred())
+			Expect(fakeClientSrc.Create(ctx, svc)).NotTo(HaveOccurred())
 			svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
 				{
 					Hostname: "svc.example.com",
 				},
 			}
-			Expect(fakeClient.SubResource("Status").Update(ctx, svc)).NotTo(HaveOccurred())
+			Expect(fakeClientSrc.SubResource("Status").Update(ctx, svc)).NotTo(HaveOccurred())
 			testMultiWithoutCreation([]*dnsv1alpha1.DNSEntrySpec{
 				{
 					DNSName: "foo.example.com",
@@ -190,13 +193,13 @@ var _ = Describe("Reconciler", func() {
 			reconciler.Config.TargetNamespace = ptr.To(defaultSourceNamespace)
 			// set OpenStack load balancer address annotation to get IP target instead of hostname
 			svc.Annotations[dns.AnnotationOpenStackLoadBalancerAddress] = "1.2.3.4"
-			Expect(fakeClient.Create(ctx, svc)).NotTo(HaveOccurred())
+			Expect(fakeClientSrc.Create(ctx, svc)).NotTo(HaveOccurred())
 			svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
 				{
 					Hostname: "svc.example.com",
 				},
 			}
-			Expect(fakeClient.SubResource("Status").Update(ctx, svc)).NotTo(HaveOccurred())
+			Expect(fakeClientSrc.SubResource("Status").Update(ctx, svc)).NotTo(HaveOccurred())
 			testMultiWithoutCreation([]*dnsv1alpha1.DNSEntrySpec{
 				{
 					DNSName: "foo.example.com",
@@ -249,7 +252,7 @@ var _ = Describe("Reconciler", func() {
 
 			By("check deletion of ignore annotation")
 			delete(svc.Annotations, dns.AnnotationIgnore)
-			Expect(fakeClient.Update(ctx, svc)).NotTo(HaveOccurred())
+			Expect(fakeClientSrc.Update(ctx, svc)).NotTo(HaveOccurred())
 			entries = testMultiWithoutCreation([]*dnsv1alpha1.DNSEntrySpec{
 				{
 					DNSName: "foo.example.com",
@@ -308,7 +311,7 @@ var _ = Describe("Reconciler", func() {
 				DNSName: "foo.example.com",
 			})
 			svc.Spec.Type = corev1.ServiceTypeClusterIP
-			Expect(fakeClient.Update(ctx, svc)).NotTo(HaveOccurred())
+			Expect(fakeClientSrc.Update(ctx, svc)).NotTo(HaveOccurred())
 			testMultiWithoutCreation(nil, 0)
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ", "Normal DNSEntryDeleted ")
 		})
@@ -325,7 +328,7 @@ var _ = Describe("Reconciler", func() {
 			}, 0)
 			svc.Annotations[dns.AnnotationDNSNames] = "foo.example.com"
 			svc.Annotations[dns.AnnotationTTL] = "123"
-			Expect(fakeClient.Update(ctx, svc)).NotTo(HaveOccurred())
+			Expect(fakeClientSrc.Update(ctx, svc)).NotTo(HaveOccurred())
 			newEntries := testMultiWithoutCreation([]*dnsv1alpha1.DNSEntrySpec{
 				{
 					DNSName: "foo.example.com",
