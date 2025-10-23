@@ -9,8 +9,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
 // AnnotationState manages the state of DNS annotations for resources.
@@ -24,7 +25,7 @@ type AnnotationState interface {
 	// DeleteByAnnotationKey removes the annotations associated with a given annotation object key.
 	DeleteByAnnotationKey(annotationKey client.ObjectKey)
 	// UpdateStatus updates the status message and active state for a given resource reference.
-	UpdateStatus(ctx context.Context, c client.Client, ref v1alpha1.ResourceReference, message string, active bool) error
+	UpdateStatus(ctx context.Context, c client.Client, ref v1alpha1.ResourceReference, active bool) error
 	// Reset clears all stored annotations.
 	Reset()
 }
@@ -116,7 +117,8 @@ func (s *annotationState) Reset() {
 	s.resourceAnnotations = make(map[string]*annotationData)
 }
 
-func (s *annotationState) UpdateStatus(ctx context.Context, c client.Client, ref v1alpha1.ResourceReference, message string, active bool) error {
+func (s *annotationState) UpdateStatus(ctx context.Context, c client.Client, ref v1alpha1.ResourceReference, active bool) error {
+	message := ""
 	key := s.updateStatusInternal(ref, message, active)
 	if key == nil {
 		return nil

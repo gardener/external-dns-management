@@ -14,7 +14,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
 
-func (r *Reconciler) delete(_ context.Context, _ logr.Logger, annotation *v1alpha1.DNSAnnotation) (reconcile.Result, error) {
+func (r *Reconciler) delete(_ context.Context, log logr.Logger, annotation *v1alpha1.DNSAnnotation) (reconcile.Result, error) {
+	log.Info("delete")
 	r.state.DeleteResourceAnnotations(annotation.Spec.ResourceRef)
 	return reconcile.Result{}, nil
 }

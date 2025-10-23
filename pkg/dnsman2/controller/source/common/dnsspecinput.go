@@ -160,12 +160,7 @@ func modifyEntryFor(entry *v1alpha1.DNSEntry, cfg config.SourceControllerConfig,
 // GetMergedAnnotation gets the merged annotations for the given object.
 func GetMergedAnnotation(gvk schema.GroupVersionKind, state state.AnnotationState, obj metav1.Object) map[string]string {
 	annotations := map[string]string{}
-	externalAnnotations, _, _ := state.GetResourceAnnotationStatus(v1alpha1.ResourceReference{
-		APIVersion: gvk.GroupVersion().String(),
-		Kind:       gvk.Kind,
-		Name:       obj.GetName(),
-		Namespace:  obj.GetNamespace(),
-	})
+	externalAnnotations, _, _ := state.GetResourceAnnotationStatus(BuildResourceReference(gvk, obj))
 	for k, v := range externalAnnotations {
 		annotations[k] = v
 	}
@@ -173,4 +168,14 @@ func GetMergedAnnotation(gvk schema.GroupVersionKind, state state.AnnotationStat
 		annotations[k] = v
 	}
 	return annotations
+}
+
+// BuildResourceReference builds a ResourceReference for the given object.
+func BuildResourceReference(gvk schema.GroupVersionKind, obj metav1.Object) v1alpha1.ResourceReference {
+	return v1alpha1.ResourceReference{
+		APIVersion: gvk.GroupVersion().String(),
+		Kind:       gvk.Kind,
+		Name:       obj.GetName(),
+		Namespace:  obj.GetNamespace(),
+	}
 }

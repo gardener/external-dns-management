@@ -41,6 +41,7 @@ import (
 	configv1alpha1 "github.com/gardener/external-dns-management/pkg/dnsman2/apis/config/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/app"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
+	dnsanntation "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsannotation"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry"
 	dnsprovidercontrolplane "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsprovider/controlplane"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source"
@@ -147,9 +148,13 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 	cfg := o.config
 
 	log.Info("Getting rest config")
-	if kubeconfig := os.Getenv("KUBECONFIG"); kubeconfig != "" {
-		log.Info("Using kubeconfig from environment variable KUBECONFIG", "KUBECONFIG", kubeconfig)
-		cfg.ClientConnection.Kubeconfig = kubeconfig
+	if cfg.ClientConnection.Kubeconfig == "" {
+		if kubeconfig := os.Getenv("KUBECONFIG"); kubeconfig != "" {
+			log.Info("Using kubeconfig from environment variable KUBECONFIG", "KUBECONFIG", kubeconfig)
+			cfg.ClientConnection.Kubeconfig = kubeconfig
+		} else {
+			log.Info("No kubeconfig specified, assuming in-cluster configuration")
+		}
 	}
 
 	restConfig, err := kubernetes.RESTConfigFromClientConnectionConfiguration(&cfg.ClientConnection.ClientConnectionConfiguration, nil, kubernetes.AuthTokenFile)
@@ -284,7 +289,11 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 	if err := source.AddToManager(mgr, controlPlaneCluster, cfg); err != nil {
 		return fmt.Errorf("failed adding source controllers: %w", err)
 	}
-
+	if err := (&dnsanntation.Reconciler{
+		Config: *cfg,
+	}).AddToManager(mgr); err != nil {
+		return fmt.Errorf("failed adding DNSAnnotation controller: %w", err)
+	}
 	log.Info("Starting manager")
 	return mgr.Start(ctx)
 }
