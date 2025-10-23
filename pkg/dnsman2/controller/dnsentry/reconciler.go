@@ -55,8 +55,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{RequeueAfter: r.reconciliationDelayAfterUpdate}, nil
 	}
 
-	log.Info("reconciling DNSEntry")
-
 	entry := &v1alpha1.DNSEntry{}
 	if err := r.Client.Get(ctx, req.NamespacedName, entry); err != nil {
 		if apierrors.IsNotFound(err) {

@@ -25,6 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
@@ -58,21 +59,20 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	return builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
-		For(
+		WatchesRawSource(source.Kind[client.Object](controlPlaneCluster.GetCache(),
 			&v1alpha1.DNSEntry{},
-			builder.WithPredicates(
-				dnsman2controller.DNSClassPredicate(r.Class),
-			),
-			builder.WithPredicates(dnsman2controller.FilterPredicate(func(obj client.Object) bool {
+			&handler.EnqueueRequestForObject{},
+			dnsman2controller.DNSClassPredicate(r.Class),
+			dnsman2controller.FilterPredicate(func(obj client.Object) bool {
 				return obj.GetNamespace() == r.Namespace
-			})),
-		).
-		Watches(
+			}),
+		)).
+		WatchesRawSource(source.Kind[client.Object](controlPlaneCluster.GetCache(),
 			&v1alpha1.DNSProvider{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, provider client.Object) []reconcile.Request {
 				return r.entriesToReconcileOnProviderChanges(ctx, provider)
 			}),
-		).
+		)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 10),
 			SkipNameValidation:      r.Config.SkipNameValidation,

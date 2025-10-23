@@ -18,10 +18,11 @@ const DefaultClass = "gardendns"
 type DNSManagerConfiguration struct {
 	metav1.TypeMeta `json:",inline"`
 	// ClientConnection specifies the kubeconfig file and the client connection settings for primary
-	// cluster containing the certificate and source resources the dns-controller-manager should work on.
+	// cluster containing the source resources the dns-controller-manager should work on.
+	// +optional
 	ClientConnection *ClientConnection `json:"clientConnection,omitempty"`
 	// ControlPlaneClientConnection contains client connection configurations
-	// for the cluster containing the provided DNSProviders.
+	// for the cluster containing the provided DNSProviders and target DNSEntries.
 	// If not set, the primary cluster is used.
 	// +optional
 	ControlPlaneClientConnection *ControlPlaneClientConnection `json:"controlPlaneClientConnection,omitempty"`
