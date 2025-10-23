@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"github.com/go-logr/logr"
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
@@ -25,6 +24,7 @@ import (
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 // ReconcilerBase is base for source reconcilers.
@@ -95,7 +95,7 @@ func (r *ReconcilerBase) createOrUpdateDNSEntry(
 		if err := modifier(); err != nil {
 			return fmt.Errorf("failed to apply modifier: %w", err)
 		}
-		if err := r.Client.Create(ctx, entry); err != nil {
+		if err := r.ControlPlaneClient.Create(ctx, entry); err != nil {
 			return fmt.Errorf("failed to create DNSEntry: %w", err)
 		}
 		log.Info("created DNSEntry", "name", entry.Name)
@@ -103,7 +103,7 @@ func (r *ReconcilerBase) createOrUpdateDNSEntry(
 		return nil
 	}
 
-	result, err := controllerutil.CreateOrPatch(ctx, r.Client, entry, modifier)
+	result, err := controllerutil.CreateOrPatch(ctx, r.ControlPlaneClient, entry, modifier)
 	if err != nil {
 		return fmt.Errorf("failed to patch DNSEntry %s: %w", client.ObjectKeyFromObject(entry), err)
 	}
@@ -116,7 +116,7 @@ func (r *ReconcilerBase) createOrUpdateDNSEntry(
 
 // DoDelete performs delete reconciliation for given object.
 func (r *ReconcilerBase) DoDelete(ctx context.Context, log logr.Logger, obj client.Object) (reconcile.Result, error) {
-	log.Info("deleting")
+	log.Info("cleanup")
 
 	ownedEntries, err := r.getExistingOwnedDNSEntries(ctx, obj)
 	if err != nil {
@@ -132,7 +132,7 @@ func (r *ReconcilerBase) DoDelete(ctx context.Context, log logr.Logger, obj clie
 
 func (r *ReconcilerBase) getExistingOwnedDNSEntries(ctx context.Context, owner metav1.Object) ([]dnsv1alpha1.DNSEntry, error) {
 	candidates := &dnsv1alpha1.DNSEntryList{}
-	if err := r.Client.List(ctx, candidates, client.InNamespace(r.targetNamespace(owner))); err != nil {
+	if err := r.ControlPlaneClient.List(ctx, candidates, client.InNamespace(r.targetNamespace(owner))); err != nil {
 		return nil, fmt.Errorf("failed to list owned DNSEntries for %s %s: %w", r.GVK.Kind, owner, err)
 	}
 
@@ -172,7 +172,7 @@ outer:
 				continue outer
 			}
 		}
-		if err := r.Client.Delete(ctx, &ownedEntry); client.IgnoreNotFound(err) != nil {
+		if err := r.ControlPlaneClient.Delete(ctx, &ownedEntry); client.IgnoreNotFound(err) != nil {
 			return fmt.Errorf("failed to delete obsolete owned DNSEntry %s: %w", client.ObjectKeyFromObject(&ownedEntry), err)
 		}
 		log.Info("deleted obsolete owned DNSEntry", "name", ownedEntry.Name)

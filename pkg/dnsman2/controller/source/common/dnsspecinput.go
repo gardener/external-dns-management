@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,6 +21,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 

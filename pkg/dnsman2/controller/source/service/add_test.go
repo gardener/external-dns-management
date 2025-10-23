@@ -7,8 +7,6 @@ package service_test
 import (
 	"context"
 
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
@@ -19,8 +17,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	. "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 var _ = Describe("Add", func() {

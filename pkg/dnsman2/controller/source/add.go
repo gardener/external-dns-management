@@ -9,13 +9,13 @@ package source
 import (
 	"fmt"
 
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 // AddToManager adds all source controllers to the manager.
