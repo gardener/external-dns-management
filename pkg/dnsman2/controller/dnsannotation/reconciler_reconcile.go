@@ -15,6 +15,7 @@ import (
 )
 
 func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, annotation *v1alpha1.DNSAnnotation) (reconcile.Result, error) {
+	log.Info("reconcile")
 	if annotation.Spec.ResourceRef.Namespace != annotation.Namespace {
 		log.Info("cross-namespace annotation not allowed")
 		return reconcile.Result{}, r.updateStatus(ctx, annotation, func(status *v1alpha1.DNSAnnotationStatus) error {

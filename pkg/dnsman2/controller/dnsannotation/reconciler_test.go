@@ -83,11 +83,11 @@ var _ = Describe("Reconcile", func() {
 		Expect(message).To(BeEmpty())
 		Expect(active).To(BeFalse())
 
-		Expect(state.GetState().GetAnnotationState().UpdateStatus(ctx, fakeClient, annotation.Spec.ResourceRef, "some message", true)).To(Succeed())
+		Expect(state.GetState().GetAnnotationState().UpdateStatus(ctx, fakeClient, annotation.Spec.ResourceRef, true)).To(Succeed())
 
 		updatedAnnotation := &v1alpha1.DNSAnnotation{}
 		Expect(fakeClient.Get(ctx, annotationKey, updatedAnnotation)).To(Succeed())
-		Expect(updatedAnnotation.Status.Message).To(Equal("some message"))
+		Expect(updatedAnnotation.Status.Message).To(BeEmpty())
 		Expect(updatedAnnotation.Status.Active).To(BeTrue())
 	})
 
@@ -114,7 +114,6 @@ var _ = Describe("Reconcile", func() {
 			ctx,
 			fakeClient,
 			annotation.Spec.ResourceRef,
-			"late message",
 			true,
 		)).To(Succeed())
 

@@ -7,15 +7,16 @@
 package dnsanntation
 
 import (
-	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 // ControllerName is the name of this controller.
