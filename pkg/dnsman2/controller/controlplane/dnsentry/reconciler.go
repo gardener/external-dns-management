@@ -21,8 +21,8 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/common"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/lookup"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/common"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/lookup"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
