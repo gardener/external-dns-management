@@ -15,6 +15,14 @@ import (
 )
 
 func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, annotation *v1alpha1.DNSAnnotation) (reconcile.Result, error) {
+	if annotation.Spec.ResourceRef.Namespace != annotation.Namespace {
+		log.Info("cross-namespace annotation not allowed")
+		return reconcile.Result{}, r.updateStatus(ctx, annotation, func(status *v1alpha1.DNSAnnotationStatus) error {
+			status.Message = "cross-namespace annotation not allowed"
+			status.Active = false
+			return nil
+		})
+	}
 	if err := r.state.SetResourceAnnotations(annotation.Spec.ResourceRef, client.ObjectKeyFromObject(annotation), annotation.Spec.Annotations); err != nil {
 		log.Info("failed to set resource annotations in state", "error", err.Error())
 		return reconcile.Result{}, r.updateStatus(ctx, annotation, func(status *v1alpha1.DNSAnnotationStatus) error {

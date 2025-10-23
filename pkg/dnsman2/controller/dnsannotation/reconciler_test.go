@@ -57,7 +57,7 @@ var _ = Describe("Reconcile", func() {
 					APIVersion: "v1",
 					Kind:       "Service",
 					Name:       "foo",
-					Namespace:  "ref-namespace",
+					Namespace:  "test-namespace",
 				},
 				Annotations: map[string]string{
 					"foo":                      "bar",
@@ -159,5 +159,16 @@ var _ = Describe("Reconcile", func() {
 		Expect(fakeClient.Get(ctx, annotation2Key, annotation2)).To(Succeed())
 		Expect(annotation2.Status.Message).To(ContainSubstring("conflicting DNSAnnotation"))
 		Expect(annotation2.Status.Active).To(BeFalse())
+	})
+
+	It("should not allow to annotate a reference in another namespace", func() {
+		annotation.Spec.ResourceRef.Namespace = "other-namespace"
+		Expect(fakeClient.Create(ctx, annotation)).To(Succeed())
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: annotationKey})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+		Expect(fakeClient.Get(ctx, annotationKey, annotation)).To(Succeed())
+		Expect(annotation.Status.Message).To(ContainSubstring("cross-namespace annotation not allowed"))
+		Expect(annotation.Status.Active).To(BeFalse())
 	})
 })
