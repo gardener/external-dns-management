@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/common"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/selection"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
