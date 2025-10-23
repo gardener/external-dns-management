@@ -10,13 +10,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	dnsprovidercontrolplane "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsprovider/controlplane"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 )
 
 // AddAllFieldIndexesToManager adds all field indices to the given manager.
 func AddAllFieldIndexesToManager(ctx context.Context, mgr manager.Manager) error {
 	for _, fn := range []func(context.Context, client.FieldIndexer) error{
-		dnsprovidercontrolplane.AddEntryStatusProvider,
+		dnsprovider.AddEntryStatusProvider,
 	} {
 		if err := fn(ctx, mgr.GetFieldIndexer()); err != nil {
 			return err

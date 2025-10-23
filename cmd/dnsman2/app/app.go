@@ -41,8 +41,8 @@ import (
 	configv1alpha1 "github.com/gardener/external-dns-management/pkg/dnsman2/apis/config/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/app"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry"
-	dnsprovidercontrolplane "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsprovider/controlplane"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source"
 )
 
@@ -270,7 +270,7 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 		return fmt.Errorf("failed adding indexes: %w", err)
 	}
 
-	if err := (&dnsprovidercontrolplane.Reconciler{
+	if err := (&dnsprovider.Reconciler{
 		Config: *cfg,
 	}).AddToManager(mgr, controlPlaneCluster); err != nil {
 		return fmt.Errorf("failed adding control plane DNSProvider controller: %w", err)
