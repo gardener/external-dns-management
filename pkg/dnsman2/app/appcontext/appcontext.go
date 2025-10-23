@@ -7,9 +7,13 @@ package appcontext
 import (
 	"context"
 	"fmt"
+	"sync"
 
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gateways_crd_watchdog"
 	"github.com/go-logr/logr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 )
@@ -27,6 +31,9 @@ type AppContext struct {
 	Log          logr.Logger
 	ControlPlane cluster.Cluster
 	Config       *config.DNSManagerConfiguration
+
+	lock      sync.Mutex
+	crdsState *gateways_crd_watchdog.CheckGatewayCRDsState
 }
 
 // NewAppContext creates a new application context derived from the given parent context.
@@ -49,4 +56,27 @@ func GetAppContextValue(ctx context.Context) (*AppContext, error) {
 		return nil, fmt.Errorf("app context of invalid type %t", obj)
 	}
 	return appContext, nil
+}
+
+// GetCheckGatewayCRDsState retrieves the cached CheckGatewayCRDsState or performs the check if not cached yet.
+func (ac *AppContext) GetCheckGatewayCRDsState(ctx context.Context, mgr manager.Manager) (*gateways_crd_watchdog.CheckGatewayCRDsState, error) {
+	ac.lock.Lock()
+	defer ac.lock.Unlock()
+
+	if ac.crdsState != nil {
+		return ac.crdsState, nil
+	}
+
+	tmpClient, err := client.New(mgr.GetConfig(), client.Options{
+		Scheme: mgr.GetScheme(),
+	})
+	if err != nil {
+		return nil, err
+	}
+	state, err := gateways_crd_watchdog.CheckGatewayCRDs(ctx, tmpClient)
+	if err != nil {
+		return nil, err
+	}
+	ac.crdsState = state
+	return state, nil
 }

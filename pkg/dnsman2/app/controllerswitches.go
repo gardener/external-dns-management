@@ -6,7 +6,9 @@ package app
 
 import (
 	"context"
+	"fmt"
 
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gateways_crd_watchdog"
 	"github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -34,6 +36,7 @@ func ControllerSwitches() *cmd.SwitchOptions {
 		cmd.Switch(sourcednsprovider.ControllerName, AddSourceDNSProviderController),
 		cmd.Switch(service.ControllerName, AddSourceServiceController),
 		cmd.Switch(ingress.ControllerName, AddSourceIngressController),
+		cmd.Switch(gateways_crd_watchdog.ControllerName, AddGatewaysCRDWatchdogController),
 	)
 }
 
@@ -98,6 +101,26 @@ func AddSourceIngressController(ctx context.Context, mgr manager.Manager) error 
 		return err
 	}
 	return common.NewSourceReconciler(&ingress.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
+}
+
+func AddGatewaysCRDWatchdogController(ctx context.Context, mgr manager.Manager) error {
+	appCtx, err := appcontext.GetAppContextValue(ctx)
+	if err != nil {
+		return err
+	}
+
+	crdState, err := appCtx.GetCheckGatewayCRDsState(ctx, mgr)
+	if err != nil {
+		return err
+	}
+
+	if err := (&gateways_crd_watchdog.Reconciler{
+		CheckGatewayCRDsState: *crdState,
+	}).AddToManager(mgr); err != nil {
+		return fmt.Errorf("failed adding gateway CRD watchdog controller: %w", err)
+	}
+
+	return nil
 }
 
 func getStandardDNSHandlerFactory(cfg config.DNSProviderControllerConfig) provider.DNSHandlerFactory {
