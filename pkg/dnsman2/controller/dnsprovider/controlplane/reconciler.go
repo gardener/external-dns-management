@@ -12,6 +12,7 @@ import (
 	"reflect"
 
 	"github.com/gardener/gardener/pkg/controllerutils"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
@@ -60,11 +61,39 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 }
 
 func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
-	return controllerutils.AddFinalizers(ctx, c, provider, dns.FinalizerCompound)
+	if err := controllerutils.AddFinalizers(ctx, c, provider, dns.FinalizerCompound); err != nil {
+		return err
+	}
+	if provider.Spec.SecretRef == nil {
+		return nil
+	}
+	secret := &corev1.Secret{}
+	if err := c.Get(ctx, client.ObjectKey{Namespace: provider.Spec.SecretRef.Namespace, Name: provider.Spec.SecretRef.Name}, secret); err != nil {
+		if apierrors.IsNotFound(err) {
+			// Secret does not exist, cannot add finalizer
+			return nil
+		}
+		return fmt.Errorf("error retrieving secret %s/%s: %w", provider.Spec.SecretRef.Namespace, provider.Spec.SecretRef.Name, err)
+	}
+	return controllerutils.AddFinalizers(ctx, c, secret, dns.FinalizerCompound)
 }
 
 func removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
-	return controllerutils.RemoveFinalizers(ctx, c, provider, dns.FinalizerCompound)
+	if err := controllerutils.RemoveFinalizers(ctx, c, provider, dns.FinalizerCompound); err != nil {
+		return err
+	}
+	if provider.Spec.SecretRef == nil {
+		return nil
+	}
+	secret := &corev1.Secret{}
+	if err := c.Get(ctx, client.ObjectKey{Namespace: provider.Spec.SecretRef.Namespace, Name: provider.Spec.SecretRef.Name}, secret); err != nil {
+		if apierrors.IsNotFound(err) {
+			// Secret does not exist, cannot remove finalizer
+			return nil
+		}
+		return fmt.Errorf("error retrieving secret %s/%s: %w", provider.Spec.SecretRef.Namespace, provider.Spec.SecretRef.Name, err)
+	}
+	return controllerutils.RemoveFinalizers(ctx, c, secret, dns.FinalizerCompound)
 }
 
 func (r *Reconciler) updateStatusError(ctx context.Context, provider *v1alpha1.DNSProvider, err error) error {
@@ -76,6 +105,9 @@ func (r *Reconciler) updateStatusInvalid(ctx context.Context, provider *v1alpha1
 }
 
 func (r *Reconciler) updateStatusFailed(ctx context.Context, provider *v1alpha1.DNSProvider, state string, err error) error {
+	if err := r.checkChangedSecretRef(ctx, provider); err != nil {
+		return err
+	}
 	return r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
 		status.Message = ptr.To(err.Error())
 		status.State = state
@@ -89,15 +121,39 @@ func (r *Reconciler) updateStatusFailed(ctx context.Context, provider *v1alpha1.
 }
 
 func (r *Reconciler) updateStatus(ctx context.Context, provider *v1alpha1.DNSProvider, modify func(status *v1alpha1.DNSProviderStatus) error) error {
+	if err := r.checkChangedSecretRef(ctx, provider); err != nil {
+		return err
+	}
+
 	patch := client.MergeFrom(provider.DeepCopy())
 	oldStatus := provider.Status.DeepCopy()
 
 	if err := modify(&provider.Status); err != nil {
 		return err
 	}
+	provider.Status.SecretRef = provider.Spec.SecretRef
 	if !reflect.DeepEqual(oldStatus, &provider.Status) {
 		provider.Status.LastUpdateTime = &metav1.Time{Time: r.Clock.Now()}
 	}
 
 	return r.Client.Status().Patch(ctx, provider, patch)
+}
+
+func (r *Reconciler) checkChangedSecretRef(ctx context.Context, provider *v1alpha1.DNSProvider) error {
+	if provider.Status.SecretRef == nil {
+		return nil
+	}
+	if reflect.DeepEqual(provider.Status.SecretRef, provider.Spec.SecretRef) {
+		return nil
+	}
+
+	secret := &corev1.Secret{}
+	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: provider.Status.SecretRef.Namespace, Name: provider.Status.SecretRef.Name}, secret); err != nil {
+		if apierrors.IsNotFound(err) {
+			return nil
+		}
+		return fmt.Errorf("error retrieving old providere secret %s/%s: %w", provider.Status.SecretRef.Namespace, provider.Status.SecretRef.Name, err)
+	}
+
+	return controllerutils.RemoveFinalizers(ctx, r.Client, secret, dns.FinalizerCompound)
 }

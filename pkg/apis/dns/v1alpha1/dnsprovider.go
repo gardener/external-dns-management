@@ -117,6 +117,9 @@ type DNSProviderStatus struct {
 	// actually used rate limit for create/update operations on DNSEntries assigned to this provider
 	// +optional
 	RateLimit *RateLimit `json:"rateLimit,omitempty"`
+	// actually used access credential
+	// +optional
+	SecretRef *corev1.SecretReference `json:"secretRef,omitempty"`
 }
 
 type DNSSelectionStatus struct {

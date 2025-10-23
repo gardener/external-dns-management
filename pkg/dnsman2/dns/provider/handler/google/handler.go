@@ -201,21 +201,17 @@ func (h *handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZo
 	exec := newExecution(log, h, zone.ZoneID())
 	var errs []error
 	for _, r := range reqs.Updates {
-		var err error
 		if r.New == nil && r.Old == nil {
-			err = fmt.Errorf("both old and new record sets are nil for %s", reqs.Name)
-			if err != nil {
-				errs = append(errs, err)
-			}
+			errs = append(errs, fmt.Errorf("both old and new record sets are nil for %s", reqs.Name))
 		}
 		if r.Old != nil {
-			err = exec.addChange(deleteAction, reqs, r.Old)
+			err := exec.addChange(deleteAction, reqs, r.Old)
 			if err != nil {
 				errs = append(errs, err)
 			}
 		}
 		if r.New != nil {
-			err = exec.addChange(createAction, reqs, r.New)
+			err := exec.addChange(createAction, reqs, r.New)
 			if err != nil {
 				errs = append(errs, err)
 			}

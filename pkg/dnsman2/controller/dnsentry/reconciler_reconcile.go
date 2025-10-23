@@ -50,6 +50,25 @@ type newTargetsData struct {
 type zonedRequests = map[dns.ZoneID]map[dns.DNSSetName]*provider.ChangeRequests
 
 func (r *entryReconciliation) reconcile() common.ReconcileResult {
+	orgResult := r.doReconcile()
+	res := orgResult
+
+	// update status if state/message changed
+	if orgResult.State != nil {
+		res = r.StatusUpdater().UpdateStatus(func(status *v1alpha1.DNSEntryStatus) error {
+			status.ObservedGeneration = r.Entry.Generation
+			status.State = *orgResult.State
+			status.Message = orgResult.Message
+			return nil
+		})
+		if res.Result.IsZero() {
+			res.Result = orgResult.Result
+		}
+	}
+	return res
+}
+
+func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 	if res := r.ignoredByAnnotation(); res != nil {
 		return *res
 	}
@@ -60,6 +79,10 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 	}
 	defer unlockFunc()
 
+	if err := validateDNSEntry(r.Entry); err != nil {
+		return *common.InvalidReconcileResult(fmt.Sprintf("validation failed: %s", err))
+	}
+
 	newProviderData, res := providerselector.CalcNewProvider(r.EntryContext, r.namespace, r.class, r.state)
 	if res != nil {
 		return *res
@@ -69,10 +92,6 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 	}
 	if res := r.checkProviderNotReady(newProviderData); res != nil {
 		return *res
-	}
-
-	if err := validateDNSEntry(r.Entry); err != nil {
-		return common.ReconcileResult{Err: err}
 	}
 
 	recordsToCheck := records.FullRecordKeySet{}
@@ -122,7 +141,7 @@ func validateDNSEntry(entry *v1alpha1.DNSEntry) error {
 	}
 
 	if len(entry.Spec.Targets) > 0 && len(entry.Spec.Text) > 0 {
-		return fmt.Errorf("cannot specify both Targets and Text")
+		return fmt.Errorf("cannot specify both targets and text fields")
 	}
 
 	recordData := map[string]struct{}{}
@@ -226,12 +245,12 @@ func (r *entryReconciliation) calcOldTargets(recordsToCheck records.FullRecordKe
 	if status.ProviderType != nil && status.Zone != nil && status.DNSName != nil {
 		name, _, err := toDNSSetName(*status.DNSName, status.RoutingPolicy)
 		if err != nil {
-			return &common.ReconcileResult{Err: err}
+			return common.ErrorReconcileResult(err.Error(), false)
 		}
 		oldZoneID := &dns.ZoneID{ID: *status.Zone, ProviderType: *status.ProviderType}
 		oldMappedTargets, err := r.mapTargets(oldTargets, *status.ProviderType)
 		if err != nil {
-			return &common.ReconcileResult{Err: fmt.Errorf("failed to map old targets: %w", err)}
+			return common.ErrorReconcileResult(fmt.Sprintf("failed to map old targets: %s", err), false)
 		}
 		records.InsertRecordKeys(recordsToCheck, records.FullDNSSetName{ZoneID: *oldZoneID, Name: name}, oldMappedTargets)
 	}
@@ -240,14 +259,13 @@ func (r *entryReconciliation) calcOldTargets(recordsToCheck records.FullRecordKe
 
 func (r *entryReconciliation) checkProviderNotReady(data *providerselector.NewProviderData) *common.ReconcileResult {
 	if data.Provider.Status.State != v1alpha1.StateReady {
-		var err error
+		var msg string
 		if data.Provider.Status.State != "" {
-			err = fmt.Errorf("provider %s has status %s: %s", data.ProviderKey, data.Provider.Status.State, ptr.Deref(data.Provider.Status.Message, "unknown error"))
+			msg = fmt.Sprintf("provider %s has status %s: %s", data.ProviderKey, data.Provider.Status.State, ptr.Deref(data.Provider.Status.Message, "unknown error"))
 		} else {
-			err = fmt.Errorf("provider %s is not ready yet", data.ProviderKey)
+			msg = fmt.Sprintf("provider %s is not ready yet", data.ProviderKey)
 		}
-		res := r.StatusUpdater().FailWithStatusStale(err)
-		return &res
+		return common.StaleReconcileResult(msg, false)
 	}
 	return nil
 }
@@ -257,16 +275,16 @@ func (r *entryReconciliation) calcNewTargets(providerData *providerselector.NewP
 
 	result, err := producer.FromSpec(client.ObjectKeyFromObject(r.Entry), &r.Entry.Spec, r.Entry.Annotations[dns.AnnotationIPStack])
 	if err != nil {
-		return nil, r.StatusUpdater().UpdateStatusInvalid(err)
+		return nil, common.InvalidReconcileResult(err.Error())
 	}
 	name, rp, err := toDNSSetName(r.Entry.Spec.DNSName, r.Entry.Spec.RoutingPolicy)
 	if err != nil {
-		return nil, &common.ReconcileResult{Err: err}
+		return nil, common.ErrorReconcileResult(err.Error(), false)
 	}
 
 	newTargets, err := r.mapTargets(result.Targets, providerData.Provider.Spec.Type)
 	if err != nil {
-		return nil, &common.ReconcileResult{Err: err}
+		return nil, common.ErrorReconcileResult(err.Error(), false)
 	}
 
 	newDNSSet := dns.NewDNSSet(name)

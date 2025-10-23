@@ -18,6 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	config2 "github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/selection"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
@@ -57,13 +58,19 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		return reconcile.Result{}, r.updateStatusError(ctx, provider, fmt.Errorf("secret %s/%s validation failed: %s", secretRef.Namespace, secretRef.Name, err))
 	}
 
-	oldAccount := providerState.GetAccount()
 	config := dnsprovider.DNSAccountConfig{
 		DefaultTTL:   providerState.GetDefaultTTL(),
 		ZoneCacheTTL: ptr.Deref(r.Config.Controllers.DNSProvider.ZoneCacheTTL, metav1.Duration{Duration: 5 * time.Minute}).Duration,
 		Clock:        r.Clock,
 		RateLimits:   r.Config.Controllers.DNSProvider.DefaultRateLimits,
 		Factory:      r.DNSHandlerFactory,
+	}
+	if provider.Spec.RateLimit != nil {
+		config.RateLimits = &config2.RateLimiterOptions{
+			Enabled: true,
+			QPS:     float32(1.0 * provider.Spec.RateLimit.RequestsPerDay / (60 * 60 * 24)),
+			Burst:   provider.Spec.RateLimit.Burst,
+		}
 	}
 	newAccount, err := r.state.GetAccount(log, provider, props, config)
 	if err != nil {
@@ -80,9 +87,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 
 	providerState.SetSelection(selection.CalcZoneAndDomainSelection(provider.Spec, toLightZones(zones)))
 
-	// TODO implement the rest of the reconcile logic
 	providerState.SetAccount(newAccount)
-	println(oldAccount == newAccount)
 
 	return reconcile.Result{}, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
 		status.Message = nil
@@ -92,7 +97,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		status.DefaultTTL = ptr.To[int64](providerState.GetDefaultTTL())
 		if config.RateLimits != nil && config.RateLimits.Enabled {
 			status.RateLimit = &v1alpha1.RateLimit{
-				RequestsPerDay: config.RateLimits.QPS * 60 * 60 * 24,
+				RequestsPerDay: int(config.RateLimits.QPS * 60 * 60 * 24),
 				Burst:          config.RateLimits.Burst,
 			}
 		} else {

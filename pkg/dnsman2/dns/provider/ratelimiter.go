@@ -18,7 +18,7 @@ func NewRateLimiter(options *config.RateLimiterOptions) (flowcontrol.RateLimiter
 		return flowcontrol.NewFakeAlwaysRateLimiter(), nil
 	}
 
-	qps := float32(options.QPS)
+	qps := options.QPS
 	if qps < 0.01 || qps > 1e4 {
 		return nil, fmt.Errorf("invalid qps value %f", qps)
 	}
