@@ -25,3 +25,13 @@ func NormalizeClass(class string) string {
 	}
 	return class
 }
+
+// IsDefaultClass returns true if the provided class is the default class.
+func IsDefaultClass(class string) bool {
+	return NormalizeClass(class) == DefaultClass
+}
+
+// EquivalentClass returns true if the annotation class are equivalent, i.e. equal after normalizing.
+func EquivalentClass(cls1, cls2 string) bool {
+	return NormalizeClass(cls1) == NormalizeClass(cls2)
+}

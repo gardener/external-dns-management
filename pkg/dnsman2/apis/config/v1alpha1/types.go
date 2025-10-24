@@ -18,10 +18,11 @@ const DefaultClass = "gardendns"
 type DNSManagerConfiguration struct {
 	metav1.TypeMeta `json:",inline"`
 	// ClientConnection specifies the kubeconfig file and the client connection settings for primary
-	// cluster containing the certificate and source resources the dns-controller-manager should work on.
+	// cluster containing the source resources the dns-controller-manager should work on.
+	// +optional
 	ClientConnection *ClientConnection `json:"clientConnection,omitempty"`
 	// ControlPlaneClientConnection contains client connection configurations
-	// for the cluster containing the provided DNSProviders.
+	// for the cluster containing the provided DNSProviders and target DNSEntries.
 	// If not set, the primary cluster is used.
 	// +optional
 	ControlPlaneClientConnection *ControlPlaneClientConnection `json:"controlPlaneClientConnection,omitempty"`
@@ -88,6 +89,8 @@ type ControllerConfiguration struct {
 	DNSProvider DNSProviderControllerConfig `json:"dnsProvider"`
 	// DNSEntry is the configuration for the DNSEntry controller.
 	DNSEntry DNSEntryControllerConfig `json:"dnsEntry"`
+	// Source is the common configuration for source controllers.
+	Source SourceControllerConfig `json:"source"`
 }
 
 // DNSProviderControllerConfig is the configuration for the DNSProvider controller.
@@ -168,6 +171,28 @@ type AdvancedOptions struct {
 	// BlockedZones is a list of zone IDs that are blocked from being used by the provider.
 	// +optional
 	BlockedZones []string `json:"blockedZones,omitempty"`
+}
+
+// SourceControllerConfig is the configuration for the source controllers.
+type SourceControllerConfig struct {
+	// ConcurrentSyncs is the number of concurrent reconciliations for source controllers.
+	// +optional
+	ConcurrentSyncs *int `json:"concurrentSyncs,omitempty"`
+	// TargetClass is the class value for target DNSEntries.
+	// +optional
+	TargetClass *string `json:"targetClass,omitempty"`
+	// TargetNamespace is the namespace for target DNSEntries.
+	// +optional
+	TargetNamespace *string `json:"targetNamespace,omitempty"`
+	// TargetNamePrefix is the prefix for target DNSEntries object names.
+	// +optional
+	TargetNamePrefix *string `json:"targetNamePrefix,omitempty"`
+	// TargetClusterID is the cluster ID of the target cluster.
+	// +optional
+	TargetClusterID *string `json:"targetClusterID,omitempty"`
+	// SourceClusterID is the cluster ID of the source cluster.
+	// +optional
+	SourceClusterID *string `json:"sourceClusterID,omitempty"`
 }
 
 const (

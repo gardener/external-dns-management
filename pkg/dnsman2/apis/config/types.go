@@ -16,10 +16,10 @@ import (
 type DNSManagerConfiguration struct {
 	metav1.TypeMeta
 	// ClientConnection specifies the kubeconfig file and the client connection settings for primary
-	// cluster containing the certificate and source resources the dns-controller-manager should work on.
+	// cluster containing the source resources the dns-controller-manager should work on.
 	ClientConnection *ClientConnection
 	// ControlPlaneClientConnection contains client connection configurations
-	// for the cluster containing the provided DNSProviders.
+	// for the cluster containing the provided DNSProviders and target DNSEntries.
 	// If not set, the primary cluster is used.
 	ControlPlaneClientConnection *ControlPlaneClientConnection
 	// LeaderElection defines the configuration of leader election client.
@@ -81,6 +81,8 @@ type ControllerConfiguration struct {
 	DNSProvider DNSProviderControllerConfig
 	// DNSEntry is the configuration for the DNSEntry controller.
 	DNSEntry DNSEntryControllerConfig
+	// Source is the common configuration for source controllers.
+	Source SourceControllerConfig
 }
 
 // DNSProviderControllerConfig is the configuration for the DNSProvider controller.
@@ -142,4 +144,20 @@ type AdvancedOptions struct {
 	MaxRetries *int
 	// BlockedZones is a list of zone IDs that are blocked from being used by the provider.
 	BlockedZones []string
+}
+
+// SourceControllerConfig is the configuration for the source controllers.
+type SourceControllerConfig struct {
+	// ConcurrentSyncs is the number of concurrent reconciliations for source controllers.
+	ConcurrentSyncs *int
+	// TargetClass is the class value for target DNSEntries.
+	TargetClass *string
+	// TargetNamespace is the namespace for target DNSEntries.
+	TargetNamespace *string
+	// TargetNamePrefix is the prefix for target DNSEntries object names.
+	TargetNamePrefix *string
+	// TargetClusterID is the cluster ID of the target cluster.
+	TargetClusterID *string
+	// SourceClusterID is the cluster ID of the source cluster.
+	SourceClusterID *string
 }

@@ -11,7 +11,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	configv1alpha1 "github.com/gardener/external-dns-management/pkg/dnsman2/apis/config/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
@@ -19,10 +18,7 @@ import (
 func DNSClassPredicate(expectedClass string) predicate.Predicate {
 	return FilterPredicate(func(obj client.Object) bool {
 		class := obj.GetAnnotations()[dns.AnnotationClass]
-		if class == "" {
-			class = configv1alpha1.DefaultClass
-		}
-		return class == expectedClass
+		return dns.EquivalentClass(class, expectedClass)
 	})
 }
 
