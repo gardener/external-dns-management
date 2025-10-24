@@ -45,6 +45,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 	dnsanntation "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsannotation"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source"
+	sourcednsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
 )
 
 // Name is the name of the dns-controller-manager.
@@ -179,18 +180,13 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 	}
 
 	log.Info("Setting up manager")
-	mgr, err := manager.New(restConfig, manager.Options{
+	managerOptions := manager.Options{
 		Logger:                  log,
 		Scheme:                  dnsmanclient.ClusterScheme,
 		GracefulShutdownTimeout: ptr.To(5 * time.Second),
 		Cache: cache.Options{
-			SyncPeriod: &cfg.ClientConnection.CacheResyncPeriod.Duration,
-			// TODO(MartinWeindel) Revisit this, when introducing flag to allow DNSProvider in all namespaces
-			ByObject: map[client.Object]cache.ByObject{
-				&corev1.Secret{}: {
-					Namespaces: map[string]cache.Config{cfg.Controllers.DNSProvider.Namespace: {}},
-				},
-			},
+			SyncPeriod:        &cfg.ClientConnection.CacheResyncPeriod.Duration,
+			DefaultNamespaces: map[string]cache.Config{cfg.Controllers.DNSProvider.Namespace: {}},
 
 			/*
 				ByObject: map[client.Object]cache.ByObject{
@@ -224,7 +220,12 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 		Controller: controllerconfig.Controller{
 			RecoverPanic: ptr.To(true),
 		},
-	})
+	}
+	if controlPlaneRestConfig != restConfig {
+		// all
+		managerOptions.Cache.DefaultNamespaces = nil
+	}
+	mgr, err := manager.New(restConfig, managerOptions)
 	if err != nil {
 		return err
 	}
@@ -271,7 +272,7 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 	}
 
 	log.Info("Adding field indexes to informers")
-	if err := app.AddAllFieldIndexesToManager(ctx, mgr); err != nil {
+	if err := app.AddAllFieldIndexesToCluster(ctx, controlPlaneCluster); err != nil {
 		return fmt.Errorf("failed adding indexes: %w", err)
 	}
 
@@ -294,6 +295,17 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 	}).AddToManager(mgr); err != nil {
 		return fmt.Errorf("failed adding DNSAnnotation controller: %w", err)
 	}
+	if ptr.Deref(cfg.Controllers.Source.DNSProviderReplication, false) {
+		log.Info("DNSProvider replication is enabled")
+		if err := (&sourcednsprovider.Reconciler{
+			Config: *cfg,
+		}).AddToManager(mgr, controlPlaneCluster); err != nil {
+			return fmt.Errorf("failed adding source DNSProvider controller: %w", err)
+		}
+	} else {
+		log.Info("DNSProvider replication is disabled")
+	}
+
 	log.Info("Starting manager")
 	return mgr.Start(ctx)
 }

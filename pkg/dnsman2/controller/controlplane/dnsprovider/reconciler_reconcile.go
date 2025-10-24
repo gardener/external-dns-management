@@ -149,15 +149,7 @@ func (r *Reconciler) getProperties(ctx context.Context, secretRef *corev1.Secret
 		return nil, fmt.Errorf("unable to get secret %s: %w", client.ObjectKeyFromObject(secret), err)
 	}
 
-	return toProperties(secret.Data), nil
-}
-
-func toProperties(data map[string][]byte) utils.Properties {
-	props := utils.Properties{}
-	for k, v := range data {
-		props[k] = string(v)
-	}
-	return props
+	return utils.NewPropertiesFromSecretData(secret.Data), nil
 }
 
 func toLightZones(zones []dnsprovider.DNSHostedZone) []selection.LightDNSHostedZone {

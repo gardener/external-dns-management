@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
@@ -138,34 +139,46 @@ type EntryOwnerData struct {
 // are checked. Otherwise, the annotation `resources.gardener.cloud/owners`
 // is checked.
 func (d EntryOwnerData) IsRelevantEntry(entry *dnsv1alpha1.DNSEntry) bool {
-	if !dns.EquivalentClass(entry.Annotations[dns.AnnotationClass], ptr.Deref(d.Config.TargetClass, dns.DefaultClass)) {
+	if !dns.EquivalentClass(entry.Annotations[dns.AnnotationClass], ptr.Deref(d.Config.TargetClass, "")) {
 		return false
 	}
 	if d.Config.TargetNamespace != nil && entry.Namespace != *d.Config.TargetNamespace {
 		return false
 	}
 
+	owners := d.GetOwnerObjectKeys(entry)
+	return len(owners) > 0
+}
+
+// GetOwnerObjectKeys returns the list of owner object keys for the given
+func (d EntryOwnerData) GetOwnerObjectKeys(obj metav1.Object) []client.ObjectKey {
+	var ownerKeys []client.ObjectKey
+
 	if d.Config.TargetNamespace == nil && reflect.DeepEqual(d.Config.SourceClusterID, d.Config.TargetClusterID) {
-		for _, r := range entry.GetOwnerReferences() {
+		for _, r := range obj.GetOwnerReferences() {
 			if d.GVK.Kind == r.Kind && d.GVK.GroupVersion().String() == r.APIVersion {
-				return true
+				ownerKeys = append(ownerKeys, client.ObjectKey{Namespace: obj.GetNamespace(), Name: r.Name})
 			}
 		}
-		return false
-	} else {
-		refs := GetAnnotatedOwners(entry)
-		prefix := ""
-		if d.Config.SourceClusterID != nil {
-			prefix = *d.Config.SourceClusterID + ":"
-		}
-		prefix += fmt.Sprintf("%s/%s/", d.GVK.Group, d.GVK.Kind)
-		for _, r := range refs {
-			if strings.HasPrefix(r, prefix) {
-				return true
-			}
-		}
-		return false
+		return ownerKeys
 	}
+
+	prefix := ""
+	if d.Config.SourceClusterID != nil {
+		prefix = *d.Config.SourceClusterID + ":"
+	}
+	prefix += fmt.Sprintf("%s/%s/", d.GVK.Group, d.GVK.Kind)
+	for _, ownerRef := range GetAnnotatedOwners(obj) {
+		if strings.HasPrefix(ownerRef, prefix) {
+			suffix := strings.TrimPrefix(ownerRef, prefix)
+			nameParts := strings.SplitN(suffix, "/", 2)
+			if len(nameParts) != 2 {
+				continue
+			}
+			ownerKeys = append(ownerKeys, client.ObjectKey{Namespace: nameParts[0], Name: nameParts[1]})
+		}
+	}
+	return ownerKeys
 }
 
 // GetAnnotatedOwners returns the list of owner references stored in the

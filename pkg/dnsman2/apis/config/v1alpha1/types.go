@@ -205,6 +205,9 @@ type SourceControllerConfig struct {
 	// SourceClusterID is the cluster ID of the source cluster.
 	// +optional
 	SourceClusterID *string `json:"sourceClusterID,omitempty"`
+	// DNSProviderReplication indicates whether DNSProvider replication from source to target cluster is enabled.
+	// +optional
+	DNSProviderReplication *bool `json:"dnsProviderReplication,omitempty"`
 }
 
 const (

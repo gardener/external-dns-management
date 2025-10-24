@@ -498,6 +498,7 @@ func autoConvert_v1alpha1_SourceControllerConfig_To_config_SourceControllerConfi
 	out.TargetNamePrefix = (*string)(unsafe.Pointer(in.TargetNamePrefix))
 	out.TargetClusterID = (*string)(unsafe.Pointer(in.TargetClusterID))
 	out.SourceClusterID = (*string)(unsafe.Pointer(in.SourceClusterID))
+	out.DNSProviderReplication = (*bool)(unsafe.Pointer(in.DNSProviderReplication))
 	return nil
 }
 
@@ -513,6 +514,7 @@ func autoConvert_config_SourceControllerConfig_To_v1alpha1_SourceControllerConfi
 	out.TargetNamePrefix = (*string)(unsafe.Pointer(in.TargetNamePrefix))
 	out.TargetClusterID = (*string)(unsafe.Pointer(in.TargetClusterID))
 	out.SourceClusterID = (*string)(unsafe.Pointer(in.SourceClusterID))
+	out.DNSProviderReplication = (*bool)(unsafe.Pointer(in.DNSProviderReplication))
 	return nil
 }
 

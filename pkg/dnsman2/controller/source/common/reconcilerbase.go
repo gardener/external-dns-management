@@ -176,7 +176,7 @@ outer:
 			return fmt.Errorf("failed to delete obsolete owned DNSEntry %s: %w", client.ObjectKeyFromObject(&ownedEntry), err)
 		}
 		log.Info("deleted obsolete owned DNSEntry", "name", ownedEntry.Name)
-		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryDeleted", "Created DNSEntry: %s", ownedEntry.Name) // TODO: check former reason/message
+		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryDeleted", "Deleted DNSEntry: %s", ownedEntry.Name) // TODO: check former reason/message
 	}
 	return nil
 }
