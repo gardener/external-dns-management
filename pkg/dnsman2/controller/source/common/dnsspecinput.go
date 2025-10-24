@@ -22,7 +22,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
-// DNSSpecInput contains basic certificate data.
+// DNSSpecInput specifies names, targets, and policies for DNS records.
 type DNSSpecInput struct {
 	Names                     *utils.UniqueStrings
 	TTL                       *int64
@@ -49,12 +49,13 @@ func GetDNSSpecInputForService(log logr.Logger, svc *corev1.Service) (*DNSSpecIn
 	names := utils.NewUniqueStrings()
 	for _, name := range strings.Split(dnsNames, ",") {
 		name = strings.TrimSpace(name)
-		if name != "" {
-			if name == "*" {
-				return nil, fmt.Errorf("domain name annotation value '*' is not allowed for service objects")
-			}
-			names.Add(name)
+		if name == "" {
+			continue
 		}
+		if name == "*" {
+			return nil, fmt.Errorf("domain name annotation value '*' is not allowed for service objects")
+		}
+		names.Add(name)
 	}
 
 	var resolveTargetsToAddresses *bool
