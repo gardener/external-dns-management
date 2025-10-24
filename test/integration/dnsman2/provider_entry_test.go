@@ -190,7 +190,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		log.Info("Adding field indexes to informers")
-		Expect(app.AddAllFieldIndexesToManager(ctx, mgr)).To(Succeed())
+		Expect(app.AddAllFieldIndexesToCluster(ctx, mgr)).To(Succeed())
 
 		By("Adding controllers to manager")
 		if err := (&dnsprovider.Reconciler{

@@ -4,10 +4,24 @@
 
 package utils
 
-import "k8s.io/apimachinery/pkg/util/sets"
+import (
+	"k8s.io/apimachinery/pkg/util/sets"
+)
 
 // Properties is a map of string keys to string values.
 type Properties map[string]string
+
+// NewPropertiesFromSecretData creates a Properties map from a map of string keys to byte array values.
+func NewPropertiesFromSecretData(data map[string][]byte) Properties {
+	if data == nil {
+		return nil
+	}
+	props := Properties{}
+	for k, v := range data {
+		props[k] = string(v)
+	}
+	return props
+}
 
 // Has returns true if the property with the given key exists.
 func (p Properties) Has(k string) bool {
