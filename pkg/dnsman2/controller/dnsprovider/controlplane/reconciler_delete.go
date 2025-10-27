@@ -18,6 +18,8 @@ import (
 )
 
 func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1alpha1.DNSProvider) (reconcile.Result, error) {
+	log.Info("delete")
+
 	entries := v1alpha1.DNSEntryList{}
 	if err := r.Client.List(ctx, &entries, client.InNamespace(provider.Namespace), client.MatchingFields{EntryStatusProvider: client.ObjectKeyFromObject(provider).String()}); err != nil {
 		return reconcile.Result{}, fmt.Errorf("error listing DNSEntries for provider %s: %w", provider.Name, err)

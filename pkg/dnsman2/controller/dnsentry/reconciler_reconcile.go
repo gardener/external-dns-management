@@ -50,6 +50,7 @@ type newTargetsData struct {
 type zonedRequests = map[dns.ZoneID]map[dns.DNSSetName]*provider.ChangeRequests
 
 func (r *entryReconciliation) reconcile() common.ReconcileResult {
+	r.Log.Info("reconcile")
 	orgResult := r.doReconcile()
 	res := orgResult
 

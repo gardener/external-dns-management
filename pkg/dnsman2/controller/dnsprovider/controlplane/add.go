@@ -24,6 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
@@ -44,7 +45,7 @@ import (
 )
 
 // ControllerName is the name of this controller.
-const ControllerName = "dnsprovider-controlplane"
+const ControllerName = "dnsprovider"
 
 var allTypes = map[string]provider.AddToRegistryFunc{
 	alicloud.ProviderType:     alicloud.RegisterTo,
@@ -66,7 +67,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		r.Clock = clock.RealClock{}
 	}
 	if r.Recorder == nil {
-		r.Recorder = mgr.GetEventRecorderFor(ControllerName + "-controller")
+		r.Recorder = controlPlaneCluster.GetEventRecorderFor(ControllerName + "-controller")
 	}
 	if r.DNSHandlerFactory == nil {
 		registry := provider.NewDNSHandlerRegistry(r.Clock)
@@ -93,24 +94,23 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	return builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
-		For(
+		WatchesRawSource(source.Kind[client.Object](controlPlaneCluster.GetCache(),
 			&v1alpha1.DNSProvider{},
-			builder.WithPredicates(
-				predicate.NewPredicateFuncs(func(obj client.Object) bool {
-					return obj.GetNamespace() == r.Config.Controllers.DNSProvider.Namespace
-				}),
-				dnsman2controller.DNSClassPredicate(dns.NormalizeClass(r.Config.Class)),
-			),
-		).
-		Watches(
+			&handler.EnqueueRequestForObject{},
+			predicate.NewPredicateFuncs(func(obj client.Object) bool {
+				return obj.GetNamespace() == r.Config.Controllers.DNSProvider.Namespace
+			}),
+			dnsman2controller.DNSClassPredicate(dns.NormalizeClass(r.Config.Class)),
+		)).
+		WatchesRawSource(source.Kind[client.Object](controlPlaneCluster.GetCache(),
 			&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, secret client.Object) []reconcile.Request {
 				return r.providersToReconcileOnSecretChanges(ctx, secret)
 			}),
-			builder.WithPredicates(dnsman2controller.FilterPredicate(func(obj client.Object) bool {
+			dnsman2controller.FilterPredicate(func(obj client.Object) bool {
 				return obj.GetNamespace() == r.Config.Controllers.DNSProvider.Namespace
-			})),
-		).
+			}),
+		)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: ptr.Deref(r.Config.Controllers.DNSProvider.ConcurrentSyncs, 2),
 			SkipNameValidation:      r.Config.Controllers.DNSProvider.SkipNameValidation,
@@ -129,8 +129,7 @@ func (r *Reconciler) providersToReconcileOnSecretChanges(ctx context.Context, se
 		return nil
 	}
 	for _, provider := range dns.FilterProvidersByClass(providerList.Items, r.Config.Class) {
-		if provider.Spec.SecretRef.Name == secret.GetName() &&
-			(provider.Spec.SecretRef.Namespace == "" || provider.Spec.SecretRef.Namespace == secret.GetNamespace()) {
+		if provider.Spec.SecretRef.Name == secret.GetName() && getSecretRefNamespace(&provider) == secret.GetNamespace() {
 			requests = append(requests, reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      provider.Name,

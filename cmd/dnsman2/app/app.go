@@ -43,6 +43,7 @@ import (
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry"
 	dnsprovidercontrolplane "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsprovider/controlplane"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source"
 )
 
 // Name is the name of the dns-controller-manager.
@@ -279,6 +280,9 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 		Namespace: cfg.Controllers.DNSProvider.Namespace,
 	}).AddToManager(mgr, controlPlaneCluster); err != nil {
 		return fmt.Errorf("failed adding control plane DNSEntry controller: %w", err)
+	}
+	if err := source.AddToManager(mgr, controlPlaneCluster, cfg); err != nil {
+		return fmt.Errorf("failed adding source controllers: %w", err)
 	}
 
 	log.Info("Starting manager")
