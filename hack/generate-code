@@ -16,7 +16,6 @@ source "${CODE_GEN_DIR}/kube_codegen.sh"
 
 rm -f ${GOPATH}/bin/*-gen
 
-rm -rf "${SOURCE_PATH}/pkg/client/dns"
 PROJECT_ROOT=$(dirname $0)/..
 
 kube::codegen::gen_helpers \
@@ -32,11 +31,3 @@ kube::codegen::gen_helpers \
   --extra-peer-dir k8s.io/component-base/config \
   --extra-peer-dir k8s.io/component-base/config/v1alpha1 \
   "${PROJECT_ROOT}/pkg/dnsman2/apis/config"
-
-kube::codegen::gen_client \
-  --with-watch \
-  --one-input-api "dns/v1alpha1" \
-  --output-dir "${PROJECT_ROOT}/pkg/client/dns" \
-  --output-pkg "github.com/gardener/external-dns-management/pkg/client/dns" \
-  --boilerplate "${PROJECT_ROOT}/hack/LICENSE_BOILERPLATE.txt" \
-  "${PROJECT_ROOT}/pkg/apis"
