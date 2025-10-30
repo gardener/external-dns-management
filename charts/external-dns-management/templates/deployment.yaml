@@ -50,7 +50,11 @@ spec:
         runAsUser: 65534
       containers:
       - name: dns-controller-manager
+        {{- if not .Values.nextGeneration.enabled }}
         image: "{{ include "image" .Values.image }}"
+        {{- else }}
+        image: "{{ include "image-ng" .Values.image }}"
+        {{- end}}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         securityContext:
           allowPrivilegeEscalation: false
@@ -59,6 +63,7 @@ spec:
             - ALL
           privileged: false
           readOnlyRootFilesystem: true
+{{- if not .Values.nextGeneration.enabled }}
         args:
         - --name={{ include "external-dns-management.fullname" . }}
         {{- if .Values.gardener.seed.name }}
@@ -1037,14 +1042,22 @@ spec:
         {{- range $idx, $flag := .Values.additionalConfiguration }}
         - {{ $flag }}
         {{- end }}
+{{- else }}
+        args:
+        - --config=/etc/external-dns-management/next-generation/config.yaml
+{{- end }}
         {{- if .Values.configuration.serverPortHttp }}
         ports:
         - containerPort: {{ .Values.configuration.serverPortHttp }}
           protocol: TCP
-        {{- if .Values.env }}
         env:
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        {{- if .Values.env }}
         {{- toYaml .Values.env | nindent 8 }}
-        {{- end }}
+        {{- end}}
         livenessProbe:
           httpGet:
             path: /healthz
@@ -1055,7 +1068,7 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
-        {{- if or .Values.custom.volumeMounts .Values.remoteaccess.enabled }}
+        {{- if or .Values.custom.volumeMounts .Values.remoteaccess.enabled .Values.nextGeneration.enabled }}
         volumeMounts:
           {{- if .Values.custom.volumeMounts }}
           {{- toYaml .Values.custom.volumeMounts | nindent 10 }}
@@ -1064,13 +1077,25 @@ spec:
           - mountPath: /certs/ca
             name: certs-ca
           {{- end }}
+          {{- if .Values.nextGeneration.enabled }}
+          - mountPath: /etc/external-dns-management/next-generation
+            name: next-generation-config
+          {{- end }}
         {{- end }}
-      {{- if or .Values.custom.volumes .Values.remoteaccess.enabled }}
+      {{- if or .Values.custom.volumes .Values.remoteaccess.enabled .Values.nextGeneration.enabled }}
       volumes:
         {{- if .Values.remoteaccess.enabled }}
         - name: certs-ca
           secret:
             secretName: {{ include "external-dns-management.fullname" . }}-remoteaccess-ca
+        {{- end }}
+        {{- if .Values.nextGeneration.enabled }}
+        - name: next-generation-config
+          configMap:
+            name: {{ include "external-dns-management.fullname" . }}-next-generation-config
+            items:
+            - key: config
+              path: config.yaml
         {{- end }}
         {{- if .Values.custom.volumes }}
         {{- toYaml .Values.custom.volumes | nindent 8 }}

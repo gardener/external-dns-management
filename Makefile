@@ -13,6 +13,7 @@ REPO_ROOT                         := $(shell dirname $(realpath $(lastword $(MAK
 HACK_DIR                          := $(REPO_ROOT)/hack
 PROJECT                           := github.com/gardener/external-dns-management
 IMAGE_REPOSITORY                  := $(REGISTRY)/dns-controller-manager
+IMAGE_REPOSITORY_NG               := $(REGISTRY)/dns-controller-manager-next-generation
 VERSION                           := $(shell cat VERSION)
 IMAGE_TAG                         := $(VERSION)
 
@@ -70,6 +71,10 @@ release:
 	    -a \
 	    -ldflags "-w -X main.Version=$(VERSION)" \
 	    ./cmd/compound
+	@CGO_ENABLED=0 go build -o $(EXECUTABLE2) \
+	    -a \
+	    -ldflags "-w -X main.Version=$(VERSION)" \
+	    ./cmd/dnsman2
 
 .PHONY: unittests
 unittests: $(GINKGO)
@@ -117,6 +122,7 @@ test-integration: integrationtests new-test-integration
 .PHONY: docker-images
 docker-images:
 	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) -f Dockerfile --target dns-controller-manager .
+	@docker build -t $(IMAGE_REPOSITORY_NG):$(IMAGE_TAG) -f Dockerfile --target dns-controller-manager-next-generation .
 
 .PHONY: sast
 sast: $(GOSEC)

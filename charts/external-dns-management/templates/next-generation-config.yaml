@@ -1,0 +1,17 @@
+{{- if .Values.nextGeneration.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "external-dns-management.fullname" . }}-next-generation-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    helm.sh/chart: {{ include "external-dns-management.chart" . }}
+    app.kubernetes.io/name: {{ include "external-dns-management.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+data:
+  config: |
+    apiVersion: config.dns.gardener.cloud/v1alpha1
+    kind: DNSManagerConfiguration
+{{ toYaml .Values.nextGeneration.config | indent 4 }}
+{{- end }}

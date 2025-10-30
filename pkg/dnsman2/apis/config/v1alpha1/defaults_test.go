@@ -5,6 +5,7 @@
 package v1alpha1_test
 
 import (
+	"os"
 	"time"
 
 	"github.com/gardener/gardener/pkg/logger"
@@ -110,8 +111,8 @@ var _ = Describe("Defaults", func() {
 				Expect(obj.LeaderElection.RenewDeadline).To(Equal(metav1.Duration{Duration: 10 * time.Second}))
 				Expect(obj.LeaderElection.RetryPeriod).To(Equal(metav1.Duration{Duration: 2 * time.Second}))
 				Expect(obj.LeaderElection.ResourceLock).To(Equal("leases"))
-				Expect(obj.LeaderElection.ResourceNamespace).To(Equal("kube-system"))
-				Expect(obj.LeaderElection.ResourceName).To(Equal("gardener-dns-controller-manager-leader-election"))
+				Expect(obj.LeaderElection.ResourceNamespace).To(Equal("default"))
+				Expect(obj.LeaderElection.ResourceName).To(Equal("dns-controller-manager-controllers"))
 			})
 
 			It("should not overwrite custom settings", func() {
@@ -171,6 +172,41 @@ var _ = Describe("Defaults", func() {
 						QPS:     1,
 						Burst:   2,
 					}))
+				})
+			})
+			Describe("Source controller", func() {
+				It("should default the object", func() {
+					obj := &SourceControllerConfig{}
+
+					SetDefaults_SourceControllerConfig(obj)
+					Expect(obj.ConcurrentSyncs).To(PointTo(Equal(5)))
+					Expect(obj.TargetNamespace).To(PointTo(Equal("default")))
+				})
+
+				It("should default the object using the POD_NAMESPACE env variable", func() {
+					obj := &SourceControllerConfig{}
+
+					oldValue := os.Getenv("POD_NAMESPACE")
+					defer func() {
+						_ = os.Setenv("POD_NAMESPACE", oldValue)
+					}()
+					Expect(os.Setenv("POD_NAMESPACE", "foo")).To(Succeed())
+
+					SetDefaults_SourceControllerConfig(obj)
+					Expect(obj.ConcurrentSyncs).To(PointTo(Equal(5)))
+					Expect(obj.TargetNamespace).To(PointTo(Equal("foo")))
+				})
+
+				It("should not overwrite existing values", func() {
+					obj := &SourceControllerConfig{
+						ConcurrentSyncs: ptr.To(13),
+						TargetNamespace: ptr.To("other-namespace"),
+					}
+
+					SetDefaults_SourceControllerConfig(obj)
+
+					Expect(obj.ConcurrentSyncs).To(PointTo(Equal(13)))
+					Expect(obj.TargetNamespace).To(PointTo(Equal("other-namespace")))
 				})
 			})
 		})
