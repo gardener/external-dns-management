@@ -16,17 +16,17 @@ import (
 
 // DNSHandlerAdapterChecks is a collection of checks for properties of a DNS handler adapter.
 type DNSHandlerAdapterChecks struct {
-	propertyChecks []propertyCheck
+	propertyChecks       []propertyCheck
+	disjunctPropertySets [][]string
 }
 
 type propertyCheck struct {
-	name            string
-	aliases         []string
-	required        bool
-	requiredIfUnset []string
-	allowEmpty      bool
-	hide            bool
-	validators      []PropertyValidator
+	name       string
+	aliases    []string
+	required   bool
+	allowEmpty bool
+	hide       bool
+	validators []PropertyValidator
 }
 
 // NewDNSHandlerAdapterChecks creates a new instance of DNSHandlerAdapterChecks.
@@ -54,11 +54,6 @@ func (b *DNSHandlerAdapterBuilder) AllowEmptyValue() *DNSHandlerAdapterBuilder {
 // HideValue marks the property as a secret or as too long, which means it should not be logged or displayed in any way.
 func (b *DNSHandlerAdapterBuilder) HideValue() *DNSHandlerAdapterBuilder {
 	b.check.hide = true
-	return b
-}
-
-func (b *DNSHandlerAdapterBuilder) RequiredIfUnset(propertyNames ...string) *DNSHandlerAdapterBuilder {
-	b.check.requiredIfUnset = propertyNames
 	return b
 }
 
@@ -90,6 +85,11 @@ func (c *DNSHandlerAdapterChecks) Add(b *DNSHandlerAdapterBuilder) {
 	c.propertyChecks = append(c.propertyChecks, b.check)
 }
 
+// SetDisjunctPropertySets sets the disjunct property sets for the DNSHandlerAdapterChecks instance.
+func (c *DNSHandlerAdapterChecks) SetDisjunctPropertySets(sets ...[]string) {
+	c.disjunctPropertySets = sets
+}
+
 // HasPropertyNameOrAlias checks if the given properties contain a property with the specified name or any of its aliases.
 func (c *DNSHandlerAdapterChecks) HasPropertyNameOrAlias(props utils.Properties, nameOrAlias string) bool {
 	var check *propertyCheck
@@ -118,9 +118,10 @@ outer:
 // ValidateProperties validates the properties against the defined checks.
 func (c *DNSHandlerAdapterChecks) ValidateProperties(providerType string, properties utils.Properties) error {
 	var (
-		errs          []error
-		allowedKeys   = sets.Set[string]{}
-		duplicateKeys = map[string]int{}
+		errs            []error
+		allowedKeys     = sets.Set[string]{}
+		duplicateKeys   = map[string]int{}
+		foundProperties = sets.Set[string]{}
 	)
 
 	for idx, check := range c.propertyChecks {
@@ -139,16 +140,14 @@ func (c *DNSHandlerAdapterChecks) ValidateProperties(providerType string, proper
 
 		allowedKeys.Insert(name)
 
-		if !found && !check.required {
-			if err := c.validateRequiredIfUnset(name, check, properties); err != nil {
-				errs = append(errs, err)
+		if !found {
+			if check.required {
+				errs = append(errs, fmt.Errorf("property %q is required but not provided", niceName(check.name, name)))
 			}
 			continue
 		}
-		if !found {
-			errs = append(errs, fmt.Errorf("property %q is required but not provided", niceName(check.name, name)))
-			continue
-		}
+		foundProperties.Insert(check.name)
+
 		if value == "" && !check.allowEmpty {
 			if check.required {
 				errs = append(errs, fmt.Errorf("property %q is required but empty", niceName(check.name, name)))
@@ -194,8 +193,56 @@ func (c *DNSHandlerAdapterChecks) ValidateProperties(providerType string, proper
 		}
 	}
 
+	if err := c.validateDisjunctSets(foundProperties); err != nil {
+		errs = append(errs, err)
+	}
+
 	if len(errs) > 0 {
 		return fmt.Errorf("validation failed for provider type %s: %s", providerType, errors.Join(errs...))
+	}
+	return nil
+}
+
+func (c *DNSHandlerAdapterChecks) validateDisjunctSets(foundProperties sets.Set[string]) error {
+	if len(c.disjunctPropertySets) == 0 {
+		return nil
+	}
+
+	validSetsFound := 0
+	partialSetsFound := 0
+	for _, propertySet := range c.disjunctPropertySets {
+		count := 0
+		for _, propName := range propertySet {
+			if foundProperties.Has(propName) {
+				count++
+			}
+		}
+		if count == len(propertySet) {
+			validSetsFound++
+		} else if count > 0 {
+			partialSetsFound++
+		}
+	}
+	if validSetsFound != 1 || partialSetsFound > 0 {
+		checks := map[string]propertyCheck{}
+		for _, check := range c.propertyChecks {
+			checks[check.name] = check
+		}
+
+		var setStrings []string
+		for _, propertySet := range c.disjunctPropertySets {
+			extendedPropertySet := make([]string, len(propertySet))
+			for i, propName := range propertySet {
+				if check, ok := checks[propName]; ok {
+					extendedPropertySet[i] = niceNameAndAliases(check)
+				} else {
+					extendedPropertySet[i] = propName
+				}
+			}
+			setStrings = append(setStrings, fmt.Sprintf("[%s]", strings.Join(extendedPropertySet, ", ")))
+		}
+		return fmt.Errorf("at least one of the disjunct property sets must be fully provided: %s",
+			strings.Join(setStrings, " or "))
 	}
 	return nil
 }
@@ -212,32 +259,4 @@ func niceNameAndAliases(pc propertyCheck) string {
 		return pc.name
 	}
 	return fmt.Sprintf("%s (aliases [%s])", pc.name, strings.Join(pc.aliases, ","))
-}
-
-func (c *DNSHandlerAdapterChecks) validateRequiredIfUnset(name string, check propertyCheck, properties utils.Properties) error {
-	for _, otherPropertyName := range check.requiredIfUnset {
-		var pc propertyCheck
-		for _, item := range c.propertyChecks {
-			if item.name == otherPropertyName {
-				pc = item
-			}
-		}
-		if pc.name == "" {
-			return fmt.Errorf("internal error: %q is required if property %q is not set, but property %q does not exist", niceName(check.name, name), otherPropertyName, otherPropertyName)
-		}
-		found := false
-		for _, otherPropertyName := range append([]string{pc.name}, pc.aliases...) {
-			otherValue, ok := properties[otherPropertyName]
-
-			if ok && otherValue != "" {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return fmt.Errorf("property %q is required if property %q is not set", niceName(check.name, name), niceNameAndAliases(pc))
-		}
-	}
-
-	return nil
 }

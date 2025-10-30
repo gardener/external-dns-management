@@ -157,49 +157,60 @@ var _ = Describe("DNSHandlerAdapterChecks", func() {
 			Expect(err.Error()).To(ContainSubstring("invalid secret: (hidden)"))
 		})
 
-		Context("RequiredIfUnset", func() {
+		Context("SetDisjunctPropertySets - 3 way", func() {
 			BeforeEach(func() {
-				checks.Add(OptionalProperty("baz", "baz-alias").
-					RequiredIfUnset("optprop"))
-				checks.Add(OptionalProperty("optprop").
-					RequiredIfUnset("baz"))
+				checks.Add(OptionalProperty("a", "a-alias"))
+				checks.Add(OptionalProperty("b", "b-alias"))
+				checks.Add(OptionalProperty("c"))
+				checks.Add(OptionalProperty("d"))
+				checks.SetDisjunctPropertySets([]string{"a", "b"}, []string{"c"}, []string{"d"})
 			})
 
 			It("should require a property if the depending property is not set", func() {
 				props["foo"] = "good"
 				err := checks.ValidateProperties("test", props)
 				Expect(err).ToNot(Succeed())
-				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"baz (aliases [baz-alias])\" is not set"))
+				Expect(err.Error()).To(ContainSubstring("at least one of the disjunct property sets must be fully provided: [a (aliases [a-alias]), b (aliases [b-alias])] or [c] or [d]"))
 			})
 
-			It("should require a property if the depending property is empty", func() {
+			It("should succeed if properties a and b are set", func() {
 				props["foo"] = "good"
-				props["baz"] = ""
+				props["a"] = "good"
+				props["b-alias"] = "good"
+				err := checks.ValidateProperties("test", props)
+				Expect(err).To(Succeed())
+			})
+
+			It("should succeed if property c is set", func() {
+				props["foo"] = "good"
+				props["c"] = "good"
+				err := checks.ValidateProperties("test", props)
+				Expect(err).To(Succeed())
+			})
+
+			It("should succeed if property d is set", func() {
+				props["foo"] = "good"
+				props["d"] = "good"
+				err := checks.ValidateProperties("test", props)
+				Expect(err).To(Succeed())
+			})
+
+			It("should not succeed if property c and d are set", func() {
+				props["foo"] = "good"
+				props["c"] = "good"
+				props["d"] = "good"
 				err := checks.ValidateProperties("test", props)
 				Expect(err).ToNot(Succeed())
-				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"baz (aliases [baz-alias])\" is not set"))
+				Expect(err.Error()).To(ContainSubstring("at least one of the disjunct property sets must be fully provided: [a (aliases [a-alias]), b (aliases [b-alias])] or [c] or [d]"))
 			})
 
-			It("should require a property if any depending property is not set", func() {
-				checks.Add(OptionalProperty("qux").
-					RequiredIfUnset("optprop"))
+			It("should not succeed if property a and c are set", func() {
 				props["foo"] = "good"
-				props["baz"] = "good"
+				props["a-alias"] = "good"
+				props["c"] = "good"
 				err := checks.ValidateProperties("test", props)
 				Expect(err).ToNot(Succeed())
-				Expect(err.Error()).To(ContainSubstring("property \"qux\" is required if property \"optprop\" is not set"))
-			})
-
-			It("should not require a property if the depending property is set", func() {
-				props["foo"] = "good"
-				props["baz"] = "good"
-				Expect(checks.ValidateProperties("test", props)).To(Succeed())
-			})
-
-			It("should not require a property if the depending property alias is set", func() {
-				props["foo"] = "good"
-				props["baz-alias"] = "good"
-				Expect(checks.ValidateProperties("test", props)).To(Succeed())
+				Expect(err.Error()).To(ContainSubstring("at least one of the disjunct property sets must be fully provided: [a (aliases [a-alias]), b (aliases [b-alias])] or [c] or [d]"))
 			})
 		})
 	})
