@@ -32,8 +32,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/app"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry"
-	dnsprovidercontrolplane "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsprovider/controlplane"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
@@ -190,10 +190,10 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		log.Info("Adding field indexes to informers")
-		Expect(app.AddAllFieldIndexesToManager(ctx, mgr)).To(Succeed())
+		Expect(app.AddAllFieldIndexesToCluster(ctx, mgr)).To(Succeed())
 
 		By("Adding controllers to manager")
-		if err := (&dnsprovidercontrolplane.Reconciler{
+		if err := (&dnsprovider.Reconciler{
 			Config: *cfg,
 		}).AddToManager(mgr, mgr); err != nil {
 			Fail(fmt.Errorf("failed adding control plane DNSProvider controller: %w", err).Error())

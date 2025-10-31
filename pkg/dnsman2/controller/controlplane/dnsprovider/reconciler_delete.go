@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package controlplane
+package dnsprovider
 
 import (
 	"context"
@@ -34,6 +34,15 @@ func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1al
 			res.RequeueAfter = 1 * time.Second
 		} else if since > 0 && since < 30*time.Minute {
 			res.RequeueAfter = since / 10
+		}
+		if r.state.GetProviderState(client.ObjectKeyFromObject(provider)) == nil {
+			// after controller restart, reconcile to recreate provider state
+			res2, err := r.reconcile(ctx, log, provider)
+			if !res2.IsZero() || err != nil {
+				return res2, err
+			}
+			res2.RequeueAfter = 1 * time.Second
+			return res2, nil
 		}
 		return res, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
 			status.Message = ptr.To(fmt.Sprintf("cannot delete provider, %d DNSEntries still assigned to it", len(entries.Items)))

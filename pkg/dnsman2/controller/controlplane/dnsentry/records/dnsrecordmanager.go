@@ -10,8 +10,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/sets"
 
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/common"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsentry/providerselector"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/common"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/providerselector"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
