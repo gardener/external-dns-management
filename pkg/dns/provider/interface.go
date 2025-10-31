@@ -249,6 +249,7 @@ type DNSProvider interface {
 	IsValid() bool
 
 	AccountHash() string
+	UpdateGroup() string
 	MapTargets(dnsName string, targets []Target) []Target
 }
 
