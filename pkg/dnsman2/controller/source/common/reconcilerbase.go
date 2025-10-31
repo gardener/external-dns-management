@@ -24,6 +24,7 @@ import (
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 // ReconcilerBase is base for source reconcilers.
@@ -34,6 +35,7 @@ type ReconcilerBase struct {
 	Class              string
 	GVK                schema.GroupVersionKind
 	Config             config.SourceControllerConfig
+	State              state.AnnotationState
 }
 
 // DoReconcile reconciles for given object and dnsSpecInput.
@@ -43,10 +45,7 @@ func (r *ReconcilerBase) DoReconcile(ctx context.Context, log logr.Logger, obj c
 		return reconcile.Result{}, err
 	}
 	if dnsSpecInput == nil || dnsSpecInput.Names.IsEmpty() {
-		if err := r.deleteObsoleteOwnedDNSEntries(ctx, log, obj, ownedEntries, nil); err != nil {
-			return reconcile.Result{}, err
-		}
-		return reconcile.Result{}, nil
+		return r.DoDelete(ctx, log, obj)
 	}
 
 	newEntries := map[string]*dnsv1alpha1.DNSEntry{}
@@ -74,7 +73,9 @@ func (r *ReconcilerBase) DoReconcile(ctx context.Context, log logr.Logger, obj c
 			return reconcile.Result{}, err
 		}
 	}
-	return reconcile.Result{}, nil
+
+	ref := BuildResourceReference(r.GVK, obj)
+	return reconcile.Result{}, r.State.UpdateStatus(ctx, r.Client, ref, true)
 }
 
 func (r *ReconcilerBase) createOrUpdateDNSEntry(
@@ -125,7 +126,8 @@ func (r *ReconcilerBase) DoDelete(ctx context.Context, log logr.Logger, obj clie
 		return reconcile.Result{}, err
 	}
 
-	return reconcile.Result{}, nil
+	ref := BuildResourceReference(r.GVK, obj)
+	return reconcile.Result{}, r.State.UpdateStatus(ctx, r.Client, ref, false)
 }
 
 func (r *ReconcilerBase) getExistingOwnedDNSEntries(ctx context.Context, owner metav1.Object) ([]dnsv1alpha1.DNSEntry, error) {

@@ -43,7 +43,11 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		Named(ControllerName).
 		For(
 			&corev1.Service{},
-			builder.WithPredicates(RelevantServicePredicate(r.Class)),
+			builder.WithPredicates(r.RelevantServicePredicate()),
+		).
+		Watches(
+			&dnsv1alpha1.DNSAnnotation{},
+			handler.EnqueueRequestsFromMapFunc(MapDNSAnnotationToService),
 		).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: 1,
@@ -67,14 +71,14 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 }
 
 // RelevantServicePredicate returns the predicate to be considered for reconciliation.
-func RelevantServicePredicate(class string) predicate.Predicate {
+func (r *Reconciler) RelevantServicePredicate() predicate.Predicate {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
 			service, ok := e.Object.(*corev1.Service)
 			if !ok || service == nil {
 				return false
 			}
-			return isRelevantService(service, class)
+			return r.isRelevantService(service)
 		},
 
 		UpdateFunc: func(e event.UpdateEvent) bool {
@@ -86,7 +90,7 @@ func RelevantServicePredicate(class string) predicate.Predicate {
 			if !ok || serviceNew == nil {
 				return false
 			}
-			return isRelevantService(serviceOld, class) || isRelevantService(serviceNew, class)
+			return r.isRelevantService(serviceOld) || r.isRelevantService(serviceNew)
 		},
 
 		DeleteFunc: func(e event.DeleteEvent) bool {
@@ -94,11 +98,41 @@ func RelevantServicePredicate(class string) predicate.Predicate {
 			if !ok || service == nil {
 				return false
 			}
-			return isRelevantService(service, class)
+			return r.isRelevantService(service)
 		},
 
 		GenericFunc: func(event.GenericEvent) bool { return false },
 	}
+}
+
+func (r *Reconciler) isRelevantService(svc *corev1.Service) bool {
+	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+		return false
+	}
+
+	annotations := common.GetMergedAnnotation(r.GVK, r.State, svc)
+	if !dns.EquivalentClass(annotations[dns.AnnotationClass], r.Class) {
+		return false
+	}
+	_, ok := annotations[dns.AnnotationDNSNames]
+	return ok
+}
+
+// MapDNSAnnotationToService maps a DNSAnnotation to its referenced Service.
+func MapDNSAnnotationToService(_ context.Context, obj client.Object) []reconcile.Request {
+	annotation, ok := obj.(*dnsv1alpha1.DNSAnnotation)
+	if !ok {
+		return nil
+	}
+	if annotation.Spec.ResourceRef.Kind != "Service" || annotation.Spec.ResourceRef.APIVersion != "v1" {
+		return nil
+	}
+	return []reconcile.Request{{
+		NamespacedName: client.ObjectKey{
+			Namespace: annotation.Spec.ResourceRef.Namespace,
+			Name:      annotation.Spec.ResourceRef.Name,
+		},
+	}}
 }
 
 // MapDNSEntryToService maps a DNSEntry to its owning Service(s).
@@ -170,12 +204,4 @@ func RelevantDNSEntryPredicate(entryOwnerData common.EntryOwnerData) predicate.P
 
 		GenericFunc: func(event.GenericEvent) bool { return false },
 	}
-}
-
-func isRelevantService(svc *corev1.Service, class string) bool {
-	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer || !dns.EquivalentClass(svc.Annotations[dns.AnnotationClass], class) {
-		return false
-	}
-	_, ok := svc.Annotations[dns.AnnotationDNSNames]
-	return ok
 }

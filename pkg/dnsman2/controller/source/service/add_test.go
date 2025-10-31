@@ -12,12 +12,15 @@ import (
 	"github.com/onsi/gomega/types"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	. "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 var _ = Describe("Add", func() {
@@ -31,7 +34,14 @@ var _ = Describe("Add", func() {
 		)
 
 		BeforeEach(func() {
-			servicePredicate = RelevantServicePredicate(dns.DefaultClass)
+			reconciler := &Reconciler{
+				ReconcilerBase: common.ReconcilerBase{
+					Class: dns.DefaultClass,
+					GVK:   schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Service"},
+					State: state.GetState().GetAnnotationState(),
+				},
+			}
+			servicePredicate = reconciler.RelevantServicePredicate()
 
 			svc = &corev1.Service{}
 			svcNew = &corev1.Service{}
@@ -178,6 +188,56 @@ var _ = Describe("Add", func() {
 			}
 			result := MapDNSEntryToService(ctx, entry)
 			Expect(result).To(BeEmpty())
+		})
+	})
+
+	Describe("#MapDNSAnnotationToService", func() {
+		var (
+			ctx        context.Context
+			annotation *dnsv1alpha1.DNSAnnotation
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			annotation = &dnsv1alpha1.DNSAnnotation{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-annotation",
+					Namespace: "test-namespace",
+				},
+				Spec: dnsv1alpha1.DNSAnnotationSpec{
+					ResourceRef: dnsv1alpha1.ResourceReference{
+						Kind:       "Service",
+						APIVersion: "v1",
+						Name:       "test-service",
+						Namespace:  "test-namespace",
+					},
+				},
+			}
+		})
+
+		It("should return nil for non-DNSAnnotation objects", func() {
+			svc := &corev1.Service{}
+			result := MapDNSAnnotationToService(ctx, svc)
+			Expect(result).To(BeNil())
+		})
+
+		It("should return request for Service resource reference", func() {
+			result := MapDNSAnnotationToService(ctx, annotation)
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].NamespacedName.Namespace).To(Equal("test-namespace"))
+			Expect(result[0].NamespacedName.Name).To(Equal("test-service"))
+		})
+
+		It("should return nil for non-Service kind", func() {
+			annotation.Spec.ResourceRef.Kind = "Pod"
+			result := MapDNSAnnotationToService(ctx, annotation)
+			Expect(result).To(BeNil())
+		})
+
+		It("should return nil for wrong API version", func() {
+			annotation.Spec.ResourceRef.APIVersion = "v2"
+			result := MapDNSAnnotationToService(ctx, annotation)
+			Expect(result).To(BeNil())
 		})
 	})
 })

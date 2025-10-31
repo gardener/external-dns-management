@@ -89,6 +89,8 @@ type ControllerConfiguration struct {
 	DNSProvider DNSProviderControllerConfig `json:"dnsProvider"`
 	// DNSEntry is the configuration for the DNSEntry controller.
 	DNSEntry DNSEntryControllerConfig `json:"dnsEntry"`
+	// DNSAnnotation is the configuration for the DNSAnnotation controller.
+	DNSAnnotation DNSAnnotationControllerConfig `json:"dnsAnnotation"`
 	// Source is the common configuration for source controllers.
 	Source SourceControllerConfig `json:"source"`
 }
@@ -145,6 +147,16 @@ type DNSEntryControllerConfig struct {
 	// ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.
 	// +optional
 	ReconciliationDelayAfterUpdate *metav1.Duration `json:"reconciliationDelayAfterUpdate,omitempty"`
+	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
+	// +optional
+	SkipNameValidation *bool `json:"skipNameValidation,omitempty"`
+}
+
+// DNSAnnotationControllerConfig is the configuration for the DNSAnnotation controller.
+type DNSAnnotationControllerConfig struct {
+	// ConcurrentSyncs is the number of concurrent reconciliations for this controller.
+	// +optional
+	ConcurrentSyncs *int `json:"concurrentSyncs,omitempty"`
 	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
 	// +optional
 	SkipNameValidation *bool `json:"skipNameValidation,omitempty"`
