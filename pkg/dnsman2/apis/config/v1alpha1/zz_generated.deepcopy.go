@@ -389,6 +389,11 @@ func (in *SourceControllerConfig) DeepCopyInto(out *SourceControllerConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.DNSProviderReplication != nil {
+		in, out := &in.DNSProviderReplication, &out.DNSProviderReplication
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 

@@ -8,17 +8,17 @@ import (
 	"context"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 
-	dnsprovidercontrolplane "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsprovider/controlplane"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 )
 
-// AddAllFieldIndexesToManager adds all field indices to the given manager.
-func AddAllFieldIndexesToManager(ctx context.Context, mgr manager.Manager) error {
+// AddAllFieldIndexesToCluster adds all field indices to the given manager.
+func AddAllFieldIndexesToCluster(ctx context.Context, cluster cluster.Cluster) error {
 	for _, fn := range []func(context.Context, client.FieldIndexer) error{
-		dnsprovidercontrolplane.AddEntryStatusProvider,
+		dnsprovider.AddEntryStatusProvider,
 	} {
-		if err := fn(ctx, mgr.GetFieldIndexer()); err != nil {
+		if err := fn(ctx, cluster.GetFieldIndexer()); err != nil {
 			return err
 		}
 	}

@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-package controlplane_test
+package dnsprovider_test
 
 import (
 	"testing"

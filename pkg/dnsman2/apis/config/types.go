@@ -170,4 +170,6 @@ type SourceControllerConfig struct {
 	TargetClusterID *string
 	// SourceClusterID is the cluster ID of the source cluster.
 	SourceClusterID *string
+	// DNSProviderReplication indicates whether DNSProvider replication from source to target cluster is enabled.
+	DNSProviderReplication *bool
 }

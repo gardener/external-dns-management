@@ -28,6 +28,8 @@ const (
 
 	// FinalizerCompound is the finalizer for provider resources ("compound" to be backwards-compatible).
 	FinalizerCompound = "dns.gardener.cloud/compound"
+	// FinalizerReplication is the finalizer for provider resources (exact name needed for backward compatibility).
+	FinalizerReplication = "garden.dns.gardener.cloud/dnsprovider-replication"
 
 	// AnnotationIPStack is an optional annotation for DNSEntries to specify the IP stack.
 	// Values are 'ipv4', 'dual-stack', and 'ipv6'. If not specified, 'ipv4' is assumed.
@@ -58,6 +60,9 @@ const (
 	AnnotationRoutingPolicy = AnnotationGroup + "/routing-policy"
 	// AnnotatationResolveTargetsToAddresses is the annotation key for source objects to set the `.spec.resolveTargetsToAddresses` in the DNSEntry.
 	AnnotatationResolveTargetsToAddresses = AnnotationGroup + "/resolve-targets-to-addresses"
+
+	// AnnotationValidationError is an optional annotation for replicated provider secrets to indicate a validation error.
+	AnnotationValidationError = AnnotationGroup + "/validation-error"
 
 	// AnnotationServiceBetaGroup is the group for beta Service annotations.
 	AnnotationServiceBetaGroup = "service.beta.kubernetes.io"
