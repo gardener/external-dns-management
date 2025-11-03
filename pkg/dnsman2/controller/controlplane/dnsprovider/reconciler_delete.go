@@ -35,14 +35,8 @@ func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1al
 		} else if since > 0 && since < 30*time.Minute {
 			res.RequeueAfter = since / 10
 		}
-		if r.state.GetProviderState(client.ObjectKeyFromObject(provider)) == nil {
-			// after controller restart, reconcile to recreate provider state
-			res2, err := r.reconcile(ctx, log, provider)
-			if !res2.IsZero() || err != nil {
-				return res2, err
-			}
-			res2.RequeueAfter = 1 * time.Second
-			return res2, nil
+		if res, err := r.handleEmptyProviderState(ctx, log, provider); !res.IsZero() || err != nil {
+			return res, err
 		}
 		return res, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
 			status.Message = ptr.To(fmt.Sprintf("cannot delete provider, %d DNSEntries still assigned to it", len(entries.Items)))
@@ -54,5 +48,18 @@ func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1al
 		return reconcile.Result{}, fmt.Errorf("error removing finalizer from provider %s: %w", provider.Name, err)
 	}
 
+	return reconcile.Result{}, nil
+}
+
+func (r *Reconciler) handleEmptyProviderState(ctx context.Context, log logr.Logger, provider *v1alpha1.DNSProvider) (reconcile.Result, error) {
+	if r.state.GetProviderState(client.ObjectKeyFromObject(provider)) == nil {
+		// after controller restart, reconcile to recreate provider state
+		res, err := r.reconcile(ctx, log, provider)
+		if !res.IsZero() || err != nil {
+			return res, err
+		}
+		res.RequeueAfter = 1 * time.Second
+		return res, nil
+	}
 	return reconcile.Result{}, nil
 }

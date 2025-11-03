@@ -222,8 +222,7 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 		},
 	}
 	if controlPlaneRestConfig != restConfig {
-		// all
-		managerOptions.Cache.DefaultNamespaces = nil
+		managerOptions.Cache.DefaultNamespaces = nil // all namespaces
 	}
 	mgr, err := manager.New(restConfig, managerOptions)
 	if err != nil {
