@@ -8,7 +8,7 @@ ENSURE_CONTROLLER_MANAGER_LIB_MOD := $(shell go get github.com/gardener/controll
 CONTROLLER_MANAGER_LIB_HACK_DIR   := $(shell go list -m -f "{{.Dir}}" github.com/gardener/controller-manager-library)/hack
 REGISTRY                          := europe-docker.pkg.dev/gardener-project/public
 EXECUTABLE                        := dns-controller-manager
-EXECUTABLE2                       := dns-controller-manager-next-generation
+EXECUTABLE_NG                     := dns-controller-manager-next-generation
 REPO_ROOT                         := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 HACK_DIR                          := $(REPO_ROOT)/hack
 PROJECT                           := github.com/gardener/external-dns-management
@@ -60,7 +60,7 @@ build-local:
 	    -race \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
 	    ./cmd/compound
-	@CGO_ENABLED=1 go build -o $(EXECUTABLE2) \
+	@CGO_ENABLED=1 go build -o $(EXECUTABLE_NG) \
 	    -race \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
 	    ./cmd/nextgen
@@ -71,7 +71,7 @@ release:
 	    -a \
 	    -ldflags "-w -X main.Version=$(VERSION)" \
 	    ./cmd/compound
-	@CGO_ENABLED=0 go build -o $(EXECUTABLE2) \
+	@CGO_ENABLED=0 go build -o $(EXECUTABLE_NG) \
 	    -a \
 	    -ldflags "-w -X main.Version=$(VERSION)" \
 	    ./cmd/nextgen
