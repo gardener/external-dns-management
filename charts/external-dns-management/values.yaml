@@ -372,6 +372,15 @@ configuration:
 
 additionalConfiguration: []
 
+# Enable the next generation DNS controller manager
+nextGeneration:
+  enabled: false
+  # configurations for the next generation DNS controller manager (see DNSManagerConfiguration)
+  config:
+    logFormat: json
+    leaderElection:
+      leaderElect: true
+
 gardener:
   version: ""
   garden:

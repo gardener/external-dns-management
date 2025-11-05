@@ -214,5 +214,5 @@ const (
 	// DefaultLockObjectNamespace is the default lock namespace for leader election.
 	DefaultLockObjectNamespace = "kube-system"
 	// DefaultLockObjectName is the default lock name for leader election.
-	DefaultLockObjectName = "gardener-dns-controller-manager-leader-election"
+	DefaultLockObjectName = "dns-controller-manager-controllers"
 )

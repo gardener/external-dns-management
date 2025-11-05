@@ -30,3 +30,15 @@ WORKDIR /
 USER 65534:65534
 
 ENTRYPOINT ["/dns-controller-manager"]
+
+#############      dns-controller-manager-next-generation     #############
+FROM base AS dns-controller-manager-next-generation
+WORKDIR /
+
+COPY --from=builder /build/dns-controller-manager-next-generation /dns-controller-manager-next-generation
+
+WORKDIR /
+
+USER 65534:65534
+
+ENTRYPOINT ["/dns-controller-manager-next-generation"]

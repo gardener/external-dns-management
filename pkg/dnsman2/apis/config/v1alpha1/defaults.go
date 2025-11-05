@@ -5,6 +5,7 @@
 package v1alpha1
 
 import (
+	"os"
 	"time"
 
 	"github.com/gardener/gardener/pkg/logger"
@@ -74,7 +75,7 @@ func SetDefaults_LeaderElectionConfiguration(obj *componentbaseconfigv1alpha1.Le
 	componentbaseconfigv1alpha1.RecommendedDefaultLeaderElectionConfiguration(obj)
 
 	if obj.ResourceNamespace == "" {
-		obj.ResourceNamespace = DefaultLockObjectNamespace
+		obj.ResourceNamespace = getDefaultNamespace()
 	}
 	if obj.ResourceName == "" {
 		obj.ResourceName = DefaultLockObjectName
@@ -107,7 +108,7 @@ func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 		obj.SyncPeriod = &metav1.Duration{Duration: time.Hour}
 	}
 	if obj.Namespace == "" {
-		obj.Namespace = "default"
+		obj.Namespace = getDefaultNamespace()
 	}
 	if obj.DefaultRateLimits == nil {
 		obj.DefaultRateLimits = &RateLimiterOptions{
@@ -119,4 +120,21 @@ func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 	if obj.DefaultTTL == nil {
 		obj.DefaultTTL = ptr.To[int64](300)
 	}
+}
+
+// SetDefaults_SourceControllerConfig sets defaults for the SourceControllerConfig object.
+func SetDefaults_SourceControllerConfig(obj *SourceControllerConfig) {
+	if obj.ConcurrentSyncs == nil {
+		obj.ConcurrentSyncs = ptr.To(5)
+	}
+	if ptr.Deref(obj.TargetNamespace, "") == "" {
+		obj.TargetNamespace = ptr.To(getDefaultNamespace())
+	}
+}
+
+func getDefaultNamespace() string {
+	if ns := os.Getenv("POD_NAMESPACE"); ns != "" {
+		return ns
+	}
+	return "default"
 }

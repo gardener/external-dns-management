@@ -3,5 +3,5 @@ rules:
     allowedPrefixes:
       - ''
     forbiddenPrefixes:
-      - github.com/gardener/external-dns-management/cmd/dnsman2
+      - github.com/gardener/external-dns-management/cmd/nextgen
       - github.com/gardener/external-dns-management/pkg/dnsman2
