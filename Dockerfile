@@ -35,7 +35,7 @@ ENTRYPOINT ["/dns-controller-manager"]
 FROM base AS dns-controller-manager-next-generation
 WORKDIR /
 
-COPY --from=builder /build/dns-controller-manager-2 /dns-controller-manager-next-generation
+COPY --from=builder /build/dns-controller-manager-next-generation /dns-controller-manager-next-generation
 
 WORKDIR /
 

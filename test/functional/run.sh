@@ -36,7 +36,7 @@ Options:
     --no-dns               do not perform DNS lookups (for faster testing)
     -f <config.yaml>       path to functest configuration file (defaults to $FUNCTEST_CONFIG)
     --no-controller        do not start the dns-controller-manager
-    --dnsman2              use dns-controller-manager-2 instead of dns-controller-manager
+    --nextgen              use dns-controller-manager-next-generation instead of dns-controller-manager
 
 For options of ginkgo run:
     ginkgo -h
@@ -181,10 +181,10 @@ kubectl cluster-info
 
 if [ "$RUN_CONTROLLER" == "true" ]; then
   if [ "$DNSMAN2" == "true" ]; then
-    echo Starting dns-controller-manager-2...
-    kubectl apply -f $ROOTDIR/pkg/apis/dns/crds/ # dnsman2 does not yet deploys the CRDs itself
-    go build -race -o $ROOTDIR/dns-controller-manager-2 $ROOTDIR/cmd/dnsman2
-    $ROOTDIR/dns-controller-manager-2 --config=config-dnsman2.yaml > /tmp/dnsmgr-functional.log 2>&1 &
+    echo Starting dns-controller-manager-next-generation...
+    kubectl apply -f $ROOTDIR/pkg/apis/dns/crds/ # dns-controller-manager-next-generation does not yet deploys the CRDs itself
+    go build -race -o $ROOTDIR/dns-controller-manager-next-generation $ROOTDIR/cmd/dnsman2
+    $ROOTDIR/dns-controller-manager-next-generation --config=config-dnsman2.yaml > /tmp/dnsmgr-functional.log 2>&1 &
   else
     echo Starting dns-controller-manager...
     go build -race -o $ROOTDIR/dns-controller-manager $ROOTDIR/cmd/compound

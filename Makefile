@@ -8,7 +8,7 @@ ENSURE_CONTROLLER_MANAGER_LIB_MOD := $(shell go get github.com/gardener/controll
 CONTROLLER_MANAGER_LIB_HACK_DIR   := $(shell go list -m -f "{{.Dir}}" github.com/gardener/controller-manager-library)/hack
 REGISTRY                          := europe-docker.pkg.dev/gardener-project/public
 EXECUTABLE                        := dns-controller-manager
-EXECUTABLE2                       := dns-controller-manager-2
+EXECUTABLE2                       := dns-controller-manager-next-generation
 REPO_ROOT                         := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 HACK_DIR                          := $(REPO_ROOT)/hack
 PROJECT                           := github.com/gardener/external-dns-management
@@ -63,7 +63,7 @@ build-local:
 	@CGO_ENABLED=1 go build -o $(EXECUTABLE2) \
 	    -race \
 	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
-	    ./cmd/dnsman2
+	    ./cmd/nextgen
 
 .PHONY: release
 release:
@@ -74,7 +74,7 @@ release:
 	@CGO_ENABLED=0 go build -o $(EXECUTABLE2) \
 	    -a \
 	    -ldflags "-w -X main.Version=$(VERSION)" \
-	    ./cmd/dnsman2
+	    ./cmd/nextgen
 
 .PHONY: unittests
 unittests: $(GINKGO)

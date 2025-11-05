@@ -49,7 +49,7 @@ import (
 )
 
 // Name is the name of the dns-controller-manager.
-const Name = "dns-controller-manager"
+const Name = "dns-controller-manager-next-generation"
 
 var configDecoder runtime.Decoder
 
@@ -68,10 +68,9 @@ func init() {
 func NewCommand() *cobra.Command {
 	o := newOptions()
 	cmd := &cobra.Command{
-		Use:     Name,
-		Aliases: []string{"cm"},
-		Short:   "Launch the " + Name,
-		Args:    cobra.NoArgs,
+		Use:   Name,
+		Short: "Launch the " + Name,
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			log, err := cmdutils.InitRun(cmd, o, Name)
 			if err != nil {

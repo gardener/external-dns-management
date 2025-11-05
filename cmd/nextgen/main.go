@@ -11,7 +11,7 @@ import (
 	"github.com/gardener/gardener/cmd/utils"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 
-	"github.com/gardener/external-dns-management/cmd/dnsman2/app"
+	"github.com/gardener/external-dns-management/cmd/nextgen/app"
 )
 
 func main() {
