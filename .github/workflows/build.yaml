@@ -79,6 +79,8 @@ jobs:
           set -euo pipefail
           mkdir /tmp/blobs.d
 
+          make generate
+
           .ci/verify |& tee /tmp/blobs.d/verify-log.txt
 
           # verify calls `make sast-report`, which generates `gosec-report.sarif`
