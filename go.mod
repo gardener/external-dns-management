@@ -22,7 +22,7 @@ require (
 	github.com/gardener/controller-manager-library v0.2.1-0.20251016104111-a9eedfad962e
 	github.com/gardener/gardener v1.131.2
 	github.com/go-logr/logr v1.4.3
-	github.com/go-openapi/runtime v0.29.1
+	github.com/go-openapi/runtime v0.29.2
 	github.com/go-openapi/strfmt v0.25.0
 	github.com/gophercloud/gophercloud/v2 v2.8.0
 	github.com/gophercloud/utils/v2 v2.0.0-20250924123217-7e7b84132d8a
