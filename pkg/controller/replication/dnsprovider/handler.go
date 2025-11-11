@@ -413,7 +413,7 @@ func assureDNSSelection(mod *utils.ModificationState, t **api.DNSSelection, s *a
 		}
 	} else {
 		if *t == nil || !reflect.DeepEqual(*t, s) {
-			**t = *s
+			*t = s.DeepCopy()
 			mod.Modify(true)
 		}
 	}

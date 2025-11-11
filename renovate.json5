@@ -44,7 +44,6 @@
     "sigs.k8s.io/yaml",
     "cel.dev/expr",
     "dario.cat/mergo",
-    "github.com/AdaLogics/go-fuzz-headers",
     "github.com/BurntSushi/toml",
     "github.com/Masterminds/goutils",
     "github.com/Masterminds/semver/v3",
