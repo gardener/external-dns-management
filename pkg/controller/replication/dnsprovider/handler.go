@@ -397,6 +397,7 @@ func (this *sourceReconciler) updateSourceStatus(source *api.DNSProvider, source
 		mod := utils.ModificationState{}
 		mod.AssureStringPtrPtr(&s.Status.Message, &sourceMsg)
 		mod.AssureStringValue(&s.Status.State, api.STATE_ERROR)
+		mod.AssureInt64Value(&s.Status.ObservedGeneration, source.Generation)
 		return mod.IsModified(), nil
 	})
 	if err != nil {

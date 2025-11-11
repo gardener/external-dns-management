@@ -269,7 +269,20 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 		By("good case for provider 1")
 		Eventually(func(g Gomega) {
 			g.Expect(tc1.client.Get(ctx, client.ObjectKeyFromObject(provider), provider)).To(Succeed())
+			g.Expect(provider.Status.ObservedGeneration).To(Equal(provider.Generation))
 			g.Expect(provider.Status.State).To(Equal("Ready"))
+			g.Expect(provider.Status.Message).To(PointTo(Equal("remote: provider operational")))
+		}).To(Succeed())
+
+		By("domain includes for provider 1")
+		newIncludes := []string{"foo." + provider.Status.Domains.Included[0]}
+		provider.Spec.Domains = &v1alpha1.DNSSelection{Include: newIncludes}
+		Expect(tc1.client.Update(ctx, provider)).To(Succeed())
+		Eventually(func(g Gomega) {
+			g.Expect(tc1.client.Get(ctx, client.ObjectKeyFromObject(provider), provider)).To(Succeed())
+			g.Expect(provider.Status.ObservedGeneration).To(Equal(provider.Generation))
+			g.Expect(provider.Status.State).To(Equal("Ready"))
+			g.Expect(provider.Status.Domains.Included).To(Equal(newIncludes))
 			g.Expect(provider.Status.Message).To(PointTo(Equal("remote: provider operational")))
 		}).To(Succeed())
 
