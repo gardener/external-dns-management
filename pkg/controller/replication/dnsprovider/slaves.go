@@ -77,6 +77,7 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 			if err == nil {
 				ownerStatus := utils.DNSProvider(o).Status()
 				mod := &utils2.ModificationState{}
+				mod.AssureInt64Value(&ownerStatus.ObservedGeneration, o.GetGeneration())
 				mod.AssureStringValue(&ownerStatus.State, status.State)
 				assureDNSSelectionStatus(mod, &ownerStatus.Domains, status.Domains)
 				assureDNSSelectionStatus(mod, &ownerStatus.Zones, status.Zones)
