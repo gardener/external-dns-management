@@ -61,6 +61,8 @@ spec:
           capabilities:
             drop:
             - ALL
+          seccompProfile:
+            type: RuntimeDefault
           privileged: false
           readOnlyRootFilesystem: true
 {{- if not .Values.nextGeneration.enabled }}
