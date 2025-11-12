@@ -34,12 +34,15 @@ jobs:
       matrix:
         args:
           - name: dns-controller-manager
+            target: dns-controller-manager
             oci-repository: dns-controller-manager
           - name: dns-controller-manager-next-generation
+            target: dns-controller-manager-next-generation
             oci-repository: dns-controller-manager-next-generation
     with:
       name: ${{ matrix.args.name }}
       version: ${{ needs.prepare.outputs.version }}
+      target: ${{ matrix.args.target }}
       oci-registry: ${{ needs.prepare.outputs.oci-registry }}
       oci-repository: ${{ matrix.args.oci-repository }}
       oci-platforms: linux/amd64,linux/arm64
