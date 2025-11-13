@@ -123,6 +123,11 @@ func (r *Reconciler) createOrUpdateTargetProvider(
 		if targetProvider.Annotations == nil {
 			targetProvider.Annotations = make(map[string]string)
 		}
+		if r.Config.Controllers.Source.TargetLabels != nil {
+			for key, value := range r.Config.Controllers.Source.TargetLabels {
+				utils.SetLabel(targetProvider, key, value)
+			}
+		}
 		r.buildOwnerData(sourceProvider).AddOwner(targetProvider, ptr.Deref(r.Config.Controllers.Source.TargetClusterID, ""))
 		return nil
 	})

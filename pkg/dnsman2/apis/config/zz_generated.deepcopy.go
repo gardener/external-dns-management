@@ -379,6 +379,13 @@ func (in *SourceControllerConfig) DeepCopyInto(out *SourceControllerConfig) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.TargetLabels != nil {
+		in, out := &in.TargetLabels, &out.TargetLabels
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.TargetClusterID != nil {
 		in, out := &in.TargetClusterID, &out.TargetClusterID
 		*out = new(string)

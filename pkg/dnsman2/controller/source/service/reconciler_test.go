@@ -215,9 +215,14 @@ var _ = Describe("Reconciler", func() {
 		It("should create DNSEntry object for service of type load balancer on different clusters", func() {
 			reconciler.Config.TargetClusterID = ptr.To("target-cluster-id")
 			reconciler.Config.SourceClusterID = ptr.To("source-cluster-id")
-			test(&dnsv1alpha1.DNSEntrySpec{
+			reconciler.Config.TargetLabels = map[string]string{
+				"gardener.cloud/shoot-id": "source-cluster-id",
+			}
+
+			entries := test(&dnsv1alpha1.DNSEntrySpec{
 				DNSName: "foo.example.com",
 			})
+			Expect(entries[0].Labels["gardener.cloud/shoot-id"]).To(Equal("source-cluster-id"))
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ")
 		})
 

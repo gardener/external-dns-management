@@ -166,6 +166,8 @@ type SourceControllerConfig struct {
 	TargetNamespace *string
 	// TargetNamePrefix is the prefix for target DNSEntries object names.
 	TargetNamePrefix *string
+	// TargetLabels are the labels to be added to target DNSEntries and DNSProviders.
+	TargetLabels map[string]string
 	// TargetClusterID is the cluster ID of the target cluster.
 	TargetClusterID *string
 	// SourceClusterID is the cluster ID of the source cluster.

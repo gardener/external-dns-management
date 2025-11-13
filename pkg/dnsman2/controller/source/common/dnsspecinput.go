@@ -137,6 +137,11 @@ func modifyEntryFor(entry *v1alpha1.DNSEntry, cfg config.SourceControllerConfig,
 	if cfg.TargetClass != nil && !dns.IsDefaultClass(*cfg.TargetClass) {
 		utils.SetAnnotation(entry, dns.AnnotationClass, *cfg.TargetClass)
 	}
+	if cfg.TargetLabels != nil {
+		for k, v := range cfg.TargetLabels {
+			utils.SetLabel(entry, k, v)
+		}
+	}
 	entry.Spec.DNSName = name
 	entry.Spec.Targets = src.Targets.ToSlice()
 	entry.Spec.Text = src.Text.ToSlice()
