@@ -355,6 +355,9 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *d
 	this.DeleteLookupJob(e.ObjectName())
 	if e.ignoredForDeletion {
 		this.smartInfof(logger, "ignoredForDeletion - no cleanup in backend")
+		if this.dnsnames[e.ZonedDNSName()] == e {
+			delete(this.dnsnames, e.ZonedDNSName())
+		}
 		return
 	}
 	if this.dnsnames[e.ZonedDNSName()] == e {

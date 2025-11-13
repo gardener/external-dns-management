@@ -394,4 +394,47 @@ var _ = Describe("EntryLivecycle", func() {
 		err = testEnv.DeleteProviderAndSecret(pr)
 		Ω(err).ShouldNot(HaveOccurred())
 	})
+
+	It("does allow creation of new entry after deleting an ignored entry", func() {
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		e, err := testEnv.CreateEntry(0, domain)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		checkProvider(pr)
+
+		checkEntry(e, pr)
+
+		_, err = testEnv.UpdateEntry(e, func(entry *v1alpha1.DNSEntry) error {
+			if entry.Annotations == nil {
+				entry.Annotations = map[string]string{}
+			}
+			entry.Annotations["dns.gardener.cloud/ignore"] = "full"
+			return nil
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = testEnv.AwaitEntryState(e.GetName(), "Ignored")
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		Ω(testEnv.MockInMemoryHasEntry(e)).ShouldNot(HaveOccurred())
+
+		e2, err := testEnv.CreateEntryGeneric(100, func(e2 *v1alpha1.DNSEntry) {
+			e2.Spec = e.Data().(*v1alpha1.DNSEntry).Spec
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+
+		checkEntry(e2, pr)
+
+		err = testEnv.DeleteEntryAndWait(e2)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		Ω(testEnv.MockInMemoryHasNotEntry(e2)).ShouldNot(HaveOccurred())
+	})
 })
