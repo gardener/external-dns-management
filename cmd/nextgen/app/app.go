@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/rest"
 	"k8s.io/component-base/version/verflag"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -161,8 +162,17 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 	if err != nil {
 		return err
 	}
-	controlPlaneRestConfig := restConfig
-	if cfg.ControlPlaneClientConnection.Kubeconfig != "" {
+	var controlPlaneRestConfig *rest.Config
+	switch cfg.ControlPlaneClientConnection.Kubeconfig {
+	case "":
+		log.Info("Using control plane same as main kubeconfig")
+	case "IN-CLUSTER":
+		log.Info("Using in-cluster configuration for control plane")
+		controlPlaneRestConfig, err = rest.InClusterConfig()
+		if err != nil {
+			return err
+		}
+	default:
 		log.Info("Using control plane kubeconfig", "kubeconfig", cfg.ControlPlaneClientConnection.Kubeconfig)
 		controlPlaneRestConfig, err = kubernetes.RESTConfigFromClientConnectionConfiguration(&cfg.ControlPlaneClientConnection.ClientConnectionConfiguration, nil, kubernetes.AuthTokenFile)
 		if err != nil {
