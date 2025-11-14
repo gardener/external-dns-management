@@ -199,6 +199,8 @@ type SourceControllerConfig struct {
 	// TargetNamePrefix is the prefix for target DNSEntries object names.
 	// +optional
 	TargetNamePrefix *string `json:"targetNamePrefix,omitempty"`
+	// TargetLabels are the labels to be added to target DNSEntries and DNSProviders.
+	TargetLabels map[string]string `json:"targetLabels,omitempty"`
 	// TargetClusterID is the cluster ID of the target cluster.
 	// +optional
 	TargetClusterID *string `json:"targetClusterID,omitempty"`

@@ -239,6 +239,9 @@ var _ = Describe("Reconciler", func() {
 		It("should create target DNSProvider object in different cluster", func() {
 			reconciler.Config.Controllers.Source.TargetClusterID = ptr.To("target-cluster-id")
 			reconciler.Config.Controllers.Source.SourceClusterID = ptr.To("source-cluster-id")
+			reconciler.Config.Controllers.Source.TargetLabels = map[string]string{
+				"gardener.cloud/shoot-id": "source-cluster-id",
+			}
 			actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
 				Type: mock.ProviderType,
 				SecretRef: &corev1.SecretReference{
@@ -247,6 +250,7 @@ var _ = Describe("Reconciler", func() {
 			})
 			checkTargetSecret(actualTarget, sourceSecret.Data)
 			checkSourceProviderState("")
+			Expect(actualTarget.Labels["gardener.cloud/shoot-id"]).To(Equal("source-cluster-id"))
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
 
 			patchTargetStateToReadyAndReconcileSource(actualTarget)
