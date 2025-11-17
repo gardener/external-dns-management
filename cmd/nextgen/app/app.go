@@ -165,7 +165,7 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 	var controlPlaneRestConfig *rest.Config
 	switch cfg.ControlPlaneClientConnection.Kubeconfig {
 	case "":
-		log.Info("Using control plane same as main kubeconfig")
+		log.Info("Using the main kubeconfig for the control plane as well")
 	case "IN-CLUSTER":
 		log.Info("Using in-cluster configuration for control plane")
 		controlPlaneRestConfig, err = rest.InClusterConfig()
