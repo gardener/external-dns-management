@@ -24,7 +24,7 @@ require (
 	github.com/go-logr/logr v1.4.3
 	github.com/go-openapi/runtime v0.29.2
 	github.com/go-openapi/strfmt v0.25.0
-	github.com/gophercloud/gophercloud/v2 v2.8.0
+	github.com/gophercloud/gophercloud/v2 v2.9.0
 	github.com/gophercloud/utils/v2 v2.0.0-20251103115625-7dba497d90f8
 	github.com/infobloxopen/infoblox-go-client/v2 v2.11.0
 	github.com/jellydator/ttlcache/v3 v3.4.0
