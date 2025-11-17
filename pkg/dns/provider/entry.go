@@ -410,11 +410,19 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		// revoke assignment to actual type
 		oldType := utils.StringValue(this.status.ProviderType)
 		hello.Infof(logger, "revoke assignment to %s", oldType)
-		this.status.Provider = nil
-		this.status.ProviderType = nil
-		this.status.Zone = nil
-		this.status.DNSName = nil
-		err := this.updateStatus(logger, "", "not valid for known provider anymore -> releasing provider type %s", oldType)
+		var err error
+		if (this.status.State == api.STATE_READY || this.status.State == api.STATE_STALE) &&
+			this.status.Zone != nil &&
+			ptr.Deref(this.status.DNSName, "") == this.DNSName() {
+			this.status.State = api.STATE_STALE
+			err = this.updateStatus(logger, api.STATE_STALE, "not valid for known provider anymore")
+		} else {
+			this.status.Provider = nil
+			this.status.ProviderType = nil
+			this.status.Zone = nil
+			this.status.DNSName = nil
+			err = this.updateStatus(logger, "", "not valid for known provider anymore -> releasing provider type %s", oldType)
+		}
 		if err != nil {
 			return reconcile.Delay(logger, err)
 		}
