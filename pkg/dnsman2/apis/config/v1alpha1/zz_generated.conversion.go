@@ -493,6 +493,7 @@ func Convert_config_ServerConfiguration_To_v1alpha1_ServerConfiguration(in *conf
 
 func autoConvert_v1alpha1_SourceControllerConfig_To_config_SourceControllerConfig(in *SourceControllerConfig, out *config.SourceControllerConfig, s conversion.Scope) error {
 	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
+	out.SourceClass = (*string)(unsafe.Pointer(in.SourceClass))
 	out.TargetClass = (*string)(unsafe.Pointer(in.TargetClass))
 	out.TargetNamespace = (*string)(unsafe.Pointer(in.TargetNamespace))
 	out.TargetNamePrefix = (*string)(unsafe.Pointer(in.TargetNamePrefix))
@@ -510,6 +511,7 @@ func Convert_v1alpha1_SourceControllerConfig_To_config_SourceControllerConfig(in
 
 func autoConvert_config_SourceControllerConfig_To_v1alpha1_SourceControllerConfig(in *config.SourceControllerConfig, out *SourceControllerConfig, s conversion.Scope) error {
 	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
+	out.SourceClass = (*string)(unsafe.Pointer(in.SourceClass))
 	out.TargetClass = (*string)(unsafe.Pointer(in.TargetClass))
 	out.TargetNamespace = (*string)(unsafe.Pointer(in.TargetNamespace))
 	out.TargetNamePrefix = (*string)(unsafe.Pointer(in.TargetNamePrefix))

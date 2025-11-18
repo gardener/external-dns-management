@@ -190,6 +190,9 @@ type SourceControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent reconciliations for source controllers.
 	// +optional
 	ConcurrentSyncs *int `json:"concurrentSyncs,omitempty"`
+	// SourceClass is the class value for sources.
+	// +optional
+	SourceClass *string `json:"sourceClass,omitempty"`
 	// TargetClass is the class value for target DNSEntries.
 	// +optional
 	TargetClass *string `json:"targetClass,omitempty"`
