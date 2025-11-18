@@ -364,6 +364,11 @@ func (in *SourceControllerConfig) DeepCopyInto(out *SourceControllerConfig) {
 		*out = new(int)
 		**out = **in
 	}
+	if in.SourceClass != nil {
+		in, out := &in.SourceClass, &out.SourceClass
+		*out = new(string)
+		**out = **in
+	}
 	if in.TargetClass != nil {
 		in, out := &in.TargetClass, &out.TargetClass
 		*out = new(string)

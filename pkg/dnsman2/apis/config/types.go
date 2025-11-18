@@ -160,6 +160,8 @@ type AdvancedOptions struct {
 type SourceControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent reconciliations for source controllers.
 	ConcurrentSyncs *int
+	// SourceClass is the class value for sources.
+	SourceClass *string
 	// TargetClass is the class value for target DNSEntries.
 	TargetClass *string
 	// TargetNamespace is the namespace for target DNSEntries.
