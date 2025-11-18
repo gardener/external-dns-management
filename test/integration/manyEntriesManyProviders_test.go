@@ -56,7 +56,7 @@ var _ = Describe("ManyEntriesManyProviders", func() {
 		}
 
 		for _, entry := range entries[half:] {
-			err := testEnv.AwaitEntryState(entry.GetName(), "Error", "")
+			err := testEnv.AwaitEntryStale(entry.GetName())
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = testEnv.AwaitFinalizers(entry)

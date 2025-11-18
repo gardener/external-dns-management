@@ -42,7 +42,7 @@ var _ = Describe("ManyEntriesOneProvider", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 
 		for _, entry := range entries {
-			err = testEnv.AwaitEntryState(entry.GetName(), "Error", "")
+			err = testEnv.AwaitEntryStale(entry.GetName())
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = testEnv.AwaitFinalizers(entry)
