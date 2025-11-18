@@ -56,19 +56,20 @@ var _ = Describe("EntryLivecycle", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(UnwrapEntry(e).Status.Targets).To(Equal([]string{newTarget}))
 
-		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).ShouldNot(HaveOccurred())
+		By("check stale state after provider deletion and recreation", func() {
+			err = testEnv.DeleteProviderAndSecret(pr)
+			Ω(err).ShouldNot(HaveOccurred())
 
-		err = testEnv.AwaitEntryState(e.GetName(), "Error", "")
-		Ω(err).ShouldNot(HaveOccurred())
+			err = testEnv.AwaitEntryState(e.GetName(), "Stale")
+			Ω(err).ShouldNot(HaveOccurred())
 
-		time.Sleep(dnsDelay)
+			pr, domain, _, err = testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+			Ω(err).ShouldNot(HaveOccurred())
 
-		err = testEnv.AwaitEntryState(e.GetName(), "Error")
-		Ω(err).ShouldNot(HaveOccurred())
+			checkProvider(pr)
 
-		err = testEnv.AwaitFinalizers(e)
-		Ω(err).ShouldNot(HaveOccurred())
+			checkEntry(e, pr)
+		})
 
 		err = testEnv.DeleteEntryAndWait(e)
 		Ω(err).ShouldNot(HaveOccurred())

@@ -59,7 +59,7 @@ var _ = Describe("PrivateZones", func() {
 			Ω(err).ShouldNot(HaveOccurred())
 
 			e := entries[i]
-			err = te.AwaitEntryError(e.GetName())
+			err = te.AwaitEntryStale(e.GetName())
 			Ω(err).ShouldNot(HaveOccurred())
 		}
 

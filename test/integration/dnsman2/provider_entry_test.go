@@ -677,6 +677,79 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		}
 	})
 
+	It("marks an entry as stale if provider changes", func() {
+		Expect(testClient.Create(ctx, e1)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, e1)).To(Succeed())
+		})
+		checkEntry(e1)
+
+		By("change the provider to make the entry stale")
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).To(Succeed())
+		provider1.Spec.Domains = &v1alpha1.DNSSelection{Include: []string{"restricted.first.example.com"}}
+		Expect(testClient.Update(ctx, provider1)).To(Succeed())
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).To(Succeed())
+			g.Expect(provider1.Status.ObservedGeneration).To(Equal(provider1.Generation))
+			g.Expect(provider1.Status.State).To(Equal("Ready"))
+		}).Should(Succeed())
+
+		By("check that the entry is now stale")
+		// entry should be stale as its domain is not covered by the provider anymore
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(e1.Status.State).To(Equal("Stale"))
+		}).Should(Succeed())
+
+		checkSingleEntryInMockDatabase(e1)
+
+		By("revert the provider to make the entry ready again")
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).To(Succeed())
+		provider1.Spec.Domains = nil
+		Expect(testClient.Update(ctx, provider1)).To(Succeed())
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), provider1)).To(Succeed())
+			g.Expect(provider1.Status.ObservedGeneration).To(Equal(provider1.Generation))
+			g.Expect(provider1.Status.State).To(Equal("Ready"))
+		}).Should(Succeed())
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(e1.Status.State).To(Equal("Ready"))
+		}).Should(Succeed())
+	})
+
+	It("marks an entry as stale if changed DNS name is not covered by an existing provider", func() {
+		Expect(testClient.Create(ctx, e1)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, e1)).To(Succeed())
+		})
+		checkEntry(e1)
+
+		checkSingleEntryInMockDatabase(e1)
+		e1org := e1.DeepCopy()
+
+		By("change the dnsname to make the entry stale")
+		e1.Spec.DNSName = e1.Spec.DNSName + ".other"
+		Expect(testClient.Update(ctx, e1)).To(Succeed())
+
+		By("check that the entry is now stale")
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
+			g.Expect(e1.Status.State).To(Equal("Stale"))
+		}).Should(Succeed())
+
+		checkSingleEntryInMockDatabase(e1org)
+
+		By("revert the change")
+		e1.Spec.DNSName = e1org.Spec.DNSName
+		Expect(testClient.Update(ctx, e1)).To(Succeed())
+		checkEntry(e1)
+	})
+
 	It("should not delete a stale entry", func() {
 		Expect(testClient.Create(ctx, e1)).To(Succeed())
 		checkEntry(e1)
@@ -698,6 +771,8 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
 			g.Expect(e1.Status.State).To(Equal("Stale"))
 		}).Should(Succeed())
+
+		checkSingleEntryInMockDatabase(e1)
 
 		By("Try to delete entry and ensure it is not gone")
 		Expect(testClient.Delete(ctx, e1)).To(Succeed())
