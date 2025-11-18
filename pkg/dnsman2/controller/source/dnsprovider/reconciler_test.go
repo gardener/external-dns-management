@@ -57,16 +57,16 @@ var _ = Describe("Reconciler", func() {
 			ExpectWithOffset(offset+1, err).NotTo(HaveOccurred())
 
 			list := dnsv1alpha1.DNSProviderList{}
-			ExpectWithOffset(offset+1, reconciler.Config.Controllers.Source.TargetNamespace).NotTo(BeNil(), "target namespace must not be nil (test setup error)")
-			ExpectWithOffset(offset+1, fakeClientCtrl.List(ctx, &list, client.InNamespace(*reconciler.Config.Controllers.Source.TargetNamespace))).To(Succeed())
+			ExpectWithOffset(offset+1, reconciler.Config.TargetNamespace).NotTo(BeNil(), "target namespace must not be nil (test setup error)")
+			ExpectWithOffset(offset+1, fakeClientCtrl.List(ctx, &list, client.InNamespace(*reconciler.Config.TargetNamespace))).To(Succeed())
 			var items []*dnsv1alpha1.DNSProvider
 			sourceProviderData := common.OwnerData{
 				Object:    sourceProvider,
 				GVK:       reconciler.GVK,
-				ClusterID: ptr.Deref(reconciler.Config.Controllers.Source.SourceClusterID, ""),
+				ClusterID: ptr.Deref(reconciler.Config.SourceClusterID, ""),
 			}
 			for _, item := range list.Items {
-				if sourceProviderData.HasOwner(&item, ptr.Deref(reconciler.Config.Controllers.Source.TargetClusterID, "")) {
+				if sourceProviderData.HasOwner(&item, ptr.Deref(reconciler.Config.TargetClusterID, "")) {
 					h := item
 					items = append(items, &h)
 				}
@@ -79,20 +79,20 @@ var _ = Describe("Reconciler", func() {
 
 			actualTarget := items[0]
 			ExpectWithOffset(offset+1, actualTarget).NotTo(BeNil(), "DNS provider not found")
-			ExpectWithOffset(offset+1, actualTarget.Namespace).To(Equal(*reconciler.Config.Controllers.Source.TargetNamespace))
+			ExpectWithOffset(offset+1, actualTarget.Namespace).To(Equal(*reconciler.Config.TargetNamespace))
 			ExpectWithOffset(offset+1, actualTarget.Name).To(ContainSubstring("foo-"))
 
 			// check owner references / annotations
-			sameClusterID := reflect.DeepEqual(reconciler.Config.Controllers.Source.SourceClusterID, reconciler.Config.Controllers.Source.TargetClusterID)
+			sameClusterID := reflect.DeepEqual(reconciler.Config.SourceClusterID, reconciler.Config.TargetClusterID)
 			switch {
-			case sameClusterID && *reconciler.Config.Controllers.Source.TargetNamespace == sourceProvider.Namespace:
+			case sameClusterID && *reconciler.Config.TargetNamespace == sourceProvider.Namespace:
 				Fail("this case should not happen, because owner references are not used in this case")
-			case sameClusterID && *reconciler.Config.Controllers.Source.TargetNamespace != sourceProvider.Namespace:
+			case sameClusterID && *reconciler.Config.TargetNamespace != sourceProvider.Namespace:
 				ExpectWithOffset(offset+1, actualTarget.OwnerReferences).To(BeEmpty())
 				ExpectWithOffset(offset+1, actualTarget.Annotations["resources.gardener.cloud/owners"]).To(Equal(fmt.Sprintf("dns.gardener.cloud/DNSProvider/%s/%s", sourceProvider.Namespace, sourceProvider.Name)))
 			default:
 				ExpectWithOffset(offset+1, actualTarget.OwnerReferences).To(BeEmpty())
-				ExpectWithOffset(offset+1, actualTarget.Annotations["resources.gardener.cloud/owners"]).To(Equal(fmt.Sprintf("%s:dns.gardener.cloud/DNSProvider/%s/%s", ptr.Deref(reconciler.Config.Controllers.Source.SourceClusterID, ""), sourceProvider.Namespace, sourceProvider.Name)))
+				ExpectWithOffset(offset+1, actualTarget.Annotations["resources.gardener.cloud/owners"]).To(Equal(fmt.Sprintf("%s:dns.gardener.cloud/DNSProvider/%s/%s", ptr.Deref(reconciler.Config.SourceClusterID, ""), sourceProvider.Namespace, sourceProvider.Name)))
 			}
 
 			actualSpecClone := actualTarget.Spec.DeepCopy()
@@ -113,7 +113,7 @@ var _ = Describe("Reconciler", func() {
 		}
 
 		checkTargetSecret = func(actualTarget *dnsv1alpha1.DNSProvider, expectedSecretData map[string][]byte) {
-			ExpectWithOffset(1, actualTarget.Spec.SecretRef.Namespace).To(Equal(*reconciler.Config.Controllers.Source.TargetNamespace))
+			ExpectWithOffset(1, actualTarget.Spec.SecretRef.Namespace).To(Equal(*reconciler.Config.TargetNamespace))
 			actualTargetSecret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      actualTarget.Spec.SecretRef.Name,
@@ -174,23 +174,21 @@ var _ = Describe("Reconciler", func() {
 	BeforeEach(func() {
 		fakeClientSrc = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).WithStatusSubresource(&dnsv1alpha1.DNSProvider{}).Build()
 		fakeClientCtrl = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).WithStatusSubresource(&dnsv1alpha1.DNSProvider{}).Build()
-		reconciler = &Reconciler{}
-		reconciler.Clock = clock.RealClock{}
-		reconciler.Client = fakeClientSrc
-		reconciler.ControlPlaneClient = fakeClientCtrl
-		reconciler.Config = config.DNSManagerConfiguration{
-			Controllers: config.ControllerConfiguration{
-				Source: config.SourceControllerConfig{
-					TargetNamespace: ptr.To(defaultTargetNamespace),
-				},
-			},
-		}
-		reconciler.GVK = dnsv1alpha1.SchemeGroupVersion.WithKind(dnsv1alpha1.DNSProviderKind)
-		registry := provider.NewDNSHandlerRegistry(reconciler.Clock)
-		mock.RegisterTo(registry)
-		reconciler.DNSHandlerFactory = registry
 		fakeRecorder = record.NewFakeRecorder(32)
-		reconciler.Recorder = fakeRecorder
+		clock := clock.RealClock{}
+		registry := provider.NewDNSHandlerRegistry(clock)
+		mock.RegisterTo(registry)
+		reconciler = &Reconciler{
+			Clock:              clock,
+			Client:             fakeClientSrc,
+			ControlPlaneClient: fakeClientCtrl,
+			Config: config.SourceControllerConfig{
+				TargetNamespace: ptr.To(defaultTargetNamespace),
+			},
+			GVK:               dnsv1alpha1.SchemeGroupVersion.WithKind(dnsv1alpha1.DNSProviderKind),
+			DNSHandlerFactory: registry,
+			Recorder:          fakeRecorder,
+		}
 		sourceSecret = &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo-secret",
@@ -237,11 +235,13 @@ var _ = Describe("Reconciler", func() {
 		})
 
 		It("should create target DNSProvider object in different cluster", func() {
-			reconciler.Config.Controllers.Source.TargetClusterID = ptr.To("target-cluster-id")
-			reconciler.Config.Controllers.Source.SourceClusterID = ptr.To("source-cluster-id")
-			reconciler.Config.Controllers.Source.TargetLabels = map[string]string{
+			reconciler.Config.TargetClusterID = ptr.To("target-cluster-id")
+			reconciler.Config.SourceClusterID = ptr.To("source-cluster-id")
+			reconciler.Config.TargetLabels = map[string]string{
 				"gardener.cloud/shoot-id": "source-cluster-id",
 			}
+			reconciler.TargetClass = "target-dns-class"
+			reconciler.Config.TargetClass = ptr.To(reconciler.TargetClass)
 			actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
 				Type: mock.ProviderType,
 				SecretRef: &corev1.SecretReference{
@@ -251,6 +251,7 @@ var _ = Describe("Reconciler", func() {
 			checkTargetSecret(actualTarget, sourceSecret.Data)
 			checkSourceProviderState("")
 			Expect(actualTarget.Labels["gardener.cloud/shoot-id"]).To(Equal("source-cluster-id"))
+			Expect(actualTarget.Annotations["dns.gardener.cloud/class"]).To(Equal("target-dns-class"))
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
 
 			patchTargetStateToReadyAndReconcileSource(actualTarget)

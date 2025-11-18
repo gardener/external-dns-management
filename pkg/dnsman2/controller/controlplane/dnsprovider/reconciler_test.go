@@ -55,13 +55,9 @@ var _ = Describe("Reconcile", func() {
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSProvider{}).Build()
 		reconciler = &Reconciler{
 			Client: fakeClient,
-			Config: config.DNSManagerConfiguration{
-				Controllers: config.ControllerConfiguration{
-					DNSProvider: config.DNSProviderControllerConfig{
-						Namespace:  "test",
-						DefaultTTL: ptr.To[int64](300),
-					},
-				},
+			Config: config.DNSProviderControllerConfig{
+				Namespace:  "test",
+				DefaultTTL: ptr.To[int64](300),
 			},
 			Clock:             clock,
 			DNSHandlerFactory: factory,

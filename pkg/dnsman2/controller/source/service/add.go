@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
@@ -43,11 +44,12 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		Named(ControllerName).
 		For(
 			&corev1.Service{},
-			builder.WithPredicates(r.RelevantServicePredicate()),
+			builder.WithPredicates(r.RelevantServicePredicate(), dnsman2controller.DNSClassPredicate(r.SourceClass)),
 		).
 		Watches(
 			&dnsv1alpha1.DNSAnnotation{},
 			handler.EnqueueRequestsFromMapFunc(MapDNSAnnotationToService),
+			builder.WithPredicates(dnsman2controller.DNSClassPredicate(r.SourceClass)),
 		).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: 1,
@@ -64,7 +66,9 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		controlPlaneCluster.GetCache(),
 		&dnsv1alpha1.DNSEntry{},
 		handler.EnqueueRequestsFromMapFunc(MapDNSEntryToService),
-		RelevantDNSEntryPredicate(entryOwnerData))); err != nil {
+		RelevantDNSEntryPredicate(entryOwnerData),
+		dnsman2controller.DNSClassPredicate(r.TargetClass),
+	)); err != nil {
 		return err
 	}
 	return nil
@@ -111,7 +115,7 @@ func (r *Reconciler) isRelevantService(svc *corev1.Service) bool {
 	}
 
 	annotations := common.GetMergedAnnotation(r.GVK, r.State, svc)
-	if !dns.EquivalentClass(annotations[dns.AnnotationClass], r.Class) {
+	if !dns.EquivalentClass(annotations[dns.AnnotationClass], r.SourceClass) {
 		return false
 	}
 	_, ok := annotations[dns.AnnotationDNSNames]

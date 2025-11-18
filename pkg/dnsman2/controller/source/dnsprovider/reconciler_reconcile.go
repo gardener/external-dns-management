@@ -64,7 +64,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, sourceProvi
 }
 
 func (r *Reconciler) generateNameTemplate(sourceProvider *v1alpha1.DNSProvider) string {
-	return strings.ToLower(fmt.Sprintf("%s%s-", ptr.Deref(r.Config.Controllers.Source.TargetNamePrefix, ""), sourceProvider.GetName()))
+	return strings.ToLower(fmt.Sprintf("%s%s-", ptr.Deref(r.Config.TargetNamePrefix, ""), sourceProvider.GetName()))
 }
 
 func (r *Reconciler) getExistingTargetProviders(ctx context.Context, sourceProvider *v1alpha1.DNSProvider) ([]v1alpha1.DNSProvider, error) {
@@ -123,12 +123,15 @@ func (r *Reconciler) createOrUpdateTargetProvider(
 		if targetProvider.Annotations == nil {
 			targetProvider.Annotations = make(map[string]string)
 		}
-		if r.Config.Controllers.Source.TargetLabels != nil {
-			for key, value := range r.Config.Controllers.Source.TargetLabels {
+		if !dns.IsDefaultClass(r.TargetClass) {
+			utils.SetAnnotation(targetProvider, dns.AnnotationClass, r.TargetClass)
+		}
+		if r.Config.TargetLabels != nil {
+			for key, value := range r.Config.TargetLabels {
 				utils.SetLabel(targetProvider, key, value)
 			}
 		}
-		r.buildOwnerData(sourceProvider).AddOwner(targetProvider, ptr.Deref(r.Config.Controllers.Source.TargetClusterID, ""))
+		r.buildOwnerData(sourceProvider).AddOwner(targetProvider, ptr.Deref(r.Config.TargetClusterID, ""))
 		return nil
 	})
 	if err != nil {
@@ -256,17 +259,17 @@ func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 }
 
 func (r *Reconciler) targetNamespace(owner metav1.Object) string {
-	return ptr.Deref(r.Config.Controllers.Source.TargetNamespace, owner.GetNamespace())
+	return ptr.Deref(r.Config.TargetNamespace, owner.GetNamespace())
 }
 
 func (r *Reconciler) isOwnedByController(target, owner *v1alpha1.DNSProvider) bool {
-	return r.buildOwnerData(owner).HasOwner(target, ptr.Deref(r.Config.Controllers.Source.TargetClusterID, ""))
+	return r.buildOwnerData(owner).HasOwner(target, ptr.Deref(r.Config.TargetClusterID, ""))
 }
 
 func (r *Reconciler) buildOwnerData(owner *v1alpha1.DNSProvider) common.OwnerData {
 	return common.OwnerData{
 		Object:    owner,
-		ClusterID: ptr.Deref(r.Config.Controllers.Source.SourceClusterID, ""),
+		ClusterID: ptr.Deref(r.Config.SourceClusterID, ""),
 		GVK:       r.GVK,
 	}
 }

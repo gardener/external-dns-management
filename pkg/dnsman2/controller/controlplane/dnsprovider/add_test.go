@@ -28,12 +28,8 @@ var _ = Describe("Add", func() {
 			fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).Build()
 			reconciler = &Reconciler{
 				Client: fakeClient,
-				Config: config.DNSManagerConfiguration{
-					Controllers: config.ControllerConfiguration{
-						DNSProvider: config.DNSProviderControllerConfig{
-							Namespace: "test",
-						},
-					},
+				Config: config.DNSProviderControllerConfig{
+					Namespace: "test",
 				},
 			}
 
