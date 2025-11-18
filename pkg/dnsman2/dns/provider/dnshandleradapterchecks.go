@@ -20,12 +20,13 @@ type DNSHandlerAdapterChecks struct {
 }
 
 type propertyCheck struct {
-	name       string
-	aliases    []string
-	required   bool
-	allowEmpty bool
-	hide       bool
-	validators []PropertyValidator
+	name            string
+	aliases         []string
+	required        bool
+	requiredIfUnset []string
+	allowEmpty      bool
+	hide            bool
+	validators      []PropertyValidator
 }
 
 // NewDNSHandlerAdapterChecks creates a new instance of DNSHandlerAdapterChecks.
@@ -53,6 +54,12 @@ func (b *DNSHandlerAdapterBuilder) AllowEmptyValue() *DNSHandlerAdapterBuilder {
 // HideValue marks the property as a secret or as too long, which means it should not be logged or displayed in any way.
 func (b *DNSHandlerAdapterBuilder) HideValue() *DNSHandlerAdapterBuilder {
 	b.check.hide = true
+	return b
+}
+
+// RequiredIfUnset specifies that the property is required if any of the given property names are not set.
+func (b *DNSHandlerAdapterBuilder) RequiredIfUnset(propertyNames ...string) *DNSHandlerAdapterBuilder {
+	b.check.requiredIfUnset = propertyNames
 	return b
 }
 
@@ -139,6 +146,9 @@ func (c *DNSHandlerAdapterChecks) ValidateProperties(providerType string, proper
 		allowedKeys.Insert(name)
 
 		if !found && !check.required {
+			if err := c.validateRequiredIfUnset(name, check, properties); err != nil {
+				errs = append(errs, err)
+			}
 			continue
 		}
 		if !found {
@@ -208,4 +218,32 @@ func niceNameAndAliases(pc propertyCheck) string {
 		return pc.name
 	}
 	return fmt.Sprintf("%s (aliases [%s])", pc.name, strings.Join(pc.aliases, ","))
+}
+
+func (c *DNSHandlerAdapterChecks) validateRequiredIfUnset(name string, check propertyCheck, properties utils.Properties) error {
+	for _, otherPropertyName := range check.requiredIfUnset {
+		var pc propertyCheck
+		for _, item := range c.propertyChecks {
+			if item.name == otherPropertyName {
+				pc = item
+			}
+		}
+		if pc.name == "" {
+			return fmt.Errorf("internal error: %q is required if property %q is not set, but property %q does not exist", niceName(check.name, name), otherPropertyName, otherPropertyName)
+		}
+		found := false
+		for _, otherPropertyName := range append([]string{pc.name}, pc.aliases...) {
+			otherValue, ok := properties[otherPropertyName]
+
+			if ok && otherValue != "" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return fmt.Errorf("property %q is required if property %q is not set", niceName(check.name, name), niceNameAndAliases(pc))
+		}
+	}
+
+	return nil
 }
