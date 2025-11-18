@@ -24,10 +24,11 @@ import (
 
 // Reconciler is a reconciler for DNSAnnotation resources on the control plane.
 type Reconciler struct {
-	Client   client.Client
-	Clock    clock.Clock
-	Recorder record.EventRecorder
-	Config   config.DNSManagerConfiguration
+	Client      client.Client
+	Clock       clock.Clock
+	Recorder    record.EventRecorder
+	Config      config.DNSAnnotationControllerConfig
+	SourceClass string
 
 	state state.AnnotationState
 }

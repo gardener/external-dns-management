@@ -284,30 +284,21 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 		return fmt.Errorf("failed adding indexes: %w", err)
 	}
 
-	if err := (&dnsprovider.Reconciler{
-		Config: *cfg,
-	}).AddToManager(mgr, controlPlaneCluster); err != nil {
+	if err := (&dnsprovider.Reconciler{}).AddToManager(mgr, controlPlaneCluster, cfg); err != nil {
 		return fmt.Errorf("failed adding control plane DNSProvider controller: %w", err)
 	}
-	if err := (&dnsentry.Reconciler{
-		Config:    cfg.Controllers.DNSEntry,
-		Namespace: cfg.Controllers.DNSProvider.Namespace,
-	}).AddToManager(mgr, controlPlaneCluster); err != nil {
+	if err := (&dnsentry.Reconciler{}).AddToManager(mgr, controlPlaneCluster, cfg); err != nil {
 		return fmt.Errorf("failed adding control plane DNSEntry controller: %w", err)
 	}
 	if err := source.AddToManager(mgr, controlPlaneCluster, cfg); err != nil {
 		return fmt.Errorf("failed adding source controllers: %w", err)
 	}
-	if err := (&dnsanntation.Reconciler{
-		Config: *cfg,
-	}).AddToManager(mgr); err != nil {
+	if err := (&dnsanntation.Reconciler{}).AddToManager(mgr, cfg); err != nil {
 		return fmt.Errorf("failed adding DNSAnnotation controller: %w", err)
 	}
 	if ptr.Deref(cfg.Controllers.Source.DNSProviderReplication, false) {
 		log.Info("DNSProvider replication is enabled")
-		if err := (&sourcednsprovider.Reconciler{
-			Config: *cfg,
-		}).AddToManager(mgr, controlPlaneCluster); err != nil {
+		if err := (&sourcednsprovider.Reconciler{}).AddToManager(mgr, controlPlaneCluster); err != nil {
 			return fmt.Errorf("failed adding source DNSProvider controller: %w", err)
 		}
 	} else {

@@ -36,7 +36,6 @@ var _ = Describe("Add", func() {
 		BeforeEach(func() {
 			reconciler := &Reconciler{
 				ReconcilerBase: common.ReconcilerBase{
-					Class: dns.DefaultClass,
 					GVK:   schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Service"},
 					State: state.GetState().GetAnnotationState(),
 				},

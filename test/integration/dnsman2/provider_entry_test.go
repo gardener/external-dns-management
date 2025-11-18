@@ -193,15 +193,10 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		Expect(app.AddAllFieldIndexesToCluster(ctx, mgr)).To(Succeed())
 
 		By("Adding controllers to manager")
-		if err := (&dnsprovider.Reconciler{
-			Config: *cfg,
-		}).AddToManager(mgr, mgr); err != nil {
+		if err := (&dnsprovider.Reconciler{}).AddToManager(mgr, mgr, cfg); err != nil {
 			Fail(fmt.Errorf("failed adding control plane DNSProvider controller: %w", err).Error())
 		}
-		if err := (&dnsentry.Reconciler{
-			Config:    cfg.Controllers.DNSEntry,
-			Namespace: cfg.Controllers.DNSProvider.Namespace,
-		}).AddToManager(mgr, mgr); err != nil {
+		if err := (&dnsentry.Reconciler{}).AddToManager(mgr, mgr, cfg); err != nil {
 			Fail(fmt.Errorf("failed adding control plane DNSEntry controller: %w", err).Error())
 		}
 

@@ -33,12 +33,8 @@ var _ = Describe("Add", func() {
 			reconciler = &Reconciler{
 				Client:             fakeClientSrc,
 				ControlPlaneClient: fakeClientCtrl,
-				Config: config.DNSManagerConfiguration{
-					Controllers: config.ControllerConfiguration{
-						DNSProvider: config.DNSProviderControllerConfig{
-							Namespace: "test",
-						},
-					},
+				Config: config.SourceControllerConfig{
+					TargetNamespace: ptr.To("test"),
 				},
 			}
 
@@ -90,15 +86,8 @@ var _ = Describe("Add", func() {
 
 		BeforeEach(func() {
 			reconciler = &Reconciler{
-				Config: config.DNSManagerConfiguration{
-					Controllers: config.ControllerConfiguration{
-						DNSProvider: config.DNSProviderControllerConfig{
-							Namespace: "target-namespace",
-						},
-						Source: config.SourceControllerConfig{
-							TargetNamespace: ptr.To("target-namespace"),
-						},
-					},
+				Config: config.SourceControllerConfig{
+					TargetNamespace: ptr.To("target-namespace"),
 				},
 				GVK: v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.DNSProviderKind),
 			}
@@ -120,8 +109,8 @@ var _ = Describe("Add", func() {
 		})
 
 		It("should return reconcile requests for valid DNSProvider on different cluster", func() {
-			reconciler.Config.Controllers.Source.TargetClusterID = ptr.To("my-seed")
-			reconciler.Config.Controllers.Source.SourceClusterID = ptr.To("other-cluster")
+			reconciler.Config.TargetClusterID = ptr.To("my-seed")
+			reconciler.Config.SourceClusterID = ptr.To("other-cluster")
 			targetProvider := &v1alpha1.DNSProvider{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "target-provider",

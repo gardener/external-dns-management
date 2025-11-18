@@ -34,7 +34,8 @@ type Reconciler struct {
 	Client            client.Client
 	Clock             clock.Clock
 	Recorder          record.EventRecorder
-	Config            config.DNSManagerConfiguration
+	Config            config.DNSProviderControllerConfig
+	Class             string
 	DNSHandlerFactory dnsprovider.DNSHandlerFactory
 
 	state *state.State

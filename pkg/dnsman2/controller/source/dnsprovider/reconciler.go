@@ -35,7 +35,9 @@ type Reconciler struct {
 	ControlPlaneClient client.Client
 	Clock              clock.Clock
 	Recorder           record.EventRecorder
-	Config             config.DNSManagerConfiguration
+	Config             config.SourceControllerConfig
+	SourceClass        string
+	TargetClass        string
 	GVK                schema.GroupVersionKind
 	DNSHandlerFactory  provider.DNSHandlerFactory
 }
