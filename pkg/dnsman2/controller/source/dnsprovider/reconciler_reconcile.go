@@ -108,7 +108,7 @@ func (r *Reconciler) createOrUpdateTargetProvider(
 	sourceProvider *v1alpha1.DNSProvider,
 	targetProvider *v1alpha1.DNSProvider,
 ) error {
-	targetSecret, err := r.createOrUpdateTargetSecretFromSourceSecret(ctx, sourceProvider, targetProvider)
+	targetSecret, err := r.createOrUpdateTargetSecretFromSourceSecret(ctx, log, sourceProvider, targetProvider)
 	if err != nil {
 		return err
 	}
@@ -189,6 +189,7 @@ func (r *Reconciler) ensureOwnerReferenceOnSecret(ctx context.Context, targetSec
 
 func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 	ctx context.Context,
+	log logr.Logger,
 	sourceProvider *v1alpha1.DNSProvider,
 	targetProvider *v1alpha1.DNSProvider,
 ) (*corev1.Secret, error) {
@@ -215,16 +216,18 @@ func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 	if validationErr == nil {
 		validationErr = adapter.ValidateCredentialsAndProviderConfig(props, sourceProvider.Spec.ProviderConfig)
 	}
+	sourceSecretData := sourceSecret.Data
 	if validationErr != nil {
 		// If validation fails, we store the error in the secret annotations.
 		// The annotations will be used to fill the status message of the replicated provider and will
 		// be pushed back to the source provider.
 		annotations = map[string]string{dns.AnnotationValidationError: validationErr.Error()}
-		sourceSecret.Data = nil // remove data if validation fails
+		log.Info("credentials validation failed for source DNSProvider, removing data from target secret", "providerName", client.ObjectKeyFromObject(sourceProvider), "error", validationErr.Error())
+		sourceSecretData = nil // remove data if validation fails
 	}
 
 	modify := func(secret *corev1.Secret) {
-		secret.Data = sourceSecret.Data
+		secret.Data = sourceSecretData
 		secret.Type = sourceSecret.Type
 		secret.Annotations = annotations
 	}
