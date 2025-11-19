@@ -5,12 +5,12 @@
 package controller
 
 import (
-	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/local"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
 func init() {
-	provider.DNSController("", mock.Factory).
+	provider.DNSController("", local.Factory).
 		FinalizerDomain("dns.gardener.cloud").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }

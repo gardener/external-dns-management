@@ -23,7 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/local"
 )
 
 var debug = false
@@ -43,7 +43,7 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 		entries        []*v1alpha1.DNSEntry
 
 		checkMockDatabaseSize = func(expected int) {
-			dump := mock.TestMock[testRunID].BuildFullDump()
+			dump := local.TestMock[testRunID].BuildFullDump()
 			for _, zoneDump := range dump.InMemory {
 				switch zoneDump.HostedZone.Domain {
 				case "first.example.com":
@@ -141,9 +141,9 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 			}
 		})
 
-		mcfg := mock.MockConfig{
+		mcfg := local.MockConfig{
 			Name: testRunID,
-			Zones: []mock.MockZone{
+			Zones: []local.MockZone{
 				{ZonePrefix: testRunID + ":first:", DNSName: "first.example.com"},
 			},
 			LatencyMillis: 900,
@@ -170,7 +170,7 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 				Name:      "mock1",
 			},
 			Spec: v1alpha1.DNSProviderSpec{
-				Type:           "mock-inmemory",
+				Type:           "local",
 				ProviderConfig: providerConfig,
 				SecretRef:      &corev1.SecretReference{Name: "mock1-secret", Namespace: testRunID},
 			},
@@ -305,7 +305,7 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 				Name:      "mock2",
 			},
 			Spec: v1alpha1.DNSProviderSpec{
-				Type:           "mock-inmemory",
+				Type:           "local",
 				ProviderConfig: providerConfig,
 				SecretRef:      &corev1.SecretReference{Name: "mock2-secret", Namespace: testRunID},
 			},

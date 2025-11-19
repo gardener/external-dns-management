@@ -68,6 +68,7 @@ func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSPr
 	if provider.Spec.SecretRef == nil {
 		return nil
 	}
+	return nil // TODO temporarily disable adding finalizer to secret
 	secret := &corev1.Secret{}
 	if err := c.Get(ctx, client.ObjectKey{Namespace: getSecretRefNamespace(provider), Name: provider.Spec.SecretRef.Name}, secret); err != nil {
 		if apierrors.IsNotFound(err) {
