@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package mock
+package local
 
 import (
 	"encoding/json"
@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	"github.com/google/uuid"
 	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -58,9 +59,17 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		rateLimiter:       config.RateLimiter,
 	}
 
-	err := json.Unmarshal(config.Config.Raw, &h.mockConfig)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal mock providerConfig failed with: %s", err)
+	var err error
+	if config.Config != nil && len(config.Config.Raw) > 0 {
+		err = json.Unmarshal(config.Config.Raw, &h.mockConfig)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal local (mock) providerConfig failed with: %s", err)
+		}
+	} else {
+		h.mockConfig.Name = uuid.New().String()
+		h.mockConfig.Zones = []MockZone{
+			{DNSName: "local.gardener.cloud"},
+		}
 	}
 
 	TestMock[h.mockConfig.Name] = mock
@@ -68,7 +77,7 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 	for _, mockZone := range h.mockConfig.Zones {
 		if mockZone.DNSName != "" {
 			zoneID := mockZone.ZoneID().ID
-			logger.Infof("Providing mock DNSZone %s[%s]", mockZone.DNSName, zoneID)
+			logger.Infof("Providing local (mock) DNSZone %s[%s]", mockZone.DNSName, zoneID)
 			isPrivate := strings.Contains(mockZone.ZonePrefix, ":private:")
 			hostedZone := provider.NewDNSHostedZone(h.ProviderType(), zoneID, mockZone.DNSName, "", isPrivate)
 			mock.AddZone(hostedZone)

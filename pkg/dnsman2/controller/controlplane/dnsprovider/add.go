@@ -37,7 +37,7 @@ import (
 	azureprivate "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/azure-private"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/cloudflare"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/google"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/local"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/netlify"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/openstack"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/powerdns"
@@ -55,6 +55,7 @@ var allTypes = map[string]provider.AddToRegistryFunc{
 	azureprivate.ProviderType: azureprivate.RegisterTo,
 	cloudflare.ProviderType:   cloudflare.RegisterTo,
 	google.ProviderType:       google.RegisterTo,
+	local.ProviderType:        local.RegisterTo,
 	netlify.ProviderType:      netlify.RegisterTo,
 	openstack.ProviderType:    openstack.RegisterTo,
 	rfc2136.ProviderType:      rfc2136.RegisterTo,
@@ -84,9 +85,6 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 				continue
 			}
 			addToRegistry(registry)
-		}
-		if ptr.Deref(r.Config.AllowMockInMemoryProvider, false) {
-			mock.RegisterTo(registry)
 		}
 		r.DNSHandlerFactory = registry
 	}

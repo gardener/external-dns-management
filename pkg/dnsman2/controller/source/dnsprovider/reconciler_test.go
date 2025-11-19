@@ -28,7 +28,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	. "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/local"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/testutils"
 )
 
@@ -177,7 +177,7 @@ var _ = Describe("Reconciler", func() {
 		fakeRecorder = record.NewFakeRecorder(32)
 		clock := clock.RealClock{}
 		registry := provider.NewDNSHandlerRegistry(clock)
-		mock.RegisterTo(registry)
+		local.RegisterTo(registry)
 		reconciler = &Reconciler{
 			Clock:              clock,
 			Client:             fakeClientSrc,
@@ -204,7 +204,7 @@ var _ = Describe("Reconciler", func() {
 				Namespace: defaultSourceNamespace,
 			},
 			Spec: dnsv1alpha1.DNSProviderSpec{
-				Type: mock.ProviderType,
+				Type: local.ProviderType,
 				SecretRef: &corev1.SecretReference{
 					Name: sourceSecret.Name,
 				},
@@ -219,7 +219,7 @@ var _ = Describe("Reconciler", func() {
 	Describe("#Reconcile", func() {
 		It("should create target DNSProvider object in same cluster", func() {
 			actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
-				Type: mock.ProviderType,
+				Type: local.ProviderType,
 				SecretRef: &corev1.SecretReference{
 					Name: "foo-secret",
 				},
@@ -243,7 +243,7 @@ var _ = Describe("Reconciler", func() {
 			reconciler.TargetClass = "target-dns-class"
 			reconciler.Config.TargetClass = ptr.To(reconciler.TargetClass)
 			actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
-				Type: mock.ProviderType,
+				Type: local.ProviderType,
 				SecretRef: &corev1.SecretReference{
 					Name: "foo-secret",
 				},
@@ -263,7 +263,7 @@ var _ = Describe("Reconciler", func() {
 		It("should create target DNSProvider object without secret ref if source secret ref is not set", func() {
 			sourceProvider.Spec.SecretRef = nil
 			actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
-				Type:      mock.ProviderType,
+				Type:      local.ProviderType,
 				SecretRef: nil,
 			})
 			Expect(actualTarget.Spec.SecretRef).To(BeNil())
@@ -276,13 +276,13 @@ var _ = Describe("Reconciler", func() {
 		It("should create target DNSProvider object with empty secret ref if source secret is invalid", func() {
 			sourceSecret.Data["bad_key"] = []byte("something")
 			actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
-				Type: mock.ProviderType,
+				Type: local.ProviderType,
 				SecretRef: &corev1.SecretReference{
 					Name: "foo-secret",
 				},
 			})
 			checkTargetSecret(actualTarget, nil)
-			checkSourceProviderState("Invalid", "'bad_key' is not allowed in mock provider properties")
+			checkSourceProviderState("Invalid", "'bad_key' is not allowed in local provider properties")
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
 
 			testDeletion(actualTarget)

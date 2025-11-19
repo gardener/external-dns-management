@@ -18,7 +18,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/local"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
@@ -50,7 +50,7 @@ var _ = Describe("Reconcile", func() {
 	BeforeEach(func() {
 		clock.SetTime(startTime)
 		factory = dnsprovider.NewDNSHandlerRegistry(clock)
-		mock.RegisterTo(factory)
+		local.RegisterTo(factory)
 		state.GetState().SetDNSHandlerFactory(factory)
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSProvider{}).Build()
 		reconciler = &Reconciler{
@@ -69,9 +69,9 @@ var _ = Describe("Reconcile", func() {
 			Data:       map[string][]byte{"foo": []byte("bar")},
 		}
 		Expect(fakeClient.Create(ctx, secret1)).To(Succeed())
-		rawMockConfig, err := mock.MarshallMockConfig(mock.MockConfig{
+		rawMockConfig, err := local.MarshallMockConfig(local.MockConfig{
 			Account: "test",
-			Zones: []mock.MockZone{
+			Zones: []local.MockZone{
 				{DNSName: "example.com"},
 				{DNSName: "example2.com"},
 			},
@@ -87,7 +87,7 @@ var _ = Describe("Reconcile", func() {
 				SecretRef: &corev1.SecretReference{
 					Name: "secret1",
 				},
-				Type:           "mock-inmemory",
+				Type:           "local",
 				ProviderConfig: rawMockConfig,
 				Zones: &v1alpha1.DNSSelection{
 					Include: []string{"test:example.com"},
@@ -175,9 +175,9 @@ var _ = Describe("Reconcile", func() {
 	})
 
 	It("should update status if account has no zones", func() {
-		rawMockConfig, err := mock.MarshallMockConfig(mock.MockConfig{
+		rawMockConfig, err := local.MarshallMockConfig(local.MockConfig{
 			Account: "account1",
-			Zones:   []mock.MockZone{},
+			Zones:   []local.MockZone{},
 		})
 		Expect(err).ToNot(HaveOccurred())
 		provider.Spec.ProviderConfig = rawMockConfig
@@ -199,6 +199,6 @@ var _ = Describe("Reconcile", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))
 
-		checkFailed(v1alpha1.StateError, "secret test/secret1 validation failed: 'bad_key' is not allowed in mock provider properties: some-value")
+		checkFailed(v1alpha1.StateError, "secret test/secret1 validation failed: 'bad_key' is not allowed in local provider properties: some-value")
 	})
 })

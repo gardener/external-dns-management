@@ -107,8 +107,6 @@ type DNSProviderControllerConfig struct {
 	DefaultTTL *int64
 	// ZoneCacheTTL is the TTL for the cache for the `GetZones` method.
 	ZoneCacheTTL *metav1.Duration
-	// AllowMockInMemoryProvider if true, the provider type "mock-inmemory" is allowed, e.g. for testing purposes.
-	AllowMockInMemoryProvider *bool
 	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
 	SkipNameValidation *bool
 }

@@ -274,11 +274,6 @@ func (in *DNSProviderControllerConfig) DeepCopyInto(out *DNSProviderControllerCo
 		*out = new(v1.Duration)
 		**out = **in
 	}
-	if in.AllowMockInMemoryProvider != nil {
-		in, out := &in.AllowMockInMemoryProvider, &out.AllowMockInMemoryProvider
-		*out = new(bool)
-		**out = **in
-	}
 	if in.SkipNameValidation != nil {
 		in, out := &in.SkipNameValidation, &out.SkipNameValidation
 		*out = new(bool)

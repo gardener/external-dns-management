@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package mock
+package local
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
-const TYPE_CODE = "mock-inmemory"
+const TYPE_CODE = "local"
 
 var rateLimiterDefaults = provider.RateLimiterOptions{
 	Enabled: true,
@@ -41,7 +41,7 @@ func (a *adapter) ValidateCredentialsAndProviderConfig(props utils.Properties, _
 
 	// for validation testing the property "bad_key" is used to force an error
 	if value, ok := props["bad_key"]; ok {
-		return fmt.Errorf("'bad_key' is not allowed in mock provider properties: %s", value)
+		return fmt.Errorf("'bad_key' is not allowed in local provider properties: %s", value)
 	}
 	return nil
 }

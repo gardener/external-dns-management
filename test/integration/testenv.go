@@ -39,7 +39,7 @@ import (
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	v1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/local"
 	"github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -276,9 +276,9 @@ func (te *TestEnv) BuildProviderConfig(domain, domain2 string, failOptions ...Pr
 		}
 	}
 
-	input := mock.MockConfig{
+	input := local.MockConfig{
 		Name: name,
-		Zones: []mock.MockZone{
+		Zones: []local.MockZone{
 			{ZonePrefix: te.ZonePrefix + prefix2, DNSName: domain},
 			{ZonePrefix: te.ZonePrefix + prefix2 + "second:", DNSName: domain2},
 		},
@@ -286,7 +286,7 @@ func (te *TestEnv) BuildProviderConfig(domain, domain2 string, failOptions ...Pr
 	return te.BuildProviderConfigEx(input, failOptions...)
 }
 
-func (te *TestEnv) BuildProviderConfigEx(input mock.MockConfig, failOptions ...ProviderTestOption) *runtime.RawExtension {
+func (te *TestEnv) BuildProviderConfigEx(input local.MockConfig, failOptions ...ProviderTestOption) *runtime.RawExtension {
 	for _, opt := range failOptions {
 		switch opt {
 		case FailGetZones:
@@ -294,7 +294,7 @@ func (te *TestEnv) BuildProviderConfigEx(input mock.MockConfig, failOptions ...P
 		case FailDeleteEntry:
 			input.FailDeleteEntry = true
 		case FailSecondZoneWithSameBaseDomain:
-			input.Zones = append(input.Zones, mock.MockZone{
+			input.Zones = append(input.Zones, local.MockZone{
 				ZonePrefix: te.ZonePrefix + ":second",
 				DNSName:    input.Zones[0].DNSName,
 			})
@@ -315,7 +315,7 @@ func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretNa
 	setSpec := func(provider *v1alpha1.DNSProvider) {
 		spec := &provider.Spec
 		spec.Domains = &v1alpha1.DNSSelection{Include: []string{domain}}
-		spec.Type = "mock-inmemory"
+		spec.Type = "local"
 		spec.ProviderConfig = te.BuildProviderConfig(domain, domain2, options...)
 		spec.SecretRef = &corev1.SecretReference{Name: secretName, Namespace: te.Namespace}
 		for _, opt := range options {
@@ -1229,7 +1229,7 @@ func (te *TestEnv) MockInMemoryHasEntryEx(name, zonePrefix string, e resources.O
 		return err
 	}
 	if dnsSet == nil {
-		return fmt.Errorf("no DNSSet found for %s in mock-inmemory", entry.Spec.DNSName)
+		return fmt.Errorf("no DNSSet found for %s in local (inmemory)", entry.Spec.DNSName)
 	}
 	return nil
 }
@@ -1239,7 +1239,7 @@ func (te *TestEnv) MockInMemoryGetDNSSet(dnsName string) (*dns.DNSSet, error) {
 }
 
 func (te *TestEnv) MockInMemoryGetDNSSetEx(name, zonePrefix, dnsName string) (*dns.DNSSet, error) {
-	testMock := mock.TestMock[name]
+	testMock := local.TestMock[name]
 	if testMock == nil {
 		return nil, nil
 	}
@@ -1268,7 +1268,7 @@ func (te *TestEnv) MockInMemoryHasNotEntryEx(name, zonePrefix string, e resource
 		return err
 	}
 	if dnsSet != nil {
-		return fmt.Errorf("DNSSet found for %s in mock-inmemory", entry.Spec.DNSName)
+		return fmt.Errorf("DNSSet found for %s in local (inmemory)", entry.Spec.DNSName)
 	}
 	return nil
 }

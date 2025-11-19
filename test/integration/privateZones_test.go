@@ -15,7 +15,7 @@ import (
 	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/local"
 )
 
 var _ = Describe("PrivateZones", func() {
@@ -94,16 +94,16 @@ var _ = Describe("PrivateZones", func() {
 		setSpec := func(provider *v1alpha1.DNSProvider) {
 			spec := &provider.Spec
 			spec.Zones = &v1alpha1.DNSSelection{Include: []string{"z1:private:" + domain, "z2:private:" + domain}}
-			spec.Type = "mock-inmemory"
+			spec.Type = "local"
 
-			var zonedata []mock.MockZone
+			var zonedata []local.MockZone
 			for _, prefix := range []string{"z1:private:", "z2:private:"} {
-				zonedata = append(zonedata, mock.MockZone{
+				zonedata = append(zonedata, local.MockZone{
 					ZonePrefix: prefix,
 					DNSName:    domain,
 				})
 			}
-			input := mock.MockConfig{
+			input := local.MockConfig{
 				Name:  testEnv.Namespace,
 				Zones: zonedata,
 			}
@@ -223,7 +223,7 @@ var _ = Describe("PrivateZones", func() {
 		setSpec := func(provider *v1alpha1.DNSProvider) {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
-			spec.Type = "mock-inmemory"
+			spec.Type = "local"
 			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "a.mock.xx", PrivateZones)
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
@@ -250,7 +250,7 @@ var _ = Describe("PrivateZones", func() {
 		setSpec := func(provider *v1alpha1.DNSProvider) {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
-			spec.Type = "mock-inmemory"
+			spec.Type = "local"
 			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "mock.xx", PrivateZones)
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
@@ -277,7 +277,7 @@ var _ = Describe("PrivateZones", func() {
 		setSpec := func(provider *v1alpha1.DNSProvider) {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"mock.xx"}}
-			spec.Type = "mock-inmemory"
+			spec.Type = "local"
 			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "sub.mock.xx", PrivateZones)
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}

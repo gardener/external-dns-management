@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package mock
+package local
 
 import (
 	"fmt"
@@ -13,10 +13,10 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
-// ProviderType is the identifier for the mock in-memory DNS provider.
-const ProviderType = "mock-inmemory"
+// ProviderType is the identifier for the local DNS provider. This is a pure in-memory implementation, no real DNS records are created.
+const ProviderType = "local"
 
-// RegisterTo registers the mock DNS handler to the given registry.
+// RegisterTo registers the local DNS handler to the given registry.
 func RegisterTo(registry *provider.DNSHandlerRegistry) {
 	registry.Register(ProviderType, NewHandler, &adapter{}, nil, nil)
 }
@@ -33,7 +33,7 @@ func (a *adapter) ValidateCredentialsAndProviderConfig(props utils.Properties, _
 
 	// for validation testing the property "bad_key" is used to force an error
 	if value, ok := props["bad_key"]; ok {
-		return fmt.Errorf("'bad_key' is not allowed in mock provider properties: %s", value)
+		return fmt.Errorf("'bad_key' is not allowed in local provider properties: %s", value)
 	}
 	return nil
 }

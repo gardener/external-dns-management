@@ -37,6 +37,7 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/google"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/infoblox"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/local"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/netlify"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/openstack"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/powerdns"
