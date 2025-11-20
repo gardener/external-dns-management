@@ -154,6 +154,24 @@ var _ = Describe("Reconcile", func() {
 		Expect(secret1.Finalizers).To(ConsistOf("dns.gardener.cloud/compound"))
 	})
 
+	It("should update status for supported provider type if secret ref namespace is missing (variant migration mode)", func() {
+		provider.Spec.SecretRef.Namespace = ""
+		Expect(fakeClient.Create(ctx, provider)).To(Succeed())
+		reconciler.Config.MigrationMode = ptr.To(true)
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: providerKey})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+
+		Expect(fakeClient.Get(ctx, providerKey, provider)).To(Succeed())
+		Expect(provider.Finalizers).To(ConsistOf("dns.gardener.cloud/compound"))
+		Expect(provider.Status.LastUpdateTime.Time).To(Equal(startTime))
+		Expect(provider.Status.State).To(Equal(v1alpha1.StateReady))
+		Expect(provider.Status.ObservedGeneration).To(Equal(provider.Generation))
+
+		Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(secret1), secret1)).To(Succeed())
+		Expect(secret1.Finalizers).To(BeNil())
+	})
+
 	It("should update status for if secretref is not set", func() {
 		provider.Spec.SecretRef = nil
 		Expect(fakeClient.Create(ctx, provider)).To(Succeed())

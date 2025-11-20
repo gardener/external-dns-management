@@ -61,14 +61,18 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	}
 }
 
-func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
+func (r *Reconciler) addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
 	if err := controllerutils.AddFinalizers(ctx, c, provider, dns.FinalizerCompound); err != nil {
 		return err
 	}
 	if provider.Spec.SecretRef == nil {
 		return nil
 	}
-	return nil // TODO temporarily disable adding finalizer to secret
+	if ptr.Deref(r.Config.MigrationMode, false) {
+		// In migration mode, do not add finalizers to secrets as they may be removed immediately after creation by the old controller.
+		// see pkg/dns/provider/state_secret.go, method UpdateSecret() for details.
+		return nil
+	}
 	secret := &corev1.Secret{}
 	if err := c.Get(ctx, client.ObjectKey{Namespace: getSecretRefNamespace(provider), Name: provider.Spec.SecretRef.Name}, secret); err != nil {
 		if apierrors.IsNotFound(err) {
@@ -80,7 +84,7 @@ func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSPr
 	return controllerutils.AddFinalizers(ctx, c, secret, dns.FinalizerCompound)
 }
 
-func removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
+func (r *Reconciler) removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
 	if err := controllerutils.RemoveFinalizers(ctx, c, provider, dns.FinalizerCompound); err != nil {
 		return err
 	}

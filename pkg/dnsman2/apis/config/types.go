@@ -109,6 +109,9 @@ type DNSProviderControllerConfig struct {
 	ZoneCacheTTL *metav1.Duration
 	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
 	SkipNameValidation *bool
+	// MigrationMode if true, the controller runs in migration mode and will not add finalizers to secrets.
+	// This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.
+	MigrationMode *bool
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.

@@ -35,7 +35,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		return reconcile.Result{}, r.updateStatusInvalid(ctx, provider, fmt.Errorf("provider type %q is not supported", provider.Spec.Type))
 	}
 
-	if err := addFinalizer(ctx, r.Client, provider); err != nil {
+	if err := r.addFinalizer(ctx, r.Client, provider); err != nil {
 		return reconcile.Result{}, err
 	}
 
