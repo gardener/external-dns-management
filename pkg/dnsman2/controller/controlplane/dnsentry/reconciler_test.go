@@ -179,6 +179,7 @@ var _ = Describe("Reconcile", func() {
 				selectionResult := selection.CalcZoneAndDomainSelection(provider.Spec, zones)
 				selectionResult.SetProviderStatusZonesAndDomains(&provider.Status)
 				providerState.SetSelection(selectionResult)
+				providerState.SetReconciled()
 			}
 			ExpectWithOffset(1, fakeClient.Create(ctx, provider)).To(Succeed())
 			return provider

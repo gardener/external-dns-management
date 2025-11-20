@@ -43,7 +43,6 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 	if secretRef == nil {
 		return reconcile.Result{}, r.updateStatusInvalid(ctx, provider, fmt.Errorf("no secret reference specified"))
 	}
-	providerState := r.state.GetOrCreateProviderState(provider, r.Config)
 	props, err := r.getProperties(ctx, secretRef)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -60,6 +59,10 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		return reconcile.Result{}, r.updateStatusError(ctx, provider, fmt.Errorf("secret %s/%s validation failed: %s", secretRef.Namespace, secretRef.Name, err))
 	}
 
+	providerState := r.state.GetProviderState(client.ObjectKeyFromObject(provider))
+	if providerState == nil {
+		return reconcile.Result{}, fmt.Errorf("internal error: provider state not found for provider %s/%s", provider.Namespace, provider.Name)
+	}
 	config := dnsprovider.DNSAccountConfig{
 		DefaultTTL:   providerState.GetDefaultTTL(),
 		ZoneCacheTTL: ptr.Deref(r.Config.ZoneCacheTTL, metav1.Duration{Duration: 5 * time.Minute}).Duration,
