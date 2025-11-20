@@ -93,6 +93,9 @@ type DNSProviderControllerConfig struct {
 	ConcurrentSyncs *int
 	// SyncPeriod is the duration how often the controller performs its reconciliation.
 	SyncPeriod *metav1.Duration
+	// ReconciliationTimeout is the maximum duration a reconciliation of a DNSProvider is allowed to take.
+	// Default value is 2 minutes.
+	ReconciliationTimeout *metav1.Duration
 	// Namespace is the namespace on the secondary cluster containing the provided DNSProviders.
 	Namespace string
 	// EnabledProviderTypes is the list of DNS provider types that should be enabled.
@@ -120,6 +123,9 @@ type DNSEntryControllerConfig struct {
 	ConcurrentSyncs *int
 	// SyncPeriod is the duration how often the controller performs its reconciliation.
 	SyncPeriod *metav1.Duration
+	// ReconciliationTimeout is the maximum duration a reconciliation of a DNSEntry is allowed to take.
+	// Default value is 2 minutes.
+	ReconciliationTimeout *metav1.Duration
 	// MaxConcurrentLookups is the number of concurrent DNS lookups for the lookup processor.
 	MaxConcurrentLookups *int
 	// DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.

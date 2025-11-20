@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/gardener/gardener/pkg/controllerutils"
 	corev1 "k8s.io/api/core/v1"
@@ -54,11 +55,26 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
 	}
 
+	var (
+		result reconcile.Result
+		err    error
+	)
+	providerState := r.state.GetOrCreateProviderState(provider, r.Config)
+	ctxWithTimeout, _ := context.WithTimeout(ctx, ptr.Deref(r.Config.ReconciliationTimeout, metav1.Duration{Duration: 2 * time.Minute}).Duration)
 	if provider.DeletionTimestamp != nil {
-		return r.delete(ctx, log, provider)
+		result, err = r.delete(ctxWithTimeout, log, provider)
 	} else {
-		return r.reconcile(ctx, log, provider)
+		result, err = r.reconcile(ctxWithTimeout, log, provider)
 	}
+	providerState.SetReconciled()
+	if err != nil {
+		log.Error(err, "reconciliation failed")
+	} else if result.Requeue || result.RequeueAfter > 0 {
+		log.Info("reconciliation scheduled to be retried", "requeue", result.Requeue, "requeueAfter", result.RequeueAfter)
+	} else {
+		log.Info("reconciliation succeeded")
+	}
+	return result, err
 }
 
 func (r *Reconciler) addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {

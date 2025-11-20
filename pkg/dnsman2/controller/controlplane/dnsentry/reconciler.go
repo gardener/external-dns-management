@@ -14,7 +14,9 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/jellydator/ttlcache/v3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/clock"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -64,11 +66,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
 	}
 
+	ctxWithTimeout, _ := context.WithTimeout(ctx, ptr.Deref(r.Config.ReconciliationTimeout, metav1.Duration{Duration: 2 * time.Minute}).Duration)
 	er := entryReconciliation{
 		EntryContext: common.EntryContext{
 			Client: r.Client,
 			Clock:  r.Clock,
-			Ctx:    logr.NewContext(ctx, log),
+			Ctx:    logr.NewContext(ctxWithTimeout, log),
 			Log:    log,
 			Entry:  entry,
 		},
@@ -82,6 +85,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	res := er.reconcile()
 	if res.Err != nil {
 		log.Error(res.Err, "reconciliation failed")
+	} else if res.Result.Requeue || res.Result.RequeueAfter > 0 {
+		log.Info("reconciliation scheduled to be retried", "requeue", res.Result.Requeue, "requeueAfter", res.Result.RequeueAfter)
 	} else {
 		log.Info("reconciliation succeeded")
 	}

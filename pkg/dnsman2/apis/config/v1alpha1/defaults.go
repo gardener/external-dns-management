@@ -102,10 +102,13 @@ func SetDefaults_ServerConfiguration(obj *ServerConfiguration) {
 // SetDefaults_DNSProviderControllerConfig sets defaults for the DNSProviderControllerConfig object.
 func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 	if obj.ConcurrentSyncs == nil {
-		obj.ConcurrentSyncs = ptr.To(1)
+		obj.ConcurrentSyncs = ptr.To(2)
 	}
 	if obj.SyncPeriod == nil {
 		obj.SyncPeriod = &metav1.Duration{Duration: time.Hour}
+	}
+	if obj.ReconciliationTimeout == nil {
+		obj.ReconciliationTimeout = &metav1.Duration{Duration: 2 * time.Minute}
 	}
 	if obj.Namespace == "" {
 		obj.Namespace = getDefaultNamespace()
@@ -119,6 +122,16 @@ func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 	}
 	if obj.DefaultTTL == nil {
 		obj.DefaultTTL = ptr.To[int64](300)
+	}
+}
+
+// SetDefaults_DNSEntryControllerConfig sets defaults for the DNSEntryControllerConfig object.
+func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
+	if obj.ConcurrentSyncs == nil {
+		obj.ConcurrentSyncs = ptr.To(5)
+	}
+	if obj.ReconciliationTimeout == nil {
+		obj.ReconciliationTimeout = &metav1.Duration{Duration: 2 * time.Minute}
 	}
 }
 

@@ -153,6 +153,11 @@ func (in *DNSEntryControllerConfig) DeepCopyInto(out *DNSEntryControllerConfig) 
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.ReconciliationTimeout != nil {
+		in, out := &in.ReconciliationTimeout, &out.ReconciliationTimeout
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	if in.MaxConcurrentLookups != nil {
 		in, out := &in.MaxConcurrentLookups, &out.MaxConcurrentLookups
 		*out = new(int)
@@ -246,6 +251,11 @@ func (in *DNSProviderControllerConfig) DeepCopyInto(out *DNSProviderControllerCo
 	}
 	if in.SyncPeriod != nil {
 		in, out := &in.SyncPeriod, &out.SyncPeriod
+		*out = new(v1.Duration)
+		**out = **in
+	}
+	if in.ReconciliationTimeout != nil {
+		in, out := &in.ReconciliationTimeout, &out.ReconciliationTimeout
 		*out = new(v1.Duration)
 		**out = **in
 	}
