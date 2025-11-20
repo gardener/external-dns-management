@@ -5,11 +5,11 @@
 package netlify
 
 import (
+	"context"
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/netlify/open-api/go/models"
-	"golang.org/x/net/context"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
