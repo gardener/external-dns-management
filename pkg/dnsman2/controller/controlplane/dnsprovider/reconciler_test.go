@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/clock/testing"
@@ -117,6 +118,7 @@ var _ = Describe("Reconcile", func() {
 		Expect(provider.Finalizers).To(ConsistOf("dns.gardener.cloud/compound"))
 		Expect(provider.Status.LastUpdateTime.Time).To(Equal(startTime))
 		Expect(provider.Status.State).To(Equal(v1alpha1.StateReady))
+		Expect(provider.Status.Message).To(PointTo(Equal("provider operational")))
 		Expect(provider.Status.ObservedGeneration).To(Equal(provider.Generation))
 		Expect(provider.Status.Domains).To(Equal(v1alpha1.DNSSelectionStatus{Included: []string{"example.com"}, Excluded: []string{"example2.com"}}))
 		Expect(provider.Status.Zones).To(Equal(v1alpha1.DNSSelectionStatus{Included: []string{"test:example.com"}, Excluded: []string{"test:example2.com"}}))

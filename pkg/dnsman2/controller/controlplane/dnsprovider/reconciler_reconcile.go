@@ -95,7 +95,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 	providerState.SetAccount(newAccount)
 
 	return reconcile.Result{}, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
-		status.Message = nil
+		status.Message = ptr.To("provider operational")
 		status.State = v1alpha1.StateReady
 		status.ObservedGeneration = provider.Generation
 		providerState.GetSelection().SetProviderStatusZonesAndDomains(status)
