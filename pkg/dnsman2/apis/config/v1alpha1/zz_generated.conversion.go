@@ -389,6 +389,7 @@ func autoConvert_v1alpha1_DNSProviderControllerConfig_To_config_DNSProviderContr
 	out.DefaultTTL = (*int64)(unsafe.Pointer(in.DefaultTTL))
 	out.ZoneCacheTTL = (*v1.Duration)(unsafe.Pointer(in.ZoneCacheTTL))
 	out.SkipNameValidation = (*bool)(unsafe.Pointer(in.SkipNameValidation))
+	out.MigrationMode = (*bool)(unsafe.Pointer(in.MigrationMode))
 	return nil
 }
 
@@ -407,6 +408,7 @@ func autoConvert_config_DNSProviderControllerConfig_To_v1alpha1_DNSProviderContr
 	out.DefaultTTL = (*int64)(unsafe.Pointer(in.DefaultTTL))
 	out.ZoneCacheTTL = (*v1.Duration)(unsafe.Pointer(in.ZoneCacheTTL))
 	out.SkipNameValidation = (*bool)(unsafe.Pointer(in.SkipNameValidation))
+	out.MigrationMode = (*bool)(unsafe.Pointer(in.MigrationMode))
 	return nil
 }
 

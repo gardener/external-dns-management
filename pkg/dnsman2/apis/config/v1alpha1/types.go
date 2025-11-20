@@ -125,6 +125,10 @@ type DNSProviderControllerConfig struct {
 	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
 	// +optional
 	SkipNameValidation *bool `json:"skipNameValidation,omitempty"`
+	// MigrationMode if true, the controller runs in migration mode and will not add finalizers to secrets.
+	// This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.
+	// +optional
+	MigrationMode *bool `json:"migrationMode,omitempty"`
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.

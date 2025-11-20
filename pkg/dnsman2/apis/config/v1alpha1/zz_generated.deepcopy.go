@@ -279,6 +279,11 @@ func (in *DNSProviderControllerConfig) DeepCopyInto(out *DNSProviderControllerCo
 		*out = new(bool)
 		**out = **in
 	}
+	if in.MigrationMode != nil {
+		in, out := &in.MigrationMode, &out.MigrationMode
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
