@@ -90,7 +90,7 @@ func (s *providerSelector) haveAllProvidersBeenReconciled(providers []v1alpha1.D
 		pstate := s.state.GetProviderState(client.ObjectKeyFromObject(&p))
 		if pstate == nil || !pstate.IsReconciled() {
 			s.Log.V(1).Info("Provider state not yet available or reconciled", "provider", client.ObjectKeyFromObject(&p))
-			return &common.ReconcileResult{Result: reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}} // Provider state not yet available, requeue to wait for its reconciliation
+			return &common.ReconcileResult{Result: reconcile.Result{RequeueAfter: 3 * time.Second}} // Provider state not yet available, requeue to wait for its reconciliation
 		}
 	}
 	return nil
@@ -100,7 +100,7 @@ func (s *providerSelector) getZoneForProvider(provider *v1alpha1.DNSProvider, dn
 	pstate := s.state.GetProviderState(client.ObjectKeyFromObject(provider))
 	if pstate == nil {
 		s.Log.Info("Provider state not yet available", "provider", client.ObjectKeyFromObject(provider))
-		return nil, &common.ReconcileResult{Result: reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}} // Provider state not yet available, requeue to wait for its reconciliation
+		return nil, &common.ReconcileResult{Result: reconcile.Result{RequeueAfter: 3 * time.Second}} // Provider state not yet available, requeue to wait for its reconciliation
 	}
 	var (
 		bestZone  selection.LightDNSHostedZone

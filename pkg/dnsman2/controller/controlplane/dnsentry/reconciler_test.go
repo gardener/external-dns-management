@@ -588,7 +588,7 @@ var _ = Describe("Reconcile", func() {
 
 		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
 		ExpectWithOffset(1, err).ToNot(HaveOccurred())
-		ExpectWithOffset(1, result).To(Equal(reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}))
+		ExpectWithOffset(1, result).To(Equal(reconcile.Result{RequeueAfter: 3 * time.Second}))
 	})
 
 	Context("DNSEntry validation", func() {

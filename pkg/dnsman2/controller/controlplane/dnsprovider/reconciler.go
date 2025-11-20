@@ -60,7 +60,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		err    error
 	)
 	providerState := r.state.GetOrCreateProviderState(provider, r.Config)
-	ctxWithTimeout, _ := context.WithTimeout(ctx, ptr.Deref(r.Config.ReconciliationTimeout, metav1.Duration{Duration: 2 * time.Minute}).Duration)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, ptr.Deref(r.Config.ReconciliationTimeout, metav1.Duration{Duration: 2 * time.Minute}).Duration)
 	if provider.DeletionTimestamp != nil {
 		result, err = r.delete(ctxWithTimeout, log, provider)
 	} else {
@@ -69,11 +69,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	providerState.SetReconciled()
 	if err != nil {
 		log.Error(err, "reconciliation failed")
-	} else if result.Requeue || result.RequeueAfter > 0 {
-		log.Info("reconciliation scheduled to be retried", "requeue", result.Requeue, "requeueAfter", result.RequeueAfter)
+	} else if result.RequeueAfter > 0 {
+		log.Info("reconciliation scheduled to be retried", "requeueAfter", result.RequeueAfter)
 	} else {
 		log.Info("reconciliation succeeded")
 	}
+	cancel()
 	return result, err
 }
 
