@@ -31,5 +31,6 @@ func SetObjectDefaults_DNSManagerConfiguration(in *DNSManagerConfiguration) {
 	SetDefaults_LeaderElectionConfiguration(&in.LeaderElection)
 	SetDefaults_ServerConfiguration(&in.Server)
 	SetDefaults_DNSProviderControllerConfig(&in.Controllers.DNSProvider)
+	SetDefaults_DNSEntryControllerConfig(&in.Controllers.DNSEntry)
 	SetDefaults_SourceControllerConfig(&in.Controllers.Source)
 }
