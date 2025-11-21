@@ -15,6 +15,7 @@
   ignoreDeps: [
     "github.com/ahmetb/gen-crd-api-reference-docs",
     "github.com/go-logr/logr",
+    "github.com/google/uuid",
     "github.com/miekg/dns",
     "github.com/onsi/ginkgo/v2",
     "github.com/onsi/gomega",
@@ -88,7 +89,6 @@
     "github.com/google/gnostic-models",
     "github.com/google/go-cmp",
     "github.com/google/pprof",
-    "github.com/google/uuid",
     "github.com/gorilla/websocket",
     "github.com/grafana/regexp",
     "github.com/grpc-ecosystem/grpc-gateway/v2",

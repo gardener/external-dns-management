@@ -127,17 +127,20 @@ var _ = Describe("Reconciler", func() {
 	BeforeEach(func() {
 		fakeClientSrc = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).WithStatusSubresource(&dnsv1alpha1.DNSAnnotation{}).Build()
 		fakeClientCtrl = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).Build()
-		reconciler = &Reconciler{}
-		reconciler.Client = fakeClientSrc
-		reconciler.ControlPlaneClient = fakeClientCtrl
-		reconciler.Config = config.SourceControllerConfig{
-			TargetNamespace: ptr.To(defaultTargetNamespace),
-		}
-		reconciler.GVK = corev1.SchemeGroupVersion.WithKind("Service")
-		reconciler.State = state.GetState().GetAnnotationState()
-		reconciler.State.Reset()
 		fakeRecorder = record.NewFakeRecorder(32)
-		reconciler.Recorder = fakeRecorder
+		reconciler = &Reconciler{
+			common.ReconcilerBase{
+				Client:             fakeClientSrc,
+				ControlPlaneClient: fakeClientCtrl,
+				Config: config.SourceControllerConfig{
+					TargetNamespace: ptr.To(defaultTargetNamespace),
+				},
+				GVK:      corev1.SchemeGroupVersion.WithKind("Service"),
+				State:    state.GetState().GetAnnotationState(),
+				Recorder: fakeRecorder,
+			},
+		}
+		reconciler.State.Reset()
 		svc = &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
@@ -215,6 +218,8 @@ var _ = Describe("Reconciler", func() {
 		It("should create DNSEntry object for service of type load balancer on different clusters", func() {
 			reconciler.Config.TargetClusterID = ptr.To("target-cluster-id")
 			reconciler.Config.SourceClusterID = ptr.To("source-cluster-id")
+			reconciler.TargetClass = "target-dns-class"
+			reconciler.Config.TargetClass = ptr.To(reconciler.TargetClass)
 			reconciler.Config.TargetLabels = map[string]string{
 				"gardener.cloud/shoot-id": "source-cluster-id",
 			}
@@ -223,6 +228,7 @@ var _ = Describe("Reconciler", func() {
 				DNSName: "foo.example.com",
 			})
 			Expect(entries[0].Labels["gardener.cloud/shoot-id"]).To(Equal("source-cluster-id"))
+			Expect(entries[0].Annotations["dns.gardener.cloud/class"]).To(Equal("target-dns-class"))
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ")
 		})
 

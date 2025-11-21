@@ -32,9 +32,10 @@ type ReconcilerBase struct {
 	Client             client.Client
 	ControlPlaneClient client.Client
 	Recorder           record.EventRecorder
-	Class              string
 	GVK                schema.GroupVersionKind
 	Config             config.SourceControllerConfig
+	SourceClass        string
+	TargetClass        string
 	State              state.AnnotationState
 }
 

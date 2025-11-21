@@ -153,6 +153,11 @@ func (in *DNSEntryControllerConfig) DeepCopyInto(out *DNSEntryControllerConfig) 
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.ReconciliationTimeout != nil {
+		in, out := &in.ReconciliationTimeout, &out.ReconciliationTimeout
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	if in.MaxConcurrentLookups != nil {
 		in, out := &in.MaxConcurrentLookups, &out.MaxConcurrentLookups
 		*out = new(int)
@@ -249,6 +254,11 @@ func (in *DNSProviderControllerConfig) DeepCopyInto(out *DNSProviderControllerCo
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.ReconciliationTimeout != nil {
+		in, out := &in.ReconciliationTimeout, &out.ReconciliationTimeout
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	if in.EnabledProviderTypes != nil {
 		in, out := &in.EnabledProviderTypes, &out.EnabledProviderTypes
 		*out = make([]string, len(*in))
@@ -274,13 +284,13 @@ func (in *DNSProviderControllerConfig) DeepCopyInto(out *DNSProviderControllerCo
 		*out = new(v1.Duration)
 		**out = **in
 	}
-	if in.AllowMockInMemoryProvider != nil {
-		in, out := &in.AllowMockInMemoryProvider, &out.AllowMockInMemoryProvider
+	if in.SkipNameValidation != nil {
+		in, out := &in.SkipNameValidation, &out.SkipNameValidation
 		*out = new(bool)
 		**out = **in
 	}
-	if in.SkipNameValidation != nil {
-		in, out := &in.SkipNameValidation, &out.SkipNameValidation
+	if in.MigrationMode != nil {
+		in, out := &in.MigrationMode, &out.MigrationMode
 		*out = new(bool)
 		**out = **in
 	}
@@ -362,6 +372,11 @@ func (in *SourceControllerConfig) DeepCopyInto(out *SourceControllerConfig) {
 	if in.ConcurrentSyncs != nil {
 		in, out := &in.ConcurrentSyncs, &out.ConcurrentSyncs
 		*out = new(int)
+		**out = **in
+	}
+	if in.SourceClass != nil {
+		in, out := &in.SourceClass, &out.SourceClass
+		*out = new(string)
 		**out = **in
 	}
 	if in.TargetClass != nil {

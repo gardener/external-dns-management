@@ -14,7 +14,7 @@ usage()
 {
     cat <<EOM
 Usage:
-Runs integration tests for external-dns-management with mock provider
+Runs integration tests for external-dns-management with local (mock) provider
 and local Kubernetes cluster in Docker (kind) or with local kube-apiserver and etcd
 
 ./run.sh [-r|--reuse] [-l] [-v] [-k|--keep] [-- <options> <for> <ginkgo>]

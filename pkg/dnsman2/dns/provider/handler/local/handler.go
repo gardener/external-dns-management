@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package mock
+package local
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"github.com/google/uuid"
 	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
@@ -21,7 +22,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
-// Handler implements the provider.DNSHandler interface for the mock in-memory DNS provider.
+// Handler implements the provider.DNSHandler interface for the local DNS provider.
 type Handler struct {
 	provider.DefaultDNSHandler
 	config      provider.DNSHandlerConfig
@@ -43,7 +44,7 @@ func (m MockZone) ZoneID(account string) dns.ZoneID {
 	return dns.NewZoneID(ProviderType, account+":"+m.ZoneSuffix+m.DNSName)
 }
 
-// MockConfig holds configuration for the mock DNS provider.
+// MockConfig holds configuration for the local DNS provider.
 type MockConfig struct {
 	Account              string     `json:"account"`
 	Zones                []MockZone `json:"zones"`
@@ -108,9 +109,16 @@ var (
 // NewHandler creates a new mock DNS handler with the given configuration.
 func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	var tmp MockConfig
-	err := json.Unmarshal(config.Config.Raw, &tmp)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal mock providerConfig failed with: %s", err)
+	if config.Config != nil && len(config.Config.Raw) > 0 {
+		err := json.Unmarshal(config.Config.Raw, &tmp)
+		if err != nil {
+			return nil, fmt.Errorf("unmarshal local providerConfig failed with: %s", err)
+		}
+	} else {
+		tmp.Account = uuid.New().String()
+		tmp.Zones = []MockZone{
+			{DNSName: "local.gardener.cloud"},
+		}
 	}
 
 	mock := NewInMemory(tmp.SupportRoutingPolicy)
@@ -145,7 +153,7 @@ func (h *Handler) Release() {
 	deleteInMemoryMock(h.mockConfig.Account)
 }
 
-// GetZones returns the hosted zones for the mock provider.
+// GetZones returns the hosted zones for the local provider.
 func (h *Handler) GetZones(_ context.Context) ([]provider.DNSHostedZone, error) {
 	if h.mockConfig.FailGetZones {
 		return nil, fmt.Errorf("forced error by mockConfig.FailGetZones")
@@ -155,12 +163,12 @@ func (h *Handler) GetZones(_ context.Context) ([]provider.DNSHostedZone, error) 
 	return zones, nil
 }
 
-// GetCustomQueryDNSFunc returns a custom DNS query function for the mock provider.
+// GetCustomQueryDNSFunc returns a custom DNS query function for the local provider.
 func (h *Handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, _ utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
 	return h.queryDNS, nil
 }
 
-// QueryDNS queries DNS records in the mock provider.
+// QueryDNS queries DNS records in the local provider.
 func (h *Handler) queryDNS(_ context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
 	result := h.mock.GetRecordset(zone.ZoneID(), setName.Normalize(), recordType)
 	if result == nil {
@@ -169,7 +177,7 @@ func (h *Handler) queryDNS(_ context.Context, zone dns.ZoneInfo, setName dns.DNS
 	return result, nil
 }
 
-// ExecuteRequests executes DNS change requests in the mock provider.
+// ExecuteRequests executes DNS change requests in the local provider.
 func (h *Handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZone, requests provider.ChangeRequests) error {
 	err := h.executeRequests(ctx, zone, requests)
 	if h.mockConfig.LatencyMillis > 0 {

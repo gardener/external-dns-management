@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/gardener/gardener/pkg/controllerutils"
 	corev1 "k8s.io/api/core/v1"
@@ -34,7 +35,8 @@ type Reconciler struct {
 	Client            client.Client
 	Clock             clock.Clock
 	Recorder          record.EventRecorder
-	Config            config.DNSManagerConfiguration
+	Config            config.DNSProviderControllerConfig
+	Class             string
 	DNSHandlerFactory dnsprovider.DNSHandlerFactory
 
 	state *state.State
@@ -53,18 +55,39 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
 	}
 
+	var (
+		result reconcile.Result
+		err    error
+	)
+	providerState := r.state.GetOrCreateProviderState(provider, r.Config)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, ptr.Deref(r.Config.ReconciliationTimeout, metav1.Duration{Duration: 2 * time.Minute}).Duration)
 	if provider.DeletionTimestamp != nil {
-		return r.delete(ctx, log, provider)
+		result, err = r.delete(ctxWithTimeout, log, provider)
 	} else {
-		return r.reconcile(ctx, log, provider)
+		result, err = r.reconcile(ctxWithTimeout, log, provider)
 	}
+	providerState.SetReconciled()
+	if err != nil {
+		log.Error(err, "reconciliation failed")
+	} else if result.RequeueAfter > 0 {
+		log.Info("reconciliation scheduled to be retried", "requeueAfter", result.RequeueAfter)
+	} else {
+		log.Info("reconciliation succeeded")
+	}
+	cancel()
+	return result, err
 }
 
-func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
+func (r *Reconciler) addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
 	if err := controllerutils.AddFinalizers(ctx, c, provider, dns.FinalizerCompound); err != nil {
 		return err
 	}
 	if provider.Spec.SecretRef == nil {
+		return nil
+	}
+	if ptr.Deref(r.Config.MigrationMode, false) {
+		// In migration mode, do not add finalizers to secrets as they may be removed immediately after creation by the old controller.
+		// see pkg/dns/provider/state_secret.go, method UpdateSecret() for details.
 		return nil
 	}
 	secret := &corev1.Secret{}
@@ -78,7 +101,7 @@ func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSPr
 	return controllerutils.AddFinalizers(ctx, c, secret, dns.FinalizerCompound)
 }
 
-func removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
+func (r *Reconciler) removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
 	if err := controllerutils.RemoveFinalizers(ctx, c, provider, dns.FinalizerCompound); err != nil {
 		return err
 	}

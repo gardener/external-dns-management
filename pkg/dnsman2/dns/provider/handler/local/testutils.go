@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package mock
+package local
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"

@@ -52,7 +52,11 @@ func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.Reconcil
 	if err := s.Client.List(s.Ctx, providerList, client.InNamespace(s.namespace)); err != nil {
 		return nil, &common.ReconcileResult{Err: err}
 	}
-	newProvider := findBestMatchingProvider(dns.FilterProvidersByClass(providerList.Items, s.class), s.Entry.Spec.DNSName, s.Entry.Status.Provider)
+	providers := dns.FilterProvidersByClass(providerList.Items, s.class)
+	if res := s.haveAllProvidersBeenReconciled(providers); res != nil {
+		return nil, res
+	}
+	newProvider := findBestMatchingProvider(providers, s.Entry.Spec.DNSName, s.Entry.Status.Provider)
 	if newProvider == nil {
 		return nil, nil
 	}
@@ -81,10 +85,22 @@ func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.Reconcil
 	}, nil
 }
 
+func (s *providerSelector) haveAllProvidersBeenReconciled(providers []v1alpha1.DNSProvider) *common.ReconcileResult {
+	for _, p := range providers {
+		pstate := s.state.GetProviderState(client.ObjectKeyFromObject(&p))
+		if pstate == nil || !pstate.IsReconciled() {
+			s.Log.V(1).Info("Provider state not yet available or reconciled", "provider", client.ObjectKeyFromObject(&p))
+			return &common.ReconcileResult{Result: reconcile.Result{RequeueAfter: 3 * time.Second}} // Provider state not yet available, requeue to wait for its reconciliation
+		}
+	}
+	return nil
+}
+
 func (s *providerSelector) getZoneForProvider(provider *v1alpha1.DNSProvider, dnsName string) (*dns.ZoneID, *common.ReconcileResult) {
 	pstate := s.state.GetProviderState(client.ObjectKeyFromObject(provider))
 	if pstate == nil {
-		return nil, &common.ReconcileResult{Result: reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}} // Provider state not yet available, requeue to wait for its reconciliation
+		s.Log.Info("Provider state not yet available", "provider", client.ObjectKeyFromObject(provider))
+		return nil, &common.ReconcileResult{Result: reconcile.Result{RequeueAfter: 3 * time.Second}} // Provider state not yet available, requeue to wait for its reconciliation
 	}
 	var (
 		bestZone  selection.LightDNSHostedZone

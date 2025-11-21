@@ -93,6 +93,9 @@ type DNSProviderControllerConfig struct {
 	ConcurrentSyncs *int
 	// SyncPeriod is the duration how often the controller performs its reconciliation.
 	SyncPeriod *metav1.Duration
+	// ReconciliationTimeout is the maximum duration a reconciliation of a DNSProvider is allowed to take.
+	// Default value is 2 minutes.
+	ReconciliationTimeout *metav1.Duration
 	// Namespace is the namespace on the secondary cluster containing the provided DNSProviders.
 	Namespace string
 	// EnabledProviderTypes is the list of DNS provider types that should be enabled.
@@ -107,10 +110,11 @@ type DNSProviderControllerConfig struct {
 	DefaultTTL *int64
 	// ZoneCacheTTL is the TTL for the cache for the `GetZones` method.
 	ZoneCacheTTL *metav1.Duration
-	// AllowMockInMemoryProvider if true, the provider type "mock-inmemory" is allowed, e.g. for testing purposes.
-	AllowMockInMemoryProvider *bool
 	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
 	SkipNameValidation *bool
+	// MigrationMode if true, the controller runs in migration mode and will not add finalizers to secrets.
+	// This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.
+	MigrationMode *bool
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.
@@ -119,6 +123,9 @@ type DNSEntryControllerConfig struct {
 	ConcurrentSyncs *int
 	// SyncPeriod is the duration how often the controller performs its reconciliation.
 	SyncPeriod *metav1.Duration
+	// ReconciliationTimeout is the maximum duration a reconciliation of a DNSEntry is allowed to take.
+	// Default value is 2 minutes.
+	ReconciliationTimeout *metav1.Duration
 	// MaxConcurrentLookups is the number of concurrent DNS lookups for the lookup processor.
 	MaxConcurrentLookups *int
 	// DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.
@@ -160,6 +167,8 @@ type AdvancedOptions struct {
 type SourceControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent reconciliations for source controllers.
 	ConcurrentSyncs *int
+	// SourceClass is the class value for sources.
+	SourceClass *string
 	// TargetClass is the class value for target DNSEntries.
 	TargetClass *string
 	// TargetNamespace is the namespace for target DNSEntries.
