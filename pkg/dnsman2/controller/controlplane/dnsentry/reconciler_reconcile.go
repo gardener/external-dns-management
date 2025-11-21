@@ -31,6 +31,7 @@ type entryReconciliation struct {
 	common.EntryContext
 	namespace                  string
 	class                      string
+	migrationMode              bool
 	state                      *state.State
 	lookupProcessor            lookup.LookupProcessor
 	defaultCNAMELookupInterval int64
@@ -244,6 +245,11 @@ func (r *entryReconciliation) calcOldTargets(recordsToCheck records.FullRecordKe
 		return &common.ReconcileResult{Err: err}
 	}
 	if status.ProviderType != nil && status.Zone != nil && status.DNSName != nil {
+		if r.migrationMode && ptr.Deref(status.ProviderType, "") == "remote" {
+			// in migration mode, we ignore the unsupported "remote" provider type
+			// they will be handled by the real provider instead
+			return nil
+		}
 		name, _, err := toDNSSetName(*status.DNSName, status.RoutingPolicy)
 		if err != nil {
 			return common.ErrorReconcileResult(err.Error(), false)
