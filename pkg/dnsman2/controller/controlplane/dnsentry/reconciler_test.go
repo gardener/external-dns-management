@@ -823,4 +823,23 @@ var _ = Describe("Reconcile", func() {
 		})
 	})
 
+	Context("Migration Mode", func() {
+		It("should ignore entry status if provider type is 'remote'", func() {
+			createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+
+			entryA.Status.ProviderType = ptr.To("remote")
+			Expect(fakeClient.Status().Update(ctx, entryA)).To(Succeed())
+			key := client.ObjectKeyFromObject(entryA)
+			result, err := reconcileEntry(key)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal(reconcile.Result{}))
+			Expect(fakeClient.Get(ctx, key, entryA)).To(Succeed())
+			checkEntryStateAndMessage(entryA, "Error", Equal("failed to map old targets: provider type \"remote\" not found in registry"))
+
+			reconciler.MigrationMode = true
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		})
+	})
 })

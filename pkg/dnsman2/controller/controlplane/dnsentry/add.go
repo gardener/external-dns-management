@@ -51,6 +51,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	if r.Namespace == "" {
 		return fmt.Errorf("namespace must be set for %s controller", ControllerName)
 	}
+	r.MigrationMode = ptr.Deref(cfg.Controllers.DNSProvider.MigrationMode, false)
 	r.state = state.GetState()
 	r.lookupProcessor = lookup.NewLookupProcessor(
 		mgr.GetLogger().WithName(ControllerName).WithName("lookupProcessor"),

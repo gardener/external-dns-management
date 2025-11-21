@@ -37,6 +37,7 @@ type Reconciler struct {
 	Clock                          clock.Clock
 	Namespace                      string
 	Class                          string
+	MigrationMode                  bool
 	defaultCNAMELookupInterval     int64
 	reconciliationDelayAfterUpdate time.Duration
 
@@ -77,6 +78,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		},
 		namespace:                  r.Namespace,
 		class:                      r.Class,
+		migrationMode:              r.MigrationMode,
 		lookupProcessor:            r.lookupProcessor,
 		state:                      r.state,
 		defaultCNAMELookupInterval: r.defaultCNAMELookupInterval,
