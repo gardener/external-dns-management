@@ -5,6 +5,8 @@ labels: kind/bug
 
 ---
 
+<!-- Please ensure that you do not include company internal information. -->
+
 **What happened**:
 
 **What you expected to happen**:
