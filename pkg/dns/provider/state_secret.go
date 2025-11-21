@@ -32,7 +32,11 @@ func (this *state) UpdateSecret(logger logger.LogContext, obj resources.Object) 
 
 	providers := this.GetSecretUsage(obj.ObjectName())
 	if len(providers) == 0 {
-		return reconcile.DelayOnError(logger, this.RemoveFinalizer(obj))
+		fullObj, err := obj.GetFullObject()
+		if err != nil {
+			return reconcile.Failed(logger, err)
+		}
+		return reconcile.DelayOnError(logger, this.RemoveFinalizer(fullObj))
 	}
 	logger.Infof("reconcile SECRET")
 	for _, p := range providers {
