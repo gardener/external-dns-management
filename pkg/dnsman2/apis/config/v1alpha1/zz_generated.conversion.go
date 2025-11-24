@@ -339,6 +339,9 @@ func autoConvert_v1alpha1_DNSManagerConfiguration_To_config_DNSManagerConfigurat
 		return err
 	}
 	out.Class = in.Class
+	out.DeployCRDs = (*bool)(unsafe.Pointer(in.DeployCRDs))
+	out.ConditionalDeployCRDs = (*bool)(unsafe.Pointer(in.ConditionalDeployCRDs))
+	out.AddShootNoCleanupLabelToCRDs = (*bool)(unsafe.Pointer(in.AddShootNoCleanupLabelToCRDs))
 	out.ProviderAdvancedOptions = *(*map[string]config.AdvancedOptions)(unsafe.Pointer(&in.ProviderAdvancedOptions))
 	return nil
 }
@@ -372,6 +375,9 @@ func autoConvert_config_DNSManagerConfiguration_To_v1alpha1_DNSManagerConfigurat
 		return err
 	}
 	out.Class = in.Class
+	out.DeployCRDs = (*bool)(unsafe.Pointer(in.DeployCRDs))
+	out.ConditionalDeployCRDs = (*bool)(unsafe.Pointer(in.ConditionalDeployCRDs))
+	out.AddShootNoCleanupLabelToCRDs = (*bool)(unsafe.Pointer(in.AddShootNoCleanupLabelToCRDs))
 	out.ProviderAdvancedOptions = *(*map[string]AdvancedOptions)(unsafe.Pointer(&in.ProviderAdvancedOptions))
 	return nil
 }

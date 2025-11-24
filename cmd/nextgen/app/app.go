@@ -166,6 +166,7 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 	switch cfg.ControlPlaneClientConnection.Kubeconfig {
 	case "":
 		log.Info("Using the main kubeconfig for the control plane as well")
+		controlPlaneRestConfig = restConfig
 	case "IN-CLUSTER":
 		log.Info("Using in-cluster configuration for control plane")
 		controlPlaneRestConfig, err = rest.InClusterConfig()
@@ -282,6 +283,10 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 	log.Info("Adding field indexes to informers")
 	if err := app.AddAllFieldIndexesToCluster(ctx, controlPlaneCluster); err != nil {
 		return fmt.Errorf("failed adding indexes: %w", err)
+	}
+
+	if err := app.DeployCRDs(ctx, log, mgr.GetConfig(), cfg); err != nil {
+		return fmt.Errorf("failed deploying CRDs: %w", err)
 	}
 
 	if err := (&dnsprovider.Reconciler{}).AddToManager(mgr, controlPlaneCluster, cfg); err != nil {

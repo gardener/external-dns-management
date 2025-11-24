@@ -213,6 +213,21 @@ func (in *DNSManagerConfiguration) DeepCopyInto(out *DNSManagerConfiguration) {
 		**out = **in
 	}
 	in.Controllers.DeepCopyInto(&out.Controllers)
+	if in.DeployCRDs != nil {
+		in, out := &in.DeployCRDs, &out.DeployCRDs
+		*out = new(bool)
+		**out = **in
+	}
+	if in.ConditionalDeployCRDs != nil {
+		in, out := &in.ConditionalDeployCRDs, &out.ConditionalDeployCRDs
+		*out = new(bool)
+		**out = **in
+	}
+	if in.AddShootNoCleanupLabelToCRDs != nil {
+		in, out := &in.AddShootNoCleanupLabelToCRDs, &out.AddShootNoCleanupLabelToCRDs
+		*out = new(bool)
+		**out = **in
+	}
 	if in.ProviderAdvancedOptions != nil {
 		in, out := &in.ProviderAdvancedOptions, &out.ProviderAdvancedOptions
 		*out = make(map[string]AdvancedOptions, len(*in))

@@ -1,6 +1,7 @@
 package client
 
 import (
+	resourcesv1alpha1 "github.com/gardener/gardener/pkg/apis/resources/v1alpha1"
 	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istionetworkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
@@ -31,6 +32,7 @@ func init() {
 	clusterSchemeBuilder := runtime.NewSchemeBuilder(
 		kubernetesscheme.AddToScheme,
 		dnsmanv1alpha1.AddToScheme,
+		resourcesv1alpha1.AddToScheme,
 		istionetworkingv1.AddToScheme,
 		istionetworkingv1alpha3.AddToScheme,
 		istionetworkingv1beta1.AddToScheme,
