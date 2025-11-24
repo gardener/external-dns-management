@@ -42,6 +42,17 @@ type DNSManagerConfiguration struct {
 	// Class is the "dns.gardener.cloud/class" the dns-controller-manager is responsible for.
 	// If not set, the default class "gardendns" is used.
 	Class string `json:"class"`
+	// DeployCRDs indicates whether the required CRDs should be deployed to the main cluster on startup.
+	// This does not include the control plane cluster, if different.
+	// +optional
+	DeployCRDs *bool `json:"deployCRDs,omitempty"`
+	// ConditionalDeployCRDs indicates whether to check before deploying CRDs if there is a managed resource in the garden namespace managing it.
+	// +optional
+	ConditionalDeployCRDs *bool `json:"conditionalDeployCRDs,omitempty"`
+	// AddShootNoCleanupLabelToCRDs indicates whether to add the "shoot.gardener.cloud/no-cleanup" label to deployed CRDs.
+	// This prevents Gardener from cleaning them up when the shoot is deleted.
+	// +optional
+	AddShootNoCleanupLabelToCRDs *bool `json:"addShootNoCleanupLabelToCRDs,omitempty"`
 	// ProviderAdvancedOptions contains advanced options for the DNS provider types.
 	// +optional
 	ProviderAdvancedOptions map[string]AdvancedOptions `json:"providerAdvancedOptions,omitempty"`
