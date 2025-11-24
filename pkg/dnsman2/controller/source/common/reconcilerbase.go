@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/gardener/gardener/pkg/controllerutils"
 	"github.com/go-logr/logr"
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
@@ -34,6 +35,7 @@ type ReconcilerBase struct {
 	Recorder           record.EventRecorder
 	GVK                schema.GroupVersionKind
 	Config             config.SourceControllerConfig
+	FinalizerName      string
 	SourceClass        string
 	TargetClass        string
 	State              state.AnnotationState
@@ -72,6 +74,16 @@ func (r *ReconcilerBase) DoReconcile(ctx context.Context, log logr.Logger, obj c
 	for _, name := range dnsSpecInput.Names.ToSlice() {
 		if err := r.createOrUpdateDNSEntry(ctx, log, obj, dnsSpecInput, name, newEntries[name]); err != nil {
 			return reconcile.Result{}, err
+		}
+	}
+
+	if len(newEntries) > 0 {
+		if err := controllerutils.AddFinalizers(ctx, r.Client, obj, r.FinalizerName); err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to add finalizer from %s %s: %w", r.GVK.Kind, obj.GetName(), err)
+		}
+	} else {
+		if err := controllerutils.RemoveFinalizers(ctx, r.Client, obj, r.FinalizerName); err != nil {
+			return reconcile.Result{}, fmt.Errorf("failed to remove finalizer from %s %s: %w", r.GVK.Kind, obj.GetName(), err)
 		}
 	}
 
@@ -125,6 +137,10 @@ func (r *ReconcilerBase) DoDelete(ctx context.Context, log logr.Logger, obj clie
 
 	if err := r.deleteObsoleteOwnedDNSEntries(ctx, log, obj, ownedEntries, nil); err != nil {
 		return reconcile.Result{}, err
+	}
+
+	if err := controllerutils.RemoveFinalizers(ctx, r.Client, obj, r.FinalizerName); err != nil {
+		return reconcile.Result{}, fmt.Errorf("failed to remove finalizer from %s %s: %w", r.GVK.Kind, obj.GetName(), err)
 	}
 
 	ref := BuildResourceReference(r.GVK, obj)

@@ -34,7 +34,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
 	}
 
-	if service.Spec.Type != corev1.ServiceTypeLoadBalancer {
+	if service.Spec.Type != corev1.ServiceTypeLoadBalancer || service.DeletionTimestamp != nil {
 		return r.DoDelete(ctx, log, service)
 	} else {
 		return r.reconcile(ctx, log, service)

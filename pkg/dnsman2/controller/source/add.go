@@ -15,6 +15,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
@@ -22,10 +23,11 @@ import (
 func AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
 	if err := (&service.Reconciler{
 		ReconcilerBase: common.ReconcilerBase{
-			Config:      cfg.Controllers.Source,
-			SourceClass: config.GetSourceClass(cfg),
-			TargetClass: config.GetTargetClass(cfg),
-			State:       state.GetState().GetAnnotationState(),
+			Config:        cfg.Controllers.Source,
+			FinalizerName: dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(cfg)), "service-dns"),
+			SourceClass:   config.GetSourceClass(cfg),
+			TargetClass:   config.GetTargetClass(cfg),
+			State:         state.GetState().GetAnnotationState(),
 		},
 	}).AddToManager(mgr, controlPlaneCluster); err != nil {
 		return fmt.Errorf("failed adding source Service controller: %w", err)
