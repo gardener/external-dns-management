@@ -15,6 +15,7 @@ import (
 	"time"
 
 	cmdutils "github.com/gardener/gardener/cmd/utils/initrun"
+	"github.com/gardener/gardener/extensions/pkg/controller/cmd"
 	"github.com/gardener/gardener/pkg/client/kubernetes"
 	"github.com/gardener/gardener/pkg/controllerutils/routes"
 	gardenerhealthz "github.com/gardener/gardener/pkg/healthz"
@@ -36,17 +37,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/yaml"
 
 	dnsmanv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	configv1alpha1 "github.com/gardener/external-dns-management/pkg/dnsman2/apis/config/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/app"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/app/appcontext"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
-	dnsanntation "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsannotation"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source"
-	sourcednsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
 )
 
 // Name is the name of the dns-controller-manager.
@@ -94,20 +92,24 @@ func NewCommand() *cobra.Command {
 
 // options is a struct to support packages command.
 type options struct {
-	configFile string
-	verbose    bool
-	config     *config.DNSManagerConfiguration
+	configFile         string
+	verbose            bool
+	config             *config.DNSManagerConfiguration
+	controllerSwitches *cmd.SwitchOptions
 }
 
 // newOptions returns initialized options.
 func newOptions() *options {
-	return &options{}
+	return &options{
+		controllerSwitches: app.ControllerSwitches(),
+	}
 }
 
 // addFlags binds the command options to a given flagset.
 func (o *options) addFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&o.configFile, "config", o.configFile, "Path to configuration file.")
 	flags.BoolVar(&o.verbose, "v", o.verbose, "If true, overwrites log level in config with value 'debug'.")
+	o.controllerSwitches.AddFlags(flags)
 }
 
 // Complete adapts from the command line args to the data required.
@@ -124,6 +126,10 @@ func (o *options) Complete() error {
 	o.config = &config.DNSManagerConfiguration{}
 	if err = runtime.DecodeInto(configDecoder, data, o.config); err != nil {
 		return fmt.Errorf("error decoding config: %w", err)
+	}
+
+	if err := o.controllerSwitches.Complete(); err != nil {
+		return fmt.Errorf("error completing controller switches: %w", err)
 	}
 
 	return nil
@@ -147,6 +153,10 @@ func (o *options) LogConfig() (logLevel, logFormat string) {
 // run does the actual work of the command.
 func (o *options) run(ctx context.Context, log logr.Logger) error {
 	cfg := o.config
+
+	if err := logConfiguration(log, cfg); err != nil {
+		return fmt.Errorf("error logging configuration: %w", err)
+	}
 
 	log.Info("Getting rest config")
 	if cfg.ClientConnection.Kubeconfig == "" {
@@ -289,27 +299,26 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 		return fmt.Errorf("failed deploying CRDs: %w", err)
 	}
 
-	if err := (&dnsprovider.Reconciler{}).AddToManager(mgr, controlPlaneCluster, cfg); err != nil {
-		return fmt.Errorf("failed adding control plane DNSProvider controller: %w", err)
-	}
-	if err := (&dnsentry.Reconciler{}).AddToManager(mgr, controlPlaneCluster, cfg); err != nil {
-		return fmt.Errorf("failed adding control plane DNSEntry controller: %w", err)
-	}
-	if err := source.AddToManager(mgr, controlPlaneCluster, cfg); err != nil {
-		return fmt.Errorf("failed adding source controllers: %w", err)
-	}
-	if err := (&dnsanntation.Reconciler{}).AddToManager(mgr, cfg); err != nil {
-		return fmt.Errorf("failed adding DNSAnnotation controller: %w", err)
-	}
-	if ptr.Deref(cfg.Controllers.Source.DNSProviderReplication, false) {
-		log.Info("DNSProvider replication is enabled")
-		if err := (&sourcednsprovider.Reconciler{}).AddToManager(mgr, controlPlaneCluster); err != nil {
-			return fmt.Errorf("failed adding source DNSProvider controller: %w", err)
-		}
-	} else {
-		log.Info("DNSProvider replication is disabled")
+	addCtx := appcontext.NewAppContext(ctx, log, controlPlaneCluster, cfg)
+	if err := o.controllerSwitches.Completed().AddToManager(addCtx, mgr); err != nil {
+		return fmt.Errorf("failed adding controllers to manager: %w", err)
 	}
 
 	log.Info("Starting manager")
 	return mgr.Start(ctx)
+}
+
+func logConfiguration(log logr.Logger, cfg *config.DNSManagerConfiguration) error {
+	cfg1 := &configv1alpha1.DNSManagerConfiguration{}
+	if err := configv1alpha1.Convert_config_DNSManagerConfiguration_To_v1alpha1_DNSManagerConfiguration(cfg, cfg1, nil); err != nil {
+		return fmt.Errorf("error converting config to v1alpha1 for logging: %w", err)
+	}
+
+	data, err := yaml.Marshal(cfg1)
+	if err != nil {
+		return fmt.Errorf("error marshalling config to yaml for logging: %w", err)
+	}
+
+	log.Info("Using configuration:\n" + string(data))
+	return nil
 }
