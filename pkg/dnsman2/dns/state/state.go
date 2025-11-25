@@ -107,6 +107,15 @@ func (s *State) SetDNSHandlerFactory(factory provider.DNSHandlerFactory) {
 	s.factory.Store(&factory)
 }
 
+// SetDNSHandlerFactoryOnce sets the DNSHandlerFactory for the state.
+// If a factory is already set, it returns the existing one.
+func (s *State) SetDNSHandlerFactoryOnce(factory provider.DNSHandlerFactory) provider.DNSHandlerFactory {
+	if !s.factory.CompareAndSwap(nil, &factory) {
+		return s.GetDNSHandlerFactory()
+	}
+	return factory
+}
+
 // GetDNSHandlerFactory returns the DNSHandlerFactory set in the state.
 func (s *State) GetDNSHandlerFactory() provider.DNSHandlerFactory {
 	factory := s.factory.Load()
