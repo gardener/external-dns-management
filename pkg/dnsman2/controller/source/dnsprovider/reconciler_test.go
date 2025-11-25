@@ -29,6 +29,7 @@ import (
 	. "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/local"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/testutils"
 )
 
@@ -152,6 +153,18 @@ var _ = Describe("Reconciler", func() {
 			return testWithoutCreation(spec, 1, expectedErrorMessage...)
 		}
 
+		checkTargetDNSProviderAbsent = func(offset int, actualTarget *dnsv1alpha1.DNSProvider) {
+			targetProvider := &dnsv1alpha1.DNSProvider{}
+			err := fakeClientCtrl.Get(ctx, client.ObjectKeyFromObject(actualTarget), targetProvider)
+			ExpectWithOffset(1+offset, errors.IsNotFound(err)).To(BeTrue(), "target DNSProvider was not deleted after source DNSProvider deletion")
+		}
+
+		checkSourceSecretWithoutFinalizer = func(offset int) {
+			sourceSecretFetched := &corev1.Secret{}
+			ExpectWithOffset(1+offset, fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(sourceSecret), sourceSecretFetched)).To(Succeed(), "fetching source secret after source DNSProvider deletion failed")
+			ExpectWithOffset(1+offset, sourceSecretFetched.Finalizers).NotTo(ContainElement("garden.dns.gardener.cloud/dnsprovider-replication"), "finalizer was not removed from source secret after source DNSProvider deletion")
+		}
+
 		testDeletion = func(actualTarget *dnsv1alpha1.DNSProvider) {
 			By("deleting source DNSProvider")
 			ExpectWithOffset(1, fakeClientSrc.Delete(ctx, sourceProvider)).To(Succeed())
@@ -160,14 +173,10 @@ var _ = Describe("Reconciler", func() {
 			ExpectWithOffset(1, err).NotTo(HaveOccurred(), "reconciling source DNSProvider after deletion failed")
 
 			By("checking that target DNSProvider is deleted")
-			targetProvider := &dnsv1alpha1.DNSProvider{}
-			err = fakeClientCtrl.Get(ctx, client.ObjectKeyFromObject(actualTarget), targetProvider)
-			ExpectWithOffset(1, errors.IsNotFound(err)).To(BeTrue(), "target DNSProvider was not deleted after source DNSProvider deletion")
+			checkTargetDNSProviderAbsent(1, actualTarget)
 
 			By("checking that source secret finalizer is removed")
-			sourceSecretFetched := &corev1.Secret{}
-			ExpectWithOffset(1, fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(sourceSecret), sourceSecretFetched)).To(Succeed(), "fetching source secret after source DNSProvider deletion failed")
-			ExpectWithOffset(1, sourceSecretFetched.Finalizers).NotTo(ContainElement("garden.dns.gardener.cloud/dnsprovider-replication"), "finalizer was not removed from source secret after source DNSProvider deletion")
+			checkSourceSecretWithoutFinalizer(1)
 		}
 	)
 
@@ -286,6 +295,40 @@ var _ = Describe("Reconciler", func() {
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
 
 			testDeletion(actualTarget)
+		})
+
+		It("should handle change of DNS class", func() {
+			actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
+				Type: local.ProviderType,
+				SecretRef: &corev1.SecretReference{
+					Name: "foo-secret",
+				},
+			})
+			checkTargetSecret(actualTarget, sourceSecret.Data)
+			checkSourceProviderState("")
+			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
+
+			patchTargetStateToReadyAndReconcileSource(actualTarget)
+			checkSourceProviderState("Ready")
+
+			By("changing DNS class on source DNSProvider")
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(sourceProvider), sourceProvider)).To(Succeed())
+			utils.SetAnnotation(sourceProvider, "dns.gardener.cloud/class", "new-dns-class")
+			Expect(fakeClientSrc.Update(ctx, sourceProvider)).To(Succeed())
+
+			req := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: sourceProvider.Namespace, Name: sourceProvider.Name}}
+			_, err := reconciler.Reconcile(ctx, req)
+			Expect(err).NotTo(HaveOccurred(), "reconciling source DNSProvider after changing DNS class failed")
+
+			By("checking that target DNSProvider is deleted")
+			checkTargetDNSProviderAbsent(0, actualTarget)
+
+			By("checking that source secret finalizer is removed")
+			checkSourceSecretWithoutFinalizer(0)
+
+			By("checking that source DNSProvider finalizer is removed")
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(sourceProvider), sourceProvider)).To(Succeed())
+			Expect(sourceProvider.Finalizers).NotTo(ContainElement("garden.dns.gardener.cloud/dnsprovider-replication"))
 		})
 	})
 })

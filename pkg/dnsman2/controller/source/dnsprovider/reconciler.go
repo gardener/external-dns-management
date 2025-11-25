@@ -55,7 +55,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
 	}
 
-	if provider.DeletionTimestamp != nil {
+	if provider.DeletionTimestamp != nil || !dns.EquivalentClass(provider.Annotations[dns.AnnotationClass], r.SourceClass) {
 		return r.delete(ctx, log, provider)
 	} else {
 		return r.reconcile(ctx, log, provider)
