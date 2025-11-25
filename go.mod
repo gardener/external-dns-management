@@ -20,7 +20,7 @@ require (
 	github.com/aws/smithy-go v1.23.2
 	github.com/cloudflare/cloudflare-go/v6 v6.3.0
 	github.com/gardener/controller-manager-library v0.2.1-0.20251124075816-57bec195b242
-	github.com/gardener/gardener v1.132.1
+	github.com/gardener/gardener v1.132.2
 	github.com/go-logr/logr v1.4.3
 	github.com/go-openapi/runtime v0.29.2
 	github.com/go-openapi/strfmt v0.25.0
