@@ -29,6 +29,7 @@ import (
 	. "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/testutils"
 )
 
@@ -376,6 +377,23 @@ var _ = Describe("Reconciler", func() {
 			Expect(svc.Finalizers).To(ContainElement("gardendns.dns.gardener.cloud/service-dns"))
 
 			svc.Spec.Type = corev1.ServiceTypeClusterIP
+			Expect(fakeClientSrc.Update(ctx, svc)).NotTo(HaveOccurred())
+			testMultiWithoutCreation(nil, 0)
+			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ", "Normal DNSEntryDeleted ")
+
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(svc), svc)).NotTo(HaveOccurred())
+			Expect(svc.Finalizers).NotTo(ContainElement("gardendns.dns.gardener.cloud/service-dns"))
+		})
+
+		It("should delete entry object if DNS class is changed", func() {
+			test(&dnsv1alpha1.DNSEntrySpec{
+				DNSName: "foo.example.com",
+			})
+
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(svc), svc)).NotTo(HaveOccurred())
+			Expect(svc.Finalizers).To(ContainElement("gardendns.dns.gardener.cloud/service-dns"))
+
+			utils.SetAnnotation(svc, dns.AnnotationClass, "other-dns-class")
 			Expect(fakeClientSrc.Update(ctx, svc)).NotTo(HaveOccurred())
 			testMultiWithoutCreation(nil, 0)
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ", "Normal DNSEntryDeleted ")
