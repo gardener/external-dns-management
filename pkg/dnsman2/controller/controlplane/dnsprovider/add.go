@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
-	"k8s.io/utils/strings/slices"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
@@ -30,37 +29,11 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/alicloud"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/aws"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/azure"
-	azureprivate "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/azure-private"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/cloudflare"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/google"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/local"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/netlify"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/openstack"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/powerdns"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/rfc2136"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 // ControllerName is the name of this controller.
 const ControllerName = "dnsprovider"
-
-var allTypes = map[string]provider.AddToRegistryFunc{
-	alicloud.ProviderType:     alicloud.RegisterTo,
-	aws.ProviderType:          aws.RegisterTo,
-	azure.ProviderType:        azure.RegisterTo,
-	azureprivate.ProviderType: azureprivate.RegisterTo,
-	cloudflare.ProviderType:   cloudflare.RegisterTo,
-	google.ProviderType:       google.RegisterTo,
-	local.ProviderType:        local.RegisterTo,
-	netlify.ProviderType:      netlify.RegisterTo,
-	openstack.ProviderType:    openstack.RegisterTo,
-	rfc2136.ProviderType:      rfc2136.RegisterTo,
-	powerdns.ProviderType:     powerdns.RegisterTo,
-}
 
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
@@ -74,22 +47,10 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		r.Recorder = controlPlaneCluster.GetEventRecorderFor(ControllerName + "-controller")
 	}
 	if r.DNSHandlerFactory == nil {
-		registry := provider.NewDNSHandlerRegistry(r.Clock)
-		disabledTypes := r.Config.DisabledProviderTypes
-		enabledTypes := r.Config.EnabledProviderTypes
-		for providerType, addToRegistry := range allTypes {
-			if len(enabledTypes) > 0 && !slices.Contains(enabledTypes, providerType) {
-				continue
-			}
-			if slices.Contains(disabledTypes, providerType) {
-				continue
-			}
-			addToRegistry(registry)
-		}
-		r.DNSHandlerFactory = registry
+		return fmt.Errorf("DNSHandlerFactory must be set before calling AddToManager")
 	}
 	r.state = state.GetState()
-	r.state.SetDNSHandlerFactory(r.DNSHandlerFactory)
+
 	mgr.GetLogger().Info("Supported provider types", "providerTypes", strings.Join(r.DNSHandlerFactory.GetSupportedTypes(), ","))
 
 	return builder.

@@ -20,6 +20,8 @@ import (
 	sourcednsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
@@ -40,7 +42,9 @@ func AddControlPlaneDNSProviderController(ctx context.Context, mgr manager.Manag
 	if err != nil {
 		return err
 	}
-	return (&dnsprovider.Reconciler{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
+	return (&dnsprovider.Reconciler{
+		DNSHandlerFactory: getStandardDNSHandlerFactory(appCtx.Config.Controllers.DNSProvider),
+	}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
 }
 
 // AddControlPlaneDNSEntryController adds the DNSEntry control plane controller to the manager.
@@ -74,7 +78,12 @@ func AddSourceDNSProviderController(ctx context.Context, mgr manager.Manager) er
 	}
 
 	appCtx.Log.Info("DNSProvider replication is enabled")
-	return (&sourcednsprovider.Reconciler{}).AddToManager(mgr, appCtx.ControlPlane)
+	return (&sourcednsprovider.Reconciler{
+		Config:            appCtx.Config.Controllers.Source,
+		SourceClass:       config.GetSourceClass(appCtx.Config),
+		TargetClass:       config.GetTargetClass(appCtx.Config),
+		DNSHandlerFactory: getStandardDNSHandlerFactory(appCtx.Config.Controllers.DNSProvider),
+	}).AddToManager(mgr, appCtx.ControlPlane)
 }
 
 // AddSourceServiceController adds the Service source controller to the manager.
@@ -92,4 +101,14 @@ func AddSourceServiceController(ctx context.Context, mgr manager.Manager) error 
 			State:         state.GetState().GetAnnotationState(),
 		},
 	}).AddToManager(mgr, appCtx.ControlPlane)
+}
+
+func getStandardDNSHandlerFactory(cfg config.DNSProviderControllerConfig) provider.DNSHandlerFactory {
+	s := state.GetState()
+	factory := s.GetDNSHandlerFactory()
+	if factory != nil {
+		return factory
+	}
+	factory = handler.CreateStandardDNSHandlerFactory(cfg)
+	return s.SetDNSHandlerFactoryOnce(factory)
 }
