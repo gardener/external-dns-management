@@ -35,12 +35,8 @@ var _ = Describe("Reconcile", func() {
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSAnnotation{}).Build()
 		reconciler = &Reconciler{
 			Client: fakeClient,
-			Config: config.DNSManagerConfiguration{
-				Controllers: config.ControllerConfiguration{
-					DNSAnnotation: config.DNSAnnotationControllerConfig{
-						SkipNameValidation: ptr.To(true),
-					},
-				},
+			Config: config.DNSAnnotationControllerConfig{
+				SkipNameValidation: ptr.To(true),
 			},
 			Clock: clock,
 			state: state.GetState().GetAnnotationState(),

@@ -28,6 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/lookup"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/providerselector"
@@ -39,7 +40,10 @@ import (
 const ControllerName = "dnsentry"
 
 // AddToManager adds Reconciler to the given manager.
-func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster) error {
+func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
+	r.Config = cfg.Controllers.DNSEntry
+	r.Class = cfg.Class
+	r.Namespace = cfg.Controllers.DNSProvider.Namespace
 	r.Client = controlPlaneCluster.GetClient()
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
@@ -47,6 +51,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	if r.Namespace == "" {
 		return fmt.Errorf("namespace must be set for %s controller", ControllerName)
 	}
+	r.MigrationMode = ptr.Deref(cfg.Controllers.DNSProvider.MigrationMode, false)
 	r.state = state.GetState()
 	r.lookupProcessor = lookup.NewLookupProcessor(
 		mgr.GetLogger().WithName(ControllerName).WithName("lookupProcessor"),
@@ -72,6 +77,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, provider client.Object) []reconcile.Request {
 				return r.entriesToReconcileOnProviderChanges(ctx, provider)
 			}),
+			dnsman2controller.DNSClassPredicate(r.Class),
 		)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 10),

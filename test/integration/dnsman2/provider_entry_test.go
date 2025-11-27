@@ -31,12 +31,11 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/app"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/app/appcontext"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/local"
 )
 
 var debug = false
@@ -63,7 +62,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		}
 
 		checkSingleEntryInMockDatabase = func(entry *v1alpha1.DNSEntry) {
-			dump := mock.GetInMemoryMock(testRunID).BuildFullDump()
+			dump := local.GetInMemoryMock(testRunID).BuildFullDump()
 			for _, zoneDump := range dump.InMemory {
 				switch {
 				case zoneDump.HostedZone.Domain == "first.example.com" && entry == nil:
@@ -108,9 +107,9 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		}
 
 		prepareSecondProvider = func() *v1alpha1.DNSProvider {
-			mcfg := mock.MockConfig{
+			mcfg := local.MockConfig{
 				Account: testRunID + "-2",
-				Zones: []mock.MockZone{
+				Zones: []local.MockZone{
 					{DNSName: "other-domain.com"},
 				},
 			}
@@ -123,7 +122,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 					Name:      "mock2",
 				},
 				Spec: v1alpha1.DNSProviderSpec{
-					Type:           "mock-inmemory",
+					Type:           "local",
 					ProviderConfig: &runtime.RawExtension{Raw: bytes},
 					// "mock1-secret" can be reused as it has no data anyway
 					SecretRef: &corev1.SecretReference{Name: "mock1-secret", Namespace: testRunID},
@@ -157,10 +156,9 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			LogFormat: "text",
 			Controllers: config.ControllerConfiguration{
 				DNSProvider: config.DNSProviderControllerConfig{
-					Namespace:                 testRunID,
-					DefaultTTL:                ptr.To[int64](300),
-					AllowMockInMemoryProvider: ptr.To(true),
-					SkipNameValidation:        ptr.To(true),
+					Namespace:          testRunID,
+					DefaultTTL:         ptr.To[int64](300),
+					SkipNameValidation: ptr.To(true),
 				},
 				DNSEntry: config.DNSEntryControllerConfig{
 					ReconciliationDelayAfterUpdate: ptr.To(metav1.Duration{Duration: 10 * time.Millisecond}),
@@ -193,17 +191,11 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		Expect(app.AddAllFieldIndexesToCluster(ctx, mgr)).To(Succeed())
 
 		By("Adding controllers to manager")
-		if err := (&dnsprovider.Reconciler{
-			Config: *cfg,
-		}).AddToManager(mgr, mgr); err != nil {
-			Fail(fmt.Errorf("failed adding control plane DNSProvider controller: %w", err).Error())
-		}
-		if err := (&dnsentry.Reconciler{
-			Config:    cfg.Controllers.DNSEntry,
-			Namespace: cfg.Controllers.DNSProvider.Namespace,
-		}).AddToManager(mgr, mgr); err != nil {
-			Fail(fmt.Errorf("failed adding control plane DNSEntry controller: %w", err).Error())
-		}
+		controllerSwitches := app.ControllerSwitches()
+		controllerSwitches.Enabled = []string{"dnsprovider", "dnsentry"}
+		Expect(controllerSwitches.Complete()).To(Succeed())
+		addCtx := appcontext.NewAppContext(ctx, log, mgr, cfg)
+		Expect(controllerSwitches.Completed().AddToManager(addCtx, mgr)).To(Succeed())
 
 		var mgrContext context.Context
 		mgrContext, mgrCancel = context.WithCancel(ctx)
@@ -220,9 +212,9 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			mgrCancel()
 		})
 
-		mcfg := mock.MockConfig{
+		mcfg := local.MockConfig{
 			Account: testRunID,
-			Zones: []mock.MockZone{
+			Zones: []local.MockZone{
 				{DNSName: "first.example.com"},
 				{DNSName: "second.example.com"},
 			},
@@ -249,7 +241,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 				Name:      "mock1",
 			},
 			Spec: v1alpha1.DNSProviderSpec{
-				Type:           "mock-inmemory",
+				Type:           "local",
 				ProviderConfig: &runtime.RawExtension{Raw: bytes},
 				SecretRef:      &corev1.SecretReference{Name: "mock1-secret", Namespace: testRunID},
 			},
@@ -362,7 +354,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		// simulate apply failure for entry e1
 		failSet := dns.NewDNSSet(dns.DNSSetName{DNSName: e1.Spec.DNSName})
 		failSet.Sets.AddRecord(dns.TypeA, e1.Spec.Targets[0], defaultTTL)
-		failID := mock.GetInMemoryMock(testRunID).AddApplyFailSimulation(firstZoneID, &provider.ChangeRequests{
+		failID := local.GetInMemoryMock(testRunID).AddApplyFailSimulation(firstZoneID, &provider.ChangeRequests{
 			Name: failSet.Name,
 			Updates: map[dns.RecordType]*provider.ChangeRequestUpdate{
 				dns.TypeA: {
@@ -374,7 +366,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		Expect(testClient.Create(ctx, e1)).To(Succeed())
 
 		Eventually(func() int {
-			return mock.GetInMemoryMock(testRunID).GetApplyFailSimulationCount(failID)
+			return local.GetInMemoryMock(testRunID).GetApplyFailSimulationCount(failID)
 		}).ShouldNot(BeZero())
 
 		Eventually(func(g Gomega) {
@@ -384,7 +376,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).Should(Succeed())
 
-		mock.GetInMemoryMock(testRunID).RemoveApplyFailSimulation(failID)
+		local.GetInMemoryMock(testRunID).RemoveApplyFailSimulation(failID)
 
 		Eventually(func(g Gomega) {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
@@ -409,7 +401,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		newDNSName := "e1-update.first.example.com"
 		failSet := dns.NewDNSSet(dns.DNSSetName{DNSName: newDNSName})
 		failSet.Sets.AddRecord(dns.TypeA, e1.Spec.Targets[0], defaultTTL)
-		failID := mock.GetInMemoryMock(testRunID).AddApplyFailSimulation(firstZoneID, &provider.ChangeRequests{
+		failID := local.GetInMemoryMock(testRunID).AddApplyFailSimulation(firstZoneID, &provider.ChangeRequests{
 			Name: failSet.Name,
 			Updates: map[dns.RecordType]*provider.ChangeRequestUpdate{
 				dns.TypeA: {
@@ -428,7 +420,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		}).Should(Succeed())
 
 		Eventually(func() int {
-			return mock.GetInMemoryMock(testRunID).GetApplyFailSimulationCount(failID)
+			return local.GetInMemoryMock(testRunID).GetApplyFailSimulationCount(failID)
 		}).ShouldNot(BeZero())
 
 		Eventually(func(g Gomega) {
@@ -437,7 +429,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).Should(Succeed())
 
-		mock.GetInMemoryMock(testRunID).RemoveApplyFailSimulation(failID)
+		local.GetInMemoryMock(testRunID).RemoveApplyFailSimulation(failID)
 
 		Eventually(func(g Gomega) {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
@@ -462,7 +454,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		deleteSet := dns.NewDNSSet(dns.DNSSetName{DNSName: "e2.first.example.com"})
 		deleteSet.Sets.AddRecord(dns.TypeA, "1.1.2.1", 42)
 		deleteSet.Sets.AddRecord(dns.TypeA, "1.1.2.2", 42)
-		failID := mock.GetInMemoryMock(testRunID).AddApplyFailSimulation(firstZoneID, &provider.ChangeRequests{
+		failID := local.GetInMemoryMock(testRunID).AddApplyFailSimulation(firstZoneID, &provider.ChangeRequests{
 			Name: deleteSet.Name,
 			Updates: map[dns.RecordType]*provider.ChangeRequestUpdate{
 				dns.TypeA: {
@@ -473,14 +465,14 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		Expect(testClient.Delete(ctx, e2)).To(Succeed())
 
 		Eventually(func() int {
-			return mock.GetInMemoryMock(testRunID).GetApplyFailSimulationCount(failID)
+			return local.GetInMemoryMock(testRunID).GetApplyFailSimulationCount(failID)
 		}).ShouldNot(BeZero())
 
 		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e2), e2)).To(Succeed())
 		Expect(e2.DeletionTimestamp).NotTo(BeNil())
 
 		// remove apply fail simulation
-		mock.GetInMemoryMock(testRunID).RemoveApplyFailSimulation(failID)
+		local.GetInMemoryMock(testRunID).RemoveApplyFailSimulation(failID)
 		By("await deletion of entry " + e2.Name)
 		Eventually(func(g Gomega) {
 			checkDeleted(g, ctx, e2)
@@ -608,7 +600,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		checkEntry(e1)
 		Expect(e1.Finalizers).To(ContainElement(dns.FinalizerCompound))
 		Expect(e1.Status.Provider).To(PointTo(Equal(client.ObjectKeyFromObject(provider1).String())))
-		Expect(e1.Status.ProviderType).To(PointTo(Equal("mock-inmemory")))
+		Expect(e1.Status.ProviderType).To(PointTo(Equal("local")))
 
 		Eventually(func(g Gomega) {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(p2), p2)).To(Succeed())
@@ -624,7 +616,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 			g.Expect(e1.Finalizers).To(ContainElement(dns.FinalizerCompound))
 			g.Expect(e1.Status.Provider).To(PointTo(Equal(client.ObjectKeyFromObject(p2).String())))
-			g.Expect(e1.Status.ProviderType).To(PointTo(Equal("mock-inmemory")))
+			g.Expect(e1.Status.ProviderType).To(PointTo(Equal("local")))
 		}).Should(Succeed())
 		checkEntry(e1)
 	})

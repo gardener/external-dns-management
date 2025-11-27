@@ -34,7 +34,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/local"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dns/provider"
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"

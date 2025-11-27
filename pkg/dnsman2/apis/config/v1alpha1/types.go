@@ -42,6 +42,17 @@ type DNSManagerConfiguration struct {
 	// Class is the "dns.gardener.cloud/class" the dns-controller-manager is responsible for.
 	// If not set, the default class "gardendns" is used.
 	Class string `json:"class"`
+	// DeployCRDs indicates whether the required CRDs should be deployed to the main cluster on startup.
+	// This does not include the control plane cluster, if different.
+	// +optional
+	DeployCRDs *bool `json:"deployCRDs,omitempty"`
+	// ConditionalDeployCRDs indicates whether to check before deploying CRDs if there is a managed resource in the garden namespace managing it.
+	// +optional
+	ConditionalDeployCRDs *bool `json:"conditionalDeployCRDs,omitempty"`
+	// AddShootNoCleanupLabelToCRDs indicates whether to add the "shoot.gardener.cloud/no-cleanup" label to deployed CRDs.
+	// This prevents Gardener from cleaning them up when the shoot is deleted.
+	// +optional
+	AddShootNoCleanupLabelToCRDs *bool `json:"addShootNoCleanupLabelToCRDs,omitempty"`
 	// ProviderAdvancedOptions contains advanced options for the DNS provider types.
 	// +optional
 	ProviderAdvancedOptions map[string]AdvancedOptions `json:"providerAdvancedOptions,omitempty"`
@@ -103,6 +114,10 @@ type DNSProviderControllerConfig struct {
 	// SyncPeriod is the duration how often the controller performs its reconciliation.
 	// +optional
 	SyncPeriod *metav1.Duration `json:"syncPeriod,omitempty"`
+	// ReconciliationTimeout is the maximum duration a reconciliation of a DNSProvider is allowed to take.
+	// Default value is 2 minutes.
+	// +optional
+	ReconciliationTimeout *metav1.Duration `json:"reconciliationTimeout,omitempty"`
 	// Namespace is the namespace on the secondary cluster containing the provided DNSProviders.
 	Namespace string `json:"namespace"`
 	// EnabledProviderTypes is the list of DNS provider types that should be enabled.
@@ -122,12 +137,13 @@ type DNSProviderControllerConfig struct {
 	// ZoneCacheTTL is the TTL for the cache for the `GetZones` method.
 	// +optional
 	ZoneCacheTTL *metav1.Duration `json:"zoneCacheTTL,omitempty"`
-	// AllowMockInMemoryProvider if true, the provider type "mock-inmemory" is allowed, e.g. for testing purposes.
-	// +optional
-	AllowMockInMemoryProvider *bool `json:"allowMockInMemoryProvider,omitempty"`
 	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
 	// +optional
 	SkipNameValidation *bool `json:"skipNameValidation,omitempty"`
+	// MigrationMode if true, the controller runs in migration mode and will not add finalizers to secrets.
+	// This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.
+	// +optional
+	MigrationMode *bool `json:"migrationMode,omitempty"`
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.
@@ -138,6 +154,10 @@ type DNSEntryControllerConfig struct {
 	// SyncPeriod is the duration how often the controller performs its reconciliation.
 	// +optional
 	SyncPeriod *metav1.Duration `json:"syncPeriod,omitempty"`
+	// ReconciliationTimeout is the maximum duration a reconciliation of a DNSEntry is allowed to take.
+	// Default value is 2 minutes.
+	// +optional
+	ReconciliationTimeout *metav1.Duration `json:"reconciliationTimeout,omitempty"`
 	// MaxConcurrentLookups is the number of concurrent DNS lookups for the lookup processor.
 	// +optional
 	MaxConcurrentLookups *int `json:"maxConcurrentLookups,omitempty"`
@@ -190,6 +210,9 @@ type SourceControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent reconciliations for source controllers.
 	// +optional
 	ConcurrentSyncs *int `json:"concurrentSyncs,omitempty"`
+	// SourceClass is the class value for sources.
+	// +optional
+	SourceClass *string `json:"sourceClass,omitempty"`
 	// TargetClass is the class value for target DNSEntries.
 	// +optional
 	TargetClass *string `json:"targetClass,omitempty"`

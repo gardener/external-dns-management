@@ -14,8 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
@@ -23,7 +23,9 @@ import (
 const ControllerName = "dnsannotation"
 
 // AddToManager adds Reconciler to the given manager.
-func (r *Reconciler) AddToManager(mgr manager.Manager) error {
+func (r *Reconciler) AddToManager(mgr manager.Manager, cfg *config.DNSManagerConfiguration) error {
+	r.Config = cfg.Controllers.DNSAnnotation
+	r.SourceClass = config.GetSourceClass(cfg)
 	r.Client = mgr.GetClient()
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
@@ -39,12 +41,12 @@ func (r *Reconciler) AddToManager(mgr manager.Manager) error {
 		For(
 			&v1alpha1.DNSAnnotation{},
 			builder.WithPredicates(
-				dnsman2controller.DNSClassPredicate(dns.NormalizeClass(r.Config.Class)),
+				dnsman2controller.DNSClassPredicate(r.SourceClass),
 			),
 		).
 		WithOptions(controller.Options{
-			MaxConcurrentReconciles: ptr.Deref(r.Config.Controllers.DNSAnnotation.ConcurrentSyncs, 2),
-			SkipNameValidation:      r.Config.Controllers.DNSAnnotation.SkipNameValidation,
+			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 2),
+			SkipNameValidation:      r.Config.SkipNameValidation,
 		}).
 		Complete(r)
 }

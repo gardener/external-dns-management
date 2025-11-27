@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
@@ -28,6 +29,7 @@ import (
 	. "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/testutils"
 )
 
@@ -127,17 +129,21 @@ var _ = Describe("Reconciler", func() {
 	BeforeEach(func() {
 		fakeClientSrc = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).WithStatusSubresource(&dnsv1alpha1.DNSAnnotation{}).Build()
 		fakeClientCtrl = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).Build()
-		reconciler = &Reconciler{}
-		reconciler.Client = fakeClientSrc
-		reconciler.ControlPlaneClient = fakeClientCtrl
-		reconciler.Config = config.SourceControllerConfig{
-			TargetNamespace: ptr.To(defaultTargetNamespace),
-		}
-		reconciler.GVK = corev1.SchemeGroupVersion.WithKind("Service")
-		reconciler.State = state.GetState().GetAnnotationState()
-		reconciler.State.Reset()
 		fakeRecorder = record.NewFakeRecorder(32)
-		reconciler.Recorder = fakeRecorder
+		reconciler = &Reconciler{
+			common.ReconcilerBase{
+				Client:             fakeClientSrc,
+				ControlPlaneClient: fakeClientCtrl,
+				Config: config.SourceControllerConfig{
+					TargetNamespace: ptr.To(defaultTargetNamespace),
+				},
+				GVK:           corev1.SchemeGroupVersion.WithKind("Service"),
+				State:         state.GetState().GetAnnotationState(),
+				Recorder:      fakeRecorder,
+				FinalizerName: dns.ClassSourceFinalizer(dns.NormalizeClass(""), "service-dns"),
+			},
+		}
+		reconciler.State.Reset()
 		svc = &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
@@ -157,7 +163,7 @@ var _ = Describe("Reconciler", func() {
 	})
 
 	Describe("#Reconcile", func() {
-		It("should create DNSEntry object for service of type load balancer and IP target", func() {
+		It("should create DNSEntry object for service of type load balancer and IP target and delete it if the service is removed", func() {
 			Expect(fakeClientSrc.Create(ctx, svc)).NotTo(HaveOccurred())
 			svc.Status.LoadBalancer.Ingress = []corev1.LoadBalancerIngress{
 				{
@@ -172,6 +178,16 @@ var _ = Describe("Reconciler", func() {
 				},
 			}, 0)
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ")
+
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(svc), svc)).NotTo(HaveOccurred())
+			Expect(svc.Finalizers).To(ContainElement("gardendns.dns.gardener.cloud/service-dns"))
+
+			Expect(fakeClientSrc.Delete(ctx, svc)).NotTo(HaveOccurred())
+			testMultiWithoutCreation(nil, 0)
+			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryDeleted ")
+
+			// finalizer should be removed and service should be gone
+			Expect(errors.IsNotFound(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(svc), svc))).To(BeTrue())
 		})
 
 		It("should create DNSEntry object for service of type load balancer in same namespace and cluster and hostname target", func() {
@@ -215,6 +231,8 @@ var _ = Describe("Reconciler", func() {
 		It("should create DNSEntry object for service of type load balancer on different clusters", func() {
 			reconciler.Config.TargetClusterID = ptr.To("target-cluster-id")
 			reconciler.Config.SourceClusterID = ptr.To("source-cluster-id")
+			reconciler.TargetClass = "target-dns-class"
+			reconciler.Config.TargetClass = ptr.To(reconciler.TargetClass)
 			reconciler.Config.TargetLabels = map[string]string{
 				"gardener.cloud/shoot-id": "source-cluster-id",
 			}
@@ -223,6 +241,7 @@ var _ = Describe("Reconciler", func() {
 				DNSName: "foo.example.com",
 			})
 			Expect(entries[0].Labels["gardener.cloud/shoot-id"]).To(Equal("source-cluster-id"))
+			Expect(entries[0].Annotations["dns.gardener.cloud/class"]).To(Equal("target-dns-class"))
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ")
 		})
 
@@ -293,6 +312,7 @@ var _ = Describe("Reconciler", func() {
 			Expect(entries[1].Annotations[dns.AnnotationIgnore]).To(Equal("reconcile"))
 
 			By("check deletion of ignore annotation")
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(svc), svc)).NotTo(HaveOccurred())
 			delete(svc.Annotations, dns.AnnotationIgnore)
 			Expect(fakeClientSrc.Update(ctx, svc)).NotTo(HaveOccurred())
 			entries = testMultiWithoutCreation([]*dnsv1alpha1.DNSEntrySpec{
@@ -352,10 +372,34 @@ var _ = Describe("Reconciler", func() {
 			test(&dnsv1alpha1.DNSEntrySpec{
 				DNSName: "foo.example.com",
 			})
+
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(svc), svc)).NotTo(HaveOccurred())
+			Expect(svc.Finalizers).To(ContainElement("gardendns.dns.gardener.cloud/service-dns"))
+
 			svc.Spec.Type = corev1.ServiceTypeClusterIP
 			Expect(fakeClientSrc.Update(ctx, svc)).NotTo(HaveOccurred())
 			testMultiWithoutCreation(nil, 0)
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ", "Normal DNSEntryDeleted ")
+
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(svc), svc)).NotTo(HaveOccurred())
+			Expect(svc.Finalizers).NotTo(ContainElement("gardendns.dns.gardener.cloud/service-dns"))
+		})
+
+		It("should delete entry object if DNS class is changed", func() {
+			test(&dnsv1alpha1.DNSEntrySpec{
+				DNSName: "foo.example.com",
+			})
+
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(svc), svc)).NotTo(HaveOccurred())
+			Expect(svc.Finalizers).To(ContainElement("gardendns.dns.gardener.cloud/service-dns"))
+
+			utils.SetAnnotation(svc, dns.AnnotationClass, "other-dns-class")
+			Expect(fakeClientSrc.Update(ctx, svc)).NotTo(HaveOccurred())
+			testMultiWithoutCreation(nil, 0)
+			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ", "Normal DNSEntryDeleted ")
+
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(svc), svc)).NotTo(HaveOccurred())
+			Expect(svc.Finalizers).NotTo(ContainElement("gardendns.dns.gardener.cloud/service-dns"))
 		})
 
 		It("should update entries on service update and drop obsolete entry", func() {
@@ -368,6 +412,8 @@ var _ = Describe("Reconciler", func() {
 					DNSName: "foo-alt.example.com",
 				},
 			}, 0)
+
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(svc), svc)).NotTo(HaveOccurred())
 			svc.Annotations[dns.AnnotationDNSNames] = "foo.example.com"
 			svc.Annotations[dns.AnnotationTTL] = "123"
 			Expect(fakeClientSrc.Update(ctx, svc)).NotTo(HaveOccurred())

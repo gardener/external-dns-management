@@ -24,7 +24,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/lookup"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
-	mock2 "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/mock"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/local"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/selection"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
@@ -50,30 +50,30 @@ var _ = Describe("Reconcile", func() {
 		skipProviderState     bool
 		defaultTTL            = int64(360)
 
-		mockConfig1 = &mock2.MockConfig{
+		mockConfig1 = &local.MockConfig{
 			Account: "test",
-			Zones: []mock2.MockZone{
+			Zones: []local.MockZone{
 				{DNSName: "example.com"},
 				{DNSName: "example2.com"},
 			},
 		}
-		mockConfig1RoutingPolicy = &mock2.MockConfig{
+		mockConfig1RoutingPolicy = &local.MockConfig{
 			Account: "test",
-			Zones: []mock2.MockZone{
+			Zones: []local.MockZone{
 				{DNSName: "example.com"},
 				{DNSName: "example2.com"},
 			},
 			SupportRoutingPolicy: true,
 		}
-		mockConfig2 = &mock2.MockConfig{
+		mockConfig2 = &local.MockConfig{
 			Account: "test2",
-			Zones: []mock2.MockZone{
+			Zones: []local.MockZone{
 				{DNSName: "sub.example.com"},
 			},
 		}
-		zoneID1         = dns.ZoneID{ProviderType: "mock-inmemory", ID: "test:example.com"}
-		zoneID2         = dns.ZoneID{ProviderType: "mock-inmemory", ID: "test:example2.com"}
-		zoneID3         = dns.ZoneID{ProviderType: "mock-inmemory", ID: "test2:sub.example.com"}
+		zoneID1         = dns.ZoneID{ProviderType: "local", ID: "test:example.com"}
+		zoneID2         = dns.ZoneID{ProviderType: "local", ID: "test:example2.com"}
+		zoneID3         = dns.ZoneID{ProviderType: "local", ID: "test2:sub.example.com"}
 		entryAPrototype = &v1alpha1.DNSEntry{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:       "Entry-a",
@@ -143,14 +143,14 @@ var _ = Describe("Reconcile", func() {
 			providerState.SetAccount(account)
 			return account
 		}
-		createProvider = func(name string, included, excluded []string, providerState string, ptrMockConfig *mock2.MockConfig) *v1alpha1.DNSProvider {
+		createProvider = func(name string, included, excluded []string, providerState string, ptrMockConfig *local.MockConfig) *v1alpha1.DNSProvider {
 			provider := &v1alpha1.DNSProvider{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: "test",
 				},
 				Spec: v1alpha1.DNSProviderSpec{
-					Type:    "mock-inmemory",
+					Type:    "local",
 					Domains: &v1alpha1.DNSSelection{Include: included, Exclude: excluded},
 				},
 				Status: v1alpha1.DNSProviderStatus{
@@ -162,7 +162,7 @@ var _ = Describe("Reconcile", func() {
 			}
 			if ptrMockConfig != nil {
 				var err error
-				provider.Spec.ProviderConfig, err = mock2.MarshallMockConfig(*ptrMockConfig)
+				provider.Spec.ProviderConfig, err = local.MarshallMockConfig(*ptrMockConfig)
 				ExpectWithOffset(1, err).ToNot(HaveOccurred())
 				prepareAccount(provider)
 			}
@@ -179,6 +179,7 @@ var _ = Describe("Reconcile", func() {
 				selectionResult := selection.CalcZoneAndDomainSelection(provider.Spec, zones)
 				selectionResult.SetProviderStatusZonesAndDomains(&provider.Status)
 				providerState.SetSelection(selectionResult)
+				providerState.SetReconciled()
 			}
 			ExpectWithOffset(1, fakeClient.Create(ctx, provider)).To(Succeed())
 			return provider
@@ -193,7 +194,7 @@ var _ = Describe("Reconcile", func() {
 			ExpectWithOffset(1, fakeClient.Delete(ctx, provider)).To(Succeed())
 			state.GetState().DeleteProviderState(client.ObjectKeyFromObject(provider))
 		}
-		updateProvider = func(name string, included, excluded []string, state string, ptrMockConfig *mock2.MockConfig) {
+		updateProvider = func(name string, included, excluded []string, state string, ptrMockConfig *local.MockConfig) {
 			deleteProvider(name)
 			createProvider(name, included, excluded, state, ptrMockConfig)
 		}
@@ -261,7 +262,7 @@ var _ = Describe("Reconcile", func() {
 			ExpectWithOffset(1, entry.Status.Message).To(PointTo(messageMatcher), "message should match")
 		}
 		expectRecordSetsInternal = func(zoneID dns.ZoneID, dnsSetName dns.DNSSetName, expectedNameCount, expectedRecordSetCount int, rsArray ...dns.RecordSet) {
-			zoneState := mock2.GetInMemoryMockByZoneID(zoneID)
+			zoneState := local.GetInMemoryMockByZoneID(zoneID)
 			ExpectWithOffset(2, zoneState).ToNot(BeNil(), "zone state should not be nil for zone %s", zoneID)
 			nameCount, recordSetCount := zoneState.GetCounts(zoneID)
 			ExpectWithOffset(2, nameCount).To(Equal(expectedNameCount), "unexpected name count")
@@ -288,7 +289,7 @@ var _ = Describe("Reconcile", func() {
 	BeforeEach(func() {
 		if registry == nil {
 			registry = dnsprovider.NewDNSHandlerRegistry(clock)
-			mock2.RegisterTo(registry)
+			local.RegisterTo(registry)
 		}
 		clock.SetTime(startTime)
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSEntry{}).Build()
@@ -587,7 +588,7 @@ var _ = Describe("Reconcile", func() {
 
 		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
 		ExpectWithOffset(1, err).ToNot(HaveOccurred())
-		ExpectWithOffset(1, result).To(Equal(reconcile.Result{Requeue: true, RequeueAfter: 3 * time.Second}))
+		ExpectWithOffset(1, result).To(Equal(reconcile.Result{RequeueAfter: 3 * time.Second}))
 	})
 
 	Context("DNSEntry validation", func() {
@@ -822,4 +823,23 @@ var _ = Describe("Reconcile", func() {
 		})
 	})
 
+	Context("Migration Mode", func() {
+		It("should ignore entry status if provider type is 'remote'", func() {
+			createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+
+			entryA.Status.ProviderType = ptr.To("remote")
+			Expect(fakeClient.Status().Update(ctx, entryA)).To(Succeed())
+			key := client.ObjectKeyFromObject(entryA)
+			result, err := reconcileEntry(key)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal(reconcile.Result{}))
+			Expect(fakeClient.Get(ctx, key, entryA)).To(Succeed())
+			checkEntryStateAndMessage(entryA, "Error", Equal("failed to map old targets: provider type \"remote\" not found in registry"))
+
+			reconciler.MigrationMode = true
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		})
+	})
 })

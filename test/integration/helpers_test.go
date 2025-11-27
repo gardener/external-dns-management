@@ -47,7 +47,7 @@ func checkEntryEx(te *TestEnv, obj resources.Object, provider resources.Object, 
 	Ω(err).ShouldNot(HaveOccurred())
 	entry := UnwrapEntry(entryObj)
 	Ω(entry.Status.ProviderType).ShouldNot(BeNil(), "Missing provider type")
-	typ := "mock-inmemory"
+	typ := "local"
 	if len(providerType) == 1 {
 		typ = providerType[0]
 	}
