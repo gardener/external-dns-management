@@ -9,6 +9,7 @@ import (
 	awsvalidation "github.com/gardener/external-dns-management/pkg/controller/provider/aws/validation"
 	azurevalidation "github.com/gardener/external-dns-management/pkg/controller/provider/azure/validation"
 	cloudflarevalidation "github.com/gardener/external-dns-management/pkg/controller/provider/cloudflare/validation"
+	gdchvalidation "github.com/gardener/external-dns-management/pkg/controller/provider/gdch/validation"
 	googlevalidation "github.com/gardener/external-dns-management/pkg/controller/provider/google/validation"
 	infobloxvalidation "github.com/gardener/external-dns-management/pkg/controller/provider/infoblox/validation"
 	netlifyvalidation "github.com/gardener/external-dns-management/pkg/controller/provider/netlify/validation"
@@ -30,6 +31,7 @@ func init() {
 		azurevalidation.NewAdapter(azurevalidation.ProviderTypeAzurePrivateDNS),
 		cloudflarevalidation.NewAdapter(),
 		googlevalidation.NewAdapter(),
+		gdchvalidation.NewAdapter(),
 		infobloxvalidation.NewAdapter(),
 		netlifyvalidation.NewAdapter(),
 		openstackvalidation.NewAdapter(),
