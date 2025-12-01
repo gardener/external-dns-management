@@ -45,6 +45,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/app"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/app/appcontext"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/metrics"
 )
 
 // Name is the name of the dns-controller-manager.
@@ -198,6 +199,9 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 			goruntime.SetBlockProfileRate(1)
 		}
 	}
+
+	// register metrics here to resolve potential issue with imports of old and next gen dnsman packages
+	metrics.RegisterAll()
 
 	log.Info("Setting up manager")
 	managerOptions := manager.Options{
