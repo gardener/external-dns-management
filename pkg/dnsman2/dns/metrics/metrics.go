@@ -15,7 +15,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
-func init() {
+// RegisterAll registers all metrics handlers and the /metrics endpoint.
+func RegisterAll() {
 	prometheus.MustRegister(Requests)
 	prometheus.MustRegister(ZoneRequests)
 	prometheus.MustRegister(ZoneCacheDiscardings)

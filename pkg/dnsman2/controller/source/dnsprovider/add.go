@@ -45,23 +45,19 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	r.GVK = v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.DNSProviderKind)
 	r.DNSHandlerFactory = state.GetState().GetDNSHandlerFactory()
 
-	class := r.Config.Class
-	if targetClass := r.Config.Controllers.Source.TargetClass; targetClass != nil {
-		class = *targetClass
-	}
 	return builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(
 			&v1alpha1.DNSProvider{},
 			builder.WithPredicates(
-				dnsman2controller.DNSClassPredicate(class),
+				dnsman2controller.DNSClassPredicate(r.SourceClass),
 			),
 		).
 		Watches(
 			&corev1.Secret{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, secret client.Object) []reconcile.Request {
-				return r.providersToReconcileOnSecretChanges(ctx, class, secret)
+				return r.providersToReconcileOnSecretChanges(ctx, r.SourceClass, secret)
 			}),
 		).
 		WatchesRawSource(source.Kind[client.Object](controlPlaneCluster.GetCache(),
@@ -70,11 +66,12 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 				return r.providersToReconcileOnProviderChanges(targetProvider)
 			}),
 			dnsman2controller.FilterPredicate(func(obj client.Object) bool {
-				return obj.GetNamespace() == r.Config.Controllers.DNSProvider.Namespace
+				return r.Config.TargetNamespace == nil || obj.GetNamespace() == *r.Config.TargetNamespace
 			}),
+			dnsman2controller.DNSClassPredicate(r.TargetClass),
 		)).
 		WithOptions(controller.Options{
-			MaxConcurrentReconciles: ptr.Deref(r.Config.Controllers.Source.ConcurrentSyncs, 2),
+			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 2),
 		}).
 		Complete(r)
 }
@@ -110,7 +107,7 @@ func (r *Reconciler) providersToReconcileOnProviderChanges(targetProvider client
 
 	var requests []reconcile.Request
 	providerOwnerData := common.EntryOwnerData{
-		Config: r.Config.Controllers.Source,
+		Config: r.Config,
 		GVK:    r.GVK,
 	}
 	for _, objectKey := range providerOwnerData.GetOwnerObjectKeys(targetProvider) {

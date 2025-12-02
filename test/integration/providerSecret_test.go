@@ -12,7 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/local"
 )
 
 var _ = Describe("ProviderSecret", func() {
@@ -52,9 +52,9 @@ var _ = Describe("ProviderSecret", func() {
 		_, err := testEnv.CreateSecret(0)
 		Ω(err).ShouldNot(HaveOccurred())
 
-		var zonedata []mock.MockZone
+		var zonedata []local.MockZone
 		for _, c := range []string{"a", "b", "c", "d", "e"} {
-			zonedata = append(zonedata, mock.MockZone{
+			zonedata = append(zonedata, local.MockZone{
 				ZonePrefix: testEnv.ZonePrefix,
 				DNSName:    fmt.Sprintf("pr1%s.mock.xx", c),
 			})
@@ -65,8 +65,8 @@ var _ = Describe("ProviderSecret", func() {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"pr1a.mock.xx", "pr1b.mock.xx"}, Exclude: []string{"pr1d.mock.xx"}}
 			spec.Zones = &v1alpha1.DNSSelection{Include: []string{prefix + "pr1a.mock.xx", prefix + "pr1c.mock.xx"}, Exclude: []string{prefix + "pr1e.mock.xx"}}
-			spec.Type = "mock-inmemory"
-			input := mock.MockConfig{
+			spec.Type = "local"
+			input := local.MockConfig{
 				Name:  testEnv.Namespace,
 				Zones: zonedata,
 			}

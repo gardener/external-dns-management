@@ -84,7 +84,6 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 		if enabled.Contains("all") {
 			enabled.Remove("all")
 			set := factory.TypeCodes()
-			set.Remove("mock-inmemory" /* mock.TYPE_CODE */)
 			enabled.AddSet(set)
 		}
 		_, del := enabled.DiffFrom(factory.TypeCodes())

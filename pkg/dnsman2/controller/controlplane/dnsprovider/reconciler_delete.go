@@ -44,7 +44,7 @@ func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1al
 		})
 	}
 
-	if err := removeFinalizer(ctx, r.Client, provider); err != nil {
+	if err := r.removeFinalizer(ctx, r.Client, provider); err != nil {
 		return reconcile.Result{}, fmt.Errorf("error removing finalizer from provider %s: %w", provider.Name, err)
 	}
 

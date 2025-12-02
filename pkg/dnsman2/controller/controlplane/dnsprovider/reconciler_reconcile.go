@@ -35,7 +35,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		return reconcile.Result{}, r.updateStatusInvalid(ctx, provider, fmt.Errorf("provider type %q is not supported", provider.Spec.Type))
 	}
 
-	if err := addFinalizer(ctx, r.Client, provider); err != nil {
+	if err := r.addFinalizer(ctx, r.Client, provider); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -43,7 +43,6 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 	if secretRef == nil {
 		return reconcile.Result{}, r.updateStatusInvalid(ctx, provider, fmt.Errorf("no secret reference specified"))
 	}
-	providerState := r.state.GetOrCreateProviderState(provider, r.Config.Controllers.DNSProvider)
 	props, err := r.getProperties(ctx, secretRef)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -60,11 +59,15 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		return reconcile.Result{}, r.updateStatusError(ctx, provider, fmt.Errorf("secret %s/%s validation failed: %s", secretRef.Namespace, secretRef.Name, err))
 	}
 
+	providerState := r.state.GetProviderState(client.ObjectKeyFromObject(provider))
+	if providerState == nil {
+		return reconcile.Result{}, fmt.Errorf("internal error: provider state not found for provider %s/%s", provider.Namespace, provider.Name)
+	}
 	config := dnsprovider.DNSAccountConfig{
 		DefaultTTL:   providerState.GetDefaultTTL(),
-		ZoneCacheTTL: ptr.Deref(r.Config.Controllers.DNSProvider.ZoneCacheTTL, metav1.Duration{Duration: 5 * time.Minute}).Duration,
+		ZoneCacheTTL: ptr.Deref(r.Config.ZoneCacheTTL, metav1.Duration{Duration: 5 * time.Minute}).Duration,
 		Clock:        r.Clock,
-		RateLimits:   r.Config.Controllers.DNSProvider.DefaultRateLimits,
+		RateLimits:   r.Config.DefaultRateLimits,
 		Factory:      r.DNSHandlerFactory,
 	}
 	if provider.Spec.RateLimit != nil {
@@ -92,7 +95,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 	providerState.SetAccount(newAccount)
 
 	return reconcile.Result{}, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
-		status.Message = nil
+		status.Message = ptr.To("provider operational")
 		status.State = v1alpha1.StateReady
 		status.ObservedGeneration = provider.Generation
 		providerState.GetSelection().SetProviderStatusZonesAndDomains(status)
@@ -110,14 +113,14 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 }
 
 func (r *Reconciler) isEnabledProviderType(providerType string) bool {
-	if explicitDisabled := r.Config.Controllers.DNSProvider.DisabledProviderTypes; explicitDisabled != nil {
+	if explicitDisabled := r.Config.DisabledProviderTypes; explicitDisabled != nil {
 		for _, disabledType := range explicitDisabled {
 			if providerType == disabledType {
 				return false
 			}
 		}
 	}
-	if explicitEnabled := r.Config.Controllers.DNSProvider.EnabledProviderTypes; explicitEnabled != nil {
+	if explicitEnabled := r.Config.EnabledProviderTypes; explicitEnabled != nil {
 		for _, enabledType := range explicitEnabled {
 			if providerType == enabledType {
 				return true

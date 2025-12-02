@@ -34,7 +34,6 @@ clean:
 	bash $(GARDENER_HACK_DIR)/clean.sh ./cmd/... ./pkg/...
 	@rm -f charts/external-dns-management/templates/crds.yaml
 	@rm -f pkg/apis/dns/crds/*
-	@rm -rf /pkg/client/dns
 
 .PHONY: check-generate
 check-generate:

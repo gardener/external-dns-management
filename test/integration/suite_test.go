@@ -25,7 +25,7 @@ import (
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
-	_ "github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/local"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/remote"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/gateways/gatewayapi"
 	_ "github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"

@@ -156,5 +156,51 @@ var _ = Describe("DNSHandlerAdapterChecks", func() {
 			Expect(err).ToNot(Succeed())
 			Expect(err.Error()).To(ContainSubstring("invalid secret: (hidden)"))
 		})
+
+		Context("RequiredIfUnset", func() {
+			BeforeEach(func() {
+				checks.Add(OptionalProperty("baz", "baz-alias").
+					RequiredIfUnset("optprop"))
+				checks.Add(OptionalProperty("optprop").
+					RequiredIfUnset("baz"))
+			})
+
+			It("should require a property if the depending property is not set", func() {
+				props["foo"] = "good"
+				err := checks.ValidateProperties("test", props)
+				Expect(err).ToNot(Succeed())
+				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"baz (aliases [baz-alias])\" is not set"))
+			})
+
+			It("should require a property if the depending property is empty", func() {
+				props["foo"] = "good"
+				props["baz"] = ""
+				err := checks.ValidateProperties("test", props)
+				Expect(err).ToNot(Succeed())
+				Expect(err.Error()).To(ContainSubstring("property \"optprop\" is required if property \"baz (aliases [baz-alias])\" is not set"))
+			})
+
+			It("should require a property if any depending property is not set", func() {
+				checks.Add(OptionalProperty("qux").
+					RequiredIfUnset("optprop"))
+				props["foo"] = "good"
+				props["baz"] = "good"
+				err := checks.ValidateProperties("test", props)
+				Expect(err).ToNot(Succeed())
+				Expect(err.Error()).To(ContainSubstring("property \"qux\" is required if property \"optprop\" is not set"))
+			})
+
+			It("should not require a property if the depending property is set", func() {
+				props["foo"] = "good"
+				props["baz"] = "good"
+				Expect(checks.ValidateProperties("test", props)).To(Succeed())
+			})
+
+			It("should not require a property if the depending property alias is set", func() {
+				props["foo"] = "good"
+				props["baz-alias"] = "good"
+				Expect(checks.ValidateProperties("test", props)).To(Succeed())
+			})
+		})
 	})
 })

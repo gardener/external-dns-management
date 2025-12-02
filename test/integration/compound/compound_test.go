@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/controller/provider/mock"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/local"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
@@ -50,7 +50,7 @@ var _ = Describe("Compound controller tests", func() {
 		}
 
 		checkSingleEntryInMockDatabase = func(entry *v1alpha1.DNSEntry) {
-			dump := mock.TestMock[testRunID].BuildFullDump()
+			dump := local.TestMock[testRunID].BuildFullDump()
 			for _, zoneDump := range dump.InMemory {
 				switch {
 				case zoneDump.HostedZone.Domain == "first.example.com" && entry == nil:
@@ -143,9 +143,9 @@ var _ = Describe("Compound controller tests", func() {
 			}
 		})
 
-		mcfg := mock.MockConfig{
+		mcfg := local.MockConfig{
 			Name: testRunID,
-			Zones: []mock.MockZone{
+			Zones: []local.MockZone{
 				{ZonePrefix: testRunID + ":first:", DNSName: "first.example.com"},
 				{ZonePrefix: testRunID + ":second:", DNSName: "second.example.com"},
 			},
@@ -172,7 +172,7 @@ var _ = Describe("Compound controller tests", func() {
 				Name:      "mock1",
 			},
 			Spec: v1alpha1.DNSProviderSpec{
-				Type:           "mock-inmemory",
+				Type:           "local",
 				ProviderConfig: &runtime.RawExtension{Raw: bytes},
 				SecretRef:      &corev1.SecretReference{Name: "mock1-secret", Namespace: testRunID},
 			},
@@ -282,7 +282,7 @@ var _ = Describe("Compound controller tests", func() {
 		failSet := dns.NewDNSSet(dns.DNSSetName{DNSName: e1.Spec.DNSName}, nil)
 		failSet.UpdateGroup = testRunID
 		failSet.Sets.AddRecord("A", e1.Spec.Targets[0], defaultTTL)
-		failID := mock.TestMock[testRunID].AddApplyFailSimulation(firstZoneID, &provider.ChangeRequest{
+		failID := local.TestMock[testRunID].AddApplyFailSimulation(firstZoneID, &provider.ChangeRequest{
 			Action:   provider.R_CREATE,
 			Type:     "A",
 			Addition: failSet,
@@ -291,7 +291,7 @@ var _ = Describe("Compound controller tests", func() {
 		Expect(testClient.Create(ctx, e1)).To(Succeed())
 
 		Eventually(func() int {
-			return mock.TestMock[testRunID].GetApplyFailSimulationCount(failID)
+			return local.TestMock[testRunID].GetApplyFailSimulationCount(failID)
 		}).ShouldNot(BeZero())
 
 		Eventually(func(g Gomega) {
@@ -300,7 +300,7 @@ var _ = Describe("Compound controller tests", func() {
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).Should(Succeed())
 
-		mock.TestMock[testRunID].RemoveApplyFailSimulation(failID)
+		local.TestMock[testRunID].RemoveApplyFailSimulation(failID)
 
 		Eventually(func(g Gomega) {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
@@ -326,7 +326,7 @@ var _ = Describe("Compound controller tests", func() {
 		failSet := dns.NewDNSSet(dns.DNSSetName{DNSName: newDNSName}, nil)
 		failSet.UpdateGroup = testRunID
 		failSet.Sets.AddRecord("A", e1.Spec.Targets[0], defaultTTL)
-		failID := mock.TestMock[testRunID].AddApplyFailSimulation(firstZoneID, &provider.ChangeRequest{
+		failID := local.TestMock[testRunID].AddApplyFailSimulation(firstZoneID, &provider.ChangeRequest{
 			Action:   provider.R_CREATE, // create as DNSName is changed
 			Type:     "A",
 			Addition: failSet,
@@ -342,7 +342,7 @@ var _ = Describe("Compound controller tests", func() {
 		}).Should(Succeed())
 
 		Eventually(func() int {
-			return mock.TestMock[testRunID].GetApplyFailSimulationCount(failID)
+			return local.TestMock[testRunID].GetApplyFailSimulationCount(failID)
 		}).ShouldNot(BeZero())
 
 		Eventually(func(g Gomega) {
@@ -351,7 +351,7 @@ var _ = Describe("Compound controller tests", func() {
 			g.Expect(e1.Status.ObservedGeneration).To(Equal(e1.Generation))
 		}).Should(Succeed())
 
-		mock.TestMock[testRunID].RemoveApplyFailSimulation(failID)
+		local.TestMock[testRunID].RemoveApplyFailSimulation(failID)
 
 		Eventually(func(g Gomega) {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
@@ -376,7 +376,7 @@ var _ = Describe("Compound controller tests", func() {
 		deleteSet := dns.NewDNSSet(dns.DNSSetName{DNSName: "e2.first.example.com"}, nil)
 		deleteSet.Sets.AddRecord("A", "1.1.2.1", 42)
 		deleteSet.Sets.AddRecord("A", "1.1.2.2", 42)
-		failID := mock.TestMock[testRunID].AddApplyFailSimulation(firstZoneID, &provider.ChangeRequest{
+		failID := local.TestMock[testRunID].AddApplyFailSimulation(firstZoneID, &provider.ChangeRequest{
 			Action:   provider.R_DELETE,
 			Type:     "A",
 			Deletion: deleteSet,
@@ -384,14 +384,14 @@ var _ = Describe("Compound controller tests", func() {
 		Expect(testClient.Delete(ctx, e2)).To(Succeed())
 
 		Eventually(func() int {
-			return mock.TestMock[testRunID].GetApplyFailSimulationCount(failID)
+			return local.TestMock[testRunID].GetApplyFailSimulationCount(failID)
 		}).ShouldNot(BeZero())
 
 		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e2), e2)).To(Succeed())
 		Expect(e2.DeletionTimestamp).NotTo(BeNil())
 
 		// remove apply fail simulation
-		mock.TestMock[testRunID].RemoveApplyFailSimulation(failID)
+		local.TestMock[testRunID].RemoveApplyFailSimulation(failID)
 		By("await deletion of entry " + e2.Name)
 		Eventually(func(g Gomega) {
 			checkDeleted(g, ctx, e2)

@@ -64,7 +64,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, sourceProvi
 }
 
 func (r *Reconciler) generateNameTemplate(sourceProvider *v1alpha1.DNSProvider) string {
-	return strings.ToLower(fmt.Sprintf("%s%s-", ptr.Deref(r.Config.Controllers.Source.TargetNamePrefix, ""), sourceProvider.GetName()))
+	return strings.ToLower(fmt.Sprintf("%s%s-", ptr.Deref(r.Config.TargetNamePrefix, ""), sourceProvider.GetName()))
 }
 
 func (r *Reconciler) getExistingTargetProviders(ctx context.Context, sourceProvider *v1alpha1.DNSProvider) ([]v1alpha1.DNSProvider, error) {
@@ -108,7 +108,7 @@ func (r *Reconciler) createOrUpdateTargetProvider(
 	sourceProvider *v1alpha1.DNSProvider,
 	targetProvider *v1alpha1.DNSProvider,
 ) error {
-	targetSecret, err := r.createOrUpdateTargetSecretFromSourceSecret(ctx, sourceProvider, targetProvider)
+	targetSecret, err := r.createOrUpdateTargetSecretFromSourceSecret(ctx, log, sourceProvider, targetProvider)
 	if err != nil {
 		return err
 	}
@@ -123,12 +123,15 @@ func (r *Reconciler) createOrUpdateTargetProvider(
 		if targetProvider.Annotations == nil {
 			targetProvider.Annotations = make(map[string]string)
 		}
-		if r.Config.Controllers.Source.TargetLabels != nil {
-			for key, value := range r.Config.Controllers.Source.TargetLabels {
+		if !dns.IsDefaultClass(r.TargetClass) {
+			utils.SetAnnotation(targetProvider, dns.AnnotationClass, r.TargetClass)
+		}
+		if r.Config.TargetLabels != nil {
+			for key, value := range r.Config.TargetLabels {
 				utils.SetLabel(targetProvider, key, value)
 			}
 		}
-		r.buildOwnerData(sourceProvider).AddOwner(targetProvider, ptr.Deref(r.Config.Controllers.Source.TargetClusterID, ""))
+		r.buildOwnerData(sourceProvider).AddOwner(targetProvider, ptr.Deref(r.Config.TargetClusterID, ""))
 		return nil
 	})
 	if err != nil {
@@ -186,6 +189,7 @@ func (r *Reconciler) ensureOwnerReferenceOnSecret(ctx context.Context, targetSec
 
 func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 	ctx context.Context,
+	log logr.Logger,
 	sourceProvider *v1alpha1.DNSProvider,
 	targetProvider *v1alpha1.DNSProvider,
 ) (*corev1.Secret, error) {
@@ -212,16 +216,18 @@ func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 	if validationErr == nil {
 		validationErr = adapter.ValidateCredentialsAndProviderConfig(props, sourceProvider.Spec.ProviderConfig)
 	}
+	sourceSecretData := sourceSecret.Data
 	if validationErr != nil {
 		// If validation fails, we store the error in the secret annotations.
 		// The annotations will be used to fill the status message of the replicated provider and will
 		// be pushed back to the source provider.
 		annotations = map[string]string{dns.AnnotationValidationError: validationErr.Error()}
-		sourceSecret.Data = nil // remove data if validation fails
+		log.Info("credentials validation failed for source DNSProvider, removing data from target secret", "providerName", client.ObjectKeyFromObject(sourceProvider), "error", validationErr.Error())
+		sourceSecretData = nil // remove data if validation fails
 	}
 
 	modify := func(secret *corev1.Secret) {
-		secret.Data = sourceSecret.Data
+		secret.Data = sourceSecretData
 		secret.Type = sourceSecret.Type
 		secret.Annotations = annotations
 	}
@@ -256,17 +262,17 @@ func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 }
 
 func (r *Reconciler) targetNamespace(owner metav1.Object) string {
-	return ptr.Deref(r.Config.Controllers.Source.TargetNamespace, owner.GetNamespace())
+	return ptr.Deref(r.Config.TargetNamespace, owner.GetNamespace())
 }
 
 func (r *Reconciler) isOwnedByController(target, owner *v1alpha1.DNSProvider) bool {
-	return r.buildOwnerData(owner).HasOwner(target, ptr.Deref(r.Config.Controllers.Source.TargetClusterID, ""))
+	return r.buildOwnerData(owner).HasOwner(target, ptr.Deref(r.Config.TargetClusterID, ""))
 }
 
 func (r *Reconciler) buildOwnerData(owner *v1alpha1.DNSProvider) common.OwnerData {
 	return common.OwnerData{
 		Object:    owner,
-		ClusterID: ptr.Deref(r.Config.Controllers.Source.SourceClusterID, ""),
+		ClusterID: ptr.Deref(r.Config.SourceClusterID, ""),
 		GVK:       r.GVK,
 	}
 }

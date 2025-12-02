@@ -4,6 +4,8 @@
 
 package dns
 
+import "fmt"
+
 const (
 	// ControllerGroupDNSControllers is the group name for DNS controller resources.
 	ControllerGroupDNSControllers = "dnscontrollers"
@@ -30,6 +32,8 @@ const (
 	FinalizerCompound = "dns.gardener.cloud/compound"
 	// FinalizerReplication is the finalizer for provider resources (exact name needed for backward compatibility).
 	FinalizerReplication = "garden.dns.gardener.cloud/dnsprovider-replication"
+	// FinalizerSourceTemplate is the finalizer template to be filled with class and controller (exact name needed for backward compatibility).
+	FinalizerSourceTemplate = "%s.dns.gardener.cloud/%s"
 
 	// AnnotationIPStack is an optional annotation for DNSEntries to specify the IP stack.
 	// Values are 'ipv4', 'dual-stack', and 'ipv6'. If not specified, 'ipv4' is assumed.
@@ -87,3 +91,8 @@ const (
 	// AnnotationOwners is the annotation key to specify owners of a resource across namespaces and clusters.
 	AnnotationOwners = "resources.gardener.cloud/owners"
 )
+
+// ClassSourceFinalizer returns the finalizer string for the given DNS class and controller name.
+func ClassSourceFinalizer(class, controller string) string {
+	return fmt.Sprintf(FinalizerSourceTemplate, class, controller)
+}

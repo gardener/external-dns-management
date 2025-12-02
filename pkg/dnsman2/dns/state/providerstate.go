@@ -18,10 +18,8 @@ type ProviderState struct {
 
 	lastVersion *v1alpha1.DNSProvider
 
-	account *provider.DNSAccount
-	// TODO(marc1404): Use this field or remove it
-	// nolint:unused
-	valid bool
+	account    *provider.DNSAccount
+	reconciled bool
 
 	defaultTTL int64
 	selection  selection.SelectionResult
@@ -46,6 +44,20 @@ func (s *ProviderState) SetAccount(account *provider.DNSAccount) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 	s.account = account
+}
+
+// SetReconciled marks the provider as reconciled.
+func (s *ProviderState) SetReconciled() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.reconciled = true
+}
+
+// IsReconciled returns whether the provider has been reconciled.
+func (s *ProviderState) IsReconciled() bool {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.reconciled
 }
 
 // GetSelection returns the SelectionResult associated with the ProviderState.
