@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -91,6 +92,69 @@ func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk
 		IPStack:                   ipstack,
 		ResolveTargetsToAddresses: resolveTargetsToAddresses,
 	})
+}
+
+// GetDNSSpecInputForIngress gets the DNS spec input for an Ingress resource.
+func GetDNSSpecInputForIngress(log logr.Logger, state state.AnnotationState, gvk schema.GroupVersionKind, ingress *networkingv1.Ingress) (*DNSSpecInput, error) {
+	annotations := GetMergedAnnotation(gvk, state, ingress)
+
+	names, err := getDNSNamesForIngress(log, ingress, annotations)
+	if err != nil {
+		return nil, err
+	}
+	if names == nil {
+		return nil, nil
+	}
+
+	var resolveTargetsToAddresses *bool
+	if v := annotations[dns.AnnotatationResolveTargetsToAddresses]; v != "" {
+		resolveTargetsToAddresses = ptr.To(v == "true")
+	}
+
+	return augmentFromCommonAnnotations(annotations, DNSSpecInput{
+		Names:                     names,
+		Targets:                   getTargetsForIngress(ingress),
+		IPStack:                   annotations[dns.AnnotationIPStack],
+		ResolveTargetsToAddresses: resolveTargetsToAddresses,
+	})
+}
+
+func getDNSNamesForIngress(log logr.Logger, ingress *networkingv1.Ingress, annotations map[string]string) (*utils.UniqueStrings, error) {
+	annotatedNames, err := getDNSNamesFromAnnotations(log, annotations)
+	if err != nil {
+		return nil, err
+	}
+	if annotatedNames == nil {
+		return nil, nil
+	}
+
+	all := annotatedNames.Contains("*")
+	dnsNames := utils.NewUniqueStrings()
+	for _, rule := range ingress.Spec.Rules {
+		host := rule.Host
+		if host != "" && (all || annotatedNames.Contains(host)) {
+			dnsNames.Add(host)
+		}
+	}
+
+	annotatedNames.Remove("*")
+	diff := annotatedNames.Difference(dnsNames)
+	if len(diff) > 0 {
+		return nil, fmt.Errorf("annotated dns names %v not declared by ingress", strings.Join(diff, ", "))
+	}
+	return dnsNames, nil
+}
+
+func getTargetsForIngress(ingress *networkingv1.Ingress) *utils.UniqueStrings {
+	targets := utils.NewUniqueStrings()
+	for _, ing := range ingress.Status.LoadBalancer.Ingress {
+		if ing.Hostname != "" && ing.IP == "" {
+			targets.Add(ing.Hostname)
+		} else if ing.IP != "" {
+			targets.Add(ing.IP)
+		}
+	}
+	return targets
 }
 
 func augmentFromCommonAnnotations(annotations map[string]string, input DNSSpecInput) (*DNSSpecInput, error) {
