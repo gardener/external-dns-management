@@ -9,6 +9,7 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/clock/testing"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,16 +36,20 @@ var _ = Describe("Reconcile", func() {
 		clock       = &testing.FakeClock{}
 		startTime   = time.Now().Truncate(time.Second)
 
+		checkFailedBasics = func(offset int, expectedState string, expectedMessage string) {
+			ExpectWithOffset(offset+1, fakeClient.Get(ctx, providerKey, provider)).To(Succeed())
+			ExpectWithOffset(offset+1, provider.Status.ObservedGeneration).To(Equal(provider.Generation))
+			ExpectWithOffset(offset+1, provider.Status.State).To(Equal(expectedState))
+			ExpectWithOffset(offset+1, provider.Status.LastUpdateTime.Time).To(Equal(startTime))
+			ExpectWithOffset(offset+1, provider.Status.Message).To(Equal(ptr.To(expectedMessage)))
+		}
+
 		checkFailed = func(expectedState string, expectedMessage string) {
-			Expect(fakeClient.Get(ctx, providerKey, provider)).To(Succeed())
-			Expect(provider.Status.ObservedGeneration).To(Equal(provider.Generation))
-			Expect(provider.Status.State).To(Equal(expectedState))
-			Expect(provider.Status.LastUpdateTime.Time).To(Equal(startTime))
-			Expect(provider.Status.Message).To(Equal(ptr.To(expectedMessage)))
-			Expect(provider.Status.Domains).To(Equal(v1alpha1.DNSSelectionStatus{}))
-			Expect(provider.Status.Zones).To(Equal(v1alpha1.DNSSelectionStatus{}))
-			Expect(provider.Status.DefaultTTL).To(BeNil())
-			Expect(provider.Status.RateLimit).To(BeNil())
+			checkFailedBasics(1, expectedState, expectedMessage)
+			ExpectWithOffset(1, provider.Status.Domains).To(Equal(v1alpha1.DNSSelectionStatus{}))
+			ExpectWithOffset(1, provider.Status.Zones).To(Equal(v1alpha1.DNSSelectionStatus{}))
+			ExpectWithOffset(1, provider.Status.DefaultTTL).To(BeNil())
+			ExpectWithOffset(1, provider.Status.RateLimit).To(BeNil())
 		}
 	)
 
@@ -62,6 +67,7 @@ var _ = Describe("Reconcile", func() {
 			},
 			Clock:             clock,
 			DNSHandlerFactory: factory,
+			Recorder:          &record.FakeRecorder{},
 			state:             state.GetState(),
 		}
 
@@ -221,4 +227,21 @@ var _ = Describe("Reconcile", func() {
 
 		checkFailed(v1alpha1.StateError, "secret test/secret1 validation failed: 'bad_key' is not allowed in local provider properties: some-value")
 	})
+
+	It("should update status if domain selection is empty", func() {
+		provider.Spec.Domains = &v1alpha1.DNSSelection{Include: []string{"non.existing.other-domain.com"}}
+		Expect(fakeClient.Create(ctx, provider)).To(Succeed())
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: providerKey})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{RequeueAfter: 5 * time.Minute}))
+
+		checkFailedBasics(0, v1alpha1.StateError, "no domain matching hosting zones. Need to be a (sub)domain of [example.com]")
+		Expect(provider.Status.Domains).To(Equal(v1alpha1.DNSSelectionStatus{
+			Excluded: []string{"example.com", "example2.com"},
+		}))
+		Expect(provider.Status.Zones).To(Equal(v1alpha1.DNSSelectionStatus{
+			Excluded: []string{"test:example.com", "test:example2.com"},
+		}))
+	})
+
 })

@@ -390,6 +390,7 @@ func Convert_config_DNSManagerConfiguration_To_v1alpha1_DNSManagerConfiguration(
 func autoConvert_v1alpha1_DNSProviderControllerConfig_To_config_DNSProviderControllerConfig(in *DNSProviderControllerConfig, out *config.DNSProviderControllerConfig, s conversion.Scope) error {
 	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
 	out.SyncPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncPeriod))
+	out.RecheckPeriod = (*v1.Duration)(unsafe.Pointer(in.RecheckPeriod))
 	out.ReconciliationTimeout = (*v1.Duration)(unsafe.Pointer(in.ReconciliationTimeout))
 	out.Namespace = in.Namespace
 	out.EnabledProviderTypes = *(*[]string)(unsafe.Pointer(&in.EnabledProviderTypes))
@@ -410,6 +411,7 @@ func Convert_v1alpha1_DNSProviderControllerConfig_To_config_DNSProviderControlle
 func autoConvert_config_DNSProviderControllerConfig_To_v1alpha1_DNSProviderControllerConfig(in *config.DNSProviderControllerConfig, out *DNSProviderControllerConfig, s conversion.Scope) error {
 	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
 	out.SyncPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncPeriod))
+	out.RecheckPeriod = (*v1.Duration)(unsafe.Pointer(in.RecheckPeriod))
 	out.ReconciliationTimeout = (*v1.Duration)(unsafe.Pointer(in.ReconciliationTimeout))
 	out.Namespace = in.Namespace
 	out.EnabledProviderTypes = *(*[]string)(unsafe.Pointer(&in.EnabledProviderTypes))
