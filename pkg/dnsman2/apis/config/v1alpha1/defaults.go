@@ -107,6 +107,9 @@ func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 	if obj.SyncPeriod == nil {
 		obj.SyncPeriod = &metav1.Duration{Duration: time.Hour}
 	}
+	if obj.RecheckPeriod == nil {
+		obj.RecheckPeriod = &metav1.Duration{Duration: 5 * time.Minute}
+	}
 	if obj.ReconciliationTimeout == nil {
 		obj.ReconciliationTimeout = &metav1.Duration{Duration: 2 * time.Minute}
 	}
@@ -122,6 +125,9 @@ func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 	}
 	if obj.DefaultTTL == nil {
 		obj.DefaultTTL = ptr.To[int64](300)
+	}
+	if obj.ZoneCacheTTL == nil {
+		obj.ZoneCacheTTL = &metav1.Duration{Duration: 30 * time.Minute}
 	}
 }
 

@@ -269,6 +269,11 @@ func (in *DNSProviderControllerConfig) DeepCopyInto(out *DNSProviderControllerCo
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.RecheckPeriod != nil {
+		in, out := &in.RecheckPeriod, &out.RecheckPeriod
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	if in.ReconciliationTimeout != nil {
 		in, out := &in.ReconciliationTimeout, &out.ReconciliationTimeout
 		*out = new(v1.Duration)

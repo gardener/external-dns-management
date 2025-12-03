@@ -141,6 +141,7 @@ var _ = Describe("Defaults", func() {
 
 					Expect(obj.ConcurrentSyncs).To(PointTo(Equal(2)))
 					Expect(obj.SyncPeriod).To(PointTo(Equal(metav1.Duration{Duration: time.Hour})))
+					Expect(obj.RecheckPeriod).To(PointTo(Equal(metav1.Duration{Duration: 5 * time.Minute})))
 					Expect(obj.ReconciliationTimeout).To(PointTo(Equal(metav1.Duration{Duration: 2 * time.Minute})))
 					Expect(obj.Namespace).To(Equal("default"))
 					Expect(obj.DefaultRateLimits).To(Equal(&RateLimiterOptions{
@@ -149,12 +150,14 @@ var _ = Describe("Defaults", func() {
 						Burst:   20,
 					}))
 					Expect(obj.DefaultTTL).To(Equal(ptr.To[int64](300)))
+					Expect(obj.ZoneCacheTTL).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Minute})))
 				})
 
 				It("should not overwrite existing values", func() {
 					obj := &DNSProviderControllerConfig{
 						ConcurrentSyncs:       ptr.To(5),
 						SyncPeriod:            &metav1.Duration{Duration: time.Second},
+						RecheckPeriod:         &metav1.Duration{Duration: 3 * time.Minute},
 						ReconciliationTimeout: &metav1.Duration{Duration: 30 * time.Second},
 						Namespace:             "foo",
 						DefaultRateLimits: &RateLimiterOptions{
@@ -162,12 +165,15 @@ var _ = Describe("Defaults", func() {
 							QPS:     1,
 							Burst:   2,
 						},
+						DefaultTTL:   ptr.To[int64](123),
+						ZoneCacheTTL: &metav1.Duration{Duration: 7 * time.Minute},
 					}
 
 					SetDefaults_DNSProviderControllerConfig(obj)
 
 					Expect(obj.ConcurrentSyncs).To(PointTo(Equal(5)))
 					Expect(obj.SyncPeriod).To(PointTo(Equal(metav1.Duration{Duration: time.Second})))
+					Expect(obj.RecheckPeriod).To(PointTo(Equal(metav1.Duration{Duration: 3 * time.Minute})))
 					Expect(obj.ReconciliationTimeout).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Second})))
 					Expect(obj.Namespace).To(Equal("foo"))
 					Expect(obj.DefaultRateLimits).To(Equal(&RateLimiterOptions{
@@ -175,6 +181,8 @@ var _ = Describe("Defaults", func() {
 						QPS:     1,
 						Burst:   2,
 					}))
+					Expect(obj.DefaultTTL).To(Equal(ptr.To[int64](123)))
+					Expect(obj.ZoneCacheTTL).To(PointTo(Equal(metav1.Duration{Duration: 7 * time.Minute})))
 				})
 			})
 			Describe("DNSEntry controller", func() {

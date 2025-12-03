@@ -65,7 +65,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 	}
 	config := dnsprovider.DNSAccountConfig{
 		DefaultTTL:   providerState.GetDefaultTTL(),
-		ZoneCacheTTL: ptr.Deref(r.Config.ZoneCacheTTL, metav1.Duration{Duration: 5 * time.Minute}).Duration,
+		ZoneCacheTTL: r.zoneCacheTTL(),
 		Clock:        r.Clock,
 		RateLimits:   r.Config.DefaultRateLimits,
 		Factory:      r.DNSHandlerFactory,
@@ -87,18 +87,31 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		return reconcile.Result{}, err
 	}
 	if len(zones) == 0 {
-		return reconcile.Result{RequeueAfter: 5 * time.Minute}, r.updateStatusError(ctx, provider, fmt.Errorf("no hosted zones available in account"))
+		return reconcile.Result{RequeueAfter: r.recheckPeriod()}, r.updateStatusError(ctx, provider, fmt.Errorf("no hosted zones available in account"))
 	}
 
-	providerState.SetSelection(selection.CalcZoneAndDomainSelection(provider.Spec, toLightZones(zones)))
-
+	selectionResult := selection.CalcZoneAndDomainSelection(provider.Spec, toLightZones(zones))
+	providerState.SetSelection(selectionResult)
 	providerState.SetAccount(newAccount)
 
-	return reconcile.Result{}, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
-		status.Message = ptr.To("provider operational")
-		status.State = v1alpha1.StateReady
+	for _, warning := range selectionResult.Warnings {
+		r.Recorder.Eventf(provider, corev1.EventTypeWarning, "reconcile", "%s", warning)
+	}
+	result := reconcile.Result{}
+	if selectionResult.Error != "" {
+		result.RequeueAfter = r.recheckPeriod()
+	}
+
+	return result, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
+		if selectionResult.Error == "" {
+			status.Message = ptr.To("provider operational")
+			status.State = v1alpha1.StateReady
+		} else {
+			status.Message = ptr.To(selectionResult.Error)
+			status.State = v1alpha1.StateError
+		}
 		status.ObservedGeneration = provider.Generation
-		providerState.GetSelection().SetProviderStatusZonesAndDomains(status)
+		selectionResult.SetProviderStatusZonesAndDomains(status)
 		status.DefaultTTL = ptr.To[int64](providerState.GetDefaultTTL())
 		if config.RateLimits != nil && config.RateLimits.Enabled {
 			status.RateLimit = &v1alpha1.RateLimit{
@@ -110,6 +123,14 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		}
 		return nil
 	})
+}
+
+func (r *Reconciler) recheckPeriod() time.Duration {
+	return ptr.Deref(r.Config.RecheckPeriod, metav1.Duration{Duration: 5 * time.Minute}).Duration
+}
+
+func (r *Reconciler) zoneCacheTTL() time.Duration {
+	return ptr.Deref(r.Config.ZoneCacheTTL, metav1.Duration{Duration: 30 * time.Minute}).Duration
 }
 
 func (r *Reconciler) isEnabledProviderType(providerType string) bool {

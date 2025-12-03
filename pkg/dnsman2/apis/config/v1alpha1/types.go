@@ -112,8 +112,13 @@ type DNSProviderControllerConfig struct {
 	// +optional
 	ConcurrentSyncs *int `json:"concurrentSyncs,omitempty"`
 	// SyncPeriod is the duration how often the controller performs its reconciliation.
+	// Default is 1 hour.
 	// +optional
 	SyncPeriod *metav1.Duration `json:"syncPeriod,omitempty"`
+	// RecheckPeriod is the duration how often the controller rechecks a provider on a recoverable error.
+	// Default value is 5 minutes.
+	// +optional
+	RecheckPeriod *metav1.Duration `json:"recheckPeriod,omitempty"`
 	// ReconciliationTimeout is the maximum duration a reconciliation of a DNSProvider is allowed to take.
 	// Default value is 2 minutes.
 	// +optional
@@ -134,7 +139,8 @@ type DNSProviderControllerConfig struct {
 	// DefaultTTL is the default TTL used for DNS entries if not specified explicitly. May be overridden by the DNSProvider.
 	// +optional
 	DefaultTTL *int64 `json:"defaultTTL,omitempty"`
-	// ZoneCacheTTL is the TTL for the cache for the `GetZones` method.
+	// ZoneCacheTTL is the TTL for caching provider zones.
+	// Default is 30 minutes.
 	// +optional
 	ZoneCacheTTL *metav1.Duration `json:"zoneCacheTTL,omitempty"`
 	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
