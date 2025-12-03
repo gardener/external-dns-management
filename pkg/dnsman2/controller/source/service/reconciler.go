@@ -16,7 +16,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 )
 
-// Reconciler is a reconciler for provided Certificate resources.
+// Reconciler is a reconciler for provided Service resources.
 type Reconciler struct {
 	common.ReconcilerBase
 }
