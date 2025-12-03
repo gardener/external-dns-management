@@ -101,3 +101,14 @@ func (u *UniqueStrings) ToSlice() []string {
 	copy(clone, *u)
 	return clone
 }
+
+// Difference returns the strings that are in the unique strings but not in the other unique strings.
+func (u *UniqueStrings) Difference(o *UniqueStrings) []string {
+	var diff []string
+	for _, s := range u.ToSlice() {
+		if !o.Contains(s) {
+			diff = append(diff, s)
+		}
+	}
+	return diff
+}

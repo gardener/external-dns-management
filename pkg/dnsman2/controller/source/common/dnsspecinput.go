@@ -42,25 +42,15 @@ type DNSSpecInput struct {
 func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk schema.GroupVersionKind, svc *corev1.Service) (*DNSSpecInput, error) {
 	annotations := GetMergedAnnotation(gvk, state, svc)
 
-	dnsNames, ok := annotations[dns.AnnotationDNSNames]
-	if !ok {
-		log.V(5).Info("No DNS names annotation", "key", dns.AnnotationDNSNames)
-		return nil, nil
+	names, err := getDNSNamesFromAnnotations(log, annotations)
+	if err != nil {
+		return nil, err
 	}
-	if dnsNames == "" {
-		return nil, fmt.Errorf("empty value for annotation %q", dns.AnnotationDNSNames)
+	if names == nil {
+		return nil, nil // no DNS names specified means no need to create DNS entries
 	}
-
-	names := utils.NewUniqueStrings()
-	for _, name := range strings.Split(dnsNames, ",") {
-		name = strings.TrimSpace(name)
-		if name == "" {
-			continue
-		}
-		if name == "*" {
-			return nil, fmt.Errorf("domain name annotation value '*' is not allowed for service objects")
-		}
-		names.Add(name)
+	if names.Contains("*") {
+		return nil, fmt.Errorf("domain name annotation value '*' is not allowed for service objects")
 	}
 
 	var resolveTargetsToAddresses *bool
@@ -160,6 +150,27 @@ func modifyEntryFor(entry *v1alpha1.DNSEntry, cfg config.SourceControllerConfig,
 	default:
 		utils.RemoveAnnotation(entry, dns.AnnotationIgnore)
 	}
+}
+
+func getDNSNamesFromAnnotations(log logr.Logger, annotations map[string]string) (*utils.UniqueStrings, error) {
+	dnsNames, ok := annotations[dns.AnnotationDNSNames]
+	if !ok {
+		log.V(5).Info("No DNS names annotation", "key", dns.AnnotationDNSNames)
+		return nil, nil
+	}
+	if dnsNames == "" {
+		return nil, fmt.Errorf("empty value for annotation %q", dns.AnnotationDNSNames)
+	}
+
+	names := utils.NewUniqueStrings()
+	for _, name := range strings.Split(dnsNames, ",") {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		names.Add(name)
+	}
+	return names, nil
 }
 
 // GetMergedAnnotation gets the merged annotations for the given object.
