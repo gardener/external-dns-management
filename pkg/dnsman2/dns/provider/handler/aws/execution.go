@@ -179,7 +179,7 @@ outer:
 			for _, m := range submatchExists {
 				if dns.NormalizeDomainName(m[1]) == dns.NormalizeDomainName(*change.ResourceRecordSet.Name) && m[2] == string(change.ResourceRecordSet.Type) {
 					if ex.isFetchedRecordSetEqual(ctx, change) {
-						ex.log.Info("ignoring already created record: %s (%s)", "record",
+						ex.log.Info("ignoring already created record", "record",
 							fmt.Sprintf("%s (%s)", *change.ResourceRecordSet.Name, change.ResourceRecordSet.Type))
 						succeeded = append(succeeded, change)
 						continue outer
