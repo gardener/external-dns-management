@@ -65,7 +65,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		controlPlaneCluster.GetCache(),
 		&dnsv1alpha1.DNSEntry{},
 		handler.EnqueueRequestsFromMapFunc(MapDNSEntryToIngress),
-		RelevantDNSEntryPredicate(entryOwnerData))); err != nil {
+		common.RelevantDNSEntryPredicate(entryOwnerData))); err != nil {
 		return err
 	}
 	return nil
@@ -174,31 +174,4 @@ func MapDNSEntryToIngress(_ context.Context, obj client.Object) []reconcile.Requ
 		})
 	}
 	return requests
-}
-
-// RelevantDNSEntryPredicate returns the predicate to be considered for reconciliation.
-func RelevantDNSEntryPredicate(entryOwnerData common.EntryOwnerData) predicate.Predicate {
-	return predicate.Funcs{
-		CreateFunc: func(event.CreateEvent) bool {
-			return false
-		},
-
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			entryOld, ok := e.ObjectOld.(*dnsv1alpha1.DNSEntry)
-			if !ok || entryOld == nil {
-				return false
-			}
-			return entryOwnerData.IsRelevantEntry(entryOld)
-		},
-
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			entry, ok := e.Object.(*dnsv1alpha1.DNSEntry)
-			if !ok || entry == nil {
-				return false
-			}
-			return entryOwnerData.IsRelevantEntry(entry)
-		},
-
-		GenericFunc: func(event.GenericEvent) bool { return false },
-	}
 }
