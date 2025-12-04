@@ -199,6 +199,7 @@ var _ = Describe("Reconciler", func() {
 			dnsEntries := getDNSEntries(ctx, fakeClientCtrl, reconciler)
 			Expect(dnsEntries.Items).To(HaveLen(1))
 
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(ingress), ingress)).To(Succeed())
 			delete(ingress.Annotations, "dns.gardener.cloud/dnsnames")
 			Expect(fakeClientSrc.Update(ctx, ingress)).To(Succeed())
 
@@ -218,6 +219,7 @@ var _ = Describe("Reconciler", func() {
 			dnsEntries := getDNSEntries(ctx, fakeClientCtrl, reconciler)
 			Expect(dnsEntries.Items).To(HaveLen(1))
 
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(ingress), ingress)).To(Succeed())
 			ingress.Annotations["dns.gardener.cloud/dnsnames"] = "gardener.cloud"
 			Expect(fakeClientSrc.Update(ctx, ingress)).To(Succeed())
 
