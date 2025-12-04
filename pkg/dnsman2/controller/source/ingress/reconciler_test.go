@@ -98,6 +98,24 @@ var _ = Describe("Reconciler", func() {
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ")
 		})
 
+		It("should create a DNSEntry and clean it up when the Ingress is deleted", func() {
+			Expect(fakeClientSrc.Create(ctx, ingress)).To(Succeed())
+
+			err := doReconcile(ctx, reconciler, ingress)
+			Expect(err).NotTo(HaveOccurred())
+
+			dnsEntries := getDNSEntries(ctx, fakeClientCtrl, reconciler)
+			Expect(dnsEntries.Items).To(HaveLen(1))
+
+			Expect(fakeClientSrc.Delete(ctx, ingress)).To(Succeed())
+
+			err = doReconcile(ctx, reconciler, ingress)
+			Expect(err).NotTo(HaveOccurred())
+
+			dnsEntries = getDNSEntries(ctx, fakeClientCtrl, reconciler)
+			Expect(dnsEntries.Items).To(BeEmpty())
+		})
+
 		It("should handle the wildcard DNS names annotation", func() {
 			ingress.Annotations["dns.gardener.cloud/dnsnames"] = "*"
 			Expect(fakeClientSrc.Create(ctx, ingress)).To(Succeed())
