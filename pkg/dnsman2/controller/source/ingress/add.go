@@ -64,9 +64,10 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	if err := c.Watch(source.Kind[client.Object](
 		controlPlaneCluster.GetCache(),
 		&dnsv1alpha1.DNSEntry{},
-		handler.EnqueueRequestsFromMapFunc(MapDNSEntryToIngress),
-		common.RelevantDNSEntryPredicate(entryOwnerData))); err != nil {
 		handler.EnqueueRequestsFromMapFunc(common.ForResourceMapDNSEntry(r.GVK)),
+		common.RelevantDNSEntryPredicate(entryOwnerData),
+		dnsman2controller.DNSClassPredicate(r.TargetClass),
+	)); err != nil {
 		return err
 	}
 	return nil
