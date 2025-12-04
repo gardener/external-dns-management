@@ -7,6 +7,7 @@
 package common
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
@@ -196,4 +198,50 @@ func GetAnnotatedOwners(obj metav1.Object) []string {
 		}
 	}
 	return owners
+}
+
+// ForResourceMapDNSEntry returns a function that maps a DNSEntry to its owning resource(s).
+func ForResourceMapDNSEntry(gkv schema.GroupVersionKind) func(context.Context, client.Object) []reconcile.Request {
+	return func(_ context.Context, obj client.Object) []reconcile.Request {
+		entry, ok := obj.(*dnsv1alpha1.DNSEntry)
+		if !ok {
+			return nil
+		}
+		if entry.OwnerReferences != nil {
+			for _, ownerRef := range entry.OwnerReferences {
+				if ownerRef.Kind == gkv.Kind && ownerRef.APIVersion == gkv.GroupVersion().String() {
+					return []reconcile.Request{{
+						NamespacedName: client.ObjectKey{
+							Namespace: entry.Namespace,
+							Name:      ownerRef.Name,
+						},
+					}}
+				}
+			}
+			return nil
+		}
+
+		var requests []reconcile.Request
+		owners := GetAnnotatedOwners(entry)
+		for _, owner := range owners {
+			parts := strings.SplitN(owner, ":", 2)
+			suffix := parts[len(parts)-1]
+			oldLen := len(suffix)
+			suffix = strings.TrimPrefix(suffix, "/"+gkv.Kind+"/")
+			if oldLen == len(suffix) {
+				continue
+			}
+			nameParts := strings.SplitN(suffix, "/", 2)
+			if len(nameParts) != 2 {
+				continue
+			}
+			requests = append(requests, reconcile.Request{
+				NamespacedName: client.ObjectKey{
+					Namespace: nameParts[0],
+					Name:      nameParts[1],
+				},
+			})
+		}
+		return requests
+	}
 }

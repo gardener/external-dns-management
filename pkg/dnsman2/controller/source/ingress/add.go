@@ -6,7 +6,6 @@ package ingress
 
 import (
 	"context"
-	"strings"
 
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -23,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
@@ -66,6 +66,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		&dnsv1alpha1.DNSEntry{},
 		handler.EnqueueRequestsFromMapFunc(MapDNSEntryToIngress),
 		common.RelevantDNSEntryPredicate(entryOwnerData))); err != nil {
+		handler.EnqueueRequestsFromMapFunc(common.ForResourceMapDNSEntry(r.GVK)),
 		return err
 	}
 	return nil
@@ -130,48 +131,4 @@ func MapDNSAnnotationToIngress(_ context.Context, obj client.Object) []reconcile
 			Name:      annotation.Spec.ResourceRef.Name,
 		},
 	}}
-}
-
-// MapDNSEntryToIngress maps a DNSEntry to its owning Ingress resource(s).
-func MapDNSEntryToIngress(_ context.Context, obj client.Object) []reconcile.Request {
-	entry, ok := obj.(*dnsv1alpha1.DNSEntry)
-	if !ok {
-		return nil
-	}
-	if entry.OwnerReferences != nil {
-		for _, ownerRef := range entry.OwnerReferences {
-			if ownerRef.Kind == "Ingress" && ownerRef.APIVersion == "networking.k8s.io/v1" {
-				return []reconcile.Request{{
-					NamespacedName: client.ObjectKey{
-						Namespace: entry.Namespace,
-						Name:      ownerRef.Name,
-					},
-				}}
-			}
-		}
-		return nil
-	}
-
-	var requests []reconcile.Request
-	owners := common.GetAnnotatedOwners(entry)
-	for _, owner := range owners {
-		parts := strings.SplitN(owner, ":", 2)
-		suffix := parts[len(parts)-1]
-		oldLen := len(suffix)
-		suffix = strings.TrimPrefix(suffix, "/Ingress/")
-		if oldLen == len(suffix) {
-			continue
-		}
-		nameParts := strings.SplitN(suffix, "/", 2)
-		if len(nameParts) != 2 {
-			continue
-		}
-		requests = append(requests, reconcile.Request{
-			NamespacedName: client.ObjectKey{
-				Namespace: nameParts[0],
-				Name:      nameParts[1],
-			},
-		})
-	}
-	return requests
 }

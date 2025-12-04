@@ -5,8 +5,12 @@
 package common_test
 
 import (
+	"context"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
@@ -497,6 +501,193 @@ var _ = Describe("IsRelevantEntry", func() {
 			result := entryOwnerData.IsRelevantEntry(entry)
 
 			Expect(result).To(BeTrue())
+		})
+	})
+})
+
+var _ = Describe("#ForResourceMapDNSEntry", func() {
+	Context("when called for Ingress GVK", func() {
+		var (
+			ctx                  context.Context
+			entry                *dnsv1alpha1.DNSEntry
+			mapDNSEntryToIngress = common.ForResourceMapDNSEntry(schema.GroupVersionKind{
+				Group:   "networking.k8s.io",
+				Version: "v1",
+				Kind:    "Ingress",
+			})
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			entry = &dnsv1alpha1.DNSEntry{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: "my-workload",
+					Name:      "my-entry",
+				},
+			}
+		})
+
+		It("should return nil for non-DNSEntry objects", func() {
+			Expect(mapDNSEntryToIngress(ctx, &networkingv1.Ingress{})).To(BeNil())
+		})
+
+		It("should return nil when referencing a non-Ingress resource", func() {
+			entry.OwnerReferences = []metav1.OwnerReference{{
+				Kind:       "Pod",
+				APIVersion: "networking.k8s.io/v1",
+				Name:       "my-pod",
+			}}
+			Expect(mapDNSEntryToIngress(ctx, entry)).To(BeNil())
+		})
+
+		It("should return nil when referencing a non-networking API version", func() {
+			entry.OwnerReferences = []metav1.OwnerReference{{
+				Kind:       "Ingress",
+				APIVersion: "v1",
+				Name:       "my-ingress",
+			}}
+			Expect(mapDNSEntryToIngress(ctx, entry)).To(BeNil())
+		})
+
+		It("should return a reconcile request for a DNSEntry referencing an Ingress", func() {
+			entry.OwnerReferences = []metav1.OwnerReference{{
+				Kind:       "Ingress",
+				APIVersion: "networking.k8s.io/v1",
+				Name:       "my-ingress",
+			}}
+
+			requests := mapDNSEntryToIngress(ctx, entry)
+			Expect(requests).To(HaveLen(1))
+			Expect(requests[0].NamespacedName.Namespace).To(Equal("my-workload"))
+			Expect(requests[0].NamespacedName.Name).To(Equal("my-ingress"))
+		})
+
+		It("should return a reconcile request for a DNSEntry with an annotated Ingress owner", func() {
+			entry.Annotations = map[string]string{
+				"resources.gardener.cloud/owners": "cluster1:/Ingress/my-workload/my-ingress",
+			}
+			requests := mapDNSEntryToIngress(ctx, entry)
+			Expect(requests).To(HaveLen(1))
+			Expect(requests[0].NamespacedName.Namespace).To(Equal("my-workload"))
+			Expect(requests[0].NamespacedName.Name).To(Equal("my-ingress"))
+		})
+
+		It("should return reconcile requests for a DNSEntry with annotated Ingress owners", func() {
+			entry.Annotations = map[string]string{
+				"resources.gardener.cloud/owners": "cluster1:/Ingress/my-workload/my-ingress,cluster2:/Ingress/other-workload/other-ingress",
+			}
+			requests := mapDNSEntryToIngress(ctx, entry)
+
+			Expect(requests).To(HaveLen(2))
+
+			Expect(requests[0].NamespacedName.Namespace).To(Equal("my-workload"))
+			Expect(requests[0].NamespacedName.Name).To(Equal("my-ingress"))
+
+			Expect(requests[1].NamespacedName.Namespace).To(Equal("other-workload"))
+			Expect(requests[1].NamespacedName.Name).To(Equal("other-ingress"))
+		})
+
+		It("should ignore annotated owners with other resource prefixes", func() {
+			entry.Annotations = map[string]string{
+				"resources.gardener.cloud/owners": "cluster1:/Service/my-workload/my-service",
+			}
+			Expect(mapDNSEntryToIngress(ctx, entry)).To(BeEmpty())
+		})
+	})
+
+	Context("when called for Service GVK", func() {
+		var (
+			ctx                  context.Context
+			entry                *dnsv1alpha1.DNSEntry
+			mapDNSEntryToService = common.ForResourceMapDNSEntry(schema.GroupVersionKind{
+				Group:   "",
+				Version: "v1",
+				Kind:    "Service",
+			})
+		)
+
+		BeforeEach(func() {
+			ctx = context.Background()
+			entry = &dnsv1alpha1.DNSEntry{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-entry",
+					Namespace: "test-namespace",
+				},
+			}
+		})
+
+		It("should return nil for non-DNSEntry objects", func() {
+			svc := &corev1.Service{}
+			result := mapDNSEntryToService(ctx, svc)
+			Expect(result).To(BeNil())
+		})
+
+		It("should return request for Service owner reference", func() {
+			entry.OwnerReferences = []metav1.OwnerReference{
+				{
+					Kind:       "Service",
+					APIVersion: "v1",
+					Name:       "test-service",
+				},
+			}
+			result := mapDNSEntryToService(ctx, entry)
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].NamespacedName.Namespace).To(Equal("test-namespace"))
+			Expect(result[0].NamespacedName.Name).To(Equal("test-service"))
+		})
+
+		It("should return nil for non-Service owner reference", func() {
+			entry.OwnerReferences = []metav1.OwnerReference{
+				{
+					Kind:       "Pod",
+					APIVersion: "v1",
+					Name:       "test-pod",
+				},
+			}
+			result := mapDNSEntryToService(ctx, entry)
+			Expect(result).To(BeNil())
+		})
+
+		It("should return nil for wrong API version", func() {
+			entry.OwnerReferences = []metav1.OwnerReference{
+				{
+					Kind:       "Service",
+					APIVersion: "v2",
+					Name:       "test-service",
+				},
+			}
+			result := mapDNSEntryToService(ctx, entry)
+			Expect(result).To(BeNil())
+		})
+
+		It("should handle annotated owners with valid Service prefix", func() {
+			entry.Annotations = map[string]string{
+				"resources.gardener.cloud/owners": "cluster1:/Service/test-namespace/test-service",
+			}
+			result := mapDNSEntryToService(ctx, entry)
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].NamespacedName.Namespace).To(Equal("test-namespace"))
+			Expect(result[0].NamespacedName.Name).To(Equal("test-service"))
+		})
+
+		It("should handle multiple annotated owners", func() {
+			entry.Annotations = map[string]string{
+				"resources.gardener.cloud/owners": "cluster1:/Service/ns1/svc1,cluster2:/Service/ns2/svc2",
+			}
+			result := mapDNSEntryToService(ctx, entry)
+			Expect(result).To(HaveLen(2))
+			Expect(result[0].NamespacedName.Namespace).To(Equal("ns1"))
+			Expect(result[0].NamespacedName.Name).To(Equal("svc1"))
+			Expect(result[1].NamespacedName.Namespace).To(Equal("ns2"))
+			Expect(result[1].NamespacedName.Name).To(Equal("svc2"))
+		})
+
+		It("should ignore annotated owners without Service prefix", func() {
+			entry.Annotations = map[string]string{
+				"resources.gardener.cloud/owners": "cluster1:/Pod/test-namespace/test-pod",
+			}
+			result := mapDNSEntryToService(ctx, entry)
+			Expect(result).To(BeEmpty())
 		})
 	})
 })

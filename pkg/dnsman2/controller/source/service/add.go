@@ -6,7 +6,6 @@ package service
 
 import (
 	"context"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -66,7 +65,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	if err := c.Watch(source.Kind[client.Object](
 		controlPlaneCluster.GetCache(),
 		&dnsv1alpha1.DNSEntry{},
-		handler.EnqueueRequestsFromMapFunc(MapDNSEntryToService),
+		handler.EnqueueRequestsFromMapFunc(common.ForResourceMapDNSEntry(r.GVK)),
 		common.RelevantDNSEntryPredicate(entryOwnerData),
 		dnsman2controller.DNSClassPredicate(r.TargetClass),
 	)); err != nil {
@@ -138,48 +137,4 @@ func MapDNSAnnotationToService(_ context.Context, obj client.Object) []reconcile
 			Name:      annotation.Spec.ResourceRef.Name,
 		},
 	}}
-}
-
-// MapDNSEntryToService maps a DNSEntry to its owning Service(s).
-func MapDNSEntryToService(_ context.Context, obj client.Object) []reconcile.Request {
-	entry, ok := obj.(*dnsv1alpha1.DNSEntry)
-	if !ok {
-		return nil
-	}
-	if entry.OwnerReferences != nil {
-		for _, ownerRef := range entry.OwnerReferences {
-			if ownerRef.Kind == "Service" && ownerRef.APIVersion == "v1" {
-				return []reconcile.Request{{
-					NamespacedName: client.ObjectKey{
-						Namespace: entry.Namespace,
-						Name:      ownerRef.Name,
-					},
-				}}
-			}
-		}
-		return nil
-	}
-
-	var requests []reconcile.Request
-	owners := common.GetAnnotatedOwners(entry)
-	for _, owner := range owners {
-		parts := strings.SplitN(owner, ":", 2)
-		suffix := parts[len(parts)-1]
-		oldLen := len(suffix)
-		suffix = strings.TrimPrefix(suffix, "/Service/")
-		if oldLen == len(suffix) {
-			continue
-		}
-		nameParts := strings.SplitN(suffix, "/", 2)
-		if len(nameParts) != 2 {
-			continue
-		}
-		requests = append(requests, reconcile.Request{
-			NamespacedName: client.ObjectKey{
-				Namespace: nameParts[0],
-				Name:      nameParts[1],
-			},
-		})
-	}
-	return requests
 }

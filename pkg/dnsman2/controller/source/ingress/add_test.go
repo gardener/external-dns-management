@@ -11,7 +11,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/types"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
@@ -122,90 +121,6 @@ var _ = Describe("Add", func() {
 			Expect(requests).To(HaveLen(1))
 			Expect(requests[0].NamespacedName.Namespace).To(Equal("kube-system"))
 			Expect(requests[0].NamespacedName.Name).To(Equal("my-ingress"))
-		})
-	})
-
-	Describe("#MapDNSEntryToIngress", func() {
-		var (
-			ctx   context.Context
-			entry *dnsv1alpha1.DNSEntry
-		)
-
-		BeforeEach(func() {
-			ctx = context.Background()
-			entry = &dnsv1alpha1.DNSEntry{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: "my-workload",
-					Name:      "my-entry",
-				},
-			}
-		})
-
-		It("should return nil for non-DNSEntry objects", func() {
-			Expect(ingress.MapDNSEntryToIngress(ctx, &networkingv1.Ingress{})).To(BeNil())
-		})
-
-		It("should return nil when referencing a non-Ingress resource", func() {
-			entry.OwnerReferences = []metav1.OwnerReference{{
-				Kind:       "Pod",
-				APIVersion: "networking.k8s.io/v1",
-				Name:       "my-pod",
-			}}
-			Expect(ingress.MapDNSEntryToIngress(ctx, entry)).To(BeNil())
-		})
-
-		It("should return nil when referencing a non-networking API version", func() {
-			entry.OwnerReferences = []metav1.OwnerReference{{
-				Kind:       "Ingress",
-				APIVersion: "v1",
-				Name:       "my-ingress",
-			}}
-			Expect(ingress.MapDNSEntryToIngress(ctx, entry)).To(BeNil())
-		})
-
-		It("should return a reconcile request for a DNSEntry referencing an Ingress", func() {
-			entry.OwnerReferences = []metav1.OwnerReference{{
-				Kind:       "Ingress",
-				APIVersion: "networking.k8s.io/v1",
-				Name:       "my-ingress",
-			}}
-
-			requests := ingress.MapDNSEntryToIngress(ctx, entry)
-			Expect(requests).To(HaveLen(1))
-			Expect(requests[0].NamespacedName.Namespace).To(Equal("my-workload"))
-			Expect(requests[0].NamespacedName.Name).To(Equal("my-ingress"))
-		})
-
-		It("should return a reconcile request for a DNSEntry with an annotated Ingress owner", func() {
-			entry.Annotations = map[string]string{
-				"resources.gardener.cloud/owners": "cluster1:/Ingress/my-workload/my-ingress",
-			}
-			requests := ingress.MapDNSEntryToIngress(ctx, entry)
-			Expect(requests).To(HaveLen(1))
-			Expect(requests[0].NamespacedName.Namespace).To(Equal("my-workload"))
-			Expect(requests[0].NamespacedName.Name).To(Equal("my-ingress"))
-		})
-
-		It("should return reconcile requests for a DNSEntry with annotated Ingress owners", func() {
-			entry.Annotations = map[string]string{
-				"resources.gardener.cloud/owners": "cluster1:/Ingress/my-workload/my-ingress,cluster2:/Ingress/other-workload/other-ingress",
-			}
-			requests := ingress.MapDNSEntryToIngress(ctx, entry)
-
-			Expect(requests).To(HaveLen(2))
-
-			Expect(requests[0].NamespacedName.Namespace).To(Equal("my-workload"))
-			Expect(requests[0].NamespacedName.Name).To(Equal("my-ingress"))
-
-			Expect(requests[1].NamespacedName.Namespace).To(Equal("other-workload"))
-			Expect(requests[1].NamespacedName.Name).To(Equal("other-ingress"))
-		})
-
-		It("should ignore annotated owners with other resource prefixes", func() {
-			entry.Annotations = map[string]string{
-				"resources.gardener.cloud/owners": "cluster1:/Service/my-workload/my-service",
-			}
-			Expect(ingress.MapDNSEntryToIngress(ctx, entry)).To(BeEmpty())
 		})
 	})
 })
