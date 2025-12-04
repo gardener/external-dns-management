@@ -140,7 +140,7 @@ func getDNSNamesForIngress(log logr.Logger, ingress *networkingv1.Ingress, annot
 	annotatedNames.Remove("*")
 	diff := annotatedNames.Difference(dnsNames)
 	if len(diff) > 0 {
-		return nil, fmt.Errorf("annotated dns names %v not declared by ingress", strings.Join(diff, ", "))
+		return nil, fmt.Errorf("annotated dns names %s not declared by ingress", strings.Join(diff, ", "))
 	}
 	return dnsNames, nil
 }
