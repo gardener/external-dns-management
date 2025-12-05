@@ -225,14 +225,24 @@ func (r *entryReconciliation) updateStatusWithProvider(targetsData *newTargetsDa
 }
 
 func (r *entryReconciliation) ignoredByAnnotation() *common.ReconcileResult {
-	if annotation, b := ignoreByAnnotation(r.Entry); b {
+	annotation, ignoreFully := dns.IgnoreFullByAnnotation(r.Entry)
+	ignore := ignoreFully
+	if !ignoreFully {
+		annotation, ignore = dns.IgnoreReconcileByAnnotation(r.Entry)
+		ignore = ignore && r.Entry.DeletionTimestamp == nil
+	}
+	if ignore {
 		r.Log.V(1).Info("Ignoring Entry due to annotation", "annotation", annotation)
-		if r.Entry.DeletionTimestamp != nil {
+		if ignoreFully {
 			if res := r.StatusUpdater().RemoveFinalizer(); res != nil {
 				return res
 			}
 		}
-		return &common.ReconcileResult{}
+		return &common.ReconcileResult{
+			State: ptr.To(v1alpha1.StateIgnored),
+			Message: ptr.To(fmt.Sprintf("entry is ignored due to annotation: %s",
+				annotation)),
+		}
 	}
 	return nil
 }
@@ -455,22 +465,6 @@ func convertRoutingPolicy(rp *v1alpha1.RoutingPolicy) (*dns.RoutingPolicy, error
 		Type:       convertedType,
 		Parameters: rp.Parameters,
 	}, nil
-}
-
-func ignoreByAnnotation(entry *v1alpha1.DNSEntry) (string, bool) {
-	if entry.Annotations[dns.AnnotationHardIgnore] == "true" {
-		return dns.AnnotationHardIgnore + "=true", true
-	}
-	if entry.Annotations[dns.AnnotationIgnore] == dns.AnnotationIgnoreValueFull {
-		return dns.AnnotationIgnore + "=" + dns.AnnotationIgnoreValueFull, true
-	}
-	if entry.DeletionTimestamp == nil {
-		if value := entry.Annotations[dns.AnnotationIgnore]; value == dns.AnnotationIgnoreValueReconcile || value == dns.AnnotationIgnoreValueTrue {
-			return dns.AnnotationIgnore + "=" + value, true
-		}
-	}
-
-	return "", false
 }
 
 func makeTargetsUnique(targets dns.Targets) dns.Targets {

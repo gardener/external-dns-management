@@ -120,6 +120,7 @@ var _ = Describe("Reconcile", func() {
 		}
 
 		prepareAccount = func(p *v1alpha1.DNSProvider) *dnsprovider.DNSAccount {
+			GinkgoHelper()
 			account, err := reconciler.state.GetAccount(log, p, utils.Properties{}, dnsprovider.DNSAccountConfig{
 				ZoneCacheTTL: 5 * time.Minute,
 				DefaultTTL:   defaultTTL,
@@ -127,7 +128,7 @@ var _ = Describe("Reconcile", func() {
 				RateLimits:   nil,
 				Factory:      registry,
 			})
-			ExpectWithOffset(1, err).ToNot(HaveOccurred())
+			Expect(err).ToNot(HaveOccurred())
 			found := false
 			for _, acc := range accounts {
 				if acc.Hash() == account.Hash() {
@@ -144,6 +145,7 @@ var _ = Describe("Reconcile", func() {
 			return account
 		}
 		createProvider = func(name string, included, excluded []string, providerState string, ptrMockConfig *local.MockConfig) *v1alpha1.DNSProvider {
+			GinkgoHelper()
 			provider := &v1alpha1.DNSProvider{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
@@ -163,14 +165,14 @@ var _ = Describe("Reconcile", func() {
 			if ptrMockConfig != nil {
 				var err error
 				provider.Spec.ProviderConfig, err = local.MarshallMockConfig(*ptrMockConfig)
-				ExpectWithOffset(1, err).ToNot(HaveOccurred())
+				Expect(err).ToNot(HaveOccurred())
 				prepareAccount(provider)
 			}
 			if !skipProviderState {
 				var zones []selection.LightDNSHostedZone
 				for i, account := range accounts {
 					accountZones, err := account.GetZones(ctx)
-					ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to get zones for account %d", i)
+					Expect(err).ToNot(HaveOccurred(), "failed to get zones for account %d", i)
 					for _, zone := range accountZones {
 						zones = append(zones, zone)
 					}
@@ -181,20 +183,22 @@ var _ = Describe("Reconcile", func() {
 				providerState.SetSelection(selectionResult)
 				providerState.SetReconciled()
 			}
-			ExpectWithOffset(1, fakeClient.Create(ctx, provider)).To(Succeed())
+			Expect(fakeClient.Create(ctx, provider)).To(Succeed())
 			return provider
 		}
 		deleteProvider = func(name string) {
+			GinkgoHelper()
 			provider := &v1alpha1.DNSProvider{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: "test",
 				},
 			}
-			ExpectWithOffset(1, fakeClient.Delete(ctx, provider)).To(Succeed())
+			Expect(fakeClient.Delete(ctx, provider)).To(Succeed())
 			state.GetState().DeleteProviderState(client.ObjectKeyFromObject(provider))
 		}
 		updateProvider = func(name string, included, excluded []string, state string, ptrMockConfig *local.MockConfig) {
+			GinkgoHelper()
 			deleteProvider(name)
 			createProvider(name, included, excluded, state, ptrMockConfig)
 		}
@@ -206,17 +210,21 @@ var _ = Describe("Reconcile", func() {
 			}
 			return result, err
 		}
+		isIgnoredForDeletion = func(annotations map[string]string) bool {
+			return annotations["dns.gardener.cloud/target-hard-ignore"] == "true" || annotations["dns.gardener.cloud/ignore"] == "full"
+		}
 		checkEntryStatus = func(entry *v1alpha1.DNSEntry, providerName string, zoneID dns.ZoneID, state string, ttl int64, targets ...string) {
+			GinkgoHelper()
 			key := client.ObjectKeyFromObject(entry)
 			result, err := reconcileEntry(key)
-			ExpectWithOffset(1, fakeClient.Get(ctx, key, entry)).To(Succeed())
-			ExpectWithOffset(1, entry.Status.State).To(Equal(state), "state should match")
+			Expect(fakeClient.Get(ctx, key, entry)).To(Succeed())
+			Expect(entry.Status.State).To(Equal(state), "state should match")
 			if state != "Stale" || entry.Status.Provider == nil {
-				ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to reconcile Entry")
-				ExpectWithOffset(1, result).To(Equal(reconcile.Result{}))
+				Expect(err).ToNot(HaveOccurred(), "failed to reconcile Entry")
+				Expect(result).To(Equal(reconcile.Result{}))
 			} else {
-				ExpectWithOffset(1, err).ToNot(HaveOccurred(), "expected successful reconciliation with status update")
-				ExpectWithOffset(1, entry.Status.Message).NotTo(BeNil(), "expected non-empty status message")
+				Expect(err).ToNot(HaveOccurred(), "expected successful reconciliation with status update")
+				Expect(entry.Status.Message).NotTo(BeNil(), "expected non-empty status message")
 			}
 			var ptrName, ptrType, ptrZoneID *string
 			if providerName != "" {
@@ -228,52 +236,57 @@ var _ = Describe("Reconcile", func() {
 			if zoneID.ID != "" {
 				ptrZoneID = ptr.To(zoneID.ID)
 			}
-			ExpectWithOffset(1, entry.Status.Provider).To(Equal(ptrName), "provider name should match")
-			ExpectWithOffset(1, entry.Status.ProviderType).To(Equal(ptrType), "provider type should match")
-			ExpectWithOffset(1, entry.Status.Zone).To(Equal(ptrZoneID), "zone ID should match")
-			ExpectWithOffset(1, entry.Status.ObservedGeneration).To(Equal(entry.Generation), "observed generation should match")
+			Expect(entry.Status.Provider).To(Equal(ptrName), "provider name should match")
+			Expect(entry.Status.ProviderType).To(Equal(ptrType), "provider type should match")
+			Expect(entry.Status.Zone).To(Equal(ptrZoneID), "zone ID should match")
+			Expect(entry.Status.ObservedGeneration).To(Equal(entry.Generation), "observed generation should match")
 			var ptrTTL *int64
 			if ttl > 0 {
 				ptrTTL = ptr.To(ttl)
 			}
-			ExpectWithOffset(1, entry.Status.TTL).To(Equal(ptrTTL), "TTL should match")
+			Expect(entry.Status.TTL).To(Equal(ptrTTL), "TTL should match")
 
-			if len(entry.Status.Targets) == 0 {
-				ExpectWithOffset(1, entry.Finalizers).To(BeEmpty())
+			if len(entry.Status.Targets) == 0 || isIgnoredForDeletion(entry.Annotations) {
+				Expect(entry.Finalizers).To(BeEmpty())
 			} else {
-				ExpectWithOffset(1, entry.Finalizers).To(Equal([]string{"dns.gardener.cloud/compound"}))
+				Expect(entry.Finalizers).To(Equal([]string{"dns.gardener.cloud/compound"}))
 			}
-			ExpectWithOffset(1, entry.Status.Targets).To(Equal(targets), "targets should match")
+			Expect(entry.Status.Targets).To(Equal(targets), "targets should match")
 		}
 		checkEntryStatusDeleted = func(entry *v1alpha1.DNSEntry) {
+			GinkgoHelper()
 			key := client.ObjectKeyFromObject(entry)
 			Expect(fakeClient.Get(ctx, key, entry)).To(Succeed(), "Entry should still exist because of finalizer")
 			result, err := reconcileEntry(key)
-			ExpectWithOffset(1, err).ToNot(HaveOccurred(), "failed to reconcile Entry on deletion")
-			ExpectWithOffset(1, result).To(Equal(reconcile.Result{}))
-			ExpectWithOffset(1, apierrors.IsNotFound(fakeClient.Get(ctx, key, entry))).To(BeTrue(), "Entry should be deleted")
+			Expect(err).ToNot(HaveOccurred(), "failed to reconcile Entry on deletion")
+			Expect(result).To(Equal(reconcile.Result{}))
+			Expect(apierrors.IsNotFound(fakeClient.Get(ctx, key, entry))).To(BeTrue(), "Entry should be deleted")
 		}
 		checkEntryStatusRoutingPolicy = func(entry *v1alpha1.DNSEntry) {
-			ExpectWithOffset(1, entry.Status.RoutingPolicy).To(Equal(entry.Spec.RoutingPolicy), "routing policy status does not match spec")
+			GinkgoHelper()
+			Expect(entry.Status.RoutingPolicy).To(Equal(entry.Spec.RoutingPolicy), "routing policy status does not match spec")
 		}
 		checkEntryStateAndMessage = func(entry *v1alpha1.DNSEntry, expectedState string, messageMatcher types.GomegaMatcher) {
-			ExpectWithOffset(1, fakeClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
-			ExpectWithOffset(1, entry.Status.State).To(Equal(expectedState), "state should match")
-			ExpectWithOffset(1, entry.Status.Message).To(PointTo(messageMatcher), "message should match")
+			GinkgoHelper()
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
+			Expect(entry.Status.State).To(Equal(expectedState), "state should match")
+			Expect(entry.Status.Message).To(PointTo(messageMatcher), "message should match")
 		}
 		expectRecordSetsInternal = func(zoneID dns.ZoneID, dnsSetName dns.DNSSetName, expectedNameCount, expectedRecordSetCount int, rsArray ...dns.RecordSet) {
+			GinkgoHelper()
 			zoneState := local.GetInMemoryMockByZoneID(zoneID)
-			ExpectWithOffset(2, zoneState).ToNot(BeNil(), "zone state should not be nil for zone %s", zoneID)
+			Expect(zoneState).ToNot(BeNil(), "zone state should not be nil for zone %s", zoneID)
 			nameCount, recordSetCount := zoneState.GetCounts(zoneID)
-			ExpectWithOffset(2, nameCount).To(Equal(expectedNameCount), "unexpected name count")
-			ExpectWithOffset(2, recordSetCount).To(Equal(expectedRecordSetCount), "unexpected record set count")
+			Expect(nameCount).To(Equal(expectedNameCount), "unexpected name count")
+			Expect(recordSetCount).To(Equal(expectedRecordSetCount), "unexpected record set count")
 			for _, rs := range rsArray {
 				actual := zoneState.GetRecordset(zoneID, dnsSetName, rs.Type)
-				ExpectWithOffset(2, actual).NotTo(BeNil(), "record set should not be nil for %s %s", dnsSetName, rs.Type)
-				ExpectWithOffset(2, *actual).To(Equal(rs))
+				Expect(actual).NotTo(BeNil(), "record set should not be nil for %s %s", dnsSetName, rs.Type)
+				Expect(*actual).To(Equal(rs))
 			}
 		}
 		expectRecordSets = func(zoneID dns.ZoneID, dnsName string, rsArray ...dns.RecordSet) {
+			GinkgoHelper()
 			expectedNameCount := 1
 			expectedRecordSetCount := len(rsArray)
 			if len(rsArray) == 0 {
@@ -282,6 +295,7 @@ var _ = Describe("Reconcile", func() {
 			expectRecordSetsInternal(zoneID, dns.DNSSetName{DNSName: dnsName}, expectedNameCount, expectedRecordSetCount, rsArray...)
 		}
 		expectRecordSetsWithSetIdentifier = func(zoneID dns.ZoneID, dnsName, setIdentifier string, expectedNameCount, expectedRecordSetCount int, rsArray ...dns.RecordSet) {
+			GinkgoHelper()
 			expectRecordSetsInternal(zoneID, dns.DNSSetName{DNSName: dnsName, SetIdentifier: setIdentifier}, expectedNameCount, expectedRecordSetCount, rsArray...)
 		}
 	)
@@ -587,8 +601,8 @@ var _ = Describe("Reconcile", func() {
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 
 		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
-		ExpectWithOffset(1, err).ToNot(HaveOccurred())
-		ExpectWithOffset(1, result).To(Equal(reconcile.Result{RequeueAfter: 3 * time.Second}))
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{RequeueAfter: 3 * time.Second}))
 	})
 
 	Context("DNSEntry validation", func() {
@@ -664,14 +678,14 @@ var _ = Describe("Reconcile", func() {
 			entryA.Annotations = ignoreAnnotations
 			entryA.Spec.Targets = []string{"5.6.7.8"}
 			Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
-			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ignored", defaultTTL, "1.2.3.4")
 			expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 
 			Expect(fakeClient.Delete(ctx, entryA)).To(Succeed())
-			checkEntryStatusDeleted(entryA)
 			if shouldKeepRecords {
 				expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
 			} else {
+				checkEntryStatusDeleted(entryA)
 				expectRecordSets(zoneID1, "test.sub.example.com")
 			}
 			Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryA), entryA))).To(BeTrue(), "Entry should be not found")

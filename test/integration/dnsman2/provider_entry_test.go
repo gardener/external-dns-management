@@ -559,6 +559,8 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 	It("should not delete provider until all its entries have been deleted", func() {
 		Expect(testClient.Create(ctx, e1)).To(Succeed())
 		checkEntry(e1)
+		Expect(testClient.Create(ctx, e2)).To(Succeed())
+		checkEntry(e2)
 
 		By("Try to delete provider")
 		Expect(testClient.Delete(ctx, provider1)).To(Succeed())
@@ -567,14 +569,16 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			p := &v1alpha1.DNSProvider{}
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(provider1), p)).To(Succeed())
 			g.Expect(p.DeletionTimestamp).NotTo(BeNil())
-			g.Expect(p.Status.Message).To(PointTo(Equal("cannot delete provider, 1 DNSEntries still assigned to it")))
+			g.Expect(p.Status.Message).To(PointTo(Equal("cannot delete provider, 2 DNSEntries still assigned to it")))
 		}).Should(Succeed())
 
-		By("Delete entry")
+		By("Delete entry / mark it as ignored")
 		Expect(testClient.Delete(ctx, e1)).To(Succeed())
 		Eventually(func(g Gomega) {
 			checkDeleted(g, ctx, e1)
 		}).Should(Succeed())
+		e2.Annotations = map[string]string{"dns.gardener.cloud/ignore": "full"}
+		Expect(testClient.Update(ctx, e2)).To(Succeed())
 
 		By("Await deletion of provider")
 		Eventually(func(g Gomega) {

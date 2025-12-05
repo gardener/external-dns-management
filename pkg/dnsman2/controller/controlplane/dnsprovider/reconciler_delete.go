@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
 func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1alpha1.DNSProvider) (reconcile.Result, error) {
@@ -25,7 +26,15 @@ func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1al
 		return reconcile.Result{}, fmt.Errorf("error listing DNSEntries for provider %s: %w", provider.Name, err)
 	}
 
-	if len(entries.Items) > 0 {
+	// only count entries that are not fully ignored by annotation
+	count := 0
+	for _, entry := range entries.Items {
+		if _, b := dns.IgnoreFullByAnnotation(&entry); !b {
+			count++
+		}
+	}
+
+	if count > 0 {
 		log.Info("provider still has DNSEntries, cannot delete", "entryCount", len(entries.Items))
 		res := reconcile.Result{
 			RequeueAfter: 5 * time.Minute,
