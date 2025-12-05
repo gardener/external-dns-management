@@ -39,12 +39,7 @@ var _ = Describe("DNSSpecInput", func() {
 					},
 				},
 				Status: networkingv1.IngressStatus{
-					LoadBalancer: networkingv1.IngressLoadBalancerStatus{
-						Ingress: []networkingv1.IngressLoadBalancerIngress{
-							{Hostname: "example.com"},
-							{IP: "1.1.1.1"},
-						},
-					},
+					LoadBalancer: networkingv1.IngressLoadBalancerStatus{},
 				},
 			}
 		})
@@ -91,11 +86,36 @@ var _ = Describe("DNSSpecInput", func() {
 			Expect(input.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
 		})
 
-		It("should set Targets from ingress status", func() {
+		It("should set IP Targets from ingress status", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
+			ingress.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: "1.1.1.1"}}
 			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(input.Targets.ToSlice()).To(ConsistOf([]string{"example.com", "1.1.1.1"}))
+			Expect(input.Targets.ToSlice()).To(ConsistOf([]string{"1.1.1.1"}))
+		})
+
+		It("should set hostname Targets from ingress status", func() {
+			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
+			ingress.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{Hostname: "https://example.org"}}
+			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(input.Targets.ToSlice()).To(ConsistOf([]string{"https://example.org"}))
+		})
+
+		It("should prefer IP Targets over hostnames ingress status", func() {
+			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
+			ingress.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: "1.1.1.1", Hostname: "https://example.org"}}
+			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(input.Targets.ToSlice()).To(ConsistOf([]string{"1.1.1.1"}))
+		})
+
+		It("should collect multiple, unique Targets from ingress status", func() {
+			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
+			ingress.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: "1.1.1.1"}, {IP: "1.0.0.1"}, {IP: "1.1.1.1"}}
+			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(input.Targets.ToSlice()).To(ConsistOf([]string{"1.1.1.1", "1.0.0.1"}))
 		})
 
 		It("should set IPStack when annotation is present", func() {

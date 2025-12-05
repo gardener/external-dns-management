@@ -146,15 +146,20 @@ func getDNSNamesForIngress(log logr.Logger, ingress *networkingv1.Ingress, annot
 }
 
 func getTargetsForIngress(ingress *networkingv1.Ingress) *utils.UniqueStrings {
-	targets := utils.NewUniqueStrings()
+	ips := utils.NewUniqueStrings()
+	hosts := utils.NewUniqueStrings()
 	for _, ing := range ingress.Status.LoadBalancer.Ingress {
-		if ing.Hostname != "" && ing.IP == "" {
-			targets.Add(ing.Hostname)
-		} else if ing.IP != "" {
-			targets.Add(ing.IP)
+		if ing.IP != "" {
+			ips.Add(ing.IP)
+		}
+		if ing.Hostname != "" {
+			hosts.Add(ing.Hostname)
 		}
 	}
-	return targets
+	if ips.Len() > 0 {
+		return ips
+	}
+	return hosts
 }
 
 func augmentFromCommonAnnotations(annotations map[string]string, input DNSSpecInput) (*DNSSpecInput, error) {
