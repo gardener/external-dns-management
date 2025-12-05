@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	alidns "github.com/alibabacloud-go/alidns-20150109/v4/client"
+	alidns "github.com/alibabacloud-go/alidns-20150109/v5/client"
 	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/dns"

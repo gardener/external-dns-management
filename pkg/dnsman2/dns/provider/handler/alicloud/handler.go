@@ -8,7 +8,7 @@ import (
 	"context"
 	"fmt"
 
-	alidns "github.com/alibabacloud-go/alidns-20150109/v4/client"
+	alidns "github.com/alibabacloud-go/alidns-20150109/v5/client"
 	"github.com/go-logr/logr"
 	"k8s.io/utils/ptr"
 
