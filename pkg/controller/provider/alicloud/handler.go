@@ -8,7 +8,7 @@ import (
 	"context"
 	"strconv"
 
-	alidns "github.com/alibabacloud-go/alidns-20150109/v4/client"
+	alidns "github.com/alibabacloud-go/alidns-20150109/v5/client"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"k8s.io/utils/ptr"
 
