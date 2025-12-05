@@ -2,12 +2,12 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package service
+package ingress
 
 import (
 	"context"
 
-	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -28,7 +28,7 @@ import (
 )
 
 // ControllerName is the name of this controller.
-const ControllerName = "service-source"
+const ControllerName = "ingress-source"
 
 // AddToManager adds Reconciler to the given cluster.
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster) error {
@@ -37,19 +37,18 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	if r.Recorder == nil {
 		r.Recorder = mgr.GetEventRecorderFor(ControllerName + "-controller")
 	}
-	r.GVK = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Service"}
+	r.GVK = schema.GroupVersionKind{Group: "networking.k8s.io", Version: "v1", Kind: "Ingress"}
 
 	c, err := builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
 		For(
-			&corev1.Service{},
-			builder.WithPredicates(r.RelevantServicePredicate(), dnsman2controller.DNSClassPredicate(r.SourceClass)),
+			&networkingv1.Ingress{},
+			builder.WithPredicates(r.RelevantIngressPredicate()),
 		).
 		Watches(
 			&dnsv1alpha1.DNSAnnotation{},
-			handler.EnqueueRequestsFromMapFunc(MapDNSAnnotationToService),
-			builder.WithPredicates(dnsman2controller.DNSClassPredicate(r.SourceClass)),
+			handler.EnqueueRequestsFromMapFunc(MapDNSAnnotationToIngress),
 		).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 2),
@@ -74,47 +73,43 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	return nil
 }
 
-// RelevantServicePredicate returns the predicate to be considered for reconciliation.
-func (r *Reconciler) RelevantServicePredicate() predicate.Predicate {
+// RelevantIngressPredicate returns the predicate to be considered for reconciliation.
+func (r *Reconciler) RelevantIngressPredicate() predicate.Predicate {
 	return predicate.Funcs{
 		CreateFunc: func(e event.CreateEvent) bool {
-			service, ok := e.Object.(*corev1.Service)
-			if !ok || service == nil {
+			ingress, ok := e.Object.(*networkingv1.Ingress)
+			if !ok || ingress == nil {
 				return false
 			}
-			return r.isRelevantService(service)
+			return r.isRelevantIngress(ingress)
 		},
 
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			serviceOld, ok := e.ObjectOld.(*corev1.Service)
-			if !ok || serviceOld == nil {
+			ingressOld, ok := e.ObjectOld.(*networkingv1.Ingress)
+			if !ok || ingressOld == nil {
 				return false
 			}
-			serviceNew, ok := e.ObjectNew.(*corev1.Service)
-			if !ok || serviceNew == nil {
+			ingressNew, ok := e.ObjectNew.(*networkingv1.Ingress)
+			if !ok || ingressNew == nil {
 				return false
 			}
-			return r.isRelevantService(serviceOld) || r.isRelevantService(serviceNew)
+			return r.isRelevantIngress(ingressOld) || r.isRelevantIngress(ingressNew)
 		},
 
 		DeleteFunc: func(e event.DeleteEvent) bool {
-			service, ok := e.Object.(*corev1.Service)
-			if !ok || service == nil {
+			ingress, ok := e.Object.(*networkingv1.Ingress)
+			if !ok || ingress == nil {
 				return false
 			}
-			return r.isRelevantService(service)
+			return r.isRelevantIngress(ingress)
 		},
 
 		GenericFunc: func(event.GenericEvent) bool { return false },
 	}
 }
 
-func (r *Reconciler) isRelevantService(svc *corev1.Service) bool {
-	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
-		return false
-	}
-
-	annotations := common.GetMergedAnnotation(r.GVK, r.State, svc)
+func (r *Reconciler) isRelevantIngress(ing *networkingv1.Ingress) bool {
+	annotations := common.GetMergedAnnotation(r.GVK, r.State, ing)
 	if !dns.EquivalentClass(annotations[dns.AnnotationClass], r.SourceClass) {
 		return false
 	}
@@ -122,13 +117,13 @@ func (r *Reconciler) isRelevantService(svc *corev1.Service) bool {
 	return ok
 }
 
-// MapDNSAnnotationToService maps a DNSAnnotation to its referenced Service.
-func MapDNSAnnotationToService(_ context.Context, obj client.Object) []reconcile.Request {
+// MapDNSAnnotationToIngress maps a DNSAnnotation to its referenced Ingress.
+func MapDNSAnnotationToIngress(_ context.Context, obj client.Object) []reconcile.Request {
 	annotation, ok := obj.(*dnsv1alpha1.DNSAnnotation)
 	if !ok {
 		return nil
 	}
-	if annotation.Spec.ResourceRef.Kind != "Service" || annotation.Spec.ResourceRef.APIVersion != "v1" {
+	if annotation.Spec.ResourceRef.Kind != "Ingress" || annotation.Spec.ResourceRef.APIVersion != "networking.k8s.io/v1" {
 		return nil
 	}
 	return []reconcile.Request{{

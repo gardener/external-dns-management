@@ -18,6 +18,7 @@ import (
 	dnsanntation "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsannotation"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	sourcednsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/ingress"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
@@ -33,6 +34,7 @@ func ControllerSwitches() *cmd.SwitchOptions {
 		cmd.Switch(dnsanntation.ControllerName, AddSourceDNSAnnotationController),
 		cmd.Switch(sourcednsprovider.ControllerName, AddSourceDNSProviderController),
 		cmd.Switch(service.ControllerName, AddSourceServiceController),
+		cmd.Switch(ingress.ControllerName, AddSourceIngressController),
 	)
 }
 
@@ -96,6 +98,23 @@ func AddSourceServiceController(ctx context.Context, mgr manager.Manager) error 
 		ReconcilerBase: common.ReconcilerBase{
 			Config:        appCtx.Config.Controllers.Source,
 			FinalizerName: dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(appCtx.Config)), "service-dns"),
+			SourceClass:   config.GetSourceClass(appCtx.Config),
+			TargetClass:   config.GetTargetClass(appCtx.Config),
+			State:         state.GetState().GetAnnotationState(),
+		},
+	}).AddToManager(mgr, appCtx.ControlPlane)
+}
+
+// AddSourceIngressController adds the Ingress source controller to the manager.
+func AddSourceIngressController(ctx context.Context, mgr manager.Manager) error {
+	appCtx, err := appcontext.GetAppContextValue(ctx)
+	if err != nil {
+		return err
+	}
+	return (&ingress.Reconciler{
+		ReconcilerBase: common.ReconcilerBase{
+			Config:        appCtx.Config.Controllers.Source,
+			FinalizerName: dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(appCtx.Config)), "ingress-dns"),
 			SourceClass:   config.GetSourceClass(appCtx.Config),
 			TargetClass:   config.GetTargetClass(appCtx.Config),
 			State:         state.GetState().GetAnnotationState(),

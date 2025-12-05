@@ -333,8 +333,7 @@ var _ = Describe("Reconcile", func() {
 		cancelLookupProcessor = func() {
 			mlh.Stop()
 			ctxCancel()
-			time.Sleep(10 * time.Millisecond)
-			Expect(reconciler.lookupProcessor.IsRunning()).To(BeFalse())
+			Eventually(reconciler.lookupProcessor.IsRunning).WithPolling(1 * time.Millisecond).WithTimeout(100 * time.Millisecond).Should(BeFalse())
 		}
 		go reconciler.lookupProcessor.Run(lookupCtx)
 

@@ -2,13 +2,13 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package service
+package ingress
 
 import (
 	"context"
 	"fmt"
 
-	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -16,17 +16,17 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 )
 
-// Reconciler is a reconciler for provided Service resources.
+// Reconciler is a reconciler for provided Ingress resources.
 type Reconciler struct {
 	common.ReconcilerBase
 }
 
-// Reconcile reconciles Service resources.
+// Reconcile reconciles Ingress resources.
 func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	log := logf.FromContext(ctx).WithName(ControllerName)
 
-	service := &corev1.Service{}
-	if err := r.Client.Get(ctx, req.NamespacedName, service); err != nil {
+	ingress := &networkingv1.Ingress{}
+	if err := r.Client.Get(ctx, req.NamespacedName, ingress); err != nil {
 		if apierrors.IsNotFound(err) {
 			log.V(1).Info("Object is gone, stop reconciling")
 			return reconcile.Result{}, nil
@@ -34,9 +34,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
 	}
 
-	if service.DeletionTimestamp != nil {
-		return r.DoDelete(ctx, log, service)
-	} else {
-		return r.reconcile(ctx, log, service)
+	if ingress.DeletionTimestamp != nil {
+		return r.DoDelete(ctx, log, ingress)
 	}
+
+	return r.reconcile(ctx, log, ingress)
 }
