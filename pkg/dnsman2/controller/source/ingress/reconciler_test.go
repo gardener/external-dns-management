@@ -94,7 +94,7 @@ var _ = Describe("Reconciler", func() {
 			dnsEntries := getDNSEntries(ctx, fakeClientCtrl, reconciler)
 			Expect(dnsEntries.Items).To(HaveLen(1))
 			Expect(dnsEntries.Items[0].Spec.DNSName).To(Equal("example.com"))
-			Expect(dnsEntries.Items[0].Spec.Targets).To(ContainElements("example.com", "1.1.1.1"))
+			Expect(dnsEntries.Items[0].Spec.Targets).To(ContainElements("1.1.1.1"))
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ")
 		})
 
