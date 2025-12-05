@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -139,7 +140,7 @@ var _ = Describe("Reconciler", func() {
 				},
 				GVK:           corev1.SchemeGroupVersion.WithKind("Service"),
 				State:         state.GetState().GetAnnotationState(),
-				Recorder:      fakeRecorder,
+				Recorder:      common.NewDedupRecorder(fakeRecorder, 1*time.Second),
 				FinalizerName: dns.ClassSourceFinalizer(dns.NormalizeClass(""), "service-dns"),
 			},
 		}

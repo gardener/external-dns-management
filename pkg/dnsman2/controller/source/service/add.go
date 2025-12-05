@@ -6,6 +6,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -35,7 +36,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	r.Client = mgr.GetClient()
 	r.ControlPlaneClient = controlPlaneCluster.GetClient()
 	if r.Recorder == nil {
-		r.Recorder = mgr.GetEventRecorderFor(ControllerName + "-controller")
+		r.Recorder = common.NewDedupRecorder(mgr.GetEventRecorderFor(ControllerName+"-controller"), 5*time.Minute)
 	}
 	r.GVK = schema.GroupVersionKind{Group: "", Version: "v1", Kind: "Service"}
 
@@ -120,6 +121,14 @@ func (r *Reconciler) isRelevantService(svc *corev1.Service) bool {
 	}
 	_, ok := annotations[dns.AnnotationDNSNames]
 	return ok
+}
+
+func (r *Reconciler) fetchService(ctx context.Context, req reconcile.Request) (client.Object, error) {
+	service := &corev1.Service{}
+	if err := r.Client.Get(ctx, req.NamespacedName, service); err != nil {
+		return nil, err
+	}
+	return service, nil
 }
 
 // MapDNSAnnotationToService maps a DNSAnnotation to its referenced Service.

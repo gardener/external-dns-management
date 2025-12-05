@@ -29,10 +29,14 @@ func (r *Reconciler) reconcile(
 		var err error
 		input, err = common.GetDNSSpecInputForService(log, r.State, r.GVK, service)
 		if err != nil {
-			r.Recorder.Eventf(service, corev1.EventTypeWarning, "Invalid", "%s", err)
+			r.Recorder.DedupEventf(service, corev1.EventTypeWarning, "Invalid", "%s", err)
 			return reconcile.Result{}, err
 		}
 	}
 
-	return r.DoReconcile(ctx, log, service, input)
+	res, err := r.DoReconcile(ctx, log, service, input)
+	if err != nil {
+		r.Recorder.DedupEventf(service, corev1.EventTypeWarning, "ReconcileError", "%s", err)
+	}
+	return res, err
 }
