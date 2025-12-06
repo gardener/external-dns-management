@@ -564,7 +564,7 @@ var _ = Describe("#ForResourceMapDNSEntry", func() {
 
 		It("should return a reconcile request for a DNSEntry with an annotated Ingress owner", func() {
 			entry.Annotations = map[string]string{
-				"resources.gardener.cloud/owners": "cluster1:/Ingress/my-workload/my-ingress",
+				"resources.gardener.cloud/owners": "cluster1:networking.k8s.io/Ingress/my-workload/my-ingress",
 			}
 			requests := mapDNSEntryToIngress(ctx, entry)
 			Expect(requests).To(HaveLen(1))
@@ -574,7 +574,7 @@ var _ = Describe("#ForResourceMapDNSEntry", func() {
 
 		It("should return reconcile requests for a DNSEntry with annotated Ingress owners", func() {
 			entry.Annotations = map[string]string{
-				"resources.gardener.cloud/owners": "cluster1:/Ingress/my-workload/my-ingress,cluster2:/Ingress/other-workload/other-ingress",
+				"resources.gardener.cloud/owners": "cluster1:networking.k8s.io/Ingress/my-workload/my-ingress,cluster2:networking.k8s.io/Ingress/other-workload/other-ingress",
 			}
 			requests := mapDNSEntryToIngress(ctx, entry)
 

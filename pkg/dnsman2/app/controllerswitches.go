@@ -94,15 +94,12 @@ func AddSourceServiceController(ctx context.Context, mgr manager.Manager) error 
 	if err != nil {
 		return err
 	}
-	return (&service.Reconciler{
-		ReconcilerBase: common.ReconcilerBase{
-			Config:        appCtx.Config.Controllers.Source,
-			FinalizerName: dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(appCtx.Config)), "service-dns"),
-			SourceClass:   config.GetSourceClass(appCtx.Config),
-			TargetClass:   config.GetTargetClass(appCtx.Config),
-			State:         state.GetState().GetAnnotationState(),
-		},
-	}).AddToManager(mgr, appCtx.ControlPlane)
+	reconciler := common.NewSourceReconciler(&service.Actuator{})
+	reconciler.Config = appCtx.Config.Controllers.Source
+	reconciler.FinalizerName = dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(appCtx.Config)), "service-dns")
+	reconciler.SourceClass = config.GetSourceClass(appCtx.Config)
+	reconciler.TargetClass = config.GetTargetClass(appCtx.Config)
+	return reconciler.AddToManager(mgr, appCtx.ControlPlane)
 }
 
 // AddSourceIngressController adds the Ingress source controller to the manager.
@@ -111,15 +108,12 @@ func AddSourceIngressController(ctx context.Context, mgr manager.Manager) error 
 	if err != nil {
 		return err
 	}
-	return (&ingress.Reconciler{
-		ReconcilerBase: common.ReconcilerBase{
-			Config:        appCtx.Config.Controllers.Source,
-			FinalizerName: dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(appCtx.Config)), "ingress-dns"),
-			SourceClass:   config.GetSourceClass(appCtx.Config),
-			TargetClass:   config.GetTargetClass(appCtx.Config),
-			State:         state.GetState().GetAnnotationState(),
-		},
-	}).AddToManager(mgr, appCtx.ControlPlane)
+	reconciler := common.NewSourceReconciler(&ingress.Actuator{})
+	reconciler.Config = appCtx.Config.Controllers.Source
+	reconciler.FinalizerName = dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(appCtx.Config)), "ingress-dns")
+	reconciler.SourceClass = config.GetSourceClass(appCtx.Config)
+	reconciler.TargetClass = config.GetTargetClass(appCtx.Config)
+	return reconciler.AddToManager(mgr, appCtx.ControlPlane)
 }
 
 func getStandardDNSHandlerFactory(cfg config.DNSProviderControllerConfig) provider.DNSHandlerFactory {

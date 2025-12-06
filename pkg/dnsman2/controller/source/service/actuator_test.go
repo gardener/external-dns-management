@@ -29,12 +29,11 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	. "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/testutils"
 )
 
-var _ = Describe("Reconciler", func() {
+var _ = Describe("Actuator", func() {
 	const (
 		defaultTargetNamespace = "target-namespace"
 		defaultSourceNamespace = "test"
@@ -45,7 +44,7 @@ var _ = Describe("Reconciler", func() {
 		fakeClientCtrl client.Client
 		fakeRecorder   *record.FakeRecorder
 		svc            *corev1.Service
-		reconciler     *Reconciler
+		reconciler     *common.SourceReconciler[*corev1.Service]
 
 		testMultiWithoutCreation = func(specs []*dnsv1alpha1.DNSEntrySpec, offset int, expectedErrorMessage ...string) []*dnsv1alpha1.DNSEntry {
 			req := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: svc.Namespace, Name: svc.Name}}
@@ -130,21 +129,16 @@ var _ = Describe("Reconciler", func() {
 	BeforeEach(func() {
 		fakeClientSrc = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).WithStatusSubresource(&dnsv1alpha1.DNSAnnotation{}).Build()
 		fakeClientCtrl = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).Build()
-		fakeRecorder = record.NewFakeRecorder(32)
-		reconciler = &Reconciler{
-			common.ReconcilerBase{
-				Client:             fakeClientSrc,
-				ControlPlaneClient: fakeClientCtrl,
-				Config: config.SourceControllerConfig{
-					TargetNamespace: ptr.To(defaultTargetNamespace),
-				},
-				GVK:           corev1.SchemeGroupVersion.WithKind("Service"),
-				State:         state.GetState().GetAnnotationState(),
-				Recorder:      common.NewDedupRecorder(fakeRecorder, 1*time.Second),
-				FinalizerName: dns.ClassSourceFinalizer(dns.NormalizeClass(""), "service-dns"),
-			},
+		reconciler = common.NewSourceReconciler(&Actuator{})
+		reconciler.Client = fakeClientSrc
+		reconciler.ControlPlaneClient = fakeClientCtrl
+		reconciler.Config = config.SourceControllerConfig{
+			TargetNamespace: ptr.To(defaultTargetNamespace),
 		}
+		reconciler.FinalizerName = dns.ClassSourceFinalizer(dns.NormalizeClass(""), "service-dns")
 		reconciler.State.Reset()
+		fakeRecorder = record.NewFakeRecorder(32)
+		reconciler.Recorder = common.NewDedupRecorder(fakeRecorder, 1*time.Second)
 		svc = &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "foo",
@@ -358,7 +352,7 @@ var _ = Describe("Reconciler", func() {
 				"resources.gardener.cloud/owners": "/Service/test/foo",
 			}))
 			Expect(entries[0].Name).To(ContainSubstring("prefix-"))
-			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated Created DNSEntry: prefix-")
+			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated Created DNSEntry prefix-")
 		})
 
 		It("should create entry for service of type load balancer with AWS annotation IP address type", func() {

@@ -6,6 +6,7 @@ package ingress_test
 
 import (
 	"context"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -21,12 +22,12 @@ import (
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	. "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/ingress"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/testutils"
 )
 
-var _ = Describe("Reconciler", func() {
+var _ = Describe("Actuator", func() {
 	const (
 		defaultTargetNamespace = "target-namespace"
 		defaultSourceNamespace = "test"
@@ -37,23 +38,21 @@ var _ = Describe("Reconciler", func() {
 		fakeClientCtrl client.Client
 		fakeRecorder   *record.FakeRecorder
 		ingress        *networkingv1.Ingress
-		reconciler     *Reconciler
+		reconciler     *common.SourceReconciler[*networkingv1.Ingress]
 	)
 
 	BeforeEach(func() {
 		fakeClientSrc = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).WithStatusSubresource(&dnsv1alpha1.DNSAnnotation{}).Build()
 		fakeClientCtrl = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).Build()
-		reconciler = &Reconciler{}
+		reconciler = common.NewSourceReconciler(&Actuator{})
 		reconciler.Client = fakeClientSrc
 		reconciler.ControlPlaneClient = fakeClientCtrl
 		reconciler.Config = config.SourceControllerConfig{
 			TargetNamespace: ptr.To(defaultTargetNamespace),
 		}
-		reconciler.GVK = networkingv1.SchemeGroupVersion.WithKind("Ingress")
-		reconciler.State = state.GetState().GetAnnotationState()
 		reconciler.State.Reset()
 		fakeRecorder = record.NewFakeRecorder(32)
-		reconciler.Recorder = fakeRecorder
+		reconciler.Recorder = common.NewDedupRecorder(fakeRecorder, 1*time.Second)
 		ingress = &networkingv1.Ingress{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-ingress",
@@ -84,7 +83,7 @@ var _ = Describe("Reconciler", func() {
 		close(fakeRecorder.Events)
 	})
 
-	Describe("#Reconcile", func() {
+	Describe("#ReconcileSourceObject", func() {
 		It("should create a DNSEntry", func() {
 			Expect(fakeClientSrc.Create(ctx, ingress)).To(Succeed())
 
@@ -233,13 +232,13 @@ var _ = Describe("Reconciler", func() {
 	})
 })
 
-func doReconcile(ctx context.Context, reconciler *Reconciler, ingress *networkingv1.Ingress) error {
+func doReconcile(ctx context.Context, reconciler *common.SourceReconciler[*networkingv1.Ingress], ingress *networkingv1.Ingress) error {
 	req := reconcile.Request{NamespacedName: types.NamespacedName{Namespace: ingress.Namespace, Name: ingress.Name}}
 	_, err := reconciler.Reconcile(ctx, req)
 	return err
 }
 
-func getDNSEntries(ctx context.Context, c client.Client, reconciler *Reconciler) *dnsv1alpha1.DNSEntryList {
+func getDNSEntries(ctx context.Context, c client.Client, reconciler *common.SourceReconciler[*networkingv1.Ingress]) *dnsv1alpha1.DNSEntryList {
 	dnsEntries := &dnsv1alpha1.DNSEntryList{}
 	ExpectWithOffset(1, c.List(ctx, dnsEntries, client.InNamespace(*reconciler.Config.TargetNamespace))).To(Succeed())
 	return dnsEntries
