@@ -57,6 +57,11 @@ func (a *Actuator) ControllerName() string {
 	return ControllerName
 }
 
+// FinalizerLocalName returns the local name of the finalizer.
+func (a *Actuator) FinalizerLocalName() string {
+	return "service-dns"
+}
+
 // GetGVK returns the GVK of Service.
 func (a *Actuator) GetGVK() schema.GroupVersionKind {
 	return corev1.SchemeGroupVersion.WithKind("Service")

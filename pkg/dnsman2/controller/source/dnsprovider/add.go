@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
@@ -33,7 +34,12 @@ import (
 const ControllerName = "dnsprovider-source"
 
 // AddToManager adds Reconciler to the given manager.
-func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster) error {
+func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
+	r.Config = cfg.Controllers.Source
+	r.SourceClass = config.GetSourceClass(cfg)
+	r.TargetClass = config.GetTargetClass(cfg)
+	r.DNSHandlerFactory = state.GetStandardDNSHandlerFactory(cfg.Controllers.DNSProvider)
+
 	r.Client = mgr.GetClient()
 	r.ControlPlaneClient = controlPlaneCluster.GetClient()
 	if r.Clock == nil {

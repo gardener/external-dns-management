@@ -58,6 +58,11 @@ func (a *Actuator) ControllerName() string {
 	return ControllerName
 }
 
+// FinalizerLocalName returns the local name of the finalizer for Ingress resources.
+func (a *Actuator) FinalizerLocalName() string {
+	return "ingress-dns"
+}
+
 // GetGVK returns the GVK of Ingress resources.
 func (a *Actuator) GetGVK() schema.GroupVersionKind {
 	return networkingv1.SchemeGroupVersion.WithKind("Ingress")

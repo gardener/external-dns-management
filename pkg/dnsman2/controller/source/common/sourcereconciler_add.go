@@ -23,15 +23,24 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsman2controller "github.com/gardener/external-dns-management/pkg/dnsman2/controller"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
 // SourceActuator is the actuator interface for source reconcilers.
 type SourceActuator[SourceObject client.Object] interface {
+	// NewSourceObject creates a new instance of the source object.
 	NewSourceObject() SourceObject
+	// ReconcileSourceObject reconciles the given source object.
 	ReconcileSourceObject(context.Context, *SourceReconciler[SourceObject], SourceObject) (reconcile.Result, error)
+	// IsRelevantSourceObject checks whether the given source object is relevant for DNS management.
 	IsRelevantSourceObject(*SourceReconciler[SourceObject], SourceObject) bool
+	// ControllerName returns the name of this controller.
 	ControllerName() string
+	// FinalizerLocalName returns the local name of the finalizer.
+	FinalizerLocalName() string
+	// GetGVK returns the GroupVersionKind of the source object.
 	GetGVK() schema.GroupVersionKind
 }
 
@@ -39,7 +48,13 @@ type SourceActuator[SourceObject client.Object] interface {
 func (r *SourceReconciler[SourceObject]) AddToManager(
 	mgr manager.Manager,
 	controlPlaneCluster cluster.Cluster,
+	cfg *config.DNSManagerConfiguration,
 ) error {
+	r.Config = cfg.Controllers.Source
+	r.FinalizerName = dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(cfg)), r.actuator.FinalizerLocalName())
+	r.SourceClass = config.GetSourceClass(cfg)
+	r.TargetClass = config.GetTargetClass(cfg)
+
 	r.Log = logf.Log.WithName(r.actuator.ControllerName() + "-controller")
 	r.Client = mgr.GetClient()
 	r.ControlPlaneClient = controlPlaneCluster.GetClient()
@@ -61,6 +76,7 @@ func (r *SourceReconciler[SourceObject]) AddToManager(
 		).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 2),
+			SkipNameValidation:      cfg.Controllers.SkipNameValidation,
 		}).
 		Build(r)
 	if err != nil {

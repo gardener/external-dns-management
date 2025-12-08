@@ -20,7 +20,6 @@ import (
 	sourcednsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/ingress"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
@@ -80,12 +79,7 @@ func AddSourceDNSProviderController(ctx context.Context, mgr manager.Manager) er
 	}
 
 	appCtx.Log.Info("DNSProvider replication is enabled")
-	return (&sourcednsprovider.Reconciler{
-		Config:            appCtx.Config.Controllers.Source,
-		SourceClass:       config.GetSourceClass(appCtx.Config),
-		TargetClass:       config.GetTargetClass(appCtx.Config),
-		DNSHandlerFactory: getStandardDNSHandlerFactory(appCtx.Config.Controllers.DNSProvider),
-	}).AddToManager(mgr, appCtx.ControlPlane)
+	return (&sourcednsprovider.Reconciler{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
 }
 
 // AddSourceServiceController adds the Service source controller to the manager.
@@ -94,12 +88,7 @@ func AddSourceServiceController(ctx context.Context, mgr manager.Manager) error 
 	if err != nil {
 		return err
 	}
-	reconciler := common.NewSourceReconciler(&service.Actuator{})
-	reconciler.Config = appCtx.Config.Controllers.Source
-	reconciler.FinalizerName = dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(appCtx.Config)), "service-dns")
-	reconciler.SourceClass = config.GetSourceClass(appCtx.Config)
-	reconciler.TargetClass = config.GetTargetClass(appCtx.Config)
-	return reconciler.AddToManager(mgr, appCtx.ControlPlane)
+	return common.NewSourceReconciler(&service.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
 }
 
 // AddSourceIngressController adds the Ingress source controller to the manager.
@@ -108,12 +97,7 @@ func AddSourceIngressController(ctx context.Context, mgr manager.Manager) error 
 	if err != nil {
 		return err
 	}
-	reconciler := common.NewSourceReconciler(&ingress.Actuator{})
-	reconciler.Config = appCtx.Config.Controllers.Source
-	reconciler.FinalizerName = dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(appCtx.Config)), "ingress-dns")
-	reconciler.SourceClass = config.GetSourceClass(appCtx.Config)
-	reconciler.TargetClass = config.GetTargetClass(appCtx.Config)
-	return reconciler.AddToManager(mgr, appCtx.ControlPlane)
+	return common.NewSourceReconciler(&ingress.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
 }
 
 func getStandardDNSHandlerFactory(cfg config.DNSProviderControllerConfig) provider.DNSHandlerFactory {
