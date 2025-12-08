@@ -46,7 +46,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, cfg *config.DNSManagerCon
 		).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 2),
-			SkipNameValidation:      r.Config.SkipNameValidation,
+			SkipNameValidation:      cfg.Controllers.SkipNameValidation,
 		}).
 		Complete(r)
 }

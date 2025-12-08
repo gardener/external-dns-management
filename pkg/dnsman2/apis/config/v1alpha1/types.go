@@ -104,6 +104,9 @@ type ControllerConfiguration struct {
 	DNSAnnotation DNSAnnotationControllerConfig `json:"dnsAnnotation"`
 	// Source is the common configuration for source controllers.
 	Source SourceControllerConfig `json:"source"`
+	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
+	// +optional
+	SkipNameValidation *bool `json:"skipNameValidation,omitempty"`
 }
 
 // DNSProviderControllerConfig is the configuration for the DNSProvider controller.
@@ -143,9 +146,6 @@ type DNSProviderControllerConfig struct {
 	// Default is 30 minutes.
 	// +optional
 	ZoneCacheTTL *metav1.Duration `json:"zoneCacheTTL,omitempty"`
-	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
-	// +optional
-	SkipNameValidation *bool `json:"skipNameValidation,omitempty"`
 	// MigrationMode if true, the controller runs in migration mode and will not add finalizers to secrets.
 	// This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.
 	// +optional
@@ -173,9 +173,6 @@ type DNSEntryControllerConfig struct {
 	// ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.
 	// +optional
 	ReconciliationDelayAfterUpdate *metav1.Duration `json:"reconciliationDelayAfterUpdate,omitempty"`
-	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
-	// +optional
-	SkipNameValidation *bool `json:"skipNameValidation,omitempty"`
 }
 
 // DNSAnnotationControllerConfig is the configuration for the DNSAnnotation controller.
@@ -183,9 +180,6 @@ type DNSAnnotationControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent reconciliations for this controller.
 	// +optional
 	ConcurrentSyncs *int `json:"concurrentSyncs,omitempty"`
-	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
-	// +optional
-	SkipNameValidation *bool `json:"skipNameValidation,omitempty"`
 }
 
 // RateLimiterOptions defines the rate limiter configuration.
