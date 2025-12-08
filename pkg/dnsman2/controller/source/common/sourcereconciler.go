@@ -121,7 +121,7 @@ func (r *SourceReconciler[SourceObject]) createOrUpdateDNSEntry(
 			return fmt.Errorf("failed to create DNSEntry: %w", err)
 		}
 		r.Log.Info("created DNSEntry", "name", entry.Name)
-		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryCreated", "Created DNSEntry %s in control plane", entry.Name)
+		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryCreated", "%s: created entry %s in control plane", entry.Spec.DNSName, entry.Name)
 		return nil
 	}
 
@@ -131,7 +131,7 @@ func (r *SourceReconciler[SourceObject]) createOrUpdateDNSEntry(
 	}
 	if result == controllerutil.OperationResultUpdated {
 		r.Log.Info("updated DNSEntry", "name", entry.Name)
-		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryUpdated", "Updated DNSEntry %s in control plane", entry.Name)
+		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryUpdated", "%s: updated entry %s in control plane", entry.Spec.DNSName, entry.Name)
 	}
 	return nil
 }
@@ -201,8 +201,8 @@ outer:
 		if err := r.ControlPlaneClient.Delete(ctx, &ownedEntry); client.IgnoreNotFound(err) != nil {
 			return fmt.Errorf("failed to delete obsolete owned DNSEntry %s: %w", client.ObjectKeyFromObject(&ownedEntry), err)
 		}
-		r.Log.Info("deleted obsolete owned DNSEntry", "name", ownedEntry.Name)
-		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryDeleted", "Deleted DNSEntry %s in control plane", ownedEntry.Name)
+		r.Log.Info("delete obsolete owned DNSEntry", "name", ownedEntry.Name)
+		r.Recorder.DedupEventf(obj, corev1.EventTypeNormal, "DNSEntryDeleted", "%s: deleted entry %s in control plane", ownedEntry.Spec.DNSName, ownedEntry.Name)
 	}
 	return nil
 }

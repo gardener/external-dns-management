@@ -82,7 +82,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 							break
 						}
 					}
-					Expect(found).To(BeTrue(), "expected DNSEntry with DNSName %s not found", dnsName)
+					g.Expect(found).To(BeTrue(), "expected DNSEntry with DNSName %s not found", dnsName)
 				}
 			}).Should(Succeed())
 			return ownedEntries
@@ -302,7 +302,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 		checkSourceEvents(client.ObjectKeyFromObject(svc), ContainElements(
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryCreated"),
-				"Message": MatchRegexp("Created DNSEntry .* in control plane"),
+				"Message": MatchRegexp("test-service.first.example.com: created entry .* in control plane"),
 			}),
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryInvalid"),
@@ -310,18 +310,27 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 			}),
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryUpdated"),
-				"Message": MatchRegexp("Updated DNSEntry .* in control plane"),
+				"Message": MatchRegexp("test-service.first.example.com: updated entry .* in control plane"),
 			}),
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryReady"),
 				"Message": Equal("test-service.first.example.com: dns entry active"),
 			}),
 		))
+
+		By("Delete service resource")
 		Expect(sourceClient.Delete(ctx, svc)).To(Succeed())
 		Eventually(func(g Gomega) {
 			err := sourceClient.Get(ctx, client.ObjectKeyFromObject(svc), svc)
 			g.Expect(errors.IsNotFound(err)).To(BeTrue())
 		}).To(Succeed())
+		checkForOwnedEntry("/Service", client.ObjectKeyFromObject(svc), nil)
+		checkSourceEvents(client.ObjectKeyFromObject(svc), ContainElements(
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryDeleted"),
+				"Message": MatchRegexp("test-service.first.example.com: deleted entry .* in control plane"),
+			}),
+		))
 	})
 
 	It("should create an entry for an annotated ingress resource", func() {
@@ -357,7 +366,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 		checkSourceEvents(client.ObjectKeyFromObject(ingress), ContainElements(
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryCreated"),
-				"Message": MatchRegexp("Created DNSEntry .* in control plane"),
+				"Message": MatchRegexp("test-ingress.first.example.com: created entry .* in control plane"),
 			}),
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryInvalid"),
@@ -365,17 +374,26 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 			}),
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryUpdated"),
-				"Message": MatchRegexp("Updated DNSEntry .* in control plane"),
+				"Message": MatchRegexp("test-ingress.first.example.com: updated entry .* in control plane"),
 			}),
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryReady"),
 				"Message": Equal("test-ingress.first.example.com: dns entry active"),
 			}),
 		))
+
+		By("Delete ingress resource")
 		Expect(sourceClient.Delete(ctx, ingress)).To(Succeed())
 		Eventually(func(g Gomega) {
 			err := sourceClient.Get(ctx, client.ObjectKeyFromObject(ingress), ingress)
 			g.Expect(errors.IsNotFound(err)).To(BeTrue())
 		}).To(Succeed())
+		checkForOwnedEntry("networking.k8s.io/Ingress", client.ObjectKeyFromObject(ingress), nil)
+		checkSourceEvents(client.ObjectKeyFromObject(ingress), ContainElements(
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryDeleted"),
+				"Message": MatchRegexp("test-ingress.first.example.com: deleted entry .* in control plane"),
+			}),
+		))
 	})
 })

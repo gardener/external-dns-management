@@ -64,7 +64,8 @@ func (e *eventFeedbackWrapper) Update(ctx context.Context, ev event.TypedUpdateE
 		}
 		reason := fmt.Sprintf("DNSEntry%s", statusNew.State)
 		if statusNew.State == v1alpha1.StateReady {
-			if statusOld.State != v1alpha1.StateReady || entryOld.Status.ObservedGeneration != entryNew.Status.ObservedGeneration {
+			if entryNew.DeletionTimestamp == nil &&
+				(statusOld.State != v1alpha1.StateReady || entryOld.Status.ObservedGeneration != entryNew.Status.ObservedGeneration) {
 				e.recorder.Eventf(source, "Normal", reason, "%s: %s", dnsName, ptr.Deref(statusNew.Message, ""))
 			}
 		} else if statusNew.State != "" {
@@ -75,10 +76,7 @@ func (e *eventFeedbackWrapper) Update(ctx context.Context, ev event.TypedUpdateE
 }
 
 func (e *eventFeedbackWrapper) Delete(ctx context.Context, ev event.TypedDeleteEvent[client.Object], w workqueue.TypedRateLimitingInterface[reconcile.Request]) {
-	source, entry := e.fetchSourceAndEntry(ctx, ev.Object)
-	if source != nil && entry != nil {
-		e.recorder.Eventf(source, "Normal", "DNSEntryDeleted", "%s: deleted dns entry object", entry.Spec.DNSName)
-	}
+	// no need for an additional event
 	e.handler.Delete(ctx, ev, w)
 }
 

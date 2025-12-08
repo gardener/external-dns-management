@@ -352,7 +352,7 @@ var _ = Describe("Actuator", func() {
 				"resources.gardener.cloud/owners": "/Service/test/foo",
 			}))
 			Expect(entries[0].Name).To(ContainSubstring("prefix-"))
-			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated Created DNSEntry prefix-")
+			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated foo.example.com: created entry prefix-")
 		})
 
 		It("should create entry for service of type load balancer with AWS annotation IP address type", func() {
