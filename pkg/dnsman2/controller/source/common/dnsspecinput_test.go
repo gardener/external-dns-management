@@ -80,7 +80,7 @@ var _ = Describe("DNSSpecInput", func() {
 
 		It("should set ResolveTargetsToAddresses when annotation is present", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
-			ingress.Annotations[dns.AnnotatationResolveTargetsToAddresses] = "true"
+			ingress.Annotations[dns.AnnotationResolveTargetsToAddresses] = "true"
 			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))

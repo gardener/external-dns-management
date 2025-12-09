@@ -167,6 +167,8 @@ var _ = Describe("Actuator", func() {
 
 		It("should handle the resolve targets to addresses annotation", func() {
 			ingress.Annotations["dns.gardener.cloud/resolve-targets-to-addresses"] = "true"
+			ingress.Annotations["dns.gardener.cloud/cname-lookup-interval"] = "456"
+
 			Expect(fakeClientSrc.Create(ctx, ingress)).To(Succeed())
 
 			err := doReconcile(ctx, reconciler, ingress)
@@ -175,6 +177,7 @@ var _ = Describe("Actuator", func() {
 			dnsEntries := getDNSEntries(ctx, fakeClientCtrl, reconciler)
 			Expect(dnsEntries.Items).To(HaveLen(1))
 			Expect(dnsEntries.Items[0].Spec.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
+			Expect(dnsEntries.Items[0].Spec.CNameLookupInterval).To(Equal(ptr.To(int64(456))))
 		})
 
 		It("should handle the IP stack annotation", func() {
