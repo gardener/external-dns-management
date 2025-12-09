@@ -88,6 +88,30 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 			return ownedEntries
 		}
 
+		checkForOwnedProvider = func(ownerKey client.ObjectKey, expectOwnedProvider bool) *v1alpha1.DNSProvider {
+			GinkgoHelper()
+
+			var ownedProvider *v1alpha1.DNSProvider
+			providerList := &v1alpha1.DNSProviderList{}
+			Eventually(func(g Gomega) {
+				var owned []*v1alpha1.DNSProvider
+				g.Expect(testClient.List(ctx, providerList, client.InNamespace(testRunID))).To(Succeed())
+				for _, provider := range providerList.Items {
+					if provider.Annotations["resources.gardener.cloud/owners"] == fmt.Sprintf("%s:dns.gardener.cloud/DNSProvider/%s/%s", sourceClusterID, ownerKey.Namespace, ownerKey.Name) {
+						owned = append(owned, &provider)
+					}
+				}
+				if expectOwnedProvider {
+					g.Expect(owned).To(HaveLen(1), "unexpected number of owned DNSProvider objects in namespace %s", testRunID)
+					ownedProvider = owned[0]
+					g.Expect(ownedProvider.Status.ObservedGeneration).To(Equal(ownedProvider.Generation))
+				} else {
+					g.Expect(owned).To(BeEmpty(), "expected no owned DNSProvider objects in namespace %s", testRunID)
+				}
+			}).Should(Succeed())
+			return ownedProvider
+		}
+
 		checkSourceEvents = func(key client.ObjectKey, matcher types.GomegaMatcher) {
 			GinkgoHelper()
 
@@ -141,9 +165,10 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 					ReconciliationDelayAfterUpdate: ptr.To(metav1.Duration{Duration: 10 * time.Millisecond}),
 				},
 				Source: config.SourceControllerConfig{
-					TargetNamespace: ptr.To(testRunID),
-					TargetClusterID: ptr.To("test-cluster"),
-					SourceClusterID: ptr.To(sourceClusterID),
+					TargetNamespace:        ptr.To(testRunID),
+					TargetClusterID:        ptr.To("test-cluster"),
+					SourceClusterID:        ptr.To(sourceClusterID),
+					DNSProviderReplication: ptr.To(true),
 				},
 				SkipNameValidation: ptr.To(true),
 			},
@@ -159,14 +184,6 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 			Logger:                  log,
 			Scheme:                  dnsmanclient.ClusterScheme,
 			GracefulShutdownTimeout: ptr.To(5 * time.Second),
-			Cache: cache.Options{
-				// TODO(MartinWeindel) Revisit this, when introducing flag to allow DNSProvider in all namespaces
-				ByObject: map[client.Object]cache.ByObject{
-					&corev1.Secret{}: {
-						Namespaces: map[string]cache.Config{cfg.Controllers.DNSProvider.Namespace: {}},
-					},
-				},
-			},
 		})
 		Expect(err).ToNot(HaveOccurred())
 
@@ -202,7 +219,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 
 		By("Adding controllers to manager")
 		controllerSwitches := app.ControllerSwitches()
-		controllerSwitches.Enabled = []string{"dnsprovider", "dnsentry", "service-source", "ingress-source", "dnsentry-source"}
+		controllerSwitches.Enabled = []string{"dnsprovider", "dnsentry", "service-source", "ingress-source", "dnsentry-source", "dnsprovider-source"}
 		Expect(controllerSwitches.Complete()).To(Succeed())
 		addCtx := appcontext.NewAppContext(ctx, log, controlPlaneCluster, cfg)
 		Expect(controllerSwitches.Completed().AddToManager(addCtx, mgr)).To(Succeed())
@@ -459,5 +476,60 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 				"Message": MatchRegexp("test-entry.first.example.com: deleted entry .* in control plane"),
 			}),
 		))
+	})
+
+	It("should create a provider for an source DNSProvider", func() {
+		sourceSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sourceNamespace.Name,
+				Name:      "test-provider-secret",
+			},
+			Data: map[string][]byte{},
+			Type: corev1.SecretTypeOpaque,
+		}
+		Expect(sourceClient.Create(ctx, sourceSecret)).To(Succeed())
+
+		mcfg := local.MockConfig{
+			Account: testRunID + "-source",
+			Zones: []local.MockZone{
+				{DNSName: "source.example.com"},
+			},
+		}
+		bytes, err := json.Marshal(&mcfg)
+		Expect(err).NotTo(HaveOccurred())
+
+		sourceProvider := &v1alpha1.DNSProvider{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sourceNamespace.Name,
+				Name:      "test-provider",
+			},
+			Spec: v1alpha1.DNSProviderSpec{
+				Type:           "local",
+				ProviderConfig: &runtime.RawExtension{Raw: bytes},
+				SecretRef:      &corev1.SecretReference{Name: sourceSecret.Name, Namespace: sourceNamespace.Name}},
+		}
+		Expect(sourceClient.Create(ctx, sourceProvider)).To(Succeed())
+		ownedProvider := checkForOwnedProvider(client.ObjectKeyFromObject(sourceProvider), true)
+
+		Eventually(func(g Gomega) {
+			g.Expect(sourceClient.Get(ctx, client.ObjectKeyFromObject(sourceProvider), sourceProvider)).To(Succeed())
+			g.Expect(sourceProvider.Status.ObservedGeneration).To(Equal(sourceProvider.Generation))
+			g.Expect(sourceProvider.Status.State).To(Equal("Ready"))
+		}).Should(Succeed())
+
+		Expect(sourceProvider.Status.Message).To(Equal(ownedProvider.Status.Message))
+		Expect(sourceProvider.Status.Domains).To(Equal(ownedProvider.Status.Domains))
+		Expect(sourceProvider.Status.Zones).To(Equal(ownedProvider.Status.Zones))
+		Expect(sourceProvider.Status.DefaultTTL).To(Equal(ownedProvider.Status.DefaultTTL))
+		Expect(sourceProvider.Status.RateLimit).To(Equal(ownedProvider.Status.RateLimit))
+		Expect(sourceProvider.Status.LastUpdateTime).To(Equal(ownedProvider.Status.LastUpdateTime))
+
+		By("Delete source DNSProvider resource")
+		Expect(sourceClient.Delete(ctx, sourceProvider)).To(Succeed())
+		Eventually(func(g Gomega) {
+			err := sourceClient.Get(ctx, client.ObjectKeyFromObject(sourceProvider), sourceProvider)
+			g.Expect(errors.IsNotFound(err)).To(BeTrue())
+		}).To(Succeed())
+		checkForOwnedProvider(client.ObjectKeyFromObject(sourceProvider), false)
 	})
 })
