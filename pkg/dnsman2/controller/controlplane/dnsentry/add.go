@@ -12,6 +12,7 @@ import (
 	"time"
 
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
+	"github.com/gardener/gardener/pkg/utils/kubernetes"
 	"github.com/jellydator/ttlcache/v3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -160,10 +161,5 @@ func (r *reconcileTrigger) TriggerReconciliation(ctx context.Context, key client
 		}
 		return err
 	}
-	patch := client.MergeFrom(entry.DeepCopy())
-	if entry.Annotations == nil {
-		entry.Annotations = make(map[string]string)
-	}
-	entry.Annotations[v1beta1constants.GardenerOperation] = v1beta1constants.GardenerOperationReconcile
-	return r.client.Patch(ctx, entry, patch)
+	return kubernetes.SetAnnotationAndUpdate(ctx, r.client, entry, v1beta1constants.GardenerOperation, v1beta1constants.GardenerOperationReconcile)
 }
