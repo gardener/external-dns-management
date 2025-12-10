@@ -93,6 +93,8 @@ type ControllerConfiguration struct {
 	DNSAnnotation DNSAnnotationControllerConfig
 	// Source is the common configuration for source controllers.
 	Source SourceControllerConfig
+	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
+	SkipNameValidation *bool
 }
 
 // DNSProviderControllerConfig is the configuration for the DNSProvider controller.
@@ -123,8 +125,6 @@ type DNSProviderControllerConfig struct {
 	// ZoneCacheTTL is the TTL for caching provider zones.
 	// Default is 30 minutes.
 	ZoneCacheTTL *metav1.Duration
-	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
-	SkipNameValidation *bool
 	// MigrationMode if true, the controller runs in migration mode and will not add finalizers to secrets.
 	// This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.
 	MigrationMode *bool
@@ -145,16 +145,12 @@ type DNSEntryControllerConfig struct {
 	DefaultCNAMELookupInterval *int64
 	// ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.
 	ReconciliationDelayAfterUpdate *metav1.Duration
-	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
-	SkipNameValidation *bool
 }
 
 // DNSAnnotationControllerConfig is the configuration for the DNSAnnotation controller.
 type DNSAnnotationControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent reconciliations for this controller.
 	ConcurrentSyncs *int
-	// SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.
-	SkipNameValidation *bool
 }
 
 // RateLimiterOptions defines the rate limiter configuration.

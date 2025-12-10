@@ -38,8 +38,6 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/local"
 )
 
-var debug = false
-
 var _ = Describe("Provider/Entry collaboration tests", func() {
 	const (
 		defaultTTL   = 300
@@ -156,20 +154,19 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			LogFormat: "text",
 			Controllers: config.ControllerConfiguration{
 				DNSProvider: config.DNSProviderControllerConfig{
-					Namespace:          testRunID,
-					DefaultTTL:         ptr.To[int64](300),
-					SkipNameValidation: ptr.To(true),
+					Namespace:  testRunID,
+					DefaultTTL: ptr.To[int64](300),
 				},
 				DNSEntry: config.DNSEntryControllerConfig{
 					ReconciliationDelayAfterUpdate: ptr.To(metav1.Duration{Duration: 10 * time.Millisecond}),
-					SkipNameValidation:             ptr.To(true),
 				},
+				SkipNameValidation: ptr.To(true),
 			},
 		}
 		cfg.LeaderElection.LeaderElect = false
 
 		By("setting up manager")
-		mgr, err := manager.New(restConfig, manager.Options{
+		mgr, err := manager.New(controlPlaneRestConfig, manager.Options{
 			Metrics: metricsserver.Options{
 				BindAddress: "0",
 			},

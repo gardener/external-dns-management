@@ -8,13 +8,11 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/clock/testing"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
-	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
@@ -35,11 +33,8 @@ var _ = Describe("Reconcile", func() {
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSAnnotation{}).Build()
 		reconciler = &Reconciler{
 			Client: fakeClient,
-			Config: config.DNSAnnotationControllerConfig{
-				SkipNameValidation: ptr.To(true),
-			},
-			Clock: clock,
-			state: state.GetState().GetAnnotationState(),
+			Clock:  clock,
+			state:  state.GetState().GetAnnotationState(),
 		}
 		reconciler.state.Reset()
 

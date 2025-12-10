@@ -202,6 +202,9 @@ func GetAnnotatedOwners(obj metav1.Object) []string {
 
 // ForResourceMapDNSEntry returns a function that maps a DNSEntry to its owning resource(s).
 func ForResourceMapDNSEntry(gkv schema.GroupVersionKind) func(context.Context, client.Object) []reconcile.Request {
+	kind := gkv.Kind
+	apiVersion := gkv.GroupVersion().String()
+	prefix := gkv.Group + "/" + gkv.Kind + "/"
 	return func(_ context.Context, obj client.Object) []reconcile.Request {
 		entry, ok := obj.(*dnsv1alpha1.DNSEntry)
 		if !ok {
@@ -209,7 +212,7 @@ func ForResourceMapDNSEntry(gkv schema.GroupVersionKind) func(context.Context, c
 		}
 		if entry.OwnerReferences != nil {
 			for _, ownerRef := range entry.OwnerReferences {
-				if ownerRef.Kind == gkv.Kind && ownerRef.APIVersion == gkv.GroupVersion().String() {
+				if ownerRef.Kind == kind && ownerRef.APIVersion == apiVersion {
 					return []reconcile.Request{{
 						NamespacedName: client.ObjectKey{
 							Namespace: entry.Namespace,
@@ -227,7 +230,7 @@ func ForResourceMapDNSEntry(gkv schema.GroupVersionKind) func(context.Context, c
 			parts := strings.SplitN(owner, ":", 2)
 			suffix := parts[len(parts)-1]
 			oldLen := len(suffix)
-			suffix = strings.TrimPrefix(suffix, "/"+gkv.Kind+"/")
+			suffix = strings.TrimPrefix(suffix, prefix)
 			if oldLen == len(suffix) {
 				continue
 			}

@@ -15,9 +15,9 @@ import (
 	"github.com/go-logr/logr"
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -28,11 +28,13 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
-// ReconcilerBase is base for source reconcilers.
-type ReconcilerBase struct {
+// SourceReconciler is base for source reconcilers.
+type SourceReconciler[SourceObject client.Object] struct {
+	actuator           SourceActuator[SourceObject]
+	Log                logr.Logger
 	Client             client.Client
 	ControlPlaneClient client.Client
-	Recorder           record.EventRecorder
+	Recorder           RecorderWithDeduplication
 	GVK                schema.GroupVersionKind
 	Config             config.SourceControllerConfig
 	FinalizerName      string
@@ -41,14 +43,23 @@ type ReconcilerBase struct {
 	State              state.AnnotationState
 }
 
+// NewSourceReconciler creates a new SourceReconciler for given actuator.
+func NewSourceReconciler[SourceObject client.Object](actuator SourceActuator[SourceObject]) *SourceReconciler[SourceObject] {
+	return &SourceReconciler[SourceObject]{
+		actuator: actuator,
+		GVK:      actuator.GetGVK(),
+		State:    state.GetState().GetAnnotationState(),
+	}
+}
+
 // DoReconcile reconciles for given object and dnsSpecInput.
-func (r *ReconcilerBase) DoReconcile(ctx context.Context, log logr.Logger, obj client.Object, dnsSpecInput *DNSSpecInput) (reconcile.Result, error) {
+func (r *SourceReconciler[SourceObject]) DoReconcile(ctx context.Context, obj client.Object, dnsSpecInput *DNSSpecInput) (reconcile.Result, error) {
 	ownedEntries, err := r.getExistingOwnedDNSEntries(ctx, obj)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 	if dnsSpecInput == nil || dnsSpecInput.Names.IsEmpty() {
-		return r.DoDelete(ctx, log, obj)
+		return r.DoDelete(ctx, obj)
 	}
 
 	newEntries := map[string]*dnsv1alpha1.DNSEntry{}
@@ -67,12 +78,12 @@ func (r *ReconcilerBase) DoReconcile(ctx context.Context, log logr.Logger, obj c
 		}
 	}
 
-	if err := r.deleteObsoleteOwnedDNSEntries(ctx, log, obj, ownedEntries, maps.Values(newEntries)); err != nil {
+	if err := r.deleteObsoleteOwnedDNSEntries(ctx, obj, ownedEntries, maps.Values(newEntries)); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	for _, name := range dnsSpecInput.Names.ToSlice() {
-		if err := r.createOrUpdateDNSEntry(ctx, log, obj, dnsSpecInput, name, newEntries[name]); err != nil {
+		if err := r.createOrUpdateDNSEntry(ctx, obj, dnsSpecInput, name, newEntries[name]); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -91,9 +102,8 @@ func (r *ReconcilerBase) DoReconcile(ctx context.Context, log logr.Logger, obj c
 	return reconcile.Result{}, r.State.UpdateStatus(ctx, r.Client, ref, true)
 }
 
-func (r *ReconcilerBase) createOrUpdateDNSEntry(
+func (r *SourceReconciler[SourceObject]) createOrUpdateDNSEntry(
 	ctx context.Context,
-	log logr.Logger,
 	obj client.Object,
 	dnsSpecInput *DNSSpecInput,
 	dnsName string,
@@ -110,8 +120,8 @@ func (r *ReconcilerBase) createOrUpdateDNSEntry(
 		if err := r.ControlPlaneClient.Create(ctx, entry); err != nil {
 			return fmt.Errorf("failed to create DNSEntry: %w", err)
 		}
-		log.Info("created DNSEntry", "name", entry.Name)
-		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryCreated", "Created DNSEntry: %s", entry.Name) // TODO: check former reason/message
+		r.Log.Info("created DNSEntry", "name", entry.Name)
+		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryCreated", "%s: created entry %s in control plane", entry.Spec.DNSName, entry.Name)
 		return nil
 	}
 
@@ -120,22 +130,22 @@ func (r *ReconcilerBase) createOrUpdateDNSEntry(
 		return fmt.Errorf("failed to patch DNSEntry %s: %w", client.ObjectKeyFromObject(entry), err)
 	}
 	if result == controllerutil.OperationResultUpdated {
-		log.Info("updated DNSEntry", "name", entry.Name)
-		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryUpdated", "Updated DNSEntry: %s", entry.Name) // TODO: check former reason/message
+		r.Log.Info("updated DNSEntry", "name", entry.Name)
+		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryUpdated", "%s: updated entry %s in control plane", entry.Spec.DNSName, entry.Name)
 	}
 	return nil
 }
 
 // DoDelete performs delete reconciliation for given object.
-func (r *ReconcilerBase) DoDelete(ctx context.Context, log logr.Logger, obj client.Object) (reconcile.Result, error) {
-	log.Info("cleanup")
+func (r *SourceReconciler[SourceObject]) DoDelete(ctx context.Context, obj client.Object) (reconcile.Result, error) {
+	r.Log.Info("cleanup")
 
 	ownedEntries, err := r.getExistingOwnedDNSEntries(ctx, obj)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	if err := r.deleteObsoleteOwnedDNSEntries(ctx, log, obj, ownedEntries, nil); err != nil {
+	if err := r.deleteObsoleteOwnedDNSEntries(ctx, obj, ownedEntries, nil); err != nil {
 		return reconcile.Result{}, err
 	}
 
@@ -147,7 +157,7 @@ func (r *ReconcilerBase) DoDelete(ctx context.Context, log logr.Logger, obj clie
 	return reconcile.Result{}, r.State.UpdateStatus(ctx, r.Client, ref, false)
 }
 
-func (r *ReconcilerBase) getExistingOwnedDNSEntries(ctx context.Context, owner metav1.Object) ([]dnsv1alpha1.DNSEntry, error) {
+func (r *SourceReconciler[SourceObject]) getExistingOwnedDNSEntries(ctx context.Context, owner metav1.Object) ([]dnsv1alpha1.DNSEntry, error) {
 	candidates := &dnsv1alpha1.DNSEntryList{}
 	if err := r.ControlPlaneClient.List(ctx, candidates, client.InNamespace(r.targetNamespace(owner))); err != nil {
 		return nil, fmt.Errorf("failed to list owned DNSEntries for %s %s: %w", r.GVK.Kind, owner, err)
@@ -163,11 +173,11 @@ func (r *ReconcilerBase) getExistingOwnedDNSEntries(ctx context.Context, owner m
 }
 
 // IsOwnedByController checks whether the given DNSEntry is owned by the given owner.
-func (r *ReconcilerBase) IsOwnedByController(entry *dnsv1alpha1.DNSEntry, owner metav1.Object) bool {
+func (r *SourceReconciler[SourceObject]) IsOwnedByController(entry *dnsv1alpha1.DNSEntry, owner metav1.Object) bool {
 	return r.buildOwnerData(owner).HasOwner(entry, ptr.Deref(r.Config.TargetClusterID, ""))
 }
 
-func (r *ReconcilerBase) buildOwnerData(owner metav1.Object) OwnerData {
+func (r *SourceReconciler[SourceObject]) buildOwnerData(owner metav1.Object) OwnerData {
 	return OwnerData{
 		Object:    owner,
 		ClusterID: ptr.Deref(r.Config.SourceClusterID, ""),
@@ -175,9 +185,8 @@ func (r *ReconcilerBase) buildOwnerData(owner metav1.Object) OwnerData {
 	}
 }
 
-func (r *ReconcilerBase) deleteObsoleteOwnedDNSEntries(
+func (r *SourceReconciler[SourceObject]) deleteObsoleteOwnedDNSEntries(
 	ctx context.Context,
-	log logr.Logger,
 	obj client.Object,
 	ownedEntries []dnsv1alpha1.DNSEntry,
 	entriesToKeep []*dnsv1alpha1.DNSEntry,
@@ -192,13 +201,13 @@ outer:
 		if err := r.ControlPlaneClient.Delete(ctx, &ownedEntry); client.IgnoreNotFound(err) != nil {
 			return fmt.Errorf("failed to delete obsolete owned DNSEntry %s: %w", client.ObjectKeyFromObject(&ownedEntry), err)
 		}
-		log.Info("deleted obsolete owned DNSEntry", "name", ownedEntry.Name)
-		r.Recorder.Eventf(obj, corev1.EventTypeNormal, "DNSEntryDeleted", "Deleted DNSEntry: %s", ownedEntry.Name) // TODO: check former reason/message
+		r.Log.Info("delete obsolete owned DNSEntry", "name", ownedEntry.Name)
+		r.Recorder.DedupEventf(obj, corev1.EventTypeNormal, "DNSEntryDeleted", "%s: deleted entry %s in control plane", ownedEntry.Spec.DNSName, ownedEntry.Name)
 	}
 	return nil
 }
 
-func (r *ReconcilerBase) newDNSEntry(owner metav1.Object) *dnsv1alpha1.DNSEntry {
+func (r *SourceReconciler[SourceObject]) newDNSEntry(owner metav1.Object) *dnsv1alpha1.DNSEntry {
 	namespace := r.targetNamespace(owner)
 	entry := &dnsv1alpha1.DNSEntry{
 		ObjectMeta: metav1.ObjectMeta{
@@ -210,9 +219,27 @@ func (r *ReconcilerBase) newDNSEntry(owner metav1.Object) *dnsv1alpha1.DNSEntry 
 	return entry
 }
 
-func (r *ReconcilerBase) targetNamespace(owner metav1.Object) string {
+func (r *SourceReconciler[SourceObject]) targetNamespace(owner metav1.Object) string {
 	if ns := ptr.Deref(r.Config.TargetNamespace, ""); ns != "" {
 		return ns
 	}
 	return owner.GetNamespace()
+}
+
+// Reconcile reconciles source objects using the actuator.
+func (r *SourceReconciler[SourceObject]) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	sourceObject := r.actuator.NewSourceObject()
+	if err := r.Client.Get(ctx, req.NamespacedName, sourceObject); err != nil {
+		if apierrors.IsNotFound(err) {
+			r.Log.V(1).Info("Object is gone, stop reconciling")
+			return reconcile.Result{}, nil
+		}
+		return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
+	}
+
+	if sourceObject.GetDeletionTimestamp() != nil {
+		return r.DoDelete(ctx, sourceObject)
+	}
+
+	return r.actuator.ReconcileSourceObject(ctx, r, sourceObject)
 }

@@ -80,10 +80,3 @@ func (s *ProviderState) GetDefaultTTL() int64 {
 	defer s.lock.Unlock()
 	return s.defaultTTL
 }
-
-// IsValid returns whether the ProviderState is valid.
-// TODO(MartinWeindel): needed?
-func (s *ProviderState) IsValid() bool {
-	// TODO(MartinWeindel) needed?
-	return true
-}

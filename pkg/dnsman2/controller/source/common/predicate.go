@@ -5,6 +5,7 @@
 package common
 
 import (
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
@@ -32,6 +33,44 @@ func RelevantDNSEntryPredicate(entryOwnerData EntryOwnerData) predicate.Predicat
 				return false
 			}
 			return entryOwnerData.IsRelevantEntry(entry)
+		},
+
+		GenericFunc: func(event.GenericEvent) bool { return false },
+	}
+}
+
+// RelevantSourceObjectPredicate returns the predicate to be considered for reconciliation.
+func RelevantSourceObjectPredicate[SourceObject client.Object](
+	r *SourceReconciler[SourceObject],
+	isRelevant func(r *SourceReconciler[SourceObject], obj SourceObject) bool,
+) predicate.Predicate {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			service, ok := e.Object.(SourceObject)
+			if !ok || e.Object == nil {
+				return false
+			}
+			return isRelevant(r, service)
+		},
+
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			serviceOld, ok := e.ObjectOld.(SourceObject)
+			if !ok || e.ObjectOld == nil {
+				return false
+			}
+			serviceNew, ok := e.ObjectNew.(SourceObject)
+			if !ok || e.ObjectNew == nil {
+				return false
+			}
+			return isRelevant(r, serviceOld) || isRelevant(r, serviceNew)
+		},
+
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			service, ok := e.Object.(SourceObject)
+			if !ok || e.Object == nil {
+				return false
+			}
+			return isRelevant(r, service)
 		},
 
 		GenericFunc: func(event.GenericEvent) bool { return false },

@@ -34,9 +34,15 @@ var (
 	ctx = context.Background()
 	log logr.Logger
 
-	restConfig *rest.Config
-	testEnv    *envtest.Environment
-	testClient client.Client
+	controlPlaneRestConfig *rest.Config
+	controlPlaneTestEnv    *envtest.Environment
+	testClient             client.Client
+
+	sourceRestConfig *rest.Config
+	sourceTestEnv    *envtest.Environment
+	sourceClient     client.Client
+
+	debug = false
 )
 
 var _ = BeforeSuite(func() {
@@ -55,7 +61,7 @@ var _ = BeforeSuite(func() {
 		log.V(1).Info("Using existing kubeconfig from KUBECONFIG environment variable", "path", kubeConfigEnv)
 	}
 	By("Start test environment")
-	testEnv = &envtest.Environment{
+	controlPlaneTestEnv = &envtest.Environment{
 		CRDInstallOptions: envtest.CRDInstallOptions{
 			Paths: []string{
 				filepath.Join("..", "..", "..", "pkg", "apis", "dns", "crds", "dns.gardener.cloud_dnsentries.yaml"),
@@ -70,16 +76,31 @@ var _ = BeforeSuite(func() {
 	}
 
 	var err error
-	restConfig, err = testEnv.Start()
+	controlPlaneRestConfig, err = controlPlaneTestEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
-	Expect(restConfig).NotTo(BeNil())
-
-	By("Create test client")
-	testClient, err = client.New(restConfig, client.Options{Scheme: dnsmanclient.ClusterScheme})
-	Expect(err).NotTo(HaveOccurred())
+	Expect(controlPlaneRestConfig).NotTo(BeNil())
 
 	DeferCleanup(func() {
 		By("stopping test environment")
-		Expect(testEnv.Stop()).To(Succeed())
+		Expect(controlPlaneTestEnv.Stop()).To(Succeed())
 	})
+
+	By("Create test client")
+	testClient, err = client.New(controlPlaneRestConfig, client.Options{Scheme: dnsmanclient.ClusterScheme})
+	Expect(err).NotTo(HaveOccurred())
+
+	By("Start second test environment for source cluster")
+	sourceTestEnv = &envtest.Environment{}
+	sourceRestConfig, err = sourceTestEnv.Start()
+	Expect(err).NotTo(HaveOccurred())
+	Expect(sourceRestConfig).NotTo(BeNil())
+
+	DeferCleanup(func() {
+		By("stopping second test environment for source cluster")
+		Expect(sourceTestEnv.Stop()).To(Succeed())
+	})
+
+	By("Create test client for source cluster")
+	sourceClient, err = client.New(sourceRestConfig, client.Options{Scheme: dnsmanclient.ClusterScheme})
+	Expect(err).NotTo(HaveOccurred())
 })
