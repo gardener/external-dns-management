@@ -89,3 +89,8 @@ func (a *Actuator) IsRelevantSourceObject(r *common.SourceReconciler[*corev1.Ser
 func (r *Actuator) NewSourceObject() *corev1.Service {
 	return &corev1.Service{}
 }
+
+// ShouldSetTargetEntryAnnotation indicates whether the target DNSEntry annotation should be set on the source object.
+func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
+	return false
+}

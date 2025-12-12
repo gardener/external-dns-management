@@ -332,7 +332,8 @@ var _ = Describe("Actuator", func() {
 			svc.Annotations[dns.AnnotationRoutingPolicy] = `{"type": "weighted", "setIdentifier": "route1", "parameters": {"weight": "10"}}`
 			svc.Annotations[dns.AnnotationIgnore] = dns.AnnotationIgnoreValueFull
 			svc.Annotations[dns.AnnotationIPStack] = dns.AnnotationValueIPStackIPDualStack
-			svc.Annotations[dns.AnnotatationResolveTargetsToAddresses] = "true"
+			svc.Annotations[dns.AnnotationResolveTargetsToAddresses] = "true"
+			svc.Annotations[dns.AnnotationCNameLookupInterval] = "456"
 			reconciler.Config.TargetClass = ptr.To("target-class")
 			reconciler.Config.TargetNamePrefix = ptr.To("prefix-")
 			entries := test(&dnsv1alpha1.DNSEntrySpec{
@@ -344,6 +345,7 @@ var _ = Describe("Actuator", func() {
 					Parameters:    map[string]string{"weight": "10"},
 				},
 				ResolveTargetsToAddresses: ptr.To(true),
+				CNameLookupInterval:       ptr.To[int64](456),
 			})
 			Expect(entries[0].Annotations).To(Equal(map[string]string{
 				"dns.gardener.cloud/class":        "target-class",

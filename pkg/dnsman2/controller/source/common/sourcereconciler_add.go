@@ -8,8 +8,10 @@ package common
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/gardener/gardener/pkg/utils/kubernetes"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -42,6 +44,8 @@ type SourceActuator[SourceObject client.Object] interface {
 	FinalizerLocalName() string
 	// GetGVK returns the GroupVersionKind of the source object.
 	GetGVK() schema.GroupVersionKind
+	// ShouldSetTargetEntryAnnotation indicates whether the target DNSEntry annotation should be set on the source object.
+	ShouldSetTargetEntryAnnotation() bool
 }
 
 // AddToManager adds Reconciler to the given cluster.
@@ -87,10 +91,16 @@ func (r *SourceReconciler[SourceObject]) AddToManager(
 		GVK:    r.GVK,
 	}
 	dnsEntryMapFunc := ForResourceMapDNSEntry(r.GVK)
-	fetchSourceFunc := func(ctx context.Context, req reconcile.Request) (client.Object, error) {
+	fetchSourceFunc := func(ctx context.Context, req reconcile.Request, entry *dnsv1alpha1.DNSEntry) (client.Object, error) {
 		sourceObject := r.actuator.NewSourceObject()
 		if err := r.Client.Get(ctx, req.NamespacedName, sourceObject); err != nil {
 			return nil, err
+		}
+		if r.actuator.ShouldSetTargetEntryAnnotation() && entry != nil && entry.DeletionTimestamp == nil {
+			value := entry.Namespace + "/" + entry.Name
+			if err := kubernetes.SetAnnotationAndUpdate(ctx, r.Client, sourceObject, dns.AnnotationTargetEntry, value); err != nil {
+				return nil, fmt.Errorf("failed to set target entry annotation on source object %s: %w", client.ObjectKeyFromObject(sourceObject), err)
+			}
 		}
 		return sourceObject, nil
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 	dnsanntation "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsannotation"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
+	sourcednsentry "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsentry"
 	sourcednsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/ingress"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
@@ -34,6 +35,7 @@ func ControllerSwitches() *cmd.SwitchOptions {
 		cmd.Switch(sourcednsprovider.ControllerName, AddSourceDNSProviderController),
 		cmd.Switch(service.ControllerName, AddSourceServiceController),
 		cmd.Switch(ingress.ControllerName, AddSourceIngressController),
+		cmd.Switch(sourcednsentry.ControllerName, AddSourceDNSEntryController),
 	)
 }
 
@@ -98,6 +100,15 @@ func AddSourceIngressController(ctx context.Context, mgr manager.Manager) error 
 		return err
 	}
 	return common.NewSourceReconciler(&ingress.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
+}
+
+// AddSourceDNSEntryController adds the DNSEntry source controller to the manager.
+func AddSourceDNSEntryController(ctx context.Context, mgr manager.Manager) error {
+	appCtx, err := appcontext.GetAppContextValue(ctx)
+	if err != nil {
+		return err
+	}
+	return common.NewSourceReconciler(&sourcednsentry.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
 }
 
 func getStandardDNSHandlerFactory(cfg config.DNSProviderControllerConfig) provider.DNSHandlerFactory {
