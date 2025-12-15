@@ -183,7 +183,7 @@ func augmentFromCommonAnnotations(annotations map[string]string, input DNSSpecIn
 	if a := annotations[dns.AnnotationCNameLookupInterval]; a != "" {
 		interval, err := strconv.ParseInt(a, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf("invalid CNameLookupInterval: %s", err)
+			return nil, fmt.Errorf("invalid CNameLookupInterval: %w", err)
 		}
 		if interval != 0 {
 			input.CNameLookupInterval = &interval

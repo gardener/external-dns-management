@@ -50,13 +50,13 @@ func (a *Actuator) ReconcileSourceObject(
 		return res, err
 	}
 	if targetKey := entry.Annotations[dns.AnnotationTargetEntry]; targetKey != "" {
-		parts := strings.Split(targetKey, "/")
-		if len(parts) != 2 {
+		objectKey := getTargetEntryObjectKey(targetKey)
+		if objectKey == nil {
 			r.Log.Error(nil, "Invalid target DNSEntry annotation", "value", targetKey)
 			return res, nil
 		}
 		targetEntry := &dnsv1alpha1.DNSEntry{}
-		if err = r.ControlPlaneClient.Get(ctx, client.ObjectKey{Namespace: parts[0], Name: parts[1]}, targetEntry); client.IgnoreNotFound(err) != nil {
+		if err = r.ControlPlaneClient.Get(ctx, *objectKey, targetEntry); client.IgnoreNotFound(err) != nil {
 			r.Log.Error(err, "Could not get target DNSEntry", "key", targetKey)
 			return res, err
 		}
@@ -133,4 +133,12 @@ func getDNSSpecInputForDNSEntry(entry *dnsv1alpha1.DNSEntry) *common.DNSSpecInpu
 		RoutingPolicy:             entry.Spec.RoutingPolicy,
 		Ignore:                    entry.GetAnnotations()[dns.AnnotationIgnore],
 	}
+}
+
+func getTargetEntryObjectKey(targetKey string) *client.ObjectKey {
+	parts := strings.Split(targetKey, "/")
+	if len(parts) != 2 {
+		return nil
+	}
+	return &client.ObjectKey{Namespace: parts[0], Name: parts[1]}
 }

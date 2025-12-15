@@ -165,7 +165,7 @@ var _ = Describe("Actuator", func() {
 			Expect(err).To(MatchError("annotated dns names not-declared.com not declared by ingress"))
 		})
 
-		It("should handle the resolve targets to addresses annotation", func() {
+		It("should handle applying annotations from source to target", func() {
 			ingress.Annotations["dns.gardener.cloud/resolve-targets-to-addresses"] = "true"
 			ingress.Annotations["dns.gardener.cloud/cname-lookup-interval"] = "456"
 
