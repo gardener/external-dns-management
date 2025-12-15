@@ -4,7 +4,9 @@
 
 package dns
 
-import "fmt"
+import (
+	"fmt"
+)
 
 const (
 	// ControllerGroupDNSControllers is the group name for DNS controller resources.
@@ -16,17 +18,15 @@ const (
 
 	// DefaultClass is the default DNS class used by the controller.
 	DefaultClass = "gardendns"
-	// AnnotationGroup is the base annotation group for DNS-related annotations.
-	AnnotationGroup = "dns.gardener.cloud"
 	// AnnotationClass is the annotation key for specifying the DNS class.
-	AnnotationClass = AnnotationGroup + "/class"
+	AnnotationClass = "dns.gardener.cloud/class"
 	// AnnotationTTL is the annotation key for specifying the TTL (Time To Live) for DNS records.
-	AnnotationTTL = AnnotationGroup + "/ttl"
+	AnnotationTTL = "dns.gardener.cloud/ttl"
 
 	// AnnotationNotRateLimited is the annotation key to disable rate limiting.
-	AnnotationNotRateLimited = AnnotationGroup + "/not-rate-limited"
+	AnnotationNotRateLimited = "dns.gardener.cloud/not-rate-limited"
 	// AnnotationDNSNames is the annotation key for specifying DNS names.
-	AnnotationDNSNames = AnnotationGroup + "/dnsnames"
+	AnnotationDNSNames = "dns.gardener.cloud/dnsnames"
 
 	// FinalizerCompound is the finalizer for provider resources ("compound" to be backwards-compatible).
 	FinalizerCompound = "dns.gardener.cloud/compound"
@@ -38,7 +38,7 @@ const (
 	// AnnotationIPStack is an optional annotation for DNSEntries to specify the IP stack.
 	// Values are 'ipv4', 'dual-stack', and 'ipv6'. If not specified, 'ipv4' is assumed.
 	// This annotation is currently only relevant for AWS-Route53 to generate alias target A and/or AAAA records.
-	AnnotationIPStack = AnnotationGroup + "/ip-stack"
+	AnnotationIPStack = "dns.gardener.cloud/ip-stack"
 	// AnnotationValueIPStackIPv4 is the annotation value for specifying IPv4-only IP stack.
 	AnnotationValueIPStackIPv4 = "ipv4"
 	// AnnotationValueIPStackIPDualStack is the annotation value for specifying dual-stack (IPv4 and IPv6) IP stack.
@@ -47,7 +47,7 @@ const (
 	AnnotationValueIPStackIPv6 = "ipv6"
 
 	// AnnotationIgnore is an optional annotation for DNSEntries and source resources to ignore them on reconciliation.
-	AnnotationIgnore = AnnotationGroup + "/ignore"
+	AnnotationIgnore = "dns.gardener.cloud/ignore"
 	// AnnotationIgnoreValueTrue is the value for the annotation to ignore the entry on reconciliation. Same as "reconcile".
 	AnnotationIgnoreValueTrue = "true"
 	// AnnotationIgnoreValueReconcile is the value for the annotation to ignore the entry on reconciliation. Same as "true".
@@ -58,15 +58,20 @@ const (
 	// AnnotationHardIgnore is an optional annotation for a generated target DNSEntry to ignore it on reconciliation.
 	// This annotation is not propagated from source objects to the target DNSEntry.
 	// IMPORTANT NOTE: The entry is even ignored on deletion, so use with caution to avoid orphaned entries.
-	AnnotationHardIgnore = AnnotationGroup + "/target-hard-ignore"
+	AnnotationHardIgnore = "dns.gardener.cloud/target-hard-ignore"
 
 	// AnnotationRoutingPolicy is the annotation key for specifying the routing policy.
-	AnnotationRoutingPolicy = AnnotationGroup + "/routing-policy"
-	// AnnotatationResolveTargetsToAddresses is the annotation key for source objects to set the `.spec.resolveTargetsToAddresses` in the DNSEntry.
-	AnnotatationResolveTargetsToAddresses = AnnotationGroup + "/resolve-targets-to-addresses"
+	AnnotationRoutingPolicy = "dns.gardener.cloud/routing-policy"
+	// AnnotationResolveTargetsToAddresses is the annotation key for source objects to set the `.spec.resolveTargetsToAddresses` in the DNSEntry.
+	AnnotationResolveTargetsToAddresses = "dns.gardener.cloud/resolve-targets-to-addresses"
+	// AnnotationCNameLookupInterval is an optional annotation for source objects to set the `.spec.cnameLookupInterval` in the DNSEntry.
+	AnnotationCNameLookupInterval = "dns.gardener.cloud/cname-lookup-interval"
+
+	// AnnotationTargetEntry is an optional annotation for source DNSEntries to indicate the corresponding target DNSEntry.
+	AnnotationTargetEntry = "dns.gardener.cloud/target-entry"
 
 	// AnnotationValidationError is an optional annotation for replicated provider secrets to indicate a validation error.
-	AnnotationValidationError = AnnotationGroup + "/validation-error"
+	AnnotationValidationError = "dns.gardener.cloud/validation-error"
 
 	// AnnotationServiceBetaGroup is the group for beta Service annotations.
 	AnnotationServiceBetaGroup = "service.beta.kubernetes.io"

@@ -85,3 +85,8 @@ func (a *Actuator) IsRelevantSourceObject(r *common.SourceReconciler[*networking
 func (a *Actuator) NewSourceObject() *networkingv1.Ingress {
 	return &networkingv1.Ingress{}
 }
+
+// ShouldSetTargetEntryAnnotation indicates whether the target DNSEntry annotation should be set on the source object.
+func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
+	return false
+}

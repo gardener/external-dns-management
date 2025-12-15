@@ -202,7 +202,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 
 		By("Adding controllers to manager")
 		controllerSwitches := app.ControllerSwitches()
-		controllerSwitches.Enabled = []string{"dnsprovider", "dnsentry", "service-source", "ingress-source"}
+		controllerSwitches.Enabled = []string{"dnsprovider", "dnsentry", "service-source", "ingress-source", "dnsentry-source"}
 		Expect(controllerSwitches.Complete()).To(Succeed())
 		addCtx := appcontext.NewAppContext(ctx, log, controlPlaneCluster, cfg)
 		Expect(controllerSwitches.Completed().AddToManager(addCtx, mgr)).To(Succeed())
@@ -393,6 +393,70 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryDeleted"),
 				"Message": MatchRegexp("test-ingress.first.example.com: deleted entry .* in control plane"),
+			}),
+		))
+	})
+
+	It("should create an entry for an source DNSEntry", func() {
+		sourceEntry := &v1alpha1.DNSEntry{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sourceNamespace.Name,
+				Name:      "test-entry",
+			},
+			Spec: v1alpha1.DNSEntrySpec{
+				DNSName: "test-entry.first.example.com",
+			},
+		}
+		Expect(sourceClient.Create(ctx, sourceEntry)).To(Succeed())
+		checkForOwnedEntry("dns.gardener.cloud/DNSEntry", client.ObjectKeyFromObject(sourceEntry), nil, "test-entry.first.example.com")
+
+		By("Set targets")
+		Expect(sourceClient.Get(ctx, client.ObjectKeyFromObject(sourceEntry), sourceEntry)).To(Succeed())
+		patch := client.MergeFrom(sourceEntry.DeepCopy())
+		sourceEntry.Spec.Targets = []string{"1.2.3.4"}
+		Expect(sourceClient.Patch(ctx, sourceEntry, patch)).To(Succeed())
+		checkForOwnedEntry("dns.gardener.cloud/DNSEntry", client.ObjectKeyFromObject(sourceEntry), ptr.To("1.2.3.4"), "test-entry.first.example.com")
+		checkSourceEvents(client.ObjectKeyFromObject(sourceEntry), ContainElements(
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryCreated"),
+				"Message": MatchRegexp("test-entry.first.example.com: created entry .* in control plane"),
+			}),
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryInvalid"),
+				"Message": Equal("test-entry.first.example.com: no target or text specified"),
+			}),
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryUpdated"),
+				"Message": MatchRegexp("test-entry.first.example.com: updated entry .* in control plane"),
+			}),
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryReady"),
+				"Message": Equal("test-entry.first.example.com: dns entry active"),
+			}),
+		))
+
+		Expect(sourceClient.Get(ctx, client.ObjectKeyFromObject(sourceEntry), sourceEntry)).To(Succeed())
+		Expect(sourceEntry.Status.ObservedGeneration).To(Equal(sourceEntry.Generation))
+		Expect(sourceEntry.Status.State).To(Equal("Ready"))
+		Expect(sourceEntry.Status.Message).To(PointTo(Equal("dns entry active")))
+		Expect(sourceEntry.Status.DNSName).To(PointTo(Equal("test-entry.first.example.com")))
+		Expect(sourceEntry.Status.Targets).To(Equal([]string{"1.2.3.4"}))
+		Expect(sourceEntry.Status.ProviderType).To(PointTo(Equal("local")))
+		Expect(sourceEntry.Status.Provider).NotTo(BeNil())
+		Expect(sourceEntry.Status.Zone).NotTo(BeNil())
+		Expect(sourceEntry.Status.LastUpdateTime).NotTo(BeNil())
+
+		By("Delete source DNSEntry resource")
+		Expect(sourceClient.Delete(ctx, sourceEntry)).To(Succeed())
+		Eventually(func(g Gomega) {
+			err := sourceClient.Get(ctx, client.ObjectKeyFromObject(sourceEntry), sourceEntry)
+			g.Expect(errors.IsNotFound(err)).To(BeTrue())
+		}).To(Succeed())
+		checkForOwnedEntry("dns.gardener.cloud/DNSEntry", client.ObjectKeyFromObject(sourceEntry), nil)
+		checkSourceEvents(client.ObjectKeyFromObject(sourceEntry), ContainElements(
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryDeleted"),
+				"Message": MatchRegexp("test-entry.first.example.com: deleted entry .* in control plane"),
 			}),
 		))
 	})

@@ -30,7 +30,7 @@ import (
 type DNSSpecInput struct {
 	Names                     *utils.UniqueStrings
 	TTL                       *int64
-	Interval                  *int64
+	CNameLookupInterval       *int64
 	Targets                   *utils.UniqueStrings
 	Text                      *utils.UniqueStrings
 	RoutingPolicy             *v1alpha1.RoutingPolicy
@@ -54,8 +54,6 @@ func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk
 		return nil, fmt.Errorf("domain name annotation value '*' is not allowed for service objects")
 	}
 
-	var resolveTargetsToAddresses *bool
-	ipstack := ""
 	targets := utils.NewUniqueStrings()
 	for _, i := range svc.Status.LoadBalancer.Ingress {
 		if i.Hostname != "" && i.IP == "" {
@@ -76,21 +74,16 @@ func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk
 			}
 		}
 	}
-	if annotations[dns.AnnotationIPStack] != "" {
-		ipstack = annotations[dns.AnnotationIPStack]
-	}
+
+	ipStack := annotations[dns.AnnotationIPStack]
 	if annotations[dns.AnnotationAwsLoadBalancerIpAddressType] == dns.AnnotationAwsLoadBalancerIpAddressTypeValueDualStack {
-		ipstack = dns.AnnotationValueIPStackIPDualStack
-	}
-	if v := annotations[dns.AnnotatationResolveTargetsToAddresses]; v != "" {
-		resolveTargetsToAddresses = ptr.To(v == "true")
+		ipStack = dns.AnnotationValueIPStackIPDualStack
 	}
 
 	return augmentFromCommonAnnotations(annotations, DNSSpecInput{
-		Names:                     names,
-		Targets:                   targets,
-		IPStack:                   ipstack,
-		ResolveTargetsToAddresses: resolveTargetsToAddresses,
+		Names:   names,
+		Targets: targets,
+		IPStack: ipStack,
 	})
 }
 
@@ -106,16 +99,10 @@ func GetDNSSpecInputForIngress(log logr.Logger, state state.AnnotationState, gvk
 		return nil, nil
 	}
 
-	var resolveTargetsToAddresses *bool
-	if v := annotations[dns.AnnotatationResolveTargetsToAddresses]; v != "" {
-		resolveTargetsToAddresses = ptr.To(v == "true")
-	}
-
 	return augmentFromCommonAnnotations(annotations, DNSSpecInput{
-		Names:                     names,
-		Targets:                   getTargetsForIngress(ingress),
-		IPStack:                   annotations[dns.AnnotationIPStack],
-		ResolveTargetsToAddresses: resolveTargetsToAddresses,
+		Names:   names,
+		Targets: getTargetsForIngress(ingress),
+		IPStack: annotations[dns.AnnotationIPStack],
 	})
 }
 
@@ -189,6 +176,20 @@ func augmentFromCommonAnnotations(annotations map[string]string, input DNSSpecIn
 		input.Ignore = a
 	}
 
+	if v := annotations[dns.AnnotationResolveTargetsToAddresses]; v != "" {
+		input.ResolveTargetsToAddresses = ptr.To(v == "true")
+	}
+
+	if a := annotations[dns.AnnotationCNameLookupInterval]; a != "" {
+		interval, err := strconv.ParseInt(a, 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid CNameLookupInterval: %w", err)
+		}
+		if interval != 0 {
+			input.CNameLookupInterval = &interval
+		}
+	}
+
 	return &input, nil
 }
 
@@ -211,6 +212,7 @@ func modifyEntryFor(entry *v1alpha1.DNSEntry, cfg config.SourceControllerConfig,
 		utils.SetAnnotation(entry, dns.AnnotationIPStack, src.IPStack)
 	}
 	entry.Spec.ResolveTargetsToAddresses = src.ResolveTargetsToAddresses
+	entry.Spec.CNameLookupInterval = src.CNameLookupInterval
 	switch src.Ignore {
 	case dns.AnnotationIgnoreValueTrue, dns.AnnotationIgnoreValueReconcile:
 		utils.SetAnnotation(entry, dns.AnnotationIgnore, dns.AnnotationIgnoreValueReconcile)

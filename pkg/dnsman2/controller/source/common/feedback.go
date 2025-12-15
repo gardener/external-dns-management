@@ -20,7 +20,7 @@ import (
 
 // FetchSourceFunc defines a function type that fetches a Kubernetes object (the source)
 // for a given reconcile.Request. It returns the fetched object and an error if the fetch fails.
-type FetchSourceFunc func(ctx context.Context, request reconcile.Request) (client.Object, error)
+type FetchSourceFunc func(ctx context.Context, request reconcile.Request, entry *v1alpha1.DNSEntry) (client.Object, error)
 
 type eventFeedbackWrapper struct {
 	recorder        RecorderWithDeduplication
@@ -89,12 +89,12 @@ func (e *eventFeedbackWrapper) fetchSourceAndEntry(ctx context.Context, obj clie
 	if len(requests) != 1 {
 		return nil, nil
 	}
-	source, err := e.fetchSourceFunc(ctx, requests[0])
-	if err != nil {
-		return nil, nil
-	}
 	entry, ok := obj.(*v1alpha1.DNSEntry)
 	if !ok {
+		return nil, nil
+	}
+	source, err := e.fetchSourceFunc(ctx, requests[0], entry)
+	if err != nil {
 		return nil, nil
 	}
 	return source, entry
