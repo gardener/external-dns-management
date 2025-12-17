@@ -22,7 +22,7 @@ var _ = Describe("HostedZoneNameserversProvider", func() {
 
 			nameservers, err := provider.Nameservers(ctx)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(nameservers).To(ConsistOf("a.iana-servers.net.:53", "b.iana-servers.net.:53"))
+			Expect(nameservers).To(ConsistOf("elliott.ns.cloudflare.com.:53", "hera.ns.cloudflare.com.:53"))
 		})
 	})
 })

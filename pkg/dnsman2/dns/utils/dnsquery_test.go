@@ -86,11 +86,11 @@ var _ = Describe("QueryDNS", func() {
 		Expect(result.Err).NotTo(HaveOccurred())
 		Expect(result.RecordSet).NotTo(BeNil())
 		Expect(result.RecordSet.TTL).NotTo(BeZero())
-		Expect(result.RecordSet.Records).To(ConsistOf(&dns.Record{Value: "a.iana-servers.net."}, &dns.Record{Value: "b.iana-servers.net."}))
+		Expect(result.RecordSet.Records).To(ConsistOf(&dns.Record{Value: "hera.ns.cloudflare.com."}, &dns.Record{Value: "elliott.ns.cloudflare.com."}))
 	})
 
 	It("should return CNAME records", func() {
-		result := queryDNS.Query(ctx, dns.DNSSetName{DNSName: "www.example.com"}, dns.TypeCNAME)
+		result := queryDNS.Query(ctx, dns.DNSSetName{DNSName: "www.sap.com"}, dns.TypeCNAME)
 		Expect(result.Err).NotTo(HaveOccurred())
 		Expect(result.RecordSet).NotTo(BeNil())
 		Expect(result.RecordSet.TTL).NotTo(BeZero())

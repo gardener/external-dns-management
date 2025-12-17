@@ -129,6 +129,9 @@ func (s *gatewaySource) extractServerHosts(obj resources.ObjectData) ([]string, 
 	}
 
 	addHost := func(hosts []string, host string) []string {
+		if host == "*" {
+			return hosts
+		}
 		for _, h := range hosts {
 			if h == host {
 				return hosts

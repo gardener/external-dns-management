@@ -71,7 +71,13 @@ var _ = Describe("Istio Gateway Handler", func() {
 				Hosts:    []string{"bla.example.com"},
 			},
 		}
-		virtualServices = []*istionetworkingv1beta1.VirtualService{vsvc1, vsvc2, vsvc3}
+		vsvc4 = &istionetworkingv1beta1.VirtualService{
+			Spec: apinetworkingv1beta1.VirtualService{
+				Gateways: []string{"test/g3"},
+				Hosts:    []string{"*"},
+			},
+		}
+		virtualServices = []*istionetworkingv1beta1.VirtualService{vsvc1, vsvc2, vsvc3, vsvc4}
 	)
 
 	var _ = DescribeTable("GetDNSInfo",
@@ -233,6 +239,19 @@ var _ = Describe("Istio Gateway Handler", func() {
 			Spec: apinetworkingv1beta1.Gateway{
 				Servers: []*apinetworkingv1beta1.Server{
 					{Hosts: []string{"*"}},
+				},
+				Selector: selectorService2,
+			},
+		}, makeDNSInfo([]string{"foo.example.com", "bar.example.com"}, []string{"lb-example.com"})),
+		Entry("gateway with wildcard virtual service", defaultSources, &istionetworkingv1beta1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   "test",
+				Name:        "g3",
+				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
+			},
+			Spec: apinetworkingv1beta1.Gateway{
+				Servers: []*apinetworkingv1beta1.Server{
+					{Hosts: []string{"foo.example.com", "bar.example.com"}},
 				},
 				Selector: selectorService2,
 			},
