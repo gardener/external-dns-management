@@ -99,7 +99,6 @@
     "github.com/hashicorp/go-version",
     "github.com/huandu/xstrings",
     "github.com/inconshreveable/mousetrap",
-    "github.com/ironcore-dev/vgopath",
     "github.com/josharian/intern",
     "github.com/jpillora/backoff",
     "github.com/json-iterator/go",
