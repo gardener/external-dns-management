@@ -79,12 +79,12 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 	}
 	newAccount, err := r.state.GetAccount(log, provider, props, config)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{RequeueAfter: r.recheckPeriod()}, r.updateStatusError(ctx, provider, err)
 	}
 
 	zones, err := newAccount.GetZones(ctx)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{RequeueAfter: r.recheckPeriod()}, r.updateStatusError(ctx, provider, err)
 	}
 	if len(zones) == 0 {
 		return reconcile.Result{RequeueAfter: r.recheckPeriod()}, r.updateStatusError(ctx, provider, fmt.Errorf("no hosted zones available in account"))

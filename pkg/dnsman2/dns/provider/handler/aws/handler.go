@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
+	"github.com/aws/smithy-go"
 	"github.com/go-logr/logr"
 	"k8s.io/utils/ptr"
 
@@ -152,7 +153,8 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, err
+			log.Info("error listing hosted zones", "error", err)
+			return nil, stableError(err)
 		}
 	outer:
 		for _, zone := range output.HostedZones {
@@ -409,4 +411,13 @@ func toAWSRecordType(recordType dns.RecordType) (route53types.RRType, error) {
 	default:
 		return "", fmt.Errorf("unsupported record type: %s", recordType)
 	}
+}
+
+// stableError converts an AWS SDK error into a stable error message without request ID
+// to avoid endless status update/reconcile loop.
+func stableError(err error) error {
+	if err, ok := err.(*smithy.OperationError); ok {
+		return fmt.Errorf("%s failed: %s", err.OperationName, errors.Unwrap(err.Unwrap()).Error())
+	}
+	return err
 }

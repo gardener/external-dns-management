@@ -16,6 +16,9 @@ import (
 // ProviderType is the identifier for the local DNS provider. This is a pure in-memory implementation, no real DNS records are created.
 const ProviderType = "local"
 
+// BadKeyProperty is a property key used for validation testing.
+const BadKeyProperty = "bad_key"
+
 // RegisterTo registers the local DNS handler to the given registry.
 func RegisterTo(registry *provider.DNSHandlerRegistry) {
 	registry.Register(ProviderType, NewHandler, &adapter{}, nil, nil)
@@ -32,8 +35,8 @@ func (a *adapter) ValidateCredentialsAndProviderConfig(props utils.Properties, _
 	// no validation as it is only used for testing
 
 	// for validation testing the property "bad_key" is used to force an error
-	if value, ok := props["bad_key"]; ok {
-		return fmt.Errorf("'bad_key' is not allowed in local provider properties: %s", value)
+	if value, ok := props[BadKeyProperty]; ok {
+		return fmt.Errorf("'%s' is not allowed in local provider properties: %s", BadKeyProperty, value)
 	}
 	return nil
 }

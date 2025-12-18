@@ -218,7 +218,7 @@ var _ = Describe("Reconcile", func() {
 	It("should update status for if validation of secret fails", func() {
 		Expect(fakeClient.Update(ctx, &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{Name: "secret1", Namespace: providerKey.Namespace},
-			Data:       map[string][]byte{"bad_key": []byte("some-value")},
+			Data:       map[string][]byte{local.BadKeyProperty: []byte("some-value")},
 		})).To(Succeed())
 		Expect(fakeClient.Create(ctx, provider)).To(Succeed())
 		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: providerKey})
@@ -244,4 +244,22 @@ var _ = Describe("Reconcile", func() {
 		}))
 	})
 
+	It("should update status for provider handler fails to list zones", func() {
+		mockConfig, err := local.MarshallMockConfig(local.MockConfig{
+			Account: "account2",
+			Zones: []local.MockZone{
+				{DNSName: "example.com"},
+				{DNSName: "example2.com"},
+			},
+			FailGetZones: true,
+		})
+		Expect(err).ToNot(HaveOccurred())
+		provider.Spec.ProviderConfig = mockConfig
+		Expect(fakeClient.Create(ctx, provider)).To(Succeed())
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: providerKey})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{RequeueAfter: 5 * time.Minute}))
+
+		checkFailed(v1alpha1.StateError, "forced error by mockConfig.FailGetZones")
+	})
 })
