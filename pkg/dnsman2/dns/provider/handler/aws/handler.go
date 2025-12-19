@@ -153,7 +153,7 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			log.Info("error listing hosted zones", "error", err)
+			log.Error(err, "listing hosted zones failed")
 			return nil, stableError(err)
 		}
 	outer:

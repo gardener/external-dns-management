@@ -244,7 +244,7 @@ var _ = Describe("Reconcile", func() {
 		}))
 	})
 
-	It("should update status for provider handler fails to list zones", func() {
+	It("should update status for provider handler if it fails to list zones", func() {
 		mockConfig, err := local.MarshallMockConfig(local.MockConfig{
 			Account: "account2",
 			Zones: []local.MockZone{
