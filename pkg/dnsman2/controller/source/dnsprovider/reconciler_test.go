@@ -283,7 +283,7 @@ var _ = Describe("Reconciler", func() {
 		})
 
 		It("should create target DNSProvider object with empty secret ref if source secret is invalid", func() {
-			sourceSecret.Data["bad_key"] = []byte("something")
+			sourceSecret.Data[local.BadKeyProperty] = []byte("something")
 			actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
 				Type: local.ProviderType,
 				SecretRef: &corev1.SecretReference{
