@@ -46,7 +46,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		r.Clock = clock.RealClock{}
 	}
 	if r.Recorder == nil {
-		r.Recorder = controlPlaneCluster.GetEventRecorderFor(ControllerName + "-controller")
+		r.Recorder = mgr.GetEventRecorderFor(ControllerName + "-controller")
 	}
 	r.GVK = v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.DNSProviderKind)
 	r.DNSHandlerFactory = state.GetState().GetDNSHandlerFactory()
@@ -78,6 +78,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		)).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 2),
+			SkipNameValidation:      cfg.Controllers.SkipNameValidation,
 		}).
 		Complete(r)
 }
