@@ -14,9 +14,9 @@ require (
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.1.13
 	github.com/alibabacloud-go/tea v1.3.14
 	github.com/aws/aws-sdk-go-v2 v1.41.0
-	github.com/aws/aws-sdk-go-v2/config v1.32.3
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.3
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.61.0
+	github.com/aws/aws-sdk-go-v2/config v1.32.6
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.6
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.62.0
 	github.com/aws/smithy-go v1.24.0
 	github.com/cloudflare/cloudflare-go/v6 v6.5.0
 	github.com/gardener/controller-manager-library v0.2.1-0.20251212135449-45ab4fb75a4e
@@ -86,16 +86,16 @@ require (
 	github.com/aliyun/credentials-go v1.4.6 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.15 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.15 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.15 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.16 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.16 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.16 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.15 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.0.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.41.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.16 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.0.4 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.8 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.12 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.41.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/brunoga/deep v1.2.5 // indirect
