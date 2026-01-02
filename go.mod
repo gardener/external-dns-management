@@ -29,7 +29,7 @@ require (
 	github.com/gophercloud/utils/v2 v2.0.0-20251121145439-0a38d66a3d88
 	github.com/infobloxopen/infoblox-go-client/v2 v2.11.0
 	github.com/jellydator/ttlcache/v3 v3.4.0
-	github.com/joeig/go-powerdns/v3 v3.19.0
+	github.com/joeig/go-powerdns/v3 v3.20.0
 	github.com/miekg/dns v1.1.68
 	github.com/netlify/open-api v1.4.0
 	github.com/onsi/ginkgo/v2 v2.27.1
