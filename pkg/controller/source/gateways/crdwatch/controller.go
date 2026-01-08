@@ -15,6 +15,8 @@ import (
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/gardener/external-dns-management/pkg/controller/source/gateways/gatewayapi"
+	"github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
 	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
@@ -63,6 +65,18 @@ func (r *reconciler) Setup() error {
 			name := crdName(crd)
 			if _, relevant := r.relevantCustomResourceDefinitionDeployed[name]; relevant {
 				r.relevantCustomResourceDefinitionDeployed[name] = true
+				switch crd.Spec.Group {
+				case "networking.istio.io":
+					if istio.Deactivated {
+						r.controller.Infof("### istio relevant CRD %s found but istio source controller deactivated: need to restart to initialise controller", name)
+						os.Exit(3)
+					}
+				case "gateway.networking.k8s.io":
+					if gatewayapi.Deactivated {
+						r.controller.Infof("### k8s gateway relevant CRD %s found but gatewayapi source controller deactivated: need to restart to initialise controller", name)
+						os.Exit(3)
+					}
+				}
 			}
 			return nil
 		default:
