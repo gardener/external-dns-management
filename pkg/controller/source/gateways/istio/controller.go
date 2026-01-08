@@ -18,6 +18,7 @@ import (
 var (
 	GroupKindGateway        = resources.NewGroupKind("networking.istio.io", "Gateway")
 	GroupKindVirtualService = resources.NewGroupKind("networking.istio.io", "VirtualService")
+	Deactivated             bool
 )
 
 func init() {
@@ -35,6 +36,7 @@ func init() {
 }
 
 func deactivateOnMissingMainResource(err error) bool {
-	return strings.Contains(err.Error(), "gardener/cml/resources/UNKNOWN_RESOURCE") &&
+	Deactivated = strings.Contains(err.Error(), "gardener/cml/resources/UNKNOWN_RESOURCE") &&
 		(strings.Contains(err.Error(), GroupKindGateway.String()) || strings.Contains(err.Error(), GroupKindVirtualService.String()))
+	return Deactivated
 }
