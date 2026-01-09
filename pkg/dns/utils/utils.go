@@ -33,7 +33,7 @@ type LogMessage struct {
 	logged bool
 }
 
-func NewLogMessage(msg string, args ...interface{}) *LogMessage {
+func NewLogMessage(msg string, args ...any) *LogMessage {
 	return &LogMessage{msg: fmt.Sprintf(msg, args...)}
 }
 
@@ -41,10 +41,10 @@ func (this *LogMessage) Get() string {
 	return this.msg
 }
 
-func (this *LogMessage) out(out func(string, ...interface{}), args ...interface{}) bool {
+func (this *LogMessage) out(out func(string, ...any), args ...any) bool {
 	if !this.logged {
 		msgfmt := "%s"
-		msgargs := []interface{}{this.msg}
+		msgargs := []any{this.msg}
 		if len(args) > 0 {
 			msgfmt += ", " + fmt.Sprintf("%s", args[0])
 			msgargs = append(msgargs, args[1:]...)
@@ -59,19 +59,19 @@ func (this *LogMessage) out(out func(string, ...interface{}), args ...interface{
 	return false
 }
 
-func (this *LogMessage) Infof(logger logger.LogContext, add ...interface{}) bool {
+func (this *LogMessage) Infof(logger logger.LogContext, add ...any) bool {
 	return this.out(logger.Infof, add...)
 }
 
-func (this *LogMessage) Errorf(logger logger.LogContext, add ...interface{}) bool {
+func (this *LogMessage) Errorf(logger logger.LogContext, add ...any) bool {
 	return this.out(logger.Errorf, add...)
 }
 
-func (this *LogMessage) Warnf(logger logger.LogContext, add ...interface{}) bool {
+func (this *LogMessage) Warnf(logger logger.LogContext, add ...any) bool {
 	return this.out(logger.Warnf, add...)
 }
 
-func (this *LogMessage) Debugf(logger logger.LogContext, add ...interface{}) bool {
+func (this *LogMessage) Debugf(logger logger.LogContext, add ...any) bool {
 	return this.out(logger.Debugf, add...)
 }
 

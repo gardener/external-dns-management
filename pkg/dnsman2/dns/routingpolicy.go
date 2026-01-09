@@ -6,6 +6,7 @@ package dns
 
 import (
 	"fmt"
+	"maps"
 )
 
 // RoutingPolicyType defines the type of routing policy for DNS records.
@@ -56,9 +57,7 @@ func (p *RoutingPolicy) Clone() *RoutingPolicy {
 	copy := &RoutingPolicy{Type: p.Type}
 	if len(p.Parameters) > 0 {
 		copy.Parameters = map[string]string{}
-		for k, v := range p.Parameters {
-			copy.Parameters[k] = v
-		}
+		maps.Copy(copy.Parameters, p.Parameters)
 	}
 	return copy
 }

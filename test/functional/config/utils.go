@@ -41,7 +41,7 @@ func CreateDefaultTestUtils(dnsServer string) *TestUtils {
 	}
 }
 
-func (u *TestUtils) KubectlGetAllDNSEntries() (map[string]interface{}, error) {
+func (u *TestUtils) KubectlGetAllDNSEntries() (map[string]any, error) {
 	output, err := u.runKubeCtl("get dnse -o json")
 	if err != nil {
 		return nil, err
@@ -49,8 +49,8 @@ func (u *TestUtils) KubectlGetAllDNSEntries() (map[string]interface{}, error) {
 	return u.toItemMap(output)
 }
 
-func (u *TestUtils) toItemMap(output string) (map[string]interface{}, error) {
-	untyped := map[string]interface{}{}
+func (u *TestUtils) toItemMap(output string) (map[string]any, error) {
+	untyped := map[string]any{}
 	err := json.Unmarshal([]byte(output), &untyped)
 	if err != nil {
 		return nil, err
@@ -60,11 +60,11 @@ func (u *TestUtils) toItemMap(output string) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("Result is not a list")
 	}
 
-	itemMap := map[string]interface{}{}
-	items := untyped["items"].([]interface{})
+	itemMap := map[string]any{}
+	items := untyped["items"].([]any)
 	for _, rawItem := range items {
-		item := rawItem.(map[string]interface{})
-		name := item["metadata"].(map[string]interface{})["name"].(string)
+		item := rawItem.(map[string]any)
+		name := item["metadata"].(map[string]any)["name"].(string)
 		itemMap[name] = item
 	}
 	return itemMap, err
@@ -131,8 +131,8 @@ func (u *TestUtils) AwaitState(resourceName, expectedState string, names ...stri
 		}
 
 		states := map[string]string{}
-		lines := strings.Split(output, "\n")
-		for _, line := range lines {
+		lines := strings.SplitSeq(output, "\n")
+		for line := range lines {
 			cols := strings.Split(line, "=")
 			if len(cols) == 2 {
 				states[cols[0]] = cols[1]
@@ -193,8 +193,8 @@ func (u *TestUtils) AwaitLookupCName(dnsname, target string) {
 
 type LookupFunc func(dnsname string) ([]string, error)
 
-func toIfts(names []string) []interface{} {
-	itfs := []interface{}{}
+func toIfts(names []string) []any {
+	itfs := []any{}
 	for _, name := range names {
 		itfs = append(itfs, name)
 	}

@@ -27,7 +27,7 @@ const KEY_STATE = "key-watches"
 var WatchResourceKind = abstract.NewGroupKind(api.GroupName, api.DNSAnnotationKind)
 
 func GetOrCreateWatches(controller controller.Interface) *State {
-	return controller.GetEnvironment().GetOrCreateSharedValue(KEY_STATE, func() interface{} {
+	return controller.GetEnvironment().GetOrCreateSharedValue(KEY_STATE, func() any {
 		controller.Infof("creating annotation state")
 		return NewWatches()
 	}).(*State)

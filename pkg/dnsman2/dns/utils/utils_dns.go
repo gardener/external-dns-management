@@ -5,6 +5,7 @@
 package utils
 
 import (
+	"slices"
 	"strings"
 )
 
@@ -46,10 +47,8 @@ func NewUniqueStrings() *UniqueStrings {
 
 // Add adds the string to the unique strings if not already present.
 func (u *UniqueStrings) Add(s string) {
-	for _, v := range *u {
-		if v == s {
-			return
-		}
+	if slices.Contains(*u, s) {
+		return
 	}
 	*u = append(*u, s)
 }
@@ -74,12 +73,7 @@ func (u *UniqueStrings) Remove(s string) {
 
 // Contains returns true if the string is in the unique strings.
 func (u *UniqueStrings) Contains(s string) bool {
-	for _, v := range *u {
-		if v == s {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(*u, s)
 }
 
 // Len returns the number of unique strings.

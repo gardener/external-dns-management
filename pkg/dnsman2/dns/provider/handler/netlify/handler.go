@@ -7,6 +7,7 @@ package netlify
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -114,12 +115,7 @@ func (h *handler) getAdvancedOptions() config.AdvancedOptions {
 }
 
 func (h *handler) isBlockedZone(zoneID string) bool {
-	for _, zone := range h.getAdvancedOptions().BlockedZones {
-		if zone == zoneID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(h.getAdvancedOptions().BlockedZones, zoneID)
 }
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the Netlify DNS provider.

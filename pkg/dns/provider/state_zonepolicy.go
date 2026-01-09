@@ -7,6 +7,7 @@ package provider
 import (
 	"fmt"
 	"reflect"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -179,10 +180,5 @@ func findFullMatch(list []string, key string) bool {
 	if len(list) == 0 {
 		return true
 	}
-	for _, item := range list {
-		if item == key {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(list, key)
 }

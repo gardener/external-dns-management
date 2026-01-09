@@ -254,7 +254,7 @@ func (this *ChangeModel) getDefaultProvider() DNSProvider {
 	return oldest
 }
 
-func (this *ChangeModel) dumpf(fmt string, args ...interface{}) {
+func (this *ChangeModel) dumpf(fmt string, args ...any) {
 	this.Debugf(fmt, args...)
 }
 

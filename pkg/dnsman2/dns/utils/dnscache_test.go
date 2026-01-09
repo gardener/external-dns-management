@@ -48,7 +48,7 @@ var _ = Describe("DNSCache", func() {
 
 	Describe("Get", func() {
 		It("should query DNS and cache the result if not present", func() {
-			for i := 0; i < 7; i++ {
+			for i := range 7 {
 				rs, err := dnsCache.Get(ctx, dns.DNSSetName{DNSName: "example.com"}, dns.TypeA)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(rs).NotTo(BeNil())

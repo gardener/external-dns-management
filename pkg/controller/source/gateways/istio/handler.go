@@ -169,7 +169,7 @@ func (s *gatewaySource) getTargets(logger logger.LogContext, names dns.DNSNameSe
 
 	if targets := obj.GetAnnotations()[TargetsAnnotation]; targets != "" {
 		targetSet := utils.NewStringSet()
-		for _, target := range strings.Split(targets, ",") {
+		for target := range strings.SplitSeq(targets, ",") {
 			targetSet.Add(target)
 		}
 		return targetSet

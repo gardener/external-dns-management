@@ -12,8 +12,10 @@ import (
 	errs "errors"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -107,7 +109,7 @@ func waitForCluster(kubeconfig string, logger logger.LogContext) (cluster.Interf
 func (te *TestEnv) WaitForCRDs() error {
 	awaitCRD := func(max int, crdName string) error {
 		var err error
-		for i := 0; i < max; i++ {
+		for i := range max {
 			err = apiextensions.WaitCRDReady(te.Cluster, crdName)
 			if err == nil {
 				break
@@ -228,15 +230,15 @@ func NewTestEnvNamespace(first *TestEnv, namespace string) (*TestEnv, error) {
 	return te, err
 }
 
-func (te *TestEnv) Infof(msgfmt string, args ...interface{}) {
+func (te *TestEnv) Infof(msgfmt string, args ...any) {
 	te.Logger.Infof(msgfmt, args...)
 }
 
-func (te *TestEnv) Warnf(msgfmt string, args ...interface{}) {
+func (te *TestEnv) Warnf(msgfmt string, args ...any) {
 	te.Logger.Warnf(msgfmt, args...)
 }
 
-func (te *TestEnv) Errorf(msgfmt string, args ...interface{}) {
+func (te *TestEnv) Errorf(msgfmt string, args ...any) {
 	te.Logger.Errorf(msgfmt, args...)
 }
 
@@ -344,7 +346,7 @@ func (te *TestEnv) CreateProviderEx(providerIndex int, setSpec ProviderSpecSette
 	setSpec(provider)
 	obj, err := te.resources.CreateObject(provider)
 	if errors.IsAlreadyExists(err) {
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			te.Infof("Provider %s already existing, updating...", name)
 			obj, provider, err = te.GetProvider(name)
 			if err != nil {
@@ -568,9 +570,7 @@ func (te *TestEnv) CreateIngressWithAnnotation(name, domainName, fakeExternalIP 
 		if routingPolicy != nil {
 			e.Annotations[dnssource.ROUTING_POLICY_ANNOTATION] = *routingPolicy
 		}
-		for k, v := range additionalAnnotations {
-			e.Annotations[k] = v
-		}
+		maps.Copy(e.Annotations, additionalAnnotations)
 		e.Spec.Rules = []networkingv1.IngressRule{
 			{
 				Host:             domainName,
@@ -648,9 +648,7 @@ func (te *TestEnv) CreateServiceWithAnnotation(name, domainName string, status *
 		if routingPolicy != nil {
 			e.Annotations[dnssource.ROUTING_POLICY_ANNOTATION] = *routingPolicy
 		}
-		for k, v := range additionalAnnotations {
-			e.Annotations[k] = v
-		}
+		maps.Copy(e.Annotations, additionalAnnotations)
 		e.Spec.Type = corev1.ServiceTypeLoadBalancer
 		e.Spec.Ports = []corev1.ServicePort{{Name: "http", Port: 80, TargetPort: intstr.FromInt(8080), Protocol: corev1.ProtocolTCP}}
 	}
@@ -847,9 +845,7 @@ func (te *TestEnv) CreateIstioGatewayWithAnnotation(name, domainName string, sel
 		if routingPolicy != nil {
 			gw.Annotations[dnssource.ROUTING_POLICY_ANNOTATION] = *routingPolicy
 		}
-		for k, v := range additionalAnnotations {
-			gw.Annotations[k] = v
-		}
+		maps.Copy(gw.Annotations, additionalAnnotations)
 		gw.Spec.Servers = []*istioapinetworkingv1.Server{
 			{
 				Port: &istioapinetworkingv1.Port{
@@ -959,9 +955,7 @@ func (te *TestEnv) CreateGatewayAPIGatewayWithAnnotation(name, domainName string
 		if routingPolicy != nil {
 			gw.Annotations[dnssource.ROUTING_POLICY_ANNOTATION] = *routingPolicy
 		}
-		for k, v := range additionalAnnotations {
-			gw.Annotations[k] = v
-		}
+		maps.Copy(gw.Annotations, additionalAnnotations)
 		gw.Spec.GatewayClassName = "test"
 		gw.Spec.Listeners = []gatewayapisv1.Listener{
 			{
@@ -1277,11 +1271,8 @@ func same(lst1 []string, lst2 []string) bool {
 	if len(lst1) == len(lst2) {
 		found := 0
 		for _, f1 := range lst1 {
-			for _, f2 := range lst2 {
-				if f1 == f2 {
-					found++
-					break
-				}
+			if slices.Contains(lst2, f1) {
+				found++
 			}
 		}
 		return found == len(lst1)

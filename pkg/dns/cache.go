@@ -8,7 +8,7 @@ type GroupKey interface {
 	String() string
 }
 
-type GroupInfo interface{}
+type GroupInfo any
 
 type Group struct {
 	Key  GroupKey

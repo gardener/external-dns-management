@@ -8,6 +8,7 @@ package common
 
 import (
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -234,7 +235,7 @@ func getDNSNamesFromAnnotations(log logr.Logger, annotations map[string]string) 
 	}
 
 	names := utils.NewUniqueStrings()
-	for _, name := range strings.Split(dnsNames, ",") {
+	for name := range strings.SplitSeq(dnsNames, ",") {
 		name = strings.TrimSpace(name)
 		if name == "" {
 			continue
@@ -248,12 +249,8 @@ func getDNSNamesFromAnnotations(log logr.Logger, annotations map[string]string) 
 func GetMergedAnnotation(gvk schema.GroupVersionKind, state state.AnnotationState, obj metav1.Object) map[string]string {
 	annotations := map[string]string{}
 	externalAnnotations, _, _ := state.GetResourceAnnotationStatus(BuildResourceReference(gvk, obj))
-	for k, v := range externalAnnotations {
-		annotations[k] = v
-	}
-	for k, v := range obj.GetAnnotations() {
-		annotations[k] = v
-	}
+	maps.Copy(annotations, externalAnnotations)
+	maps.Copy(annotations, obj.GetAnnotations())
 	return annotations
 }
 
