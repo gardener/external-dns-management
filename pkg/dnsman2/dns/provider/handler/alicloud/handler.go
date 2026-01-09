@@ -7,6 +7,7 @@ package alicloud
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	alidns "github.com/alibabacloud-go/alidns-20150109/v5/client"
 	"github.com/go-logr/logr"
@@ -109,12 +110,7 @@ func (h *handler) getAdvancedOptions() config.AdvancedOptions {
 }
 
 func (h *handler) isBlockedZone(zoneID string) bool {
-	for _, zone := range h.getAdvancedOptions().BlockedZones {
-		if zone == zoneID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(h.getAdvancedOptions().BlockedZones, zoneID)
 }
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the Alicloud DNS provider.

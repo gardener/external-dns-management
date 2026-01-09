@@ -35,7 +35,7 @@ func (this *DNSEntryObject) Spec() *api.DNSEntrySpec {
 	return &this.DNSEntry().Spec
 }
 
-func (this *DNSEntryObject) StatusField() interface{} {
+func (this *DNSEntryObject) StatusField() any {
 	return this.Status()
 }
 

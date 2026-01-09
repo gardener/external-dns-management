@@ -145,7 +145,7 @@ var _ = Describe("SpecToTargets", func() {
 	})
 
 	It("returns error if there are too many CNAME targets", func() {
-		for i := 0; i < 26; i++ {
+		for i := range 26 {
 			spec.Targets = append(spec.Targets, fmt.Sprintf("cname%d.example.com", i))
 		}
 		_, err := producer.FromSpec(key, spec, "")

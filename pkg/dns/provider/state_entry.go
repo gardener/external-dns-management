@@ -71,7 +71,7 @@ func (this *state) DeleteEntry(logger logger.LogContext, object *dnsutils.DNSEnt
 	return this.HandleUpdateEntry(logger, "delete", object)
 }
 
-func (this *state) smartInfof(logger logger.LogContext, format string, args ...interface{}) {
+func (this *state) smartInfof(logger logger.LogContext, format string, args ...any) {
 	if this.hasProviders() {
 		logger.Infof(format, args...)
 	} else {

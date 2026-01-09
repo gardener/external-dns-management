@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -98,10 +99,8 @@ func MaxLengthValidator(max int) PropertyValidator {
 // PredefinedValuesValidator checks if the value is one of the predefined values.
 func PredefinedValuesValidator(values ...string) PropertyValidator {
 	return func(value string) error {
-		for _, v := range values {
-			if value == v {
-				return nil
-			}
+		if slices.Contains(values, value) {
+			return nil
 		}
 		return fmt.Errorf("value must be one of: %s", strings.Join(values, ", "))
 	}

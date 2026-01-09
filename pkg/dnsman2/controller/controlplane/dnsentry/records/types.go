@@ -5,6 +5,8 @@
 package records
 
 import (
+	"maps"
+
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
@@ -48,7 +50,5 @@ func InsertRecordSets(dnsSet dns.DNSSet, policy *dns.RoutingPolicy, targets dns.
 		}
 		recordSets[target.GetRecordType()].Records = append(recordSets[target.GetRecordType()].Records, target.AsRecord())
 	}
-	for rtype, recordSet := range recordSets {
-		dnsSet.Sets[rtype] = recordSet
-	}
+	maps.Copy(dnsSet.Sets, recordSets)
 }

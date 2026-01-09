@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -136,12 +137,7 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 }
 
 func (h *handler) isBlockedZone(zoneID string) bool {
-	for _, zone := range h.getAdvancedOptions().BlockedZones {
-		if zone == zoneID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(h.getAdvancedOptions().BlockedZones, zoneID)
 }
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the Google Cloud DNS provider if the zone is private.

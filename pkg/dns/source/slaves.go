@@ -27,7 +27,7 @@ func SlaveReconcilerType(c controller.Interface) (reconcile.Interface, error) {
 		targetClasses: controller.NewTargetClassesByOption(c, OPT_TARGET_CLASS, dns.CLASS_ANNOTATION, classes),
 		events:        NewEvents(),
 		state: c.GetOrCreateSharedValue(KEY_STATE,
-			func() interface{} {
+			func() any {
 				return NewState()
 			}).(*state),
 	}

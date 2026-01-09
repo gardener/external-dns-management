@@ -22,8 +22,7 @@ func ProcessElements(elems Elements, exec Executor, processors int) error {
 
 	errs := &synchedErrs{}
 	for i := 1; i <= processors; i++ {
-		wg.Add(1)
-		go func() {
+		wg.Go(func() {
 			for {
 				e, ok := <-ch
 				if !ok {
@@ -33,8 +32,7 @@ func ProcessElements(elems Elements, exec Executor, processors int) error {
 					errs.add(err)
 				}
 			}
-			wg.Done()
-		}()
+		})
 	}
 	for _, e := range elems {
 		ch <- e

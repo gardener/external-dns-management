@@ -126,7 +126,7 @@ func functestRoutingPolicies(cfg *config.Config, p *config.ProviderConfig) {
 
 			for k, v := range p.RoutingPolicySets {
 				for id, policy := range v {
-					params := map[string]interface{}{}
+					params := map[string]any{}
 					for k, v := range policy.Parameters {
 						params[k] = v
 					}

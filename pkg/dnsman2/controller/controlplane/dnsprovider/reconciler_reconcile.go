@@ -7,6 +7,7 @@ package dnsprovider
 import (
 	"context"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -135,19 +136,12 @@ func (r *Reconciler) zoneCacheTTL() time.Duration {
 
 func (r *Reconciler) isEnabledProviderType(providerType string) bool {
 	if explicitDisabled := r.Config.DisabledProviderTypes; explicitDisabled != nil {
-		for _, disabledType := range explicitDisabled {
-			if providerType == disabledType {
-				return false
-			}
+		if slices.Contains(explicitDisabled, providerType) {
+			return false
 		}
 	}
 	if explicitEnabled := r.Config.EnabledProviderTypes; explicitEnabled != nil {
-		for _, enabledType := range explicitEnabled {
-			if providerType == enabledType {
-				return true
-			}
-		}
-		return false
+		return slices.Contains(explicitEnabled, providerType)
 	}
 	return true
 }

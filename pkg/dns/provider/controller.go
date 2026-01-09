@@ -174,7 +174,7 @@ func Create(c controller.Interface, factory DNSHandlerFactory) (reconcile.Interf
 	return &reconciler{
 		controller: c,
 		state: c.GetOrCreateSharedValue(KEY_STATE,
-			func() interface{} {
+			func() any {
 				return NewDNSState(NewDefaultContext(c), secretresc, classes, *config)
 			}).(*state),
 	}, nil

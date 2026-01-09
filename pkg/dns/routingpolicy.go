@@ -6,6 +6,7 @@ package dns
 
 import (
 	"fmt"
+	"maps"
 )
 
 const (
@@ -39,9 +40,7 @@ func (p *RoutingPolicy) Clone() *RoutingPolicy {
 		return nil
 	}
 	copy := &RoutingPolicy{Type: p.Type, Parameters: map[string]string{}}
-	for k, v := range p.Parameters {
-		copy.Parameters[k] = v
-	}
+	maps.Copy(copy.Parameters, p.Parameters)
 	return copy
 }
 

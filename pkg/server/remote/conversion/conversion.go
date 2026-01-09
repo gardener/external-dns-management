@@ -6,6 +6,7 @@ package conversion
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -71,9 +72,7 @@ func MarshalRoutingPolicy(local *dns.RoutingPolicy) *common.RoutingPolicy {
 		return nil
 	}
 	params := map[string]string{}
-	for k, v := range local.Parameters {
-		params[k] = v
-	}
+	maps.Copy(params, local.Parameters)
 	return &common.RoutingPolicy{
 		Type:       local.Type,
 		Parameters: params,
@@ -123,9 +122,7 @@ func UnmarshalRoutingPolicy(policy *common.RoutingPolicy) *dns.RoutingPolicy {
 		return nil
 	}
 	params := map[string]string{}
-	for k, v := range policy.Parameters {
-		params[k] = v
-	}
+	maps.Copy(params, policy.Parameters)
 	return &dns.RoutingPolicy{
 		Type:       policy.Type,
 		Parameters: params,

@@ -165,10 +165,7 @@ func (p *TargetsProducer) upsertLookupJob(ctx context.Context, key client.Object
 	}
 	lookupInterval := p.defaultCNAMELookupInterval
 	if iv := spec.CNameLookupInterval; iv != nil && *iv > 0 {
-		lookupInterval = *iv
-		if lookupInterval < 30 {
-			lookupInterval = 30
-		}
+		lookupInterval = max(*iv, 30)
 		if len(result.Targets) > 0 {
 			if ttl > 0 && lookupInterval < ttl/3 {
 				lookupInterval = ttl / 3

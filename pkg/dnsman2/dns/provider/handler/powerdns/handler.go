@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/go-logr/logr"
 	"github.com/joeig/go-powerdns/v3"
@@ -126,12 +127,7 @@ func (h *handler) getAdvancedOptions() config.AdvancedOptions {
 }
 
 func (h *handler) isBlockedZone(zoneID string) bool {
-	for _, zone := range h.getAdvancedOptions().BlockedZones {
-		if zone == zoneID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(h.getAdvancedOptions().BlockedZones, zoneID)
 }
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the PowerDNS provider.

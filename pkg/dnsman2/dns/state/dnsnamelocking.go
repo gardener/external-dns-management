@@ -5,6 +5,7 @@
 package state
 
 import (
+	"slices"
 	"sync"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -28,10 +29,8 @@ func (d *dnsNameLocking) Lock(names ...string) bool {
 	d.lock.Lock()
 	defer d.lock.Unlock()
 
-	for _, name := range names {
-		if d.lockedNames.Has(name) {
-			return false // name is already locked
-		}
+	if slices.ContainsFunc(names, d.lockedNames.Has) {
+		return false // name is already locked
 	}
 
 	for _, name := range names {

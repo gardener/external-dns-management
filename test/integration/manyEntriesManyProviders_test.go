@@ -26,7 +26,7 @@ var _ = Describe("ManyEntriesManyProviders", func() {
 
 		providers := []resources.Object{}
 		entries := []resources.Object{}
-		for i := 0; i < count; i++ {
+		for i := range count {
 			pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", i)
 			Ω(err).ShouldNot(HaveOccurred())
 			// defer testEnv.DeleteProviderAndSecret(pr)

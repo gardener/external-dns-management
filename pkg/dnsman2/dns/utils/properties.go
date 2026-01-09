@@ -5,6 +5,8 @@
 package utils
 
 import (
+	"maps"
+
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -48,9 +50,7 @@ func (p Properties) Equals(t map[string]string) bool {
 // Clone returns a copy of the Properties map.
 func (p Properties) Clone() Properties {
 	new := Properties{}
-	for k, v := range p {
-		new[k] = v
-	}
+	maps.Copy(new, p)
 	return new
 }
 

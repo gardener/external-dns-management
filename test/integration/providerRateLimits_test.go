@@ -28,14 +28,14 @@ var _ = Describe("ProviderRateLimits", func() {
 
 		start := time.Now()
 		entries := []resources.Object{}
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			e, err := testEnv.CreateEntry(i+1, domain)
 			Ω(err).ShouldNot(HaveOccurred())
 			entries = append(entries, e)
 			defer testEnv.DeleteEntryAndWait(entries[i])
 		}
 		maxDuration := 0 * time.Second
-		for i := 0; i < 3; i++ {
+		for i := range 3 {
 			checkEntry(entries[i], pr)
 			end := time.Now()
 			d := end.Sub(start)

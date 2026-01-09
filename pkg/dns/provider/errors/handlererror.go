@@ -16,7 +16,7 @@ func WrapAsHandlerError(err error, msg string) error {
 	return fmt.Errorf("%s: %w", msg, &handlerError{err: err})
 }
 
-func WrapfAsHandlerError(err error, msg string, args ...interface{}) error {
+func WrapfAsHandlerError(err error, msg string, args ...any) error {
 	s := fmt.Sprintf(msg, args...)
 	return WrapAsHandlerError(err, s)
 }

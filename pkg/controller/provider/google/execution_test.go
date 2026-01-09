@@ -21,7 +21,7 @@ import (
 
 var _ = Describe("Execution", func() {
 	var (
-		nameFunc = func(element interface{}) string {
+		nameFunc = func(element any) string {
 			return element.(*googledns.ResourceRecordSet).Name
 		}
 
@@ -504,11 +504,11 @@ func matchSimpleResourceRecordSet(typ string, ttl int64, targets ...string) type
 	}))
 }
 
-func itemNameFunc(index int, _ interface{}) string {
+func itemNameFunc(index int, _ any) string {
 	return fmt.Sprintf("%d", index)
 }
 
-func geoItemNameFunc(element interface{}) string {
+func geoItemNameFunc(element any) string {
 	if geo, ok := element.(*googledns.RRSetRoutingPolicyGeoPolicyGeoPolicyItem); ok {
 		return geo.Location
 	}

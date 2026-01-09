@@ -6,6 +6,7 @@ package validation
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -78,10 +79,8 @@ func FindTsigAlgorithm(alg string) (string, error) {
 	}
 
 	fqdnAlg := miekgdns.Fqdn(alg)
-	for _, a := range tsigAlgs {
-		if fqdnAlg == a {
-			return fqdnAlg, nil
-		}
+	if slices.Contains(tsigAlgs, fqdnAlg) {
+		return fqdnAlg, nil
 	}
 	return "", fmt.Errorf("invalid TSIG secret algorithm: %s (supported: %s)", alg, strings.ReplaceAll(strings.Join(tsigAlgs, ","), ".", ""))
 }

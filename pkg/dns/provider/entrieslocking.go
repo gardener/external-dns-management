@@ -5,6 +5,7 @@
 package provider
 
 import (
+	"slices"
 	"sync"
 	"time"
 
@@ -174,10 +175,8 @@ func addZone(o origin, zoneID dns.ZoneID) origin {
 	if o.zoneIDs == nil {
 		o.zoneIDs = []dns.ZoneID{}
 	}
-	for _, existingZoneID := range o.zoneIDs {
-		if existingZoneID == zoneID {
-			return o // Zone already exists, no need to add it again
-		}
+	if slices.Contains(o.zoneIDs, zoneID) {
+		return o // Zone already exists, no need to add it again
 	}
 	o.zoneIDs = append(o.zoneIDs, zoneID)
 	return o

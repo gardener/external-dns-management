@@ -94,7 +94,7 @@ func (this *state) ReconcileZone(logger logger.LogContext, zoneid dns.ZoneID) re
 	}
 
 	blockingEntries := this.getZoneEntries(zoneid)
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		blockingEntries = this.entriesLocking.TryLockZoneReconciliation(startTime, zoneid, zoneDomain, blockingEntries)
 		if len(blockingEntries) == 0 {
 			break

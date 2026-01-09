@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"slices"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -78,10 +79,8 @@ func (o OwnerData) addOwner(obj metav1.Object, clusterID string, checkOnly bool)
 			ref  = o.AsAnnotationRef(clusterID)
 			refs = GetAnnotatedOwners(obj)
 		)
-		for _, r := range refs {
-			if ref == r {
-				return false
-			}
+		if slices.Contains(refs, ref) {
+			return false
 		}
 		if !checkOnly {
 			refs = append(refs, ref)
@@ -171,8 +170,8 @@ func (d EntryOwnerData) GetOwnerObjectKeys(obj metav1.Object) []client.ObjectKey
 	}
 	prefix += fmt.Sprintf("%s/%s/", d.GVK.Group, d.GVK.Kind)
 	for _, ownerRef := range GetAnnotatedOwners(obj) {
-		if strings.HasPrefix(ownerRef, prefix) {
-			suffix := strings.TrimPrefix(ownerRef, prefix)
+		if after, ok := strings.CutPrefix(ownerRef, prefix); ok {
+			suffix := after
 			nameParts := strings.SplitN(suffix, "/", 2)
 			if len(nameParts) != 2 {
 				continue
@@ -191,7 +190,7 @@ func GetAnnotatedOwners(obj metav1.Object) []string {
 		return nil
 	}
 	var owners []string
-	for _, o := range strings.Split(s, ",") {
+	for o := range strings.SplitSeq(s, ",") {
 		o = strings.TrimSpace(o)
 		if o != "" {
 			owners = append(owners, o)

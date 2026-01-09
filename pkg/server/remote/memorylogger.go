@@ -32,42 +32,42 @@ func (l *memoryLogger) AddIndent(_ string) logger.LogContext {
 	panic("unsupported")
 }
 
-func (l *memoryLogger) Info(msg ...interface{}) {
+func (l *memoryLogger) Info(msg ...any) {
 	l.logger.Info(msg...)
 	l.addEntry(common.LogEntry_INFO, fmt.Sprintf("%s", msg...))
 }
 
-func (l *memoryLogger) Debug(msg ...interface{}) {
+func (l *memoryLogger) Debug(msg ...any) {
 	l.logger.Debug(msg...)
 	l.addEntry(common.LogEntry_DEBUG, fmt.Sprintf("%s", msg...))
 }
 
-func (l *memoryLogger) Warn(msg ...interface{}) {
+func (l *memoryLogger) Warn(msg ...any) {
 	l.logger.Warn(msg...)
 	l.addEntry(common.LogEntry_WARN, fmt.Sprintf("%s", msg...))
 }
 
-func (l *memoryLogger) Error(msg ...interface{}) {
+func (l *memoryLogger) Error(msg ...any) {
 	l.logger.Error(msg...)
 	l.addEntry(common.LogEntry_ERROR, fmt.Sprintf("%s", msg...))
 }
 
-func (l *memoryLogger) Infof(msgfmt string, args ...interface{}) {
+func (l *memoryLogger) Infof(msgfmt string, args ...any) {
 	l.logger.Infof(msgfmt, args...)
 	l.addEntry(common.LogEntry_INFO, fmt.Sprintf(msgfmt, args...))
 }
 
-func (l *memoryLogger) Debugf(msgfmt string, args ...interface{}) {
+func (l *memoryLogger) Debugf(msgfmt string, args ...any) {
 	l.logger.Debugf(msgfmt, args...)
 	l.addEntry(common.LogEntry_DEBUG, fmt.Sprintf(msgfmt, args...))
 }
 
-func (l *memoryLogger) Warnf(msgfmt string, args ...interface{}) {
+func (l *memoryLogger) Warnf(msgfmt string, args ...any) {
 	l.logger.Warnf(msgfmt, args...)
 	l.addEntry(common.LogEntry_WARN, fmt.Sprintf(msgfmt, args...))
 }
 
-func (l *memoryLogger) Errorf(msgfmt string, args ...interface{}) {
+func (l *memoryLogger) Errorf(msgfmt string, args ...any) {
 	l.logger.Errorf(msgfmt, args...)
 	l.addEntry(common.LogEntry_ERROR, fmt.Sprintf(msgfmt, args...))
 }

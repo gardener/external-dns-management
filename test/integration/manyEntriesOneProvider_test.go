@@ -26,7 +26,7 @@ var _ = Describe("ManyEntriesOneProvider", func() {
 		defer testEnv.DeleteProviderAndSecret(pr)
 
 		entries := []resources.Object{}
-		for i := 0; i < entryCount; i++ {
+		for i := range entryCount {
 			e, err := testEnv.CreateEntry(i, domain)
 			Ω(err).ShouldNot(HaveOccurred())
 			entries = append(entries, e)

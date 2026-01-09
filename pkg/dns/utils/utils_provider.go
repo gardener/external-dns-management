@@ -34,7 +34,7 @@ func (this *DNSProviderObject) Spec() *api.DNSProviderSpec {
 	return &this.DNSProvider().Spec
 }
 
-func (this *DNSProviderObject) StatusField() interface{} {
+func (this *DNSProviderObject) StatusField() any {
 	return &this.DNSProvider().Status
 }
 

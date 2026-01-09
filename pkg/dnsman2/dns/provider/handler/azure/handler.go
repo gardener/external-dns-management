@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns"
 	"github.com/go-logr/logr"
@@ -122,12 +123,7 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 }
 
 func (h *handler) isBlockedZone(zoneID string) bool {
-	for _, zone := range h.getAdvancedOptions().BlockedZones {
-		if zone == zoneID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(h.getAdvancedOptions().BlockedZones, zoneID)
 }
 
 func (h *handler) getLogFromContext(ctx context.Context) (logr.Logger, error) {
