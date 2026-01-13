@@ -18,6 +18,7 @@ const Group = "gateway.networking.k8s.io"
 var (
 	GroupKindGateway   = resources.NewGroupKind(Group, "Gateway")
 	GroupKindHTTPRoute = resources.NewGroupKind(Group, "HTTPRoute")
+	Deactivated        bool
 )
 
 func init() {
@@ -32,6 +33,7 @@ func init() {
 }
 
 func deactivateOnMissingMainResource(err error) bool {
-	return strings.Contains(err.Error(), "gardener/cml/resources/UNKNOWN_RESOURCE") &&
+	Deactivated = strings.Contains(err.Error(), "gardener/cml/resources/UNKNOWN_RESOURCE") &&
 		(strings.Contains(err.Error(), GroupKindGateway.String()) || strings.Contains(err.Error(), GroupKindHTTPRoute.String()))
+	return Deactivated
 }
