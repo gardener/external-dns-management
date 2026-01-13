@@ -185,7 +185,7 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 			g.Expect(provider.Status.State).To(Equal("Ready"))
 		}).Should(Succeed())
 
-		for i := 0; i < entryCount; i++ {
+		for i := range entryCount {
 			name := fmt.Sprintf("e%d", i)
 			if i == entryCount-1 {
 				name += "-very-very-very-very-long-name-with-really-more-than-63-characters"

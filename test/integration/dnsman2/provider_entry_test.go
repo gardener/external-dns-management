@@ -801,7 +801,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		// create 3 entries that all get assigned to the second provider
 		// with a rate limit of 1/s this should take at least 2s to create all entries
 		entries := make([]*v1alpha1.DNSEntry, 3)
-		for i := 0; i < len(entries); i++ {
+		for i := range entries {
 			entries[i] = &v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: testRunID,

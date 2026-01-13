@@ -20,7 +20,7 @@ type state struct {
 }
 
 // NewState creates a new owner state.
-func NewState() interface{} {
+func NewState() any {
 	return &state{
 		source:   nil,
 		feedback: map[resources.ClusterObjectKey]DNSFeedback{},

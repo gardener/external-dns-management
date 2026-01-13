@@ -6,6 +6,7 @@ package provider
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 
 	"github.com/gardener/controller-manager-library/pkg/resources"
@@ -26,9 +27,7 @@ func (m *NullMetrics) AddZoneRequests(_, _ string, _ int) {
 
 func copyZones(src map[dns.ZoneID]*dnsHostedZone) dnsHostedZones {
 	dst := dnsHostedZones{}
-	for k, v := range src {
-		dst[k] = v
-	}
+	maps.Copy(dst, src)
 	return dst
 }
 

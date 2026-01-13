@@ -91,7 +91,7 @@ func main() {
 }
 
 func createEntries(ctx context.Context, c client.Client, count int, nameTemplate, baseDomain, labelKey, labelValue string) error {
-	for i := 0; i < count; i++ {
+	for i := range count {
 		name := fmt.Sprintf(nameTemplate, i+baseEntry)
 		entry := &dnsv1alpha1.DNSEntry{
 			ObjectMeta: metav1.ObjectMeta{

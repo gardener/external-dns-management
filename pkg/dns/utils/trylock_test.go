@@ -73,12 +73,12 @@ var _ = Describe("TryLock", func() {
 				time.Sleep(wait)
 			}
 		}
-		for i := 0; i < len(counters); i++ {
+		for i := range counters {
 			go tryLocker(&counters[i])
 		}
 
 		time.Sleep(wait)
-		for i := 0; i < len(counters); i++ {
+		for i := range counters {
 			Eventually(func() uint64 {
 				return atomic.LoadUint64(&counters[i])
 			}).WithPolling(10 * wait).To(Equal(uint64(1)))
@@ -102,8 +102,8 @@ var _ = Describe("TryLock", func() {
 
 		wgTryLockers.Wait()
 
-		for i := 0; i < len(counters); i++ {
-			for j := 0; j < len(counters); j++ {
+		for i := range counters {
+			for j := range counters {
 				if i != j && counters[i] > counters[j] {
 					Expect(counters[i] - counters[j]).To(BeNumerically(">", uint64((10 * wait).Nanoseconds())))
 				}

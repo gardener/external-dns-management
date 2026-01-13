@@ -185,7 +185,7 @@ var _ = Describe("PrivateZones", func() {
 		testEnv.AwaitEntryReady(e.GetName())
 
 		var e2 resources.Object
-		for i := 0; i < 25; i++ {
+		for range 25 {
 			e2, err = testEnv.GetEntry(e.GetName())
 			Ω(err).ShouldNot(HaveOccurred())
 			obj := UnwrapEntry(e2)
@@ -199,7 +199,7 @@ var _ = Describe("PrivateZones", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 
 		found := true
-		for i := 0; i < 25; i++ {
+		for range 25 {
 			err = testEnv.MockInMemoryHasNotEntry(e)
 			if err == nil {
 				found = false

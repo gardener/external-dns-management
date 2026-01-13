@@ -7,6 +7,7 @@ package provider
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -111,12 +112,7 @@ outer:
 	if props.Has(check.name) {
 		return true
 	}
-	for _, alias := range check.aliases {
-		if props.Has(alias) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(check.aliases, props.Has)
 }
 
 // ValidateProperties validates the properties against the defined checks.

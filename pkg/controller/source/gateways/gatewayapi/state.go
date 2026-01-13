@@ -27,7 +27,7 @@ func newState() *routesState {
 }
 
 func getOrCreateSharedState(c controller.Interface) (*routesState, error) {
-	state := c.GetEnvironment().GetOrCreateSharedValue(stateKey, func() interface{} {
+	state := c.GetEnvironment().GetOrCreateSharedValue(stateKey, func() any {
 		return newState()
 	}).(*routesState)
 

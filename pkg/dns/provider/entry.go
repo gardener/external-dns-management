@@ -486,10 +486,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		if multiCName {
 			this.interval = int64(600)
 			if iv := spec.CNameLookupInterval; iv != nil && *iv > 0 {
-				this.interval = *iv
-				if this.interval < 30 {
-					this.interval = 30
-				}
+				this.interval = max(*iv, 30)
 				if len(targets) > 0 && this.interval < targets[0].GetTTL()/3 {
 					this.interval = targets[0].GetTTL() / 3
 				}
@@ -605,7 +602,7 @@ func (this *EntryVersion) NotRateLimited() bool {
 	return ok
 }
 
-func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg string, args ...interface{}) error {
+func (this *EntryVersion) updateStatus(logger logger.LogContext, state, msg string, args ...any) error {
 	logmsg := dnsutils.NewLogMessage(msg, args...)
 	f := func(data resources.ObjectData) (bool, error) {
 		tmp, err := this.object.GetResource().Wrap(data)
@@ -943,7 +940,7 @@ func (this EntryList) Sort() {
 
 func (this EntryList) Lock() error {
 	this.Sort()
-	for i := 0; i < len(this); i++ {
+	for i := range this {
 		err := this[i].lock.Lock()
 		if err != nil {
 			for j := i - 1; j >= 0; j-- {
@@ -965,7 +962,7 @@ func StatusMessage(s string) *string {
 	return &s
 }
 
-func StatusMessagef(msgfmt string, args ...interface{}) *string {
+func StatusMessagef(msgfmt string, args ...any) *string {
 	return StatusMessage(fmt.Sprintf(msgfmt, args...))
 }
 

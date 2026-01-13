@@ -62,7 +62,7 @@ func SourceReconciler(sourceType DNSSourceType, rtype controller.ReconcilerType)
 			targetrealms:  realms,
 
 			state: c.GetOrCreateSharedValue(KEY_STATE,
-				func() interface{} {
+				func() any {
 					return NewState()
 				}).(*state),
 			annotations: annotations.GetOrCreateWatches(c),

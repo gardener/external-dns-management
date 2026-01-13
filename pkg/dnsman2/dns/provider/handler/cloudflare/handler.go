@@ -7,6 +7,7 @@ package cloudflare
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	cloudflarezones "github.com/cloudflare/cloudflare-go/v6/zones"
 	"github.com/go-logr/logr"
@@ -101,12 +102,7 @@ func (h *handler) getAdvancedOptions() config.AdvancedOptions {
 }
 
 func (h *handler) isBlockedZone(zoneID string) bool {
-	for _, zone := range h.getAdvancedOptions().BlockedZones {
-		if zone == zoneID {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(h.getAdvancedOptions().BlockedZones, zoneID)
 }
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the Cloudflare DNS provider.

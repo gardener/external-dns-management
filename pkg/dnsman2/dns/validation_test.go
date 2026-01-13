@@ -6,6 +6,7 @@ package dns
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -14,9 +15,10 @@ const name23 = "ab1234567890-1234567890"
 func TestValidation(t *testing.T) {
 	debug := false
 
-	name239 := name23
-	for i := 0; i < 9; i++ {
-		name239 += "." + name23
+	var name239 strings.Builder
+	name239.WriteString(name23)
+	for range 9 {
+		name239.WriteString("." + name23)
 	}
 	table := []struct {
 		input string
@@ -32,7 +34,7 @@ func TestValidation(t *testing.T) {
 		{"a123456789012345678901234567890123456789012345678901234567890abc.b", false},   // label too long
 		{"a.a123456789012345678901234567890123456789012345678901234567890abc.b", false}, // label too long
 		{"a12345678901234567890123456789012345678901234567890abcd.b", true},
-		{"abc.a123456789." + name239, false}, // name too long
+		{"abc.a123456789." + name239.String(), false}, // name too long
 	}
 	for _, entry := range table {
 		err := ValidateDomainName(entry.input)
