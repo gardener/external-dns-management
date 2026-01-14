@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"regexp"
 
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
@@ -51,26 +52,37 @@ type adapter struct {
 	checks *provider.DNSHandlerAdapterChecks
 }
 
-var regionRegex = regexp.MustCompile("^[a-z0-9-]*$") // empty string is explicitly allowed to match the default region
+var (
+	regionRegex = regexp.MustCompile("^[a-z0-9-]*$") // empty string is explicitly allowed to match the default region
+	arnRegex    = regexp.MustCompile(`^arn:aws[a-zA-Z-]*:iam::[0-9]{12}:role\/[\w+=,.@\-_/]+$`)
+)
 
 func newAdapter() provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
+	checks.SetDisjunctPropertySets([]string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
+		[]string{"AWS_USE_CREDENTIALS_CHAIN"},
+		[]string{securityv1alpha1constants.DataKeyToken, securityv1alpha1constants.DataKeyConfig, securityv1alpha1constants.LabelWorkloadIdentityProvider})
 	checks.Add(provider.OptionalProperty("AWS_ACCESS_KEY_ID", "accessKeyID").
-		RequiredIfUnset("AWS_USE_CREDENTIALS_CHAIN").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.AlphaNumericValidator, provider.MaxLengthValidator(128)))
 	checks.Add(provider.OptionalProperty("AWS_SECRET_ACCESS_KEY", "secretAccessKey").
-		RequiredIfUnset("AWS_USE_CREDENTIALS_CHAIN").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.MaxLengthValidator(128)).
 		HideValue())
 	checks.Add(provider.OptionalProperty("AWS_REGION", "region").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.MaxLengthValidator(32), provider.RegExValidator(regionRegex)).
 		AllowEmptyValue())
 	checks.Add(provider.OptionalProperty("AWS_USE_CREDENTIALS_CHAIN").
-		RequiredIfUnset("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.BoolValidator))
 	checks.Add(provider.OptionalProperty("AWS_SESSION_TOKEN", "sessionToken").
 		Validators(provider.MaxLengthValidator(512)).
 		HideValue())
+	checks.Add(provider.OptionalProperty(securityv1alpha1constants.DataKeyToken).
+		Validators(provider.MaxLengthValidator(4096)))
+	checks.Add(provider.OptionalProperty(securityv1alpha1constants.DataKeyConfig).
+		Validators(provider.MaxLengthValidator(4096)))
+	checks.Add(provider.OptionalProperty(securityv1alpha1constants.LabelWorkloadIdentityProvider).
+		Validators(provider.ExpectedValueValidator("aws")))
+	checks.Add(provider.OptionalProperty(dns.RoleARN).
+		Validators(provider.NoTrailingWhitespaceValidator, provider.RegExValidator(arnRegex)))
 	return &adapter{checks: checks}
 }
 
