@@ -150,6 +150,16 @@ type DNSProviderControllerConfig struct {
 	// This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.
 	// +optional
 	MigrationMode *bool `json:"migrationMode,omitempty"`
+	// GCPWorkloadIdentityConfig is the configuration for GCP workload identity.
+	GCPWorkloadIdentityConfig GCPWorkloadIdentityConfig `json:"gcpWorkloadIdentityConfig"`
+}
+
+// GCPWorkloadIdentityConfig is the configuration for GCP workload identity.
+type GCPWorkloadIdentityConfig struct {
+	// AllowedTokenURLs are the allowed token URLs.
+	AllowedTokenURLs []string `json:"allowedTokenURLs"`
+	// AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.
+	AllowedServiceAccountImpersonationURLRegExps []string `json:"allowedServiceAccountImpersonationURLRegExps"`
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.

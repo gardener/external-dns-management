@@ -7,6 +7,7 @@ package google
 import (
 	"fmt"
 
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
@@ -38,10 +39,18 @@ type adapter struct {
 
 func newAdapter() provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
-	checks.Add(provider.RequiredProperty("serviceaccount.json").Validators(func(value string) error {
+	checks.SetDisjunctPropertySets([]string{"serviceaccount.json"},
+		[]string{securityv1alpha1constants.DataKeyToken, securityv1alpha1constants.DataKeyConfig, securityv1alpha1constants.LabelWorkloadIdentityProvider})
+	checks.Add(provider.OptionalProperty("serviceaccount.json").Validators(func(value string) error {
 		_, err := validateServiceAccountJSON([]byte(value))
 		return err
 	}).HideValue())
+	checks.Add(provider.OptionalProperty(securityv1alpha1constants.DataKeyToken).
+		Validators(provider.MaxLengthValidator(4096)))
+	checks.Add(provider.OptionalProperty(securityv1alpha1constants.DataKeyConfig).
+		Validators(provider.MaxLengthValidator(4096)))
+	checks.Add(provider.OptionalProperty(securityv1alpha1constants.LabelWorkloadIdentityProvider).
+		Validators(provider.ExpectedValueValidator("gcp")))
 	return &adapter{checks: checks}
 }
 

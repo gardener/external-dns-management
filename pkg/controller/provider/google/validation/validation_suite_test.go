@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package google_test
+package validation_test
 
 import (
 	"testing"
@@ -13,5 +13,5 @@ import (
 
 func TestValidation(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Google Cloud Test Suite")
+	RunSpecs(t, "Google Cloud Properties Validation Test Suite")
 }
