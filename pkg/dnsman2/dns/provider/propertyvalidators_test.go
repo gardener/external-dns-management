@@ -170,6 +170,15 @@ var _ = Describe("Property Validators", func() {
 		})
 	})
 
+	Describe("ExpectedValueValidator", func() {
+		It("accepts expected value", func() {
+			Expect(ExpectedValueValidator("foo")("foo")).To(Succeed())
+		})
+
+		It("rejects unexpected value", func() {
+			Expect(ExpectedValueValidator("foo")("bar")).ToNot(Succeed())
+		})
+	})
 })
 
 func generateCACert() (string, error) {
