@@ -8,31 +8,37 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/go-logr/logr"
 	"golang.org/x/oauth2/google"
-	"golang.org/x/oauth2/jwt"
+	"golang.org/x/oauth2/google/externalaccount"
 	googledns "google.golang.org/api/dns/v1"
 	"google.golang.org/api/option"
 	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/yaml"
 
+	"github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity/gcp"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
+const (
+	// ServiceAccountJSONField is the field in a secret where the service account JSON is stored at.
+	ServiceAccountJSONField = "serviceaccount.json"
+)
+
 type handler struct {
 	provider.DefaultDNSHandler
 	config    provider.DNSHandlerConfig
-	jwtConfig *jwt.Config
-	info      lightCredentialsFile
-	client    *http.Client
+	projectID string
 	service   *googledns.Service
 }
 
@@ -61,30 +67,50 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		config:            *c,
 	}
 	scopes := []string{
-		"https://www.googleapis.com/auth/ndev.clouddns.readwrite",
+		googledns.NdevClouddnsReadwriteScope,
 	}
-
-	serviceAccountJSON := h.config.Properties["serviceaccount.json"]
-	if serviceAccountJSON == "" {
-		return nil, fmt.Errorf("'serviceaccount.json' required in secret")
-	}
-
-	h.info, err = validateServiceAccountJSON([]byte(serviceAccountJSON))
-	if err != nil {
-		return nil, err
-	}
-
-	c.Log.Info("using client for", "serviceAccount", h.info.ClientEmail, "projectID", h.info.ProjectID, "privateKeyID", h.info.PrivateKeyID)
-
-	h.jwtConfig, err = google.JWTConfigFromJSON([]byte(serviceAccountJSON), scopes...)
 
 	ctx := context.Background()
-	if err != nil {
-		return nil, fmt.Errorf("serviceaccount is invalid: %w", err)
-	}
-	h.client = h.jwtConfig.Client(ctx)
 
-	h.service, err = googledns.NewService(ctx, option.WithHTTPClient(h.client))
+	var clientOptions []option.ClientOption
+	// Note: Incompatible with "WithHTTPClient"
+	UAOption := option.WithUserAgent("dns-controller-manager")
+	if c.GetProperty(securityv1alpha1constants.LabelWorkloadIdentityProvider) == "gcp" {
+		// use workload identity credentials
+		c.Log.Info("using workload identity credentials")
+		externalAccountConfig, projectID, err := extractExternalAccountCredentials(c, scopes...)
+		if err != nil {
+			return nil, err
+		}
+		h.projectID = projectID
+		c.Log.Info("using client for", "projectID", projectID)
+
+		ts, err := externalaccount.NewTokenSource(ctx, externalAccountConfig)
+		if err != nil {
+			return nil, err
+		}
+		clientOptions = []option.ClientOption{option.WithTokenSource(ts), UAOption}
+	} else {
+		serviceAccountJSON := h.config.Properties[ServiceAccountJSONField]
+		if serviceAccountJSON == "" {
+			return nil, fmt.Errorf("'%s' required in secret", ServiceAccountJSONField)
+		}
+
+		info, err := validateServiceAccountJSON([]byte(serviceAccountJSON))
+		if err != nil {
+			return nil, err
+		}
+		c.Log.Info("using client for", "serviceAccount", info.ClientEmail, "projectID", info.ProjectID, "privateKeyID", info.PrivateKeyID)
+		h.projectID = info.ProjectID
+
+		jwtConfig, err := google.JWTConfigFromJSON([]byte(serviceAccountJSON), scopes...)
+		if err != nil {
+			return nil, fmt.Errorf("serviceaccount is invalid: %s", err)
+		}
+		clientOptions = []option.ClientOption{option.WithTokenSource(jwtConfig.TokenSource(ctx)), UAOption}
+	}
+
+	h.service, err = googledns.NewService(ctx, clientOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +148,7 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 	}
 
 	h.config.RateLimiter.Accept()
-	if err := h.service.ManagedZones.List(h.info.ProjectID).Pages(ctx, f); err != nil {
+	if err := h.service.ManagedZones.List(h.projectID).Pages(ctx, f); err != nil {
 		return nil, err
 	}
 
@@ -220,7 +246,7 @@ func (h *handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZo
 }
 
 func (h *handler) makeZoneID(name string) string {
-	return fmt.Sprintf("%s/%s", h.info.ProjectID, name)
+	return fmt.Sprintf("%s/%s", h.projectID, name)
 }
 
 func (h *handler) getResourceRecordSet(project, managedZone, name string, rtype string) (*googledns.ResourceRecordSet, error) {
@@ -236,7 +262,7 @@ func (h *handler) getLogFromContext(ctx context.Context) (logr.Logger, error) {
 	}
 	log = log.WithValues(
 		"provider", h.ProviderType(),
-		"projectID", h.info.ProjectID,
+		"projectID", h.projectID,
 	)
 	return log, nil
 }
@@ -313,4 +339,60 @@ func buildRecordSetGeoLocation(r *googledns.ResourceRecordSet, setName dns.DNSSe
 		return rs, nil
 	}
 	return nil, nil
+}
+
+func extractExternalAccountCredentials(config *provider.DNSHandlerConfig, scopes ...string) (externalaccount.Config, string, error) {
+	configData, err := config.GetRequiredProperty(securityv1alpha1constants.DataKeyConfig)
+	if err != nil {
+		return externalaccount.Config{}, "", err
+	}
+	token, err := config.GetRequiredProperty(securityv1alpha1constants.DataKeyToken)
+	if err != nil {
+		return externalaccount.Config{}, "", err
+	}
+
+	workloadIdentityConfig, err := workloadIdentityConfigFromBytes(config, []byte(configData))
+	if err != nil {
+		return externalaccount.Config{}, "", err
+	}
+
+	externalAccountConfig, err := workloadIdentityConfig.ExtractExternalAccountCredentials(token, scopes...)
+	return externalAccountConfig, workloadIdentityConfig.ProjectID, err
+}
+
+func workloadIdentityConfigFromBytes(config *provider.DNSHandlerConfig, configData []byte) (*gcp.WorkloadIdentityConfig, error) {
+	if err := initialiseAllowedURLs(config.GlobalConfig.Controllers.DNSProvider.GCPWorkloadIdentityConfig); err != nil {
+		return nil, err
+	}
+	cfg := &gcp.WorkloadIdentityConfig{}
+	if err := yaml.Unmarshal([]byte(configData), cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal workload identity config: %w", err)
+	}
+	if err := gcp.ValidateWorkloadIdentityConfig(cfg, field.NewPath("config"), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps).ToAggregate(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
+}
+
+var (
+	allowedTokenURLs                             []string
+	allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp
+)
+
+func initialiseAllowedURLs(cfg config.GCPWorkloadIdentityConfig) error {
+	if allowedTokenURLs != nil && allowedServiceAccountImpersonationURLRegExps != nil {
+		return nil
+	}
+	allowedTokenURLs = cfg.AllowedTokenURLs
+
+	var regexps []*regexp.Regexp
+	for _, expr := range cfg.AllowedServiceAccountImpersonationURLRegExps {
+		r, err := regexp.Compile(expr)
+		if err != nil {
+			return fmt.Errorf("failed to compile allowed service account impersonation URL regexp '%s': %w", expr, err)
+		}
+		regexps = append(regexps, r)
+	}
+	allowedServiceAccountImpersonationURLRegExps = regexps
+	return nil
 }

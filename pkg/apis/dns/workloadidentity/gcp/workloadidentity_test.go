@@ -1,32 +1,31 @@
-// SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Gardener contributors
+// SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package workloadidentity_test
+package gcp_test
 
 import (
+	"regexp"
+
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	. "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity"
+	"github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity/gcp"
 )
 
 var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	var (
-		workloadIdentityConfig *GCPWorkloadIdentityConfig
+		workloadIdentityConfig                       *gcp.WorkloadIdentityConfig
+		allowedTokenURLs                             = []string{"https://sts.googleapis.com/v1/token"}
+		allowedServiceAccountImpersonationURLRegExps = []*regexp.Regexp{regexp.MustCompile(`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`)}
 	)
 
 	BeforeEach(func() {
-		workloadIdentityConfig = &GCPWorkloadIdentityConfig{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "gcp.provider.extensions.gardener.cloud/v1alpha1",
-				Kind:       "WorkloadIdentityConfig",
-			},
+		workloadIdentityConfig = &gcp.WorkloadIdentityConfig{
 			ProjectID: "my-project",
 			CredentialsConfig: &runtime.RawExtension{
 				Raw: []byte(`
@@ -35,13 +34,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	"type": "external_account",
 	"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
 	"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
-	"token_url": "https://sts.googleapis.com/v1/token",
-	"credential_source": {
-		"file": "/abc/cloudprovider/xyz",
-		"abc": {
-		  "foo": "text"
-		}
-	}
+	"token_url": "https://sts.googleapis.com/v1/token"
 }
 `),
 			},
@@ -49,16 +42,13 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	})
 
 	It("should validate the config successfully", func() {
-		Expect(ValidateGCPWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath(""))).To(BeEmpty())
+		Expect(gcp.ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath(""), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)).To(BeEmpty())
 	})
 
 	It("should contain all expected validation errors", func() {
-		workloadIdentityConfig.Kind = ""
-		workloadIdentityConfig.APIVersion = ""
 		workloadIdentityConfig.ProjectID = "_invalid"
 		workloadIdentityConfig.CredentialsConfig.Raw = []byte(`
 {
-	"extra": "field",
 	"type": "not_external_account",
 	"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
 	"subject_token_type": "invalid",
@@ -72,20 +62,8 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	}
 }
 `)
-		errorList := ValidateGCPWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"))
+		errorList := gcp.ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"), []string{"https://foo.bar.real.api/token"}, []*regexp.Regexp{regexp.MustCompile("https://does-not-match")})
 		Expect(errorList).To(ConsistOfFields(
-			Fields{
-				"Type":     Equal(field.ErrorTypeInvalid),
-				"Field":    Equal("providerConfig.apiVersion"),
-				"BadValue": Equal(""),
-				"Detail":   Equal("apiVersion must be 'gcp.provider.extensions.gardener.cloud/v1alpha1'"),
-			},
-			Fields{
-				"Type":     Equal(field.ErrorTypeInvalid),
-				"Field":    Equal("providerConfig.kind"),
-				"BadValue": Equal(""),
-				"Detail":   Equal("kind must be 'WorkloadIdentityConfig'"),
-			},
 			Fields{
 				"Type":   Equal(field.ErrorTypeForbidden),
 				"Field":  Equal("providerConfig.credentialsConfig"),
@@ -120,23 +98,49 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 				"Detail":   Equal("should start with https://"),
 			},
 			Fields{
+				"Type":   Equal(field.ErrorTypeForbidden),
+				"Field":  Equal("providerConfig.credentialsConfig.token_url"),
+				"Detail": Equal("allowed values are [\"https://foo.bar.real.api/token\"]"),
+			},
+			Fields{
 				"Type":     Equal(field.ErrorTypeInvalid),
 				"Field":    Equal("providerConfig.credentialsConfig.service_account_impersonation_url"),
 				"BadValue": Equal("http://insecure"),
 				"Detail":   Equal("should start with https://"),
+			},
+			Fields{
+				"Type":     Equal(field.ErrorTypeInvalid),
+				"Field":    Equal("providerConfig.credentialsConfig.service_account_impersonation_url"),
+				"BadValue": Equal("http://insecure"),
+				"Detail":   Equal("should match one of the allowed regular expressions: https://does-not-match"),
+			},
+		))
+	})
+
+	It("should return an validation error if CredentialsConfig is not set", func() {
+		workloadIdentityConfig.ProjectID = "my-project"
+		workloadIdentityConfig.CredentialsConfig = nil
+
+		errorList := gcp.ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"), nil, nil)
+		Expect(errorList).To(ConsistOfFields(
+			Fields{
+				"Type":     Equal(field.ErrorTypeRequired),
+				"Field":    Equal("providerConfig.credentialsConfig"),
+				"BadValue": Equal(""),
+				"Detail":   Equal("is required"),
 			},
 		))
 	})
 
 	It("should validate the config successfully during update", func() {
 		newConfig := workloadIdentityConfig.DeepCopy()
-		Expect(ValidateGCPWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath(""))).To(BeEmpty())
+		Expect(gcp.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath(""), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)).To(BeEmpty())
 	})
 
-	It("should not allow changing the projectID during update", func() {
+	It("should not allow chaning the projectID during update", func() {
 		newConfig := workloadIdentityConfig.DeepCopy()
 		newConfig.ProjectID = "valid123"
-		errorList := ValidateGCPWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"))
+		errorList := gcp.ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)
 
 		Expect(errorList).To(ConsistOfFields(
 			Fields{

@@ -151,6 +151,8 @@ var _ = Describe("Defaults", func() {
 					}))
 					Expect(obj.DefaultTTL).To(Equal(ptr.To[int64](300)))
 					Expect(obj.ZoneCacheTTL).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Minute})))
+					Expect(obj.GCPWorkloadIdentityConfig.AllowedTokenURLs).To(Equal([]string{"https://sts.googleapis.com/v1/token"}))
+					Expect(obj.GCPWorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps).To(Equal([]string{`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`}))
 				})
 
 				It("should not overwrite existing values", func() {
