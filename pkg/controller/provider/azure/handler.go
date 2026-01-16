@@ -48,24 +48,22 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		return nil, err
 	}
 
-	zonesClient, err := armdns.NewZonesClient(subscriptionID, tc, opts)
+	h.zonesClient, err = armdns.NewZonesClient(subscriptionID, tc, opts)
 	if err != nil {
 		return nil, err
 	}
-	recordsClient, err := armdns.NewRecordSetsClient(subscriptionID, tc, opts)
+	h.recordsClient, err = armdns.NewRecordSetsClient(subscriptionID, tc, opts)
 	if err != nil {
 		return nil, err
 	}
 
 	// dummy call to check authentication
 	h.config.RateLimiter.Accept()
-	_, err = zonesClient.NewListPager(&armdns.ZonesClientListOptions{Top: ptr.To[int32](1)}).NextPage(h.ctx)
-	if err != nil {
-		return nil, perrs.WrapAsHandlerError(err, "Authentication test to Azure with client credentials failed. Please check secret for DNSProvider.")
+	if _, err := h.zonesClient.NewListPager(&armdns.ZonesClientListOptions{Top: ptr.To[int32](1)}).NextPage(h.ctx); err != nil {
+		h.config.Logger.Errorf("authentication test failed: %s", err.Error())
+		err = perrs.WrapAsHandlerError(utils.StableError(err), "Authentication test to Azure with client credentials failed. Please check secret for DNSProvider.")
+		return nil, err
 	}
-
-	h.zonesClient = zonesClient
-	h.recordsClient = recordsClient
 
 	h.cache, err = c.ZoneCacheFactory.CreateZoneCache(provider.CacheZoneState, c.Metrics, h.getZones, h.getZoneState)
 	if err != nil {
@@ -97,7 +95,7 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 		page, err := pager.NextPage(h.ctx)
 		if err != nil {
 			if err != nil {
-				return nil, perrs.WrapAsHandlerError(err, "Listing DNS zones failed")
+				return nil, perrs.WrapAsHandlerError(utils.StableError(err), "Listing DNS zones failed")
 			}
 		}
 
