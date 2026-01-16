@@ -5,11 +5,13 @@
 package workloadidentity
 
 import (
+	"fmt"
 	"regexp"
 
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -86,4 +88,16 @@ func ValidateAzureWorkloadIdentityConfigUpdate(oldConfig, newConfig *AzureWorklo
 	allErrs = append(allErrs, ValidateAzureWorkloadIdentityConfig(newConfig, fldPath)...)
 
 	return allErrs
+}
+
+// GetAzureWorkloadIdentityConfig unmarshals and validates the given azure workload identity configuration data.
+func GetAzureWorkloadIdentityConfig(configData []byte) (*AzureWorkloadIdentityConfig, error) {
+	cfg := &AzureWorkloadIdentityConfig{}
+	if err := yaml.Unmarshal([]byte(configData), cfg); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal workload identity config: %w", err)
+	}
+	if err := ValidateAzureWorkloadIdentityConfig(cfg, field.NewPath("config")).ToAggregate(); err != nil {
+		return nil, err
+	}
+	return cfg, nil
 }

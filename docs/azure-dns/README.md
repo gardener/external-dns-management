@@ -39,3 +39,14 @@ data:
   #clientID: ...
   #clientSecret: ...
 ``` 
+
+## Using Workload Identity - Trust Based Authentication
+
+In the context of [[GEP-26] Workload Identity - Trust Based Authentication](https://github.com/gardener/gardener/issues/9586),
+when the dns-controller-manager is deployed on a Gardener seed, you can also use
+workload identity federation to authenticate to Azure without the need to manage long-lived access keys.
+In this case, a `Secret` containing the data fields `token` and `config` is expected.
+This secret is not created manually. Instead, Gardener will automatically create and update
+it from a `WorkloadIdentity` resource in the project namespace.
+
+Please see the documentation of the Gardener extension `shoot-dns-service` for more details.

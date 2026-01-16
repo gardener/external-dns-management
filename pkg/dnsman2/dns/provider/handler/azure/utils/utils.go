@@ -5,6 +5,7 @@
 package utils
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"math"
@@ -19,7 +20,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 
+	"github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/azure/constants"
@@ -68,30 +71,53 @@ func SplitZoneID(zoneID string) (string, string) {
 	return parts[0], parts[1]
 }
 
-// GetSubscriptionIdAndCredentials retrieves the subscription ID, client ID, client secret, and tenant ID from the config and uses them to create a TokenCredential.
-// See also: https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization
-func GetSubscriptionIdAndCredentials(c *provider.DNSHandlerConfig) (subscriptionID string, tokenCredential azcore.TokenCredential, err error) {
-	subscriptionID, err = c.GetRequiredProperty(constants.PropertySubscriptionID, constants.PropertySubscriptionIDAlias)
+// GetSubscriptionIdAndCredentials extracts credentials from config
+func GetSubscriptionIdAndCredentials(c *provider.DNSHandlerConfig) (string, azcore.TokenCredential, error) {
+	if c.GetProperty(securityv1alpha1constants.LabelWorkloadIdentityProvider) == "azure" {
+		token, err := c.GetRequiredProperty(securityv1alpha1constants.DataKeyToken)
+		if err != nil {
+			return "", nil, err
+		}
+		configData, err := c.GetRequiredProperty(securityv1alpha1constants.DataKeyConfig)
+		if err != nil {
+			return "", nil, err
+		}
+		wlConfig, err := workloadidentity.GetAzureWorkloadIdentityConfig([]byte(configData))
+		if err != nil {
+			return "", nil, fmt.Errorf("invalid workload identity config: %w", err)
+		}
+		tokenRetriever := func(_ context.Context) (string, error) {
+			return token, nil
+		}
+		cred, err := azidentity.NewClientAssertionCredential(wlConfig.TenantID, wlConfig.ClientID, tokenRetriever, nil)
+		if err != nil {
+			return "", nil, fmt.Errorf("creating Azure authorizer with workload identity failed: %w", err)
+		}
+		return wlConfig.SubscriptionID, cred, nil
+	}
+
+	subscriptionID, err := c.GetRequiredProperty(constants.PropertySubscriptionID, constants.PropertySubscriptionIDAlias)
 	if err != nil {
-		return
+		return "", nil, err
 	}
 	clientID, err := c.GetRequiredProperty(constants.PropertyClientID, constants.PropertyClientIDAlias)
 	if err != nil {
-		return
+		return "", nil, err
 	}
 	clientSecret, err := c.GetRequiredProperty(constants.PropertyClientSecret, constants.PropertyClientSecretAlias)
 	if err != nil {
-		return
+		return "", nil, err
 	}
 	tenantID, err := c.GetRequiredProperty(constants.PropertyTenantID, constants.PropertyTenantIDAlias)
 	if err != nil {
-		return
+		return "", nil, err
 	}
-	tokenCredential, err = azidentity.NewClientSecretCredential(tenantID, clientID, clientSecret, nil)
+	tokenCredential, err := azidentity.NewClientSecretCredential(tenantID, clientID, clientSecret, nil)
 	if err != nil {
 		err = perrs.WrapAsHandlerError(err, "creating Azure authorizer with client credentials failed")
+		return "", nil, err
 	}
-	return
+	return subscriptionID, tokenCredential, nil
 }
 
 // GetDefaultAzureClientOpts returns default Azure client options with retry and transport settings.
@@ -114,6 +140,17 @@ func GetDefaultAzureClientOpts(c *provider.DNSHandlerConfig) (*arm.ClientOptions
 			Cloud: *cloudConf,
 		},
 	}, nil
+}
+
+// StableError converts an Azure SDK error into a stable error message without correlation ID and timestamps
+// to avoid endless status update/reconcile loop.
+func StableError(err error) error {
+	msg := err.Error()
+	if index := strings.Index(msg, "\n------"); index != -1 {
+		msg = msg[:index]
+		return fmt.Errorf("%s - details see log", msg)
+	}
+	return err
 }
 
 func getAzureCloudConfiguration(c *provider.DNSHandlerConfig) (*cloud.Configuration, error) {
