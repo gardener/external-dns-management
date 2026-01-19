@@ -139,10 +139,10 @@ func (a *access) NewRecord(fqdn, rtype, value string, _ provider.DNSHostedZone, 
 }
 
 func (a *access) GetRecordList(ctx context.Context, dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordList, []*dns.RoutingPolicy, error) {
-	rs := raw.RecordList{}
+	rl := raw.RecordList{}
 	consume := func(record cloudflaredns.RecordResponse) (bool, error) {
 		r := (*Record)(&record)
-		rs = append(rs, r)
+		rl = append(rl, r)
 		return true, nil
 	}
 
@@ -156,7 +156,14 @@ func (a *access) GetRecordList(ctx context.Context, dnsName, rtype string, zone 
 	if err != nil {
 		return nil, nil, err
 	}
-	return rs, nil, nil
+
+	routingPoliciesPerRecord := make([]*dns.RoutingPolicy, len(rl))
+	for i, r := range rl {
+		if r.GetSetIdentifier() == SetIdentifierProxied {
+			routingPoliciesPerRecord[i] = dns.NewRoutingPolicy(dns.RoutingPolicyProxied)
+		}
+	}
+	return rl, routingPoliciesPerRecord, nil
 }
 
 type bodyunion interface {
@@ -175,6 +182,7 @@ func toRecordParamsBody(r raw.Record) (bodyunion, error) {
 			Type:    cloudflare.F(cloudflaredns.ARecordTypeA),
 			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
 			Content: cloudflare.F(r.GetValue()),
+			Proxied: cloudflare.F(r.(*Record).Proxied),
 		}, nil
 	case string(dns.TypeAAAA):
 		return cloudflaredns.AAAARecordParam{
@@ -182,6 +190,7 @@ func toRecordParamsBody(r raw.Record) (bodyunion, error) {
 			Type:    cloudflare.F(cloudflaredns.AAAARecordTypeAAAA),
 			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
 			Content: cloudflare.F(r.GetValue()),
+			Proxied: cloudflare.F(r.(*Record).Proxied),
 		}, nil
 	case string(dns.TypeCNAME):
 		return cloudflaredns.CNAMERecordParam{
@@ -189,6 +198,7 @@ func toRecordParamsBody(r raw.Record) (bodyunion, error) {
 			Type:    cloudflare.F(cloudflaredns.CNAMERecordTypeCNAME),
 			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
 			Content: cloudflare.F(r.GetValue()),
+			Proxied: cloudflare.F(r.(*Record).Proxied),
 		}, nil
 	case string(dns.TypeTXT):
 		return cloudflaredns.TXTRecordParam{
@@ -196,6 +206,7 @@ func toRecordParamsBody(r raw.Record) (bodyunion, error) {
 			Type:    cloudflare.F(cloudflaredns.TXTRecordTypeTXT),
 			TTL:     cloudflare.F(cloudflaredns.TTL(ttl)),
 			Content: cloudflare.F(r.GetValue()),
+			Proxied: cloudflare.F(r.(*Record).Proxied),
 		}, nil
 	default:
 		return nil, fmt.Errorf("record type %q not supported", r.GetType())

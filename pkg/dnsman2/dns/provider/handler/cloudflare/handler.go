@@ -106,15 +106,93 @@ func (h *handler) isBlockedZone(zoneID string) bool {
 }
 
 // GetCustomQueryDNSFunc returns a custom DNS query function for the Cloudflare DNS provider.
-func (h *handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, factory utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
+func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
 	defaultQueryFunc, err := factory()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create default query function: %w", err)
 	}
+	// routing policies with set identifiers are not supported by the default query function
 	return func(ctx context.Context, _ dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-		queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
-		return queryResult.RecordSet, queryResult.Err
+		switch {
+		case setName.SetIdentifier == SetIdentifierProxied:
+			return h.queryDNS(ctx, zone, setName, recordType)
+		case setName.SetIdentifier != "":
+			return nil, fmt.Errorf("unsupported set identifier: %s", setName.SetIdentifier)
+		default:
+			queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
+			return queryResult.RecordSet, queryResult.Err
+		}
 	}, nil
+}
+
+// queryDNS queries the DNS provider for the given DNS name and record type.
+func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+	domainName := dns.NormalizeDomainName(setName.DNSName)
+	rl, policies, err := h.access.GetRecordList(ctx, domainName, string(recordType), zone)
+	if err != nil {
+		return nil, fmt.Errorf("queryDNS failed: %w", err)
+	}
+	if len(rl) == 0 {
+		return nil, nil
+	}
+	var (
+		records []*dns.Record
+		ttl     int64
+		policy  *dns.RoutingPolicy
+	)
+	for i, r := range rl {
+		if r.GetSetIdentifier() != setName.SetIdentifier {
+			continue
+		}
+		ttl = r.GetTTL()
+		policy = policies[i]
+		records = append(records, &dns.Record{
+			Value: r.GetValue(),
+		})
+	}
+	if len(records) == 0 {
+		return nil, nil
+	}
+
+	return &dns.RecordSet{
+		Type:          recordType,
+		TTL:           ttl,
+		Records:       records,
+		RoutingPolicy: policy,
+	}, nil
+}
+
+func checkValidRoutingPolicy(name dns.DNSSetName, req *provider.ChangeRequestUpdate) error {
+	if req.Old != nil {
+		if err := checkRoutingPolicyForDNSSet(name, req.Old); err != nil {
+			return err
+		}
+	}
+	if req.New != nil {
+		if err := checkRoutingPolicyForDNSSet(name, req.New); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func checkRoutingPolicyForDNSSet(name dns.DNSSetName, rs *dns.RecordSet) error {
+	if name.SetIdentifier == "" && rs.RoutingPolicy == nil {
+		return nil
+	}
+	if name.SetIdentifier == "" {
+		return fmt.Errorf("missing set identifier")
+	}
+	if rs.RoutingPolicy == nil {
+		return fmt.Errorf("missing routing policy")
+	}
+	if rs.RoutingPolicy.Type != dns.RoutingPolicyProxied {
+		return fmt.Errorf("unsupported routing policy: %s (supported is %s)", rs.RoutingPolicy.Type, dns.RoutingPolicyProxied)
+	}
+	if name.SetIdentifier != SetIdentifierProxied {
+		return fmt.Errorf("unsupported set identifier: %s (supported is %s)", name.SetIdentifier, SetIdentifierProxied)
+	}
+	return nil
 }
 
 func (h *handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZone, reqs provider.ChangeRequests) error {
@@ -123,5 +201,5 @@ func (h *handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZo
 		return err
 	}
 
-	return raw.ExecuteRequests(ctx, log, h.access, zone, reqs, nil)
+	return raw.ExecuteRequests(ctx, log, h.access, zone, reqs, checkValidRoutingPolicy)
 }

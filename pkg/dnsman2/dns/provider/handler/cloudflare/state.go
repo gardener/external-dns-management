@@ -11,6 +11,9 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/raw"
 )
 
+// SetIdentifierProxied is the set identifier used for proxied records in Cloudflare.
+const SetIdentifierProxied = "proxied"
+
 // Record represents a DNS record in Cloudflare.
 type Record cloudflaredns.RecordResponse
 
@@ -25,8 +28,13 @@ func (r *Record) GetId() string { return r.ID }
 // GetDNSName returns the DNS name of the record.
 func (r *Record) GetDNSName() string { return r.Name }
 
-// GetSetIdentifier returns the set identifier, which is not used in Cloudflare.
-func (r *Record) GetSetIdentifier() string { return "" }
+// GetSetIdentifier returns the set identifier, returning "proxied" if the record is proxied, otherwise an empty string.
+func (r *Record) GetSetIdentifier() string {
+	if r.Proxied {
+		return SetIdentifierProxied
+	}
+	return ""
+}
 
 // GetValue returns the content of the record, ensuring TXT records are quoted.
 func (r *Record) GetValue() string {
@@ -45,5 +53,12 @@ func (r *Record) SetTTL(ttl int64) { r.TTL = cloudflaredns.TTL(ttl) }
 // Clone creates a copy of the record.
 func (r *Record) Clone() raw.Record { n := *r; return &n }
 
-// SetRoutingPolicy is a no-op for Cloudflare as it does not support routing policies.
-func (r *Record) SetRoutingPolicy(string, *dns.RoutingPolicy) {}
+// SetRoutingPolicy is used to set the routing policy of the record based on the set identifier.
+// Only if the set identifier is "proxied" and the policy type is "proxied", the record will be marked as proxied.
+func (r *Record) SetRoutingPolicy(setIdentifier string, policy *dns.RoutingPolicy) {
+	if setIdentifier == SetIdentifierProxied && policy != nil && policy.Type == dns.RoutingPolicyProxied {
+		r.Proxied = true
+	} else {
+		r.Proxied = false
+	}
+}
