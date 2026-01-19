@@ -59,6 +59,9 @@ func (u *EntryStatusUpdater) updateStatus(modifier func(status *v1alpha1.DNSEntr
 
 // AddFinalizer adds the DNS finalizer to the DNSEntry resource.
 func (u *EntryStatusUpdater) AddFinalizer() *ReconcileResult {
+	if u.Entry.DeletionTimestamp != nil {
+		return nil
+	}
 	if err := controllerutils.AddFinalizers(u.Ctx, u.Client, u.Entry, dns.FinalizerCompound); err != nil {
 		u.Log.Error(err, "failed to add finalizer")
 		return &ReconcileResult{Err: err}
