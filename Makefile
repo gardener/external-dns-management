@@ -105,7 +105,7 @@ generate: $(VGOPATH) $(CONTROLLER_GEN) $(HELM) $(YQ)
 	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) VGOPATH=$(VGOPATH) REPO_ROOT=$(REPO_ROOT) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN)) go generate ./pkg/dnsman2/apis/...
 	$(MAKE) format
 	$(MAKE) tidy
-	@./hack/generate-renovate-ignore-deps.sh
+	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) ./hack/generate-renovate-ignore-deps.sh
 
 .PHONY: alltests
 alltests: $(GINKGO)
