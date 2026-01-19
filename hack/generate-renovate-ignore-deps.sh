@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+set -euo pipefail
 
 # Takes the content of a go.mod file and an array to add the extracted dependencies to.
 extract_dependencies() {
@@ -20,7 +21,7 @@ echo "🛜 Downloading the latest 'go.mod' from gardener/gardener..."
 
 # Only the dependencies in a `go.mod` file are indented with a tab.
 local_go_mod=$(grep -P '^\t' go.mod) # Uses Perl-style regular expressions to match a tab at the beginning of a line.
-gardener_go_mod=$(curl -s https://raw.githubusercontent.com/gardener/gardener/refs/heads/master/go.mod | grep -P '^\t')
+gardener_go_mod=$(cat $GARDENER_HACK_DIR/../go.mod | grep -P '^\t')
 
 local_dependencies=()
 gardener_dependencies=()
