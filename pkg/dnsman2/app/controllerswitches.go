@@ -21,6 +21,7 @@ import (
 	sourcednsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/ingress"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
@@ -107,6 +108,10 @@ func AddSourceDNSEntryController(ctx context.Context, mgr manager.Manager) error
 	appCtx, err := appcontext.GetAppContextValue(ctx)
 	if err != nil {
 		return err
+	}
+	if mgr == appCtx.ControlPlane && dns.EquivalentClass(appCtx.Config.Class, ptr.Deref(appCtx.Config.Controllers.Source.SourceClass, "")) {
+		appCtx.Log.Info("Skipping addition of DNSEntry source controller in single cluster deployment")
+		return nil
 	}
 	return common.NewSourceReconciler(&sourcednsentry.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
 }
