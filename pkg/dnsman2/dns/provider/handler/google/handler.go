@@ -360,39 +360,17 @@ func extractExternalAccountCredentials(config *provider.DNSHandlerConfig, scopes
 	return externalAccountConfig, workloadIdentityConfig.ProjectID, err
 }
 
-func workloadIdentityConfigFromBytes(config *provider.DNSHandlerConfig, configData []byte) (*gcp.WorkloadIdentityConfig, error) {
-	if err := initialiseAllowedURLs(config.GlobalConfig.Controllers.DNSProvider.GCPWorkloadIdentityConfig); err != nil {
+func workloadIdentityConfigFromBytes(c *provider.DNSHandlerConfig, configData []byte) (*gcp.WorkloadIdentityConfig, error) {
+	internalConfig, err := config.NewInternalGCPWorkloadIdentityConfig(c.GlobalConfig.Controllers.DNSProvider.GCPWorkloadIdentityConfig)
+	if err != nil {
 		return nil, err
 	}
 	cfg := &gcp.WorkloadIdentityConfig{}
 	if err := yaml.Unmarshal([]byte(configData), cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal workload identity config: %w", err)
 	}
-	if err := gcp.ValidateWorkloadIdentityConfig(cfg, field.NewPath("config"), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps).ToAggregate(); err != nil {
+	if err := gcp.ValidateWorkloadIdentityConfig(cfg, field.NewPath("config"), internalConfig.AllowedTokenURLs, internalConfig.AllowedServiceAccountImpersonationURLRegExps).ToAggregate(); err != nil {
 		return nil, err
 	}
 	return cfg, nil
-}
-
-var (
-	allowedTokenURLs                             []string
-	allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp
-)
-
-func initialiseAllowedURLs(cfg config.GCPWorkloadIdentityConfig) error {
-	if allowedTokenURLs != nil && allowedServiceAccountImpersonationURLRegExps != nil {
-		return nil
-	}
-	allowedTokenURLs = cfg.AllowedTokenURLs
-
-	var regexps []*regexp.Regexp
-	for _, expr := range cfg.AllowedServiceAccountImpersonationURLRegExps {
-		r, err := regexp.Compile(expr)
-		if err != nil {
-			return fmt.Errorf("failed to compile allowed service account impersonation URL regexp '%s': %w", expr, err)
-		}
-		regexps = append(regexps, r)
-	}
-	allowedServiceAccountImpersonationURLRegExps = regexps
-	return nil
 }
