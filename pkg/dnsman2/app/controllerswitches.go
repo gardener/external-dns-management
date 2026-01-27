@@ -17,6 +17,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 	dnsanntation "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsannotation"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/crdwatch"
 	sourcednsentry "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsentry"
 	sourcednsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
 	gatewayapiv1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gatewayapi/v1"
@@ -41,6 +42,7 @@ func ControllerSwitches() *cmd.SwitchOptions {
 		cmd.Switch(sourcednsentry.ControllerName, AddSourceDNSEntryController),
 		cmd.Switch(gatewayapiv1beta1.ControllerName, AddSourceGatewayAPIV1Beta1Controller),
 		cmd.Switch(gatewayapiv1.ControllerName, AddSourceGatewayAPIV1Controller),
+		cmd.Switch(crdwatch.ControllerName, AddSourceCRDWatchController),
 	)
 }
 
@@ -117,7 +119,6 @@ func AddSourceDNSEntryController(ctx context.Context, mgr manager.Manager) error
 		appCtx.Log.Info("Skipping addition of DNSEntry source controller in single cluster deployment")
 		return nil
 	}
-	return common.NewSourceReconciler(&sourcednsentry.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
 	return common.NewSourceReconciler(&sourcednsentry.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, nil)
 }
 
@@ -149,6 +150,15 @@ func AddSourceGatewayAPIV1Controller(ctx context.Context, mgr manager.Manager) e
 		return err
 	}
 	return common.NewSourceReconciler(a).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, a.WatchHTTPRoutes)
+}
+
+// AddSourceCRDWatchController adds the CRD watch source controller to the manager.
+func AddSourceCRDWatchController(ctx context.Context, mgr manager.Manager) error {
+	appCtx, err := appcontext.GetAppContextValue(ctx)
+	if err != nil {
+		return err
+	}
+	return (&crdwatch.Reconciler{}).AddToManager(mgr, appCtx.Config)
 }
 
 func getStandardDNSHandlerFactory(cfg config.DNSProviderControllerConfig) provider.DNSHandlerFactory {
