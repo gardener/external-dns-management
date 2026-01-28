@@ -68,4 +68,7 @@ const (
 	// in annotation `loadbalancer.openstack.org/hostname` and `dns.gardener.cloud/dnsnames`
 	// see https://github.com/kubernetes/cloud-provider-openstack/blob/master/docs/openstack-cloud-controller-manager/expose-applications-using-loadbalancer-type-service.md#service-annotations
 	AnnotationOpenStackLoadBalancerAddress = AnnotationOpenStackLoadBalancerGroup + "/load-balancer-address"
+
+	// RoleARN is a constant for the key in a provider secret that points to the role which should be assumed.
+	RoleARN = "roleARN"
 )

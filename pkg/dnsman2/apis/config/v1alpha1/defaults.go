@@ -129,6 +129,12 @@ func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 	if obj.ZoneCacheTTL == nil {
 		obj.ZoneCacheTTL = &metav1.Duration{Duration: 30 * time.Minute}
 	}
+	if len(obj.GCPWorkloadIdentityConfig.AllowedTokenURLs) == 0 {
+		obj.GCPWorkloadIdentityConfig.AllowedTokenURLs = []string{"https://sts.googleapis.com/v1/token"}
+	}
+	if len(obj.GCPWorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps) == 0 {
+		obj.GCPWorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps = []string{`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`}
+	}
 }
 
 // SetDefaults_DNSEntryControllerConfig sets defaults for the DNSEntryControllerConfig object.

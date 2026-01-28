@@ -128,6 +128,16 @@ type DNSProviderControllerConfig struct {
 	// MigrationMode if true, the controller runs in migration mode and will not add finalizers to secrets.
 	// This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.
 	MigrationMode *bool
+	// GCPWorkloadIdentityConfig is the configuration for GCP workload identity.
+	GCPWorkloadIdentityConfig GCPWorkloadIdentityConfig
+}
+
+// GCPWorkloadIdentityConfig is the configuration for GCP workload identity.
+type GCPWorkloadIdentityConfig struct {
+	// AllowedTokenURLs are the allowed token URLs.
+	AllowedTokenURLs []string
+	// AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.
+	AllowedServiceAccountImpersonationURLRegExps []string
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.

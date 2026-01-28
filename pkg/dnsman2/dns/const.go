@@ -95,6 +95,9 @@ const (
 
 	// AnnotationOwners is the annotation key to specify owners of a resource across namespaces and clusters.
 	AnnotationOwners = "resources.gardener.cloud/owners"
+
+	// RoleARN is a constant for the key in a provider secret that points to the role which should be assumed.
+	RoleARN = "roleARN"
 )
 
 // ClassSourceFinalizer returns the finalizer string for the given DNS class and controller name.

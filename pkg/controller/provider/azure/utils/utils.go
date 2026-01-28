@@ -5,6 +5,7 @@
 package utils
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"math"
@@ -19,7 +20,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 
+	"github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
@@ -67,31 +70,55 @@ func SplitZoneID(zoneid string) (string, string) {
 }
 
 // GetSubscriptionIDAndCredentials extracts credentials from config
-func GetSubscriptionIDAndCredentials(c *provider.DNSHandlerConfig) (subscriptionID string, tc azcore.TokenCredential, err error) {
-	subscriptionID, err = c.GetRequiredProperty("AZURE_SUBSCRIPTION_ID", "subscriptionID")
+func GetSubscriptionIDAndCredentials(c *provider.DNSHandlerConfig) (string, azcore.TokenCredential, error) {
+	if c.GetProperty(securityv1alpha1constants.LabelWorkloadIdentityProvider) == "azure" {
+		token, err := c.GetRequiredProperty(securityv1alpha1constants.DataKeyToken)
+		if err != nil {
+			return "", nil, err
+		}
+		configData, err := c.GetRequiredProperty(securityv1alpha1constants.DataKeyConfig)
+		if err != nil {
+			return "", nil, err
+		}
+		wlConfig, err := workloadidentity.GetAzureWorkloadIdentityConfig([]byte(configData))
+		if err != nil {
+			return "", nil, fmt.Errorf("invalid workload identity config: %w", err)
+		}
+		tokenRetriever := func(_ context.Context) (string, error) {
+			return token, nil
+		}
+		cred, err := azidentity.NewClientAssertionCredential(wlConfig.TenantID, wlConfig.ClientID, tokenRetriever, nil)
+		if err != nil {
+			return "", nil, fmt.Errorf("creating Azure authorizer with workload identity failed: %w", err)
+		}
+		return wlConfig.SubscriptionID, cred, nil
+	}
+
+	subscriptionID, err := c.GetRequiredProperty("AZURE_SUBSCRIPTION_ID", "subscriptionID")
 	if err != nil {
-		return
+		return "", nil, err
 	}
 
 	// see https://docs.microsoft.com/en-us/go/azure/azure-sdk-go-authorization
 	clientID, err := c.GetRequiredProperty("AZURE_CLIENT_ID", "clientID")
 	if err != nil {
-		return
+		return "", nil, err
 	}
 	clientSecret, err := c.GetRequiredProperty("AZURE_CLIENT_SECRET", "clientSecret")
 	if err != nil {
-		return
+		return "", nil, err
 	}
 	tenantID, err := c.GetRequiredProperty("AZURE_TENANT_ID", "tenantID")
 	if err != nil {
-		return
+		return "", nil, err
 	}
 
-	tc, err = azidentity.NewClientSecretCredential(tenantID, clientID, clientSecret, nil)
+	tc, err := azidentity.NewClientSecretCredential(tenantID, clientID, clientSecret, nil)
 	if err != nil {
-		err = perrs.WrapAsHandlerError(err, "Creating Azure authorizer with client credentials failed")
+		err := perrs.WrapAsHandlerError(err, "Creating Azure authorizer with client credentials failed")
+		return "", nil, err
 	}
-	return
+	return subscriptionID, tc, nil
 }
 
 func GetDefaultAzureClientOpts(c *provider.DNSHandlerConfig) (*arm.ClientOptions, error) {
@@ -121,6 +148,17 @@ func GetDefaultAzureClientOpts(c *provider.DNSHandlerConfig) (*arm.ClientOptions
 			Cloud: cloudConf,
 		},
 	}, nil
+}
+
+// StableError converts an Azure SDK error into a stable error message without correlation ID and timestamps
+// to avoid endless status update/reconcile loop.
+func StableError(err error) error {
+	msg := err.Error()
+	if index := strings.Index(msg, "\n------"); index != -1 {
+		msg = msg[:index]
+		return fmt.Errorf("%s - details see log", msg)
+	}
+	return err
 }
 
 func getTransport() *http.Transport {
