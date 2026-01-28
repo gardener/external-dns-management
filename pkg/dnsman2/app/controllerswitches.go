@@ -130,9 +130,13 @@ func AddSourceGatewayAPIV1Beta1Controller(ctx context.Context, mgr manager.Manag
 	}
 
 	a := &gatewayapiv1beta1.Actuator{}
-	if hasCRDs, err := a.HasRelevantCRDs(mgr); err != nil || !hasCRDs {
-		gatewayapiv1beta1.Deactivate()
+	hasCRDs, err := a.HasRelevantCRDs(mgr)
+	if err != nil {
 		return err
+	}
+	if !hasCRDs {
+		gatewayapiv1beta1.Deactivate()
+		return nil
 	}
 	return common.NewSourceReconciler(a).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, a.WatchHTTPRoutes)
 }
