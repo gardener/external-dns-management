@@ -87,7 +87,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		if err != nil {
 			return nil, err
 		}
-		token := c.GetProperty("AWS_SESSION_TOKEN")
+		token := c.GetProperty("AWS_SESSION_TOKEN", "sessionToken")
 		awscfg, err = v2config.LoadDefaultConfig(
 			context.TODO(),
 			v2config.WithRegion(region),
