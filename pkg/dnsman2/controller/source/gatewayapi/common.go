@@ -7,8 +7,10 @@ package gatewayapi
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"k8s.io/utils/ptr"
@@ -91,18 +93,14 @@ func HasRelevantCRDs(mgr manager.Manager, gvk schema.GroupVersionKind) (bool, er
 		return false, err
 	}
 
-	kinds := make(map[string]struct{})
-	for _, resource := range resources.APIResources {
-		kinds[resource.Kind] = struct{}{}
+	for _, requiredKind := range []string{"Gateway", "HTTPRoute"} {
+		if slices.ContainsFunc(resources.APIResources, func(r metav1.APIResource) bool {
+			return r.Kind == requiredKind
+		}) {
+			return true, nil
+		}
 	}
-
-	if _, found := kinds["Gateway"]; !found {
-		return false, nil
-	}
-	if _, found := kinds["HTTPRoute"]; !found {
-		return false, nil
-	}
-	return true, nil
+	return false, nil
 }
 
 func getDNSNames[T client.Object](ctx context.Context, r *common.SourceReconciler[T], gatewayObj client.Object, annotations map[string]string) (*utils.UniqueStrings, error) {
