@@ -53,6 +53,7 @@ func (r *SourceReconciler[SourceObject]) AddToManager(
 	mgr manager.Manager,
 	controlPlaneCluster cluster.Cluster,
 	cfg *config.DNSManagerConfiguration,
+	builderHook func(*builder.Builder) *builder.Builder,
 ) error {
 	r.Config = cfg.Controllers.Source
 	r.FinalizerName = dns.ClassSourceFinalizer(dns.NormalizeClass(config.GetSourceClass(cfg)), r.actuator.FinalizerLocalName())
@@ -66,7 +67,7 @@ func (r *SourceReconciler[SourceObject]) AddToManager(
 		r.Recorder = NewDedupRecorder(mgr.GetEventRecorderFor(r.actuator.ControllerName()+"-controller"), 5*time.Minute)
 	}
 
-	c, err := builder.
+	b := builder.
 		ControllerManagedBy(mgr).
 		Named(r.actuator.ControllerName()).
 		For(
@@ -81,8 +82,11 @@ func (r *SourceReconciler[SourceObject]) AddToManager(
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 2),
 			SkipNameValidation:      cfg.Controllers.SkipNameValidation,
-		}).
-		Build(r)
+		})
+	if builderHook != nil {
+		b = builderHook(b)
+	}
+	c, err := b.Build(r)
 	if err != nil {
 		return err
 	}

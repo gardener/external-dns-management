@@ -28,6 +28,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayapisv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
@@ -219,7 +221,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 
 		By("Adding controllers to manager")
 		controllerSwitches := app.ControllerSwitches()
-		controllerSwitches.Enabled = []string{"dnsprovider", "dnsentry", "service-source", "ingress-source", "dnsentry-source", "dnsprovider-source"}
+		controllerSwitches.Enabled = []string{"dnsprovider", "dnsentry", "service-source", "ingress-source", "dnsentry-source", "dnsprovider-source", "gatewayapiv1beta1-source", "gatewayapiv1-source"}
 		Expect(controllerSwitches.Complete()).To(Succeed())
 		addCtx := appcontext.NewAppContext(ctx, log, controlPlaneCluster, cfg)
 		Expect(controllerSwitches.Completed().AddToManager(addCtx, mgr)).To(Succeed())
@@ -410,6 +412,132 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryDeleted"),
 				"Message": MatchRegexp("test-ingress.first.example.com: deleted entry .* in control plane"),
+			}),
+		))
+	})
+
+	It("should create an entry for an annotated Gateway v1beta1 resource", func() {
+		gateway := &gatewayapisv1beta1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sourceNamespace.Name,
+				Name:      "test-gateway",
+				Annotations: map[string]string{
+					"dns.gardener.cloud/dnsnames": "*",
+				},
+			},
+			Spec: gatewayapisv1beta1.GatewaySpec{
+				GatewayClassName: "default",
+				Listeners: []gatewayapisv1beta1.Listener{
+					{Name: "default", Protocol: gatewayapisv1.HTTPProtocolType, Hostname: ptr.To(gatewayapisv1beta1.Hostname("test-gateway.first.example.com")), Port: 80},
+				},
+			},
+		}
+		Expect(sourceClient.Create(ctx, gateway)).To(Succeed())
+		checkForOwnedEntry("gateway.networking.k8s.io/Gateway", client.ObjectKeyFromObject(gateway), nil, "test-gateway.first.example.com")
+
+		By("Update gateway status")
+		Expect(sourceClient.Get(ctx, client.ObjectKeyFromObject(gateway), gateway)).To(Succeed())
+		patch := client.MergeFrom(gateway.DeepCopy())
+		gateway.Status = gatewayapisv1beta1.GatewayStatus{
+			Addresses: []gatewayapisv1.GatewayStatusAddress{
+				{Type: ptr.To(gatewayapisv1beta1.IPAddressType), Value: "1.2.3.4"},
+			},
+		}
+		Expect(sourceClient.Status().Patch(ctx, gateway, patch)).To(Succeed())
+		checkForOwnedEntry("gateway.networking.k8s.io/Gateway", client.ObjectKeyFromObject(gateway), ptr.To("1.2.3.4"), "test-gateway.first.example.com")
+		checkSourceEvents(client.ObjectKeyFromObject(gateway), ContainElements(
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryCreated"),
+				"Message": MatchRegexp("test-gateway.first.example.com: created entry .* in control plane"),
+			}),
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryInvalid"),
+				"Message": Equal("test-gateway.first.example.com: no target or text specified"),
+			}),
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryUpdated"),
+				"Message": MatchRegexp("test-gateway.first.example.com: updated entry .* in control plane"),
+			}),
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryReady"),
+				"Message": Equal("test-gateway.first.example.com: dns entry active"),
+			}),
+		))
+
+		By("Delete gateway resource")
+		Expect(sourceClient.Delete(ctx, gateway)).To(Succeed())
+		Eventually(func(g Gomega) {
+			err := sourceClient.Get(ctx, client.ObjectKeyFromObject(gateway), gateway)
+			g.Expect(errors.IsNotFound(err)).To(BeTrue())
+		}).To(Succeed())
+		checkForOwnedEntry("gateway.networking.k8s.io/Gateway", client.ObjectKeyFromObject(gateway), nil)
+		checkSourceEvents(client.ObjectKeyFromObject(gateway), ContainElements(
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryDeleted"),
+				"Message": MatchRegexp("test-gateway.first.example.com: deleted entry .* in control plane"),
+			}),
+		))
+	})
+
+	It("should create an entry for an annotated Gateway v1 resource", func() {
+		gateway := &gatewayapisv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: sourceNamespace.Name,
+				Name:      "test-gateway",
+				Annotations: map[string]string{
+					"dns.gardener.cloud/dnsnames": "*",
+				},
+			},
+			Spec: gatewayapisv1.GatewaySpec{
+				GatewayClassName: "default",
+				Listeners: []gatewayapisv1.Listener{
+					{Name: "default", Protocol: gatewayapisv1.HTTPProtocolType, Hostname: ptr.To(gatewayapisv1.Hostname("test-gateway.first.example.com")), Port: 80},
+				},
+			},
+		}
+		Expect(sourceClient.Create(ctx, gateway)).To(Succeed())
+		checkForOwnedEntry("gateway.networking.k8s.io/Gateway", client.ObjectKeyFromObject(gateway), nil, "test-gateway.first.example.com")
+
+		By("Update gateway status")
+		Expect(sourceClient.Get(ctx, client.ObjectKeyFromObject(gateway), gateway)).To(Succeed())
+		patch := client.MergeFrom(gateway.DeepCopy())
+		gateway.Status = gatewayapisv1.GatewayStatus{
+			Addresses: []gatewayapisv1.GatewayStatusAddress{
+				{Type: ptr.To(gatewayapisv1.IPAddressType), Value: "1.2.3.4"},
+			},
+		}
+		Expect(sourceClient.Status().Patch(ctx, gateway, patch)).To(Succeed())
+		checkForOwnedEntry("gateway.networking.k8s.io/Gateway", client.ObjectKeyFromObject(gateway), ptr.To("1.2.3.4"), "test-gateway.first.example.com")
+		checkSourceEvents(client.ObjectKeyFromObject(gateway), ContainElements(
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryCreated"),
+				"Message": MatchRegexp("test-gateway.first.example.com: created entry .* in control plane"),
+			}),
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryInvalid"),
+				"Message": Equal("test-gateway.first.example.com: no target or text specified"),
+			}),
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryUpdated"),
+				"Message": MatchRegexp("test-gateway.first.example.com: updated entry .* in control plane"),
+			}),
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryReady"),
+				"Message": Equal("test-gateway.first.example.com: dns entry active"),
+			}),
+		))
+
+		By("Delete gateway resource")
+		Expect(sourceClient.Delete(ctx, gateway)).To(Succeed())
+		Eventually(func(g Gomega) {
+			err := sourceClient.Get(ctx, client.ObjectKeyFromObject(gateway), gateway)
+			g.Expect(errors.IsNotFound(err)).To(BeTrue())
+		}).To(Succeed())
+		checkForOwnedEntry("gateway.networking.k8s.io/Gateway", client.ObjectKeyFromObject(gateway), nil)
+		checkSourceEvents(client.ObjectKeyFromObject(gateway), ContainElements(
+			MatchFields(IgnoreExtras, Fields{
+				"Reason":  Equal("DNSEntryDeleted"),
+				"Message": MatchRegexp("test-gateway.first.example.com: deleted entry .* in control plane"),
 			}),
 		))
 	})

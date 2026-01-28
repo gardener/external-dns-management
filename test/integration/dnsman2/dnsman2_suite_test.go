@@ -90,7 +90,14 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	By("Start second test environment for source cluster")
-	sourceTestEnv = &envtest.Environment{}
+	sourceTestEnv = &envtest.Environment{
+		CRDInstallOptions: envtest.CRDInstallOptions{
+			Paths: []string{
+				filepath.Join("..", "resources", "crd-gateway-api-standard-install.yaml"),
+			},
+		},
+		ErrorIfCRDPathMissing: true,
+	}
 	sourceRestConfig, err = sourceTestEnv.Start()
 	Expect(err).NotTo(HaveOccurred())
 	Expect(sourceRestConfig).NotTo(BeNil())
