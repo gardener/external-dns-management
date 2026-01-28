@@ -97,12 +97,12 @@ generate-proto:
     pkg/server/remote/common/remote.proto
 
 .PHONY: generate
-generate: $(VGOPATH) $(CONTROLLER_GEN) $(HELM) $(YQ)
-	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) VGOPATH=$(VGOPATH) REPO_ROOT=$(REPO_ROOT) ./hack/generate-code
+generate: $(CONTROLLER_GEN) $(HELM) $(YQ)
+	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) REPO_ROOT=$(REPO_ROOT) ./hack/generate-code
 	@CONTROLLER_MANAGER_LIB_HACK_DIR=$(CONTROLLER_MANAGER_LIB_HACK_DIR) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN)) go generate ./pkg/apis/dns/...
 	@go generate ./charts/external-dns-management
 	@./hack/copy-crds.sh
-	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) VGOPATH=$(VGOPATH) REPO_ROOT=$(REPO_ROOT) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN)) go generate ./pkg/dnsman2/apis/...
+	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) REPO_ROOT=$(REPO_ROOT) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN)) go generate ./pkg/dnsman2/apis/...
 	$(MAKE) format
 	$(MAKE) tidy
 	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) ./hack/generate-renovate-ignore-deps.sh
