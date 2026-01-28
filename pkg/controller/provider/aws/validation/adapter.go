@@ -41,7 +41,7 @@ func NewAdapter() provider.DNSHandlerAdapter {
 	checks.Add(provider.OptionalProperty("AWS_USE_CREDENTIALS_CHAIN").
 		RequiredIfUnset("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.BoolValidator))
-	checks.Add(provider.OptionalProperty("AWS_SESSION_TOKEN").
+	checks.Add(provider.OptionalProperty("AWS_SESSION_TOKEN", "sessionToken").
 		Validators(provider.MaxLengthValidator(512)).
 		HideValue())
 	return &adapter{checks: checks}
