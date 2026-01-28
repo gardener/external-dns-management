@@ -70,7 +70,7 @@ func GetDNSSpecInput[T client.Object](ctx context.Context, r *common.SourceRecon
 func ExtractGatewayKeys(gvk schema.GroupVersionKind, route *gatewayapisv1.HTTPRoute) []client.ObjectKey {
 	var keys []client.ObjectKey
 	for _, ref := range route.Spec.ParentRefs {
-		if (ref.Group == nil || string(*ref.Group) == gvk.GroupVersion().String()) &&
+		if (ref.Group == nil || string(*ref.Group) == gvk.Group) &&
 			(ref.Kind == nil || string(*ref.Kind) == gvk.Kind) {
 			namespace := route.Namespace
 			if ref.Namespace != nil {

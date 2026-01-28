@@ -125,10 +125,9 @@ var _ = Describe("Common", func() {
 				Spec: gatewayapisv1.HTTPRouteSpec{
 					CommonRouteSpec: gatewayapisv1.CommonRouteSpec{
 						ParentRefs: []gatewayapisv1.ParentReference{
-							{Group: ptr.To(gatewayapisv1.Group("gateway.networking.k8s.io/v1")), Kind: ptr.To(gatewayapisv1.Kind("Gateway")), Name: "gateway-v1-without-namespace"},
-							{Group: ptr.To(gatewayapisv1.Group("gateway.networking.k8s.io/v1")), Kind: ptr.To(gatewayapisv1.Kind("Gateway")), Name: "gateway-v1-with-namespace", Namespace: ptr.To(gatewayapisv1.Namespace("gateway-namespace"))},
-							{Group: ptr.To(gatewayapisv1.Group("gateway.networking.k8s.io/v1beta1")), Kind: ptr.To(gatewayapisv1.Kind("Gateway")), Name: "gateway-v1beta1-without-namespace"},
-							{Group: ptr.To(gatewayapisv1.Group("gateway.networking.k8s.io/v1beta1")), Kind: ptr.To(gatewayapisv1.Kind("Gateway")), Name: "gateway-v1beta1-with-namespace", Namespace: ptr.To(gatewayapisv1.Namespace("gateway-namespace"))},
+							{Group: ptr.To(gatewayapisv1.Group("gateway.networking.k8s.io")), Kind: ptr.To(gatewayapisv1.Kind("Gateway")), Name: "gateway-with-group-without-namespace"},
+							{Group: ptr.To(gatewayapisv1.Group("gateway.networking.k8s.io")), Kind: ptr.To(gatewayapisv1.Kind("Gateway")), Name: "gateway-with-group-and-namespace", Namespace: ptr.To(gatewayapisv1.Namespace("gateway-namespace"))},
+							{Group: ptr.To(gatewayapisv1.Group("networking.istio.io")), Kind: ptr.To(gatewayapisv1.Kind("Gateway")), Name: "istio-gateway"},
 							{Name: "gateway-with-name-only"},
 							{Name: "gateway-with-name-and-namespace", Namespace: ptr.To(gatewayapisv1.Namespace("gateway-namespace"))},
 						},
@@ -137,30 +136,19 @@ var _ = Describe("Common", func() {
 			}
 		})
 
-		It("should extract gateway keys for v1", func() {
+		It("should extract gateway keys for matching group", func() {
 			gvk := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1", Kind: "Gateway"}
 			gatewayKeys := ExtractGatewayKeys(gvk, route)
 			Expect(gatewayKeys).To(Equal([]client.ObjectKey{
-				{Name: "gateway-v1-without-namespace", Namespace: "route-namespace"},
-				{Name: "gateway-v1-with-namespace", Namespace: "gateway-namespace"},
+				{Name: "gateway-with-group-without-namespace", Namespace: "route-namespace"},
+				{Name: "gateway-with-group-and-namespace", Namespace: "gateway-namespace"},
 				{Name: "gateway-with-name-only", Namespace: "route-namespace"},
 				{Name: "gateway-with-name-and-namespace", Namespace: "gateway-namespace"},
 			}))
 		})
 
-		It("should extract gateway keys for v1beta1", func() {
-			gvk := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1beta1", Kind: "Gateway"}
-			gatewayKeys := ExtractGatewayKeys(gvk, route)
-			Expect(gatewayKeys).To(Equal([]client.ObjectKey{
-				{Name: "gateway-v1beta1-without-namespace", Namespace: "route-namespace"},
-				{Name: "gateway-v1beta1-with-namespace", Namespace: "gateway-namespace"},
-				{Name: "gateway-with-name-only", Namespace: "route-namespace"},
-				{Name: "gateway-with-name-and-namespace", Namespace: "gateway-namespace"},
-			}))
-		})
-
-		It("should extract gateway keys for unknown GVK", func() {
-			gvk := schema.GroupVersionKind{Group: "gateway.networking.k8s.io", Version: "v1alpha1", Kind: "Gateway"}
+		It("should extract gateway keys for refs without a group only when group does not match", func() {
+			gvk := schema.GroupVersionKind{Group: "my.networking.io", Version: "v1alpha1", Kind: "Gateway"}
 			gatewayKeys := ExtractGatewayKeys(gvk, route)
 			Expect(gatewayKeys).To(Equal([]client.ObjectKey{
 				{Name: "gateway-with-name-only", Namespace: "route-namespace"},
