@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/cmd"
+	"k8s.io/client-go/discovery"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -129,13 +130,17 @@ func AddSourceGatewayAPIV1Beta1Controller(ctx context.Context, mgr manager.Manag
 		return err
 	}
 
-	a := &gatewayapiv1beta1.Actuator{}
-	hasCRDs, err := a.HasRelevantCRDs(mgr)
+	dc, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
 	if err != nil {
 		return err
 	}
-	if !hasCRDs {
-		appCtx.Log.V(1).Info("No relevant Gateway API v1beta1 CRDs found, deactivating source controller.")
+	a := &gatewayapiv1beta1.Actuator{Discovery: dc}
+	shouldActivate, err := a.ShouldActivate()
+	if err != nil {
+		return err
+	}
+	if !shouldActivate {
+		appCtx.Log.V(1).Info("No relevant Gateway API v1beta1 CRDs found or v1 CRDs present, deactivating source controller.")
 		gatewayapiv1beta1.Deactivate()
 		return nil
 	}
@@ -151,12 +156,16 @@ func AddSourceGatewayAPIV1Controller(ctx context.Context, mgr manager.Manager) e
 		return err
 	}
 
-	a := &gatewayapiv1.Actuator{}
-	hasCRDs, err := a.HasRelevantCRDs(mgr)
+	dc, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
 	if err != nil {
 		return err
 	}
-	if !hasCRDs {
+	a := &gatewayapiv1.Actuator{Discovery: dc}
+	shouldActivate, err := a.ShouldActivate()
+	if err != nil {
+		return err
+	}
+	if !shouldActivate {
 		appCtx.Log.V(1).Info("No relevant Gateway API v1 CRDs found, deactivating source controller.")
 		gatewayapiv1.Deactivate()
 		return nil

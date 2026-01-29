@@ -12,10 +12,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/discovery"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapisv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
@@ -82,25 +80,16 @@ func ExtractGatewayKeys(gvk schema.GroupVersionKind, route *gatewayapisv1.HTTPRo
 	return keys
 }
 
-// HasRelevantCRDs checks whether the required Gateway API CRDs are present in the cluster.
-func HasRelevantCRDs(mgr manager.Manager, gvk schema.GroupVersionKind) (bool, error) {
-	dc, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
-	if err != nil {
-		return false, err
-	}
-	resources, err := dc.ServerResourcesForGroupVersion(gvk.GroupVersion().String())
-	if err != nil {
-		return false, err
-	}
-
+// HasRelevantCRDs checks whether the required Gateway API CRDs are present.
+func HasRelevantCRDs(apiResources []metav1.APIResource) bool {
 	for _, requiredKind := range []string{"Gateway", "HTTPRoute"} {
-		if slices.ContainsFunc(resources.APIResources, func(r metav1.APIResource) bool {
+		if !slices.ContainsFunc(apiResources, func(r metav1.APIResource) bool {
 			return r.Kind == requiredKind
 		}) {
-			return true, nil
+			return false
 		}
 	}
-	return false, nil
+	return true
 }
 
 func getDNSNames[T client.Object](ctx context.Context, r *common.SourceReconciler[T], gatewayObj client.Object, annotations map[string]string) (*utils.UniqueStrings, error) {
