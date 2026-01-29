@@ -157,6 +157,28 @@ var _ = Describe("Common", func() {
 		})
 	})
 
+	Describe("#HasRelevantCRDs", func() {
+		It("should return false for an empty slice", func() {
+			Expect(HasRelevantCRDs([]metav1.APIResource{})).To(BeFalse())
+		})
+
+		It("should return false if no matching kind is present", func() {
+			Expect(HasRelevantCRDs([]metav1.APIResource{{Kind: "Pod"}, {Kind: "Deployment"}})).To(BeFalse())
+		})
+
+		It("should return false if Gateway is present but HTTPRoute is missing", func() {
+			Expect(HasRelevantCRDs([]metav1.APIResource{{Kind: "Gateway"}})).To(BeFalse())
+		})
+
+		It("should return false if HTTPRoute is present but Gateway is missing", func() {
+			Expect(HasRelevantCRDs([]metav1.APIResource{{Kind: "HTTPRoute"}})).To(BeFalse())
+		})
+
+		It("should return true if both Gateway and HTTPRoute are present", func() {
+			Expect(HasRelevantCRDs([]metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}})).To(BeTrue())
+		})
+	})
+
 	Describe("#getDNSNames", func() {
 		var (
 			fakeClient client.Client

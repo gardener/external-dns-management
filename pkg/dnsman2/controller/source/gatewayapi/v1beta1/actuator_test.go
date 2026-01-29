@@ -12,6 +12,8 @@ import (
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/discovery/fake"
+	"k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,60 +31,143 @@ import (
 )
 
 var _ = Describe("Actuator", func() {
-	const (
-		defaultTargetNamespace = "target-namespace"
-		defaultSourceNamespace = "test"
-	)
-	var (
-		ctx            = context.Background()
-		fakeClientSrc  client.Client
-		fakeClientCtrl client.Client
-		fakeRecorder   *record.FakeRecorder
-		reconciler     *common.SourceReconciler[*gatewayapisv1beta1.Gateway]
-		gateway        *gatewayapisv1beta1.Gateway
-	)
+	Describe("#ShouldActivate", func() {
+		var (
+			dc       *fake.FakeDiscovery
+			actuator *Actuator
+		)
 
-	BeforeEach(func() {
-		fakeClientSrc = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).WithStatusSubresource(&dnsv1alpha1.DNSAnnotation{}).Build()
-		fakeClientCtrl = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).Build()
-		reconciler = common.NewSourceReconciler(&Actuator{})
-		reconciler.Client = fakeClientSrc
-		reconciler.ControlPlaneClient = fakeClientCtrl
-		reconciler.Config = config.SourceControllerConfig{
-			TargetNamespace: ptr.To(defaultTargetNamespace),
-		}
-		reconciler.State.Reset()
-		fakeRecorder = record.NewFakeRecorder(32)
-		reconciler.Recorder = common.NewDedupRecorder(fakeRecorder, 1*time.Second)
-		gateway = &gatewayapisv1beta1.Gateway{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-gateway",
-				Namespace: defaultSourceNamespace,
-				Annotations: map[string]string{
-					"dns.gardener.cloud/dnsnames": "example.com",
-				},
-			},
-			Spec: gatewayapisv1beta1.GatewaySpec{
-				Listeners: []gatewayapisv1beta1.Listener{
-					{Hostname: ptr.To(gatewayapisv1beta1.Hostname("example.com"))},
-					{Hostname: ptr.To(gatewayapisv1beta1.Hostname("gardener.cloud"))},
-					{Hostname: ptr.To(gatewayapisv1beta1.Hostname("wikipedia.org"))},
-				},
-			},
-			Status: gatewayapisv1beta1.GatewayStatus{
-				Addresses: []gatewayapisv1.GatewayStatusAddress{
-					{Type: ptr.To(gatewayapisv1beta1.HostnameAddressType), Value: "example.com"},
-					{Type: ptr.To(gatewayapisv1beta1.IPAddressType), Value: "1.1.1.1"},
-				},
-			},
-		}
-	})
+		BeforeEach(func() {
+			dc = &fake.FakeDiscovery{Fake: &testing.Fake{}}
+			dc.Resources = []*metav1.APIResourceList{}
+			actuator = &Actuator{Discovery: dc}
+		})
 
-	AfterEach(func() {
-		close(fakeRecorder.Events)
+		It("should return false if nothing is found", func() {
+			shouldActivate, err := actuator.ShouldActivate()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(shouldActivate).To(BeFalse())
+		})
+
+		It("should return false if only Gateway is found", func() {
+			dc.Resources = []*metav1.APIResourceList{
+				{
+					GroupVersion: "gateway.networking.k8s.io/v1beta1",
+					APIResources: []metav1.APIResource{{Kind: "Gateway"}},
+				},
+			}
+			shouldActivate, err := actuator.ShouldActivate()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(shouldActivate).To(BeFalse())
+		})
+
+		It("should return false if only HTTPRoute is found", func() {
+			dc.Resources = []*metav1.APIResourceList{
+				{
+					GroupVersion: "gateway.networking.k8s.io/v1beta1",
+					APIResources: []metav1.APIResource{{Kind: "HTTPRoute"}},
+				},
+			}
+			shouldActivate, err := actuator.ShouldActivate()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(shouldActivate).To(BeFalse())
+		})
+
+		It("should return true if Gateway and HTTPRoute is found", func() {
+			dc.Resources = []*metav1.APIResourceList{
+				{
+					GroupVersion: "gateway.networking.k8s.io/v1beta1",
+					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+				},
+			}
+			shouldActivate, err := actuator.ShouldActivate()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(shouldActivate).To(BeTrue())
+		})
+
+		It("should return false for gateway.networking.k8s.io/v1", func() {
+			dc.Resources = []*metav1.APIResourceList{
+				{
+					GroupVersion: "gateway.networking.k8s.io/v1",
+					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+				},
+			}
+			shouldActivate, err := actuator.ShouldActivate()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(shouldActivate).To(BeFalse())
+		})
+
+		It("should return false when both v1beta1 and v1 are found", func() {
+			dc.Resources = []*metav1.APIResourceList{
+				{
+					GroupVersion: "gateway.networking.k8s.io/v1beta1",
+					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+				},
+				{
+					GroupVersion: "gateway.networking.k8s.io/v1",
+					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+				},
+			}
+			shouldActivate, err := actuator.ShouldActivate()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(shouldActivate).To(BeFalse())
+		})
 	})
 
 	Describe("#ReconcileSourceObject", func() {
+		const (
+			defaultTargetNamespace = "target-namespace"
+			defaultSourceNamespace = "test"
+		)
+		var (
+			ctx            = context.Background()
+			fakeClientSrc  client.Client
+			fakeClientCtrl client.Client
+			fakeRecorder   *record.FakeRecorder
+			reconciler     *common.SourceReconciler[*gatewayapisv1beta1.Gateway]
+			gateway        *gatewayapisv1beta1.Gateway
+		)
+
+		BeforeEach(func() {
+			fakeClientSrc = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).WithStatusSubresource(&dnsv1alpha1.DNSAnnotation{}).Build()
+			fakeClientCtrl = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).Build()
+			reconciler = common.NewSourceReconciler(&Actuator{})
+			reconciler.Client = fakeClientSrc
+			reconciler.ControlPlaneClient = fakeClientCtrl
+			reconciler.Config = config.SourceControllerConfig{
+				TargetNamespace: ptr.To(defaultTargetNamespace),
+			}
+			reconciler.State.Reset()
+			fakeRecorder = record.NewFakeRecorder(32)
+			reconciler.Recorder = common.NewDedupRecorder(fakeRecorder, 1*time.Second)
+			gateway = &gatewayapisv1beta1.Gateway{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-gateway",
+					Namespace: defaultSourceNamespace,
+					Annotations: map[string]string{
+						"dns.gardener.cloud/dnsnames": "example.com",
+					},
+				},
+				Spec: gatewayapisv1beta1.GatewaySpec{
+					Listeners: []gatewayapisv1beta1.Listener{
+						{Hostname: ptr.To(gatewayapisv1beta1.Hostname("example.com"))},
+						{Hostname: ptr.To(gatewayapisv1beta1.Hostname("gardener.cloud"))},
+						{Hostname: ptr.To(gatewayapisv1beta1.Hostname("wikipedia.org"))},
+					},
+				},
+				Status: gatewayapisv1beta1.GatewayStatus{
+					Addresses: []gatewayapisv1.GatewayStatusAddress{
+						{Type: ptr.To(gatewayapisv1beta1.HostnameAddressType), Value: "example.com"},
+						{Type: ptr.To(gatewayapisv1beta1.IPAddressType), Value: "1.1.1.1"},
+					},
+				},
+			}
+		})
+
+		AfterEach(func() {
+			close(fakeRecorder.Events)
+		})
+
 		It("should create a DNSEntry", func() {
 			Expect(fakeClientSrc.Create(ctx, gateway)).To(Succeed())
 
