@@ -8,7 +8,6 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -105,26 +104,11 @@ func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 // ShouldActivate checks whether the required Gateway API v1beta1 CRDs are present in the cluster.
 // If the v1 CRDs are present, the v1beta1 controller should be deactivated in favor of the v1 controller and it returns false.
 func (a *Actuator) ShouldActivate() (bool, error) {
-	v1beta1, err := a.Discovery.ServerResourcesForGroupVersion(a.GetGVK().GroupVersion().String())
+	apiVersion, err := gatewayapi.DetermineAPIVersion(a.Discovery)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return false, nil // No v1beta1 CRDs found
-		}
 		return false, err
 	}
-	if !gatewayapi.HasRelevantCRDs(v1beta1.APIResources) {
-		return false, nil // No relevant v1beta1 CRDs found
-	}
-
-	v1, err := a.Discovery.ServerResourcesForGroupVersion(gatewayapi.GetGVKV1().GroupVersion().String())
-	if err != nil && !apierrors.IsNotFound(err) {
-		return false, err
-	}
-	if v1 != nil && gatewayapi.HasRelevantCRDs(v1.APIResources) {
-		return false, nil // Also found v1 CRDs, deactivate v1beta1 controller
-	}
-
-	return true, nil // v1beta1 found, v1 not found
+	return apiVersion != nil && *apiVersion == gatewayapi.V1Beta1, nil
 }
 
 // WatchHTTPRoutes adds a watch for HTTPRoute resources to the given builder that maps them to Gateway reconciliation requests.

@@ -10,8 +10,10 @@ import (
 	"slices"
 	"strings"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/discovery"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -21,9 +23,19 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
+// APIVersion represents the Gateway API version.
+type APIVersion string
+
+const (
+	// V1Beta1 represents Gateway API v1beta1.
+	V1Beta1 APIVersion = "v1beta1"
+	// V1 represents Gateway API v1.
+	V1 APIVersion = "v1"
+)
+
 // GetGVKV1beta1 returns the GroupVersionKind for Gateway API v1beta1 Gateway resource.
 func GetGVKV1beta1() schema.GroupVersionKind {
-	resource := gatewayapisv1beta1.Resource("Gateway").WithVersion("v1beta1")
+	resource := gatewayapisv1beta1.Resource("Gateway").WithVersion(string(V1Beta1))
 	return schema.GroupVersionKind{
 		Group:   resource.Group,
 		Version: resource.Version,
@@ -33,7 +45,7 @@ func GetGVKV1beta1() schema.GroupVersionKind {
 
 // GetGVKV1 returns the GroupVersionKind for Gateway API v1 Gateway resource.
 func GetGVKV1() schema.GroupVersionKind {
-	resource := gatewayapisv1beta1.Resource("Gateway").WithVersion("v1")
+	resource := gatewayapisv1beta1.Resource("Gateway").WithVersion(string(V1))
 	return schema.GroupVersionKind{
 		Group:   resource.Group,
 		Version: resource.Version,
@@ -80,8 +92,29 @@ func ExtractGatewayKeys(gvk schema.GroupVersionKind, route *gatewayapisv1.HTTPRo
 	return keys
 }
 
-// HasRelevantCRDs checks whether the required Gateway API CRDs are present.
-func HasRelevantCRDs(apiResources []metav1.APIResource) bool {
+// DetermineAPIVersion determines the Gateway API version supported by the API server.
+// It prefers v1 over v1beta1 if both are available and returns nil if neither is supported.
+func DetermineAPIVersion(dc discovery.DiscoveryInterface) (*APIVersion, error) {
+	v1, err := dc.ServerResourcesForGroupVersion(GetGVKV1().GroupVersion().String())
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	if v1 != nil && hasRelevantCRDs(v1.APIResources) {
+		return ptr.To(V1), nil // v1 CRDs found, no need to check for v1beta1
+	}
+
+	v1beta1, err := dc.ServerResourcesForGroupVersion(GetGVKV1beta1().GroupVersion().String())
+	if err != nil && !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	if v1beta1 != nil && hasRelevantCRDs(v1beta1.APIResources) {
+		return ptr.To(V1Beta1), nil // v1beta1 CRDs found
+	}
+
+	return nil, nil // no relevant CRDs found
+}
+
+func hasRelevantCRDs(apiResources []metav1.APIResource) bool {
 	for _, requiredKind := range []string{"Gateway", "HTTPRoute"} {
 		if !slices.ContainsFunc(apiResources, func(r metav1.APIResource) bool {
 			return r.Kind == requiredKind

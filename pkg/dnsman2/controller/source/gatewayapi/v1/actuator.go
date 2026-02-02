@@ -8,7 +8,6 @@ import (
 	"context"
 
 	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -103,14 +102,11 @@ func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 
 // ShouldActivate checks whether the required Gateway API v1 CRDs are present in the cluster.
 func (a *Actuator) ShouldActivate() (bool, error) {
-	v1, err := a.Discovery.ServerResourcesForGroupVersion(a.GetGVK().GroupVersion().String())
+	apiVersion, err := gatewayapi.DetermineAPIVersion(a.Discovery)
 	if err != nil {
-		if apierrors.IsNotFound(err) {
-			return false, nil
-		}
 		return false, err
 	}
-	return gatewayapi.HasRelevantCRDs(v1.APIResources), nil
+	return apiVersion != nil && *apiVersion == gatewayapi.V1, nil
 }
 
 // WatchHTTPRoutes adds a watch for HTTPRoute resources to the given builder that maps them to Gateway reconciliation requests.

@@ -13,6 +13,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	fakediscovery "k8s.io/client-go/discovery/fake"
+	"k8s.io/client-go/testing"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -157,25 +159,82 @@ var _ = Describe("Common", func() {
 		})
 	})
 
-	Describe("#HasRelevantCRDs", func() {
-		It("should return false for an empty slice", func() {
-			Expect(HasRelevantCRDs([]metav1.APIResource{})).To(BeFalse())
+	Describe("#DetermineAPIVersion", func() {
+		var (
+			dc *fakediscovery.FakeDiscovery
+		)
+
+		BeforeEach(func() {
+			dc = &fakediscovery.FakeDiscovery{Fake: &testing.Fake{}}
+			dc.Resources = []*metav1.APIResourceList{}
 		})
 
-		It("should return false if no matching kind is present", func() {
-			Expect(HasRelevantCRDs([]metav1.APIResource{{Kind: "Pod"}, {Kind: "Deployment"}})).To(BeFalse())
+		It("should return nil if there are no matching resources", func() {
+			apiVersion, err := DetermineAPIVersion(dc)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(apiVersion).To(BeNil())
 		})
 
-		It("should return false if Gateway is present but HTTPRoute is missing", func() {
-			Expect(HasRelevantCRDs([]metav1.APIResource{{Kind: "Gateway"}})).To(BeFalse())
+		It("should return nil if no matching kind is present", func() {
+			dc.Resources = []*metav1.APIResourceList{
+				{
+					GroupVersion: "",
+					APIResources: []metav1.APIResource{{Kind: "Pod"}, {Kind: "Deployment"}},
+				},
+			}
+			apiVersion, err := DetermineAPIVersion(dc)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(apiVersion).To(BeNil())
 		})
 
-		It("should return false if HTTPRoute is present but Gateway is missing", func() {
-			Expect(HasRelevantCRDs([]metav1.APIResource{{Kind: "HTTPRoute"}})).To(BeFalse())
+		It("should return nil if Gateway is present but HTTPRoute is missing", func() {
+			dc.Resources = []*metav1.APIResourceList{
+				{
+					GroupVersion: "gateway.networking.k8s.io/v1",
+					APIResources: []metav1.APIResource{{Kind: "Gateway"}},
+				},
+			}
+			apiVersion, err := DetermineAPIVersion(dc)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(apiVersion).To(BeNil())
 		})
 
-		It("should return true if both Gateway and HTTPRoute are present", func() {
-			Expect(HasRelevantCRDs([]metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}})).To(BeTrue())
+		It("should return nil if HTTPRoute is present but Gateway is missing", func() {
+			dc.Resources = []*metav1.APIResourceList{
+				{
+					GroupVersion: "gateway.networking.k8s.io/v1",
+					APIResources: []metav1.APIResource{{Kind: "HTTPRoute"}},
+				},
+			}
+			apiVersion, err := DetermineAPIVersion(dc)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(apiVersion).To(BeNil())
+		})
+
+		It("should return v1beta1 if both Gateway and HTTPRoute are present in the corresponding API version", func() {
+			dc.Resources = []*metav1.APIResourceList{
+				{
+					GroupVersion: "gateway.networking.k8s.io/v1beta1",
+					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+				},
+			}
+			apiVersion, err := DetermineAPIVersion(dc)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(apiVersion).NotTo(BeNil())
+			Expect(string(*apiVersion)).To(Equal("v1beta1"))
+		})
+
+		It("should return v1 if both Gateway and HTTPRoute are present in the corresponding API version", func() {
+			dc.Resources = []*metav1.APIResourceList{
+				{
+					GroupVersion: "gateway.networking.k8s.io/v1",
+					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+				},
+			}
+			apiVersion, err := DetermineAPIVersion(dc)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(apiVersion).NotTo(BeNil())
+			Expect(string(*apiVersion)).To(Equal("v1"))
 		})
 	})
 
