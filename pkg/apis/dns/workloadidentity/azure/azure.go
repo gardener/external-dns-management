@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package workloadidentity
+package azure
 
 import (
 	"fmt"
@@ -18,9 +18,9 @@ var (
 	guidRegex = regexp.MustCompile("^[0-9A-Fa-f]{8}-([0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}$")
 )
 
-// AzureWorkloadIdentityConfig contains configuration settings for azure workload identity.
+// WorkloadIdentityConfig contains configuration settings for azure workload identity.
 // copy from https://github.com/gardener/gardener-extension-provider-azure/blob/330df7a9af3f726ed00d9e3ddff5b945cbb01916/pkg/apis/azure/v1alpha1/types_workloadidentity.go
-type AzureWorkloadIdentityConfig struct {
+type WorkloadIdentityConfig struct {
 	metav1.TypeMeta
 
 	// ClientID is the ID of the Azure client.
@@ -31,11 +31,11 @@ type AzureWorkloadIdentityConfig struct {
 	SubscriptionID string `json:"subscriptionID,omitempty"`
 }
 
-func (c *AzureWorkloadIdentityConfig) DeepCopy() *AzureWorkloadIdentityConfig {
+func (c *WorkloadIdentityConfig) DeepCopy() *WorkloadIdentityConfig {
 	if c == nil {
 		return nil
 	}
-	out := new(AzureWorkloadIdentityConfig)
+	out := new(WorkloadIdentityConfig)
 	out.TypeMeta = c.TypeMeta
 	out.ClientID = c.ClientID
 	out.TenantID = c.TenantID
@@ -43,8 +43,8 @@ func (c *AzureWorkloadIdentityConfig) DeepCopy() *AzureWorkloadIdentityConfig {
 	return out
 }
 
-// ValidateAzureWorkloadIdentityConfig checks whether the given azure workload identity configuration contains expected fields and values.
-func ValidateAzureWorkloadIdentityConfig(config *AzureWorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
+// ValidateWorkloadIdentityConfig checks whether the given azure workload identity configuration contains expected fields and values.
+func ValidateWorkloadIdentityConfig(config *WorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if config.APIVersion != "azure.provider.extensions.gardener.cloud/v1alpha1" {
@@ -80,23 +80,23 @@ func ValidateAzureWorkloadIdentityConfig(config *AzureWorkloadIdentityConfig, fl
 	return allErrs
 }
 
-// ValidateAzureWorkloadIdentityConfigUpdate validates updates on AzureWorkloadIdentityConfig object.
-func ValidateAzureWorkloadIdentityConfigUpdate(oldConfig, newConfig *AzureWorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
+// ValidateWorkloadIdentityConfigUpdate validates updates on WorkloadIdentityConfig object.
+func ValidateWorkloadIdentityConfigUpdate(oldConfig, newConfig *WorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.SubscriptionID, oldConfig.SubscriptionID, fldPath.Child("subscriptionID"))...)
 	allErrs = append(allErrs, apivalidation.ValidateImmutableField(newConfig.TenantID, oldConfig.TenantID, fldPath.Child("tenantID"))...)
-	allErrs = append(allErrs, ValidateAzureWorkloadIdentityConfig(newConfig, fldPath)...)
+	allErrs = append(allErrs, ValidateWorkloadIdentityConfig(newConfig, fldPath)...)
 
 	return allErrs
 }
 
-// GetAzureWorkloadIdentityConfig unmarshals and validates the given azure workload identity configuration data.
-func GetAzureWorkloadIdentityConfig(configData []byte) (*AzureWorkloadIdentityConfig, error) {
-	cfg := &AzureWorkloadIdentityConfig{}
+// GetWorkloadIdentityConfig unmarshals and validates the given azure workload identity configuration data.
+func GetWorkloadIdentityConfig(configData []byte) (*WorkloadIdentityConfig, error) {
+	cfg := &WorkloadIdentityConfig{}
 	if err := yaml.Unmarshal([]byte(configData), cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal workload identity config: %w", err)
 	}
-	if err := ValidateAzureWorkloadIdentityConfig(cfg, field.NewPath("config")).ToAggregate(); err != nil {
+	if err := ValidateWorkloadIdentityConfig(cfg, field.NewPath("config")).ToAggregate(); err != nil {
 		return nil, err
 	}
 	return cfg, nil

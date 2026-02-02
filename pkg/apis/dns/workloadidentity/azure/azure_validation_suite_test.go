@@ -13,5 +13,5 @@ import (
 
 func TestAzure(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Azure Test Suite")
+	RunSpecs(t, "Azure WorkloadIdentity Validation Suite")
 }

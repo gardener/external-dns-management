@@ -638,9 +638,9 @@ func (this *dnsProviderVersion) GetDedicatedDNSAccess() DedicatedDNSAccess {
 
 func checkAndAddWorkloadIdentitySecretLabel(secretObj *resources.SecretObject, props utils.Properties) error {
 	// For security reasons, verify that the workload identity secret has expected labels,
-	// but no the LabelWorkloadIdentityProvider itself as property
+	// but not the LabelWorkloadIdentityProvider itself as property
 	if props[securityv1alpha1constants.LabelWorkloadIdentityProvider] != "" {
-		return fmt.Errorf("secret %s/%s contains unexpected field %s",
+		return fmt.Errorf("property for secret %s/%s contains unexpected field %s",
 			secretObj.GetNamespace(), secretObj.GetName(), securityv1alpha1constants.LabelWorkloadIdentityProvider)
 	}
 	if secretObj.GetLabel(securityv1alpha1constants.LabelPurpose) == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor &&

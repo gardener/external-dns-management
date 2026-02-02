@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
@@ -26,6 +27,10 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 
 	BeforeEach(func() {
 		workloadIdentityConfig = &gcp.WorkloadIdentityConfig{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: "gcp.provider.extensions.gardener.cloud/v1alpha1",
+				Kind:       "WorkloadIdentityConfig",
+			},
 			ProjectID: "my-project",
 			CredentialsConfig: &runtime.RawExtension{
 				Raw: []byte(`
@@ -83,7 +88,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 				"Type":     Equal(field.ErrorTypeInvalid),
 				"Field":    Equal("providerConfig.projectID"),
 				"BadValue": Equal("_invalid"),
-				"Detail":   Equal("does not match the expected format"),
+				"Detail":   Equal("does not match the expected format: \"^(?P<project>[a-z][a-z0-9-]{4,28}[a-z0-9])$\""),
 			},
 			Fields{
 				"Type":     Equal(field.ErrorTypeInvalid),

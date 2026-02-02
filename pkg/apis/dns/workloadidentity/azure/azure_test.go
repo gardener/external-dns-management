@@ -1,8 +1,8 @@
-// SPDX-FileCopyrightText: 2024 SAP SE or an SAP affiliate company and Gardener contributors
+// SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package workloadidentity_test
+package azure_test
 
 import (
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
@@ -13,16 +13,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	. "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity"
+	. "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity/azure"
 )
 
 var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	var (
-		workloadIdentityConfig *AzureWorkloadIdentityConfig
+		workloadIdentityConfig *WorkloadIdentityConfig
 	)
 
 	BeforeEach(func() {
-		workloadIdentityConfig = &AzureWorkloadIdentityConfig{
+		workloadIdentityConfig = &WorkloadIdentityConfig{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "azure.provider.extensions.gardener.cloud/v1alpha1",
 				Kind:       "WorkloadIdentityConfig",
@@ -34,14 +34,14 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	})
 
 	It("should validate the config successfully", func() {
-		Expect(ValidateAzureWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath(""))).To(BeEmpty())
+		Expect(ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath(""))).To(BeEmpty())
 	})
 
 	It("should contain all expected validation errors", func() {
 		workloadIdentityConfig.ClientID = ""
 		workloadIdentityConfig.TenantID = ""
 		workloadIdentityConfig.SubscriptionID = ""
-		errorList := ValidateAzureWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"))
+		errorList := ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"))
 		Expect(errorList).To(ConsistOfFields(
 			Fields{
 				"Type":   Equal(field.ErrorTypeRequired),
@@ -81,13 +81,13 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 
 	It("should validate the config successfully during update", func() {
 		newConfig := workloadIdentityConfig.DeepCopy()
-		Expect(ValidateAzureWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath(""))).To(BeEmpty())
+		Expect(ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath(""))).To(BeEmpty())
 	})
 
 	It("should allow changing the clientID during update", func() {
 		newConfig := workloadIdentityConfig.DeepCopy()
 		newConfig.ClientID = uuid.NewString()
-		errorList := ValidateAzureWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"))
+		errorList := ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"))
 		Expect(errorList).To(BeEmpty())
 	})
 
@@ -95,7 +95,7 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 		newConfig := workloadIdentityConfig.DeepCopy()
 		newConfig.TenantID = uuid.NewString()
 		newConfig.SubscriptionID = uuid.NewString()
-		errorList := ValidateAzureWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"))
+		errorList := ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"))
 		Expect(errorList).To(ConsistOfFields(
 			Fields{
 				"Type":   Equal(field.ErrorTypeInvalid),

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package workloadidentity_test
+package aws_test
 
 import (
 	. "github.com/gardener/gardener/pkg/utils/test/matchers"
@@ -12,16 +12,16 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	. "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity"
+	. "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity/aws"
 )
 
-var _ = Describe("#ValidateAWSWorkloadIdentityConfig", func() {
+var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 	var (
-		workloadIdentityConfig *AWSWorkloadIdentityConfig
+		workloadIdentityConfig *WorkloadIdentityConfig
 	)
 
 	BeforeEach(func() {
-		workloadIdentityConfig = &AWSWorkloadIdentityConfig{
+		workloadIdentityConfig = &WorkloadIdentityConfig{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "aws.provider.extensions.gardener.cloud/v1alpha1",
 				Kind:       "WorkloadIdentityConfig",
@@ -31,14 +31,14 @@ var _ = Describe("#ValidateAWSWorkloadIdentityConfig", func() {
 	})
 
 	It("should validate the config successfully", func() {
-		Expect(ValidateAWSWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath(""))).To(BeEmpty())
+		Expect(ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath(""))).To(BeEmpty())
 	})
 
 	It("should contain all expected validation errors", func() {
 		workloadIdentityConfig.Kind = ""
 		workloadIdentityConfig.APIVersion = ""
 		workloadIdentityConfig.RoleARN = ""
-		errorList := ValidateAWSWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"))
+		errorList := ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"))
 		Expect(errorList).To(ConsistOfFields(
 			Fields{
 				"Type":   Equal(field.ErrorTypeRequired),
@@ -62,13 +62,13 @@ var _ = Describe("#ValidateAWSWorkloadIdentityConfig", func() {
 
 	It("should validate the config successfully during update", func() {
 		newConfig := workloadIdentityConfig.DeepCopy()
-		Expect(ValidateAWSWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath(""))).To(BeEmpty())
+		Expect(ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath(""))).To(BeEmpty())
 	})
 
 	It("should allow changing the roleARN during update", func() {
 		newConfig := workloadIdentityConfig.DeepCopy()
 		newConfig.RoleARN = "bar"
-		errorList := ValidateAWSWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"))
+		errorList := ValidateWorkloadIdentityConfigUpdate(workloadIdentityConfig, newConfig, field.NewPath("providerConfig"))
 		Expect(errorList).To(BeEmpty())
 	})
 })

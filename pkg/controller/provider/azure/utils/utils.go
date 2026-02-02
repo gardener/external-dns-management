@@ -22,7 +22,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 
-	"github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity"
+	workloadidentityazure "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity/azure"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 )
@@ -80,7 +80,7 @@ func GetSubscriptionIDAndCredentials(c *provider.DNSHandlerConfig) (string, azco
 		if err != nil {
 			return "", nil, err
 		}
-		wlConfig, err := workloadidentity.GetAzureWorkloadIdentityConfig([]byte(configData))
+		wlConfig, err := workloadidentityazure.GetWorkloadIdentityConfig([]byte(configData))
 		if err != nil {
 			return "", nil, fmt.Errorf("invalid workload identity config: %w", err)
 		}

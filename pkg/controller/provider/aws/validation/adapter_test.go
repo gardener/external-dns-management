@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package validation
+package validation_test
 
 import (
 	"encoding/base64"
@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/config"
+	. "github.com/gardener/external-dns-management/pkg/controller/provider/aws/validation"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
@@ -32,8 +33,7 @@ var _ = Describe("Adapter", func() {
 				raw, err := json.Marshal(cfg)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})).To(Succeed())
 			})
 
 			It("should accept minimum batch size of 1", func() {
@@ -41,8 +41,7 @@ var _ = Describe("Adapter", func() {
 				raw, err := json.Marshal(cfg)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})).To(Succeed())
 			})
 
 			It("should accept maximum batch size of 50", func() {
@@ -50,8 +49,7 @@ var _ = Describe("Adapter", func() {
 				raw, err := json.Marshal(cfg)
 				Expect(err).NotTo(HaveOccurred())
 
-				err = adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})).To(Succeed())
 			})
 		})
 
@@ -63,7 +61,7 @@ var _ = Describe("Adapter", func() {
 
 				err = adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("invalid batch size"))
+				Expect(err).To(MatchError(ContainSubstring("invalid batch size")))
 			})
 
 			It("should reject batch size greater than 50", func() {
@@ -73,13 +71,13 @@ var _ = Describe("Adapter", func() {
 
 				err = adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("invalid batch size"))
+				Expect(err).To(MatchError(ContainSubstring("invalid batch size")))
 			})
 
 			It("should reject invalid JSON", func() {
 				err := adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: []byte("invalid json")})
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("unmarshal providerConfig failed"))
+				Expect(err).To(MatchError(ContainSubstring("unmarshal providerConfig failed")))
 			})
 		})
 
@@ -90,8 +88,7 @@ var _ = Describe("Adapter", func() {
 				}
 				props["AWS_SECRET_ACCESS_KEY"] = base64.StdEncoding.EncodeToString([]byte("example-key"))
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 
 			It("should accept valid region", func() {
@@ -101,8 +98,7 @@ var _ = Describe("Adapter", func() {
 				}
 				props["AWS_SECRET_ACCESS_KEY"] = base64.StdEncoding.EncodeToString([]byte("example-key"))
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 		})
 
@@ -112,8 +108,7 @@ var _ = Describe("Adapter", func() {
 					"AWS_USE_CREDENTIALS_CHAIN": "true",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 		})
 
@@ -124,8 +119,7 @@ var _ = Describe("Adapter", func() {
 					securityv1alpha1constants.LabelWorkloadIdentityProvider: "aws",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 
 			It("should NOT accept workload identity credentials without token", func() {
@@ -134,8 +128,7 @@ var _ = Describe("Adapter", func() {
 					securityv1alpha1constants.LabelWorkloadIdentityProvider: "aws",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).To(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(HaveOccurred())
 			})
 
 			It("should NOT accept workload identity credentials with wrong provider type", func() {
@@ -146,7 +139,7 @@ var _ = Describe("Adapter", func() {
 
 				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("value must be \"aws\""))
+				Expect(err).To(MatchError(ContainSubstring("value must be \"aws\"")))
 			})
 		})
 	})

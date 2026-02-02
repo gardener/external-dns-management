@@ -77,9 +77,12 @@ func (s *staticTokenSupplier) SubjectToken(_ context.Context, _ externalaccount.
 // ExtractExternalAccountCredentials extracts external account credentials from the WorkloadIdentityConfig
 // using the provided static token and scopes.
 func (cfg *WorkloadIdentityConfig) ExtractExternalAccountCredentials(staticToken string, scopes ...string) (externalaccount.Config, error) {
+	if cfg.CredentialsConfig == nil {
+		return externalaccount.Config{}, fmt.Errorf("credentials config is nil")
+	}
 	credConfig := &credConfig{}
 	if err := json.Unmarshal(cfg.CredentialsConfig.Raw, credConfig); err != nil {
-		return externalaccount.Config{}, fmt.Errorf("could not unmarshal credential config: %w", err)
+		return externalaccount.Config{}, fmt.Errorf("could not unmarshal credentials config: %w", err)
 	}
 	if credConfig.Type != externalAccountCredentialType {
 		return externalaccount.Config{}, fmt.Errorf("invalid credential type: expected %q, got %q", externalAccountCredentialType, credConfig.Type)

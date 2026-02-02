@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package validation
+package validation_test
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	. "github.com/gardener/external-dns-management/pkg/controller/provider/azure/validation"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
@@ -64,8 +65,7 @@ var _ = Describe("Adapter", func() {
 					securityv1alpha1constants.LabelWorkloadIdentityProvider: "azure",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 
 			It("should NOT accept workload identity credentials without token", func() {
@@ -74,8 +74,7 @@ var _ = Describe("Adapter", func() {
 					securityv1alpha1constants.LabelWorkloadIdentityProvider: "azure",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).To(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(HaveOccurred())
 			})
 
 			It("should NOT accept workload identity credentials with wrong provider type", func() {
@@ -86,7 +85,7 @@ var _ = Describe("Adapter", func() {
 
 				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("value must be \"azure\""))
+				Expect(err).To(MatchError(ContainSubstring("value must be \"azure\"")))
 			})
 		})
 	})

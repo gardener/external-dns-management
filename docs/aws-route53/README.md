@@ -85,7 +85,7 @@ In this case, a `Secret` containing the data fields `token` and `config` is expe
 This secret is not created manually. Instead, Gardener will automatically create and update
 it from a `WorkloadIdentity` resource in the project namespace.
 
-Please see the documentation of the Gardener extension `shoot-dns-service` for more details.
+Please see the documentation of the Gardener extension `shoot-dns-service` for more [details](https://github.com/gardener/gardener-extension-shoot-dns-service/blob/master/docs/usage/workloadidentity/aws.md).
 
 ## Using the chain of credential providers
 

@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package validation
+package validation_test
 
 import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	. "github.com/gardener/external-dns-management/pkg/controller/provider/google/validation"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
@@ -33,8 +34,7 @@ var _ = Describe("Adapter", func() {
 					"serviceaccount.json": serviceAccountJSON,
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 
 			It("should reject invalid JSON in service account", func() {
@@ -44,7 +44,7 @@ var _ = Describe("Adapter", func() {
 
 				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("does not contain a valid JSON"))
+				Expect(err).To(MatchError(ContainSubstring("does not contain a valid JSON")))
 			})
 
 			It("should reject service account with wrong type", func() {
@@ -60,7 +60,7 @@ var _ = Describe("Adapter", func() {
 
 				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("not 'service_account'"))
+				Expect(err).To(MatchError(ContainSubstring("not 'service_account'")))
 			})
 		})
 
@@ -71,8 +71,7 @@ var _ = Describe("Adapter", func() {
 					securityv1alpha1constants.LabelWorkloadIdentityProvider: "gcp",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 
 			It("should NOT accept workload identity credentials without token", func() {
@@ -81,8 +80,7 @@ var _ = Describe("Adapter", func() {
 					securityv1alpha1constants.LabelWorkloadIdentityProvider: "gcp",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).To(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(HaveOccurred())
 			})
 
 			It("should NOT accept workload identity credentials with wrong provider type", func() {
@@ -93,7 +91,7 @@ var _ = Describe("Adapter", func() {
 
 				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("value must be \"gcp\""))
+				Expect(err).To(MatchError(ContainSubstring("value must be \"gcp\"")))
 			})
 		})
 	})

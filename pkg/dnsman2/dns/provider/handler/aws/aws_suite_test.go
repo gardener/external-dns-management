@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestValidation(t *testing.T) {
+func TestAWS(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "AWS Test Suite")
 }

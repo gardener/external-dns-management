@@ -5,6 +5,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 )
@@ -39,13 +40,13 @@ func NewInternalGCPWorkloadIdentityConfig(cfg GCPWorkloadIdentityConfig) (*Inter
 	for _, expr := range cfg.AllowedServiceAccountImpersonationURLRegExps {
 		r, err := regexp.Compile(expr)
 		if err != nil {
-			errs = append(errs, fmt.Errorf("failed to compile allowed service account impersonation URL regexp '%s': %w", expr, err))
+			errs = append(errs, fmt.Errorf("failed to compile allowed service account impersonation URL regexp %q: %w", expr, err))
 			continue
 		}
 		regexps = append(regexps, r)
 	}
 	if len(errs) > 0 {
-		return nil, fmt.Errorf("errors compiling GCP workload identity config: %v", errs)
+		return nil, fmt.Errorf("errors compiling GCP workload identity config: %w", errors.Join(errs...))
 	}
 	return &InternalGCPWorkloadIdentityConfig{
 		AllowedTokenURLs: cfg.AllowedTokenURLs,

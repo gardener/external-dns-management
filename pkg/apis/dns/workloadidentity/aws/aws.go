@@ -2,35 +2,35 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package workloadidentity
+package aws
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
-// AWSWorkloadIdentityConfig contains configuration settings for AWS workload identity.
+// WorkloadIdentityConfig contains configuration settings for AWS workload identity.
 // copy from https://github.com/gardener/gardener-extension-provider-aws/blob/b2bfd4d78741a1bd14f7a1ac50cf3c4a89debd87/pkg/apis/aws/v1alpha1/types_workloadidentity.go
-type AWSWorkloadIdentityConfig struct {
+type WorkloadIdentityConfig struct {
 	metav1.TypeMeta
 
 	// RoleARN is the identifier of the role that the workload identity will assume.
 	RoleARN string `json:"roleARN,omitempty"`
 }
 
-// DeepCopy creates a deep copy of the AWSWorkloadIdentityConfig.
-func (c *AWSWorkloadIdentityConfig) DeepCopy() *AWSWorkloadIdentityConfig {
+// DeepCopy creates a deep copy of the WorkloadIdentityConfig.
+func (c *WorkloadIdentityConfig) DeepCopy() *WorkloadIdentityConfig {
 	if c == nil {
 		return nil
 	}
-	out := new(AWSWorkloadIdentityConfig)
+	out := new(WorkloadIdentityConfig)
 	out.TypeMeta = c.TypeMeta
 	out.RoleARN = c.RoleARN
 	return out
 }
 
-// ValidateAWSWorkloadIdentityConfig checks whether the given aws workload identity configuration contains expected fields and values.
-func ValidateAWSWorkloadIdentityConfig(config *AWSWorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
+// ValidateWorkloadIdentityConfig checks whether the given aws workload identity configuration contains expected fields and values.
+func ValidateWorkloadIdentityConfig(config *WorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if config.APIVersion != "aws.provider.extensions.gardener.cloud/v1alpha1" {
@@ -48,10 +48,10 @@ func ValidateAWSWorkloadIdentityConfig(config *AWSWorkloadIdentityConfig, fldPat
 	return allErrs
 }
 
-// ValidateAWSWorkloadIdentityConfigUpdate validates updates on AWSWorkloadIdentityConfig object.
-func ValidateAWSWorkloadIdentityConfigUpdate(_, newConfig *AWSWorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
+// ValidateWorkloadIdentityConfigUpdate validates updates on WorkloadIdentityConfig object.
+func ValidateWorkloadIdentityConfigUpdate(_, newConfig *WorkloadIdentityConfig, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, ValidateAWSWorkloadIdentityConfig(newConfig, fldPath)...)
+	allErrs = append(allErrs, ValidateWorkloadIdentityConfig(newConfig, fldPath)...)
 
 	return allErrs
 }

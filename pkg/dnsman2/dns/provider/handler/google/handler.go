@@ -74,7 +74,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	var clientOptions []option.ClientOption
 	// Note: Incompatible with "WithHTTPClient"
-	UAOption := option.WithUserAgent("dns-controller-manager")
+	UAOption := option.WithUserAgent("gardener-external-dns-management")
 	if c.GetProperty(securityv1alpha1constants.LabelWorkloadIdentityProvider) == "gcp" {
 		// use workload identity credentials
 		c.Log.Info("using workload identity credentials")
@@ -93,7 +93,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	} else {
 		serviceAccountJSON := h.config.Properties[ServiceAccountJSONField]
 		if serviceAccountJSON == "" {
-			return nil, fmt.Errorf("'%s' required in secret", ServiceAccountJSONField)
+			return nil, fmt.Errorf("%q required in secret", ServiceAccountJSONField)
 		}
 
 		info, err := validateServiceAccountJSON([]byte(serviceAccountJSON))
@@ -105,7 +105,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 		jwtConfig, err := google.JWTConfigFromJSON([]byte(serviceAccountJSON), scopes...)
 		if err != nil {
-			return nil, fmt.Errorf("serviceaccount is invalid: %s", err)
+			return nil, fmt.Errorf("serviceaccount is invalid: %w", err)
 		}
 		clientOptions = []option.ClientOption{option.WithTokenSource(jwtConfig.TokenSource(ctx)), UAOption}
 	}

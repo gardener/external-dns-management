@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package workloadidentity_test
+package aws_test
 
 import (
 	"testing"
@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestValidation(t *testing.T) {
+func TestAWS(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "WorkloadIdentity Validation Suite")
+	RunSpecs(t, "AWS WorkloadIdentity Validation Suite")
 }

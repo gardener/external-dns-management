@@ -27,7 +27,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/yaml"
 
-	"github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity"
+	workloadidentityaws "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity/aws"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
@@ -125,7 +125,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		c.Log.Info("creating aws-route53 handler using the chain of credential providers")
 	}
 
-	awscfg, err = v2config.LoadDefaultConfig(context.TODO(), configOptions...)
+	awscfg, err = v2config.LoadDefaultConfig(context.Background(), configOptions...)
 	if err != nil {
 		return nil, err
 	}
@@ -459,11 +459,11 @@ func getRoleARN(c *provider.DNSHandlerConfig) (string, error) {
 		return "", fmt.Errorf("missing %q field in secret", securityv1alpha1constants.DataKeyConfig)
 	}
 
-	cfg := workloadidentity.AWSWorkloadIdentityConfig{}
+	cfg := workloadidentityaws.WorkloadIdentityConfig{}
 	if err := yaml.Unmarshal([]byte(configData), &cfg); err != nil {
 		return "", fmt.Errorf("failed to unmarshal workload identity config: %w", err)
 	}
-	if err := workloadidentity.ValidateAWSWorkloadIdentityConfig(&cfg, field.NewPath("config")).ToAggregate(); err != nil {
+	if err := workloadidentityaws.ValidateWorkloadIdentityConfig(&cfg, field.NewPath("config")).ToAggregate(); err != nil {
 		return "", err
 	}
 	return cfg.RoleARN, nil

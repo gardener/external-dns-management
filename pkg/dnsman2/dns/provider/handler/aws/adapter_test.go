@@ -30,8 +30,7 @@ var _ = Describe("Adapter", func() {
 				}
 				props["AWS_SECRET_ACCESS_KEY"] = base64.StdEncoding.EncodeToString([]byte("example-key"))
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 
 			It("should accept valid region", func() {
@@ -41,8 +40,7 @@ var _ = Describe("Adapter", func() {
 				}
 				props["AWS_SECRET_ACCESS_KEY"] = base64.StdEncoding.EncodeToString([]byte("example-key"))
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 		})
 
@@ -52,8 +50,7 @@ var _ = Describe("Adapter", func() {
 					"AWS_USE_CREDENTIALS_CHAIN": "true",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 		})
 
@@ -64,8 +61,7 @@ var _ = Describe("Adapter", func() {
 					securityv1alpha1constants.LabelWorkloadIdentityProvider: "aws",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 
 			It("should NOT accept workload identity credentials without token", func() {
@@ -74,8 +70,7 @@ var _ = Describe("Adapter", func() {
 					securityv1alpha1constants.LabelWorkloadIdentityProvider: "aws",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).To(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(HaveOccurred())
 			})
 
 			It("should NOT accept workload identity credentials with wrong provider type", func() {
@@ -86,7 +81,7 @@ var _ = Describe("Adapter", func() {
 
 				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("value must be \"aws\""))
+				Expect(err).To(MatchError(ContainSubstring("value must be \"aws\"")))
 			})
 		})
 	})

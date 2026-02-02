@@ -43,8 +43,12 @@ var (
 func ValidateWorkloadIdentityConfig(config *WorkloadIdentityConfig, fldPath *field.Path, allowedTokenURLs []string, allowedServiceAccountImpersonationURLRegExps []*regexp.Regexp) field.ErrorList {
 	allErrs := field.ErrorList{}
 
+	if config.APIVersion != "gcp.provider.extensions.gardener.cloud/v1alpha1" {
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("apiVersion"), config.APIVersion, "apiVersion must be 'gcp.provider.extensions.gardener.cloud/v1alpha1'"))
+	}
+
 	if !projectIDRegexp.MatchString(config.ProjectID) {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("projectID"), config.ProjectID, "does not match the expected format"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("projectID"), config.ProjectID, fmt.Sprintf("does not match the expected format: %q", projectIDRegexp.String())))
 	}
 
 	if config.CredentialsConfig == nil {
@@ -54,7 +58,7 @@ func ValidateWorkloadIdentityConfig(config *WorkloadIdentityConfig, fldPath *fie
 
 	cfg := map[string]any{}
 	if err := json.Unmarshal(config.CredentialsConfig.Raw, &cfg); err != nil {
-		allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig"), config.CredentialsConfig.Raw, "has invalid format"))
+		allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig"), config.CredentialsConfig.Raw, fmt.Sprintf("has invalid format: %s", err.Error())))
 	} else {
 		// clone the map and remove all allowed fields
 		// if the cloned map has length greater than 0 then we have some extra fields in the original

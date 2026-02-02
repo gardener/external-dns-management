@@ -30,8 +30,7 @@ var _ = Describe("Adapter", func() {
 					"AZURE_TENANT_ID":       "12345678-1234-1234-1234-123456789012",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 
 			DescribeTable("should accept various Azure Cloud values", func(cloud string, ok bool) {
@@ -64,8 +63,7 @@ var _ = Describe("Adapter", func() {
 					securityv1alpha1constants.LabelWorkloadIdentityProvider: "azure",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).NotTo(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(Succeed())
 			})
 
 			It("should NOT accept workload identity credentials without token", func() {
@@ -74,8 +72,7 @@ var _ = Describe("Adapter", func() {
 					securityv1alpha1constants.LabelWorkloadIdentityProvider: "azure",
 				}
 
-				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
-				Expect(err).To(HaveOccurred())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(HaveOccurred())
 			})
 
 			It("should NOT accept workload identity credentials with wrong provider type", func() {
@@ -86,7 +83,7 @@ var _ = Describe("Adapter", func() {
 
 				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
 				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("value must be \"azure\""))
+				Expect(err).To(MatchError(ContainSubstring("value must be \"azure\"")))
 			})
 		})
 	})

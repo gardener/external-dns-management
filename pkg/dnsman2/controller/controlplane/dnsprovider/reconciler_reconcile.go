@@ -185,7 +185,7 @@ func toLightZones(zones []dnsprovider.DNSHostedZone) []selection.LightDNSHostedZ
 
 func checkAndAddWorkloadIdentitySecretLabel(secret *corev1.Secret, props utils.Properties) error {
 	// For security reasons, verify that the workload identity secret has expected labels,
-	// but no the LabelWorkloadIdentityProvider itself as property
+	// but not the LabelWorkloadIdentityProvider itself as property
 	if props[securityv1alpha1constants.LabelWorkloadIdentityProvider] != "" {
 		return fmt.Errorf("secret %s/%s contains unexpected field %s",
 			secret.GetNamespace(), secret.GetName(), securityv1alpha1constants.LabelWorkloadIdentityProvider)

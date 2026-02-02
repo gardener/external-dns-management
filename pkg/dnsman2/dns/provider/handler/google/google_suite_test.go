@@ -11,7 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestValidation(t *testing.T) {
+func TestGoogle(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Google Cloud Test Suite")
 }
