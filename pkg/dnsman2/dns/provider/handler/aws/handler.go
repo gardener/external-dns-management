@@ -10,17 +10,24 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v2config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/yaml"
 
+	workloadidentityaws "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity/aws"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
@@ -76,7 +83,29 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid value for AWS_USE_CREDENTIALS_CHAIN: %s", err)
 	}
-	if !useCredentialsChain {
+	configOptions := []func(*v2config.LoadOptions) error{
+		v2config.WithRegion(region),
+		v2config.WithAppID("gardener-external-dns-management"),
+		v2config.WithRetryMaxAttempts(ptr.Deref(advancedOptions.MaxRetries, defaultMaxRetries)), // change maxRetries to avoid paging stops because of throttling
+	}
+	switch {
+	case c.GetProperty(securityv1alpha1constants.LabelWorkloadIdentityProvider) == "aws":
+		dataKeyToken, err := c.GetRequiredProperty(securityv1alpha1constants.DataKeyToken)
+		if err != nil {
+			return nil, err
+		}
+		roleARN, err := getRoleARN(c)
+		if err != nil {
+			return nil, err
+		}
+		c.Log.Info("creating aws-route53 handler using web identity role", "roleARN", roleARN)
+		credentialsProvider := stscreds.NewWebIdentityRoleProvider(
+			sts.NewFromConfig(aws.Config{Region: region}),
+			roleARN,
+			&staticTokenRetriever{token: []byte(dataKeyToken)},
+		)
+		configOptions = append(configOptions, v2config.WithCredentialsProvider(credentialsProvider))
+	case !useCredentialsChain:
 		accessKeyID, err := c.GetRequiredProperty("AWS_ACCESS_KEY_ID", "accessKeyID")
 		if err != nil {
 			return nil, err
@@ -88,41 +117,20 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 			return nil, err
 		}
 		token := c.GetProperty("AWS_SESSION_TOKEN", "sessionToken")
-		awscfg, err = v2config.LoadDefaultConfig(
-			context.TODO(),
-			v2config.WithRegion(region),
-			v2config.WithAppID("gardener-external-dns-management"),
-			v2config.WithCredentialsProvider(aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token))),
-			v2config.WithRetryMaxAttempts(ptr.Deref(advancedOptions.MaxRetries, defaultMaxRetries)), // change maxRetries to avoid paging stops because of throttling
-		)
-		if err != nil {
-			return nil, err
-		}
-	} else {
+		configOptions = append(configOptions, v2config.WithCredentialsProvider(aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token))))
+	default:
 		if c.GetProperty("AWS_ACCESS_KEY_ID", "accessKeyID") != "" {
 			return nil, fmt.Errorf("explicit credentials (AWS_ACCESS_KEY_ID or accessKeyID) cannot be used together with AWS_USE_CREDENTIALS_CHAIN=true")
 		}
 		c.Log.Info("creating aws-route53 handler using the chain of credential providers")
-		awscfg, err = v2config.LoadDefaultConfig(
-			context.TODO(),
-			v2config.WithRegion(region),
-			v2config.WithAppID("gardener-external-dns-management"),
-			v2config.WithRetryMaxAttempts(ptr.Deref(advancedOptions.MaxRetries, defaultMaxRetries)), // change maxRetries to avoid paging stops because of throttling
-		)
-		if err != nil {
-			return nil, err
-		}
 	}
 
-	// TODO check if this is correct
-	//if strings.HasPrefix(region, "us-gov-") {
-	//	awscfg.BaseEndpoint = aws.String("route53.us-gov.amazonaws.com")
-	//}
-
-	h.r53 = *route53.NewFromConfig(awscfg)
+	awscfg, err = v2config.LoadDefaultConfig(context.Background(), configOptions...)
 	if err != nil {
 		return nil, err
 	}
+
+	h.r53 = *route53.NewFromConfig(awscfg)
 	h.policyContext = newRoutingPolicyContext(h.r53)
 
 	return h, nil
@@ -413,11 +421,50 @@ func toAWSRecordType(recordType dns.RecordType) (route53types.RRType, error) {
 	}
 }
 
+var (
+	redactedRequestIDPattern = regexp.MustCompile(`RequestID: [a-z0-9-]+`)
+	redactedDateTimePattern  = regexp.MustCompile(`date/time [0-9]+`)
+)
+
 // stableError converts an AWS SDK error into a stable error message without request ID
 // to avoid endless status update/reconcile loop.
 func stableError(err error) error {
 	if err, ok := err.(*smithy.OperationError); ok {
-		return fmt.Errorf("%s failed: %s", err.OperationName, errors.Unwrap(err.Unwrap()).Error())
+		msg := errors.Unwrap(err.Unwrap()).Error()
+		msg = redactedRequestIDPattern.ReplaceAllString(msg, "RequestID: <redacted>")
+		msg = redactedDateTimePattern.ReplaceAllString(msg, "date/time: <redacted>")
+		return fmt.Errorf("%s failed: %s", err.OperationName, msg)
 	}
 	return err
+}
+
+// ensure staticTokenRetriever implements github.com/aws/aws-sdk-go-v2/credentials/stscreds.IdentityTokenRetriever
+var _ stscreds.IdentityTokenRetriever = (*staticTokenRetriever)(nil)
+
+type staticTokenRetriever struct {
+	token []byte
+}
+
+func (s *staticTokenRetriever) GetIdentityToken() ([]byte, error) {
+	return s.token, nil
+}
+
+func getRoleARN(c *provider.DNSHandlerConfig) (string, error) {
+	roleARN := c.GetProperty(dns.RoleARN)
+	if roleARN != "" {
+		return roleARN, nil
+	}
+	configData := c.GetProperty(securityv1alpha1constants.DataKeyConfig)
+	if configData == "" {
+		return "", fmt.Errorf("missing %q field in secret", securityv1alpha1constants.DataKeyConfig)
+	}
+
+	cfg := workloadidentityaws.WorkloadIdentityConfig{}
+	if err := yaml.Unmarshal([]byte(configData), &cfg); err != nil {
+		return "", fmt.Errorf("failed to unmarshal workload identity config: %w", err)
+	}
+	if err := workloadidentityaws.ValidateWorkloadIdentityConfig(&cfg, field.NewPath("config")).ToAggregate(); err != nil {
+		return "", err
+	}
+	return cfg.RoleARN, nil
 }

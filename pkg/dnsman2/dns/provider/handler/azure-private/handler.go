@@ -62,7 +62,9 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 
 	err = h.checkAuthentication(zonesClient)
 	if err != nil {
-		return nil, perrs.WrapAsHandlerError(err, "authentication test to Azure Private with client credentials failed; please check the secret for the DNSProvider")
+		c.Log.Error(err, "authentication test failed")
+		err := perrs.WrapAsHandlerError(azutils.StableError(err), "authentication test to Azure with client credentials failed; please check the secret for the DNSProvider")
+		return nil, err
 	}
 
 	h.zonesClient = zonesClient
@@ -96,7 +98,7 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 
 		page, err := pager.NextPage(ctx)
 		if err != nil {
-			return nil, perrs.WrapAsHandlerError(err, "failed to list zones")
+			return nil, perrs.WrapAsHandlerError(azutils.StableError(err), "failed to list zones")
 		}
 
 		for _, item := range page.Value {

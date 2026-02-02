@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package google
+package google_test
 
 import (
 	"testing"
@@ -11,8 +11,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestIntegration(t *testing.T) {
+func TestGoogle(t *testing.T) {
 	RegisterFailHandler(Fail)
-
-	RunSpecs(t, "Google CloudDNS Suite")
+	RunSpecs(t, "Google Cloud Test Suite")
 }

@@ -10,15 +10,23 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	v2config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/smithy-go"
 	"github.com/gardener/controller-manager-library/pkg/logger"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	"sigs.k8s.io/yaml"
 
+	workloadidentityaws "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity/aws"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/config"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/aws/mapping"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -69,7 +77,29 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	if err != nil {
 		return nil, fmt.Errorf("invalid value for AWS_USE_CREDENTIALS_CHAIN: %s", err)
 	}
-	if !useCredentialsChain {
+	configOptions := []func(*v2config.LoadOptions) error{
+		v2config.WithRegion(region),
+		v2config.WithAppID("gardener-external-dns-management"),
+		v2config.WithRetryMaxAttempts(advancedConfig.MaxRetries), // change maxRetries to avoid paging stops because of throttling
+	}
+	switch {
+	case c.GetProperty(securityv1alpha1constants.LabelWorkloadIdentityProvider) == "aws":
+		dataKeyToken, err := c.GetRequiredProperty(securityv1alpha1constants.DataKeyToken)
+		if err != nil {
+			return nil, err
+		}
+		roleARN, err := getRoleARN(c)
+		if err != nil {
+			return nil, err
+		}
+		c.Logger.Infof("creating aws-route53 handler using web identity role %s", roleARN)
+		credentialsProvider := stscreds.NewWebIdentityRoleProvider(
+			sts.NewFromConfig(aws.Config{Region: region}),
+			roleARN,
+			&staticTokenRetriever{token: []byte(dataKeyToken)},
+		)
+		configOptions = append(configOptions, v2config.WithCredentialsProvider(credentialsProvider))
+	case !useCredentialsChain:
 		accessKeyID, err := c.GetRequiredProperty("AWS_ACCESS_KEY_ID", "accessKeyID")
 		if err != nil {
 			return nil, err
@@ -80,30 +110,17 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 			return nil, err
 		}
 		token := c.GetProperty("AWS_SESSION_TOKEN", "sessionToken")
-		awscfg, err = v2config.LoadDefaultConfig(
-			context.TODO(),
-			v2config.WithRegion(region),
-			v2config.WithAppID("gardener-external-dns-management"),
-			v2config.WithCredentialsProvider(aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token))),
-			v2config.WithRetryMaxAttempts(advancedConfig.MaxRetries), // change maxRetries to avoid paging stops because of throttling
-		)
-		if err != nil {
-			return nil, err
-		}
-	} else {
+		configOptions = append(configOptions, v2config.WithCredentialsProvider(aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token))))
+	default:
 		if c.GetProperty("AWS_ACCESS_KEY_ID", "accessKeyID") != "" {
 			return nil, fmt.Errorf("explicit credentials (AWS_ACCESS_KEY_ID or accessKeyID) cannot be used together with AWS_USE_CREDENTIALS_CHAIN=true")
 		}
 		c.Logger.Infof("creating aws-route53 handler using the chain of credential providers")
-		awscfg, err = v2config.LoadDefaultConfig(
-			context.TODO(),
-			v2config.WithRegion(region),
-			v2config.WithAppID("gardener-external-dns-management"),
-			v2config.WithRetryMaxAttempts(advancedConfig.MaxRetries), // change maxRetries to avoid paging stops because of throttling
-		)
-		if err != nil {
-			return nil, err
-		}
+	}
+
+	awscfg, err = v2config.LoadDefaultConfig(context.Background(), configOptions...)
+	if err != nil {
+		return nil, err
 	}
 
 	// TODO check if this is correct
@@ -112,9 +129,6 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	//}
 
 	h.r53 = *route53.NewFromConfig(awscfg)
-	if err != nil {
-		return nil, err
-	}
 	h.policyContext = newRoutingPolicyContext(h.r53)
 
 	h.cache, err = c.ZoneCacheFactory.CreateZoneCache(provider.CacheZoneState, c.Metrics, h.getZones, h.getZoneState)
@@ -148,7 +162,7 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 
 		output, err := paginator.NextPage(ctx)
 		if err != nil {
-			return nil, err
+			return nil, stableError(err)
 		}
 		for _, zone := range output.HostedZones {
 			comp := strings.Split(aws.ToString(zone.Id), "/")
@@ -388,4 +402,52 @@ func (h *Handler) executeRecordSetChange(ctx context.Context, action route53type
 		return err
 	}
 	return exec.submitChanges(ctx, h.config.Metrics)
+}
+
+// ensure staticTokenRetriever implements github.com/aws/aws-sdk-go-v2/credentials/stscreds.IdentityTokenRetriever
+var _ stscreds.IdentityTokenRetriever = (*staticTokenRetriever)(nil)
+
+type staticTokenRetriever struct {
+	token []byte
+}
+
+func (s *staticTokenRetriever) GetIdentityToken() ([]byte, error) {
+	return s.token, nil
+}
+
+func getRoleARN(c *provider.DNSHandlerConfig) (string, error) {
+	roleARN := c.GetProperty(dns.RoleARN)
+	if roleARN != "" {
+		return roleARN, nil
+	}
+	configData := c.GetProperty(securityv1alpha1constants.DataKeyConfig)
+	if configData == "" {
+		return "", fmt.Errorf("missing %q field in secret", securityv1alpha1constants.DataKeyConfig)
+	}
+
+	cfg := workloadidentityaws.WorkloadIdentityConfig{}
+	if err := yaml.Unmarshal([]byte(configData), &cfg); err != nil {
+		return "", fmt.Errorf("failed to unmarshal workload identity config: %w", err)
+	}
+	if err := workloadidentityaws.ValidateWorkloadIdentityConfig(&cfg, field.NewPath("config")).ToAggregate(); err != nil {
+		return "", err
+	}
+	return cfg.RoleARN, nil
+}
+
+var (
+	redactedRequestIDPattern = regexp.MustCompile(`RequestID: [a-z0-9-]+`)
+	redactedDateTimePattern  = regexp.MustCompile(`date/time [0-9]+`)
+)
+
+// stableError converts an AWS SDK error into a stable error message without request ID
+// to avoid endless status update/reconcile loop.
+func stableError(err error) error {
+	if err, ok := err.(*smithy.OperationError); ok {
+		msg := errors.Unwrap(err.Unwrap()).Error()
+		msg = redactedRequestIDPattern.ReplaceAllString(msg, "RequestID: <redacted>")
+		msg = redactedDateTimePattern.ReplaceAllString(msg, "date/time: <redacted>")
+		return fmt.Errorf("%s failed: %s", err.OperationName, msg)
+	}
+	return err
 }

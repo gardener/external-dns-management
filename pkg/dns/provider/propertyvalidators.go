@@ -174,3 +174,13 @@ func NoTrailingNewlineValidator(value string) error {
 	}
 	return nil
 }
+
+// ExpectedValueValidator checks if the value matches the expected string.
+func ExpectedValueValidator(expected string) PropertyValidator {
+	return func(value string) error {
+		if value != expected {
+			return fmt.Errorf("value must be %q", expected)
+		}
+		return nil
+	}
+}

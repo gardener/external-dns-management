@@ -144,19 +144,19 @@ func (c *DNSHandlerConfig) getProperty(key string, required bool, altKeys ...str
 			return "", nil
 		}
 		keys := append([]string{key}, altKeys...)
-		err := fmt.Errorf("'%s' required in secret", strings.Join(keys, "' or '"))
+		err := fmt.Errorf("%q required in secret", strings.Join(keys, "' or '"))
 		return "", err
 	}
 
 	tvalue := strings.TrimSpace(value)
 	if value != tvalue {
-		c.Logger.Warnf("value for '%s' in secret contains leading or trailing spaces which have been removed", usedKey)
+		c.Logger.Warnf("value for %q in secret contains leading or trailing spaces which have been removed", usedKey)
 	}
 	if tvalue == "" {
 		if !required {
 			return "", nil
 		}
-		err := fmt.Errorf("value for '%s' in secret is empty", usedKey)
+		err := fmt.Errorf("value for %q in secret is empty", usedKey)
 		return "", err
 	}
 	return tvalue, nil

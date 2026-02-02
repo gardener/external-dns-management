@@ -10,6 +10,7 @@ import (
 	"slices"
 	"time"
 
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -167,7 +168,11 @@ func (r *Reconciler) getProperties(ctx context.Context, secretRef *corev1.Secret
 		return nil, fmt.Errorf("unable to get secret %s: %w", client.ObjectKeyFromObject(secret), err)
 	}
 
-	return utils.NewPropertiesFromSecretData(secret.Data), nil
+	props := utils.NewPropertiesFromSecretData(secret.Data)
+	if err := checkAndAddWorkloadIdentitySecretLabel(secret, props); err != nil {
+		return nil, err
+	}
+	return props, nil
 }
 
 func toLightZones(zones []dnsprovider.DNSHostedZone) []selection.LightDNSHostedZone {
@@ -176,4 +181,19 @@ func toLightZones(zones []dnsprovider.DNSHostedZone) []selection.LightDNSHostedZ
 		lzones[i] = z
 	}
 	return lzones
+}
+
+func checkAndAddWorkloadIdentitySecretLabel(secret *corev1.Secret, props utils.Properties) error {
+	// For security reasons, verify that the workload identity secret has expected labels,
+	// but not the LabelWorkloadIdentityProvider itself as property
+	if props[securityv1alpha1constants.LabelWorkloadIdentityProvider] != "" {
+		return fmt.Errorf("secret %s/%s contains unexpected field %s",
+			secret.GetNamespace(), secret.GetName(), securityv1alpha1constants.LabelWorkloadIdentityProvider)
+	}
+	if secret.Labels[securityv1alpha1constants.LabelPurpose] == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor &&
+		secret.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider] != "" {
+		// inject the label into the properties for further processing
+		props[securityv1alpha1constants.LabelWorkloadIdentityProvider] = secret.Labels[securityv1alpha1constants.LabelWorkloadIdentityProvider]
+	}
+	return nil
 }

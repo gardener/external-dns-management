@@ -18,6 +18,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -387,6 +388,10 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 		return this, this.failed(logger, false, fmt.Errorf("%s", validationError), false)
 	}
 
+	if err := checkAndAddWorkloadIdentitySecretLabel(secretObj, props); err != nil {
+		return this, this.failed(logger, false, err, false)
+	}
+
 	adapter, err := state.GetHandlerFactory().GetDNSHandlerAdapter(provider.TypeCode())
 	if err != nil {
 		return this, this.failed(logger, false, err, false)
@@ -629,4 +634,19 @@ func (this *dnsProviderVersion) HasEquivalentZone(zoneID dns.ZoneID) bool {
 func (this *dnsProviderVersion) GetDedicatedDNSAccess() DedicatedDNSAccess {
 	h, _ := this.account.handler.(DedicatedDNSAccess)
 	return h
+}
+
+func checkAndAddWorkloadIdentitySecretLabel(secretObj *resources.SecretObject, props utils.Properties) error {
+	// For security reasons, verify that the workload identity secret has expected labels,
+	// but not the LabelWorkloadIdentityProvider itself as property
+	if props[securityv1alpha1constants.LabelWorkloadIdentityProvider] != "" {
+		return fmt.Errorf("property for secret %s/%s contains unexpected field %s",
+			secretObj.GetNamespace(), secretObj.GetName(), securityv1alpha1constants.LabelWorkloadIdentityProvider)
+	}
+	if secretObj.GetLabel(securityv1alpha1constants.LabelPurpose) == securityv1alpha1constants.LabelPurposeWorkloadIdentityTokenRequestor &&
+		secretObj.GetLabel(securityv1alpha1constants.LabelWorkloadIdentityProvider) != "" {
+		// inject the label into the properties for further processing
+		props[securityv1alpha1constants.LabelWorkloadIdentityProvider] = secretObj.GetLabel(securityv1alpha1constants.LabelWorkloadIdentityProvider)
+	}
+	return nil
 }
