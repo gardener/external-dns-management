@@ -7,57 +7,51 @@ package crdwatch
 import (
 	"context"
 	"fmt"
-	"os"
 
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"sigs.k8s.io/controller-runtime/pkg/client"
+	"k8s.io/client-go/discovery"
+	"k8s.io/utils/ptr"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gatewayapi"
 	gatewayapiv1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gatewayapi/v1"
 	gatewayapiv1beta1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gatewayapi/v1beta1"
 )
 
-// Reconciler is the reconciler for CRD watch controller.
+// Reconciler is the reconciler for the CRD watch controller.
 type Reconciler struct {
-	Config config.SourceControllerConfig
-	Client client.Client
+	Config    config.SourceControllerConfig
+	Discovery discovery.DiscoveryInterface
+	Exit      func(int)
 }
 
 // Reconcile reconciles on CRD creation or deletion.
-func (r *Reconciler) Reconcile(ctx context.Context, request reconcile.Request) (reconcile.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, _ reconcile.Request) (reconcile.Result, error) {
 	log := logf.FromContext(ctx).WithName(ControllerName)
 
-	deactivated, err := isResponsibleSourceControllerDeactivated(request.Name)
+	apiVersion, err := gatewayapi.DetermineAPIVersion(r.Discovery)
 	if err != nil {
-		return reconcile.Result{}, err
+		return reconcile.Result{}, fmt.Errorf("could not determine Gateway API version: %w", err)
 	}
 
-	crd := &apiextensionsv1.CustomResourceDefinition{}
-	if err := r.Client.Get(ctx, request.NamespacedName, crd); err != nil {
-		if apierrors.IsNotFound(err) && !deactivated {
-			log.Info("Relevant CRD deleted, shutting down to deactivate source controller.", "crd", crd.Name)
-			os.Exit(3)
-			return reconcile.Result{}, nil
+	switch ptr.Deref(apiVersion, "") {
+	case gatewayapi.V1Beta1:
+		if !gatewayapiv1beta1.Activated {
+			log.V(1).Info("Found Gateway API v1beta1 CRDs, but the source controller is deactivated. Restarting for initialization...")
+			r.Exit(3)
 		}
-		return reconcile.Result{}, err
-	}
-
-	if deactivated {
-		log.Info("Relevant CRD created, shutting down to activate source controller.", "crd", crd.Name)
-		os.Exit(3)
-		return reconcile.Result{}, nil
+	case gatewayapi.V1:
+		if !gatewayapiv1.Activated {
+			log.V(1).Info("Found Gateway API v1 CRDs, but the source controller is deactivated. Restarting for initialization...")
+			r.Exit(3)
+		}
+	default:
+		if gatewayapiv1beta1.Activated || gatewayapiv1.Activated {
+			log.V(1).Info("Source controller for Gateway API is active, but no relevant CRDs found. Restarting for initialization...")
+			r.Exit(3)
+		}
 	}
 
 	return reconcile.Result{}, nil
-}
-
-func isResponsibleSourceControllerDeactivated(crdName string) (bool, error) {
-	if isGatewayAPICRD(crdName) {
-		return gatewayapiv1beta1.IsDeactivated() || gatewayapiv1.IsDeactivated(), nil
-	}
-
-	return false, fmt.Errorf("unexpected CRD %s", crdName)
 }

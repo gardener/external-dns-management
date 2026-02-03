@@ -5,12 +5,16 @@
 package crdwatch
 
 import (
+	"os"
+
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	v1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 )
@@ -21,7 +25,12 @@ const ControllerName = "crdwatch-source"
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, cfg *config.DNSManagerConfiguration) error {
 	r.Config = cfg.Controllers.Source
-	r.Client = mgr.GetClient()
+	dc, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	if err != nil {
+		return err
+	}
+	r.Discovery = dc
+	r.Exit = os.Exit
 
 	return builder.
 		ControllerManagedBy(mgr).
