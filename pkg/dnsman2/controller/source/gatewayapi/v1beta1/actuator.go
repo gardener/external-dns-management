@@ -31,8 +31,9 @@ type Actuator struct {
 }
 
 var (
-	_           common.SourceActuator[*gatewayapisv1beta1.Gateway] = &Actuator{}
-	deactivated bool
+	// Activated indicates whether this source controller is activated.
+	Activated bool
+	_         common.SourceActuator[*gatewayapisv1beta1.Gateway] = &Actuator{}
 )
 
 // ReconcileSourceObject reconciles the given Gateway resource.
@@ -130,14 +131,4 @@ func (a *Actuator) mapHTTPRouteToGatewayRequest(_ context.Context, obj client.Ob
 		requests[i] = reconcile.Request{NamespacedName: gatewayKey}
 	}
 	return requests
-}
-
-// Deactivate remembers that the Gateway API v1beta1 source controller is deactivated.
-func Deactivate() {
-	deactivated = true
-}
-
-// IsDeactivated returns whether the Gateway API v1beta1 source controller is deactivated.
-func IsDeactivated() bool {
-	return deactivated
 }
