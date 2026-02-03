@@ -26,20 +26,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, cfg *config.DNSManagerCon
 	return builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
-		For(&apiextensionsv1.CustomResourceDefinition{}, builder.WithPredicates(predicate.Funcs{
-			CreateFunc: func(e event.CreateEvent) bool {
-				return isRelevantCRD(e.Object.GetName())
-			},
-			UpdateFunc: func(_ event.UpdateEvent) bool {
-				return false
-			},
-			DeleteFunc: func(e event.DeleteEvent) bool {
-				return isRelevantCRD(e.Object.GetName())
-			},
-			GenericFunc: func(_ event.GenericEvent) bool {
-				return false
-			},
-		})).
+		For(&apiextensionsv1.CustomResourceDefinition{}, builder.WithPredicates(relevantCRDPredicate())).
 		WithOptions(controller.Options{
 			MaxConcurrentReconciles: 1,
 			SkipNameValidation:      cfg.Controllers.SkipNameValidation,
@@ -47,6 +34,24 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, cfg *config.DNSManagerCon
 		Complete(r)
 }
 
+func relevantCRDPredicate() predicate.Funcs {
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return isRelevantCRD(e.Object.GetName())
+		},
+		UpdateFunc: func(_ event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return isRelevantCRD(e.Object.GetName())
+		},
+		GenericFunc: func(_ event.GenericEvent) bool {
+			return false
+		},
+	}
+}
+
 func isRelevantCRD(name string) bool {
-	return isGatewayAPICRD(name)
+	return name == "gateways."+v1.GroupName ||
+		name == "httproutes."+v1.GroupName
 }
