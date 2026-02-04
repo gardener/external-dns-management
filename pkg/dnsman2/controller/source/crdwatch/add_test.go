@@ -39,8 +39,10 @@ var _ = Describe("Add", func() {
 			Expect(predicate.CreateFunc(event.CreateEvent{Object: irrelevantObj})).To(BeFalse())
 		})
 
-		It("should return false for update events", func() {
-			Expect(predicate.UpdateFunc(event.UpdateEvent{ObjectNew: gatewayObj})).To(BeFalse())
+		It("should handle update events appropriately", func() {
+			Expect(predicate.UpdateFunc(event.UpdateEvent{ObjectNew: gatewayObj})).To(BeTrue())
+			Expect(predicate.UpdateFunc(event.UpdateEvent{ObjectNew: httpRouteObj})).To(BeTrue())
+			Expect(predicate.UpdateFunc(event.UpdateEvent{ObjectNew: irrelevantObj})).To(BeFalse())
 		})
 
 		It("should handle delete events appropriately", func() {

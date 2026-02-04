@@ -48,8 +48,8 @@ func relevantCRDPredicate() predicate.Funcs {
 		CreateFunc: func(e event.CreateEvent) bool {
 			return isRelevantCRD(e.Object.GetName())
 		},
-		UpdateFunc: func(_ event.UpdateEvent) bool {
-			return false
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return isRelevantCRD(e.ObjectNew.GetName())
 		},
 		DeleteFunc: func(e event.DeleteEvent) bool {
 			return isRelevantCRD(e.Object.GetName())
