@@ -44,7 +44,7 @@ type DNSSpecInput struct {
 func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk schema.GroupVersionKind, svc *corev1.Service) (*DNSSpecInput, error) {
 	annotations := GetMergedAnnotation(gvk, state, svc)
 
-	names, err := getDNSNamesFromAnnotations(log, annotations)
+	names, err := GetDNSNamesFromAnnotations(log, annotations)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk
 		ipStack = dns.AnnotationValueIPStackIPDualStack
 	}
 
-	return augmentFromCommonAnnotations(annotations, DNSSpecInput{
+	return AugmentFromCommonAnnotations(annotations, DNSSpecInput{
 		Names:   names,
 		Targets: targets,
 		IPStack: ipStack,
@@ -100,7 +100,7 @@ func GetDNSSpecInputForIngress(log logr.Logger, state state.AnnotationState, gvk
 		return nil, nil
 	}
 
-	return augmentFromCommonAnnotations(annotations, DNSSpecInput{
+	return AugmentFromCommonAnnotations(annotations, DNSSpecInput{
 		Names:   names,
 		Targets: getTargetsForIngress(ingress),
 		IPStack: annotations[dns.AnnotationIPStack],
@@ -108,7 +108,7 @@ func GetDNSSpecInputForIngress(log logr.Logger, state state.AnnotationState, gvk
 }
 
 func getDNSNamesForIngress(log logr.Logger, ingress *networkingv1.Ingress, annotations map[string]string) (*utils.UniqueStrings, error) {
-	annotatedNames, err := getDNSNamesFromAnnotations(log, annotations)
+	annotatedNames, err := GetDNSNamesFromAnnotations(log, annotations)
 	if err != nil {
 		return nil, err
 	}
@@ -150,7 +150,8 @@ func getTargetsForIngress(ingress *networkingv1.Ingress) *utils.UniqueStrings {
 	return hosts
 }
 
-func augmentFromCommonAnnotations(annotations map[string]string, input DNSSpecInput) (*DNSSpecInput, error) {
+// AugmentFromCommonAnnotations augments the given DNSSpecInput with common annotations.
+func AugmentFromCommonAnnotations(annotations map[string]string, input DNSSpecInput) (*DNSSpecInput, error) {
 	if len(annotations) == 0 {
 		return &input, nil
 	}
@@ -224,7 +225,8 @@ func modifyEntryFor(entry *v1alpha1.DNSEntry, cfg config.SourceControllerConfig,
 	}
 }
 
-func getDNSNamesFromAnnotations(log logr.Logger, annotations map[string]string) (*utils.UniqueStrings, error) {
+// GetDNSNamesFromAnnotations extracts DNS names from the corresponding annotation.
+func GetDNSNamesFromAnnotations(log logr.Logger, annotations map[string]string) (*utils.UniqueStrings, error) {
 	dnsNames, ok := annotations[dns.AnnotationDNSNames]
 	if !ok {
 		log.V(5).Info("No DNS names annotation", "key", dns.AnnotationDNSNames)

@@ -1,0 +1,6 @@
+rules:
+  - selectorRegexp: sigs[.]k8s[.]io/gateway-api/apis
+    allowedPrefixes:
+      - ''
+    forbiddenPrefixes:
+      - sigs.k8s.io/gateway-api/apis/v1beta1

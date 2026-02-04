@@ -8,6 +8,7 @@ import (
 	"context"
 
 	"github.com/gardener/gardener/extensions/pkg/controller/cmd"
+	"k8s.io/client-go/discovery"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
@@ -17,8 +18,11 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 	dnsanntation "github.com/gardener/external-dns-management/pkg/dnsman2/controller/dnsannotation"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/crdwatch"
 	sourcednsentry "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsentry"
 	sourcednsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/dnsprovider"
+	gatewayapiv1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gatewayapi/v1"
+	gatewayapiv1beta1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gatewayapi/v1beta1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/ingress"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
@@ -37,6 +41,9 @@ func ControllerSwitches() *cmd.SwitchOptions {
 		cmd.Switch(service.ControllerName, AddSourceServiceController),
 		cmd.Switch(ingress.ControllerName, AddSourceIngressController),
 		cmd.Switch(sourcednsentry.ControllerName, AddSourceDNSEntryController),
+		cmd.Switch(gatewayapiv1beta1.ControllerName, AddSourceGatewayAPIV1Beta1Controller),
+		cmd.Switch(gatewayapiv1.ControllerName, AddSourceGatewayAPIV1Controller),
+		cmd.Switch(crdwatch.ControllerName, AddSourceCRDWatchController),
 	)
 }
 
@@ -91,7 +98,7 @@ func AddSourceServiceController(ctx context.Context, mgr manager.Manager) error 
 	if err != nil {
 		return err
 	}
-	return common.NewSourceReconciler(&service.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
+	return common.NewSourceReconciler(&service.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, nil)
 }
 
 // AddSourceIngressController adds the Ingress source controller to the manager.
@@ -100,7 +107,7 @@ func AddSourceIngressController(ctx context.Context, mgr manager.Manager) error 
 	if err != nil {
 		return err
 	}
-	return common.NewSourceReconciler(&ingress.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
+	return common.NewSourceReconciler(&ingress.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, nil)
 }
 
 // AddSourceDNSEntryController adds the DNSEntry source controller to the manager.
@@ -113,7 +120,68 @@ func AddSourceDNSEntryController(ctx context.Context, mgr manager.Manager) error
 		appCtx.Log.Info("Skipping addition of DNSEntry source controller in single cluster deployment")
 		return nil
 	}
-	return common.NewSourceReconciler(&sourcednsentry.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config)
+	return common.NewSourceReconciler(&sourcednsentry.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, nil)
+}
+
+// AddSourceGatewayAPIV1Beta1Controller adds the Gateway API v1beta1 source controller to the manager.
+func AddSourceGatewayAPIV1Beta1Controller(ctx context.Context, mgr manager.Manager) error {
+	appCtx, err := appcontext.GetAppContextValue(ctx)
+	if err != nil {
+		return err
+	}
+
+	dc, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	if err != nil {
+		return err
+	}
+	a := &gatewayapiv1beta1.Actuator{Discovery: dc}
+	shouldActivate, err := a.ShouldActivate()
+	if err != nil {
+		return err
+	}
+	if !shouldActivate {
+		appCtx.Log.V(1).Info("No relevant Gateway API v1beta1 CRDs found or v1 CRDs present, deactivating source controller.")
+		return nil
+	}
+
+	appCtx.Log.V(1).Info("Relevant Gateway API v1beta1 CRDs found, activating source controller.")
+	gatewayapiv1beta1.Activated = true
+	return common.NewSourceReconciler(a).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, a.WatchHTTPRoutes)
+}
+
+// AddSourceGatewayAPIV1Controller adds the Gateway API v1 source controller to the manager.
+func AddSourceGatewayAPIV1Controller(ctx context.Context, mgr manager.Manager) error {
+	appCtx, err := appcontext.GetAppContextValue(ctx)
+	if err != nil {
+		return err
+	}
+
+	dc, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	if err != nil {
+		return err
+	}
+	a := &gatewayapiv1.Actuator{Discovery: dc}
+	shouldActivate, err := a.ShouldActivate()
+	if err != nil {
+		return err
+	}
+	if !shouldActivate {
+		appCtx.Log.V(1).Info("No relevant Gateway API v1 CRDs found, deactivating source controller.")
+		return nil
+	}
+
+	appCtx.Log.V(1).Info("Relevant Gateway API v1 CRDs found, activating source controller.")
+	gatewayapiv1.Activated = true
+	return common.NewSourceReconciler(a).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, a.WatchHTTPRoutes)
+}
+
+// AddSourceCRDWatchController adds the CRD watch source controller to the manager.
+func AddSourceCRDWatchController(ctx context.Context, mgr manager.Manager) error {
+	appCtx, err := appcontext.GetAppContextValue(ctx)
+	if err != nil {
+		return err
+	}
+	return (&crdwatch.Reconciler{}).AddToManager(mgr, appCtx.Config)
 }
 
 func getStandardDNSHandlerFactory(cfg config.DNSProviderControllerConfig) provider.DNSHandlerFactory {
