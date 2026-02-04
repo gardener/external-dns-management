@@ -18,6 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/clock"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -39,6 +40,8 @@ type DNSAccountConfig struct {
 	Clock clock.Clock
 	// RateLimiterOptions are the rate limiter options.
 	RateLimits *config.RateLimiterOptions
+	// GlobalConfig is the global DNS manager configuration.
+	GlobalConfig *config.DNSManagerConfiguration
 }
 
 // DNSAccount represents a DNS account.
@@ -201,7 +204,7 @@ func NewAccountMap() *AccountMap {
 }
 
 // Get returns a DNSAccount for the given provider, creating it if necessary.
-func (m *AccountMap) Get(log logr.Logger, provider *v1alpha1.DNSProvider, props utils.Properties, config DNSAccountConfig) (*DNSAccount, error) {
+func (m *AccountMap) Get(log logr.Logger, provider *v1alpha1.DNSProvider, props utils.Properties, accountConfig DNSAccountConfig) (*DNSAccount, error) {
 	key := client.ObjectKeyFromObject(provider)
 	hash := m.Hash(props, provider.Spec.Type, provider.Spec.ProviderConfig)
 	m.lock.Lock()
@@ -209,21 +212,22 @@ func (m *AccountMap) Get(log logr.Logger, provider *v1alpha1.DNSProvider, props 
 
 	a := m.accounts[hash]
 	if a == nil {
-		a = NewDNSAccount(nil, hash, config)
+		a = NewDNSAccount(nil, hash, accountConfig)
 
-		rateLimiter, err := NewRateLimiter(config.RateLimits)
+		rateLimiter, err := NewRateLimiter(accountConfig.RateLimits)
 		if err != nil {
 			return nil, err
 		}
 
 		cfg := DNSHandlerConfig{
-			Log:         log,
-			Properties:  props,
-			Config:      provider.Spec.ProviderConfig,
-			Metrics:     a,
-			RateLimiter: rateLimiter,
+			Log:          log,
+			Properties:   props,
+			Config:       provider.Spec.ProviderConfig,
+			GlobalConfig: ptr.Deref(accountConfig.GlobalConfig, config.DNSManagerConfiguration{}),
+			Metrics:      a,
+			RateLimiter:  rateLimiter,
 		}
-		a.handler, err = config.Factory.Create(provider.Spec.Type, &cfg)
+		a.handler, err = accountConfig.Factory.Create(provider.Spec.Type, &cfg)
 		if err != nil {
 			return nil, err
 		}

@@ -36,6 +36,7 @@ type Reconciler struct {
 	Clock             clock.Clock
 	Recorder          record.EventRecorder
 	Config            config.DNSProviderControllerConfig
+	GlobalConfig      *config.DNSManagerConfiguration
 	Class             string
 	DNSHandlerFactory dnsprovider.DNSHandlerFactory
 

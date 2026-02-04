@@ -38,6 +38,7 @@ const ControllerName = "dnsprovider"
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
 	r.Class = cfg.Class
+	r.GlobalConfig = cfg
 	r.Config = cfg.Controllers.DNSProvider
 	r.Client = controlPlaneCluster.GetClient()
 	if r.Clock == nil {
