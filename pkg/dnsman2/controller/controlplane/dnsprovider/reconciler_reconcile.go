@@ -71,6 +71,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		Clock:        r.Clock,
 		RateLimits:   r.Config.DefaultRateLimits,
 		Factory:      r.DNSHandlerFactory,
+		GlobalConfig: r.GlobalConfig,
 	}
 	if provider.Spec.RateLimit != nil {
 		config.RateLimits = &config2.RateLimiterOptions{
