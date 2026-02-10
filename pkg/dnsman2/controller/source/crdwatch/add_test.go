@@ -26,6 +26,16 @@ var _ = Describe("Add", func() {
 					Name: "httproutes.gateway.networking.k8s.io",
 				},
 			}
+			istioGatewayObj = &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "gateways.networking.istio.io",
+				},
+			}
+			istioVirtualServiceObj = &apiextensionsv1.CustomResourceDefinition{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "virtualservices.networking.istio.io",
+				},
+			}
 			irrelevantObj = &apiextensionsv1.CustomResourceDefinition{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "grpcroutes.gateway.networking.k8s.io",
@@ -36,18 +46,30 @@ var _ = Describe("Add", func() {
 		It("should handle create events appropriately", func() {
 			Expect(predicate.CreateFunc(event.CreateEvent{Object: gatewayObj})).To(BeTrue())
 			Expect(predicate.CreateFunc(event.CreateEvent{Object: httpRouteObj})).To(BeTrue())
+
+			Expect(predicate.CreateFunc(event.CreateEvent{Object: istioGatewayObj})).To(BeTrue())
+			Expect(predicate.CreateFunc(event.CreateEvent{Object: istioVirtualServiceObj})).To(BeTrue())
+
 			Expect(predicate.CreateFunc(event.CreateEvent{Object: irrelevantObj})).To(BeFalse())
 		})
 
 		It("should handle update events appropriately", func() {
 			Expect(predicate.UpdateFunc(event.UpdateEvent{ObjectNew: gatewayObj})).To(BeTrue())
 			Expect(predicate.UpdateFunc(event.UpdateEvent{ObjectNew: httpRouteObj})).To(BeTrue())
+
+			Expect(predicate.UpdateFunc(event.UpdateEvent{ObjectNew: istioGatewayObj})).To(BeTrue())
+			Expect(predicate.UpdateFunc(event.UpdateEvent{ObjectNew: istioVirtualServiceObj})).To(BeTrue())
+
 			Expect(predicate.UpdateFunc(event.UpdateEvent{ObjectNew: irrelevantObj})).To(BeFalse())
 		})
 
 		It("should handle delete events appropriately", func() {
 			Expect(predicate.DeleteFunc(event.DeleteEvent{Object: gatewayObj})).To(BeTrue())
 			Expect(predicate.DeleteFunc(event.DeleteEvent{Object: httpRouteObj})).To(BeTrue())
+
+			Expect(predicate.DeleteFunc(event.DeleteEvent{Object: istioGatewayObj})).To(BeTrue())
+			Expect(predicate.DeleteFunc(event.DeleteEvent{Object: istioVirtualServiceObj})).To(BeTrue())
+
 			Expect(predicate.DeleteFunc(event.DeleteEvent{Object: irrelevantObj})).To(BeFalse())
 		})
 
@@ -61,6 +83,10 @@ var _ = Describe("Add", func() {
 	},
 		Entry("relevant Gateway CRD", "gateways.gateway.networking.k8s.io", true),
 		Entry("relevant HTTPRoute CRD", "httproutes.gateway.networking.k8s.io", true),
+
+		Entry("relevant Istio Gateway CRD", "gateways.networking.istio.io", true),
+		Entry("relevant Istio VirtualService CRD", "virtualservices.networking.istio.io", true),
+
 		Entry("irrelevant CRD", "grpcroutes.gateway.networking.k8s.io", false),
 	)
 })
