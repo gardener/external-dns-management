@@ -17,6 +17,9 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/crdwatch"
 	gatewayapiv1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gatewayapi/v1"
 	gatewayapiv1beta1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gatewayapi/v1beta1"
+	istiov1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/istio/v1"
+	istiov1alpha3 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/istio/v1alpha3"
+	istiov1beta1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/istio/v1beta1"
 )
 
 var _ = Describe("Reconciler", func() {
@@ -36,6 +39,10 @@ var _ = Describe("Reconciler", func() {
 			gatewayapiv1beta1.Activated = false
 			gatewayapiv1.Activated = false
 
+			istiov1alpha3.Activated = false
+			istiov1beta1.Activated = false
+			istiov1.Activated = false
+
 			exitCalled = false
 			exitCode = -1
 			dc = &fake.FakeDiscovery{Fake: &testing.Fake{}}
@@ -51,83 +58,201 @@ var _ = Describe("Reconciler", func() {
 			Expect(exitCalled).To(BeFalse())
 		})
 
-		It("should exit with no CRDs and active v1beta1 Gateway API source controller", func() {
-			gatewayapiv1beta1.Activated = true
-			doReconcile(reconciler)
-			Expect(exitCalled).To(BeTrue())
-			Expect(exitCode).To(Equal(3))
+		Context("Gateway API", func() {
+			It("should exit with no CRDs and active v1beta1 Gateway API source controller", func() {
+				gatewayapiv1beta1.Activated = true
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
+
+			It("should exit with no CRDs and active v1 Gateway API source controller", func() {
+				gatewayapiv1.Activated = true
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
+
+			It("should exit with v1beta1 Gateway API CRDs and inactive source controller", func() {
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "gateway.networking.k8s.io/v1beta1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
+
+			It("should exit with v1 Gateway API CRDs and inactive source controller", func() {
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "gateway.networking.k8s.io/v1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
+
+			It("should not exit with v1beta1 Gateway API CRDs and active source controller", func() {
+				gatewayapiv1beta1.Activated = true
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "gateway.networking.k8s.io/v1beta1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeFalse())
+			})
+
+			It("should not exit with v1 Gateway API CRDs and active source controller", func() {
+				gatewayapiv1.Activated = true
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "gateway.networking.k8s.io/v1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeFalse())
+			})
+
+			It("should exit with both v1beta1 and v1 Gateway API CRDs and inactive v1 source controller", func() {
+				gatewayapiv1beta1.Activated = true
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "gateway.networking.k8s.io/v1beta1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+					},
+					{
+						GroupVersion: "gateway.networking.k8s.io/v1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
 		})
 
-		It("should exit with no CRDs and active v1 Gateway API source controller", func() {
-			gatewayapiv1.Activated = true
-			doReconcile(reconciler)
-			Expect(exitCalled).To(BeTrue())
-			Expect(exitCode).To(Equal(3))
-		})
+		Context("Istio", func() {
+			It("should exit with no CRDs and active v1alpha3 Istio source controller", func() {
+				istiov1alpha3.Activated = true
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
 
-		It("should exit with v1beta1 Gateway API CRDs and inactive source controller", func() {
-			dc.Resources = []*metav1.APIResourceList{
-				{
-					GroupVersion: "gateway.networking.k8s.io/v1beta1",
-					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
-				},
-			}
-			doReconcile(reconciler)
-			Expect(exitCalled).To(BeTrue())
-			Expect(exitCode).To(Equal(3))
-		})
+			It("should exit with no CRDs and active v1beta1 Istio source controller", func() {
+				istiov1beta1.Activated = true
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
 
-		It("should exit with v1 Gateway API CRDs and inactive source controller", func() {
-			dc.Resources = []*metav1.APIResourceList{
-				{
-					GroupVersion: "gateway.networking.k8s.io/v1",
-					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
-				},
-			}
-			doReconcile(reconciler)
-			Expect(exitCalled).To(BeTrue())
-			Expect(exitCode).To(Equal(3))
-		})
+			It("should exit with no CRDs and active v1alpha3 Istio source controller", func() {
+				istiov1.Activated = true
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
 
-		It("should not exit with v1beta1 Gateway API CRDs and active source controller", func() {
-			gatewayapiv1beta1.Activated = true
-			dc.Resources = []*metav1.APIResourceList{
-				{
-					GroupVersion: "gateway.networking.k8s.io/v1beta1",
-					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
-				},
-			}
-			doReconcile(reconciler)
-			Expect(exitCalled).To(BeFalse())
-		})
+			It("should exit with v1alpha3 Istio CRDs and inactive source controller", func() {
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "networking.istio.io/v1alpha3",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "VirtualService"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
 
-		It("should not exit with v1 Gateway API CRDs and active source controller", func() {
-			gatewayapiv1.Activated = true
-			dc.Resources = []*metav1.APIResourceList{
-				{
-					GroupVersion: "gateway.networking.k8s.io/v1",
-					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
-				},
-			}
-			doReconcile(reconciler)
-			Expect(exitCalled).To(BeFalse())
-		})
+			It("should exit with v1beta1 Istio CRDs and inactive source controller", func() {
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "networking.istio.io/v1beta1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "VirtualService"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
 
-		It("should exit with both v1beta1 and v1 Gateway API CRDs and inactive v1 source controller", func() {
-			gatewayapiv1beta1.Activated = true
-			dc.Resources = []*metav1.APIResourceList{
-				{
-					GroupVersion: "gateway.networking.k8s.io/v1beta1",
-					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
-				},
-				{
-					GroupVersion: "gateway.networking.k8s.io/v1",
-					APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "HTTPRoute"}},
-				},
-			}
-			doReconcile(reconciler)
-			Expect(exitCalled).To(BeTrue())
-			Expect(exitCode).To(Equal(3))
+			It("should exit with v1 Istio CRDs and inactive source controller", func() {
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "networking.istio.io/v1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "VirtualService"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
+
+			It("should not exit with v1alpha3 Istio CRDs and active source controller", func() {
+				istiov1alpha3.Activated = true
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "networking.istio.io/v1alpha3",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "VirtualService"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeFalse())
+			})
+
+			It("should not exit with v1beta1 Istio CRDs and active source controller", func() {
+				istiov1beta1.Activated = true
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "networking.istio.io/v1beta1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "VirtualService"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeFalse())
+			})
+
+			It("should not exit with v1 Istio CRDs and active source controller", func() {
+				istiov1.Activated = true
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "networking.istio.io/v1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "VirtualService"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeFalse())
+			})
+
+			It("should exit with all API versions and inactive v1 source controller", func() {
+				istiov1beta1.Activated = true
+				dc.Resources = []*metav1.APIResourceList{
+					{
+						GroupVersion: "networking.istio.io/v1alpha3",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "VirtualService"}},
+					},
+					{
+						GroupVersion: "networking.istio.io/v1beta1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "VirtualService"}},
+					},
+					{
+						GroupVersion: "networking.istio.io/v1",
+						APIResources: []metav1.APIResource{{Kind: "Gateway"}, {Kind: "VirtualService"}},
+					},
+				}
+				doReconcile(reconciler)
+				Expect(exitCalled).To(BeTrue())
+				Expect(exitCode).To(Equal(3))
+			})
 		})
 	})
 })
