@@ -5,6 +5,7 @@
 package crdwatch
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -14,11 +15,11 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/gardener/external-dns-management/pkg/controller/source/gateways/gatewayapi"
 	"github.com/gardener/external-dns-management/pkg/controller/source/gateways/istio"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
-	dnsutils "github.com/gardener/external-dns-management/pkg/dns/utils"
 )
 
 const CONTROLLER = "watch-gateways-crds"
@@ -35,7 +36,7 @@ type reconciler struct {
 	reconcile.DefaultReconciler
 	controller controller.Interface
 
-	relevantCustomResourceDefinitionDeployed map[string]bool
+	currentActivated sets.Set[string]
 }
 
 var _ reconcile.Interface = &reconciler{}
@@ -45,70 +46,92 @@ var _ reconcile.Interface = &reconciler{}
 func Create(controller controller.Interface) (reconcile.Interface, error) {
 	return &reconciler{
 		controller: controller,
-		relevantCustomResourceDefinitionDeployed: map[string]bool{
-			"gateways.networking.istio.io":         false,
-			"virtualservices.networking.istio.io":  false,
-			"gateways.gateway.networking.k8s.io":   false,
-			"httproutes.gateway.networking.k8s.io": false,
-		},
 	}, nil
 }
 
 func (r *reconciler) Setup() error {
 	r.controller.Infof("### setup crds watch resources")
-	res, _ := r.controller.GetMainCluster().Resources().GetByExample(&apiextensionsv1.CustomResourceDefinition{})
-	list, _ := res.ListCached(labels.Everything())
-	return dnsutils.ProcessElements(list, func(e resources.Object) error {
-		crd := e.Data().(*apiextensionsv1.CustomResourceDefinition)
-		switch crd.Spec.Group {
-		case "networking.istio.io", "gateway.networking.k8s.io":
-			name := crdName(crd)
-			if _, relevant := r.relevantCustomResourceDefinitionDeployed[name]; relevant {
-				r.relevantCustomResourceDefinitionDeployed[name] = true
-				switch crd.Spec.Group {
-				case "networking.istio.io":
-					if istio.Deactivated {
-						r.controller.Infof("### istio relevant CRD %s found but istio source controller deactivated: need to restart to initialise controller", name)
-						os.Exit(3)
-					}
-				case "gateway.networking.k8s.io":
-					if gatewayapi.Deactivated {
-						r.controller.Infof("### k8s gateway relevant CRD %s found but gatewayapi source controller deactivated: need to restart to initialise controller", name)
-						os.Exit(3)
-					}
-				}
-			}
-			return nil
-		default:
-			return nil
-		}
-	}, 1)
+	toBeActivated, err := r.checkRelevantCRDs()
+	if err != nil {
+		return fmt.Errorf("could not check for relevant CRDs: %w", err)
+	}
+
+	if gatewayapi.Deactivated && toBeActivated.Has("gateway.networking.k8s.io") {
+		r.controller.Info("### k8s gateway relevant CRDs found but gatewayapi source controller deactivated: need to restart to initialise controller")
+		os.Exit(3)
+	}
+
+	if istio.Deactivated && toBeActivated.Has("networking.istio.io") {
+		r.controller.Info("### istio relevant CRDs found but istio source controller deactivated: need to restart to initialise controller")
+		os.Exit(3)
+	}
+
+	r.currentActivated = toBeActivated
+
+	return nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 func (r *reconciler) Reconcile(logger logger.LogContext, obj resources.Object) reconcile.Status {
-	crd := obj.Data().(*apiextensionsv1.CustomResourceDefinition)
-	name := crdName(crd)
-	if alreadyDeployed, relevant := r.relevantCustomResourceDefinitionDeployed[name]; relevant && !alreadyDeployed {
-		logger.Infof("new relevant CRD %s deployed: need to restart to initialise controller", name)
-		os.Exit(2)
-	}
-	return reconcile.Succeeded(logger)
+	return r.checkRelevantCRDChange(logger, obj)
 }
 
 func (r *reconciler) Delete(logger logger.LogContext, obj resources.Object) reconcile.Status {
+	return r.checkRelevantCRDChange(logger, obj)
+}
+
+func (r *reconciler) checkRelevantCRDChange(logger logger.LogContext, obj resources.Object) reconcile.Status {
 	crd := obj.Data().(*apiextensionsv1.CustomResourceDefinition)
-	name := crdName(crd)
-	if alreadyDeployed, relevant := r.relevantCustomResourceDefinitionDeployed[name]; relevant && alreadyDeployed {
-		logger.Infof("new relevant CRD %s deleted: need to restart to disable controllers", name)
-		os.Exit(3)
+	if crd.Spec.Group == "gateway.networking.k8s.io" || crd.Spec.Group == "networking.istio.io" {
+		toBeActivated, err := r.checkRelevantCRDs()
+		if err != nil {
+			return reconcile.Failed(logger, fmt.Errorf("could not check for relevant CRDs: %w", err))
+		}
+		if !toBeActivated.Equal(r.currentActivated) {
+			logger.Infof("activated groups changed from %v to %v: need to restart to update controllers", r.currentActivated, toBeActivated)
+			os.Exit(3)
+		}
 	}
 	return reconcile.Succeeded(logger)
 }
 
 func (r *reconciler) Deleted(logger logger.LogContext, _ resources.ClusterObjectKey) reconcile.Status {
 	return reconcile.Succeeded(logger)
+}
+
+func (r *reconciler) checkRelevantCRDs() (sets.Set[string], error) {
+	relevantCRDsGatewayapi := sets.New[string]("gateways.gateway.networking.k8s.io", "httproutes.gateway.networking.k8s.io")
+	relevantCRDsIstio := sets.New[string]("gateways.networking.istio.io", "virtualservices.networking.istio.io")
+	res, err := r.controller.GetMainCluster().Resources().GetByExample(&apiextensionsv1.CustomResourceDefinition{})
+	if err != nil {
+		return nil, err
+	}
+	list, err := res.ListCached(labels.Everything())
+	if err != nil {
+		return nil, err
+	}
+	countGatewayapiCRDs := 0
+	countIstioCRDs := 0
+	for _, item := range list {
+		crd := item.Data().(*apiextensionsv1.CustomResourceDefinition)
+		name := crdName(crd)
+		if relevantCRDsGatewayapi.Has(name) {
+			countGatewayapiCRDs++
+		}
+		if relevantCRDsIstio.Has(name) {
+			countIstioCRDs++
+		}
+	}
+
+	activatedGroups := sets.New[string]()
+	if countGatewayapiCRDs == 2 {
+		activatedGroups.Insert("gateway.networking.k8s.io")
+	}
+	if countIstioCRDs == 2 {
+		activatedGroups.Insert("networking.istio.io")
+	}
+	return activatedGroups, nil
 }
 
 func crdName(crd *apiextensionsv1.CustomResourceDefinition) string {
