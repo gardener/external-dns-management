@@ -85,14 +85,17 @@ if [ "$LOCAL_APISERVER" != "" ]; then
   unset USE_EXISTING_CLUSTER
   echo using controller runtime envtest
 
-  K8S_VERSION=1.30.0
-  KUBEBUILDER_DIR=$(realpath -m kubebuilder_${K8S_VERSION})
-  if [ ! -d "$KUBEBUILDER_DIR" ]; then
-    curl -sSL "https://go.kubebuilder.io/test-tools/${K8S_VERSION}/$(go env GOOS)/$(go env GOARCH)" | tar -xvz
-    mv kubebuilder "$KUBEBUILDER_DIR"
+  export ENVTEST_K8S_VERSION=${ENVTEST_K8S_VERSION:-"1.33"}
+
+  echo "> Installing envtest tools@${ENVTEST_K8S_VERSION} with setup-envtest if necessary"
+  if ! command -v setup-envtest &> /dev/null ; then
+    >&2 echo "setup-envtest not available"
+    exit 1
   fi
-  export KUBEBUILDER_ASSETS="${KUBEBUILDER_DIR}/bin"
-  echo KUBEBUILDER_ASSETS=$KUBEBUILDER_ASSETS
+
+  # --use-env allows overwriting the envtest tools path via the KUBEBUILDER_ASSETS env var
+  export KUBEBUILDER_ASSETS="$(setup-envtest use --use-env -p path ${ENVTEST_K8S_VERSION})"
+  echo "using envtest tools installed at '$KUBEBUILDER_ASSETS'"
 else
   export USE_EXISTING_CLUSTER=true
   export KUBECONFIG=$INTEGRATION_KUBECONFIG
