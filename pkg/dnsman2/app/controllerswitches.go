@@ -24,6 +24,9 @@ import (
 	gatewayapiv1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gatewayapi/v1"
 	gatewayapiv1beta1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/gatewayapi/v1beta1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/ingress"
+	istiov1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/istio/v1"
+	istiov1alpha3 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/istio/v1alpha3"
+	istiov1beta1 "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/istio/v1beta1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
@@ -44,6 +47,9 @@ func ControllerSwitches() *cmd.SwitchOptions {
 		cmd.Switch(gatewayapiv1beta1.ControllerName, AddSourceGatewayAPIV1Beta1Controller),
 		cmd.Switch(gatewayapiv1.ControllerName, AddSourceGatewayAPIV1Controller),
 		cmd.Switch(crdwatch.ControllerName, AddSourceCRDWatchController),
+		cmd.Switch(istiov1alpha3.ControllerName, AddSourceIstioV1Alpha3Controller),
+		cmd.Switch(istiov1beta1.ControllerName, AddSourceIstioV1Beta1Controller),
+		cmd.Switch(istiov1.ControllerName, AddSourceIstioV1Controller),
 	)
 }
 
@@ -173,6 +179,81 @@ func AddSourceGatewayAPIV1Controller(ctx context.Context, mgr manager.Manager) e
 	appCtx.Log.V(1).Info("Relevant Gateway API v1 CRDs found, activating source controller.")
 	gatewayapiv1.Activated = true
 	return common.NewSourceReconciler(a).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, a.WatchHTTPRoutes)
+}
+
+// AddSourceIstioV1Alpha3Controller adds the Istio v1alpha3 source controller to the manager.
+func AddSourceIstioV1Alpha3Controller(ctx context.Context, mgr manager.Manager) error {
+	appCtx, err := appcontext.GetAppContextValue(ctx)
+	if err != nil {
+		return err
+	}
+
+	dc, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	if err != nil {
+		return err
+	}
+	a := istiov1alpha3.NewActuator(dc)
+	shouldActivate, err := a.ShouldActivate()
+	if err != nil {
+		return err
+	}
+	if !shouldActivate {
+		appCtx.Log.V(1).Info("No relevant Istio v1alpha3 CRDs found, deactivating source controller.")
+		return nil
+	}
+	appCtx.Log.V(1).Info("Relevant Istio v1alpha3 CRDs found, activating source controller.")
+	istiov1alpha3.Activated = true
+	return common.NewSourceReconciler(a).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, a.WatchRelatedResources)
+}
+
+// AddSourceIstioV1Beta1Controller adds the Istio v1beta1 source controller to the manager.
+func AddSourceIstioV1Beta1Controller(ctx context.Context, mgr manager.Manager) error {
+	appCtx, err := appcontext.GetAppContextValue(ctx)
+	if err != nil {
+		return err
+	}
+
+	dc, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	if err != nil {
+		return err
+	}
+	a := istiov1beta1.NewActuator(dc)
+	shouldActivate, err := a.ShouldActivate()
+	if err != nil {
+		return err
+	}
+	if !shouldActivate {
+		appCtx.Log.V(1).Info("No relevant Istio v1beta1 CRDs found, deactivating source controller.")
+		return nil
+	}
+	appCtx.Log.V(1).Info("Relevant Istio v1beta1 CRDs found, activating source controller.")
+	istiov1beta1.Activated = true
+	return common.NewSourceReconciler(a).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, a.WatchRelatedResources)
+}
+
+// AddSourceIstioV1Controller adds the Istio v1 source controller to the manager.
+func AddSourceIstioV1Controller(ctx context.Context, mgr manager.Manager) error {
+	appCtx, err := appcontext.GetAppContextValue(ctx)
+	if err != nil {
+		return err
+	}
+
+	dc, err := discovery.NewDiscoveryClientForConfig(mgr.GetConfig())
+	if err != nil {
+		return err
+	}
+	a := istiov1.NewActuator(dc)
+	shouldActivate, err := a.ShouldActivate()
+	if err != nil {
+		return err
+	}
+	if !shouldActivate {
+		appCtx.Log.V(1).Info("No relevant Istio v1 CRDs found, deactivating source controller.")
+		return nil
+	}
+	appCtx.Log.V(1).Info("Relevant Istio v1 CRDs found, activating source controller.")
+	istiov1.Activated = true
+	return common.NewSourceReconciler(a).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, a.WatchRelatedResources)
 }
 
 // AddSourceCRDWatchController adds the CRD watch source controller to the manager.
