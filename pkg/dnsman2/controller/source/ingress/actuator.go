@@ -90,3 +90,6 @@ func (a *Actuator) NewSourceObject() *networkingv1.Ingress {
 func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 	return false
 }
+
+// OnDelete is called when an Ingress is deleted. No action is needed in this case.
+func (a *Actuator) OnDelete(_ *networkingv1.Ingress) {}

@@ -97,7 +97,7 @@ func (a *Actuator) IsRelevantSourceObject(r *common.SourceReconciler[*dnsv1alpha
 }
 
 // NewSourceObject creates a new DNSEntry object.
-func (r *Actuator) NewSourceObject() *dnsv1alpha1.DNSEntry {
+func (a *Actuator) NewSourceObject() *dnsv1alpha1.DNSEntry {
 	return &dnsv1alpha1.DNSEntry{}
 }
 
@@ -106,6 +106,9 @@ func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 	// used to update status from target DNSEntry during reconciliation
 	return true
 }
+
+// OnDelete is called when a DNSEntry is deleted. No action is needed in this case.
+func (a *Actuator) OnDelete(_ *dnsv1alpha1.DNSEntry) {}
 
 func getDNSSpecInputForDNSEntry(entry *dnsv1alpha1.DNSEntry) *common.DNSSpecInput {
 	names := utils.NewUniqueStrings()

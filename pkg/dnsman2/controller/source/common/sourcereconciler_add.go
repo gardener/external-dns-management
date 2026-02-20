@@ -46,6 +46,8 @@ type SourceActuator[SourceObject client.Object] interface {
 	GetGVK() schema.GroupVersionKind
 	// ShouldSetTargetEntryAnnotation indicates whether the target DNSEntry annotation should be set on the source object.
 	ShouldSetTargetEntryAnnotation() bool
+	// OnDelete is called when a source object is deleted.
+	OnDelete(SourceObject)
 }
 
 // AddToManager adds Reconciler to the given cluster.
