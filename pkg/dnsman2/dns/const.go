@@ -73,6 +73,11 @@ const (
 	// AnnotationValidationError is an optional annotation for replicated provider secrets to indicate a validation error.
 	AnnotationValidationError = "dns.gardener.cloud/validation-error"
 
+	// AnnotationTargets is an optional annotation for source objects to specify the target IPs or names explicitly.
+	AnnotationTargets = "dns.gardener.cloud/targets"
+	// AnnotationIngress is an optional annotation to determine if an Istio Gateway is implemented by an Ingress object instead of a standard LoadBalancer service type.
+	AnnotationIngress = "dns.gardener.cloud/ingress"
+
 	// AnnotationServiceBetaGroup is the group for beta Service annotations.
 	AnnotationServiceBetaGroup = "service.beta.kubernetes.io"
 	// AnnotationAwsLoadBalancerIpAddressType is an optional annotation for AWS LoadBalancer Services to specify the IP address type.

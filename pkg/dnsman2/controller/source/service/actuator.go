@@ -86,7 +86,7 @@ func (a *Actuator) IsRelevantSourceObject(r *common.SourceReconciler[*corev1.Ser
 }
 
 // NewSourceObject creates a new Service object.
-func (r *Actuator) NewSourceObject() *corev1.Service {
+func (a *Actuator) NewSourceObject() *corev1.Service {
 	return &corev1.Service{}
 }
 
@@ -94,3 +94,6 @@ func (r *Actuator) NewSourceObject() *corev1.Service {
 func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 	return false
 }
+
+// OnDelete is called when a Service is deleted. No action is needed in this case.
+func (a *Actuator) OnDelete(_ *corev1.Service) {}

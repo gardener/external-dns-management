@@ -7,6 +7,7 @@ package crdwatch
 import (
 	"os"
 
+	istiov1 "istio.io/client-go/pkg/apis/networking/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -14,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
-	v1 "sigs.k8s.io/gateway-api/apis/v1"
+	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 )
@@ -61,6 +62,8 @@ func relevantCRDPredicate() predicate.Funcs {
 }
 
 func isRelevantCRD(name string) bool {
-	return name == "gateways."+v1.GroupName ||
-		name == "httproutes."+v1.GroupName
+	return name == "gateways."+gatewayapisv1.GroupName ||
+		name == "httproutes."+gatewayapisv1.GroupName ||
+		name == "gateways."+istiov1.GroupName ||
+		name == "virtualservices."+istiov1.GroupName
 }
