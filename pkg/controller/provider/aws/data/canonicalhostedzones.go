@@ -44,7 +44,7 @@ func CanonicalHostedZones() map[string]string {
 		// exclude us-gov as alias targets are not supported
 		//"us-gov-west-1.elb.amazonaws.com":     "Z33AYJ8TM3BH4J",
 		//"us-gov-east-1.elb.amazonaws.com":     "Z166TLBEWOO7G0",
-		"mx-central-1.elb.amazonaws.com":      "Z023552324OKD1BB28BH5",
+		"mx-central-1.elb.amazonaws.com": "Z023552324OKD1BB28BH5",
 		"me-central-1.elb.amazonaws.com": "Z08230872XQRWHG2XF6I",
 		"me-south-1.elb.amazonaws.com":   "ZS929ML54UICD",
 		"af-south-1.elb.amazonaws.com":   "Z268VQBMOI5EKX",
@@ -84,7 +84,7 @@ func CanonicalHostedZones() map[string]string {
 		// exclude us-gov as alias targets are not supported
 		//"elb.us-gov-west-1.amazonaws.com":     "ZMG1MZ2THAWF1",
 		//"elb.us-gov-east-1.amazonaws.com":     "Z1ZSMQQ6Q24QQ8",
-		"elb.mx-central-1.amazonaws.com":      "Z02031231H3ID6HYJ9A7U",
+		"elb.mx-central-1.amazonaws.com": "Z02031231H3ID6HYJ9A7U",
 		"elb.me-central-1.amazonaws.com": "Z00282643NTTLPANJJG2P",
 		"elb.me-south-1.amazonaws.com":   "Z3QSRYVP46NYYV",
 		"elb.af-south-1.amazonaws.com":   "Z203XCE67M25HM",
