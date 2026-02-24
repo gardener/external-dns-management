@@ -63,10 +63,14 @@ spec:
   routingPolicy:
     type: {{$policy.Type}}  
     setIdentifier: '{{$id}}'
+{{- if $policy.Parameters }}
     parameters:
 {{ range $pk, $pv := $policy.Parameters }}
       {{$pk}}: '{{$pv}}'
 {{ end }}
+{{- else }}
+    parameters: {}
+{{- end }}
 {{ end }}
 {{ end }}
 `
