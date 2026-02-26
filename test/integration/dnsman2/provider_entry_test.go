@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
@@ -631,7 +632,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			},
 			Spec: v1alpha1.DNSEntrySpec{
 				DNSName: "e-multi-cname.first.example.com",
-				Targets: []string{"wikipedia.org", "www.wikipedia.org", "gardener.cloud"},
+				Targets: []string{"wikipedia.org", "www.wikipedia.org", "wikipedia.de"},
 			},
 		}
 
@@ -641,12 +642,11 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		})
 
 		By("Check entry is ready and all targets are resolved to addresses")
-		// Note: wikipedia.org has both ipv4 and ipv6 addresses, gardener.cloud has multiple ipv4 and ipv6 addresses
-		// www.wikipedia.org resolves to wikipedia.org and checks for duplicate addresses are done
+		// Note: wikipedia.org and wikipedia.de have both ipv4 and ipv6 addresses,
+		// www.wikipedia.org resolves to wikipedia.org and should not add additional targets.
 		Eventually(func(g Gomega) {
 			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
 			g.Expect(entry.Status.State).To(Equal("Ready"))
-			g.Expect(len(entry.Status.Targets)).To(BeNumerically(">=", len(entry.Spec.Targets)))
 			var countIPV4, countIPV6 int
 			for _, t := range entry.Status.Targets {
 				ip := net.ParseIP(t)
@@ -656,8 +656,8 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 					countIPV6++
 				}
 			}
-			g.Expect(countIPV4).To(BeNumerically(">=", len(entry.Spec.Targets)))
-			g.Expect(countIPV6).To(BeNumerically(">=", len(entry.Spec.Targets)))
+			g.Expect(countIPV4).To(BeNumerically(">=", 2), fmt.Sprintf("expected at least 2 ipv4 addresses, resolved targets: %s", strings.Join(entry.Status.Targets, ", ")))
+			g.Expect(countIPV6).To(BeNumerically(">=", 2), fmt.Sprintf("expected at least 2 ipv6 addresses, resolved targets: %s", strings.Join(entry.Status.Targets, ", ")))
 			g.Expect(entry.Status.ObservedGeneration).To(Equal(entry.Generation))
 		}).Should(Succeed())
 
