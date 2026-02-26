@@ -327,6 +327,44 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 		}).To(Succeed())
 	})
 
+	It("should ignore source providers with foreign class", func() {
+		provider3 := &v1alpha1.DNSProvider{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testRunID,
+				Name:      "mock3",
+				Annotations: map[string]string{
+					"dns.gardener.cloud/class": "other",
+				},
+			},
+			Spec: v1alpha1.DNSProviderSpec{
+				Type:      "local",
+				SecretRef: &corev1.SecretReference{Name: "mock1-secret", Namespace: testRunID},
+			},
+		}
+		Expect(tc1.client.Create(ctx, provider3)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(tc1.client.Delete(ctx, provider3)).To(Succeed())
+		})
+
+		for i := 0; i < 10; i++ {
+			time.Sleep(1 * time.Millisecond)
+			found := false
+			Eventually(func(g Gomega) {
+				list := &v1alpha1.DNSProviderList{}
+				if err := tc2.client.List(ctx, list, client.InNamespace(testRunID2)); err != nil {
+					g.Expect(err).NotTo(HaveOccurred())
+				}
+				for _, p := range list.Items {
+					if strings.Contains(p.Name, "mock3") {
+						found = true
+						break
+					}
+				}
+				g.Expect(found).To(BeFalse(), "provider with foreign class should not be replicated to target cluster")
+			}).To(Succeed())
+		}
+	})
+
 	Context("DNSAnnotation", func() {
 		var dnsAnnotation *v1alpha1.DNSAnnotation
 
