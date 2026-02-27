@@ -259,6 +259,11 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	}
 
 	if ignored, ignoredForDeletion, annotation := ignoredByAnnotation(object); ignored {
+		e := this.entries[object.ObjectName()]
+		if e != nil && e.object != nil {
+			// update annotations in case they were changed (needed for ChangeModel to ignore the entry for updates)
+			e.object.SetAnnotations(object.GetAnnotations())
+		}
 		if old != nil {
 			old.ignoredForDeletion = ignoredForDeletion
 		}
