@@ -16,7 +16,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -34,7 +34,7 @@ type Reconciler struct {
 	Client             client.Client
 	ControlPlaneClient client.Client
 	Clock              clock.Clock
-	Recorder           record.EventRecorder
+	Recorder           events.EventRecorder
 	Config             config.SourceControllerConfig
 	SourceClass        string
 	TargetClass        string

@@ -14,7 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/testing"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -106,7 +106,7 @@ var _ = Describe("Actuator", func() {
 			ctx            = context.Background()
 			fakeClientSrc  client.Client
 			fakeClientCtrl client.Client
-			fakeRecorder   *record.FakeRecorder
+			fakeRecorder   *events.FakeRecorder
 			reconciler     *common.SourceReconciler[*gatewayapisv1.Gateway]
 			gateway        *gatewayapisv1.Gateway
 		)
@@ -121,7 +121,7 @@ var _ = Describe("Actuator", func() {
 				TargetNamespace: ptr.To(defaultTargetNamespace),
 			}
 			reconciler.State.Reset()
-			fakeRecorder = record.NewFakeRecorder(32)
+			fakeRecorder = events.NewFakeRecorder(32)
 			reconciler.Recorder = common.NewDedupRecorder(fakeRecorder, 1*time.Second)
 			gateway = &gatewayapisv1.Gateway{
 				ObjectMeta: metav1.ObjectMeta{

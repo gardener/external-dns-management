@@ -64,7 +64,7 @@ func (r *SourceReconciler[SourceObject]) AddToManager(
 	r.Client = mgr.GetClient()
 	r.ControlPlaneClient = controlPlaneCluster.GetClient()
 	if r.Recorder == nil {
-		r.Recorder = NewDedupRecorder(mgr.GetEventRecorderFor(r.actuator.ControllerName()+"-controller"), 5*time.Minute)
+		r.Recorder = NewDedupRecorder(mgr.GetEventRecorder(r.actuator.ControllerName()+"-controller"), 5*time.Minute)
 	}
 
 	b := builder.

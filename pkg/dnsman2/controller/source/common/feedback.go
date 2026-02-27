@@ -47,7 +47,7 @@ func NewEventFeedbackWrapper(
 func (e *eventFeedbackWrapper) Create(ctx context.Context, ev event.TypedCreateEvent[client.Object], w workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	source, entry := e.fetchSourceAndEntry(ctx, ev.Object)
 	if source != nil && entry != nil {
-		e.recorder.Eventf(source, "Normal", "DNSEntryCreated", "%s: created dns entry object", entry.Spec.DNSName)
+		e.recorder.Eventf(source, nil, "Normal", "DNSEntryCreated", "Create", "%s: created dns entry object", entry.Spec.DNSName)
 	}
 	e.handler.Create(ctx, ev, w)
 }
@@ -66,10 +66,10 @@ func (e *eventFeedbackWrapper) Update(ctx context.Context, ev event.TypedUpdateE
 		if statusNew.State == v1alpha1.StateReady {
 			if entryNew.DeletionTimestamp == nil &&
 				(statusOld.State != v1alpha1.StateReady || entryOld.Status.ObservedGeneration != entryNew.Status.ObservedGeneration) {
-				e.recorder.Eventf(source, "Normal", reason, "%s: %s", dnsName, ptr.Deref(statusNew.Message, ""))
+				e.recorder.Eventf(source, nil, "Normal", reason, "Update", "%s: %s", dnsName, ptr.Deref(statusNew.Message, ""))
 			}
 		} else if statusNew.State != "" {
-			e.recorder.DedupEventf(source, "Normal", reason, "%s: %s", dnsName, ptr.Deref(statusNew.Message, ""))
+			e.recorder.DedupEventf(source, "Normal", reason, "Update", "%s: %s", dnsName, ptr.Deref(statusNew.Message, ""))
 		}
 	}
 	e.handler.Update(ctx, ev, w)

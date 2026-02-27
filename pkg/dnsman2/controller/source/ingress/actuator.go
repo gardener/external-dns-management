@@ -41,14 +41,14 @@ func (a *Actuator) ReconcileSourceObject(
 		var err error
 		input, err = common.GetDNSSpecInputForIngress(r.Log, r.State, r.GVK, ingress)
 		if err != nil {
-			r.Recorder.DedupEventf(ingress, corev1.EventTypeWarning, "Invalid", "%s", err)
+			r.Recorder.DedupEventf(ingress, corev1.EventTypeWarning, "Invalid", "Reconcile", "%s", err)
 			return reconcile.Result{}, err
 		}
 	}
 
 	res, err := r.DoReconcile(ctx, ingress, input)
 	if err != nil {
-		r.Recorder.DedupEventf(ingress, corev1.EventTypeWarning, "ReconcileError", "%s", err)
+		r.Recorder.DedupEventf(ingress, corev1.EventTypeWarning, "ReconcileError", "Reconcile", "%s", err)
 	}
 	return res, err
 }
