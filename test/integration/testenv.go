@@ -60,6 +60,7 @@ const (
 	PrivateZones
 	Quotas4PerMin
 	RemoveAccess
+	DisableCache
 )
 
 type TestEnv struct {
@@ -300,6 +301,8 @@ func (te *TestEnv) BuildProviderConfigEx(input local.MockConfig, failOptions ...
 				ZonePrefix: te.ZonePrefix + ":second",
 				DNSName:    input.Zones[0].DNSName,
 			})
+		case DisableCache:
+			input.DisableCache = true
 		}
 	}
 
@@ -470,6 +473,21 @@ func (te *TestEnv) UpdateEntry(obj resources.Object, modifier func(obj *v1alpha1
 	}
 	err = obj.Update()
 	return obj, err
+}
+
+func (te *TestEnv) IgnoreEntry(obj resources.Object, annotationValue string) error {
+	_, err := te.UpdateEntry(obj, func(entry *v1alpha1.DNSEntry) error {
+		if entry.Annotations == nil {
+			entry.Annotations = map[string]string{}
+		}
+		if annotationValue != "" {
+			entry.Annotations["dns.gardener.cloud/ignore"] = annotationValue
+		} else {
+			delete(entry.Annotations, "dns.gardener.cloud/ignore")
+		}
+		return nil
+	})
+	return err
 }
 
 func (te *TestEnv) AnnotateObject(obj resources.Object, key, value string) error {
@@ -699,17 +717,16 @@ func (te *TestEnv) GetService(name string) (resources.Object, *corev1.Service, e
 	return obj, obj.Data().(*corev1.Service), nil
 }
 
-func (te *TestEnv) HasEntryState(name string, states ...string) (bool, error) {
+func (te *TestEnv) HasEntryState(name string, state string) (bool, error) {
 	obj, err := te.GetEntry(name)
 	if err != nil {
 		return false, err
 	}
 	entry := UnwrapEntry(obj)
-	found := false
-	for _, state := range states {
-		found = found || entry.Status.State == state
+	if state != "Ignored" && entry.Generation != entry.Status.ObservedGeneration {
+		return false, nil
 	}
-	return found, nil
+	return entry.Status.State == state, nil
 }
 
 func (te *TestEnv) GetProvider(name string) (resources.Object, *v1alpha1.DNSProvider, error) {
@@ -1085,10 +1102,10 @@ func (te *TestEnv) AwaitEntryError(name string) error {
 	return te.AwaitEntryState(name, "Error")
 }
 
-func (te *TestEnv) AwaitEntryState(name string, states ...string) error {
-	msg := fmt.Sprintf("Entry %s state=%v", name, states)
+func (te *TestEnv) AwaitEntryState(name string, state string) error {
+	msg := fmt.Sprintf("Entry %s state=%s", name, state)
 	return te.Await(msg, func() (bool, error) {
-		return te.HasEntryState(name, states...)
+		return te.HasEntryState(name, state)
 	})
 }
 
@@ -1249,6 +1266,43 @@ func (te *TestEnv) MockInMemoryGetDNSSetEx(name, zonePrefix, dnsName string) (*d
 		}
 	}
 	return nil, nil
+}
+
+func (te *TestEnv) MockInMemoryExpectDNSSet(e resources.Object, recordType string, expectedTargets ...string) error {
+	dnsSet, err := te.MockInMemoryGetDNSSet(e.Data().(*v1alpha1.DNSEntry).Spec.DNSName)
+	if err != nil {
+		return err
+	}
+	recordSets := dnsSet.Sets[recordType]
+	if recordSets == nil {
+		return fmt.Errorf("no record set of type %s found (inmemory)", recordType)
+	}
+	if len(recordSets.Records) != len(expectedTargets) {
+		return fmt.Errorf("unexpected number of targets in record set of type %s (inmemory): %v", recordType, recordSets.Records)
+	}
+	for _, record := range recordSets.Records {
+		if !slices.Contains(expectedTargets, record.Value) {
+			return fmt.Errorf("unexpected record %s in record set of type %s (inmemory)", record.Value, recordType)
+		}
+	}
+	return nil
+}
+
+func (te *TestEnv) MockInMemoryUpdate(e resources.Object, recordType string, targets ...string) error {
+	dnsName := e.Data().(*v1alpha1.DNSEntry).Spec.DNSName
+	testMock := local.TestMock[te.Namespace]
+	if testMock == nil {
+		return fmt.Errorf("no test mock found for %s in local (inmemory)", recordType)
+	}
+	for _, zone := range testMock.GetZones() {
+		if strings.HasPrefix(zone.Id().ID, te.ZonePrefix) && zone.Match(dnsName) > 0 {
+			add := dns.NewDNSSet(dns.DNSSetName{DNSName: dnsName}, nil)
+			add.SetRecordSet(recordType, 30, targets...)
+			request := dnsprovider.NewChangeRequest(dnsprovider.R_UPDATE, recordType, nil, add, nil)
+			return testMock.Apply(zone.Id(), request, &dnsprovider.NullMetrics{})
+		}
+	}
+	return fmt.Errorf("zone not found")
 }
 
 func (te *TestEnv) MockInMemoryHasNotEntry(e resources.Object) error {

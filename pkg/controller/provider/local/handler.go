@@ -42,6 +42,7 @@ type MockConfig struct {
 	FailGetZones    bool       `json:"failGetZones"`
 	FailDeleteEntry bool       `json:"failDeleteEntry"`
 	LatencyMillis   int        `json:"latencyMillis"`
+	DisableCache    bool       `json:"disableCache"`
 }
 
 var _ provider.DNSHandler = &Handler{}
@@ -84,7 +85,12 @@ func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) 
 		}
 	}
 
-	h.cache, err = config.ZoneCacheFactory.CreateZoneCache(provider.CacheZoneState, config.Metrics, h.getZones, h.getZoneState)
+	cacheType := provider.CacheZoneState
+	if h.mockConfig.DisableCache {
+		logger.Infof("Disabling zone state cache for local (mock) provider")
+		cacheType = provider.CacheZonesOnly
+	}
+	h.cache, err = config.ZoneCacheFactory.CreateZoneCache(cacheType, config.Metrics, h.getZones, h.getZoneState)
 	if err != nil {
 		return nil, err
 	}
