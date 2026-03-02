@@ -9,7 +9,7 @@ import (
 	. "github.com/onsi/gomega/gstruct"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/clock/testing"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -67,7 +67,7 @@ var _ = Describe("Reconcile", func() {
 			},
 			Clock:             clock,
 			DNSHandlerFactory: factory,
-			Recorder:          &record.FakeRecorder{},
+			Recorder:          &events.FakeRecorder{},
 			state:             state.GetState(),
 		}
 

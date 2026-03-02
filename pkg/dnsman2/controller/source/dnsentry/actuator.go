@@ -46,7 +46,7 @@ func (a *Actuator) ReconcileSourceObject(
 
 	res, err := r.DoReconcile(ctx, entry, input)
 	if err != nil {
-		r.Recorder.DedupEventf(entry, corev1.EventTypeWarning, "ReconcileError", "%s", err)
+		r.Recorder.DedupEventf(entry, corev1.EventTypeWarning, "ReconcileError", "Reconcile", "%s", err)
 		return res, err
 	}
 	if targetKey := entry.Annotations[dns.AnnotationTargetEntry]; targetKey != "" {

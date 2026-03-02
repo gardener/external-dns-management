@@ -98,7 +98,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 	providerState.SetAccount(newAccount)
 
 	for _, warning := range selectionResult.Warnings {
-		r.Recorder.Eventf(provider, corev1.EventTypeWarning, "reconcile", "%s", warning)
+		r.Recorder.Eventf(provider, nil, corev1.EventTypeWarning, "reconcile", "reconcile", "%s", warning)
 	}
 	result := reconcile.Result{}
 	if selectionResult.Error != "" {

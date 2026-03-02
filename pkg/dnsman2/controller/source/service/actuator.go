@@ -40,14 +40,14 @@ func (a *Actuator) ReconcileSourceObject(
 		var err error
 		input, err = common.GetDNSSpecInputForService(r.Log, r.State, r.GVK, service)
 		if err != nil {
-			r.Recorder.DedupEventf(service, corev1.EventTypeWarning, "Invalid", "%s", err)
+			r.Recorder.DedupEventf(service, corev1.EventTypeWarning, "Invalid", "Reconcile", "%s", err)
 			return reconcile.Result{}, err
 		}
 	}
 
 	res, err := r.DoReconcile(ctx, service, input)
 	if err != nil {
-		r.Recorder.DedupEventf(service, corev1.EventTypeWarning, "ReconcileError", "%s", err)
+		r.Recorder.DedupEventf(service, corev1.EventTypeWarning, "ReconcileError", "Reconcile", "%s", err)
 	}
 	return res, err
 }

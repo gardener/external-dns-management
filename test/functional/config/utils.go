@@ -93,7 +93,7 @@ func (u *TestUtils) runKubeCtl(cmdline string) (string, error) {
 }
 
 func (u *TestUtils) runCmd(cmdline string) (string, error) {
-	cmd := exec.Command("sh", "-c", cmdline)
+	cmd := exec.Command("sh", "-c", cmdline) // #nosec G204 -- only used for testing, not with untrusted input
 	out, err := cmd.Output()
 	if err != nil {
 		fmt.Printf("command `%s` failed: %s\n", cmdline, string(err.(*exec.ExitError).Stderr))

@@ -45,7 +45,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		r.Clock = clock.RealClock{}
 	}
 	if r.Recorder == nil {
-		r.Recorder = controlPlaneCluster.GetEventRecorderFor(ControllerName + "-controller")
+		r.Recorder = controlPlaneCluster.GetEventRecorder(ControllerName + "-controller")
 	}
 	if r.DNSHandlerFactory == nil {
 		return fmt.Errorf("DNSHandlerFactory must be set before calling AddToManager")

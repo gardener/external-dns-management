@@ -31,7 +31,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, cfg *config.DNSManagerCon
 		r.Clock = clock.RealClock{}
 	}
 	if r.Recorder == nil {
-		r.Recorder = mgr.GetEventRecorderFor(ControllerName + "-controller")
+		r.Recorder = mgr.GetEventRecorder(ControllerName + "-controller")
 	}
 	r.state = state.GetState().GetAnnotationState()
 

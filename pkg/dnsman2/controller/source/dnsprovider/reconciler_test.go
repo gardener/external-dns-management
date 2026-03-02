@@ -15,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -42,7 +42,7 @@ var _ = Describe("Reconciler", func() {
 		ctx            = context.Background()
 		fakeClientSrc  client.Client
 		fakeClientCtrl client.Client
-		fakeRecorder   *record.FakeRecorder
+		fakeRecorder   *events.FakeRecorder
 		sourceProvider *dnsv1alpha1.DNSProvider
 		sourceSecret   *corev1.Secret
 		reconciler     *Reconciler
@@ -183,7 +183,7 @@ var _ = Describe("Reconciler", func() {
 	BeforeEach(func() {
 		fakeClientSrc = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).WithStatusSubresource(&dnsv1alpha1.DNSProvider{}).Build()
 		fakeClientCtrl = fakeclient.NewClientBuilder().WithScheme(dnsclient.ClusterScheme).WithStatusSubresource(&dnsv1alpha1.DNSProvider{}).Build()
-		fakeRecorder = record.NewFakeRecorder(32)
+		fakeRecorder = events.NewFakeRecorder(32)
 		clock := clock.RealClock{}
 		registry := provider.NewDNSHandlerRegistry(clock)
 		local.RegisterTo(registry)

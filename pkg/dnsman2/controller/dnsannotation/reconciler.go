@@ -11,7 +11,7 @@ import (
 	"fmt"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/clock"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -26,7 +26,7 @@ import (
 type Reconciler struct {
 	Client      client.Client
 	Clock       clock.Clock
-	Recorder    record.EventRecorder
+	Recorder    events.EventRecorder
 	Config      config.DNSAnnotationControllerConfig
 	SourceClass string
 

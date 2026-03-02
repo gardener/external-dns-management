@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -42,7 +42,7 @@ var _ = Describe("Actuator", func() {
 		ctx            = context.Background()
 		fakeClientSrc  client.Client
 		fakeClientCtrl client.Client
-		fakeRecorder   *record.FakeRecorder
+		fakeRecorder   *events.FakeRecorder
 		svc            *corev1.Service
 		reconciler     *common.SourceReconciler[*corev1.Service]
 
@@ -137,7 +137,7 @@ var _ = Describe("Actuator", func() {
 		}
 		reconciler.FinalizerName = dns.ClassSourceFinalizer(dns.NormalizeClass(""), "service-dns")
 		reconciler.State.Reset()
-		fakeRecorder = record.NewFakeRecorder(32)
+		fakeRecorder = events.NewFakeRecorder(32)
 		reconciler.Recorder = common.NewDedupRecorder(fakeRecorder, 1*time.Second)
 		svc = &corev1.Service{
 			ObjectMeta: metav1.ObjectMeta{

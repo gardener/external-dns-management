@@ -59,7 +59,7 @@ type clientAuthConfig struct {
 	Insecure   bool
 	CACert     string
 	ClientCert string
-	ClientKey  string
+	ClientKey  string // #nosec G117 - false positive
 }
 
 // authenticate in OpenStack and obtain Designate service endpoint

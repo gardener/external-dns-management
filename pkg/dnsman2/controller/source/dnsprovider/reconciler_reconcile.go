@@ -97,7 +97,7 @@ func (r *Reconciler) deleteObsoleteTargetProviders(
 			return fmt.Errorf("failed to delete obsolete target DNSProvider %s: %w", client.ObjectKeyFromObject(&targetProvider), err)
 		}
 		log.Info("deleted obsolete target DNSProvider", "name", targetProvider.Name)
-		r.Recorder.Eventf(sourceProvider, corev1.EventTypeNormal, "DNSProviderDeleted", "Deleted DNSProvider %s in control plane", targetProvider.Name)
+		r.Recorder.Eventf(sourceProvider, nil, corev1.EventTypeNormal, "DNSProviderDeleted", "Delete", "Deleted DNSProvider %s in control plane", targetProvider.Name)
 	}
 	return nil
 }
@@ -140,10 +140,10 @@ func (r *Reconciler) createOrUpdateTargetProvider(
 	switch opResult {
 	case controllerutil.OperationResultCreated:
 		log.Info("created target DNSProvider", "name", targetProvider.Name)
-		r.Recorder.Eventf(sourceProvider, corev1.EventTypeNormal, "DNSProviderCreated", "Created DNSProvider %s in control plane", targetProvider.Name)
+		r.Recorder.Eventf(sourceProvider, nil, corev1.EventTypeNormal, "DNSProviderCreated", "Create", "Created DNSProvider %s in control plane", targetProvider.Name)
 	case controllerutil.OperationResultUpdated:
 		log.Info("updated target DNSProvider", "name", targetProvider.Name)
-		r.Recorder.Eventf(sourceProvider, corev1.EventTypeNormal, "DNSProviderUpdated", "Updated DNSProvider %s in control plane", targetProvider.Name)
+		r.Recorder.Eventf(sourceProvider, nil, corev1.EventTypeNormal, "DNSProviderUpdated", "Update", "Updated DNSProvider %s in control plane", targetProvider.Name)
 	case controllerutil.OperationResultNone:
 		// no-op
 	}

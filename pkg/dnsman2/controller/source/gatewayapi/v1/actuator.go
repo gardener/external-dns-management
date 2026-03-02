@@ -51,14 +51,14 @@ func (a *Actuator) ReconcileSourceObject(
 		var err error
 		input, err = gatewayapi.GetDNSSpecInput(ctx, r, gateway)
 		if err != nil {
-			r.Recorder.DedupEventf(gateway, corev1.EventTypeWarning, "Invalid", "%s", err)
+			r.Recorder.DedupEventf(gateway, corev1.EventTypeWarning, "Invalid", "Reconcile", "%s", err)
 			return reconcile.Result{}, err
 		}
 	}
 
 	res, err := r.DoReconcile(ctx, gateway, input)
 	if err != nil {
-		r.Recorder.DedupEventf(gateway, corev1.EventTypeWarning, "ReconcileError", "%s", err)
+		r.Recorder.DedupEventf(gateway, corev1.EventTypeWarning, "ReconcileError", "Reconcile", "%s", err)
 	}
 	return res, err
 }
