@@ -244,9 +244,18 @@ func (this *state) reconcileZone(logger logger.LogContext, req *zoneReconciliati
 		var changeResult ChangeResult
 		spec := e.object.GetTargetSpec(e)
 		statusUpdate := NewStatusUpdate(logger, e, this.GetContext())
+		ignored, ignoredForDeletion, annotation := ignoredByAnnotation(e.object)
 		if e.IsDeleting() {
+			if ignored && ignoredForDeletion {
+				logger.Infof("skip deletion of %s because of annotation %s", e.ObjectName(), annotation)
+				continue
+			}
 			changeResult = changes.Delete(e.DNSSetName(), e.ObjectName().Namespace(), statusUpdate, spec)
 		} else {
+			if ignored {
+				logger.Infof("skip update of %s because of annotation %s", e.ObjectName(), annotation)
+				continue
+			}
 			if !e.NotRateLimited() {
 				changeResult = changes.Check(e.DNSSetName(), e.ObjectName().Namespace(), statusUpdate, spec)
 				if changeResult.Modified {

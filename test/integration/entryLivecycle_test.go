@@ -96,7 +96,7 @@ var _ = Describe("EntryLivecycle", func() {
 	})
 
 	It("has correct behaviour for ignored entries", func() {
-		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0)
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0, DisableCache)
 		Ω(err).ShouldNot(HaveOccurred())
 
 		defer testEnv.DeleteProviderAndSecret(pr)
@@ -110,62 +110,62 @@ var _ = Describe("EntryLivecycle", func() {
 		e2, err := testEnv.CreateEntry(2, domain)
 		Ω(err).ShouldNot(HaveOccurred())
 
+		e3, err := testEnv.CreateEntry(3, domain)
+		Ω(err).ShouldNot(HaveOccurred())
+
 		checkProvider(pr)
 
 		checkEntry(e0, pr)
 		checkEntry(e1, pr)
 		checkEntry(e2, pr)
+		checkEntry(e3, pr)
 
-		_, err = testEnv.UpdateEntry(e0, func(entry *v1alpha1.DNSEntry) error {
-			if entry.Annotations == nil {
-				entry.Annotations = map[string]string{}
-			}
-			entry.Annotations["dns.gardener.cloud/ignore"] = "reconcile"
-			return nil
-		})
-		Ω(err).ShouldNot(HaveOccurred())
+		Ω(testEnv.IgnoreEntry(e0, "reconcile")).ShouldNot(HaveOccurred())
+		Ω(testEnv.IgnoreEntry(e1, "full")).ShouldNot(HaveOccurred())
+		Ω(testEnv.IgnoreEntry(e2, "full")).ShouldNot(HaveOccurred())
+		Ω(testEnv.IgnoreEntry(e3, "reconcile")).ShouldNot(HaveOccurred())
 
-		_, err = testEnv.UpdateEntry(e1, func(entry *v1alpha1.DNSEntry) error {
-			if entry.Annotations == nil {
-				entry.Annotations = map[string]string{}
-			}
-			entry.Annotations["dns.gardener.cloud/ignore"] = "full"
-			return nil
-		})
-		Ω(err).ShouldNot(HaveOccurred())
-		_, err = testEnv.UpdateEntry(e2, func(entry *v1alpha1.DNSEntry) error {
-			if entry.Annotations == nil {
-				entry.Annotations = map[string]string{}
-			}
-			entry.Annotations["dns.gardener.cloud/ignore"] = "full"
-			return nil
-		})
-		Ω(err).ShouldNot(HaveOccurred())
-
-		err = testEnv.AwaitEntryState(e0.GetName(), "Ignored")
-		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitEntryState(e1.GetName(), "Ignored")
-		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitEntryState(e2.GetName(), "Ignored")
-		Ω(err).ShouldNot(HaveOccurred())
+		Ω(testEnv.AwaitEntryState(e0.GetName(), "Ignored")).ShouldNot(HaveOccurred())
+		Ω(testEnv.AwaitEntryState(e1.GetName(), "Ignored")).ShouldNot(HaveOccurred())
+		Ω(testEnv.AwaitEntryState(e2.GetName(), "Ignored")).ShouldNot(HaveOccurred())
+		Ω(testEnv.AwaitEntryState(e3.GetName(), "Ignored")).ShouldNot(HaveOccurred())
 
 		Ω(testEnv.MockInMemoryHasEntry(e0)).ShouldNot(HaveOccurred())
 		Ω(testEnv.MockInMemoryHasEntry(e1)).ShouldNot(HaveOccurred())
 		Ω(testEnv.MockInMemoryHasEntry(e2)).ShouldNot(HaveOccurred())
+		Ω(testEnv.MockInMemoryHasEntry(e3)).ShouldNot(HaveOccurred())
+
+		oldTargets := UnwrapEntry(e3).Spec.Targets
+		Ω(testEnv.MockInMemoryExpectDNSSet(e3, "A", oldTargets...)).ShouldNot(HaveOccurred())
+
+		// check that targets are not updated
+		e3, err = testEnv.UpdateEntryTargets(e3, "9.9.9.9")
+		Ω(err).ShouldNot(HaveOccurred())
+		Ω(testEnv.MockInMemoryExpectDNSSet(e3, "A", oldTargets...)).ShouldNot(HaveOccurred())
+
+		// external change to hosted zone
+		expectedTargets := []string{"123.123.123.123"}
+		testEnv.MockInMemoryUpdate(e3, "A", expectedTargets...)
+
+		Ω(testEnv.AwaitEntryState(e3.GetName(), "Ignored")).ShouldNot(HaveOccurred())
+		Ω(testEnv.MockInMemoryHasEntry(e3)).ShouldNot(HaveOccurred())
+		Ω(testEnv.MockInMemoryExpectDNSSet(e3, "A", expectedTargets...)).ShouldNot(HaveOccurred())
 
 		// enforce separate zone reconciliation
 		_ = e2.Delete()
 		time.Sleep(dnsDelay)
 
-		err = testEnv.DeleteEntriesAndWait(e0, e1)
-		Ω(err).ShouldNot(HaveOccurred())
+		Ω(testEnv.DeleteEntriesAndWait(e0, e1)).ShouldNot(HaveOccurred())
 
 		Ω(testEnv.MockInMemoryHasNotEntry(e0)).ShouldNot(HaveOccurred())
 		Ω(testEnv.MockInMemoryHasEntry(e1)).ShouldNot(HaveOccurred())
 		Ω(testEnv.MockInMemoryHasEntry(e2)).ShouldNot(HaveOccurred())
 
-		err = testEnv.DeleteProviderAndSecret(pr)
-		Ω(err).ShouldNot(HaveOccurred())
+		Ω(testEnv.MockInMemoryHasEntry(e3)).ShouldNot(HaveOccurred())
+		Ω(testEnv.MockInMemoryExpectDNSSet(e3, "A", expectedTargets...)).ShouldNot(HaveOccurred())
+
+		Ω(testEnv.DeleteEntryAndWait(e3)).ShouldNot(HaveOccurred())
+		Ω(testEnv.DeleteProviderAndSecret(pr)).ShouldNot(HaveOccurred())
 	})
 
 	It("handles an entry without targets as invalid and can delete it", func() {
