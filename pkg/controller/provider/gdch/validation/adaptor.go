@@ -25,7 +25,7 @@ type LightCredentialsFile struct {
 	// Service Account fields
 	Name         string `json:"name"`
 	PrivateKeyID string `json:"private_key_id"`
-	PrivateKey   string `json:"private_key"`
+	PrivateKey   string `json:"private_key"` // #nosec G117 - false positive
 	Project      string `json:"project"`
 }
 
