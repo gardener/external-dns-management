@@ -129,8 +129,8 @@ func (this *sourceReconciler) Reconcile(logger logger.LogContext, obj resources.
 				return reconcile.Failed(logger, err)
 			}
 			s = nil
-			spec = nil
 		}
+		spec = nil
 	}
 
 	if spec != nil {
