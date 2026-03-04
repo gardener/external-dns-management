@@ -19,6 +19,7 @@ rules:
   - get
   - list
   - update
+  - patch
   - watch
 - apiGroups:
   - extensions
@@ -29,6 +30,7 @@ rules:
   - get
   - list
   - update
+  - patch
   - watch
 - apiGroups:
   - "gateway.networking.k8s.io"
@@ -39,6 +41,7 @@ rules:
   - get
   - list
   - update
+  - patch
   - watch
 - apiGroups:
   - "networking.istio.io"
@@ -49,6 +52,7 @@ rules:
   - get
   - list
   - update
+  - patch
   - watch
 - apiGroups:
   - dns.gardener.cloud
@@ -65,6 +69,7 @@ rules:
   - get
   - list
   - update
+  - patch
   - watch
   - create
   - delete
@@ -94,6 +99,7 @@ rules:
   - get
   - list
   - update
+  - patch
   - create
   - watch
 - apiGroups:
