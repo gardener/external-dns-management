@@ -136,7 +136,7 @@ type EntryReference struct {
 
 type RoutingPolicy struct {
 	// Policy is the policy type. Allowed values are provider dependent, e.g. `weighted`
-	// +kubebuilder:validation:Enum=weighted;latency;geolocation;ip-based;failover
+	// +kubebuilder:validation:Enum=weighted;latency;geolocation;ip-based;failover;proxied
 	Type string `json:"type"`
 	// SetIdentifier is the identifier of the record set
 	SetIdentifier string `json:"setIdentifier"`
