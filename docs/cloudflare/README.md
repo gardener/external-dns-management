@@ -44,15 +44,15 @@ stringData:
 
 ## Routing Policy
 
-The CloudFlare provider only supports the `proxied` routing policy to enable the CloudFlare Proxy.
+The Cloudflare provider only supports the `proxied` routing policy to enable the Cloudflare proxy.
 
-**Note: This is only implemented for the next-generation controller-manager and not for the legacy controller-manager.**
-
+> [!NOTE]
+> This is only implemented for the **next-generation** `dns-controller-manager` and not for the legacy `dns-controller-manager`.
 
 ### Proxied Routing Policy
 
-The `proxied` routing policy allows you to enable the CloudFlare Proxy for a DNS entry. This means that the DNS entry will be proxied through CloudFlare's network, providing additional security and performance benefits.
-For details please refer to the CloudFlare documentation: https://developers.cloudflare.com/dns/proxy-status/
+The `proxied` routing policy enables the Cloudflare proxy for a DNS entry. This means that the DNS entry will be proxied through Cloudflare's network, providing additional security and performance benefits.
+For details, please refer to the [Cloudflare documentation](https://developers.cloudflare.com/dns/proxy-status/).
 
 Example:
 

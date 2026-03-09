@@ -56,9 +56,5 @@ func (r *Record) Clone() raw.Record { n := *r; return &n }
 // SetRoutingPolicy is used to set the routing policy of the record based on the set identifier.
 // Only if the set identifier is "proxied" and the policy type is "proxied", the record will be marked as proxied.
 func (r *Record) SetRoutingPolicy(setIdentifier string, policy *dns.RoutingPolicy) {
-	if setIdentifier == SetIdentifierProxied && policy != nil && policy.Type == dns.RoutingPolicyProxied {
-		r.Proxied = true
-	} else {
-		r.Proxied = false
-	}
+	r.Proxied = setIdentifier == SetIdentifierProxied && policy != nil && policy.Type == dns.RoutingPolicyProxied
 }

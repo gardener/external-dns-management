@@ -87,7 +87,7 @@ func (rs *RecordSet) IsTTLIgnored() bool {
 	}
 
 	if rs.RoutingPolicy != nil && rs.RoutingPolicy.Type == RoutingPolicyProxied {
-		// CloudFlare ignores TTL for proxied records
+		// Cloudflare ignores TTL for proxied records
 		return true
 	}
 	return rs.Type == TypeAWS_ALIAS_A || rs.Type == TypeAWS_ALIAS_AAAA
