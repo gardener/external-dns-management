@@ -40,3 +40,37 @@ stringData:
 * If you get a permission error communicating with Cloudflare, be sure the domain name 
   being registered does not exceed your plan limits. Hierarchical domains are not
   supported on the free plan as of this writing.
+
+
+## Routing Policy
+
+The Cloudflare provider only supports the `proxied` routing policy to enable the Cloudflare proxy.
+
+> [!NOTE]
+> This is only implemented for the **next-generation** `dns-controller-manager` and not for the legacy `dns-controller-manager`.
+
+### Proxied Routing Policy
+
+The `proxied` routing policy enables the Cloudflare proxy for a DNS entry. This means that the DNS entry will be proxied through Cloudflare's network, providing additional security and performance benefits.
+For details, please refer to the [Cloudflare documentation](https://developers.cloudflare.com/dns/proxy-status/).
+
+Example:
+
+```yaml
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  annotations:
+    # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+    #dns.gardener.cloud/class: garden
+  name: my-service
+  namespace: default
+spec:
+  dnsName: "my.service.example.com"
+  targets:
+    - 1.2.3.4
+  routingPolicy:
+    type: proxied
+    setIdentifier: proxied # "proxied" is mandatory for the proxied routing policy
+    parameters: {} # empty parameters for the proxied routing policy 
+```

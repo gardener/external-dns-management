@@ -300,6 +300,7 @@ spec:
                     - geolocation
                     - ip-based
                     - failover
+                    - proxied
                     type: string
                 required:
                 - parameters
@@ -377,6 +378,7 @@ spec:
                     - geolocation
                     - ip-based
                     - failover
+                    - proxied
                     type: string
                 required:
                 - parameters

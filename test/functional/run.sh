@@ -17,7 +17,7 @@ DNS_LOOKUP=true
 DNS_SERVER=8.8.4.4
 RUN_CONTROLLER=true
 GLOBAL_LOCK_URL=https://kvdb.io/8Kr6JtkwHUrq96Wk5aogEK/functest-lock
-DNSMAN2=false
+NEXTGEN=false
 
 usage()
 {
@@ -70,8 +70,8 @@ while [ "$1" != "" ]; do
         --no-controller )  shift
                            RUN_CONTROLLER=false
                            ;;
-        --dnsman2 )        shift
-                           DNSMAN2=true
+        --nextgen )        shift
+                           NEXTGEN=true
                            ;;
         -- )               shift
                            break
@@ -180,10 +180,10 @@ fi
 kubectl cluster-info
 
 if [ "$RUN_CONTROLLER" == "true" ]; then
-  if [ "$DNSMAN2" == "true" ]; then
+  if [ "$NEXTGEN" == "true" ]; then
     echo Starting dns-controller-manager-next-generation...
     kubectl apply -f $ROOTDIR/pkg/apis/dns/crds/ # dns-controller-manager-next-generation does not yet deploys the CRDs itself
-    go build -race -o $ROOTDIR/dns-controller-manager-next-generation $ROOTDIR/cmd/dnsman2
+    go build -race -o $ROOTDIR/dns-controller-manager-next-generation $ROOTDIR/cmd/nextgen
     $ROOTDIR/dns-controller-manager-next-generation --config=config-dnsman2.yaml > /tmp/dnsmgr-functional.log 2>&1 &
   else
     echo Starting dns-controller-manager...

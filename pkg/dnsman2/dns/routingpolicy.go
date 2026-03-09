@@ -23,6 +23,8 @@ const (
 	RoutingPolicyIPBased RoutingPolicyType = "ip-based"
 	// RoutingPolicyFailover is failover routing policy (supported for AWS Route 53)
 	RoutingPolicyFailover RoutingPolicyType = "failover"
+	// RoutingPolicyProxied is a routing policy to support Cloudflare proxy (supported for Cloudflare)
+	RoutingPolicyProxied RoutingPolicyType = "proxied"
 )
 
 // AllRoutingPolicyTypes contains all known routing policy types.
@@ -32,6 +34,7 @@ var AllRoutingPolicyTypes = []RoutingPolicyType{
 	RoutingPolicyGeoLocation,
 	RoutingPolicyIPBased,
 	RoutingPolicyFailover,
+	RoutingPolicyProxied,
 }
 
 // RoutingPolicy represents a DNS routing policy with type and parameters.
