@@ -579,8 +579,10 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		mod.AssureStringValue(&status.State, this.status.State).
 			AssureStringPtrPtr(&status.Message, this.status.Message).
 			AssureStringPtrPtr(&status.Zone, this.status.Zone).
-			AssureStringPtrPtr(&status.DNSName, this.status.DNSName).
 			AssureStringPtrPtr(&status.Provider, this.status.Provider)
+		if this.status.State == api.STATE_READY {
+			mod.AssureStringPtrPtr(&status.DNSName, this.status.DNSName)
+		}
 		if mod.IsModified() {
 			dnsutils.SetLastUpdateTime(&status.LastUpdateTime)
 			logmsg.Infof(logger)
