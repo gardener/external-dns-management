@@ -162,7 +162,7 @@ func (r *Reconciler) allEntriesToReconcile(ctx context.Context) []reconcile.Requ
 	if err := r.Client.List(ctx, entryList, client.InNamespace(r.Namespace)); err != nil {
 		return nil
 	}
-	for _, entry := range entryList.Items {
+	for _, entry := range dns.FilterEntriesByClass(entryList.Items, r.Class) {
 		requests = append(requests, reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      entry.Name,
