@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	"github.com/gardener/gardener/pkg/controllerutils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
@@ -196,6 +197,29 @@ var _ = Describe("Reconcile", func() {
 			}
 			Expect(fakeClient.Delete(ctx, provider)).To(Succeed())
 			state.GetState().DeleteProviderState(client.ObjectKeyFromObject(provider))
+		}
+		markProviderDeleted = func(name string) {
+			GinkgoHelper()
+			provider := &v1alpha1.DNSProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: "test",
+				},
+			}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(provider), provider)).To(Succeed())
+			Expect(controllerutils.AddFinalizers(ctx, fakeClient, provider, "deletion-marker")).To(Succeed())
+			Expect(fakeClient.Delete(ctx, provider)).To(Succeed())
+		}
+		removeProviderFinalizer = func(name string) {
+			GinkgoHelper()
+			provider := &v1alpha1.DNSProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: "test",
+				},
+			}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(provider), provider)).To(Succeed())
+			Expect(controllerutils.RemoveFinalizers(ctx, fakeClient, provider, "deletion-marker")).To(Succeed())
 		}
 		updateProvider = func(name string, included, excluded []string, state string, ptrMockConfig *local.MockConfig) {
 			GinkgoHelper()
@@ -504,6 +528,21 @@ var _ = Describe("Reconcile", func() {
 		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID3, "test.sub.example.com")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
+	})
+
+	It("should assign best matching provider on provider changes", func() {
+		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+
+		By("should keep current provider if provider with same domain is added")
+		createProvider("p1b", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+
+		By("should reassign after current provider is being deleted")
+		markProviderDeleted("p1")
+		DeferCleanup(removeProviderFinalizer, "p1")
+		checkEntryStatus(entryA, "test/p1b", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 	})
 
 	It("should keep old provider if provider changes state and no other provider is matching", func() {
