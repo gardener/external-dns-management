@@ -161,6 +161,7 @@
     "github.com/prometheus/otlptranslator",
     "github.com/prometheus/procfs",
     "github.com/prometheus/sigv4",
+    "github.com/robfig/cron",
     "github.com/russross/blackfriday/v2",
     "github.com/santhosh-tekuri/jsonschema/v6",
     "github.com/shopspring/decimal",
