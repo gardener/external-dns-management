@@ -55,7 +55,25 @@ func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk
 		return nil, fmt.Errorf("domain name annotation value '*' is not allowed for service objects")
 	}
 
+	ipStack := annotations[dns.AnnotationIPStack]
+	if annotations[dns.AnnotationAwsLoadBalancerIpAddressType] == dns.AnnotationAwsLoadBalancerIpAddressTypeValueDualStack {
+		ipStack = dns.AnnotationValueIPStackIPDualStack
+	}
+
+	return AugmentFromCommonAnnotations(annotations, DNSSpecInput{
+		Names:   names,
+		Targets: GetTargetsForService(svc, annotations),
+		IPStack: ipStack,
+	})
+}
+
+// GetTargetsForService extracts the targets for a Service resource from its status.
+// It returns the IPs if available, otherwise the hostnames.
+func GetTargetsForService(svc *corev1.Service, annotations map[string]string) *utils.UniqueStrings {
 	targets := utils.NewUniqueStrings()
+	if svc.Spec.Type != corev1.ServiceTypeLoadBalancer {
+		return targets
+	}
 	for _, i := range svc.Status.LoadBalancer.Ingress {
 		if i.Hostname != "" && i.IP == "" {
 			if annotations[dns.AnnotationOpenStackLoadBalancerAddress] != "" {
@@ -75,17 +93,7 @@ func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk
 			}
 		}
 	}
-
-	ipStack := annotations[dns.AnnotationIPStack]
-	if annotations[dns.AnnotationAwsLoadBalancerIpAddressType] == dns.AnnotationAwsLoadBalancerIpAddressTypeValueDualStack {
-		ipStack = dns.AnnotationValueIPStackIPDualStack
-	}
-
-	return AugmentFromCommonAnnotations(annotations, DNSSpecInput{
-		Names:   names,
-		Targets: targets,
-		IPStack: ipStack,
-	})
+	return targets
 }
 
 // GetDNSSpecInputForIngress gets the DNS spec input for an Ingress resource.
@@ -102,7 +110,7 @@ func GetDNSSpecInputForIngress(log logr.Logger, state state.AnnotationState, gvk
 
 	return AugmentFromCommonAnnotations(annotations, DNSSpecInput{
 		Names:   names,
-		Targets: getTargetsForIngress(ingress),
+		Targets: GetTargetsForIngress(ingress),
 		IPStack: annotations[dns.AnnotationIPStack],
 	})
 }
@@ -133,7 +141,9 @@ func getDNSNamesForIngress(log logr.Logger, ingress *networkingv1.Ingress, annot
 	return dnsNames, nil
 }
 
-func getTargetsForIngress(ingress *networkingv1.Ingress) *utils.UniqueStrings {
+// GetTargetsForIngress extracts the targets for an Ingress resource from its status.
+// It returns the IPs if available, otherwise the hostnames.
+func GetTargetsForIngress(ingress *networkingv1.Ingress) *utils.UniqueStrings {
 	ips := utils.NewUniqueStrings()
 	hosts := utils.NewUniqueStrings()
 	for _, ing := range ingress.Status.LoadBalancer.Ingress {
