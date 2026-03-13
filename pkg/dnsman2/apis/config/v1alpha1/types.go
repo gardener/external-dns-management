@@ -114,7 +114,7 @@ type DNSProviderControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent worker routines for this controller.
 	// +optional
 	ConcurrentSyncs *int `json:"concurrentSyncs,omitempty"`
-	// SyncPeriod is the duration how often the controller performs its reconciliation.
+	// SyncPeriod is the periodic reconciliation interval for all DNSProvider objects.
 	// Default is 1 hour.
 	// +optional
 	SyncPeriod *metav1.Duration `json:"syncPeriod,omitempty"`
@@ -167,7 +167,7 @@ type DNSEntryControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent worker routines for this controller.
 	// +optional
 	ConcurrentSyncs *int `json:"concurrentSyncs,omitempty"`
-	// SyncPeriod is the duration how often the controller performs its reconciliation.
+	// SyncPeriod is the periodic reconciliation interval for all DNSEntry objects.
 	// +optional
 	SyncPeriod *metav1.Duration `json:"syncPeriod,omitempty"`
 	// ReconciliationTimeout is the maximum duration a reconciliation of a DNSEntry is allowed to take.

@@ -139,6 +139,9 @@ func findBestMatchingProvider(providers []v1alpha1.DNSProvider, dnsName string, 
 	for _, p := range providers {
 		n := matchSelection(dnsName, p.Status.Domains)
 		if n > 0 {
+			if p.DeletionTimestamp == nil {
+				n += 1000 // prefer providers that are not being deleted
+			}
 			if p.Status.State == v1alpha1.StateReady {
 				handleMatch(&validMatch, &p, n)
 			} else {

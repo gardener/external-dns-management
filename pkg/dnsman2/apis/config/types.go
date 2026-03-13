@@ -101,7 +101,7 @@ type ControllerConfiguration struct {
 type DNSProviderControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent worker routines for this controller.
 	ConcurrentSyncs *int
-	// SyncPeriod is the duration how often the controller performs its reconciliation.
+	// SyncPeriod is the periodic reconciliation interval for all DNSProvider objects.
 	// Default is 1 hour.
 	SyncPeriod *metav1.Duration
 	// RecheckPeriod is the duration how often the controller rechecks a provider on a recoverable error.
@@ -144,7 +144,7 @@ type GCPWorkloadIdentityConfig struct {
 type DNSEntryControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent reconciliations for this controller.
 	ConcurrentSyncs *int
-	// SyncPeriod is the duration how often the controller performs its reconciliation.
+	// SyncPeriod is the periodic reconciliation interval for all DNSEntry objects.
 	SyncPeriod *metav1.Duration
 	// ReconciliationTimeout is the maximum duration a reconciliation of a DNSEntry is allowed to take.
 	// Default value is 2 minutes.

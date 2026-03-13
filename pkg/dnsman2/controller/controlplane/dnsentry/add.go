@@ -23,6 +23,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -54,15 +55,16 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	}
 	r.MigrationMode = ptr.Deref(cfg.Controllers.DNSProvider.MigrationMode, false)
 	r.state = state.GetState()
+	log := mgr.GetLogger().WithName(ControllerName)
 	r.lookupProcessor = lookup.NewLookupProcessor(
-		mgr.GetLogger().WithName(ControllerName).WithName("lookupProcessor"),
+		log.WithName("lookupProcessor"),
 		newReconcileTrigger(r.Client),
 		max(ptr.Deref(r.Config.MaxConcurrentLookups, 2), 2),
 		15*time.Second,
 	)
 	r.defaultCNAMELookupInterval = ptr.Deref(r.Config.DefaultCNAMELookupInterval, 600)
 	r.setReconciliationDelayAfterUpdate(ptr.Deref(r.Config.ReconciliationDelayAfterUpdate, metav1.Duration{Duration: defaultReconciliationDelayAfterUpdate}).Duration)
-	return builder.
+	bld := builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
 		WatchesRawSource(source.Kind[client.Object](controlPlaneCluster.GetCache(),
@@ -79,11 +81,45 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 				return r.entriesToReconcileOnProviderChanges(ctx, provider)
 			}),
 			dnsman2controller.DNSClassPredicate(r.Class),
-		)).
-		WithOptions(controller.Options{
-			MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 10),
-			SkipNameValidation:      cfg.Controllers.SkipNameValidation,
-		}).
+		))
+
+	if r.Config.SyncPeriod != nil && r.Config.SyncPeriod.Duration > 0 {
+		// Create a channel for periodic reconciliation events
+		ch := make(chan event.GenericEvent, 1)
+		bld.WatchesRawSource(
+			source.Channel(ch,
+				handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) []reconcile.Request {
+					return r.allEntriesToReconcile(ctx)
+				}),
+			),
+		)
+		// Start a goroutine to send periodic events
+		if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+			ticker := time.NewTicker(r.Config.SyncPeriod.Duration)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-ticker.C:
+					// Send a generic event to trigger reconciliation
+					select {
+					case ch <- event.GenericEvent{}:
+					default:
+						// Channel is full, skip this tick
+					}
+				}
+			}
+		})); err != nil {
+			return err
+		}
+		log.Info("Periodic reconciliation enabled", "syncPeriod", r.Config.SyncPeriod.Duration)
+	}
+
+	return bld.WithOptions(controller.Options{
+		MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 10),
+		SkipNameValidation:      cfg.Controllers.SkipNameValidation,
+	}).
 		Complete(r)
 }
 
@@ -115,6 +151,24 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, ob
 				},
 			})
 		}
+	}
+	return requests
+}
+
+func (r *Reconciler) allEntriesToReconcile(ctx context.Context) []reconcile.Request {
+	var requests []reconcile.Request
+
+	entryList := &v1alpha1.DNSEntryList{}
+	if err := r.Client.List(ctx, entryList, client.InNamespace(r.Namespace)); err != nil {
+		return nil
+	}
+	for _, entry := range dns.FilterEntriesByClass(entryList.Items, r.Class) {
+		requests = append(requests, reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name:      entry.Name,
+				Namespace: entry.Namespace,
+			},
+		})
 	}
 	return requests
 }

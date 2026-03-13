@@ -142,6 +142,9 @@ func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 	if obj.ConcurrentSyncs == nil {
 		obj.ConcurrentSyncs = ptr.To(5)
 	}
+	if obj.SyncPeriod == nil {
+		obj.SyncPeriod = &metav1.Duration{Duration: time.Hour}
+	}
 	if obj.ReconciliationTimeout == nil {
 		obj.ReconciliationTimeout = &metav1.Duration{Duration: 2 * time.Minute}
 	}

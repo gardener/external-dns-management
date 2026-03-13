@@ -18,6 +18,17 @@ func FilterProvidersByClass(providers []v1alpha1.DNSProvider, class string) []v1
 	return filtered
 }
 
+// FilterEntriesByClass filters a list of DNS entries by the specified class.
+func FilterEntriesByClass(entries []v1alpha1.DNSEntry, class string) []v1alpha1.DNSEntry {
+	var filtered []v1alpha1.DNSEntry
+	for _, entry := range entries {
+		if NormalizeClass(entry.Annotations[AnnotationClass]) == class {
+			filtered = append(filtered, entry)
+		}
+	}
+	return filtered
+}
+
 // NormalizeClass returns the provided class or the default class if the provided class is empty.
 func NormalizeClass(class string) string {
 	if class == "" {
