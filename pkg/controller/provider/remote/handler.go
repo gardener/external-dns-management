@@ -45,6 +45,9 @@ type Handler struct {
 
 var _ provider.DNSHandler = &Handler{}
 
+// maxCallRecvMsgSize is the maximum message size in bytes the client can receive (on getZoneState)
+const maxCallRecvMsgSize = 16*1024*1024
+
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	advancedConfig := c.Options.GetAdvancedConfig()
 	c.Logger.Infof("advanced options: %s", advancedConfig)
@@ -229,7 +232,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 	err := h.retryOnInvalidTokenError(ctx, func(token string) error {
 		var err error
 		h.config.RateLimiter.Accept()
-		remoteState, err = h.client.GetZoneState(ctx, &common.GetZoneStateRequest{Token: token, Zoneid: zone.Id().ID})
+		remoteState, err = h.client.GetZoneState(ctx, &common.GetZoneStateRequest{Token: token, Zoneid: zone.Id().ID}, grpc.MaxCallRecvMsgSize(maxCallRecvMsgSize))
 		h.config.Metrics.AddZoneRequests(zone.Id().ID, provider.M_LISTRECORDS, 1)
 		return err
 	})
