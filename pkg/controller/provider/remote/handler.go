@@ -46,7 +46,7 @@ type Handler struct {
 var _ provider.DNSHandler = &Handler{}
 
 // maxCallRecvMsgSize is the maximum message size in bytes the client can receive (on getZoneState)
-const maxCallRecvMsgSize = 16*1024*1024
+const maxCallRecvMsgSize = 16 * 1024 * 1024
 
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	advancedConfig := c.Options.GetAdvancedConfig()
