@@ -1,0 +1,1061 @@
+<p>Packages:</p>
+<ul>
+<li>
+<a href="#config.dns.gardener.cloud%2fv1alpha1">config.dns.gardener.cloud/v1alpha1</a>
+</li>
+</ul>
+<h2 id="config.dns.gardener.cloud/v1alpha1">config.dns.gardener.cloud/v1alpha1</h2>
+<p>
+</p>
+Resource Types:
+<ul></ul>
+<h3 id="config.dns.gardener.cloud/v1alpha1.AdvancedOptions">AdvancedOptions
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.DNSManagerConfiguration">DNSManagerConfiguration</a>)
+</p>
+<p>
+<p>AdvancedOptions contains advanced options for a DNS provider type.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>rateLimits</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.RateLimiterOptions">
+RateLimiterOptions
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RateLimits contains the rate limiter configuration for the provider.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>batchSize</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BatchSize is the batch size for change requests (currently only used for aws-route53).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxRetries</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxRetries is the maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53).</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>blockedZones</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>BlockedZones is a list of zone IDs that are blocked from being used by the provider.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.ClientConnection">ClientConnection
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.DNSManagerConfiguration">DNSManagerConfiguration</a>)
+</p>
+<p>
+<p>ClientConnection contains client connection configurations
+for the primary cluster (certificates and source resources).</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ClientConnectionConfiguration</code></br>
+<em>
+k8s.io/component-base/config/v1alpha1.ClientConnectionConfiguration
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>cacheResyncPeriod</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<p>CacheResyncPeriod specifies the duration how often the cache for the cluster is resynced.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.ControlPlaneClientConnection">ControlPlaneClientConnection
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.DNSManagerConfiguration">DNSManagerConfiguration</a>)
+</p>
+<p>
+<p>ControlPlaneClientConnection contains client connection configurations
+for the cluster containing the provided issuers.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>ClientConnectionConfiguration</code></br>
+<em>
+k8s.io/component-base/config/v1alpha1.ClientConnectionConfiguration
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>cacheResyncPeriod</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<p>CacheResyncPeriod specifies the duration how often the cache for the cluster is resynced.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.ControllerConfiguration">ControllerConfiguration
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.DNSManagerConfiguration">DNSManagerConfiguration</a>)
+</p>
+<p>
+<p>ControllerConfiguration defines the configuration of the controllers.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>dnsProvider</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.DNSProviderControllerConfig">
+DNSProviderControllerConfig
+</a>
+</em>
+</td>
+<td>
+<p>DNSProvider is the configuration for the DNSProvider controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsEntry</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.DNSEntryControllerConfig">
+DNSEntryControllerConfig
+</a>
+</em>
+</td>
+<td>
+<p>DNSEntry is the configuration for the DNSEntry controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsAnnotation</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.DNSAnnotationControllerConfig">
+DNSAnnotationControllerConfig
+</a>
+</em>
+</td>
+<td>
+<p>DNSAnnotation is the configuration for the DNSAnnotation controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>source</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.SourceControllerConfig">
+SourceControllerConfig
+</a>
+</em>
+</td>
+<td>
+<p>Source is the common configuration for source controllers.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>skipNameValidation</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SkipNameValidation if true, the controller registration will skip the validation of its names in the controller runtime.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.DNSAnnotationControllerConfig">DNSAnnotationControllerConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.ControllerConfiguration">ControllerConfiguration</a>)
+</p>
+<p>
+<p>DNSAnnotationControllerConfig is the configuration for the DNSAnnotation controller.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>concurrentSyncs</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ConcurrentSyncs is the number of concurrent reconciliations for this controller.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.DNSEntryControllerConfig">DNSEntryControllerConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.ControllerConfiguration">ControllerConfiguration</a>)
+</p>
+<p>
+<p>DNSEntryControllerConfig is the configuration for the DNSEntry controller.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>concurrentSyncs</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ConcurrentSyncs is the number of concurrent worker routines for this controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>syncPeriod</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SyncPeriod is the periodic reconciliation interval for all DNSEntry objects.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>reconciliationTimeout</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReconciliationTimeout is the maximum duration a reconciliation of a DNSEntry is allowed to take.
+Default value is 2 minutes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>maxConcurrentLookups</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MaxConcurrentLookups is the number of concurrent DNS lookups for the lookup processor.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>defaultCNAMELookupInterval</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>reconciliationDelayAfterUpdate</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.DNSManagerConfiguration">DNSManagerConfiguration
+</h3>
+<p>
+<p>DNSManagerConfiguration defines the configuration for the Gardener dns-controller-manager.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>clientConnection</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.ClientConnection">
+ClientConnection
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ClientConnection specifies the kubeconfig file and the client connection settings for primary
+cluster containing the source resources the dns-controller-manager should work on.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>controlPlaneClientConnection</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.ControlPlaneClientConnection">
+ControlPlaneClientConnection
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ControlPlaneClientConnection contains client connection configurations
+for the cluster containing the provided DNSProviders and target DNSEntries.
+If not set, the primary cluster is used.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>leaderElection</code></br>
+<em>
+k8s.io/component-base/config/v1alpha1.LeaderElectionConfiguration
+</em>
+</td>
+<td>
+<p>LeaderElection defines the configuration of leader election client.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logLevel</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogLevel is the level/severity for the logs. Must be one of [info,debug,error].</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>logFormat</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>LogFormat is the output format for the logs. Must be one of [text,json].</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>server</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.ServerConfiguration">
+ServerConfiguration
+</a>
+</em>
+</td>
+<td>
+<p>Server defines the configuration of the HTTP server.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>debugging</code></br>
+<em>
+k8s.io/component-base/config/v1alpha1.DebuggingConfiguration
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Debugging holds configuration for Debugging related features.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>controllers</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.ControllerConfiguration">
+ControllerConfiguration
+</a>
+</em>
+</td>
+<td>
+<p>Controllers defines the configuration of the controllers.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>class</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Class is the &ldquo;dns.gardener.cloud/class&rdquo; the dns-controller-manager is responsible for.
+If not set, the default class &ldquo;gardendns&rdquo; is used.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>deployCRDs</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DeployCRDs indicates whether the required CRDs should be deployed to the main cluster on startup.
+This does not include the control plane cluster, if different.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>conditionalDeployCRDs</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ConditionalDeployCRDs indicates whether to check before deploying CRDs if there is a managed resource in the garden namespace managing it.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>addShootNoCleanupLabelToCRDs</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AddShootNoCleanupLabelToCRDs indicates whether to add the &ldquo;shoot.gardener.cloud/no-cleanup&rdquo; label to deployed CRDs.
+This prevents Gardener from cleaning them up when the shoot is deleted.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>providerAdvancedOptions</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.AdvancedOptions">
+map[string]github.com/gardener/external-dns-management/pkg/dnsman2/apis/config/v1alpha1.AdvancedOptions
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ProviderAdvancedOptions contains advanced options for the DNS provider types.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.DNSProviderControllerConfig">DNSProviderControllerConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.ControllerConfiguration">ControllerConfiguration</a>)
+</p>
+<p>
+<p>DNSProviderControllerConfig is the configuration for the DNSProvider controller.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>concurrentSyncs</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ConcurrentSyncs is the number of concurrent worker routines for this controller.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>syncPeriod</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SyncPeriod is the periodic reconciliation interval for all DNSProvider objects.
+Default is 1 hour.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>recheckPeriod</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>RecheckPeriod is the duration how often the controller rechecks a provider on a recoverable error.
+Default value is 5 minutes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>reconciliationTimeout</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ReconciliationTimeout is the maximum duration a reconciliation of a DNSProvider is allowed to take.
+Default value is 2 minutes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>namespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>Namespace is the namespace on the secondary cluster containing the provided DNSProviders.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>enabledProviderTypes</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EnabledProviderTypes is the list of DNS provider types that should be enabled.
+If not set, all provider types are enabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>disabledProviderTypes</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DisabledProviderTypes is the list of DNS provider types that should be disabled.
+If not set, no provider types are disabled.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>defaultRateLimits</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.RateLimiterOptions">
+RateLimiterOptions
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DefaultRateLimits defines the rate limiter configuration for a DNSProvider account if not overridden by the DNSProvider.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>defaultTTL</code></br>
+<em>
+int64
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DefaultTTL is the default TTL used for DNS entries if not specified explicitly. May be overridden by the DNSProvider.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>zoneCacheTTL</code></br>
+<em>
+<a href="https://godoc.org/k8s.io/apimachinery/pkg/apis/meta/v1#Duration">
+Kubernetes meta/v1.Duration
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ZoneCacheTTL is the TTL for caching provider zones.
+Default is 30 minutes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>migrationMode</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>MigrationMode if true, the controller runs in migration mode and will not add finalizers to secrets.
+This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>gcpWorkloadIdentityConfig</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.GCPWorkloadIdentityConfig">
+GCPWorkloadIdentityConfig
+</a>
+</em>
+</td>
+<td>
+<p>GCPWorkloadIdentityConfig is the configuration for GCP workload identity.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.GCPWorkloadIdentityConfig">GCPWorkloadIdentityConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.DNSProviderControllerConfig">DNSProviderControllerConfig</a>)
+</p>
+<p>
+<p>GCPWorkloadIdentityConfig is the configuration for GCP workload identity.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>allowedTokenURLs</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>AllowedTokenURLs are the allowed token URLs.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>allowedServiceAccountImpersonationURLRegExps</code></br>
+<em>
+[]string
+</em>
+</td>
+<td>
+<p>AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.RateLimiterOptions">RateLimiterOptions
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.AdvancedOptions">AdvancedOptions</a>, 
+<a href="#config.dns.gardener.cloud/v1alpha1.DNSProviderControllerConfig">DNSProviderControllerConfig</a>)
+</p>
+<p>
+<p>RateLimiterOptions defines the rate limiter configuration.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>enabled</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>qps</code></br>
+<em>
+float32
+</em>
+</td>
+<td>
+</td>
+</tr>
+<tr>
+<td>
+<code>burst</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.Server">Server
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.ServerConfiguration">ServerConfiguration</a>)
+</p>
+<p>
+<p>Server contains information for HTTP(S) server configuration.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>bindAddress</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<p>BindAddress is the IP address on which to listen for the specified port.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>port</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<p>Port is the port on which to serve requests.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.ServerConfiguration">ServerConfiguration
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.DNSManagerConfiguration">DNSManagerConfiguration</a>)
+</p>
+<p>
+<p>ServerConfiguration contains details for the HTTP(S) servers.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>webhooks</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.Server">
+Server
+</a>
+</em>
+</td>
+<td>
+<p>Webhooks is the configuration for the HTTPS webhook server.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>healthProbes</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.Server">
+Server
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>HealthProbes is the configuration for serving the healthz and readyz endpoints.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>metrics</code></br>
+<em>
+<a href="#config.dns.gardener.cloud/v1alpha1.Server">
+Server
+</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>Metrics is the configuration for serving the metrics endpoint.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<h3 id="config.dns.gardener.cloud/v1alpha1.SourceControllerConfig">SourceControllerConfig
+</h3>
+<p>
+(<em>Appears on:</em>
+<a href="#config.dns.gardener.cloud/v1alpha1.ControllerConfiguration">ControllerConfiguration</a>)
+</p>
+<p>
+<p>SourceControllerConfig is the configuration for the source controllers.</p>
+</p>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>
+<code>concurrentSyncs</code></br>
+<em>
+int
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ConcurrentSyncs is the number of concurrent reconciliations for source controllers.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sourceClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SourceClass is the class value for sources.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>targetClass</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TargetClass is the class value for target DNSEntries.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>targetNamespace</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TargetNamespace is the namespace for target DNSEntries.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>targetNamePrefix</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TargetNamePrefix is the prefix for target DNSEntries object names.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>targetLabels</code></br>
+<em>
+map[string]string
+</em>
+</td>
+<td>
+<p>TargetLabels are the labels to be added to target DNSEntries and DNSProviders.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>targetClusterID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>TargetClusterID is the cluster ID of the target cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>sourceClusterID</code></br>
+<em>
+string
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SourceClusterID is the cluster ID of the source cluster.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>dnsProviderReplication</code></br>
+<em>
+bool
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSProviderReplication indicates whether DNSProvider replication from source to target cluster is enabled.</p>
+</td>
+</tr>
+</tbody>
+</table>
+<hr/>
+<p><em>
+Generated with <a href="https://github.com/ahmetb/gen-crd-api-reference-docs">gen-crd-api-reference-docs</a>
+</em></p>
