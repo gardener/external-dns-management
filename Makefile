@@ -96,8 +96,12 @@ generate-proto:
     --experimental_allow_proto3_optional \
     pkg/server/remote/common/remote.proto
 
+.PHONY: tools-for-generate
+tools-for-generate: $(CONTROLLER_GEN) $(GEN_CRD_API_REFERENCE_DOCS)
+	@go mod download
+
 .PHONY: generate
-generate: $(CONTROLLER_GEN) $(HELM) $(YQ)
+generate: tools-for-generate $(HELM) $(YQ)
 	@GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) REPO_ROOT=$(REPO_ROOT) ./hack/generate-code
 	@CONTROLLER_MANAGER_LIB_HACK_DIR=$(CONTROLLER_MANAGER_LIB_HACK_DIR) CONTROLLER_GEN=$(shell realpath $(CONTROLLER_GEN)) go generate ./pkg/apis/dns/...
 	@go generate ./charts/external-dns-management
