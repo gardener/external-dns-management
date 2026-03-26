@@ -24,6 +24,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/server/metrics"
 )
 
+const rescheduleTimeQuotaExceeded = 5 * time.Minute
+
 ////////////////////////////////////////////////////////////////////////////////
 // state handling for entries
 ////////////////////////////////////////////////////////////////////////////////
@@ -301,6 +303,36 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 		metrics.ReportEntryReconciliation(p.ptype, p.zoneid)
 	}
 
+	if p.provider != nil && ptr.Deref(object.Status().Provider, "") != p.provider.ObjectName().String() && !object.IsDeleting() {
+		if quota := p.provider.EntriesQuota(); quota != nil {
+			if !this.initialized {
+				return reconcile.Delay(logger, fmt.Errorf("quotas state has not been initialized yet"))
+			}
+			count := this.countEntriesForProvider(p.provider.ObjectName())
+			if count >= *quota {
+				this.quotaExceededEntries[object.ClusterKey()] = p.provider.ObjectName()
+				msg := fmt.Sprintf("provider %s has reached its entries quota (max=%d)", p.provider.ObjectName(), *quota)
+				modified, err := object.ModifyStatus(func(data resources.ObjectData) (bool, error) {
+					status := &data.(*api.DNSEntry).Status
+					mod := utils.ModificationState{}
+					mod.AssureStringValue(&status.State, api.STATE_ERROR)
+					mod.AssureStringPtrPtr(&status.Message, ptr.To(msg))
+					return mod.IsModified(), nil
+				})
+				if err != nil {
+					return reconcile.Delay(logger, err)
+				}
+				logger.Warn(msg)
+				if modified {
+					// will be reconciled anyway
+					return reconcile.Succeeded(logger)
+				}
+				return reconcile.RescheduleAfter(logger, rescheduleTimeQuotaExceeded)
+			}
+		}
+	}
+	delete(this.quotaExceededEntries, object.ClusterKey())
+
 	v := NewEntryVersion(object, old)
 	if p.fallback != nil {
 		v.obsolete = true
@@ -336,6 +368,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 	}()
 
 	delete(this.blockingEntries, key.ObjectName())
+	delete(this.quotaExceededEntries, key)
 
 	old := this.entries[key.ObjectName()]
 	if old != nil {
@@ -352,6 +385,17 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 		logger.Debugf("removing unknown entry %q", key.ObjectName())
 	}
 	return reconcile.Succeeded(logger)
+}
+
+func (this *state) countEntriesForProvider(provider resources.ObjectName) int32 {
+	var count int32
+	for _, entry := range this.entries {
+		// Only count entries that are actually provisioned
+		if entry.providername == provider && entry.object.Status().Provider != nil {
+			count++
+		}
+	}
+	return count
 }
 
 func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *dns.DNSSet) {

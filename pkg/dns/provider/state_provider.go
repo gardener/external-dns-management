@@ -224,6 +224,12 @@ func (this *state) RemoveProvider(logger logger.LogContext, obj *dnsutils.DNSPro
 	this.lock.Lock()
 	defer this.lock.Unlock()
 
+	for entryKey, providerName := range this.quotaExceededEntries {
+		if providerName == obj.ObjectName() {
+			delete(this.quotaExceededEntries, entryKey)
+		}
+	}
+
 	foreign := this.foreign[pname]
 	if foreign != nil {
 		return this.removeForeignProvider(logger, pname)
