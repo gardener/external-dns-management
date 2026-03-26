@@ -6,6 +6,7 @@ package provider
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -13,6 +14,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/flowcontrol"
+	"k8s.io/utils/ptr"
 
 	api "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
@@ -122,6 +124,11 @@ func (this *state) _UpdateLocalProvider(logger logger.LogContext, obj *dnsutils.
 		}
 		this.triggerAllDeletingEntries(logger)
 	}
+
+	if last != nil && ptr.Deref(last.EntriesQuota(), math.MaxInt32) < ptr.Deref(new.EntriesQuota(), math.MaxInt32) {
+		logger.Infof("trigger entries for increased entries quota")
+		this.triggerQuotaExceededEntries(new)
+	}
 	return status
 }
 
@@ -139,6 +146,14 @@ func (this *state) triggerAllDeletingEntries(logger logger.LogContext) {
 	for _, entry := range entries {
 		if entry.IsDeleting() {
 			_ = this.context.EnqueueKey(entry.ClusterKey())
+		}
+	}
+}
+
+func (this *state) triggerQuotaExceededEntries(p *dnsProviderVersion) {
+	for entryKey, providerName := range this.quotaExceededEntries {
+		if providerName == p.ObjectName() {
+			_ = this.context.EnqueueKey(entryKey)
 		}
 	}
 }
