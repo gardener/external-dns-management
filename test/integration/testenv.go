@@ -61,6 +61,7 @@ const (
 	Quotas4PerMin
 	RemoveAccess
 	DisableCache
+	EntriesQuota
 )
 
 type TestEnv struct {
@@ -332,6 +333,10 @@ func (te *TestEnv) CreateProvider(baseDomain string, providerIndex int, secretNa
 				}
 			case RemoveAccess:
 				resources.SetAnnotation(provider, dnsprovider.AnnotationRemoteAccess, "true")
+			case EntriesQuota:
+				spec.Quotas = &v1alpha1.Quotas{
+					Entries: ptr.To[int32](2),
+				}
 			}
 		}
 	}
@@ -717,13 +722,13 @@ func (te *TestEnv) GetService(name string) (resources.Object, *corev1.Service, e
 	return obj, obj.Data().(*corev1.Service), nil
 }
 
-func (te *TestEnv) HasEntryState(name string, state string) (bool, error) {
+func (te *TestEnv) HasEntryState(name string, state string, checkGeneration bool) (bool, error) {
 	obj, err := te.GetEntry(name)
 	if err != nil {
 		return false, err
 	}
 	entry := UnwrapEntry(obj)
-	if state != "Ignored" && entry.Generation != entry.Status.ObservedGeneration {
+	if checkGeneration && entry.Generation != entry.Status.ObservedGeneration {
 		return false, nil
 	}
 	return entry.Status.State == state, nil
@@ -1087,25 +1092,33 @@ func (te *TestEnv) GetDNSAnnotation(name string) (resources.Object, *v1alpha1.DN
 }
 
 func (te *TestEnv) AwaitEntryReady(name string) error {
-	return te.AwaitEntryState(name, "Ready")
+	return te.AwaitEntryState(name, "Ready", true)
 }
 
 func (te *TestEnv) AwaitEntryStale(name string) error {
-	return te.AwaitEntryState(name, "Stale")
+	return te.AwaitEntryState(name, "Stale", true)
 }
 
 func (te *TestEnv) AwaitEntryInvalid(name string) error {
-	return te.AwaitEntryState(name, "Invalid")
+	return te.AwaitEntryState(name, "Invalid", true)
 }
 
 func (te *TestEnv) AwaitEntryError(name string) error {
-	return te.AwaitEntryState(name, "Error")
+	return te.AwaitEntryState(name, "Error", true)
 }
 
-func (te *TestEnv) AwaitEntryState(name string, state string) error {
+func (te *TestEnv) AwaitEntryErrorNoGenerationCheck(name string) error {
+	return te.AwaitEntryState(name, "Error", false)
+}
+
+func (te *TestEnv) AwaitEntryIgnored(name string) error {
+	return te.AwaitEntryState(name, "Ignored", false)
+}
+
+func (te *TestEnv) AwaitEntryState(name string, state string, checkGeneration bool) error {
 	msg := fmt.Sprintf("Entry %s state=%s", name, state)
 	return te.Await(msg, func() (bool, error) {
-		return te.HasEntryState(name, state)
+		return te.HasEntryState(name, state, checkGeneration)
 	})
 }
 
