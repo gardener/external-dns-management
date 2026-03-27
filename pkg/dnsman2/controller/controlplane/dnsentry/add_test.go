@@ -13,6 +13,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
 var _ = Describe("Add", func() {
@@ -29,6 +30,7 @@ var _ = Describe("Add", func() {
 			reconciler = &Reconciler{
 				Client:    fakeClient,
 				Namespace: "test",
+				state:     state.GetState(),
 			}
 
 			Expect(fakeClient.Create(ctx, &v1alpha1.DNSEntry{

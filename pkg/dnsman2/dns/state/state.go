@@ -33,10 +33,11 @@ func GetState() *State {
 	}
 
 	state = &State{
-		providers:       newProviderMap(),
-		accounts:        provider.NewAccountMap(),
-		dnsNameLocking:  newDNSNameLocking(),
-		annotationState: newAnnotationState(),
+		providers:            newProviderMap(),
+		accounts:             provider.NewAccountMap(),
+		dnsNameLocking:       newDNSNameLocking(),
+		annotationState:      newAnnotationState(),
+		quotaExceededEntries: newQuotaExceededEntriesMap(),
 	}
 	if instance.CompareAndSwap(nil, state) {
 		return state
@@ -50,8 +51,9 @@ type State struct {
 	accounts  *provider.AccountMap
 	factory   atomic.Pointer[provider.DNSHandlerFactory]
 
-	dnsNameLocking  *dnsNameLocking
-	annotationState *annotationState
+	dnsNameLocking       *dnsNameLocking
+	annotationState      *annotationState
+	quotaExceededEntries *quotaExceededEntriesMap
 }
 
 type providerMap struct {
@@ -161,6 +163,11 @@ func (s *State) GetDNSQueryHandler(ctx context.Context, zoneID dns.ZoneID) (DNSQ
 // GetDNSNameLocking returns the dnsNameLocking instance used for managing DNS name locks.
 func (s *State) GetDNSNameLocking() *dnsNameLocking {
 	return s.dnsNameLocking
+}
+
+// GetQuotaExceededEntriesMap returns the quotaExceededEntriesMap instance used for tracking entries blocked by quota.
+func (s *State) GetQuotaExceededEntriesMap() *quotaExceededEntriesMap {
+	return s.quotaExceededEntries
 }
 
 // ClearState clears the singleton state instance (for testing purposes).

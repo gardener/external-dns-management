@@ -826,6 +826,82 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		Expect(duration).To(BeNumerically(">=", 2*time.Second), "creating 3 entries with rate limit of 1/s should take at least 2s, took %s", duration)
 	})
 
+	It("should enforce provider entries quota", func() {
+		By("Create provider with entries quota of 2")
+		p2 := prepareSecondProvider()
+		p2.Spec.Quotas = &v1alpha1.Quotas{
+			Entries: ptr.To[int32](2),
+		}
+		Expect(testClient.Create(ctx, p2)).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, p2)).To(Succeed())
+		})
+
+		By("Wait for provider to be ready")
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(p2), p2)).To(Succeed())
+			g.Expect(p2.Status.State).To(Equal("Ready"))
+			g.Expect(p2.Status.ObservedGeneration).To(Equal(p2.Generation))
+		}).Should(Succeed())
+
+		By("Create and verify 2 entries succeed")
+		entries := make([]*v1alpha1.DNSEntry, 3)
+		for i := 0; i < 2; i++ {
+			entries[i] = &v1alpha1.DNSEntry{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("quota-entry-%d", i),
+					Namespace: testRunID,
+				},
+				Spec: v1alpha1.DNSEntrySpec{
+					DNSName: fmt.Sprintf("quota-test-%d.other-domain.com", i),
+					Targets: []string{"1.2.3.4"},
+				},
+			}
+			Expect(testClient.Create(ctx, entries[i])).To(Succeed())
+			DeferCleanup(func() {
+				Expect(testClient.Delete(ctx, entries[i])).To(Succeed())
+			})
+		}
+
+		for i := 0; i < 2; i++ {
+			checkEntry(entries[i])
+		}
+
+		By("Create 3rd entry and verify quota error")
+		entries[2] = &v1alpha1.DNSEntry{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "quota-entry-2",
+				Namespace: testRunID,
+			},
+			Spec: v1alpha1.DNSEntrySpec{
+				DNSName: "quota-test-2.other-domain.com",
+				Targets: []string{"1.2.3.4"},
+			},
+		}
+		Expect(testClient.Create(ctx, entries[2])).To(Succeed())
+		DeferCleanup(func() {
+			Expect(testClient.Delete(ctx, entries[2])).To(Succeed())
+		})
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(entries[2]), entries[2])).To(Succeed())
+			g.Expect(entries[2].Status.State).To(Equal("Error"))
+			g.Expect(entries[2].Status.Message).To(PointTo(ContainSubstring("has reached its entries quota")))
+		}).Should(Succeed())
+
+		By("Increase quota and verify entry reconciles")
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(p2), p2)).To(Succeed())
+		p2.Spec.Quotas.Entries = ptr.To[int32](3)
+		Expect(testClient.Update(ctx, p2)).To(Succeed())
+
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(p2), p2)).To(Succeed())
+			g.Expect(p2.Status.ObservedGeneration).To(Equal(p2.Generation))
+		}).Should(Succeed())
+
+		checkEntry(entries[2])
+	})
+
 	It("should update provider and entries when provider secret is created after provider resource", func() {
 		By("Create second provider")
 		p2 := prepareSecondProvider()

@@ -130,6 +130,7 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, ob
 		return nil
 	}
 	providerName := provider.Namespace + "/" + provider.Name
+
 	entryList := &v1alpha1.DNSEntryList{}
 	if err := r.Client.List(ctx, entryList, client.InNamespace(r.Namespace)); err != nil {
 		return nil
