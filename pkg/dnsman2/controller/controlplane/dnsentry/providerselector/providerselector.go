@@ -105,6 +105,10 @@ func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.Reconcil
 
 // checkEntriesQuota verifies if the provider has available capacity for a new entry.
 // It returns an error if the provider's entries quota is exceeded.
+//
+// This implementation uses a reservation system to prevent race conditions where
+// multiple concurrent reconciliations could exceed the quota. Reservations are
+// held for 5 minutes and automatically cleaned up on timeout or explicit release.
 func (s *providerSelector) checkEntriesQuota(provider *v1alpha1.DNSProvider, providerKey client.ObjectKey) error {
 	// Skip if no quota configured
 	quota := provider.Spec.Quotas
@@ -117,22 +121,25 @@ func (s *providerSelector) checkEntriesQuota(provider *v1alpha1.DNSProvider, pro
 		return nil
 	}
 
-	// Count entries for provider.
-	count, err := CountEntriesForProvider(s.Ctx, s.Client, s.namespace, providerKey)
+	// Count provisioned entries (those with status.provider set)
+	provisionedCount, err := CountEntriesForProvider(s.Ctx, s.Client, s.namespace, providerKey)
 	if err != nil {
 		return fmt.Errorf("failed to count entries for provider: %w", err)
 	}
 
-	// Check quota.
-	// If multiple new entries are in reconciliation concurrently, too many entries may pass the check,
-	// as they are counted only after their reconciliations have been completed.
-	// The quota can therefore been overshot by up to the number of `concurrentSyncs`.
-	if count >= *quota.Entries {
+	// Reserve slot for this entry to prevent race conditions
+	reserved := s.state.GetQuotaReservationsMap().Reserve(client.ObjectKeyFromObject(s.Entry), providerKey, func(reservedCount int32) bool {
+		// Check total count against quota
+		return provisionedCount+reservedCount <= *quota.Entries
+	})
+
+	if !reserved {
 		return &quotaExceededError{
 			providerKey: providerKey,
 			quota:       *quota.Entries,
 		}
 	}
+
 	return nil
 }
 

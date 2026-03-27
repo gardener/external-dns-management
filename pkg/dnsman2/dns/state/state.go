@@ -8,9 +8,11 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 	"go.uber.org/atomic"
+	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -20,6 +22,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
+
+const quotaReservationDuration = 5 * time.Minute
 
 var (
 	instance atomic.Pointer[State]
@@ -38,6 +42,7 @@ func GetState() *State {
 		dnsNameLocking:       newDNSNameLocking(),
 		annotationState:      newAnnotationState(),
 		quotaExceededEntries: newQuotaExceededEntriesMap(),
+		quotaReservations:    newQuotaReservationsMap(clock.RealClock{}, quotaReservationDuration),
 	}
 	if instance.CompareAndSwap(nil, state) {
 		return state
@@ -54,6 +59,7 @@ type State struct {
 	dnsNameLocking       *dnsNameLocking
 	annotationState      *annotationState
 	quotaExceededEntries *quotaExceededEntriesMap
+	quotaReservations    *quotaReservationsMap
 }
 
 type providerMap struct {
@@ -168,6 +174,11 @@ func (s *State) GetDNSNameLocking() *dnsNameLocking {
 // GetQuotaExceededEntriesMap returns the quotaExceededEntriesMap instance used for tracking entries blocked by quota.
 func (s *State) GetQuotaExceededEntriesMap() *quotaExceededEntriesMap {
 	return s.quotaExceededEntries
+}
+
+// GetQuotaReservationsMap returns the quotaReservationsMap instance used for tracking in-flight quota reservations.
+func (s *State) GetQuotaReservationsMap() *quotaReservationsMap {
+	return s.quotaReservations
 }
 
 // ClearState clears the singleton state instance (for testing purposes).

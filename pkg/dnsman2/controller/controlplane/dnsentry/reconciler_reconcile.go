@@ -53,9 +53,11 @@ type zonedRequests = map[dns.ZoneID]map[dns.DNSSetName]*provider.ChangeRequests
 func (r *entryReconciliation) reconcile() common.ReconcileResult {
 	r.Log.Info("reconcile")
 	orgResult := r.doReconcile()
-	res := orgResult
+
+	r.state.GetQuotaReservationsMap().Release(client.ObjectKeyFromObject(r.Entry))
 
 	// update status if state/message changed
+	res := orgResult
 	if orgResult.State != nil {
 		res = r.StatusUpdater().UpdateStatus(func(status *v1alpha1.DNSEntryStatus) error {
 			status.ObservedGeneration = r.Entry.Generation
