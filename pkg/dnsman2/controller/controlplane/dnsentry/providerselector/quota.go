@@ -25,7 +25,7 @@ func CountEntriesForProvider(ctx context.Context, c client.Client, namespace str
 	); err != nil {
 		return 0, err
 	}
-	return int32(len(entryList.Items)), nil
+	return int32(len(entryList.Items)), nil // #nosec G115 -- number of entries will never reach 2 billion, so int32 is sufficient
 }
 
 // quotaExceededError is returned when a provider has reached its entries quota.
