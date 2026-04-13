@@ -13,12 +13,12 @@
   // The following list of dependencies to ignore is updated by `make generate`.
   // DO NOT EDIT THIS SECTION MANUALLY.
   ignoreDeps: [
-    "github.com/ahmetb/gen-crd-api-reference-docs",
     "github.com/aws/aws-sdk-go-v2",
     "github.com/aws/aws-sdk-go-v2/config",
     "github.com/aws/aws-sdk-go-v2/credentials",
     "github.com/aws/aws-sdk-go-v2/service/sts",
     "github.com/aws/smithy-go",
+    "github.com/elastic/crd-ref-docs",
     "github.com/go-logr/logr",
     "github.com/google/uuid",
     "github.com/miekg/dns",
@@ -161,7 +161,6 @@
     "github.com/prometheus/procfs",
     "github.com/prometheus/sigv4",
     "github.com/robfig/cron",
-    "github.com/russross/blackfriday/v2",
     "github.com/santhosh-tekuri/jsonschema/v6",
     "github.com/shopspring/decimal",
     "github.com/sirupsen/logrus",
@@ -221,9 +220,7 @@
     "helm.sh/helm/v3",
     "k8s.io/apiserver",
     "k8s.io/autoscaler/vertical-pod-autoscaler",
-    "k8s.io/gengo",
     "k8s.io/gengo/v2",
-    "k8s.io/klog",
     "k8s.io/kube-aggregator",
     "k8s.io/kube-openapi",
     "k8s.io/kubelet",
