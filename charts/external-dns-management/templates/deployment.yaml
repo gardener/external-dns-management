@@ -27,9 +27,9 @@ spec:
         {{- if (and .Values.remoteaccess.enabled) }}
         checksum/remote-access-cacert: {{ include (print $.Template.BasePath "/secret-remoteaccess.yaml") . | sha256sum }}
         {{- end }}
-{{- if .Values.configuration.serverPortHttp }}
+{{- if (include "metricsPort" .) }}
         prometheus.io/scrape: "true"
-        prometheus.io/port: "{{- .Values.configuration.serverPortHttp }}"
+        prometheus.io/port: "{{- include "metricsPort" . }}"
         prometheus.io/scheme: http
 {{- end }}
       labels:
@@ -1048,10 +1048,15 @@ spec:
         args:
         - --config=/etc/external-dns-management/next-generation/config.yaml
 {{- end }}
-        {{- if .Values.configuration.serverPortHttp }}
         ports:
-        - containerPort: {{ .Values.configuration.serverPortHttp }}
+        {{- if .Values.nextGeneration.enabled }}
+        - containerPort: {{ .Values.nextGeneration.config.server.metrics.port }}
           protocol: TCP
+        {{- end }}
+        {{- if (include "healthProbesPort" .) }}
+        - containerPort: {{ include "healthProbesPort" . }}
+          protocol: TCP
+        {{- end }}
         env:
         - name: POD_NAMESPACE
           valueFrom:
@@ -1060,10 +1065,11 @@ spec:
         {{- if .Values.env }}
         {{- toYaml .Values.env | nindent 8 }}
         {{- end}}
+        {{- if (include "healthProbesPort" .) }}
         livenessProbe:
           httpGet:
             path: /healthz
-            port: {{ .Values.configuration.serverPortHttp }}
+            port: {{ include "healthProbesPort" . }}
             scheme: HTTP
           initialDelaySeconds: 30
           timeoutSeconds: 5

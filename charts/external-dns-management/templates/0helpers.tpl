@@ -56,3 +56,19 @@ scheduling.k8s.io/v1alpha1
 {{ required "$.repository is required" $.repository }}-next-generation:{{ required "$.tag is required" $.tag }}
 {{- end -}}
 {{- end -}}
+
+{{- define "healthProbesPort" -}}
+{{- if .Values.nextGeneration.enabled -}}
+{{- .Values.nextGeneration.config.server.healthProbes.port -}}
+{{- else if .Values.configuration.serverPortHttp -}}
+{{- .Values.configuration.serverPortHttp -}}
+{{- end -}}
+{{- end -}}
+
+{{- define "metricsPort" -}}
+{{- if .Values.nextGeneration.enabled -}}
+{{- .Values.nextGeneration.config.server.metrics.port -}}
+{{- else if .Values.configuration.serverPortHttp -}}
+{{- .Values.configuration.serverPortHttp -}}
+{{- end -}}
+{{- end -}}

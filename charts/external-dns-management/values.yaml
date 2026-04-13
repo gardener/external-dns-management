@@ -380,7 +380,11 @@ nextGeneration:
     logFormat: json
     leaderElection:
       leaderElect: true
-
+    server:
+      healthProbes:
+        port: 2751
+      metrics:
+        port: 2753
 gardener:
   version: ""
   garden:
