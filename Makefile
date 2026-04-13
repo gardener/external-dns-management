@@ -97,7 +97,7 @@ generate-proto:
     pkg/server/remote/common/remote.proto
 
 .PHONY: tools-for-generate
-tools-for-generate: $(CONTROLLER_GEN) $(GEN_CRD_API_REFERENCE_DOCS)
+tools-for-generate: $(CONTROLLER_GEN) $(CRD_REF_DOCS)
 	@go mod download
 
 .PHONY: generate
