@@ -87,6 +87,7 @@ type RateLimit struct {
 type Quotas struct {
 	// Entries is the maximum number of DNSEntries allowed to be managed by this provider.
 	// +optional
+	// +kubebuilder:validation:Minimum=0
 	Entries *int32 `json:"entries,omitempty"`
 }
 
