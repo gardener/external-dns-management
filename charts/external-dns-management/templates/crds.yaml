@@ -508,6 +508,7 @@ spec:
                     description: Entries is the maximum number of DNSEntries allowed
                       to be managed by this provider.
                     format: int32
+                    minimum: 0
                     type: integer
                 type: object
               rateLimit:
