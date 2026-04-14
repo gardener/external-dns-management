@@ -70,15 +70,12 @@ func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.Reconcil
 	if err := s.checkEntriesQuota(newProvider, providerKey); err != nil {
 		var quotaErr *quotaExceededError
 		if errors.As(err, &quotaErr) {
-			// Track quota-exceeded entry for automatic retry when quota increases
-			s.state.GetQuotaExceededEntriesMap().Add(client.ObjectKeyFromObject(s.Entry), providerKey)
 			res := common.ErrorReconcileResult(err.Error(), false)
 			res.Result.RequeueAfter = rescheduleTimeQuotaExceeded
 			return nil, res
 		}
 		return nil, &common.ReconcileResult{Err: err}
 	}
-	s.state.GetQuotaExceededEntriesMap().Remove(client.ObjectKeyFromObject(s.Entry))
 
 	newZoneID, res := s.getZoneForProvider(newProvider, s.Entry.Spec.DNSName)
 	if res != nil {
