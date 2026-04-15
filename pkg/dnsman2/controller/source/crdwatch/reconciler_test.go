@@ -154,7 +154,7 @@ var _ = Describe("Reconciler", func() {
 				Expect(exitCode).To(Equal(3))
 			})
 
-			It("should exit with no CRDs and active v1alpha3 Istio source controller", func() {
+			It("should exit with no CRDs and active v1 Istio source controller", func() {
 				istiov1.Activated = true
 				doReconcile(reconciler)
 				Expect(exitCalled).To(BeTrue())
