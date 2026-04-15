@@ -20,8 +20,15 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 )
 
-// ControllerName is the name of this controller.
-const ControllerName = "crdwatch-source"
+const (
+	// ControllerName is the name of this controller.
+	ControllerName = "crdwatch-source"
+
+	gatewayAPIGatewaysName   = "gateways." + gatewayapisv1.GroupName
+	gatewayAPIHTTPRoutesName = "httproutes." + gatewayapisv1.GroupName
+	istioGatewaysName        = "gateways." + istiov1.GroupName
+	istioVirtualServicesName = "virtualservices." + istiov1.GroupName
+)
 
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, cfg *config.DNSManagerConfiguration) error {
@@ -62,8 +69,8 @@ func relevantCRDPredicate() predicate.Funcs {
 }
 
 func isRelevantCRD(name string) bool {
-	return name == "gateways."+gatewayapisv1.GroupName ||
-		name == "httproutes."+gatewayapisv1.GroupName ||
-		name == "gateways."+istiov1.GroupName ||
-		name == "virtualservices."+istiov1.GroupName
+	return name == gatewayAPIGatewaysName ||
+		name == gatewayAPIHTTPRoutesName ||
+		name == istioGatewaysName ||
+		name == istioVirtualServicesName
 }
