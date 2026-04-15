@@ -232,6 +232,8 @@ func (r *SourceReconciler[SourceObject]) Reconcile(ctx context.Context, req reco
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceObject); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.Log.V(1).Info("Object is gone, stop reconciling")
+			sourceObject.SetName(req.Name)
+			sourceObject.SetNamespace(req.Namespace)
 			r.actuator.OnDelete(sourceObject)
 			return reconcile.Result{}, nil
 		}
