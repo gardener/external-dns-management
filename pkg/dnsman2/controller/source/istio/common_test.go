@@ -10,6 +10,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/testing"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	. "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/istio"
 )
@@ -176,6 +178,31 @@ var _ = Describe("Common", func() {
 			Expect(actual).To(HaveLen(2))
 			Expect(actual[0].NamespacedName.String()).To(Equal("my-namespace/my-gateway"))
 			Expect(actual[1].NamespacedName.String()).To(Equal("default/my-gateway"))
+		})
+	})
+
+	Describe("#MapObjectKeysToRequests", func() {
+		It("returns empty slice when given no keys", func() {
+			Expect(MapObjectKeysToRequests(nil)).To(BeEmpty())
+		})
+
+		It("maps a single key to a reconcile request", func() {
+			keys := []client.ObjectKey{{Namespace: "ns", Name: "gw1"}}
+			actual := MapObjectKeysToRequests(keys)
+			Expect(actual).To(ConsistOf(reconcile.Request{
+				NamespacedName: client.ObjectKey{Namespace: "ns", Name: "gw1"},
+			}))
+		})
+
+		It("maps multiple keys preserving order", func() {
+			keys := []client.ObjectKey{
+				{Namespace: "ns1", Name: "gw1"},
+				{Namespace: "ns2", Name: "gw2"},
+			}
+			actual := MapObjectKeysToRequests(keys)
+			Expect(actual).To(HaveLen(2))
+			Expect(actual[0].NamespacedName).To(Equal(client.ObjectKey{Namespace: "ns1", Name: "gw1"}))
+			Expect(actual[1].NamespacedName).To(Equal(client.ObjectKey{Namespace: "ns2", Name: "gw2"}))
 		})
 	})
 })
