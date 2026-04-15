@@ -57,11 +57,11 @@ func GetDNSSpecInput[T client.Object](ctx context.Context, r *common.SourceRecon
 	if err != nil {
 		return nil, err
 	}
-	if names == nil {
+	if names == nil || names.Len() == 0 {
 		return nil, nil
 	}
 
-	targets, err := getTargets(ctx, r, gatewayObj, annotations, annotatedNames, state)
+	targets, err := getTargets(ctx, r, gatewayObj, annotations, state)
 	if err != nil {
 		return nil, err
 	}
@@ -193,11 +193,7 @@ func listHostsFromVirtualServices(ctx context.Context, c client.Client, gatewayO
 	return hostSet.UnsortedList(), nil
 }
 
-func getTargets[T client.Object](ctx context.Context, r *common.SourceReconciler[T], gatewayObj client.Object, annotations map[string]string, annotatedNames *utils.UniqueStrings, state *ObjectToGatewaysState) (*utils.UniqueStrings, error) {
-	if annotatedNames == nil || annotatedNames.Len() == 0 {
-		return nil, nil
-	}
-
+func getTargets[T client.Object](ctx context.Context, r *common.SourceReconciler[T], gatewayObj client.Object, annotations map[string]string, state *ObjectToGatewaysState) (*utils.UniqueStrings, error) {
 	if targets := annotations[dns.AnnotationTargets]; targets != "" {
 		return getTargetsFromAnnotation(targets), nil
 	}
