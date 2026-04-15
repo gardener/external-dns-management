@@ -18,6 +18,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/discovery"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -130,38 +131,28 @@ func extractHosts(ctx context.Context, c client.Client, gatewayObj client.Object
 }
 
 func getHostsFromGateway(gatewayObj client.Object) ([]string, error) {
-	hostSet := make(map[string]struct{})
+	hostSet := sets.New[string]()
 	switch gateway := gatewayObj.(type) {
 	case *istionetworkingv1alpha3.Gateway:
 		for _, server := range gateway.Spec.Servers {
-			for _, host := range server.Hosts {
-				hostSet[host] = struct{}{}
-			}
+			hostSet.Insert(server.Hosts...)
 		}
 	case *istionetworkingv1beta1.Gateway:
 		for _, server := range gateway.Spec.Servers {
-			for _, host := range server.Hosts {
-				hostSet[host] = struct{}{}
-			}
+			hostSet.Insert(server.Hosts...)
 		}
 	case *istionetworkingv1.Gateway:
 		for _, server := range gateway.Spec.Servers {
-			for _, host := range server.Hosts {
-				hostSet[host] = struct{}{}
-			}
+			hostSet.Insert(server.Hosts...)
 		}
 	default:
 		return nil, fmt.Errorf("unknown gateway object: %T", gatewayObj)
 	}
-	hosts := make([]string, 0, len(hostSet))
-	for host := range hostSet {
-		hosts = append(hosts, host)
-	}
-	return hosts, nil
+	return hostSet.UnsortedList(), nil
 }
 
 func listHostsFromVirtualServices(ctx context.Context, c client.Client, gatewayObj client.Object) ([]string, error) {
-	hostSet := make(map[string]struct{})
+	hostSet := sets.New[string]()
 	switch gateway := gatewayObj.(type) {
 	case *istionetworkingv1alpha3.Gateway:
 		list := &istionetworkingv1alpha3.VirtualServiceList{}
@@ -171,9 +162,7 @@ func listHostsFromVirtualServices(ctx context.Context, c client.Client, gatewayO
 		for _, virtualService := range list.Items {
 			gatewayKeys := extractGatewayKeys(virtualService.Spec.Gateways, virtualService.Namespace)
 			if slices.Contains(gatewayKeys, client.ObjectKeyFromObject(gateway)) {
-				for _, host := range virtualService.Spec.Hosts {
-					hostSet[host] = struct{}{}
-				}
+				hostSet.Insert(virtualService.Spec.Hosts...)
 			}
 		}
 	case *istionetworkingv1beta1.Gateway:
@@ -184,9 +173,7 @@ func listHostsFromVirtualServices(ctx context.Context, c client.Client, gatewayO
 		for _, virtualService := range list.Items {
 			gatewayKeys := extractGatewayKeys(virtualService.Spec.Gateways, virtualService.Namespace)
 			if slices.Contains(gatewayKeys, client.ObjectKeyFromObject(gateway)) {
-				for _, host := range virtualService.Spec.Hosts {
-					hostSet[host] = struct{}{}
-				}
+				hostSet.Insert(virtualService.Spec.Hosts...)
 			}
 		}
 	case *istionetworkingv1.Gateway:
@@ -197,19 +184,13 @@ func listHostsFromVirtualServices(ctx context.Context, c client.Client, gatewayO
 		for _, virtualService := range list.Items {
 			gatewayKeys := extractGatewayKeys(virtualService.Spec.Gateways, virtualService.Namespace)
 			if slices.Contains(gatewayKeys, client.ObjectKeyFromObject(gateway)) {
-				for _, host := range virtualService.Spec.Hosts {
-					hostSet[host] = struct{}{}
-				}
+				hostSet.Insert(virtualService.Spec.Hosts...)
 			}
 		}
 	default:
 		return nil, fmt.Errorf("unknown gateway object: %T", gatewayObj)
 	}
-	hosts := make([]string, 0, len(hostSet))
-	for host := range hostSet {
-		hosts = append(hosts, host)
-	}
-	return hosts, nil
+	return hostSet.UnsortedList(), nil
 }
 
 func getTargets[T client.Object](ctx context.Context, r *common.SourceReconciler[T], gatewayObj client.Object, annotations map[string]string, annotatedNames *utils.UniqueStrings, state *ObjectToGatewaysState) (*utils.UniqueStrings, error) {
