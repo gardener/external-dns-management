@@ -8,9 +8,11 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/go-logr/logr"
 	"go.uber.org/atomic"
+	"k8s.io/utils/clock"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -20,6 +22,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
+
+const quotaReservationDuration = 5 * time.Minute
 
 var (
 	instance atomic.Pointer[State]
@@ -33,10 +37,11 @@ func GetState() *State {
 	}
 
 	state = &State{
-		providers:       newProviderMap(),
-		accounts:        provider.NewAccountMap(),
-		dnsNameLocking:  newDNSNameLocking(),
-		annotationState: newAnnotationState(),
+		providers:         newProviderMap(),
+		accounts:          provider.NewAccountMap(),
+		dnsNameLocking:    newDNSNameLocking(),
+		annotationState:   newAnnotationState(),
+		quotaReservations: newQuotaReservationsMap(clock.RealClock{}, quotaReservationDuration),
 	}
 	if instance.CompareAndSwap(nil, state) {
 		return state
@@ -50,8 +55,9 @@ type State struct {
 	accounts  *provider.AccountMap
 	factory   atomic.Pointer[provider.DNSHandlerFactory]
 
-	dnsNameLocking  *dnsNameLocking
-	annotationState *annotationState
+	dnsNameLocking    *dnsNameLocking
+	annotationState   *annotationState
+	quotaReservations *quotaReservationsMap
 }
 
 type providerMap struct {
@@ -161,6 +167,11 @@ func (s *State) GetDNSQueryHandler(ctx context.Context, zoneID dns.ZoneID) (DNSQ
 // GetDNSNameLocking returns the dnsNameLocking instance used for managing DNS name locks.
 func (s *State) GetDNSNameLocking() *dnsNameLocking {
 	return s.dnsNameLocking
+}
+
+// GetQuotaReservationsMap returns the quotaReservationsMap instance used for tracking in-flight quota reservations.
+func (s *State) GetQuotaReservationsMap() *quotaReservationsMap {
+	return s.quotaReservations
 }
 
 // ClearState clears the singleton state instance (for testing purposes).

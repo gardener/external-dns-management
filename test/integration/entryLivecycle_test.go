@@ -12,6 +12,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/onsi/gomega/gstruct"
 	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -43,14 +44,14 @@ var _ = Describe("EntryLivecycle", func() {
 			return nil
 		})
 		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitEntryState(e.GetName(), "Ignored")
+		err = testEnv.AwaitEntryIgnored(e.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 		e, err = testEnv.GetEntry(e.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(UnwrapEntry(e).Status.Targets).To(Equal([]string{orgTarget}))
 		err = testEnv.AnnotateObject(e, "dns.gardener.cloud/ignore", "")
 		Ω(err).ShouldNot(HaveOccurred())
-		err = testEnv.AwaitEntryState(e.GetName(), "Ready")
+		err = testEnv.AwaitEntryReady(e.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 		e, err = testEnv.GetEntry(e.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
@@ -60,7 +61,7 @@ var _ = Describe("EntryLivecycle", func() {
 			err = testEnv.DeleteProviderAndSecret(pr)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = testEnv.AwaitEntryState(e.GetName(), "Stale")
+			err = testEnv.AwaitEntryStale(e.GetName())
 			Ω(err).ShouldNot(HaveOccurred())
 
 			pr, domain, _, err = testEnv.CreateSecretAndProvider("inmemory.mock", 0)
@@ -125,10 +126,10 @@ var _ = Describe("EntryLivecycle", func() {
 		Ω(testEnv.IgnoreEntry(e2, "full")).ShouldNot(HaveOccurred())
 		Ω(testEnv.IgnoreEntry(e3, "reconcile")).ShouldNot(HaveOccurred())
 
-		Ω(testEnv.AwaitEntryState(e0.GetName(), "Ignored")).ShouldNot(HaveOccurred())
-		Ω(testEnv.AwaitEntryState(e1.GetName(), "Ignored")).ShouldNot(HaveOccurred())
-		Ω(testEnv.AwaitEntryState(e2.GetName(), "Ignored")).ShouldNot(HaveOccurred())
-		Ω(testEnv.AwaitEntryState(e3.GetName(), "Ignored")).ShouldNot(HaveOccurred())
+		Ω(testEnv.AwaitEntryIgnored(e0.GetName())).ShouldNot(HaveOccurred())
+		Ω(testEnv.AwaitEntryIgnored(e1.GetName())).ShouldNot(HaveOccurred())
+		Ω(testEnv.AwaitEntryIgnored(e2.GetName())).ShouldNot(HaveOccurred())
+		Ω(testEnv.AwaitEntryIgnored(e3.GetName())).ShouldNot(HaveOccurred())
 
 		Ω(testEnv.MockInMemoryHasEntry(e0)).ShouldNot(HaveOccurred())
 		Ω(testEnv.MockInMemoryHasEntry(e1)).ShouldNot(HaveOccurred())
@@ -147,7 +148,7 @@ var _ = Describe("EntryLivecycle", func() {
 		expectedTargets := []string{"123.123.123.123"}
 		testEnv.MockInMemoryUpdate(e3, "A", expectedTargets...)
 
-		Ω(testEnv.AwaitEntryState(e3.GetName(), "Ignored")).ShouldNot(HaveOccurred())
+		Ω(testEnv.AwaitEntryIgnored(e3.GetName())).ShouldNot(HaveOccurred())
 		Ω(testEnv.MockInMemoryHasEntry(e3)).ShouldNot(HaveOccurred())
 		Ω(testEnv.MockInMemoryExpectDNSSet(e3, "A", expectedTargets...)).ShouldNot(HaveOccurred())
 
@@ -246,7 +247,7 @@ var _ = Describe("EntryLivecycle", func() {
 		e, err = testEnv.UpdateEntryDomain(e, "foo.mock")
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = testEnv.AwaitEntryState(e.GetName(), "Error")
+		err = testEnv.AwaitEntryError(e.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 
 		e, err = testEnv.UpdateEntryDomain(e, dnsName)
@@ -418,7 +419,7 @@ var _ = Describe("EntryLivecycle", func() {
 		})
 		Ω(err).ShouldNot(HaveOccurred())
 
-		err = testEnv.AwaitEntryState(e.GetName(), "Ignored")
+		err = testEnv.AwaitEntryIgnored(e.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 
 		err = testEnv.DeleteEntryAndWait(e)
@@ -437,5 +438,44 @@ var _ = Describe("EntryLivecycle", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 
 		Ω(testEnv.MockInMemoryHasNotEntry(e2)).ShouldNot(HaveOccurred())
+	})
+
+	It("follows provider entries quotas and lifts them correctly", func() {
+		pr, domain, _, err := testEnv.CreateSecretAndProvider("inmemory.mock", 0, EntriesQuota)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		e0, err := testEnv.CreateEntry(0, domain)
+		Ω(err).ShouldNot(HaveOccurred())
+		e1, err := testEnv.CreateEntry(1, domain)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		checkProvider(pr)
+
+		checkEntry(e0, pr)
+		checkEntry(e1, pr)
+
+		e2, err := testEnv.CreateEntry(2, domain)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		Ω(testEnv.AwaitEntryErrorNoGenerationCheck(e2.GetName())).ShouldNot(HaveOccurred())
+		e2, err = testEnv.GetEntry(e2.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+		Ω(e2.Data().(*v1alpha1.DNSEntry).Status.Message).To(PointTo(ContainSubstring("has reached its entries quota")))
+
+		By("lifting the entries quota and checking that entry is reconciled", func() {
+			_, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {
+				spec.Quotas = nil
+				return nil
+			})
+			Ω(err).ShouldNot(HaveOccurred())
+			checkProvider(pr)
+			checkEntry(e2, pr)
+		})
+
+		Ω(testEnv.DeleteEntryAndWait(e0)).ShouldNot(HaveOccurred())
+		Ω(testEnv.DeleteEntryAndWait(e1)).ShouldNot(HaveOccurred())
+		Ω(testEnv.DeleteEntryAndWait(e2)).ShouldNot(HaveOccurred())
 	})
 })

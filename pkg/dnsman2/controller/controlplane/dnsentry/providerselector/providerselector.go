@@ -5,6 +5,7 @@
 package providerselector
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -19,6 +20,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/selection"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
+
+const rescheduleTimeQuotaExceeded = 5 * time.Minute
 
 // NewProviderData holds the data for a new DNS provider that is selected for a DNSEntry.
 type NewProviderData struct {
@@ -62,6 +65,18 @@ func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.Reconcil
 	}
 
 	providerKey := client.ObjectKeyFromObject(newProvider)
+
+	// Check entries quota before assigning entry to provider
+	if err := s.checkEntriesQuota(newProvider, providerKey); err != nil {
+		var quotaErr *quotaExceededError
+		if errors.As(err, &quotaErr) {
+			res := common.ErrorReconcileResult(err.Error(), false)
+			res.Result.RequeueAfter = rescheduleTimeQuotaExceeded
+			return nil, res
+		}
+		return nil, &common.ReconcileResult{Err: err}
+	}
+
 	newZoneID, res := s.getZoneForProvider(newProvider, s.Entry.Spec.DNSName)
 	if res != nil {
 		return nil, res
@@ -83,6 +98,46 @@ func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.Reconcil
 		ProviderState: providerState,
 		DefaultTTL:    providerState.GetDefaultTTL(),
 	}, nil
+}
+
+// checkEntriesQuota verifies if the provider has available capacity for a new entry.
+// It returns an error if the provider's entries quota is exceeded.
+//
+// This implementation uses a reservation system to prevent race conditions where
+// multiple concurrent reconciliations could exceed the quota. Reservations are
+// held for 5 minutes and automatically cleaned up on timeout or explicit release.
+func (s *providerSelector) checkEntriesQuota(provider *v1alpha1.DNSProvider, providerKey client.ObjectKey) error {
+	// Skip if no quota configured
+	quota := provider.Spec.Quotas
+	if quota == nil || quota.Entries == nil {
+		return nil
+	}
+
+	// Skip if entry already assigned to this provider (update case)
+	if s.Entry.Status.Provider != nil && *s.Entry.Status.Provider == providerKey.String() {
+		return nil
+	}
+
+	// Count provisioned entries (those with status.provider set)
+	provisionedCount, err := CountEntriesForProvider(s.Ctx, s.Client, s.namespace, providerKey)
+	if err != nil {
+		return fmt.Errorf("failed to count entries for provider: %w", err)
+	}
+
+	// Reserve slot for this entry to prevent race conditions
+	reserved := s.state.GetQuotaReservationsMap().Reserve(client.ObjectKeyFromObject(s.Entry), providerKey, func(reservedCount int32) bool {
+		// Check total count against quota
+		return provisionedCount+reservedCount <= *quota.Entries
+	})
+
+	if !reserved {
+		return &quotaExceededError{
+			providerKey: providerKey,
+			quota:       *quota.Entries,
+		}
+	}
+
+	return nil
 }
 
 func (s *providerSelector) haveAllProvidersBeenReconciled(providers []v1alpha1.DNSProvider) *common.ReconcileResult {

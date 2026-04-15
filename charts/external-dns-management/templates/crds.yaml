@@ -501,6 +501,16 @@ spec:
                 description: optional additional provider specific configuration values
                 type: object
                 x-kubernetes-preserve-unknown-fields: true
+              quotas:
+                description: Quotas contains restrictions on entries.
+                properties:
+                  entries:
+                    description: Entries is the maximum number of DNSEntries allowed
+                      to be managed by this provider.
+                    format: int32
+                    minimum: 0
+                    type: integer
+                type: object
               rateLimit:
                 description: rate limit for create/update operations on DNSEntries
                   assigned to this provider

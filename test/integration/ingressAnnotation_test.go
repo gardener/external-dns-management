@@ -47,17 +47,17 @@ var _ = Describe("IngressAnnotation", func() {
 		Ω(entry.Annotations["dns.gardener.cloud/ip-stack"]).Should(Equal("dual-stack"))
 
 		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "true")
-		testEnv.AwaitEntryState(entryObj.GetName(), "Ignored")
+		testEnv.AwaitEntryIgnored(entryObj.GetName())
 		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "")
-		testEnv.AwaitEntryState(entryObj.GetName(), "Ready")
+		testEnv.AwaitEntryReady(entryObj.GetName())
 		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "reconcile")
-		testEnv.AwaitEntryState(entryObj.GetName(), "Ignored")
+		testEnv.AwaitEntryIgnored(entryObj.GetName())
 		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "")
-		testEnv.AwaitEntryState(entryObj.GetName(), "Ready")
+		testEnv.AwaitEntryReady(entryObj.GetName())
 		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "full")
-		testEnv.AwaitEntryState(entryObj.GetName(), "Ignored")
+		testEnv.AwaitEntryIgnored(entryObj.GetName())
 		testEnv.AnnotateObject(ingress, "dns.gardener.cloud/ignore", "")
-		testEnv.AwaitEntryState(entryObj.GetName(), "Ready")
+		testEnv.AwaitEntryReady(entryObj.GetName())
 
 		// keep old targets if ingress lost its load balancers
 		err = testEnv.PatchIngressLoadBalancer(ingress, "")

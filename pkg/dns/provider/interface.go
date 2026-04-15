@@ -249,6 +249,8 @@ type DNSProvider interface {
 
 	AccountHash() string
 	MapTargets(dnsName string, targets []Target) []Target
+
+	EntriesQuota() *int32
 }
 
 type DoneHandler interface {

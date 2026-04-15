@@ -636,6 +636,15 @@ func (this *dnsProviderVersion) GetDedicatedDNSAccess() DedicatedDNSAccess {
 	return h
 }
 
+func (this *dnsProviderVersion) EntriesQuota() *int32 {
+	quotas := this.object.Spec().Quotas
+	if quotas == nil || quotas.Entries == nil {
+		return nil
+	}
+	maxEntries := max(0, *quotas.Entries)
+	return &maxEntries
+}
+
 func checkAndAddWorkloadIdentitySecretLabel(secretObj *resources.SecretObject, props utils.Properties) error {
 	// For security reasons, verify that the workload identity secret has expected labels,
 	// but not the LabelWorkloadIdentityProvider itself as property

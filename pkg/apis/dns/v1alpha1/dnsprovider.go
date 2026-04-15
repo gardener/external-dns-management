@@ -69,6 +69,8 @@ type DNSProviderSpec struct {
 	// rate limit for create/update operations on DNSEntries assigned to this provider
 	// +optional
 	RateLimit *RateLimit `json:"rateLimit,omitempty"`
+	// Quotas contains restrictions on entries.
+	Quotas *Quotas `json:"quotas,omitempty"`
 }
 
 type RateLimit struct {
@@ -79,6 +81,14 @@ type RateLimit struct {
 	// smoothed rate of 'RequestsPerDay'
 	// +kubebuilder:validation:Minimum=0
 	Burst int `json:"burst"`
+}
+
+// Quotas contains restrictions on entries.
+type Quotas struct {
+	// Entries is the maximum number of DNSEntries allowed to be managed by this provider.
+	// +optional
+	// +kubebuilder:validation:Minimum=0
+	Entries *int32 `json:"entries,omitempty"`
 }
 
 type DNSSelection struct {

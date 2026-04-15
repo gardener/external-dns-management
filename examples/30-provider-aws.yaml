@@ -21,3 +21,5 @@ spec:
   #rateLimit:
   #  requestsPerDay: 240
   #  burst: 20
+  #quotas:
+  #  entries: 100 # maximum number of entries for this provider
