@@ -13,7 +13,7 @@ import (
 	istionetworkingv1 "istio.io/client-go/pkg/apis/networking/v1"
 	istionetworkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
 	istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -244,7 +244,7 @@ func getTargetsFromServices[T client.Object](ctx context.Context, r *common.Sour
 		return nil, nil
 	}
 
-	services := &v1.ServiceList{}
+	services := &corev1.ServiceList{}
 	if err := r.Client.List(ctx, services, client.MatchingLabels(selector)); err != nil {
 		return nil, err
 	}
