@@ -275,3 +275,16 @@ func BuildResourceReference(gvk schema.GroupVersionKind, obj metav1.Object) v1al
 		Namespace:  obj.GetNamespace(),
 	}
 }
+
+// MatchesWildcardSingleSubdomain checks whether 'h' is a wildcard pattern (*.X) that matches 'host'
+// as a single-level subdomain. It returns true only if 'h' starts with "*.", and 'host' has exactly
+// one additional label prepended to the base domain of 'h'.
+// Examples:
+//   - host: foo.gardener.cloud,   h: *.gardener.cloud     -> true
+//   - host: gardener.cloud,       h: *.gardener.cloud     -> false (host is the base domain itself)
+//   - host: a.b.gardener.cloud,   h: *.gardener.cloud     -> false (multi-level subdomain)
+//   - host: foo.gardener.cloud,   h: docs.gardener.cloud  -> false (h is not a wildcard)
+//   - host: example.com,          h: *.gardener.cloud     -> false (unrelated domain)
+func MatchesWildcardSingleSubdomain(host, h string) bool {
+	return strings.HasPrefix(h, "*.") && strings.HasSuffix(host, h[1:]) && !strings.Contains(host[:len(host)-len(h)+1], ".")
+}

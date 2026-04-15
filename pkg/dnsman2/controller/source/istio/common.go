@@ -117,7 +117,7 @@ func extractHosts(ctx context.Context, c client.Client, gatewayObj client.Object
 			if h == host {
 				return hosts
 			}
-			if strings.HasPrefix(h, "*.") && strings.HasSuffix(host, h[1:]) && !strings.Contains(host[:len(host)-len(h)+1], ".") {
+			if common.MatchesWildcardSingleSubdomain(host, h) {
 				return hosts
 			}
 		}
