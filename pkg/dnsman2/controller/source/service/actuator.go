@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
@@ -96,4 +97,4 @@ func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 }
 
 // OnDelete is called when a Service is deleted. No action is needed in this case.
-func (a *Actuator) OnDelete(_ *corev1.Service) {}
+func (a *Actuator) OnDelete(_ client.ObjectKey) {}

@@ -113,8 +113,8 @@ func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 }
 
 // OnDelete is called when an Istio v1alpha3 Gateway resource is deleted.
-func (a *Actuator) OnDelete(gateway *istionetworkingv1alpha3.Gateway) {
-	a.state.RemoveGateway(gateway)
+func (a *Actuator) OnDelete(key client.ObjectKey) {
+	a.state.RemoveGateway(key)
 }
 
 // ShouldActivate checks whether the required Istio v1alpha3 CRDs are present in the cluster.
@@ -153,9 +153,10 @@ func (a *Actuator) mapIngressToGatewayRequest(_ context.Context, obj client.Obje
 	if !ok {
 		return nil
 	}
-	gatewayKeys := a.state.GetGatewaysForIngress(ingress)
+	ingressKey := client.ObjectKeyFromObject(ingress)
+	gatewayKeys := a.state.GetGatewaysForIngress(ingressKey)
 	if ingress.DeletionTimestamp != nil {
-		a.state.RemoveIngress(ingress)
+		a.state.RemoveIngress(ingressKey)
 	}
 	return istio.MapObjectKeysToRequests(gatewayKeys)
 }
@@ -165,9 +166,10 @@ func (a *Actuator) mapServiceToGatewayRequest(_ context.Context, obj client.Obje
 	if !ok {
 		return nil
 	}
-	gatewayKeys := a.state.GetGatewaysForService(service)
+	serviceKey := client.ObjectKeyFromObject(service)
+	gatewayKeys := a.state.GetGatewaysForService(serviceKey)
 	if service.DeletionTimestamp != nil {
-		a.state.RemoveService(service)
+		a.state.RemoveService(serviceKey)
 	}
 	return istio.MapObjectKeysToRequests(gatewayKeys)
 }

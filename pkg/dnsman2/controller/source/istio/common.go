@@ -230,8 +230,8 @@ func getTargetsFromIngress[T client.Object](ctx context.Context, r *common.Sourc
 	if err := r.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, ingress); err != nil {
 		return nil, err
 	}
-	state.RemoveGatewayFromIngressMappings(gatewayObj)
-	state.AddIngress(ingress, gatewayObj)
+	state.RemoveGatewayFromIngressMappings(client.ObjectKeyFromObject(gatewayObj))
+	state.AddIngress(client.ObjectKeyFromObject(ingress), client.ObjectKeyFromObject(gatewayObj))
 	return common.GetTargetsForIngress(ingress), nil
 }
 
@@ -250,11 +250,11 @@ func getTargetsFromServices[T client.Object](ctx context.Context, r *common.Sour
 	}
 
 	targets := utils.NewUniqueStrings()
-	state.RemoveGatewayFromServiceMappings(gatewayObj)
+	state.RemoveGatewayFromServiceMappings(client.ObjectKeyFromObject(gatewayObj))
 	for _, service := range services.Items {
 		serviceTargets := common.GetTargetsForService(&service, service.Annotations)
 		targets.AddAll(serviceTargets.ToSlice())
-		state.AddService(&service, gatewayObj)
+		state.AddService(client.ObjectKeyFromObject(&service), client.ObjectKeyFromObject(gatewayObj))
 	}
 	return targets, nil
 }

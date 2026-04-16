@@ -108,7 +108,7 @@ func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 }
 
 // OnDelete is called when a DNSEntry is deleted. No action is needed in this case.
-func (a *Actuator) OnDelete(_ *dnsv1alpha1.DNSEntry) {}
+func (a *Actuator) OnDelete(_ client.ObjectKey) {}
 
 func getDNSSpecInputForDNSEntry(entry *dnsv1alpha1.DNSEntry) *common.DNSSpecInput {
 	names := utils.NewUniqueStrings()

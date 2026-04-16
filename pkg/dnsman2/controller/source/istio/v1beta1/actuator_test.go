@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/testing"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	v1beta1actuator "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/istio/v1beta1"
@@ -65,10 +66,7 @@ var _ = Describe("Actuator", func() {
 
 	Describe("#OnDelete", func() {
 		It("should not panic when removing a gateway", func() {
-			gateway := &istionetworkingv1beta1.Gateway{
-				ObjectMeta: metav1.ObjectMeta{Namespace: "ns", Name: "gw1"},
-			}
-			Expect(func() { actuator.OnDelete(gateway) }).NotTo(Panic())
+			Expect(func() { actuator.OnDelete(client.ObjectKey{Namespace: "ns", Name: "gw1"}) }).NotTo(Panic())
 		})
 	})
 

@@ -232,16 +232,14 @@ func (r *SourceReconciler[SourceObject]) Reconcile(ctx context.Context, req reco
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceObject); err != nil {
 		if apierrors.IsNotFound(err) {
 			r.Log.V(1).Info("Object is gone, stop reconciling")
-			sourceObject.SetName(req.Name)
-			sourceObject.SetNamespace(req.Namespace)
-			r.actuator.OnDelete(sourceObject)
+			r.actuator.OnDelete(req.NamespacedName)
 			return reconcile.Result{}, nil
 		}
 		return reconcile.Result{}, fmt.Errorf("error retrieving object from store: %w", err)
 	}
 
 	if sourceObject.GetDeletionTimestamp() != nil {
-		r.actuator.OnDelete(sourceObject)
+		r.actuator.OnDelete(client.ObjectKeyFromObject(sourceObject))
 		return r.DoDelete(ctx, sourceObject)
 	}
 

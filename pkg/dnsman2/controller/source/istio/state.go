@@ -28,77 +28,76 @@ func NewObjectToGatewaysState() *ObjectToGatewaysState {
 }
 
 // AddIngress adds a mapping from the given Ingress to the given Gateway.
-func (s *ObjectToGatewaysState) AddIngress(ingress, gateway client.Object) {
+func (s *ObjectToGatewaysState) AddIngress(ingressKey, gatewayKey client.ObjectKey) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	add(s.ingressToGateways, client.ObjectKeyFromObject(ingress), client.ObjectKeyFromObject(gateway))
+	add(s.ingressToGateways, ingressKey, gatewayKey)
 }
 
 // AddService adds a mapping from the given Service to the given Gateway.
-func (s *ObjectToGatewaysState) AddService(service, gateway client.Object) {
+func (s *ObjectToGatewaysState) AddService(serviceKey, gatewayKey client.ObjectKey) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	add(s.serviceToGateways, client.ObjectKeyFromObject(service), client.ObjectKeyFromObject(gateway))
+	add(s.serviceToGateways, serviceKey, gatewayKey)
 }
 
 // RemoveIngress removes the mapping from the given Ingress to all Gateways.
-func (s *ObjectToGatewaysState) RemoveIngress(ingress client.Object) {
+func (s *ObjectToGatewaysState) RemoveIngress(ingressKey client.ObjectKey) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	delete(s.ingressToGateways, client.ObjectKeyFromObject(ingress))
+	delete(s.ingressToGateways, ingressKey)
 }
 
 // RemoveService removes the mapping from the given Service to all Gateways.
-func (s *ObjectToGatewaysState) RemoveService(service client.Object) {
+func (s *ObjectToGatewaysState) RemoveService(serviceKey client.ObjectKey) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	delete(s.serviceToGateways, client.ObjectKeyFromObject(service))
+	delete(s.serviceToGateways, serviceKey)
 }
 
 // GetGatewaysForIngress returns the keys of the Gateways that reference the given Ingress.
-func (s *ObjectToGatewaysState) GetGatewaysForIngress(ingress client.Object) []client.ObjectKey {
+func (s *ObjectToGatewaysState) GetGatewaysForIngress(ingressKey client.ObjectKey) []client.ObjectKey {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	return get(s.ingressToGateways, client.ObjectKeyFromObject(ingress))
+	return get(s.ingressToGateways, ingressKey)
 }
 
 // GetGatewaysForService returns the keys of the Gateways that reference the given Service.
-func (s *ObjectToGatewaysState) GetGatewaysForService(service client.Object) []client.ObjectKey {
+func (s *ObjectToGatewaysState) GetGatewaysForService(serviceKey client.ObjectKey) []client.ObjectKey {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	return get(s.serviceToGateways, client.ObjectKeyFromObject(service))
+	return get(s.serviceToGateways, serviceKey)
 }
 
 // RemoveGateway removes the mapping from the given Gateway to all Ingress and Service objects.
-func (s *ObjectToGatewaysState) RemoveGateway(gateway client.Object) {
+func (s *ObjectToGatewaysState) RemoveGateway(gatewayKey client.ObjectKey) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	gatewayKey := client.ObjectKeyFromObject(gateway)
 	removeValue(s.ingressToGateways, gatewayKey)
 	removeValue(s.serviceToGateways, gatewayKey)
 }
 
 // RemoveGatewayFromIngressMappings removes the mapping from the given Gateway to all Ingress objects.
-func (s *ObjectToGatewaysState) RemoveGatewayFromIngressMappings(gateway client.Object) {
+func (s *ObjectToGatewaysState) RemoveGatewayFromIngressMappings(gatewayKey client.ObjectKey) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	removeValue(s.ingressToGateways, client.ObjectKeyFromObject(gateway))
+	removeValue(s.ingressToGateways, gatewayKey)
 }
 
 // RemoveGatewayFromServiceMappings removes the mapping from the given Gateway to all Service objects.
-func (s *ObjectToGatewaysState) RemoveGatewayFromServiceMappings(gateway client.Object) {
+func (s *ObjectToGatewaysState) RemoveGatewayFromServiceMappings(gatewayKey client.ObjectKey) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	removeValue(s.serviceToGateways, client.ObjectKeyFromObject(gateway))
+	removeValue(s.serviceToGateways, gatewayKey)
 }
 
 func add(m map[client.ObjectKey]map[client.ObjectKey]struct{}, key, value client.ObjectKey) {

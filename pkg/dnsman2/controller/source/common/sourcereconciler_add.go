@@ -47,7 +47,7 @@ type SourceActuator[SourceObject client.Object] interface {
 	// ShouldSetTargetEntryAnnotation indicates whether the target DNSEntry annotation should be set on the source object.
 	ShouldSetTargetEntryAnnotation() bool
 	// OnDelete is called when a source object is deleted.
-	OnDelete(SourceObject)
+	OnDelete(client.ObjectKey)
 }
 
 // AddToManager adds Reconciler to the given cluster.

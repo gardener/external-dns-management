@@ -103,7 +103,7 @@ func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 }
 
 // OnDelete is called when a Gateway is deleted. No action is needed in this case.
-func (a *Actuator) OnDelete(_ *gatewayapisv1beta1.Gateway) {}
+func (a *Actuator) OnDelete(_ client.ObjectKey) {}
 
 // ShouldActivate checks whether the required Gateway API v1beta1 CRDs are present in the cluster.
 // If the v1 CRDs are present, the v1beta1 controller should be deactivated in favor of the v1 controller and it returns false.

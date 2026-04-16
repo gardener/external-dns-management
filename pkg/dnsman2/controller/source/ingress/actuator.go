@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
@@ -92,4 +93,4 @@ func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 }
 
 // OnDelete is called when an Ingress is deleted. No action is needed in this case.
-func (a *Actuator) OnDelete(_ *networkingv1.Ingress) {}
+func (a *Actuator) OnDelete(_ client.ObjectKey) {}
