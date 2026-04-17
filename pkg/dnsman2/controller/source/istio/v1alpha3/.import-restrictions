@@ -1,0 +1,7 @@
+rules:
+  - selectorRegexp: istio[.]io/client-go/pkg/apis/networking
+    allowedPrefixes:
+      - ''
+    forbiddenPrefixes:
+      - istio.io/client-go/pkg/apis/networking/v1beta1
+      - istio.io/client-go/pkg/apis/networking/v1

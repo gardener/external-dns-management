@@ -9,6 +9,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
@@ -86,7 +87,7 @@ func (a *Actuator) IsRelevantSourceObject(r *common.SourceReconciler[*corev1.Ser
 }
 
 // NewSourceObject creates a new Service object.
-func (r *Actuator) NewSourceObject() *corev1.Service {
+func (a *Actuator) NewSourceObject() *corev1.Service {
 	return &corev1.Service{}
 }
 
@@ -94,3 +95,6 @@ func (r *Actuator) NewSourceObject() *corev1.Service {
 func (a *Actuator) ShouldSetTargetEntryAnnotation() bool {
 	return false
 }
+
+// OnDelete is called when a Service is deleted. No action is needed in this case.
+func (a *Actuator) OnDelete(_ client.ObjectKey) {}
