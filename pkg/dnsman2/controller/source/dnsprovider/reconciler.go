@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"reflect"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/controllerutils"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -111,6 +112,35 @@ func (r *Reconciler) updateStatusFailed(ctx context.Context, provider *v1alpha1.
 		status.Domains = v1alpha1.DNSSelectionStatus{}
 		status.RateLimit = nil
 		status.DefaultTTL = nil
+
+		// Set LastError with error codes for source controller errors
+		errorCodes := determineErrorCodes(msg)
+		status.LastError = &gardencorev1beta1.LastError{
+			Description:    msg,
+			Codes:          errorCodes,
+			LastUpdateTime: &metav1.Time{Time: r.Clock.Now()},
+		}
+
+		// Set LastOperation to Failed/Error state
+		operationType := gardencorev1beta1.LastOperationTypeReconcile
+		if provider.DeletionTimestamp != nil {
+			operationType = gardencorev1beta1.LastOperationTypeDelete
+		}
+
+		operationState := gardencorev1beta1.LastOperationStateError
+		// Use Failed state for non-retryable errors
+		if hasNonRetryableErrorCode(errorCodes) {
+			operationState = gardencorev1beta1.LastOperationStateFailed
+		}
+
+		status.LastOperation = &gardencorev1beta1.LastOperation{
+			Description:    msg,
+			LastUpdateTime: metav1.Time{Time: r.Clock.Now()},
+			Progress:       0,
+			State:          operationState,
+			Type:           operationType,
+		}
+
 		return nil
 	})
 }
@@ -138,4 +168,62 @@ func getSecretRefNamespace(provider *v1alpha1.DNSProvider) string {
 		return provider.Spec.SecretRef.Namespace
 	}
 	return provider.Namespace
+}
+
+// determineErrorCodes analyzes an error message and returns appropriate Gardener error codes.
+// This is a simplified version for the source controller that handles validation errors.
+func determineErrorCodes(msg string) []gardencorev1beta1.ErrorCode {
+	if msg == "" {
+		return nil
+	}
+
+	msgLower := msg
+	var codes []gardencorev1beta1.ErrorCode
+
+	// Check for validation and configuration errors
+	if containsAny(msgLower,
+		"not found",
+		"not set",
+		"validation",
+		"invalid",
+		"malformed") {
+		codes = append(codes, gardencorev1beta1.ErrorConfigurationProblem)
+	}
+
+	return codes
+}
+
+// hasNonRetryableErrorCode checks if any of the provided error codes indicate
+// a non-retryable error (e.g., configuration problem).
+func hasNonRetryableErrorCode(codes []gardencorev1beta1.ErrorCode) bool {
+	nonRetryableCodes := map[gardencorev1beta1.ErrorCode]bool{
+		gardencorev1beta1.ErrorInfraUnauthenticated:   true,
+		gardencorev1beta1.ErrorInfraUnauthorized:      true,
+		gardencorev1beta1.ErrorInfraQuotaExceeded:     true,
+		gardencorev1beta1.ErrorInfraDependencies:      true,
+		gardencorev1beta1.ErrorInfraResourcesDepleted: true,
+		gardencorev1beta1.ErrorConfigurationProblem:   true,
+		gardencorev1beta1.ErrorProblematicWebhook:     true,
+	}
+
+	for _, code := range codes {
+		if nonRetryableCodes[code] {
+			return true
+		}
+	}
+	return false
+}
+
+// containsAny checks if the string contains any of the provided substrings.
+func containsAny(s string, substrs ...string) bool {
+	for _, substr := range substrs {
+		if len(s) >= len(substr) {
+			for i := 0; i <= len(s)-len(substr); i++ {
+				if s[i:i+len(substr)] == substr {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

@@ -172,6 +172,9 @@ func (r *Reconciler) createOrUpdateTargetProvider(
 		status.DefaultTTL = targetProvider.Status.DefaultTTL
 		status.LastUpdateTime = targetProvider.Status.LastUpdateTime
 		status.ObservedGeneration = targetProvider.Generation
+		// Copy LastOperation and LastError from target provider
+		status.LastOperation = targetProvider.Status.LastOperation
+		status.LastError = targetProvider.Status.LastError
 		return nil
 	})
 }
