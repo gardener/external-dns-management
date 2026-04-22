@@ -77,5 +77,5 @@ func (this *LogMessage) Debugf(logger logger.LogContext, add ...any) bool {
 
 // SetLastUpdateTime sets the time wrapper to the current UTC time.
 func SetLastUpdateTime(lastUpdateTime **metav1.Time) {
-	*lastUpdateTime = &metav1.Time{Time: time.Now().UTC()}
+	*lastUpdateTime = &metav1.Time{Time: time.Now()}
 }

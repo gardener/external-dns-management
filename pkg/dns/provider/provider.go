@@ -18,6 +18,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -385,19 +386,19 @@ func updateDNSProvider(logger logger.LogContext, state *state, provider *dnsutil
 
 	if validationError := secretObj.GetAnnotations()[dns.AnnotationValidationError]; validationError != "" {
 		// propagate validation error from the target secret (if it is a replicated provider)
-		return this, this.failed(logger, false, fmt.Errorf("%s", validationError), false)
+		return this, this.failed(logger, false, fmt.Errorf("%s", validationError), false, gardencorev1beta1.ErrorConfigurationProblem)
 	}
 
 	if err := checkAndAddWorkloadIdentitySecretLabel(secretObj, props); err != nil {
-		return this, this.failed(logger, false, err, false)
+		return this, this.failed(logger, false, err, false, gardencorev1beta1.ErrorConfigurationProblem)
 	}
 
 	adapter, err := state.GetHandlerFactory().GetDNSHandlerAdapter(provider.TypeCode())
 	if err != nil {
-		return this, this.failed(logger, false, err, false)
+		return this, this.failed(logger, false, err, false, gardencorev1beta1.ErrorConfigurationProblem)
 	}
 	if err := adapter.ValidateCredentialsAndProviderConfig(props, provider.Spec().ProviderConfig); err != nil {
-		return this, this.failed(logger, false, err, false)
+		return this, this.failed(logger, false, err, false, gardencorev1beta1.ErrorConfigurationProblem)
 	}
 
 	this.account, err = state.GetDNSAccount(logger, provider, props)
@@ -545,8 +546,8 @@ func (this *dnsProviderVersion) MapTargets(dnsName string, targets []Target) []T
 	return this.account.MapTargets(dnsName, targets)
 }
 
-func (this *dnsProviderVersion) setError(modified bool, err error) error {
-	modified = this.object.SetStateWithError(api.STATE_ERROR, err) || modified
+func (this *dnsProviderVersion) setError(modified bool, err error, errorCodes ...gardencorev1beta1.ErrorCode) error {
+	modified = this.object.SetStateWithError(api.STATE_ERROR, err, errorCodes...) || modified
 	if modified {
 		dnsutils.SetLastUpdateTime(&this.object.Status().LastUpdateTime)
 		return this.object.UpdateStatus()
@@ -554,8 +555,8 @@ func (this *dnsProviderVersion) setError(modified bool, err error) error {
 	return nil
 }
 
-func (this *dnsProviderVersion) failed(logger logger.LogContext, modified bool, err error, temp bool) reconcile.Status {
-	uerr := this.setError(modified, err)
+func (this *dnsProviderVersion) failed(logger logger.LogContext, modified bool, err error, temp bool, errorCodes ...gardencorev1beta1.ErrorCode) reconcile.Status {
+	uerr := this.setError(modified, err, errorCodes...)
 	if uerr != nil {
 		if temp {
 			logger.Info(err)
@@ -605,8 +606,18 @@ func (this *dnsProviderVersion) succeeded(logger logger.LogContext, modified boo
 	mod.AssureInt64Value(&status.ObservedGeneration, this.object.DNSProvider().Generation)
 	mod.AssureInt64PtrValue(&status.DefaultTTL, this.defaultTTL)
 	assureRateLimit(mod, &status.RateLimit, this.rateLimit)
+	// Set LastOperation to Succeeded and clear LastError on success
+	newLastOperation := &gardencorev1beta1.LastOperation{
+		Description: "Provider operational",
+		Progress:    100,
+		State:       gardencorev1beta1.LastOperationStateSucceeded,
+		Type:        gardencorev1beta1.LastOperationTypeReconcile,
+	}
+	b := dnsutils.SetLastOperationAndError(status, newLastOperation, nil)
+	mod.Modified = mod.Modified || b
 	if mod.IsModified() {
 		dnsutils.SetLastUpdateTime(&this.object.Status().LastUpdateTime)
+		dnsutils.SetLastOperationAndErrorTime(this.object.Status())
 	}
 	return reconcile.UpdateStatus(logger, mod)
 }
