@@ -13,10 +13,10 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/utils/ptr"
 
-	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	perrs "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/raw"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
