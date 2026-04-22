@@ -28,6 +28,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 // Reconciler is a reconciler for DNSProvider resources on the control plane.
@@ -58,9 +59,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 
 	if provider.DeletionTimestamp != nil || !dns.EquivalentClass(provider.Annotations[dns.AnnotationClass], r.SourceClass) {
 		return r.delete(ctx, log, provider)
-	} else {
-		return r.reconcile(ctx, log, provider)
 	}
+	return r.reconcile(ctx, log, provider)
 }
 
 func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
@@ -99,27 +99,15 @@ func removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DN
 	return controllerutils.RemoveFinalizers(ctx, c, secret, dns.FinalizerReplication)
 }
 
-func (r *Reconciler) updateStatusInvalid(ctx context.Context, provider *v1alpha1.DNSProvider, msg string) error {
-	return r.updateStatusFailed(ctx, provider, v1alpha1.StateInvalid, msg)
-}
-
-func (r *Reconciler) updateStatusFailed(ctx context.Context, provider *v1alpha1.DNSProvider, state string, msg string) error {
+func (r *Reconciler) updateStatusInvalid(ctx context.Context, provider *v1alpha1.DNSProvider, msg string, codes ...gardencorev1beta1.ErrorCode) error {
 	return r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
 		status.Message = ptr.To(msg)
-		status.State = state
+		status.State = v1alpha1.StateInvalid
 		status.ObservedGeneration = provider.Generation
 		status.Zones = v1alpha1.DNSSelectionStatus{}
 		status.Domains = v1alpha1.DNSSelectionStatus{}
 		status.RateLimit = nil
 		status.DefaultTTL = nil
-
-		// Set LastError with error codes for source controller errors
-		errorCodes := determineErrorCodes(msg)
-		status.LastError = &gardencorev1beta1.LastError{
-			Description:    msg,
-			Codes:          errorCodes,
-			LastUpdateTime: &metav1.Time{Time: r.Clock.Now()},
-		}
 
 		// Set LastOperation to Failed/Error state
 		operationType := gardencorev1beta1.LastOperationTypeReconcile
@@ -129,16 +117,23 @@ func (r *Reconciler) updateStatusFailed(ctx context.Context, provider *v1alpha1.
 
 		operationState := gardencorev1beta1.LastOperationStateError
 		// Use Failed state for non-retryable errors
-		if hasNonRetryableErrorCode(errorCodes) {
+		if utils.HasNonRetryableErrorCode(codes) {
 			operationState = gardencorev1beta1.LastOperationStateFailed
 		}
+		newLastOperation := gardencorev1beta1.LastOperation{
+			Description: msg,
+			Progress:    0,
+			State:       operationState,
+			Type:        operationType,
+		}
+		newLastOperation.LastUpdateTime = utils.LastOperationTimestamp(status.LastOperation, newLastOperation)
+		status.LastOperation = &newLastOperation
 
-		status.LastOperation = &gardencorev1beta1.LastOperation{
+		// Set LastError with error codes for source controller errors
+		status.LastError = &gardencorev1beta1.LastError{
 			Description:    msg,
-			LastUpdateTime: metav1.Time{Time: r.Clock.Now()},
-			Progress:       0,
-			State:          operationState,
-			Type:           operationType,
+			Codes:          codes,
+			LastUpdateTime: &newLastOperation.LastUpdateTime,
 		}
 
 		return nil
@@ -154,7 +149,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, provider *v1alpha1.DNSPro
 	}
 	provider.Status.SecretRef = provider.Spec.SecretRef
 	if !reflect.DeepEqual(oldStatus, &provider.Status) {
-		provider.Status.LastUpdateTime = &metav1.Time{Time: r.Clock.Now()}
+		provider.Status.LastUpdateTime = &metav1.Time{Time: r.Clock.Now().UTC()}
 	}
 
 	return r.Client.Status().Patch(ctx, provider, patch)
@@ -168,62 +163,4 @@ func getSecretRefNamespace(provider *v1alpha1.DNSProvider) string {
 		return provider.Spec.SecretRef.Namespace
 	}
 	return provider.Namespace
-}
-
-// determineErrorCodes analyzes an error message and returns appropriate Gardener error codes.
-// This is a simplified version for the source controller that handles validation errors.
-func determineErrorCodes(msg string) []gardencorev1beta1.ErrorCode {
-	if msg == "" {
-		return nil
-	}
-
-	msgLower := msg
-	var codes []gardencorev1beta1.ErrorCode
-
-	// Check for validation and configuration errors
-	if containsAny(msgLower,
-		"not found",
-		"not set",
-		"validation",
-		"invalid",
-		"malformed") {
-		codes = append(codes, gardencorev1beta1.ErrorConfigurationProblem)
-	}
-
-	return codes
-}
-
-// hasNonRetryableErrorCode checks if any of the provided error codes indicate
-// a non-retryable error (e.g., configuration problem).
-func hasNonRetryableErrorCode(codes []gardencorev1beta1.ErrorCode) bool {
-	nonRetryableCodes := map[gardencorev1beta1.ErrorCode]bool{
-		gardencorev1beta1.ErrorInfraUnauthenticated:   true,
-		gardencorev1beta1.ErrorInfraUnauthorized:      true,
-		gardencorev1beta1.ErrorInfraQuotaExceeded:     true,
-		gardencorev1beta1.ErrorInfraDependencies:      true,
-		gardencorev1beta1.ErrorInfraResourcesDepleted: true,
-		gardencorev1beta1.ErrorConfigurationProblem:   true,
-		gardencorev1beta1.ErrorProblematicWebhook:     true,
-	}
-
-	for _, code := range codes {
-		if nonRetryableCodes[code] {
-			return true
-		}
-	}
-	return false
-}
-
-// containsAny checks if the string contains any of the provided substrings.
-func containsAny(s string, substrs ...string) bool {
-	for _, substr := range substrs {
-		if len(s) >= len(substr) {
-			for i := 0; i <= len(s)-len(substr); i++ {
-				if s[i:i+len(substr)] == substr {
-					return true
-				}
-			}
-		}
-	}
-	return false
 }
