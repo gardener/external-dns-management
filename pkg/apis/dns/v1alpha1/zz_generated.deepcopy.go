@@ -9,6 +9,7 @@
 package v1alpha1
 
 import (
+	v1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -551,6 +552,16 @@ func (in *DNSProviderStatus) DeepCopyInto(out *DNSProviderStatus) {
 		in, out := &in.SecretRef, &out.SecretRef
 		*out = new(v1.SecretReference)
 		**out = **in
+	}
+	if in.LastOperation != nil {
+		in, out := &in.LastOperation, &out.LastOperation
+		*out = new(v1beta1.LastOperation)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.LastError != nil {
+		in, out := &in.LastError, &out.LastError
+		*out = new(v1beta1.LastError)
+		(*in).DeepCopyInto(*out)
 	}
 	return
 }

@@ -606,6 +606,62 @@ spec:
                       type: string
                     type: array
                 type: object
+              lastError:
+                description: lastError holds information about the last occurred error
+                  during an operation
+                properties:
+                  codes:
+                    description: Well-defined error codes of the last error(s).
+                    items:
+                      description: ErrorCode is a string alias.
+                      type: string
+                    type: array
+                  description:
+                    description: A human readable message indicating details about
+                      the last error.
+                    type: string
+                  lastUpdateTime:
+                    description: Last time the error was reported
+                    format: date-time
+                    type: string
+                  taskID:
+                    description: ID of the task which caused this last error
+                    type: string
+                required:
+                - description
+                type: object
+              lastOperation:
+                description: lastOperation holds information about the last operation
+                  on the provider
+                properties:
+                  description:
+                    description: A human readable message indicating details about
+                      the last operation.
+                    type: string
+                  lastUpdateTime:
+                    description: Last time the operation state transitioned from one
+                      to another.
+                    format: date-time
+                    type: string
+                  progress:
+                    description: The progress in percentage (0-100) of the last operation.
+                    format: int32
+                    type: integer
+                  state:
+                    description: Status of the last operation, one of Aborted, Processing,
+                      Succeeded, Error, Failed.
+                    type: string
+                  type:
+                    description: Type of the last operation, one of Create, Reconcile,
+                      Delete, Migrate, Restore.
+                    type: string
+                required:
+                - description
+                - lastUpdateTime
+                - progress
+                - state
+                - type
+                type: object
               lastUpdateTime:
                 description: lastUpdateTime contains the timestamp of the last status
                   update
