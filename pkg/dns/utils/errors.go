@@ -34,7 +34,8 @@ func DetermineErrorCodes(err error) []gardencorev1beta1.ErrorCode {
 		"authentication error",
 		"auth failed",
 		"bad credentials",
-		"signaturedoesnotmatch") {
+		"signaturedoesnotmatch",
+		"invalid_grant") {
 		codes = append(codes, gardencorev1beta1.ErrorInfraUnauthenticated)
 	}
 

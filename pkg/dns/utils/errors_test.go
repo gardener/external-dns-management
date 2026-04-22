@@ -40,6 +40,21 @@ var _ = Describe("Error Code Determination", func() {
 				codes := DetermineErrorCodes(err)
 				Expect(codes).To(ConsistOf(gardencorev1beta1.ErrorInfraUnauthenticated))
 			})
+
+			It("should return ErrorInfraUnauthenticated for Aws Route53 invalid access", func() {
+				err := errors.New(`ListHostedZones failed: api error SignatureDoesNotMatch: The request
+      signature we calculated does not match the signature you provided. Check your
+      AWS Secret Access Key and signing method. Consult the service documentation
+      for details.`)
+				codes := DetermineErrorCodes(err)
+				Expect(codes).To(ConsistOf(gardencorev1beta1.ErrorInfraUnauthenticated))
+			})
+
+			It("should return ErrorInfraUnauthenticated for Google Cloud DNS invalid grant", func() {
+				err := errors.New(`Response: {"error":"invalid_grant","error_description":"Invalid grant: account not found"}`)
+				codes := DetermineErrorCodes(err)
+				Expect(codes).To(ConsistOf(gardencorev1beta1.ErrorInfraUnauthenticated))
+			})
 		})
 
 		Context("when error contains authorization keywords", func() {
