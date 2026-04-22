@@ -1,0 +1,16 @@
+# Local development files
+local/
+dev/
+
+# IDE settings
+.idea/
+.vscode/
+
+# Built binaries
+dns-controller-manager
+dns-controller-manager-next-generation
+bin/
+
+# SARIF reports
+*.sarif
+
