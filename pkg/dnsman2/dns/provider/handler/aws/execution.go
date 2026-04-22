@@ -18,9 +18,9 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/client-go/util/flowcontrol"
 
-	dnserrors "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	dnserrors "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/errors"
 )
 
 type wrappedChange struct {

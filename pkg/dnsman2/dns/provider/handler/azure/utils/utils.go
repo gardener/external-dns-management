@@ -23,8 +23,8 @@ import (
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 
 	workloadidentityazure "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity/azure"
-	perrs "github.com/gardener/external-dns-management/pkg/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	perrs "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/azure/constants"
 )
 
