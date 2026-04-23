@@ -7,9 +7,11 @@ package integration
 import (
 	"fmt"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/local"
@@ -80,11 +82,58 @@ var _ = Describe("ProviderSecret", func() {
 
 		checkProvider(pr)
 
-		_, data, err := testEnv.GetProvider(pr.GetName())
+		_, provider, err := testEnv.GetProvider(pr.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 
-		Ω(data.Status.Zones.Included).Should(ConsistOf(prefix + "pr1a.mock.xx"))
-		Ω(data.Status.Zones.Excluded).Should(ConsistOf(prefix+"pr1b.mock.xx", prefix+"pr1c.mock.xx", prefix+"pr1d.mock.xx", prefix+"pr1e.mock.xx"))
-		Ω(data.Status.Domains.Included).Should(ConsistOf("pr1a.mock.xx"))
+		Ω(provider.Status.Zones.Included).Should(ConsistOf(prefix + "pr1a.mock.xx"))
+		Ω(provider.Status.Zones.Excluded).Should(ConsistOf(prefix+"pr1b.mock.xx", prefix+"pr1c.mock.xx", prefix+"pr1d.mock.xx", prefix+"pr1e.mock.xx"))
+		Ω(provider.Status.Domains.Included).Should(ConsistOf("pr1a.mock.xx"))
+
+		Ω(provider.Status.LastOperation).ShouldNot(BeNil())
+		Ω(provider.Status.LastOperation.Description).Should(Equal("Provider operational"))
+		Ω(string(provider.Status.LastOperation.State)).Should(Equal("Succeeded"))
+		Ω(string(provider.Status.LastOperation.Type)).Should(Equal("Reconcile"))
+
+		Ω(provider.Status.LastError).Should(BeNil())
+	})
+
+	It("should set provider status to error if secret validation fails", func() {
+		secretName := testEnv.SecretName(0)
+		secret, err := testEnv.CreateSecretEx(&corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace: testEnv.Namespace,
+				Name:      secretName,
+			},
+			Data: map[string][]byte{
+				"bad_key": []byte("bad_value"),
+			},
+		})
+		Ω(err).ShouldNot(HaveOccurred())
+
+		pr, _, _, err := testEnv.CreateProvider("inmemory.mock", 0, secret.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+		defer testEnv.DeleteProviderAndSecret(pr)
+
+		checkHasFinalizer(pr)
+
+		err = testEnv.AwaitProviderState(pr.GetName(), "Error")
+		Ω(err).ShouldNot(HaveOccurred())
+
+		_, provider, err := testEnv.GetProvider(pr.GetName())
+		Ω(err).ShouldNot(HaveOccurred())
+
+		expectedSubstring := "'bad_key' is not allowed in local provider properties"
+
+		Ω(provider.Status.Message).ShouldNot(BeNil())
+		Ω(*provider.Status.Message).Should(ContainSubstring(expectedSubstring))
+
+		Ω(provider.Status.LastOperation).ShouldNot(BeNil())
+		Ω(provider.Status.LastOperation.Description).Should(ContainSubstring(expectedSubstring))
+		Ω(string(provider.Status.LastOperation.State)).Should(Equal("Failed"))
+		Ω(string(provider.Status.LastOperation.Type)).Should(Equal("Reconcile"))
+
+		Ω(provider.Status.LastError).ShouldNot(BeNil())
+		Ω(provider.Status.LastError.Description).Should(ContainSubstring(expectedSubstring))
+		Ω(provider.Status.LastError.Codes).Should(ConsistOf(gardencorev1beta1.ErrorConfigurationProblem))
 	})
 })

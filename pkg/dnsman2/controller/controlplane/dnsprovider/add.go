@@ -142,12 +142,13 @@ func (r *Reconciler) providersToReconcileOnSecretChanges(ctx context.Context, se
 	if !ok {
 		return nil
 	}
+	secretKey := client.ObjectKeyFromObject(secret)
 	providerList := &v1alpha1.DNSProviderList{}
 	if err := r.Client.List(ctx, providerList, client.InNamespace(r.Config.Namespace)); err != nil {
 		return nil
 	}
 	for _, provider := range dns.FilterProvidersByClass(providerList.Items, r.Class) {
-		if provider.Spec.SecretRef != nil && provider.Spec.SecretRef.Name == secret.GetName() && getSecretRefNamespace(&provider) == secret.GetNamespace() {
+		if key := getSpecSecretRefKey(&provider); key != nil && secretKey == *key {
 			requests = append(requests, reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      provider.Name,

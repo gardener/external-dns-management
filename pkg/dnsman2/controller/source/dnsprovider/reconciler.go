@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"reflect"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/controllerutils"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -27,6 +28,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 // Reconciler is a reconciler for DNSProvider resources on the control plane.
@@ -57,9 +59,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 
 	if provider.DeletionTimestamp != nil || !dns.EquivalentClass(provider.Annotations[dns.AnnotationClass], r.SourceClass) {
 		return r.delete(ctx, log, provider)
-	} else {
-		return r.reconcile(ctx, log, provider)
 	}
+	return r.reconcile(ctx, log, provider)
 }
 
 func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
@@ -98,19 +99,43 @@ func removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DN
 	return controllerutils.RemoveFinalizers(ctx, c, secret, dns.FinalizerReplication)
 }
 
-func (r *Reconciler) updateStatusInvalid(ctx context.Context, provider *v1alpha1.DNSProvider, msg string) error {
-	return r.updateStatusFailed(ctx, provider, v1alpha1.StateInvalid, msg)
-}
-
-func (r *Reconciler) updateStatusFailed(ctx context.Context, provider *v1alpha1.DNSProvider, state string, msg string) error {
+func (r *Reconciler) updateStatusInvalid(ctx context.Context, provider *v1alpha1.DNSProvider, msg string, codes ...gardencorev1beta1.ErrorCode) error {
 	return r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
 		status.Message = ptr.To(msg)
-		status.State = state
+		status.State = v1alpha1.StateInvalid
 		status.ObservedGeneration = provider.Generation
 		status.Zones = v1alpha1.DNSSelectionStatus{}
 		status.Domains = v1alpha1.DNSSelectionStatus{}
 		status.RateLimit = nil
 		status.DefaultTTL = nil
+
+		// Set LastOperation to Failed/Error state
+		operationType := gardencorev1beta1.LastOperationTypeReconcile
+		if provider.DeletionTimestamp != nil {
+			operationType = gardencorev1beta1.LastOperationTypeDelete
+		}
+
+		operationState := gardencorev1beta1.LastOperationStateError
+		// Use Failed state for non-retryable errors
+		if utils.HasNonRetryableErrorCode(codes) {
+			operationState = gardencorev1beta1.LastOperationStateFailed
+		}
+		newLastOperation := gardencorev1beta1.LastOperation{
+			Description: msg,
+			Progress:    0,
+			State:       operationState,
+			Type:        operationType,
+		}
+		newLastOperation.LastUpdateTime = utils.LastOperationTimestamp(status.LastOperation, newLastOperation)
+		status.LastOperation = &newLastOperation
+
+		// Set LastError with error codes for source controller errors
+		status.LastError = &gardencorev1beta1.LastError{
+			Description:    msg,
+			Codes:          codes,
+			LastUpdateTime: &newLastOperation.LastUpdateTime,
+		}
+
 		return nil
 	})
 }

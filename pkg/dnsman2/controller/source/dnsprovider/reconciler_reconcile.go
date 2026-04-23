@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"strings"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -150,9 +151,9 @@ func (r *Reconciler) createOrUpdateTargetProvider(
 
 	if targetSecret == nil {
 		if sourceProvider.Spec.SecretRef == nil {
-			return r.updateStatusInvalid(ctx, sourceProvider, "secretRef not set")
+			return r.updateStatusInvalid(ctx, sourceProvider, "secretRef not set", gardencorev1beta1.ErrorConfigurationProblem)
 		}
-		return r.updateStatusInvalid(ctx, sourceProvider, fmt.Sprintf("secret %s/%s not found", getSecretRefNamespace(sourceProvider), sourceProvider.Spec.SecretRef.Name))
+		return r.updateStatusInvalid(ctx, sourceProvider, fmt.Sprintf("secret %s/%s not found", getSecretRefNamespace(sourceProvider), sourceProvider.Spec.SecretRef.Name), gardencorev1beta1.ErrorRetryableConfigurationProblem)
 	}
 
 	if err := r.ensureOwnerReferenceOnSecret(ctx, targetSecret, targetProvider); err != nil {
@@ -160,7 +161,7 @@ func (r *Reconciler) createOrUpdateTargetProvider(
 	}
 
 	if validationErrorMsg := targetSecret.Annotations[dns.AnnotationValidationError]; validationErrorMsg != "" {
-		return r.updateStatusInvalid(ctx, sourceProvider, validationErrorMsg)
+		return r.updateStatusInvalid(ctx, sourceProvider, validationErrorMsg, gardencorev1beta1.ErrorConfigurationProblem)
 	}
 
 	return r.updateStatus(ctx, sourceProvider, func(status *v1alpha1.DNSProviderStatus) error {
@@ -172,6 +173,9 @@ func (r *Reconciler) createOrUpdateTargetProvider(
 		status.DefaultTTL = targetProvider.Status.DefaultTTL
 		status.LastUpdateTime = targetProvider.Status.LastUpdateTime
 		status.ObservedGeneration = targetProvider.Generation
+		// Copy LastOperation and LastError from target provider
+		status.LastOperation = targetProvider.Status.LastOperation
+		status.LastError = targetProvider.Status.LastError
 		return nil
 	})
 }

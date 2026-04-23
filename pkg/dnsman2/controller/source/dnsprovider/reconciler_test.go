@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"reflect"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -137,6 +138,24 @@ var _ = Describe("Reconciler", func() {
 			}
 		}
 
+		checkSourceProviderLastOperation = func(expectedState gardencorev1beta1.LastOperationState, expectedType gardencorev1beta1.LastOperationType) {
+			ExpectWithOffset(1, fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(sourceProvider), sourceProvider)).To(Succeed(), "fetching source DNSProvider object failed")
+			ExpectWithOffset(1, sourceProvider.Status.LastOperation).NotTo(BeNil(), "LastOperation should not be nil")
+			ExpectWithOffset(1, sourceProvider.Status.LastOperation.State).To(Equal(expectedState), "LastOperation state does not match")
+			ExpectWithOffset(1, sourceProvider.Status.LastOperation.Type).To(Equal(expectedType), "LastOperation type does not match")
+		}
+
+		checkSourceProviderLastError = func(shouldExist bool, expectedErrorCodes ...gardencorev1beta1.ErrorCode) {
+			ExpectWithOffset(1, fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(sourceProvider), sourceProvider)).To(Succeed(), "fetching source DNSProvider object failed")
+			if shouldExist {
+				ExpectWithOffset(1, sourceProvider.Status.LastError).NotTo(BeNil(), "LastError should not be nil")
+				ExpectWithOffset(1, sourceProvider.Status.LastError.Codes).To(ConsistOf(expectedErrorCodes), "LastError codes do not match")
+				ExpectWithOffset(1, sourceProvider.Status.LastError.Description).NotTo(BeEmpty(), "LastError description should not be empty")
+			} else {
+				ExpectWithOffset(1, sourceProvider.Status.LastError).To(BeNil(), "LastError should be nil")
+			}
+		}
+
 		patchTargetStateToReadyAndReconcileSource = func(actualTarget *dnsv1alpha1.DNSProvider) {
 			ExpectWithOffset(1, fakeClientCtrl.Get(ctx, client.ObjectKeyFromObject(actualTarget), actualTarget)).To(Succeed(), "fetching target DNSProvider object failed")
 			actualTarget.Status.State = "Ready"
@@ -239,6 +258,7 @@ var _ = Describe("Reconciler", func() {
 
 			patchTargetStateToReadyAndReconcileSource(actualTarget)
 			checkSourceProviderState("Ready")
+			checkSourceProviderLastError(false) // No error expected when Ready
 
 			testDeletion(actualTarget)
 		})
@@ -265,6 +285,7 @@ var _ = Describe("Reconciler", func() {
 
 			patchTargetStateToReadyAndReconcileSource(actualTarget)
 			checkSourceProviderState("Ready")
+			checkSourceProviderLastError(false) // No error expected when Ready
 
 			testDeletion(actualTarget)
 		})
@@ -277,6 +298,9 @@ var _ = Describe("Reconciler", func() {
 			})
 			Expect(actualTarget.Spec.SecretRef).To(BeNil())
 			checkSourceProviderState("Invalid", "secretRef not set")
+			// "not set" should be treated as retryable by the shared error determination logic
+			checkSourceProviderLastOperation(gardencorev1beta1.LastOperationStateFailed, gardencorev1beta1.LastOperationTypeReconcile)
+			checkSourceProviderLastError(true, gardencorev1beta1.ErrorConfigurationProblem)
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
 
 			testDeletion(actualTarget)
@@ -292,6 +316,9 @@ var _ = Describe("Reconciler", func() {
 			})
 			checkTargetSecret(actualTarget, nil)
 			checkSourceProviderState("Invalid", "'bad_key' is not allowed in local provider properties")
+			// Validation errors are treated as retryable by the shared error determination logic
+			checkSourceProviderLastOperation(gardencorev1beta1.LastOperationStateFailed, gardencorev1beta1.LastOperationTypeReconcile)
+			checkSourceProviderLastError(true, gardencorev1beta1.ErrorConfigurationProblem)
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
 
 			testDeletion(actualTarget)

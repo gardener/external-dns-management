@@ -10,6 +10,7 @@ import (
 	"slices"
 	"time"
 
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -109,9 +110,33 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		if selectionResult.Error == "" {
 			status.Message = ptr.To("provider operational")
 			status.State = v1alpha1.StateReady
+			// Set LastOperation to Succeeded and clear LastError on success
+			status.LastOperation = &gardencorev1beta1.LastOperation{
+				Description: "Provider operational",
+				Progress:    100,
+				State:       gardencorev1beta1.LastOperationStateSucceeded,
+				Type:        gardencorev1beta1.LastOperationTypeReconcile,
+			}
+			status.LastError = nil
 		} else {
 			status.Message = ptr.To(selectionResult.Error)
 			status.State = v1alpha1.StateError
+			// Set LastError with error codes for selection errors
+			errorCodes := utils.DetermineErrorCodes(fmt.Errorf("%s", selectionResult.Error))
+			status.LastError = &gardencorev1beta1.LastError{
+				Description: selectionResult.Error,
+				Codes:       errorCodes,
+			}
+			operationState := gardencorev1beta1.LastOperationStateError
+			if utils.HasNonRetryableErrorCode(errorCodes) {
+				operationState = gardencorev1beta1.LastOperationStateFailed
+			}
+			status.LastOperation = &gardencorev1beta1.LastOperation{
+				Description: selectionResult.Error,
+				Progress:    0,
+				State:       operationState,
+				Type:        gardencorev1beta1.LastOperationTypeReconcile,
+			}
 		}
 		status.ObservedGeneration = provider.Generation
 		selectionResult.SetProviderStatusZonesAndDomains(status)
@@ -149,12 +174,13 @@ func (r *Reconciler) isEnabledProviderType(providerType string) bool {
 }
 
 func (r *Reconciler) getSecretRef(provider *v1alpha1.DNSProvider) *corev1.SecretReference {
-	if provider.Spec.SecretRef == nil {
+	key := getSpecSecretRefKey(provider)
+	if key == nil {
 		return nil
 	}
 	return &corev1.SecretReference{
-		Name:      provider.Spec.SecretRef.Name,
-		Namespace: getSecretRefNamespace(provider),
+		Name:      key.Name,
+		Namespace: key.Namespace,
 	}
 }
 

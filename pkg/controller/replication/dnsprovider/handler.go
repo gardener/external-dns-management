@@ -16,6 +16,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
+	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -398,6 +399,39 @@ func (this *sourceReconciler) updateSourceStatus(source *api.DNSProvider, source
 		mod.AssureStringPtrPtr(&s.Status.Message, &sourceMsg)
 		mod.AssureStringValue(&s.Status.State, api.STATE_ERROR)
 		mod.AssureInt64Value(&s.Status.ObservedGeneration, source.Generation)
+
+		// Set LastError with error codes
+		errorCodes := dnsutils.DetermineErrorCodes(fmt.Errorf("%s", sourceMsg))
+		newLastError := &gardencorev1beta1.LastError{
+			Description: sourceMsg,
+			Codes:       errorCodes,
+		}
+
+		// Set LastOperation to Failed/Error state
+		operationType := gardencorev1beta1.LastOperationTypeReconcile
+		if source.DeletionTimestamp != nil {
+			operationType = gardencorev1beta1.LastOperationTypeDelete
+		}
+
+		operationState := gardencorev1beta1.LastOperationStateError
+		// Use Failed state for non-retryable errors
+		if dnsutils.HasNonRetryableErrorCode(errorCodes) {
+			operationState = gardencorev1beta1.LastOperationStateFailed
+		}
+
+		newLastOperation := &gardencorev1beta1.LastOperation{
+			Description: sourceMsg,
+			Progress:    0,
+			State:       operationState,
+			Type:        operationType,
+		}
+		b := dnsutils.SetLastOperationAndError(&s.Status, newLastOperation, newLastError)
+		mod.Modified = mod.Modified || b
+		if mod.Modified {
+			dnsutils.SetLastUpdateTime(&s.Status.LastUpdateTime)
+			dnsutils.SetLastOperationAndErrorTime(&s.Status)
+		}
+
 		return mod.IsModified(), nil
 	})
 	if err != nil {
