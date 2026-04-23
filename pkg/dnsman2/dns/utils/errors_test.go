@@ -100,12 +100,6 @@ var _ = Describe("Error Code Determination", func() {
 		})
 
 		Context("when error contains configuration keywords", func() {
-			It("should return ErrorConfigurationProblem for invalid configuration", func() {
-				err := errors.New("Invalid DNS zone configuration")
-				codes := DetermineErrorCodes(err)
-				Expect(codes).To(ConsistOf(gardencorev1beta1.ErrorConfigurationProblem))
-			})
-
 			It("should return ErrorConfigurationProblem for malformed request", func() {
 				err := errors.New("Malformed API request")
 				codes := DetermineErrorCodes(err)

@@ -149,7 +149,7 @@ func (r *Reconciler) updateStatus(ctx context.Context, provider *v1alpha1.DNSPro
 	}
 	provider.Status.SecretRef = provider.Spec.SecretRef
 	if !reflect.DeepEqual(oldStatus, &provider.Status) {
-		provider.Status.LastUpdateTime = &metav1.Time{Time: r.Clock.Now().UTC()}
+		provider.Status.LastUpdateTime = &metav1.Time{Time: r.Clock.Now()}
 	}
 
 	return r.Client.Status().Patch(ctx, provider, patch)

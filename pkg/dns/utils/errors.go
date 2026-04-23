@@ -68,9 +68,7 @@ func DetermineErrorCodes(err error) []gardencorev1beta1.ErrorCode {
 
 	// Generic configuration problem if no specific code matched but looks like config issue
 	if len(codes) == 0 && containsAny(errStr,
-		"invalid",
 		"malformed",
-		"bad request",
 		"configuration error",
 		"config error",
 		"validation error",

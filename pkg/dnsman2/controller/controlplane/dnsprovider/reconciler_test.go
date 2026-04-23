@@ -37,48 +37,52 @@ var _ = Describe("Reconcile", func() {
 		clock       = &testing.FakeClock{}
 		startTime   = time.Now().Truncate(time.Second)
 
-		checkFailedBasics = func(offset int, expectedState string, expectedMessage string) {
-			ExpectWithOffset(offset+1, fakeClient.Get(ctx, providerKey, provider)).To(Succeed())
-			ExpectWithOffset(offset+1, provider.Status.ObservedGeneration).To(Equal(provider.Generation))
-			ExpectWithOffset(offset+1, provider.Status.State).To(Equal(expectedState))
-			ExpectWithOffset(offset+1, provider.Status.LastUpdateTime.Time).To(Equal(startTime))
-			ExpectWithOffset(offset+1, provider.Status.Message).To(Equal(ptr.To(expectedMessage)))
+		checkFailedBasics = func(expectedState string, expectedMessage string) {
+			GinkgoHelper()
+			Expect(fakeClient.Get(ctx, providerKey, provider)).To(Succeed())
+			Expect(provider.Status.ObservedGeneration).To(Equal(provider.Generation))
+			Expect(provider.Status.State).To(Equal(expectedState))
+			Expect(provider.Status.LastUpdateTime.Time).To(Equal(startTime))
+			Expect(provider.Status.Message).To(Equal(ptr.To(expectedMessage)))
 		}
 
 		checkFailed = func(expectedState string, expectedMessage string) {
-			checkFailedBasics(1, expectedState, expectedMessage)
-			ExpectWithOffset(1, provider.Status.Domains).To(Equal(v1alpha1.DNSSelectionStatus{}))
-			ExpectWithOffset(1, provider.Status.Zones).To(Equal(v1alpha1.DNSSelectionStatus{}))
-			ExpectWithOffset(1, provider.Status.DefaultTTL).To(BeNil())
-			ExpectWithOffset(1, provider.Status.RateLimit).To(BeNil())
+			GinkgoHelper()
+			checkFailedBasics(expectedState, expectedMessage)
+			Expect(provider.Status.Domains).To(Equal(v1alpha1.DNSSelectionStatus{}))
+			Expect(provider.Status.Zones).To(Equal(v1alpha1.DNSSelectionStatus{}))
+			Expect(provider.Status.DefaultTTL).To(BeNil())
+			Expect(provider.Status.RateLimit).To(BeNil())
 		}
 
 		checkLastOperationSucceeded = func() {
-			ExpectWithOffset(1, provider.Status.LastOperation).ToNot(BeNil())
-			ExpectWithOffset(1, provider.Status.LastOperation.State).To(Equal(gardencorev1beta1.LastOperationStateSucceeded))
-			ExpectWithOffset(1, provider.Status.LastOperation.Type).To(Equal(gardencorev1beta1.LastOperationTypeReconcile))
-			ExpectWithOffset(1, provider.Status.LastOperation.Progress).To(Equal(int32(100)))
-			ExpectWithOffset(1, provider.Status.LastOperation.Description).To(Equal("Provider operational"))
-			ExpectWithOffset(1, provider.Status.LastError).To(BeNil())
+			GinkgoHelper()
+			Expect(provider.Status.LastOperation).ToNot(BeNil())
+			Expect(provider.Status.LastOperation.State).To(Equal(gardencorev1beta1.LastOperationStateSucceeded))
+			Expect(provider.Status.LastOperation.Type).To(Equal(gardencorev1beta1.LastOperationTypeReconcile))
+			Expect(provider.Status.LastOperation.Progress).To(Equal(int32(100)))
+			Expect(provider.Status.LastOperation.Description).To(Equal("Provider operational"))
+			Expect(provider.Status.LastError).To(BeNil())
 		}
 
 		checkLastOperationFailed = func(expectedDescription string, nonRetryable bool, expectedErrorCodes ...gardencorev1beta1.ErrorCode) {
-			ExpectWithOffset(1, provider.Status.LastOperation).ToNot(BeNil())
+			GinkgoHelper()
+			Expect(provider.Status.LastOperation).ToNot(BeNil())
 			if nonRetryable {
-				ExpectWithOffset(1, provider.Status.LastOperation.State).To(Equal(gardencorev1beta1.LastOperationStateFailed))
+				Expect(provider.Status.LastOperation.State).To(Equal(gardencorev1beta1.LastOperationStateFailed))
 			} else {
-				ExpectWithOffset(1, provider.Status.LastOperation.State).To(Equal(gardencorev1beta1.LastOperationStateError))
+				Expect(provider.Status.LastOperation.State).To(Equal(gardencorev1beta1.LastOperationStateError))
 			}
-			ExpectWithOffset(1, provider.Status.LastOperation.Type).To(Equal(gardencorev1beta1.LastOperationTypeReconcile))
-			ExpectWithOffset(1, provider.Status.LastOperation.Progress).To(Equal(int32(0)))
-			ExpectWithOffset(1, provider.Status.LastOperation.Description).To(Equal(expectedDescription))
+			Expect(provider.Status.LastOperation.Type).To(Equal(gardencorev1beta1.LastOperationTypeReconcile))
+			Expect(provider.Status.LastOperation.Progress).To(Equal(int32(0)))
+			Expect(provider.Status.LastOperation.Description).To(Equal(expectedDescription))
 
-			ExpectWithOffset(1, provider.Status.LastError).ToNot(BeNil())
-			ExpectWithOffset(1, provider.Status.LastError.Description).To(Equal(expectedDescription))
+			Expect(provider.Status.LastError).ToNot(BeNil())
+			Expect(provider.Status.LastError.Description).To(Equal(expectedDescription))
 			if len(expectedErrorCodes) > 0 {
-				ExpectWithOffset(1, provider.Status.LastError.Codes).To(ConsistOf(expectedErrorCodes))
+				Expect(provider.Status.LastError.Codes).To(ConsistOf(expectedErrorCodes))
 			}
-			ExpectWithOffset(1, provider.Status.LastError.LastUpdateTime).ToNot(BeNil())
+			Expect(provider.Status.LastError.LastUpdateTime).ToNot(BeNil())
 		}
 	)
 
@@ -141,7 +145,7 @@ var _ = Describe("Reconcile", func() {
 		Expect(result).To(Equal(reconcile.Result{}))
 
 		checkFailed(v1alpha1.StateInvalid, `provider type "unsupported" is not supported`)
-		// "not supported" doesn't match any specific error code pattern, so retryable
+		// "not supported" doesn't match any specific error code pattern, so it's not-retryable
 		checkLastOperationFailed(`provider type "unsupported" is not supported`, true, gardencorev1beta1.ErrorConfigurationProblem)
 	})
 
@@ -275,7 +279,7 @@ var _ = Describe("Reconcile", func() {
 		Expect(result).To(Equal(reconcile.Result{RequeueAfter: 5 * time.Minute}))
 
 		expectedMsg := "no domain matching hosting zones. Need to be a (sub)domain of [example.com]"
-		checkFailedBasics(0, v1alpha1.StateError, expectedMsg)
+		checkFailedBasics(v1alpha1.StateError, expectedMsg)
 		Expect(provider.Status.Domains).To(Equal(v1alpha1.DNSSelectionStatus{
 			Excluded: []string{"example.com", "example2.com"},
 		}))
