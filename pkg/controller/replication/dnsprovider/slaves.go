@@ -90,6 +90,8 @@ func (this *slaveReconciler) Reconcile(logger logger.LogContext, obj resources.O
 				}
 				mod.AssureStringPtrPtr(&ownerStatus.Message, msg)
 				assureTimeValuePtrPtr(mod, &ownerStatus.LastUpdateTime, status.LastUpdateTime)
+				b := utils.SetLastOperationAndError(ownerStatus, status.LastOperation, status.LastError)
+				mod.Modified = mod.Modified || b
 				if mod.IsModified() {
 					err = o.UpdateStatus()
 					if err != nil {
