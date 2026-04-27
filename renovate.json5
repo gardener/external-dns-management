@@ -10,6 +10,13 @@
   postUpdateOptions: [
     'gomodTidy',
   ],
+  packageRules: [
+    {
+      groupName: 'gardener/gardener',
+      matchPackageNames: ['/^(github\\.com\\/)?gardener\\/gardener(\\/.*)?$/'],
+      enabled: true
+    }
+  ],
   // The following list of dependencies to ignore is updated by `make generate`.
   // DO NOT EDIT THIS SECTION MANUALLY.
   ignoreDeps: [
@@ -69,6 +76,7 @@
     "github.com/aws/aws-sdk-go-v2/internal/ini",
     "github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding",
     "github.com/aws/aws-sdk-go-v2/service/internal/presigned-url",
+    "github.com/aws/aws-sdk-go-v2/service/signin",
     "github.com/aws/aws-sdk-go-v2/service/sso",
     "github.com/aws/aws-sdk-go-v2/service/ssooidc",
     "github.com/beorn7/perks",
