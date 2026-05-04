@@ -23,7 +23,7 @@ type adapter struct {
 // NewAdapter creates a new DNSHandlerAdapter for the Cloudflare DNS provider.
 func NewAdapter() provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
-	checks.Add(provider.RequiredProperty("CLOUDFLARE_API_TOKEN").
+	checks.Add(provider.RequiredProperty("CLOUDFLARE_API_TOKEN", "apiToken").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.AlphaNumericPunctuationValidator, provider.MaxLengthValidator(100)).
 		HideValue())
 	return &adapter{checks: checks}

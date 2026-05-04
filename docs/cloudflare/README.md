@@ -19,10 +19,11 @@ all zones. Optionally you can exclude certain zones.
 ![API token creation](api-token-creation.png)
 
 Generate the token and keep this key safe as it won't be shown again.
+
 ## Using the API Token
 
-Use the token in a `Secret` resource with the `metadata.name` to be 
-`cloudflare-credentials` and `data.CLOUDFLARE_API_TOKEN` to be the token.
+Create a `Secret` resource with the data field `apiToken`.
+For legacy reasons, the field `CLOUDFLARE_API_TOKEN` is also supported. The value is the API token generated in the previous step. 
 
 ```yaml
 apiVersion: v1
@@ -32,7 +33,7 @@ metadata:
   namespace: default
 type: Opaque
 stringData:
-  CLOUDFLARE_API_TOKEN: 1234567890123456789
+  apiToken: 1234567890123456789
 ``` 
 
 ## Troubleshooting
