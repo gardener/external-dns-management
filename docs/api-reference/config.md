@@ -110,7 +110,7 @@ for the primary cluster (certificates and source resources).
 <td>
 <code>ClientConnectionConfiguration</code></br>
 <em>
-<a href="#clientconnectionconfiguration">ClientConnectionConfiguration</a>
+<a href="https://pkg.go.dev/k8s.io/component-base/config/v1alpha1#ClientConnectionConfiguration">ClientConnectionConfiguration</a>
 </em>
 </td>
 <td>
@@ -159,7 +159,7 @@ for the cluster containing the provided issuers.
 <td>
 <code>ClientConnectionConfiguration</code></br>
 <em>
-<a href="#clientconnectionconfiguration">ClientConnectionConfiguration</a>
+<a href="https://pkg.go.dev/k8s.io/component-base/config/v1alpha1#ClientConnectionConfiguration">ClientConnectionConfiguration</a>
 </em>
 </td>
 <td>
@@ -445,7 +445,7 @@ DNSManagerConfiguration defines the configuration for the Gardener dns-controlle
 <td>
 <code>leaderElection</code></br>
 <em>
-<a href="#leaderelectionconfiguration">LeaderElectionConfiguration</a>
+<a href="https://pkg.go.dev/k8s.io/component-base/config/v1alpha1#LeaderElectionConfiguration">LeaderElectionConfiguration</a>
 </em>
 </td>
 <td>
@@ -489,7 +489,7 @@ string
 <td>
 <code>debugging</code></br>
 <em>
-<a href="#debuggingconfiguration">DebuggingConfiguration</a>
+<a href="https://pkg.go.dev/k8s.io/component-base/config/v1alpha1#DebuggingConfiguration">DebuggingConfiguration</a>
 </em>
 </td>
 <td>

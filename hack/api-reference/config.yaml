@@ -24,3 +24,12 @@ render:
     - name: IntOrString
       package: k8s.io/apimachinery/pkg/util/intstr
       link: https://pkg.go.dev/k8s.io/apimachinery/pkg/util/intstr#IntOrString
+    - name: ClientConnectionConfiguration
+      package: k8s.io/component-base/config/v1alpha1
+      link: https://pkg.go.dev/k8s.io/component-base/config/v1alpha1#ClientConnectionConfiguration
+    - name: LeaderElectionConfiguration
+      package: k8s.io/component-base/config/v1alpha1
+      link: https://pkg.go.dev/k8s.io/component-base/config/v1alpha1#LeaderElectionConfiguration
+    - name: DebuggingConfiguration
+      package: k8s.io/component-base/config/v1alpha1
+      link: https://pkg.go.dev/k8s.io/component-base/config/v1alpha1#DebuggingConfiguration
