@@ -6,24 +6,37 @@ package dns
 
 import "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 
-// FilterProvidersByClass filters a list of DNS providers by the specified class.
-func FilterProvidersByClass(providers []v1alpha1.DNSProvider, class string) []v1alpha1.DNSProvider {
-	class = NormalizeClass(class)
+// FilterProvidersByClass filters a list of DNS providers by the specified class and secondary classes.
+func FilterProvidersByClass(providers []v1alpha1.DNSProvider, class string, secondaryClasses []string) []v1alpha1.DNSProvider {
 	var filtered []v1alpha1.DNSProvider
 	for _, provider := range providers {
-		if NormalizeClass(provider.Annotations[AnnotationClass]) == class {
+		if EquivalentClass(provider.Annotations[AnnotationClass], class) {
 			filtered = append(filtered, provider)
+		} else {
+			for _, secondClass := range secondaryClasses {
+				if EquivalentClass(provider.Annotations[AnnotationClass], secondClass) {
+					filtered = append(filtered, provider)
+					break
+				}
+			}
 		}
 	}
 	return filtered
 }
 
-// FilterEntriesByClass filters a list of DNS entries by the specified class.
-func FilterEntriesByClass(entries []v1alpha1.DNSEntry, class string) []v1alpha1.DNSEntry {
+// FilterEntriesByClass filters a list of DNS entries by the specified class and secondary classes.
+func FilterEntriesByClass(entries []v1alpha1.DNSEntry, class string, secondaryClasses []string) []v1alpha1.DNSEntry {
 	var filtered []v1alpha1.DNSEntry
 	for _, entry := range entries {
-		if NormalizeClass(entry.Annotations[AnnotationClass]) == class {
+		if EquivalentClass(entry.Annotations[AnnotationClass], class) {
 			filtered = append(filtered, entry)
+		} else {
+			for _, secondClass := range secondaryClasses {
+				if EquivalentClass(entry.Annotations[AnnotationClass], secondClass) {
+					filtered = append(filtered, entry)
+					break
+				}
+			}
 		}
 	}
 	return filtered
