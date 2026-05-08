@@ -39,9 +39,13 @@ type DNSManagerConfiguration struct {
 	Debugging *componentbaseconfigv1alpha1.DebuggingConfiguration `json:"debugging,omitempty"`
 	// Controllers defines the configuration of the controllers.
 	Controllers ControllerConfiguration `json:"controllers"`
-	// Class is the "dns.gardener.cloud/class" the dns-controller-manager is responsible for.
+	// Class is the primary "dns.gardener.cloud/class" the dns-controller-manager is responsible for.
 	// If not set, the default class "gardendns" is used.
 	Class string `json:"class"`
+	// SecondaryClasses are additional classes, the "dns.gardener.cloud/class" the dns-controller-manager is responsible for.
+	// DNSProviders and DNSEntries with such classes will be processed, but the class annotation will be changed to the primary one.
+	// +optional
+	SecondaryClasses []string `json:"secondaryClasses,omitempty"`
 	// DeployCRDs indicates whether the required CRDs should be deployed to the main cluster on startup.
 	// This does not include the control plane cluster, if different.
 	// +optional

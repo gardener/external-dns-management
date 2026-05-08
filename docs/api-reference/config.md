@@ -516,7 +516,19 @@ string
 </em>
 </td>
 <td>
-<p>Class is the "dns.gardener.cloud/class" the dns-controller-manager is responsible for.<br />If not set, the default class "gardendns" is used.</p>
+<p>Class is the primary "dns.gardener.cloud/class" the dns-controller-manager is responsible for.<br />If not set, the default class "gardendns" is used.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>secondaryClasses</code></br>
+<em>
+string array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>SecondaryClasses are additional classes, the "dns.gardener.cloud/class" the dns-controller-manager is responsible for.<br />DNSProviders and DNSEntries with such classes will be processed, but the class annotation will be changed to the primary one.</p>
 </td>
 </tr>
 <tr>
