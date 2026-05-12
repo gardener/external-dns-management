@@ -5,6 +5,7 @@
 package dns
 
 import (
+	"regexp"
 	"slices"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -86,12 +87,20 @@ func HasSecondaryClassFinalizerNames(obj client.Object, secondaryClasses []strin
 
 // MigrateSecondaryClassFinalizers removes the finalizer names for the provided secondary classes from the provided object and adds the finalizer name for the provided class if it is not already present.
 func MigrateSecondaryClassFinalizers(obj client.Object, class string, secondaryClasses []string) {
-	for _, secondaryClass := range secondaryClasses {
-		if idx := slices.Index(obj.GetFinalizers(), ClassFinalizerName(secondaryClass)); idx >= 0 {
-			obj.SetFinalizers(slices.Delete(obj.GetFinalizers(), idx, idx+1))
-		}
+	finalizers := slices.Clone(obj.GetFinalizers())
+	for _, sec := range secondaryClasses {
+		finalizers = slices.DeleteFunc(finalizers, func(f string) bool { return f == ClassFinalizerName(sec) })
 	}
-	if !slices.Contains(obj.GetFinalizers(), ClassFinalizerName(class)) {
-		obj.SetFinalizers(append(obj.GetFinalizers(), ClassFinalizerName(class)))
+	if !slices.Contains(finalizers, ClassFinalizerName(class)) {
+		finalizers = append(finalizers, ClassFinalizerName(class))
 	}
+	obj.SetFinalizers(finalizers)
+}
+
+var validClassRegex = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?$`)
+
+// IsValidClass checks if the class is a valid DNS sublabel, as it may be used for finalizer names.
+func IsValidClass(class string) bool {
+	class = NormalizeClass(class)
+	return validClassRegex.MatchString(class)
 }
