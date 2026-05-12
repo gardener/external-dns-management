@@ -37,6 +37,7 @@ type Reconciler struct {
 	Clock                          clock.Clock
 	Namespace                      string
 	Class                          string
+	SecondaryClasses               []string
 	MigrationMode                  bool
 	defaultCNAMELookupInterval     int64
 	reconciliationDelayAfterUpdate time.Duration
@@ -70,14 +71,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	ctxWithTimeout, cancel := context.WithTimeout(ctx, ptr.Deref(r.Config.ReconciliationTimeout, metav1.Duration{Duration: 2 * time.Minute}).Duration)
 	er := entryReconciliation{
 		EntryContext: common.EntryContext{
-			Client: r.Client,
-			Clock:  r.Clock,
-			Ctx:    logr.NewContext(ctxWithTimeout, log),
-			Log:    log,
-			Entry:  entry,
+			Client:           r.Client,
+			Clock:            r.Clock,
+			Ctx:              logr.NewContext(ctxWithTimeout, log),
+			Log:              log,
+			Class:            r.Class,
+			SecondaryClasses: r.SecondaryClasses,
+			Entry:            entry,
 		},
 		namespace:                  r.Namespace,
-		class:                      r.Class,
 		migrationMode:              r.MigrationMode,
 		lookupProcessor:            r.lookupProcessor,
 		state:                      r.state,

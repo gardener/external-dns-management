@@ -19,11 +19,13 @@ import (
 
 // EntryContext holds context and references for a DNSEntry reconciliation.
 type EntryContext struct {
-	Client client.Client
-	Clock  clock.Clock
-	Ctx    context.Context
-	Log    logr.Logger
-	Entry  *v1alpha1.DNSEntry
+	Client           client.Client
+	Clock            clock.Clock
+	Ctx              context.Context
+	Log              logr.Logger
+	Class            string
+	SecondaryClasses []string
+	Entry            *v1alpha1.DNSEntry
 }
 
 // StatusUpdater returns a new EntryStatusUpdater for this EntryContext.

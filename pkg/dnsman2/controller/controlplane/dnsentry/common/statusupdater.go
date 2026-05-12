@@ -62,7 +62,7 @@ func (u *EntryStatusUpdater) AddFinalizer() *ReconcileResult {
 	if u.Entry.DeletionTimestamp != nil {
 		return nil
 	}
-	if err := controllerutils.AddFinalizers(u.Ctx, u.Client, u.Entry, dns.FinalizerCompound); err != nil {
+	if err := controllerutils.AddFinalizers(u.Ctx, u.Client, u.Entry, u.finalizerName()); err != nil {
 		u.Log.Error(err, "failed to add finalizer")
 		return &ReconcileResult{Err: err}
 	}
@@ -71,11 +71,15 @@ func (u *EntryStatusUpdater) AddFinalizer() *ReconcileResult {
 
 // RemoveFinalizer removes the DNS finalizer from the DNSEntry resource.
 func (u *EntryStatusUpdater) RemoveFinalizer() *ReconcileResult {
-	if err := controllerutils.RemoveFinalizers(u.Ctx, u.Client, u.Entry, dns.FinalizerCompound); err != nil {
+	if err := controllerutils.RemoveFinalizers(u.Ctx, u.Client, u.Entry, u.finalizerName()); err != nil {
 		u.Log.Error(err, "failed to remove finalizer")
 		return &ReconcileResult{Err: err}
 	}
 	return nil
+}
+
+func (u *EntryStatusUpdater) finalizerName() string {
+	return dns.ClassFinalizerName(u.Class)
 }
 
 // dropReconcileAnnotation removes the reconcile annotation from the DNSEntry resource if it exists.

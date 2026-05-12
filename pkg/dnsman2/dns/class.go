@@ -4,7 +4,13 @@
 
 package dns
 
-import "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+import (
+	"slices"
+
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
+)
 
 // FilterProvidersByClass filters a list of DNS providers by the specified class and secondary classes.
 func FilterProvidersByClass(providers []v1alpha1.DNSProvider, class string, secondaryClasses []string) []v1alpha1.DNSProvider {
@@ -58,4 +64,34 @@ func IsDefaultClass(class string) bool {
 // EquivalentClass returns true if the annotation class are equivalent, i.e. equal after normalizing.
 func EquivalentClass(cls1, cls2 string) bool {
 	return NormalizeClass(cls1) == NormalizeClass(cls2)
+}
+
+// ClassFinalizerName returns the finalizer name for the provided class, which is either the default finalizer or the class name followed by the default finalizer.
+func ClassFinalizerName(class string) string {
+	if IsDefaultClass(class) {
+		return FinalizerCompound
+	}
+	return class + "." + FinalizerCompound
+}
+
+// HasSecondaryClassFinalizerNames returns true if the provided object has any of the finalizer names for the provided secondary classes.
+func HasSecondaryClassFinalizerNames(obj client.Object, secondaryClasses []string) bool {
+	for _, secondaryClass := range secondaryClasses {
+		if slices.Contains(obj.GetFinalizers(), ClassFinalizerName(secondaryClass)) {
+			return true
+		}
+	}
+	return false
+}
+
+// MigrateSecondaryClassFinalizers removes the finalizer names for the provided secondary classes from the provided object and adds the finalizer name for the provided class if it is not already present.
+func MigrateSecondaryClassFinalizers(obj client.Object, class string, secondaryClasses []string) {
+	for _, secondaryClass := range secondaryClasses {
+		if idx := slices.Index(obj.GetFinalizers(), ClassFinalizerName(secondaryClass)); idx >= 0 {
+			obj.SetFinalizers(slices.Delete(obj.GetFinalizers(), idx, idx+1))
+		}
+	}
+	if !slices.Contains(obj.GetFinalizers(), ClassFinalizerName(class)) {
+		obj.SetFinalizers(append(obj.GetFinalizers(), ClassFinalizerName(class)))
+	}
 }

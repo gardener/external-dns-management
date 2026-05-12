@@ -45,6 +45,7 @@ const ControllerName = "dnsentry"
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
 	r.Config = cfg.Controllers.DNSEntry
 	r.Class = cfg.Class
+	r.SecondaryClasses = cfg.SecondaryClasses
 	r.Namespace = cfg.Controllers.DNSProvider.Namespace
 	r.Client = controlPlaneCluster.GetClient()
 	if r.Clock == nil {
@@ -70,7 +71,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		WatchesRawSource(source.Kind[client.Object](controlPlaneCluster.GetCache(),
 			&v1alpha1.DNSEntry{},
 			&handler.EnqueueRequestForObject{},
-			dnsman2controller.DNSClassPredicate(r.Class),
+			dnsman2controller.DNSClassesPredicate(r.Class, r.SecondaryClasses),
 			dnsman2controller.FilterPredicate(func(obj client.Object) bool {
 				return obj.GetNamespace() == r.Namespace
 			}),
@@ -80,7 +81,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, provider client.Object) []reconcile.Request {
 				return r.entriesToReconcileOnProviderChanges(ctx, provider)
 			}),
-			dnsman2controller.DNSClassPredicate(r.Class),
+			dnsman2controller.DNSClassesPredicate(r.Class, r.SecondaryClasses),
 		))
 
 	if r.Config.SyncPeriod != nil && r.Config.SyncPeriod.Duration > 0 {
@@ -163,7 +164,7 @@ func (r *Reconciler) allEntriesToReconcile(ctx context.Context) []reconcile.Requ
 	if err := r.Client.List(ctx, entryList, client.InNamespace(r.Namespace)); err != nil {
 		return nil
 	}
-	for _, entry := range dns.FilterEntriesByClass(entryList.Items, r.Class) {
+	for _, entry := range dns.FilterEntriesByClass(entryList.Items, r.Class, r.SecondaryClasses) {
 		requests = append(requests, reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      entry.Name,

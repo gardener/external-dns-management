@@ -30,7 +30,6 @@ import (
 type entryReconciliation struct {
 	common.EntryContext
 	namespace                  string
-	class                      string
 	migrationMode              bool
 	state                      *state.State
 	lookupProcessor            lookup.LookupProcessor
@@ -73,6 +72,10 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 }
 
 func (r *entryReconciliation) doReconcile() common.ReconcileResult {
+	if res := r.migrateDNSClass(); res != nil {
+		return *res
+	}
+
 	if res := r.ignoredByAnnotation(); res != nil {
 		return *res
 	}
@@ -87,7 +90,7 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 		return *common.InvalidReconcileResult(fmt.Sprintf("validation failed: %s", err))
 	}
 
-	newProviderData, res := providerselector.CalcNewProvider(r.EntryContext, r.namespace, r.class, r.state)
+	newProviderData, res := providerselector.CalcNewProvider(r.EntryContext, r.namespace, r.state)
 	if res != nil {
 		return *res
 	}
@@ -123,6 +126,34 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 	}
 
 	return r.updateStatusWithProvider(targetsData)
+}
+
+func (r *entryReconciliation) migrateDNSClass() *common.ReconcileResult {
+	if !r.needsToMigrateDNSClassOrFinalizers() {
+		return nil
+	}
+
+	patch := client.MergeFrom(r.Entry.DeepCopy())
+
+	if dns.IsDefaultClass(r.Class) {
+		utils.RemoveAnnotation(r.Entry, dns.AnnotationClass)
+	} else {
+		utils.SetAnnotation(r.Entry, dns.AnnotationClass, r.Class)
+	}
+	dns.MigrateSecondaryClassFinalizers(r.Entry, r.Class, r.SecondaryClasses)
+
+	if err := r.Client.Patch(r.Ctx, r.Entry, patch); err != nil {
+		return &common.ReconcileResult{Err: fmt.Errorf("failed to patch entry for DNS class migration: %w", err)}
+	}
+	r.Log.Info("patched entry for DNS class migration", "newClass", r.Class)
+	return nil
+}
+
+func (r *entryReconciliation) needsToMigrateDNSClassOrFinalizers() bool {
+	if !dns.EquivalentClass(r.Entry.Annotations[dns.AnnotationClass], r.Class) {
+		return true
+	}
+	return dns.HasSecondaryClassFinalizerNames(r.Entry, r.SecondaryClasses)
 }
 
 func (r *entryReconciliation) lockDNSNames() (func(), *common.ReconcileResult) {
