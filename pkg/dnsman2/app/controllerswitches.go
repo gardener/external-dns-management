@@ -122,9 +122,14 @@ func AddSourceDNSEntryController(ctx context.Context, mgr manager.Manager) error
 	if err != nil {
 		return err
 	}
-	if mgr == appCtx.ControlPlane && dns.EquivalentClass(appCtx.Config.Class, ptr.Deref(appCtx.Config.Controllers.Source.SourceClass, "")) {
-		appCtx.Log.Info("Skipping addition of DNSEntry source controller in single cluster deployment")
-		return nil
+	if mgr == appCtx.ControlPlane {
+		sourceClass := ptr.Deref(appCtx.Config.Controllers.Source.SourceClass, "")
+		for _, class := range append([]string{sourceClass}, appCtx.Config.SecondaryClasses...) {
+			if dns.EquivalentClass(appCtx.Config.Class, class) {
+				appCtx.Log.Info("Skipping addition of DNSEntry source controller in single cluster deployment")
+				return nil
+			}
+		}
 	}
 	return common.NewSourceReconciler(&sourcednsentry.Actuator{}).AddToManager(mgr, appCtx.ControlPlane, appCtx.Config, nil)
 }
