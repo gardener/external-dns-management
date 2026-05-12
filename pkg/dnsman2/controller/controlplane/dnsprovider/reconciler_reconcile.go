@@ -30,6 +30,10 @@ import (
 func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v1alpha1.DNSProvider) (reconcile.Result, error) {
 	log.Info("reconcile")
 
+	if err := r.migrateDNSClass(ctx, log, provider); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	if !r.isEnabledProviderType(provider.Spec.Type) {
 		return reconcile.Result{}, r.updateStatusInvalid(ctx, provider, fmt.Errorf("provider type %q is not enabled", provider.Spec.Type))
 	}
@@ -38,7 +42,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		return reconcile.Result{}, r.updateStatusInvalid(ctx, provider, fmt.Errorf("provider type %q is not supported", provider.Spec.Type))
 	}
 
-	if err := r.addFinalizer(ctx, r.Client, provider); err != nil {
+	if err := r.addFinalizer(ctx, provider); err != nil {
 		return reconcile.Result{}, err
 	}
 

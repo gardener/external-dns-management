@@ -93,7 +93,7 @@ func (r *Reconciler) providersToReconcileOnSecretChanges(ctx context.Context, cl
 	if err := r.Client.List(ctx, providerList); err != nil {
 		return nil
 	}
-	for _, provider := range dns.FilterProvidersByClass(providerList.Items, class) {
+	for _, provider := range dns.FilterProvidersByClass(providerList.Items, class, nil) {
 		if provider.Spec.SecretRef.Name == secret.GetName() && getSecretRefNamespace(&provider) == secret.GetNamespace() {
 			requests = append(requests, reconcile.Request{
 				NamespacedName: types.NamespacedName{

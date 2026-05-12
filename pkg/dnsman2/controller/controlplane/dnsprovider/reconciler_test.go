@@ -308,4 +308,154 @@ var _ = Describe("Reconcile", func() {
 		checkFailed(v1alpha1.StateError, "forced error by mockConfig.FailGetZones")
 		checkLastOperationFailed("forced error by mockConfig.FailGetZones", false)
 	})
+
+	Context("DNS class migration", func() {
+		type migrationTestCase struct {
+			description              string
+			initialAnnotations       map[string]string
+			initialFinalizers        []string
+			secretInitialFinalizers  []string
+			reconcilerClass          string
+			reconcilerSecondaryClass []string
+			expectedAnnotation       *string
+			expectedFinalizers       []string
+			unexpectedFinalizers     []string
+			secretExpectedFinalizers []string
+		}
+
+		DescribeTable("DNS class migration scenarios",
+			func(tc migrationTestCase) {
+				// Setup provider
+				if tc.initialAnnotations != nil {
+					provider.Annotations = tc.initialAnnotations
+				}
+				provider.Finalizers = tc.initialFinalizers
+				Expect(fakeClient.Create(ctx, provider)).To(Succeed())
+
+				// Setup secret finalizers if needed
+				if len(tc.secretInitialFinalizers) > 0 {
+					Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(secret1), secret1)).To(Succeed())
+					secret1.Finalizers = tc.secretInitialFinalizers
+					Expect(fakeClient.Update(ctx, secret1)).To(Succeed())
+				}
+
+				// Setup reconciler
+				reconciler.Class = tc.reconcilerClass
+				reconciler.SecondaryClasses = tc.reconcilerSecondaryClass
+
+				// Reconcile
+				result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: providerKey})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(result).To(Equal(reconcile.Result{}))
+
+				// Verify provider results
+				Expect(fakeClient.Get(ctx, providerKey, provider)).To(Succeed())
+				if tc.expectedAnnotation != nil {
+					Expect(provider.Annotations).To(HaveKeyWithValue("dns.gardener.cloud/class", *tc.expectedAnnotation))
+				} else {
+					Expect(provider.Annotations).NotTo(HaveKey("dns.gardener.cloud/class"))
+				}
+				for _, expectedFinalizer := range tc.expectedFinalizers {
+					Expect(provider.Finalizers).To(ContainElement(expectedFinalizer))
+				}
+				for _, unexpectedFinalizer := range tc.unexpectedFinalizers {
+					Expect(provider.Finalizers).NotTo(ContainElement(unexpectedFinalizer))
+				}
+
+				// Verify secret results if expected
+				if len(tc.secretExpectedFinalizers) > 0 {
+					Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(secret1), secret1)).To(Succeed())
+					Expect(secret1.Finalizers).To(ConsistOf(tc.secretExpectedFinalizers))
+				}
+			},
+			Entry("migrate secondary class finalizer to primary class (default)", migrationTestCase{
+				description:              "migrate secondary class finalizer to default class",
+				initialFinalizers:        []string{"class-b.dns.gardener.cloud/compound"},
+				reconcilerClass:          "",
+				reconcilerSecondaryClass: []string{"class-b"},
+				expectedFinalizers:       []string{"dns.gardener.cloud/compound"},
+				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound"},
+				secretExpectedFinalizers: []string{"dns.gardener.cloud/compound"},
+			}),
+			Entry("migrate multiple secondary class finalizers to primary class (default)", migrationTestCase{
+				description:              "migrate multiple secondary class finalizers to default class",
+				initialFinalizers:        []string{"class-b.dns.gardener.cloud/compound", "class-c.dns.gardener.cloud/compound"},
+				reconcilerClass:          "",
+				reconcilerSecondaryClass: []string{"class-b", "class-c"},
+				expectedFinalizers:       []string{"dns.gardener.cloud/compound"},
+				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound", "class-c.dns.gardener.cloud/compound"},
+				secretExpectedFinalizers: []string{"dns.gardener.cloud/compound"},
+			}),
+			Entry("migrate provider from secondary class to default class", migrationTestCase{
+				description:              "migrate provider class annotation from secondary to default",
+				initialAnnotations:       map[string]string{"dns.gardener.cloud/class": "class-b"},
+				initialFinalizers:        []string{"class-b.dns.gardener.cloud/compound"},
+				reconcilerClass:          "",
+				reconcilerSecondaryClass: []string{"class-b"},
+				expectedFinalizers:       []string{"dns.gardener.cloud/compound"},
+				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound"},
+				secretExpectedFinalizers: []string{"dns.gardener.cloud/compound"},
+			}),
+			Entry("migrate provider from secondary class to non-default primary class", migrationTestCase{
+				description:              "migrate provider class annotation from secondary to non-default primary",
+				initialAnnotations:       map[string]string{"dns.gardener.cloud/class": "class-b"},
+				initialFinalizers:        []string{"class-b.dns.gardener.cloud/compound"},
+				reconcilerClass:          "class-a",
+				reconcilerSecondaryClass: []string{"class-b"},
+				expectedAnnotation:       ptr.To("class-a"),
+				expectedFinalizers:       []string{"class-a.dns.gardener.cloud/compound"},
+				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound"},
+				secretExpectedFinalizers: []string{"class-a.dns.gardener.cloud/compound"},
+			}),
+			Entry("no migration if class and finalizers already match (default class)", migrationTestCase{
+				description:              "no migration when everything matches default class",
+				initialFinalizers:        []string{"dns.gardener.cloud/compound"},
+				reconcilerClass:          "",
+				reconcilerSecondaryClass: []string{"class-b"},
+				expectedFinalizers:       []string{"dns.gardener.cloud/compound"},
+				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound"},
+				secretExpectedFinalizers: []string{"dns.gardener.cloud/compound"},
+			}),
+			Entry("migrate when only class annotation mismatches (no secondary finalizers)", migrationTestCase{
+				description:              "migrate when class annotation is wrong but finalizers correct",
+				initialAnnotations:       map[string]string{"dns.gardener.cloud/class": "wrong-class"},
+				initialFinalizers:        []string{"dns.gardener.cloud/compound"},
+				reconcilerClass:          "",
+				reconcilerSecondaryClass: nil,
+				expectedFinalizers:       []string{"dns.gardener.cloud/compound"},
+				secretExpectedFinalizers: []string{"dns.gardener.cloud/compound"},
+			}),
+			Entry("handle migration with both class mismatch and secondary class finalizers", migrationTestCase{
+				description:              "migrate both class annotation and multiple secondary finalizers",
+				initialAnnotations:       map[string]string{"dns.gardener.cloud/class": "class-b"},
+				initialFinalizers:        []string{"class-c.dns.gardener.cloud/compound", "class-d.dns.gardener.cloud/compound"},
+				reconcilerClass:          "",
+				reconcilerSecondaryClass: []string{"class-b", "class-c", "class-d"},
+				expectedFinalizers:       []string{"dns.gardener.cloud/compound"},
+				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound", "class-c.dns.gardener.cloud/compound", "class-d.dns.gardener.cloud/compound"},
+				secretExpectedFinalizers: []string{"dns.gardener.cloud/compound"},
+			}),
+			Entry("migrate secret with secondary class finalizers", migrationTestCase{
+				description:              "migrate secret finalizers from secondary classes",
+				initialFinalizers:        []string{"dns.gardener.cloud/compound"},
+				secretInitialFinalizers:  []string{"class-b.dns.gardener.cloud/compound", "class-c.dns.gardener.cloud/compound"},
+				reconcilerClass:          "",
+				reconcilerSecondaryClass: []string{"class-b", "class-c"},
+				expectedFinalizers:       []string{"dns.gardener.cloud/compound"},
+				secretExpectedFinalizers: []string{"dns.gardener.cloud/compound"},
+			}),
+			Entry("migrate both provider and secret from secondary class to non-default primary", migrationTestCase{
+				description:              "migrate both provider and secret to non-default primary class",
+				initialAnnotations:       map[string]string{"dns.gardener.cloud/class": "class-b"},
+				initialFinalizers:        []string{"class-b.dns.gardener.cloud/compound"},
+				secretInitialFinalizers:  []string{"class-b.dns.gardener.cloud/compound"},
+				reconcilerClass:          "class-a",
+				reconcilerSecondaryClass: []string{"class-b"},
+				expectedAnnotation:       ptr.To("class-a"),
+				expectedFinalizers:       []string{"class-a.dns.gardener.cloud/compound"},
+				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound"},
+				secretExpectedFinalizers: []string{"class-a.dns.gardener.cloud/compound"},
+			}),
+		)
+	})
 })
