@@ -151,14 +151,26 @@ var _ = Describe("Reconcile", func() {
 		Expect(annotation2.Status.Active).To(BeFalse())
 	})
 
-	It("should not allow to annotate a reference in another namespace", func() {
+	It("should allow to annotate a reference in another namespace", func() {
 		annotation.Spec.ResourceRef.Namespace = "other-namespace"
 		Expect(fakeClient.Create(ctx, annotation)).To(Succeed())
 		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: annotationKey})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))
-		Expect(fakeClient.Get(ctx, annotationKey, annotation)).To(Succeed())
-		Expect(annotation.Status.Message).To(ContainSubstring("cross-namespace annotation not allowed"))
-		Expect(annotation.Status.Active).To(BeFalse())
+
+		annotations, message, active := state.GetState().GetAnnotationState().GetResourceAnnotationStatus(annotation.Spec.ResourceRef)
+		Expect(annotations).To(Equal(map[string]string{
+			"foo":                      "bar",
+			"dns.gardener.cloud/class": "other-class",
+		}))
+		Expect(message).To(BeEmpty())
+		Expect(active).To(BeFalse())
+
+		Expect(state.GetState().GetAnnotationState().UpdateStatus(ctx, fakeClient, annotation.Spec.ResourceRef, true)).To(Succeed())
+
+		updatedAnnotation := &v1alpha1.DNSAnnotation{}
+		Expect(fakeClient.Get(ctx, annotationKey, updatedAnnotation)).To(Succeed())
+		Expect(updatedAnnotation.Status.Message).To(BeEmpty())
+		Expect(updatedAnnotation.Status.Active).To(BeTrue())
 	})
 })
