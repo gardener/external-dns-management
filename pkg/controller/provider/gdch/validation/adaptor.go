@@ -66,8 +66,8 @@ func ValidateServiceAccountJSON(data []byte) (LightCredentialsFile, error) {
 	if !projectIDRegexp.MatchString(credInfo.Project) {
 		return credInfo, fmt.Errorf("'serviceaccount.json' field 'project' is not a valid project")
 	}
-	if credInfo.Type != "service_account" {
-		return credInfo, fmt.Errorf("'serviceaccount.json' field 'type' is not 'service_account'")
+	if credInfo.Type != "gdch_service_account" {
+		return credInfo, fmt.Errorf("'serviceaccount.json' field 'type' is not 'gdch_service_account'")
 	}
 	return credInfo, nil
 }
