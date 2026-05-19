@@ -20,8 +20,8 @@ func FilterProvidersByClass(providers []v1alpha1.DNSProvider, class string, seco
 		if EquivalentClass(provider.Annotations[AnnotationClass], class) {
 			filtered = append(filtered, provider)
 		} else {
-			for _, secondClass := range secondaryClasses {
-				if EquivalentClass(provider.Annotations[AnnotationClass], secondClass) {
+			for _, secondaryClass := range secondaryClasses {
+				if EquivalentClass(provider.Annotations[AnnotationClass], secondaryClass) {
 					filtered = append(filtered, provider)
 					break
 				}
@@ -38,8 +38,8 @@ func FilterEntriesByClass(entries []v1alpha1.DNSEntry, class string, secondaryCl
 		if EquivalentClass(entry.Annotations[AnnotationClass], class) {
 			filtered = append(filtered, entry)
 		} else {
-			for _, secondClass := range secondaryClasses {
-				if EquivalentClass(entry.Annotations[AnnotationClass], secondClass) {
+			for _, secondaryClass := range secondaryClasses {
+				if EquivalentClass(entry.Annotations[AnnotationClass], secondaryClass) {
 					filtered = append(filtered, entry)
 					break
 				}
@@ -88,8 +88,8 @@ func HasSecondaryClassFinalizerNames(obj client.Object, secondaryClasses []strin
 // MigrateSecondaryClassFinalizers removes the finalizer names for the provided secondary classes from the provided object and adds the finalizer name for the provided class if it is not already present.
 func MigrateSecondaryClassFinalizers(obj client.Object, class string, secondaryClasses []string) {
 	finalizers := slices.Clone(obj.GetFinalizers())
-	for _, sec := range secondaryClasses {
-		finalizers = slices.DeleteFunc(finalizers, func(f string) bool { return f == ClassFinalizerName(sec) })
+	for _, secondaryClass := range secondaryClasses {
+		finalizers = slices.DeleteFunc(finalizers, func(f string) bool { return f == ClassFinalizerName(secondaryClass) })
 	}
 	if !slices.Contains(finalizers, ClassFinalizerName(class)) {
 		finalizers = append(finalizers, ClassFinalizerName(class))

@@ -26,8 +26,8 @@ func DNSClassesPredicate(primaryClass string, secondaryClasses []string) predica
 		if dns.EquivalentClass(class, primaryClass) {
 			return true
 		}
-		for _, secondClass := range secondaryClasses {
-			if dns.EquivalentClass(class, secondClass) {
+		for _, secondaryClass := range secondaryClasses {
+			if dns.EquivalentClass(class, secondaryClass) {
 				return true
 			}
 		}

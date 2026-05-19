@@ -2,7 +2,8 @@
 
 ## Overview
 
-The secondary DNS classes feature allows the DNS controller manager to manage DNSProviders and DNSEntries from multiple DNS classes simultaneously. Resources with secondary classes are automatically migrated to the primary class during reconciliation, enabling smooth transitions between DNS class configurations.
+The secondary DNS classes feature allows the DNS controller manager to manage `DNSProviders` and `DNSEntries` from multiple DNS classes simultaneously.
+Resources with secondary classes are automatically migrated to the primary class during reconciliation, enabling smooth transitions between DNS class configurations.
 
 ## Use Cases
 
@@ -165,6 +166,4 @@ Migration happens during the reconciliation loop:
 
 ## Related Documentation
 
-- [DNS Class Configuration](./dns-classes.md)
 - [Controller Configuration Reference](../api-reference/config.md)
-- [Migration Best Practices](./migration.md)
