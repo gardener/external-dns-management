@@ -15,10 +15,23 @@ import (
 )
 
 // DNSClassPredicate returns a predicate that filters objects by their class.
-func DNSClassPredicate(expectedClass string) predicate.Predicate {
+func DNSClassPredicate(class string) predicate.Predicate {
+	return DNSClassesPredicate(class, nil)
+}
+
+// DNSClassesPredicate returns a predicate that filters objects by their classes.
+func DNSClassesPredicate(primaryClass string, secondaryClasses []string) predicate.Predicate {
 	return FilterPredicate(func(obj client.Object) bool {
 		class := obj.GetAnnotations()[dns.AnnotationClass]
-		return dns.EquivalentClass(class, expectedClass)
+		if dns.EquivalentClass(class, primaryClass) {
+			return true
+		}
+		for _, secondaryClass := range secondaryClasses {
+			if dns.EquivalentClass(class, secondaryClass) {
+				return true
+			}
+		}
+		return false
 	})
 }
 

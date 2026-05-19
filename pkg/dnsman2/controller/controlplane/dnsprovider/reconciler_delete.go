@@ -21,6 +21,10 @@ import (
 func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1alpha1.DNSProvider) (reconcile.Result, error) {
 	log.Info("delete")
 
+	if err := r.migrateDNSClass(ctx, log, provider); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	entries := v1alpha1.DNSEntryList{}
 	if err := r.Client.List(ctx, &entries, client.InNamespace(provider.Namespace), client.MatchingFields{EntryStatusProvider: client.ObjectKeyFromObject(provider).String()}); err != nil {
 		return reconcile.Result{}, fmt.Errorf("error listing DNSEntries for provider %s: %w", provider.Name, err)
@@ -53,7 +57,7 @@ func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1al
 		})
 	}
 
-	if err := r.removeFinalizer(ctx, r.Client, provider); err != nil {
+	if err := r.removeFinalizer(ctx, provider); err != nil {
 		return reconcile.Result{}, fmt.Errorf("error removing finalizer from provider %s: %w", provider.Name, err)
 	}
 

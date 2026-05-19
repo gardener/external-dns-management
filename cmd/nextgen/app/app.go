@@ -45,6 +45,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/app"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/app/appcontext"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/metrics"
 )
 
@@ -138,6 +139,32 @@ func (o *options) Complete() error {
 
 // Validate validates the provided command options.
 func (o *options) Validate() error {
+	if !dns.IsValidClass(o.config.Class) {
+		return fmt.Errorf("invalid primary class: %q", o.config.Class)
+	}
+	// Check for duplicates within secondary classes
+	seen := make(map[string]string, len(o.config.SecondaryClasses))
+	for _, secondaryClass := range o.config.SecondaryClasses {
+		if !dns.IsValidClass(secondaryClass) {
+			return fmt.Errorf("invalid secondary class: %q", secondaryClass)
+		}
+		normalized := dns.NormalizeClass(secondaryClass)
+		if original, exists := seen[normalized]; exists {
+			return fmt.Errorf("duplicate secondary class found: %q and %q are equivalent", original, secondaryClass)
+		}
+		seen[normalized] = secondaryClass
+
+		// Check if secondary class is equivalent to primary class
+		if dns.EquivalentClass(o.config.Class, secondaryClass) {
+			return fmt.Errorf("secondary class %q is equivalent to primary class %q", secondaryClass, o.config.Class)
+		}
+	}
+	if sourceClass := o.config.Controllers.Source.SourceClass; sourceClass != nil && !dns.IsValidClass(*sourceClass) {
+		return fmt.Errorf("invalid source-controllers source class: %q", *sourceClass)
+	}
+	if targetClass := o.config.Controllers.Source.TargetClass; targetClass != nil && !dns.IsValidClass(*targetClass) {
+		return fmt.Errorf("invalid source-controllers target class: %q", *targetClass)
+	}
 	return nil
 }
 

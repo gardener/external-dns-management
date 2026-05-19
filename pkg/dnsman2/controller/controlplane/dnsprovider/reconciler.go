@@ -14,6 +14,7 @@ import (
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/gardener/gardener/pkg/controllerutils"
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -40,6 +41,7 @@ type Reconciler struct {
 	Config            config.DNSProviderControllerConfig
 	GlobalConfig      *config.DNSManagerConfiguration
 	Class             string
+	SecondaryClasses  []string
 	DNSHandlerFactory dnsprovider.DNSHandlerFactory
 
 	state *state.State
@@ -81,8 +83,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	return result, err
 }
 
-func (r *Reconciler) addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
-	if err := controllerutils.AddFinalizers(ctx, c, provider, dns.FinalizerCompound); err != nil {
+func (r *Reconciler) addFinalizer(ctx context.Context, provider *v1alpha1.DNSProvider) error {
+	if err := controllerutils.AddFinalizers(ctx, r.Client, provider, r.finalizerName()); err != nil {
 		return err
 	}
 	if ptr.Deref(r.Config.MigrationMode, false) {
@@ -97,11 +99,11 @@ func (r *Reconciler) addFinalizer(ctx context.Context, c client.Client, provider
 	if secret == nil {
 		return nil
 	}
-	return controllerutils.AddFinalizers(ctx, c, secret, dns.FinalizerCompound)
+	return controllerutils.AddFinalizers(ctx, r.Client, secret, r.finalizerName())
 }
 
-func (r *Reconciler) removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
-	if err := controllerutils.RemoveFinalizers(ctx, c, provider, dns.FinalizerCompound); err != nil {
+func (r *Reconciler) removeFinalizer(ctx context.Context, provider *v1alpha1.DNSProvider) error {
+	if err := controllerutils.RemoveFinalizers(ctx, r.Client, provider, r.finalizerName()); err != nil {
 		return err
 	}
 	secret, err := getSpecSecret(ctx, r.Client, provider)
@@ -111,7 +113,65 @@ func (r *Reconciler) removeFinalizer(ctx context.Context, c client.Client, provi
 	if secret == nil {
 		return nil
 	}
-	return controllerutils.RemoveFinalizers(ctx, c, secret, dns.FinalizerCompound)
+	return controllerutils.RemoveFinalizers(ctx, r.Client, secret, r.finalizerName())
+}
+
+func (r *Reconciler) finalizerName() string {
+	return dns.ClassFinalizerName(r.Class)
+}
+
+func (r *Reconciler) migrateDNSClass(ctx context.Context, log logr.Logger, provider *v1alpha1.DNSProvider) error {
+	providerNeedsMigration := r.needsToMigrateDNSClassOrFinalizers(provider)
+
+	// If there are no secondary classes configured, the secret can't possibly
+	// carry a stale secondary-class finalizer, so skip the secret fetch entirely.
+	if !providerNeedsMigration && len(r.SecondaryClasses) == 0 {
+		return nil
+	}
+
+	secret, err := getSpecSecret(ctx, r.Client, provider)
+	if err != nil {
+		return err
+	}
+	secretNeedsMigration := secret != nil && dns.HasSecondaryClassFinalizerNames(secret, r.SecondaryClasses)
+
+	if !providerNeedsMigration && !secretNeedsMigration {
+		return nil
+	}
+
+	patch := client.MergeFrom(provider.DeepCopy())
+
+	if dns.IsDefaultClass(r.Class) {
+		utils.RemoveAnnotation(provider, dns.AnnotationClass)
+	} else {
+		utils.SetAnnotation(provider, dns.AnnotationClass, r.Class)
+	}
+	dns.MigrateSecondaryClassFinalizers(provider, r.Class, r.SecondaryClasses)
+
+	if err := r.Client.Patch(ctx, provider, patch); err != nil {
+		return fmt.Errorf("failed to patch provider for DNS class migration: %w", err)
+	}
+	log.Info("patched provider for DNS class migration", "newClass", r.Class)
+
+	if secretNeedsMigration {
+		patch := client.MergeFrom(secret.DeepCopy())
+
+		dns.MigrateSecondaryClassFinalizers(secret, r.Class, r.SecondaryClasses)
+
+		if err := r.Client.Patch(ctx, secret, patch); err != nil {
+			return fmt.Errorf("failed to patch secret for DNS class migration: %w", err)
+		}
+		log.Info("patched secret for DNS class migration", "newClass", r.Class)
+	}
+
+	return nil
+}
+
+func (r *Reconciler) needsToMigrateDNSClassOrFinalizers(provider *v1alpha1.DNSProvider) bool {
+	if !dns.EquivalentClass(provider.Annotations[dns.AnnotationClass], r.Class) {
+		return true
+	}
+	return dns.HasSecondaryClassFinalizerNames(provider, r.SecondaryClasses)
 }
 
 func (r *Reconciler) updateStatusError(ctx context.Context, provider *v1alpha1.DNSProvider, err error) error {

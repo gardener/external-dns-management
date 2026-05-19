@@ -208,6 +208,11 @@ func (in *DNSManagerConfiguration) DeepCopyInto(out *DNSManagerConfiguration) {
 		(*in).DeepCopyInto(*out)
 	}
 	in.Controllers.DeepCopyInto(&out.Controllers)
+	if in.SecondaryClasses != nil {
+		in, out := &in.SecondaryClasses, &out.SecondaryClasses
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.DeployCRDs != nil {
 		in, out := &in.DeployCRDs, &out.DeployCRDs
 		*out = new(bool)

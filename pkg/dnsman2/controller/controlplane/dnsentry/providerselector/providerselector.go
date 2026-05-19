@@ -33,11 +33,10 @@ type NewProviderData struct {
 }
 
 // CalcNewProvider is a utility function to calculate a new DNS provider for the given EntryContext, namespace, and class.
-func CalcNewProvider(ec common.EntryContext, namespace, class string, state *state.State) (*NewProviderData, *common.ReconcileResult) {
+func CalcNewProvider(ec common.EntryContext, namespace string, state *state.State) (*NewProviderData, *common.ReconcileResult) {
 	selector := providerSelector{
 		EntryContext: ec,
 		namespace:    namespace,
-		class:        class,
 		state:        state,
 	}
 	return selector.calcNewProvider()
@@ -46,7 +45,6 @@ func CalcNewProvider(ec common.EntryContext, namespace, class string, state *sta
 type providerSelector struct {
 	common.EntryContext
 	namespace string
-	class     string
 	state     *state.State
 }
 
@@ -55,7 +53,7 @@ func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.Reconcil
 	if err := s.Client.List(s.Ctx, providerList, client.InNamespace(s.namespace)); err != nil {
 		return nil, &common.ReconcileResult{Err: err}
 	}
-	providers := dns.FilterProvidersByClass(providerList.Items, s.class)
+	providers := dns.FilterProvidersByClass(providerList.Items, s.Class, s.SecondaryClasses)
 	if res := s.haveAllProvidersBeenReconciled(providers); res != nil {
 		return nil, res
 	}

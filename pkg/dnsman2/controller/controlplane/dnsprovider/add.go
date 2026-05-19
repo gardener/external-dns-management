@@ -40,6 +40,7 @@ const ControllerName = "dnsprovider"
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
 	r.Class = cfg.Class
+	r.SecondaryClasses = cfg.SecondaryClasses
 	r.GlobalConfig = cfg
 	r.Config = cfg.Controllers.DNSProvider
 	r.Client = controlPlaneCluster.GetClient()
@@ -66,7 +67,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 			predicate.NewPredicateFuncs(func(obj client.Object) bool {
 				return obj.GetNamespace() == r.Config.Namespace
 			}),
-			dnsman2controller.DNSClassPredicate(r.Class),
+			dnsman2controller.DNSClassesPredicate(r.Class, r.SecondaryClasses),
 		)).
 		WatchesRawSource(source.Kind[client.Object](controlPlaneCluster.GetCache(),
 			&corev1.Secret{},
@@ -125,7 +126,7 @@ func (r *Reconciler) allProvidersToReconcile(ctx context.Context) []reconcile.Re
 	if err := r.Client.List(ctx, providerList, client.InNamespace(r.Config.Namespace)); err != nil {
 		return nil
 	}
-	for _, provider := range dns.FilterProvidersByClass(providerList.Items, r.Class) {
+	for _, provider := range dns.FilterProvidersByClass(providerList.Items, r.Class, r.SecondaryClasses) {
 		requests = append(requests, reconcile.Request{
 			NamespacedName: types.NamespacedName{
 				Name:      provider.Name,
@@ -147,7 +148,7 @@ func (r *Reconciler) providersToReconcileOnSecretChanges(ctx context.Context, se
 	if err := r.Client.List(ctx, providerList, client.InNamespace(r.Config.Namespace)); err != nil {
 		return nil
 	}
-	for _, provider := range dns.FilterProvidersByClass(providerList.Items, r.Class) {
+	for _, provider := range dns.FilterProvidersByClass(providerList.Items, r.Class, r.SecondaryClasses) {
 		if key := getSpecSecretRefKey(&provider); key != nil && secretKey == *key {
 			requests = append(requests, reconcile.Request{
 				NamespacedName: types.NamespacedName{
