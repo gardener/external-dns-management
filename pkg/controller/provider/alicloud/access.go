@@ -63,7 +63,7 @@ func NewAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics, ra
 	config := &openapi.Config{
 		AccessKeyId:     &accessKeyId,
 		AccessKeySecret: &accessKeySecret,
-		UserAgent:       ptr.To("gardener/external-dns-management"),
+		UserAgent:       ptr.To("gardener-external-dns-management"),
 		RegionId:        ptr.To("cn-shanghai"),
 	}
 	client, err := alidns.NewClient(config)
