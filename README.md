@@ -55,6 +55,7 @@ For extending or adapting this project with your own source or provisioning cont
     - [Setting Up a Controller Manager](#setting-up-a-controller-manager)
     - [Using the standard Compound Provisioning Controller](#using-the-standard-compound-provisioning-controller)
     - [Multiple Cluster Support](#multiple-cluster-support)
+  - [DNS Controller Manager Next Generation](#dns-controller-manager-next-generation)
   - [Why not use the community `external-dns` solution?](#why-not-use-the-community-external-dns-solution)
 
 ## Important Note: Support for owner identifiers is discontinued
@@ -1170,6 +1171,12 @@ this cluster. If no such option is specified the default is used.
 Therefore, even if the configuration is prepared for multiple clusters,
 such a controller manager can easily work on a single cluster if no special
 options are given on the command line.
+
+## DNS Controller Manager Next Generation
+
+The DNS controller manager is being rewritten using [controller-runtime](https://sigs.k8s.io/controller-runtime)
+with significant architectural improvements. For details, see the
+[DNS Controller Manager Next Generation documentation](docs/dnsman2/README.md).
 
 ## Why not use the community `external-dns` solution?
 

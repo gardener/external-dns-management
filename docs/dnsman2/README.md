@@ -1,10 +1,27 @@
-# Controller-Runtime-Rewrite
+# DNS Controller Manager Next Generation
 
 This folder contains documentation for the next generation of the dns-controller-manager,
 which is being rewritten using the [controller-runtime](https://sigs.k8s.io/controller-runtime).
-The rewrite is mostly completed. Support for annotations on Istio Gateways is not yet merged, and the rewrite is not yet recommended for production usage.
+The rewrite is mostly completed.
 
 Additionally, it contains some major changes to the architecture and features of the dns-controller-manager.
+
+## Table of Contents
+
+- [Major Changes](#major-changes)
+- [Configuration](#configuration)
+  - [Usage](#usage)
+  - [Default Configuration](#default-configuration)
+  - [Example Configuration File](#example-configuration-file)
+- [Migration From Legacy Version](#migration-from-legacy-version)
+  - [Controller Name Mapping](#controller-name-mapping)
+  - [Mapping of Important Flags](#mapping-of-important-flags)
+- [Development](#development)
+- [Reference](#reference)
+  - [Metrics](metrics.md)
+  - [DNSEntry Status](../usage/dnsentry_status.md)
+  - [DNSEntry Translation](../usage/dnsentry_translation.md)
+  - [DNSProvider Status](../usage/dnsprovider_status.md)
 
 ## Major Changes
 - On reconciling `DNSEntry`, the current state is retrieved by DNS queries to the authoritative nameservers, which are used instead of the API endpoints of the DNS providers. This significantly reduces calls to the API endpoints and makes existing rate limits much less problematic.
