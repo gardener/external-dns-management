@@ -67,6 +67,7 @@ func newAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics, ra
 	config := &openapi.Config{
 		AccessKeyId:     &accessKeyId,
 		AccessKeySecret: &accessKeySecret,
+		UserAgent:       ptr.To("gardener-external-dns-management/nextgen"),
 		RegionId:        ptr.To("cn-shanghai"), // Currently hardcoded, the limitation is documented.
 	}
 	client, err := alidns.NewClient(config)
