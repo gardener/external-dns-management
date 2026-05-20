@@ -148,6 +148,9 @@ func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 	if obj.ReconciliationTimeout == nil {
 		obj.ReconciliationTimeout = &metav1.Duration{Duration: 2 * time.Minute}
 	}
+	if obj.ZoneMetricsInterval == nil {
+		obj.ZoneMetricsInterval = &metav1.Duration{Duration: 30 * time.Second}
+	}
 }
 
 // SetDefaults_SourceControllerConfig sets defaults for the SourceControllerConfig object.

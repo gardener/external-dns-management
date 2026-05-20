@@ -158,6 +158,9 @@ type DNSEntryControllerConfig struct {
 	DefaultCNAMELookupInterval *int64
 	// ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.
 	ReconciliationDelayAfterUpdate *metav1.Duration
+	// ZoneMetricsInterval is the interval for refreshing the per-zone DNS entry count metrics.
+	// A value of 0 disables the periodic update. Default value is 1 minute.
+	ZoneMetricsInterval *metav1.Duration
 }
 
 // DNSAnnotationControllerConfig is the configuration for the DNSAnnotation controller.

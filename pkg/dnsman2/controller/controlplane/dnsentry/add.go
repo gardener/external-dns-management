@@ -117,6 +117,12 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		log.Info("Periodic reconciliation enabled", "syncPeriod", r.Config.SyncPeriod.Duration)
 	}
 
+	if interval := ptr.Deref(r.Config.ZoneMetricsInterval, metav1.Duration{}).Duration; interval > 0 {
+		if err := mgr.Add(newZoneMetricsReporter(r.Client, log.WithName("zoneMetrics"), r.Namespace, r.Class, r.SecondaryClasses, interval)); err != nil {
+			return err
+		}
+	}
+
 	return bld.WithOptions(controller.Options{
 		MaxConcurrentReconciles: ptr.Deref(r.Config.ConcurrentSyncs, 10),
 		SkipNameValidation:      cfg.Controllers.SkipNameValidation,

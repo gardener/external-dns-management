@@ -12,18 +12,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
-
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
 // RegisterAll registers all metrics with the controller-runtime registry, which is served by the metrics server.
 func RegisterAll() {
 	ctrlmetrics.Registry.MustRegister(Requests)
 	ctrlmetrics.Registry.MustRegister(ZoneRequests)
-	ctrlmetrics.Registry.MustRegister(ZoneCacheDiscardings)
 	ctrlmetrics.Registry.MustRegister(Accounts)
 	ctrlmetrics.Registry.MustRegister(Entries)
-	ctrlmetrics.Registry.MustRegister(StaleEntries)
 	ctrlmetrics.Registry.MustRegister(LookupProcessorJobs)
 	ctrlmetrics.Registry.MustRegister(LookupProcessorSkips)
 	ctrlmetrics.Registry.MustRegister(LookupProcessorLookups)
@@ -52,15 +48,6 @@ var (
 		[]string{"providertype", "accounthash", "requesttype", "zone"},
 	)
 
-	// ZoneCacheDiscardings tracks the number of discarding of zone cache per provider type and zone.
-	ZoneCacheDiscardings = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "external_dns_management_zone_cache_discardings",
-			Help: "Discardings of zone cache per provider type and zone",
-		},
-		[]string{"providertype", "zone"},
-	)
-
 	// Accounts tracks the number of providers per account.
 	Accounts = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
@@ -70,22 +57,13 @@ var (
 		[]string{"providertype", "accounthash"},
 	)
 
-	// Entries tracks the total number of DNS entries per hosted zone.
+	// Entries tracks the number of DNS entries per hosted zone and reconciliation state.
 	Entries = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "external_dns_management_dns_entries",
-			Help: "Total number of dns entries per hosted zone",
+			Help: "Number of DNS entries per hosted zone, grouped by status state",
 		},
-		[]string{"providertype", "zone"},
-	)
-
-	// StaleEntries tracks the number of stale DNS entries per hosted zone.
-	StaleEntries = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "external_dns_management_dns_entries_stale",
-			Help: "Total number of stale dns entries per hosted zone",
-		},
-		[]string{"providertype", "zone"},
+		[]string{"providertype", "zone", "state"},
 	)
 
 	// LookupProcessorJobs tracks the number of jobs in the lookup processor.
@@ -192,7 +170,6 @@ func DeleteAccount(ptype, account string) {
 	for rtype := range requestTypes {
 		Requests.DeleteLabelValues(ptype, account, rtype)
 	}
-	Entries.DeleteLabelValues(ptype, account)
 }
 
 // ReportAccountProviders sets the number of providers for a given provider type and account.
@@ -209,44 +186,48 @@ func AddRequests(ptype, account, requestType string, no int, zone *string) {
 	}
 }
 
-// AddZoneCacheDiscarding increments the zone cache discarding metric for the given zone.
-func AddZoneCacheDiscarding(id dns.ZoneID) {
-	ZoneCacheDiscardings.WithLabelValues(id.ProviderType, id.ID).Add(float64(1))
+// EntryStateLabels identifies a unique combination of providertype, zone and entry state used by Entries.
+type EntryStateLabels struct {
+	ProviderType string
+	Zone         string
+	State        string
 }
 
-// ZoneProviderTypes tracks provider types for zones.
-type ZoneProviderTypes struct {
-	lock      sync.Mutex
-	providers map[dns.ZoneID]struct{}
-}
+// entryStateDeletionGracePeriod is the time a zero-valued label combination is kept
+// before it is actually deleted. Prometheus caches scraped series for a short time,
+// so deleting immediately would hide that the value dropped to zero.
+const entryStateDeletionGracePeriod = 5 * time.Minute
 
-// Add adds a zone to the set of known providers.
-func (this *ZoneProviderTypes) Add(zone dns.ZoneID) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	this.providers[zone] = struct{}{}
-}
-
-// Remove removes a zone from the set of known providers.
-func (this *ZoneProviderTypes) Remove(zone dns.ZoneID) {
-	this.lock.Lock()
-	defer this.lock.Unlock()
-	delete(this.providers, zone)
-}
-
-var zoneProviders = &ZoneProviderTypes{providers: map[dns.ZoneID]struct{}{}}
-
-// ReportZoneEntries sets the number of entries and stale entries for a zone.
-func ReportZoneEntries(zoneid dns.ZoneID, amount int, stale int) {
-	Entries.WithLabelValues(zoneid.ProviderType, zoneid.ID).Set(float64(amount))
-	StaleEntries.WithLabelValues(zoneid.ProviderType, zoneid.ID).Set(float64(stale))
-	zoneProviders.Add(zoneid)
-}
-
-// DeleteZone removes metrics for a given zone.
-func DeleteZone(zoneid dns.ZoneID) {
-	zoneProviders.Remove(zoneid)
-	Entries.DeleteLabelValues(zoneid.ProviderType, zoneid.ID)
+// ReportEntryStates replaces the current values of the Entries gauge with the given counts.
+// Label combinations that were present in previous but are missing from counts are set to 0
+// and only deleted after they have stayed at 0 for at least entryStateDeletionGracePeriod.
+// The returned map must be passed back as previous on the next call.
+func ReportEntryStates(counts map[EntryStateLabels]int, previous map[EntryStateLabels]time.Time) map[EntryStateLabels]time.Time {
+	now := time.Now()
+	current := make(map[EntryStateLabels]time.Time, len(counts)+len(previous))
+	for k, v := range counts {
+		Entries.WithLabelValues(k.ProviderType, k.Zone, k.State).Set(float64(v))
+		current[k] = time.Time{} // not zero / not pending deletion
+	}
+	for k, zeroSince := range previous {
+		if _, ok := counts[k]; ok {
+			continue
+		}
+		if zeroSince.IsZero() {
+			// First time we see this combination missing: set to 0 and start the grace period.
+			Entries.WithLabelValues(k.ProviderType, k.Zone, k.State).Set(0)
+			current[k] = now
+			continue
+		}
+		if now.Sub(zeroSince) >= entryStateDeletionGracePeriod {
+			Entries.DeleteLabelValues(k.ProviderType, k.Zone, k.State)
+			continue
+		}
+		// Still within the grace period; keep the original timestamp and ensure value is 0.
+		Entries.WithLabelValues(k.ProviderType, k.Zone, k.State).Set(0)
+		current[k] = zeroSince
+	}
+	return current
 }
 
 // ReportLookupProcessorIncrSkipped increments the skipped lookups metric.
