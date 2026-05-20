@@ -11,25 +11,26 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
-// RegisterAll registers all metrics handlers and the /metrics endpoint.
+// RegisterAll registers all metrics with the controller-runtime registry, which is served by the metrics server.
 func RegisterAll() {
-	prometheus.MustRegister(Requests)
-	prometheus.MustRegister(ZoneRequests)
-	prometheus.MustRegister(ZoneCacheDiscardings)
-	prometheus.MustRegister(Accounts)
-	prometheus.MustRegister(Entries)
-	prometheus.MustRegister(StaleEntries)
-	prometheus.MustRegister(LookupProcessorJobs)
-	prometheus.MustRegister(LookupProcessorSkips)
-	prometheus.MustRegister(LookupProcessorLookups)
-	prometheus.MustRegister(LookupProcessorHosts)
-	prometheus.MustRegister(LookupProcessorErrors)
-	prometheus.MustRegister(LookupProcessorLookupChanged)
-	prometheus.MustRegister(LookupProcessorSeconds)
+	ctrlmetrics.Registry.MustRegister(Requests)
+	ctrlmetrics.Registry.MustRegister(ZoneRequests)
+	ctrlmetrics.Registry.MustRegister(ZoneCacheDiscardings)
+	ctrlmetrics.Registry.MustRegister(Accounts)
+	ctrlmetrics.Registry.MustRegister(Entries)
+	ctrlmetrics.Registry.MustRegister(StaleEntries)
+	ctrlmetrics.Registry.MustRegister(LookupProcessorJobs)
+	ctrlmetrics.Registry.MustRegister(LookupProcessorSkips)
+	ctrlmetrics.Registry.MustRegister(LookupProcessorLookups)
+	ctrlmetrics.Registry.MustRegister(LookupProcessorHosts)
+	ctrlmetrics.Registry.MustRegister(LookupProcessorErrors)
+	ctrlmetrics.Registry.MustRegister(LookupProcessorLookupChanged)
+	ctrlmetrics.Registry.MustRegister(LookupProcessorSeconds)
 }
 
 var (
