@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"slices"
 
-	cloudflarezones "github.com/cloudflare/cloudflare-go/v6/zones"
+	cloudflarezones "github.com/cloudflare/cloudflare-go/v7/zones"
 	"github.com/go-logr/logr"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"

@@ -7,8 +7,8 @@ package cloudflare
 import (
 	"context"
 
-	cloudflaredns "github.com/cloudflare/cloudflare-go/v6/dns"
-	cloudflarezones "github.com/cloudflare/cloudflare-go/v6/zones"
+	cloudflaredns "github.com/cloudflare/cloudflare-go/v7/dns"
+	cloudflarezones "github.com/cloudflare/cloudflare-go/v7/zones"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
