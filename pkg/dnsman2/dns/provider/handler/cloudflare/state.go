@@ -5,7 +5,7 @@
 package cloudflare
 
 import (
-	cloudflaredns "github.com/cloudflare/cloudflare-go/v6/dns"
+	cloudflaredns "github.com/cloudflare/cloudflare-go/v7/dns"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/raw"

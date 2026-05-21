@@ -8,10 +8,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/cloudflare/cloudflare-go/v6"
-	cloudflaredns "github.com/cloudflare/cloudflare-go/v6/dns"
-	"github.com/cloudflare/cloudflare-go/v6/option"
-	cloudflarezones "github.com/cloudflare/cloudflare-go/v6/zones"
+	"github.com/cloudflare/cloudflare-go/v7"
+	cloudflaredns "github.com/cloudflare/cloudflare-go/v7/dns"
+	"github.com/cloudflare/cloudflare-go/v7/option"
+	cloudflarezones "github.com/cloudflare/cloudflare-go/v7/zones"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/utils/ptr"
 
