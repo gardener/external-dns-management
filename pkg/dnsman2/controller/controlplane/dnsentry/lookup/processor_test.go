@@ -96,6 +96,12 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 			time.Sleep(10 * quantum)
 			Expect(processor.running.Load()).To(BeFalse())
 		}
+
+		startProcessor = func() {
+			go func() {
+				_ = processor.Start(ctx)
+			}()
+		}
 	)
 
 	ginkgov2.BeforeEach(func() {
@@ -189,7 +195,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 	})
 
 	ginkgov2.It("performs multiple lookup jobs regularly", func() {
-		go processor.Run(ctx)
+		startProcessor()
 		processor.Upsert(ctx, nameE1, LookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
 		processor.Upsert(ctx, nameE2, LookupAllHostnamesIPs(ctx, "host2"), 2*quantum)
 		processor.Upsert(ctx, nameE3, LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 3*quantum)
@@ -218,7 +224,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 
 	ginkgov2.It("performs multiple lookup jobs but skips on overload", func() {
 		mlh.delay = 19 * quantum / 10
-		go processor.Run(ctx)
+		startProcessor()
 		processor.Upsert(ctx, nameE1, LookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
 		processor.Upsert(ctx, nameE3, LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 1*quantum)
 		time.Sleep(processor.checkPeriod)
@@ -240,7 +246,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 
 	ginkgov2.It("performs multiple lookup jobs and enqueues keys on lookup changes", func() {
 		changedIP := net.ParseIP("1.1.1.42")
-		go processor.Run(ctx)
+		startProcessor()
 		processor.Upsert(ctx, nameE1, LookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
 		processor.Upsert(ctx, nameE2, LookupAllHostnamesIPs(ctx, "host2"), 1*quantum)
 		processor.Upsert(ctx, nameE3, LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 1*quantum)

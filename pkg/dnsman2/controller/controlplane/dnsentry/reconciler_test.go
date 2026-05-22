@@ -359,7 +359,9 @@ var _ = Describe("Reconcile", func() {
 			ctxCancel()
 			Eventually(reconciler.lookupProcessor.IsRunning).WithPolling(1 * time.Millisecond).WithTimeout(500 * time.Millisecond).Should(BeFalse())
 		}
-		go reconciler.lookupProcessor.Run(lookupCtx)
+		go func() {
+			_ = reconciler.lookupProcessor.Start(lookupCtx)
+		}()
 
 		Expect(fakeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: "test"}})).To(Succeed())
 
