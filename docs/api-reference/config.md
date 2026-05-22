@@ -419,6 +419,18 @@ integer
 <p>ZoneMetricsInterval is the interval for refreshing the per-zone DNS entry count metrics.<br />A value of 0 disables the periodic update. Default value is 30 seconds	.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>driftCheckPeriod</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta">Duration</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DriftCheckPeriod is the minimum interval between two record-type drift recovery attempts for the same DNSEntry.<br />When an entry is in Error or Stale state, the reconciler additionally queries the alternative address record types<br />(A, AAAA, CNAME) at the same name to detect a foreign record blocking the entry. This bounds the resulting query<br />amplification: too short causes repeated full-spectrum queries during persistent error states, too long slows<br />recovery once the conflict is resolved.</p>
+</td>
+</tr>
 
 </tbody>
 </table>

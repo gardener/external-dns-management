@@ -154,6 +154,9 @@ func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 	if obj.PropagationWaitTime == nil {
 		obj.PropagationWaitTime = &metav1.Duration{Duration: 10 * time.Second}
 	}
+	if obj.DriftCheckPeriod == nil {
+		obj.DriftCheckPeriod = &metav1.Duration{Duration: 12 * time.Hour}
+	}
 }
 
 // SetDefaults_SourceControllerConfig sets defaults for the SourceControllerConfig object.

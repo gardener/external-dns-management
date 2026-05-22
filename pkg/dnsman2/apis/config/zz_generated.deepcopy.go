@@ -183,6 +183,11 @@ func (in *DNSEntryControllerConfig) DeepCopyInto(out *DNSEntryControllerConfig) 
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.DriftCheckPeriod != nil {
+		in, out := &in.DriftCheckPeriod, &out.DriftCheckPeriod
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	return
 }
 
