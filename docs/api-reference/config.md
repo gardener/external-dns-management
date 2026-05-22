@@ -404,7 +404,7 @@ integer
 </td>
 <td>
 <em>(Optional)</em>
-<p>ZoneMetricsInterval is the interval for refreshing the per-zone DNS entry count metrics.<br />A value of 0 disables the periodic update. Default value is 1 minute.</p>
+<p>ZoneMetricsInterval is the interval for refreshing the per-zone DNS entry count metrics.<br />A value of 0 disables the periodic update. Default value is 30 seconds	.</p>
 </td>
 </tr>
 
