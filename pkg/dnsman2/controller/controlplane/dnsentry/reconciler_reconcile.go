@@ -38,13 +38,14 @@ type entryReconciliation struct {
 }
 
 type newTargetsData struct {
-	providerKey   client.ObjectKey
-	providerType  string
-	zoneID        dns.ZoneID
-	dnsSet        *dns.DNSSet
-	targets       dns.Targets
-	routingPolicy *dns.RoutingPolicy
-	warnings      []string
+	providerKey    client.ObjectKey
+	providerType   string
+	zoneID         dns.ZoneID
+	dnsSet         *dns.DNSSet
+	targets        dns.Targets
+	routingPolicy  *dns.RoutingPolicy
+	warnings       []string
+	lookupInterval *int64
 }
 
 type zonedRequests = map[dns.ZoneID]map[dns.DNSSetName]*provider.ChangeRequests
@@ -245,6 +246,7 @@ func (r *entryReconciliation) updateStatusWithProvider(targetsData *newTargetsDa
 		} else {
 			status.TTL = nil
 		}
+		status.CNameLookupInterval = targetsData.lookupInterval
 
 		status.ObservedGeneration = r.Entry.Generation
 		status.State = v1alpha1.StateReady
@@ -346,13 +348,14 @@ func (r *entryReconciliation) calcNewTargets(providerData *providerselector.NewP
 		newTargets = nil
 	}
 	return &newTargetsData{
-		providerKey:   providerData.ProviderKey,
-		providerType:  providerData.Provider.Spec.Type,
-		zoneID:        newZoneID,
-		dnsSet:        newDNSSet,
-		targets:       newTargets,
-		routingPolicy: rp,
-		warnings:      result.Warnings,
+		providerKey:    providerData.ProviderKey,
+		providerType:   providerData.Provider.Spec.Type,
+		zoneID:         newZoneID,
+		dnsSet:         newDNSSet,
+		targets:        newTargets,
+		routingPolicy:  rp,
+		warnings:       result.Warnings,
+		lookupInterval: result.LookupInterval,
 	}, nil
 }
 
