@@ -197,6 +197,7 @@ var _ = Describe("Defaults", func() {
 					Expect(obj.SyncPeriod).To(PointTo(Equal(metav1.Duration{Duration: time.Hour})))
 					Expect(obj.ReconciliationTimeout).To(PointTo(Equal(metav1.Duration{Duration: 2 * time.Minute})))
 					Expect(obj.ZoneMetricsInterval).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Second})))
+					Expect(obj.DriftCheckPeriod).To(PointTo(Equal(metav1.Duration{Duration: 12 * time.Hour})))
 				})
 
 				It("should not overwrite existing values", func() {
@@ -205,6 +206,7 @@ var _ = Describe("Defaults", func() {
 						SyncPeriod:            &metav1.Duration{Duration: 0 * time.Second},
 						ReconciliationTimeout: &metav1.Duration{Duration: 30 * time.Second},
 						ZoneMetricsInterval:   &metav1.Duration{Duration: 0},
+						DriftCheckPeriod:      &metav1.Duration{Duration: 6 * time.Hour},
 					}
 
 					SetDefaults_DNSEntryControllerConfig(obj)
@@ -213,6 +215,7 @@ var _ = Describe("Defaults", func() {
 					Expect(obj.SyncPeriod).To(PointTo(Equal(metav1.Duration{Duration: 0})))
 					Expect(obj.ReconciliationTimeout).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Second})))
 					Expect(obj.ZoneMetricsInterval).To(PointTo(Equal(metav1.Duration{Duration: 0})))
+					Expect(obj.DriftCheckPeriod).To(PointTo(Equal(metav1.Duration{Duration: 6 * time.Hour})))
 				})
 			})
 			Describe("Source controller", func() {
