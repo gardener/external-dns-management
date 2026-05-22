@@ -27,9 +27,10 @@ const maxCNAMETargets = 25
 
 // TargetsResult holds the result of extracting targets from a DNSEntrySpec.
 type TargetsResult struct {
-	EntryKey client.ObjectKey
-	Targets  dns.Targets
-	Warnings []string
+	EntryKey       client.ObjectKey
+	Targets        dns.Targets
+	Warnings       []string
+	LookupInterval *int64
 }
 
 // AddTarget adds a target to the TargetsResult, avoiding duplicates and adding a warning if duplicate.
@@ -143,7 +144,6 @@ func (p *TargetsProducer) FromSpec(key client.ObjectKey, spec *v1alpha1.DNSEntry
 		if err != nil {
 			return
 		}
-		// TODO(MartinWeindel) update lookup processor, retrieve addresses for CNAME targets
 	} else {
 		err = p.deleteLookupJob(key)
 		if err != nil {
@@ -195,6 +195,7 @@ func (p *TargetsProducer) upsertLookupJob(ctx context.Context, key client.Object
 		resolvedTargets = append(resolvedTargets, dns.NewTarget(dns.TypeAAAA, ip, ttl))
 	}
 	result.Targets = resolvedTargets
+	result.LookupInterval = &lookupInterval
 	return nil
 }
 

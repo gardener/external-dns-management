@@ -17,17 +17,18 @@ import (
 	"go.uber.org/atomic"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 // LookupProcessor is an interface that defines methods for processing periodic DNS lookups for DNS entry targets.
 type LookupProcessor interface {
+	manager.Runnable
+
 	// Upsert inserts or updates a lookup job for the given object name.
 	Upsert(ctx context.Context, name client.ObjectKey, results LookupAllResults, interval time.Duration)
 	// Delete removes the lookup job for the given object name.
 	Delete(name client.ObjectKey)
 
-	// Run starts the lookup processor, which periodically checks for jobs to run.
-	Run(ctx context.Context)
 	// IsRunning returns true if the processor is running.
 	IsRunning() bool
 }
@@ -197,7 +198,7 @@ func (p *lookupProcessor) Delete(name client.ObjectKey) {
 	p.metrics.ReportCurrentJobCount(len(p.queue))
 }
 
-func (p *lookupProcessor) Run(ctx context.Context) {
+func (p *lookupProcessor) Start(ctx context.Context) error {
 	p.running.Store(true)
 	defer p.running.Store(false)
 	p.log.Info("starting lookup processor", "slots", p.concurrentJobs)
@@ -206,7 +207,7 @@ func (p *lookupProcessor) Run(ctx context.Context) {
 	for {
 		if err := sleep(ctx, nextCheck); err != nil {
 			p.log.Info("lookup processor stopped", "error", ctx.Err())
-			return
+			return nil
 		}
 		nextCheckTime, skipped := p.runJob(ctx)
 		if skipped != nil {

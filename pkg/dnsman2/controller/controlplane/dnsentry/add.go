@@ -64,6 +64,9 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		15*time.Second,
 	)
 	r.defaultCNAMELookupInterval = ptr.Deref(r.Config.DefaultCNAMELookupInterval, 600)
+	if err := mgr.Add(r.lookupProcessor); err != nil {
+		return err
+	}
 	r.setReconciliationDelayAfterUpdate(ptr.Deref(r.Config.ReconciliationDelayAfterUpdate, metav1.Duration{Duration: defaultReconciliationDelayAfterUpdate}).Duration)
 	bld := builder.
 		ControllerManagedBy(mgr).
