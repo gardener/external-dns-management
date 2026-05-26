@@ -168,6 +168,11 @@ func (in *DNSEntryControllerConfig) DeepCopyInto(out *DNSEntryControllerConfig) 
 		*out = new(int64)
 		**out = **in
 	}
+	if in.PropagationWaitTime != nil {
+		in, out := &in.PropagationWaitTime, &out.PropagationWaitTime
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	if in.ReconciliationDelayAfterUpdate != nil {
 		in, out := &in.ReconciliationDelayAfterUpdate, &out.ReconciliationDelayAfterUpdate
 		*out = new(v1.Duration)
