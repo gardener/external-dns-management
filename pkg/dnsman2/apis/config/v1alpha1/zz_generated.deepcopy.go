@@ -173,6 +173,11 @@ func (in *DNSEntryControllerConfig) DeepCopyInto(out *DNSEntryControllerConfig) 
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.ZoneMetricsInterval != nil {
+		in, out := &in.ZoneMetricsInterval, &out.ZoneMetricsInterval
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	return
 }
 

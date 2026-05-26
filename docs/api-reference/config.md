@@ -395,6 +395,18 @@ integer
 <p>ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>zoneMetricsInterval</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta">Duration</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>ZoneMetricsInterval is the interval for refreshing the per-zone DNS entry count metrics.<br />A value of 0 disables the periodic update. Default value is 30 seconds	.</p>
+</td>
+</tr>
 
 </tbody>
 </table>
