@@ -82,7 +82,7 @@ func (m *DNSRecordManager) QueryRecords(ctx context.Context, keys FullRecordKeyS
 			if key.ZoneID != zoneID {
 				continue
 			}
-			targets, policy, err := queryHandler.Query(m.Ctx, key.Name, key.RecordType)
+			targets, policy, err := queryHandler.Query(m.Ctx, m.Log, key.Name, key.RecordType)
 			if err != nil {
 				m.Log.Error(err, "failed to query DNS records", "name", key.Name, "type", key.RecordType, "zoneID", zoneID.ID)
 				return nil, common.ErrorReconcileResult(fmt.Sprintf("failed to query DNS records for %s, type %s in zone %s: %s", key.Name, key.RecordType, zoneID.ID, err), true)

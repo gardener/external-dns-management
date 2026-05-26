@@ -9,6 +9,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/jellydator/ttlcache/v3"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -49,7 +50,7 @@ var _ = Describe("DNSCache", func() {
 	Describe("Get", func() {
 		It("should query DNS and cache the result if not present", func() {
 			for i := range 7 {
-				rs, err := dnsCache.Get(ctx, dns.DNSSetName{DNSName: "example.com"}, dns.TypeA)
+				rs, err := dnsCache.Get(ctx, logr.Discard(), dns.DNSSetName{DNSName: "example.com"}, dns.TypeA)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(rs).NotTo(BeNil())
 				Expect(rs.TTL).To(Equal(int64(1)))
