@@ -39,7 +39,7 @@ func GetState() *State {
 	state = &State{
 		providers:         newProviderMap(),
 		accounts:          provider.NewAccountMap(),
-		dnsNameLocking:    newDNSNameLocking(),
+		dnsNameLocking:    newDNSNameLocking(clock.RealClock{}),
 		annotationState:   newAnnotationState(),
 		quotaReservations: newQuotaReservationsMap(clock.RealClock{}, quotaReservationDuration),
 	}
