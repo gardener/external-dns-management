@@ -24,7 +24,7 @@ require (
 	github.com/gardener/gardener v1.143.0
 	github.com/gardener/gardener/pkg/apis v1.143.0
 	github.com/go-logr/logr v1.4.3
-	github.com/go-openapi/runtime v0.32.1
+	github.com/go-openapi/runtime v0.32.2
 	github.com/go-openapi/strfmt v0.26.2
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.12.0
