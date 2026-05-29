@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -53,7 +54,7 @@ type AWSConfig struct {
 // NewHandler creates a new AWS Route53 DNS handler based on the provided configuration.
 func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	advancedOptions := c.GlobalConfig.ProviderAdvancedOptions[ProviderType]
-	c.Log.Info("advanced options", "options", advancedOptions) // TODO(MartinWeindel) fix logging of advanced options
+	c.Log.Info("advanced options", "options", advancedOptions)
 
 	awsConfig := AWSConfig{BatchSize: ptr.Deref(advancedOptions.BatchSize, defaultBatchSize)}
 	if c.Config != nil {
@@ -255,13 +256,13 @@ func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, setName dns.D
 	}
 
 	for _, r := range sets.ResourceRecordSets {
-		if aws.ToString(r.Name) == setName.DNSName && aws.ToString(r.SetIdentifier) == setName.SetIdentifier && r.Type == rrType {
+		if unescape(aws.ToString(r.Name)) == setName.DNSName && aws.ToString(r.SetIdentifier) == setName.SetIdentifier && r.Type == rrType {
 			rs := buildRecordSetFromAliasTarget(r)
 			if rs == nil {
 				var records []*dns.Record
 				var ttl int64
 				for _, rr := range r.ResourceRecords {
-					records = append(records, &dns.Record{Value: aws.ToString(rr.Value)})
+					records = append(records, &dns.Record{Value: decodeValue(aws.ToString(rr.Value), recordType)})
 				}
 				if r.TTL != nil {
 					ttl = aws.ToInt64(r.TTL)
@@ -467,4 +468,24 @@ func getRoleARN(c *provider.DNSHandlerConfig) (string, error) {
 		return "", err
 	}
 	return cfg.RoleARN, nil
+}
+
+// unescape converts an AWS Route53 escaped wildcard prefix (`\052.`) back to `*.`.
+func unescape(domainName string) string {
+	if strings.HasPrefix(domainName, "\\052.") {
+		domainName = "*" + domainName[4:]
+	}
+	return domainName
+}
+
+// decodeValue decodes a record value as returned by the AWS Route53 API.
+// TXT record values are returned wrapped in quotes by Route53, so they are unquoted here.
+// Other record types are returned unchanged.
+func decodeValue(value string, recordType dns.RecordType) string {
+	if recordType == dns.TypeTXT {
+		if v, err := strconv.Unquote(value); err == nil {
+			return v
+		}
+	}
+	return value
 }
