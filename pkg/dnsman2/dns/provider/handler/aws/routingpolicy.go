@@ -38,7 +38,7 @@ const (
 	refreshCIDRCollectionsPeriodNotFound = 15 * time.Minute
 )
 
-func newRoutingPolicyContext(r53 route53.Client) *routingPolicyContext {
+func newRoutingPolicyContext(r53 route53API) *routingPolicyContext {
 	return &routingPolicyContext{
 		r53:                            r53,
 		cachedCIDRCollectionNameToID:   map[string]string{},
@@ -50,7 +50,7 @@ func newRoutingPolicyContext(r53 route53.Client) *routingPolicyContext {
 
 type routingPolicyContext struct {
 	sync.Mutex
-	r53                             route53.Client
+	r53                             route53API
 	cachedGeoLocationNameToLocation map[string]*route53types.GeoLocation
 	cachedGeoLocationCodeToName     map[string]string
 	lastGeoLocationListUpdate       time.Time

@@ -40,7 +40,7 @@ type handler struct {
 	config        provider.DNSHandlerConfig
 	awsConfig     AWSConfig
 	accessKeyID   string // for logging purposes
-	r53           route53.Client
+	r53           route53API
 	policyContext *routingPolicyContext
 }
 
@@ -131,7 +131,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		return nil, err
 	}
 
-	h.r53 = *route53.NewFromConfig(awscfg)
+	h.r53 = route53.NewFromConfig(awscfg)
 	h.policyContext = newRoutingPolicyContext(h.r53)
 
 	return h, nil
@@ -155,7 +155,7 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 	var zones []provider.DNSHostedZone
 
 	h.config.RateLimiter.Accept()
-	paginator := route53.NewListHostedZonesPaginator(&h.r53, &route53.ListHostedZonesInput{})
+	paginator := route53.NewListHostedZonesPaginator(h.r53, &route53.ListHostedZonesInput{})
 	for paginator.HasMorePages() {
 		h.config.Metrics.AddGenericRequests(rt, 1)
 		rt = provider.MetricsRequestTypeListZonesPages
