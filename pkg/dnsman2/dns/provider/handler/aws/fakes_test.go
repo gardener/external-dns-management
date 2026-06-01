@@ -89,12 +89,18 @@ func (f *fakeRoute53) ListCidrBlocks(_ context.Context, _ *route53.ListCidrBlock
 // It exists so handler tests don't need a real metrics registry.
 type noopMetrics struct{}
 
-func (noopMetrics) AddGenericRequests(_ provider.MetricsRequestType, _ int)         {}
+func (noopMetrics) AddGenericRequests(_ provider.MetricsRequestType, _ int)        {}
 func (noopMetrics) AddZoneRequests(_ string, _ provider.MetricsRequestType, _ int) {}
 
 // newTestHandler builds a *handler wired with the supplied fake route53API.
 // Production-only fields like awsConfig.BatchSize are populated with sensible defaults.
 func newTestHandler(r53 route53API, blockedZones ...string) *handler {
+	return newTestHandlerWith(r53, noopMetrics{}, flowcontrol.NewFakeAlwaysRateLimiter(), blockedZones...)
+}
+
+// newTestHandlerWith is like newTestHandler but allows the test to inject custom
+// metrics and rate limiter implementations (e.g. counting variants).
+func newTestHandlerWith(r53 route53API, metrics provider.Metrics, rateLimiter flowcontrol.RateLimiter, blockedZones ...string) *handler {
 	cfg := provider.DNSHandlerConfig{
 		Log: logr.Discard(),
 		GlobalConfig: config.DNSManagerConfiguration{
@@ -102,8 +108,8 @@ func newTestHandler(r53 route53API, blockedZones ...string) *handler {
 				ProviderType: {BlockedZones: blockedZones},
 			},
 		},
-		Metrics:     noopMetrics{},
-		RateLimiter: flowcontrol.NewFakeAlwaysRateLimiter(),
+		Metrics:     metrics,
+		RateLimiter: rateLimiter,
 	}
 	return &handler{
 		DefaultDNSHandler: provider.NewDefaultDNSHandler(ProviderType),
