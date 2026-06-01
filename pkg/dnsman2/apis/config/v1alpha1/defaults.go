@@ -151,6 +151,9 @@ func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 	if obj.ZoneMetricsInterval == nil {
 		obj.ZoneMetricsInterval = &metav1.Duration{Duration: 30 * time.Second}
 	}
+	if obj.PropagationWaitTime == nil {
+		obj.PropagationWaitTime = &metav1.Duration{Duration: 10 * time.Second}
+	}
 }
 
 // SetDefaults_SourceControllerConfig sets defaults for the SourceControllerConfig object.

@@ -184,6 +184,10 @@ type DNSEntryControllerConfig struct {
 	// DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.
 	// +optional
 	DefaultCNAMELookupInterval *int64 `json:"defaultCNAMELookupInterval,omitempty"`
+	// PropagationWaitTime is the duration to wait after a DNSEntry object has been updated before its old/new domain names are allowed to be reconciled again.
+	// This avoids potential phantom reads from authoritative DNS servers. Default value is 10 seconds.
+	// +optional
+	PropagationWaitTime *metav1.Duration `json:"propagationWaitTime,omitempty"`
 	// ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.
 	// +optional
 	ReconciliationDelayAfterUpdate *metav1.Duration `json:"reconciliationDelayAfterUpdate,omitempty"`

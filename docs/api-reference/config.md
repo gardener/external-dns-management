@@ -385,6 +385,18 @@ integer
 </tr>
 <tr>
 <td>
+<code>propagationWaitTime</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta">Duration</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>PropagationWaitTime is the duration to wait after a DNSEntry object has been updated before its old/new domain names are allowed to be reconciled again.<br />This avoids potential phantom reads from authoritative DNS servers. Default value is 10 seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
 <code>reconciliationDelayAfterUpdate</code></br>
 <em>
 <a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta">Duration</a>

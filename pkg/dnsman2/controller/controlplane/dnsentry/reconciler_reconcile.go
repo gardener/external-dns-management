@@ -32,6 +32,7 @@ type entryReconciliation struct {
 	namespace                  string
 	migrationMode              bool
 	state                      *state.State
+	propagationWaitTime        time.Duration
 	lookupProcessor            lookup.LookupProcessor
 	defaultCNAMELookupInterval int64
 	lastUpdate                 *ttlcache.Cache[client.ObjectKey, struct{}]
@@ -81,11 +82,17 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 		return *res
 	}
 
-	unlockFunc, res := r.lockDNSNames()
+	names, res := r.acquireDNSNameLock()
 	if res != nil {
 		return *res
 	}
-	defer unlockFunc()
+	// If a DNS change is applied, reservation is set to propagationWaitTime so
+	// the deferred release keeps the names reserved for that duration; other
+	// reconciles for the same names will requeue until the reservation expires.
+	var reservation time.Duration
+	defer func() {
+		r.state.GetDNSNameLocking().UnlockWithExpiry(reservation, names...)
+	}()
 
 	if err := validateDNSEntry(r.Entry); err != nil {
 		return *common.InvalidReconcileResult(fmt.Sprintf("validation failed: %s", err))
@@ -125,6 +132,9 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 	if res := r.dnsRecordManager().ApplyChangeRequests(newProviderData, zonedRequests); res != nil {
 		return *res
 	}
+	if len(zonedRequests) > 0 {
+		reservation = r.propagationWaitTime
+	}
 
 	return r.updateStatusWithProvider(targetsData)
 }
@@ -157,18 +167,21 @@ func (r *entryReconciliation) needsToMigrateDNSClassOrFinalizers() bool {
 	return dns.HasSecondaryClassFinalizerNames(r.Entry, r.SecondaryClasses)
 }
 
-func (r *entryReconciliation) lockDNSNames() (func(), *common.ReconcileResult) {
+func (r *entryReconciliation) acquireDNSNameLock() ([]string, *common.ReconcileResult) {
 	names := getDNSNames(r.Entry.Spec.DNSName, r.Entry.Status.DNSName)
 	locking := r.state.GetDNSNameLocking()
-	if !locking.Lock(names...) {
-		// already locked by another entry, requeue
+	ok, retryAfter := locking.Lock(names...)
+	if !ok {
+		// already locked by another entry or reserved during DNS propagation, requeue
+		jitter := time.Duration(rand.Intn(500)) * time.Millisecond
+		if retryAfter <= 0 {
+			retryAfter = 3 * time.Second
+		}
 		return nil, &common.ReconcileResult{
-			Result: reconcile.Result{RequeueAfter: 3*time.Second + time.Duration(rand.Intn(500))*time.Millisecond},
+			Result: reconcile.Result{RequeueAfter: retryAfter + jitter},
 		}
 	}
-	return func() {
-		locking.Unlock(names...)
-	}, nil
+	return names, nil
 }
 
 func validateDNSEntry(entry *v1alpha1.DNSEntry) error {
@@ -379,7 +392,7 @@ func (r *entryReconciliation) clearDNSCaches(zonedRequests zonedRequests) {
 				keys = append(keys, utils.RecordSetKey{Name: name, RecordType: recordType})
 			}
 		}
-		if err := r.state.ClearDNSCaches(r.Ctx, zoneID, keys...); err != nil {
+		if err := r.state.ClearDNSCaches(r.Ctx, r.Log, zoneID, keys...); err != nil {
 			r.Log.Error(err, "failed to clear DNS caches for zone", "zoneID", zoneID.ID)
 		}
 	}
