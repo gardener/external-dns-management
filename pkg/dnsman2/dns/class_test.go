@@ -21,8 +21,21 @@ var _ = Describe("Class", func() {
 			},
 			Entry("empty string", "", true),
 			Entry("default class name", DefaultClass, true),
+			Entry("next-gen migration class is not default", NextGenMigrationClass, false),
 			Entry("non-default class", "customclass", false),
 			Entry("similar but different", "gardendns2", false),
+		)
+	})
+
+	Describe("#IsNextGenMigrationClass", func() {
+		DescribeTable("should return true for next-gen migration class variants",
+			func(class string, expected bool) {
+				Expect(IsNextGenMigrationClass(class)).To(Equal(expected))
+			},
+			Entry("empty string", "", false),
+			Entry("default class name is not next-gen", DefaultClass, false),
+			Entry("next generation migration class name", NextGenMigrationClass, true),
+			Entry("non-default class", "customclass", false),
 		)
 	})
 
@@ -48,6 +61,7 @@ var _ = Describe("Class", func() {
 			},
 			Entry("empty class returns default finalizer", "", FinalizerCompound),
 			Entry("default class returns default finalizer", DefaultClass, FinalizerCompound),
+			Entry("next-generation migration class returns default finalizer", DefaultClass, FinalizerCompound),
 			Entry("custom class prefixes finalizer", "myclass", "myclass."+FinalizerCompound),
 			Entry("another custom class", "secondary", "secondary."+FinalizerCompound),
 		)
@@ -94,6 +108,7 @@ var _ = Describe("Class", func() {
 
 		It("should work with default class", func() {
 			obj := newEntry(ClassFinalizerName("secondary1"))
+			Expect(HasSecondaryClassFinalizerNames(obj, nil)).To(BeFalse())
 			MigrateSecondaryClassFinalizers(obj, DefaultClass, []string{"secondary1"})
 			Expect(obj.GetFinalizers()).To(ConsistOf(FinalizerCompound))
 		})
@@ -103,6 +118,21 @@ var _ = Describe("Class", func() {
 			obj := newEntry(original...)
 			MigrateSecondaryClassFinalizers(obj, "primary", []string{"secondary1"})
 			Expect(original).To(Equal([]string{ClassFinalizerName("secondary1")}))
+		})
+
+		It("should drop the gardendns-next-gen finalizer for next-gen migration class", func() {
+			original := []string{"gardendns-next-gen.dns.gardener.cloud/compound"}
+			obj := newEntry(original...)
+			Expect(HasSecondaryClassFinalizerNames(obj, nil)).To(BeTrue())
+			MigrateSecondaryClassFinalizers(obj, "gardendns-next-gen", nil)
+			Expect(obj.GetFinalizers()).To(Equal([]string{"dns.gardener.cloud/compound"}))
+		})
+
+		It("should drop the gardendns-next-gen finalizer when migrating to a custom class", func() {
+			original := []string{"gardendns-next-gen.dns.gardener.cloud/compound"}
+			obj := newEntry(original...)
+			MigrateSecondaryClassFinalizers(obj, "foo", nil)
+			Expect(obj.GetFinalizers()).To(Equal([]string{"foo.dns.gardener.cloud/compound"}))
 		})
 	})
 
