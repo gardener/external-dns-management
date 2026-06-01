@@ -244,6 +244,8 @@ func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, setName dns.D
 	if err != nil {
 		return nil, err
 	}
+	h.config.RateLimiter.Accept()
+	h.config.Metrics.AddZoneRequests(zone.ZoneID().ID, provider.MetricsRequestTypeListRecords, 1)
 	sets, err := h.r53.ListResourceRecordSets(ctx, &route53.ListResourceRecordSetsInput{
 		HostedZoneId:          aws.String(zone.ZoneID().ID),
 		MaxItems:              aws.Int32(1),
