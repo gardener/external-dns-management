@@ -28,7 +28,10 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
 )
 
-const defaultReconciliationDelayAfterUpdate = 5 * time.Second
+const (
+	defaultReconciliationDelayAfterUpdate = 5 * time.Second
+	defaultDriftCheckPeriod               = 12 * time.Hour
+)
 
 // Reconciler is a reconciler for DNSEntry resources on the control plane.
 type Reconciler struct {
@@ -45,6 +48,7 @@ type Reconciler struct {
 	state           *state.State
 	lookupProcessor lookup.LookupProcessor
 	lastUpdate      *ttlcache.Cache[client.ObjectKey, struct{}]
+	lastDriftCheck  *ttlcache.Cache[client.ObjectKey, struct{}]
 }
 
 // Reconcile reconciles DNSEntry resources.
@@ -85,6 +89,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		state:                      r.state,
 		defaultCNAMELookupInterval: r.defaultCNAMELookupInterval,
 		lastUpdate:                 r.lastUpdate,
+		lastDriftCheck:             r.lastDriftCheck,
 	}
 	res := er.reconcile()
 	if res.Err != nil {

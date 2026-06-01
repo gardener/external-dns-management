@@ -95,6 +95,7 @@ func (ex *execution) submitChanges(ctx context.Context, metrics provider.Metrics
 		return nil
 	}
 
+	var failedErr error
 	failed := 0
 	throttlingErrCount := 0
 	limitedChanges := limitChangeSet(ex.changes, ex.batchSize)
@@ -139,13 +140,14 @@ func (ex *execution) submitChanges(ctx context.Context, metrics provider.Metrics
 		if len(failedChanges) > 0 {
 			failed += len(failedChanges)
 			ex.log.Error(err, fmt.Sprintf("%d records failed", len(failedChanges)), "zoneID", ex.zoneID)
+			failedErr = errors.Join(failedErr, err)
 		}
 		if len(succeededChanges) > 0 {
 			ex.log.Info(fmt.Sprintf("%d records were successfully updated", len(succeededChanges)), "zoneID", ex.zoneID)
 		}
 	}
 	if failed > 0 {
-		err := fmt.Errorf("%d changes failed", failed)
+		err := fmt.Errorf("%d changes failed: %w", failed, failedErr)
 		if throttlingErrCount == len(limitedChanges) {
 			err = dnserrors.NewThrottlingError(err)
 		}
