@@ -44,6 +44,8 @@ type DNSAccountConfig struct {
 	GlobalConfig *config.DNSManagerConfiguration
 }
 
+const defaultDNSCacheTTL = 5 * time.Second
+
 // DNSAccount represents a DNS account.
 type DNSAccount struct {
 	*utils.RateLimiter
@@ -154,14 +156,18 @@ func (a *DNSAccount) getZoneQueryCache(ctx context.Context, zone dns.ZoneInfo) (
 		if err != nil {
 			return nil, fmt.Errorf("failed to get custom query DNS function for zone %s: %w", zone.ZoneID(), err)
 		}
+		ttl := defaultDNSCacheTTL
+		if a.config.GlobalConfig != nil && a.config.GlobalConfig.Controllers.DNSEntry.PropagationWaitTime != nil {
+			ttl = max(a.config.GlobalConfig.Controllers.DNSEntry.PropagationWaitTime.Duration, defaultDNSCacheTTL)
+		}
 		if queryFunc != nil {
-			cache = utils.NewDNSCache(&handlerZoneQueryDNS{queryFunc: queryFunc, zone: zone}, 30*time.Second) // TODO set default TTL
+			cache = utils.NewDNSCache(&handlerZoneQueryDNS{queryFunc: queryFunc, zone: zone}, ttl)
 		} else {
 			dnsQuery, err := factory()
 			if err != nil {
 				return nil, err
 			}
-			cache = utils.NewDNSCache(dnsQuery, 30*time.Second) // TODO set default TTL
+			cache = utils.NewDNSCache(dnsQuery, ttl)
 		}
 		a.dnsCaches[zone.ZoneID()] = cache
 	}

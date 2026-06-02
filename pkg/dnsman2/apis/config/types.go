@@ -156,6 +156,9 @@ type DNSEntryControllerConfig struct {
 	MaxConcurrentLookups *int
 	// DefaultCNAMELookupInterval is the default interval for CNAME lookups in seconds.
 	DefaultCNAMELookupInterval *int64
+	// PropagationWaitTime is the duration to wait after a DNSEntry object has been updated before its old/new domain names are allowed to be reconciled again.
+	// This avoids potential phantom reads from authoritative DNS servers. Default value is 10 seconds.
+	PropagationWaitTime *metav1.Duration
 	// ReconciliationDelayAfterUpdate is the duration to wait after a DNSEntry object has been updated before its reconciliation is performed.
 	ReconciliationDelayAfterUpdate *metav1.Duration
 	// ZoneMetricsInterval is the interval for refreshing the per-zone DNS entry count metrics.

@@ -81,6 +81,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		},
 		namespace:                  r.Namespace,
 		migrationMode:              r.MigrationMode,
+		propagationWaitTime:        ptr.Deref(r.Config.PropagationWaitTime, metav1.Duration{}).Duration,
 		lookupProcessor:            r.lookupProcessor,
 		state:                      r.state,
 		defaultCNAMELookupInterval: r.defaultCNAMELookupInterval,
