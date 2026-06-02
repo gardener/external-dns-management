@@ -913,7 +913,7 @@ var _ = Describe("Reconcile", func() {
 				Expect(err).ToNot(HaveOccurred(), "failed to inject foreign record")
 				// The reconciler caches DNS query results per zone; the rogue record we just inserted
 				// is invisible to the next reconcile unless we drop the cache for this zone.
-				Expect(state.GetState().ClearDNSCaches(ctx, zoneID)).To(Succeed())
+				Expect(state.GetState().ClearDNSCaches(ctx, log, zoneID)).To(Succeed())
 			}
 
 			forceEntryError = func(entry *v1alpha1.DNSEntry) {
