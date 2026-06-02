@@ -61,7 +61,7 @@ var _ = Describe("Class", func() {
 			},
 			Entry("empty class returns default finalizer", "", FinalizerCompound),
 			Entry("default class returns default finalizer", DefaultClass, FinalizerCompound),
-			Entry("next-generation migration class returns default finalizer", DefaultClass, FinalizerCompound),
+			Entry("next-generation migration class returns default finalizer", NextGenMigrationClass, FinalizerCompound),
 			Entry("custom class prefixes finalizer", "myclass", "myclass."+FinalizerCompound),
 			Entry("another custom class", "secondary", "secondary."+FinalizerCompound),
 		)

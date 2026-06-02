@@ -18,7 +18,7 @@ const (
 
 	// DefaultClass is the default DNS class used by the controller.
 	DefaultClass = "gardendns"
-	// NextGenMigrationClass is a special DNS class used during migrating from legacy to next-generation controller.
+	// NextGenMigrationClass is a special DNS class used during migration from legacy to next-generation controller.
 	NextGenMigrationClass = "gardendns-next-gen"
 	// AnnotationClass is the annotation key for specifying the DNS class.
 	AnnotationClass = "dns.gardener.cloud/class"
