@@ -34,6 +34,11 @@ import (
 // TODO(MartinWeindel) add tests for dynamic changes of CNAME to A lookups
 // TODO(MartinWeindel) add tests for alias targets
 
+type noopMetrics struct{}
+
+func (noopMetrics) AddGenericRequests(_ dnsprovider.MetricsRequestType, _ int)        {}
+func (noopMetrics) AddZoneRequests(_ string, _ dnsprovider.MetricsRequestType, _ int) {}
+
 var _ = Describe("Reconcile", func() {
 	var (
 		ctx                   = context.Background()
@@ -339,7 +344,7 @@ var _ = Describe("Reconcile", func() {
 			state:           state.GetState(),
 			lookupProcessor: lookup.NewLookupProcessor(log.WithName("lookup-processor"), lookup.NewNullTrigger(), 1, 250*time.Millisecond),
 		}
-		reconciler.setReconciliationDelayAfterUpdate(1 * time.Microsecond)
+		reconciler.setCachePeriods(1*time.Microsecond, defaultDriftCheckPeriod)
 		state.GetState().SetDNSHandlerFactory(registry)
 
 		mlh = lookup.NewMockLookupHost(map[string]lookup.MockLookupHostResult{
@@ -894,6 +899,107 @@ var _ = Describe("Reconcile", func() {
 
 			reconciler.MigrationMode = true
 			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		})
+	})
+
+	Context("record-type drift recovery", func() {
+		var (
+			injectForeignRecord = func(zoneID dns.ZoneID, dnsName string, rs dns.RecordSet) {
+				GinkgoHelper()
+				mock := local.GetInMemoryMockByZoneID(zoneID)
+				Expect(mock).NotTo(BeNil(), "in-memory mock for zone %s not found", zoneID)
+				err := mock.Apply(zoneID, dns.DNSSetName{DNSName: dnsName}, rs.Type,
+					&dnsprovider.ChangeRequestUpdate{New: &rs}, noopMetrics{})
+				Expect(err).ToNot(HaveOccurred(), "failed to inject foreign record")
+				// The reconciler caches DNS query results per zone; the rogue record we just inserted
+				// is invisible to the next reconcile unless we drop the cache for this zone.
+				Expect(state.GetState().ClearDNSCaches(ctx, log, zoneID)).To(Succeed())
+			}
+
+			forceEntryError = func(entry *v1alpha1.DNSEntry) {
+				GinkgoHelper()
+				key := client.ObjectKeyFromObject(entry)
+				Expect(fakeClient.Get(ctx, key, entry)).To(Succeed())
+				entry.Status.State = v1alpha1.StateError
+				Expect(fakeClient.Status().Update(ctx, entry)).To(Succeed())
+			}
+		)
+
+		BeforeEach(func() {
+			createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+		})
+
+		It("recovers an A entry when a foreign CNAME shadows the same name", func() {
+			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
+
+			injectForeignRecord(zoneID1, "test.sub.example.com", dns.RecordSet{
+				Type:    dns.TypeCNAME,
+				TTL:     defaultTTL,
+				Records: []*dns.Record{{Value: "rogue.example.org."}},
+			})
+			forceEntryError(entryA)
+
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
+		})
+
+		It("recovers an A entry when a foreign AAAA exists at the same name", func() {
+			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+
+			injectForeignRecord(zoneID1, "test.sub.example.com", dns.RecordSet{
+				Type:    dns.TypeAAAA,
+				TTL:     defaultTTL,
+				Records: []*dns.Record{{Value: "::dead:beef"}},
+			})
+			forceEntryError(entryA)
+
+			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+			expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
+		})
+
+		It("recovers a CNAME entry when a foreign A exists at the same name", func() {
+			Expect(fakeClient.Create(ctx, entryC)).To(Succeed())
+			checkEntryStatus(entryC, "test/p1", zoneID1, "Ready", 120, "www.somewhere.com")
+
+			expectedCNAME := dns.RecordSet{
+				Type:    dns.TypeCNAME,
+				TTL:     120,
+				Records: []*dns.Record{{Value: "www.somewhere.com"}},
+			}
+			expectRecordSets(zoneID1, "cname.sub.example.com", expectedCNAME)
+
+			injectForeignRecord(zoneID1, "cname.sub.example.com", dns.RecordSet{
+				Type:    dns.TypeA,
+				TTL:     defaultTTL,
+				Records: []*dns.Record{{Value: "9.9.9.9"}},
+			})
+			forceEntryError(entryC)
+
+			checkEntryStatus(entryC, "test/p1", zoneID1, "Ready", 120, "www.somewhere.com")
+			expectRecordSets(zoneID1, "cname.sub.example.com", expectedCNAME)
+		})
+
+		It("does not expand alternative keys for a TXT entry, leaving foreign A records untouched", func() {
+			Expect(fakeClient.Create(ctx, entryB)).To(Succeed())
+			checkEntryStatus(entryB, "test/p1", zoneID1, "Ready", defaultTTL, "\"This is a text!\"", "\"blabla\"")
+			expectRecordSets(zoneID1, "txt.sub.example.com", recordSetB)
+
+			foreignA := dns.RecordSet{
+				Type:    dns.TypeA,
+				TTL:     defaultTTL,
+				Records: []*dns.Record{{Value: "9.9.9.9"}},
+			}
+			injectForeignRecord(zoneID1, "txt.sub.example.com", foreignA)
+			forceEntryError(entryB)
+
+			// Reconcile and expect the foreign A to remain in place (TXT keys do not trigger expansion).
+			_, err := reconcileEntry(client.ObjectKeyFromObject(entryB))
+			Expect(err).ToNot(HaveOccurred())
+
+			expectRecordSetsInternal(zoneID1, dns.DNSSetName{DNSName: "txt.sub.example.com"}, 1, 2, recordSetB, foreignA)
 		})
 	})
 

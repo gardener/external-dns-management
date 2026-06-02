@@ -36,6 +36,7 @@ type entryReconciliation struct {
 	lookupProcessor            lookup.LookupProcessor
 	defaultCNAMELookupInterval int64
 	lastUpdate                 *ttlcache.Cache[client.ObjectKey, struct{}]
+	lastDriftCheck             *ttlcache.Cache[client.ObjectKey, struct{}]
 }
 
 type newTargetsData struct {
@@ -119,6 +120,11 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 		return *res
 	}
 
+	if r.shouldTryRecordTypeDriftRecovery() {
+		r.insertPossibleAlternativeKeys(recordsToCheck)
+		r.markDriftCheckAttempted()
+	}
+
 	actualRecords, res := r.dnsRecordManager().QueryRecords(r.Ctx, recordsToCheck)
 	if res != nil {
 		return *res
@@ -137,6 +143,21 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 	}
 
 	return r.updateStatusWithProvider(targetsData)
+}
+
+// shouldTryRecordTypeDriftRecovery reports whether the entry is in a state that warrants checking for record-type drift
+// and whether the per-entry cooldown for the previous attempt has elapsed. It is a pure predicate; callers must invoke
+// markDriftCheckAttempted to consume the budget.
+func (r *entryReconciliation) shouldTryRecordTypeDriftRecovery() bool {
+	if r.Entry.Status.State != v1alpha1.StateError && r.Entry.Status.State != v1alpha1.StateStale {
+		return false
+	}
+	return !r.lastDriftCheck.Has(client.ObjectKeyFromObject(r.Entry))
+}
+
+// markDriftCheckAttempted records that a drift recovery attempt was made for the current entry, starting the cooldown.
+func (r *entryReconciliation) markDriftCheckAttempted() {
+	r.lastDriftCheck.Set(client.ObjectKeyFromObject(r.Entry), struct{}{}, ttlcache.DefaultTTL)
 }
 
 func (r *entryReconciliation) migrateDNSClass() *common.ReconcileResult {
@@ -381,6 +402,19 @@ func (r *entryReconciliation) mapTargets(targets dns.Targets, providerType strin
 		return targets, nil
 	}
 	return makeTargetsUnique(mapper.MapTargets(targets)), nil
+}
+
+func (r *entryReconciliation) insertPossibleAlternativeKeys(recordsToCheck records.FullRecordKeySet) {
+	for _, key := range recordsToCheck.UnsortedList() {
+		if key.RecordType == dns.TypeA || key.RecordType == dns.TypeAAAA || key.RecordType == dns.TypeCNAME {
+			for _, recordType := range []dns.RecordType{dns.TypeA, dns.TypeAAAA, dns.TypeCNAME} {
+				recordsToCheck.Insert(records.FullRecordSetKey{
+					FullDNSSetName: key.FullDNSSetName,
+					RecordType:     recordType,
+				})
+			}
+		}
+	}
 }
 
 // clearDNSCaches clears the DNS caches for the zones that are being updated

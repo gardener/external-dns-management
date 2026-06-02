@@ -192,9 +192,16 @@ type DNSEntryControllerConfig struct {
 	// +optional
 	ReconciliationDelayAfterUpdate *metav1.Duration `json:"reconciliationDelayAfterUpdate,omitempty"`
 	// ZoneMetricsInterval is the interval for refreshing the per-zone DNS entry count metrics.
-	// A value of 0 disables the periodic update. Default value is 30 seconds	.
+	// A value of 0 disables the periodic update. Default value is 30 seconds.
 	// +optional
 	ZoneMetricsInterval *metav1.Duration `json:"zoneMetricsInterval,omitempty"`
+	// DriftCheckPeriod is the minimum interval between two record-type drift recovery attempts for the same DNSEntry.
+	// When an entry is in Error or Stale state, the reconciler additionally queries the alternative address record types
+	// (A, AAAA, CNAME) at the same name to detect a foreign record blocking the entry. This bounds the resulting query
+	// amplification: too short causes repeated full-spectrum queries during persistent error states, too long slows
+	// recovery once the conflict is resolved. Default value is 12 hours.
+	// +optional
+	DriftCheckPeriod *metav1.Duration `json:"driftCheckPeriod,omitempty"`
 }
 
 // DNSAnnotationControllerConfig is the configuration for the DNSAnnotation controller.

@@ -44,16 +44,21 @@ type QueryDNS interface {
 type standardQueryDNS struct {
 	nameservers NameserversProvider
 	timeout     time.Duration
+	dnsQueryFn  func(ctx context.Context, fqdn string, rtype uint16) (*miekgdns.Msg, error)
 }
 
 // NewStandardQueryDNS creates a new StandardQueryDNS.
 func NewStandardQueryDNS(nameservers NameserversProvider) QueryDNS {
-	return &standardQueryDNS{nameservers: nameservers, timeout: 10 * time.Second}
+	q := &standardQueryDNS{nameservers: nameservers, timeout: 10 * time.Second}
+	q.dnsQueryFn = q.dnsQuery
+	return q
 }
 
 // NewStandardQueryDNSWithTimeout creates a new StandardQueryDNS with a custom DNS timeout.
 func NewStandardQueryDNSWithTimeout(nameservers NameserversProvider, timeout time.Duration) QueryDNS {
-	return &standardQueryDNS{nameservers: nameservers, timeout: timeout}
+	q := &standardQueryDNS{nameservers: nameservers, timeout: timeout}
+	q.dnsQueryFn = q.dnsQuery
+	return q
 }
 
 func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rstype dns.RecordType) QueryDNSResult {
@@ -78,7 +83,7 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 		return QueryDNSResult{Err: fmt.Errorf("unsupported record type %s", rstype)}
 	}
 
-	msg, err := q.dnsQuery(ctx, ToFQDN(setName.DNSName), rtype)
+	msg, err := q.dnsQueryFn(ctx, ToFQDN(setName.DNSName), rtype)
 	if err != nil {
 		return QueryDNSResult{Err: err}
 	}
@@ -100,12 +105,22 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 		case dns.TypeA:
 			r, ok := rr.(*miekgdns.A)
 			if !ok {
+				if isCNAMEAnswer(rr) {
+					// CNAME present means the name is an alias; A records (if any) belong to the alias target,
+					// not to the queried name. Return an empty record set so the caller can detect the type mismatch.
+					return QueryDNSResult{RecordSet: dns.NewRecordSet(rstype, 0, nil)}
+				}
 				return QueryDNSResult{Err: fmt.Errorf("unexpected record type %T (A)", rr)}
 			}
 			addRecord(r.A.String(), r.Hdr.Ttl)
 		case dns.TypeAAAA:
 			r, ok := rr.(*miekgdns.AAAA)
 			if !ok {
+				if isCNAMEAnswer(rr) {
+					// CNAME present means the name is an alias; AAAA records (if any) belong to the alias target,
+					// not to the queried name. Return an empty record set so the caller can detect the type mismatch.
+					return QueryDNSResult{RecordSet: dns.NewRecordSet(rstype, 0, nil)}
+				}
 				return QueryDNSResult{Err: fmt.Errorf("unexpected record type %T (AAAA)", rr)}
 			}
 			addRecord(r.AAAA.String(), r.Hdr.Ttl)
@@ -189,4 +204,13 @@ func (q *standardQueryDNS) sendDNSQuery(ctx context.Context, m *miekgdns.Msg, ns
 	}
 
 	return in, err
+}
+
+// isCNAMEAnswer returns true if the given DNS answer is a CNAME record that should be ignored for A/AAAA queries.
+func isCNAMEAnswer(rr miekgdns.RR) bool {
+	// When you query A or AAAA for a name that's actually a CNAME, recursive resolvers commonly return
+	// the CNAME chain plus the resolved A — but if the chain doesn't resolve or the server short-circuits,
+	// you get back just the CNAME RR with the queried type
+	_, ok := rr.(*miekgdns.CNAME)
+	return ok
 }

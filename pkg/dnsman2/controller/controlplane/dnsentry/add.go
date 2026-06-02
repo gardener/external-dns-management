@@ -64,10 +64,13 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		15*time.Second,
 	)
 	r.defaultCNAMELookupInterval = ptr.Deref(r.Config.DefaultCNAMELookupInterval, 600)
+	r.setCachePeriods(
+		ptr.Deref(r.Config.ReconciliationDelayAfterUpdate, metav1.Duration{Duration: defaultReconciliationDelayAfterUpdate}).Duration,
+		ptr.Deref(r.Config.DriftCheckPeriod, metav1.Duration{Duration: defaultDriftCheckPeriod}).Duration,
+	)
 	if err := mgr.Add(r.lookupProcessor); err != nil {
 		return err
 	}
-	r.setReconciliationDelayAfterUpdate(ptr.Deref(r.Config.ReconciliationDelayAfterUpdate, metav1.Duration{Duration: defaultReconciliationDelayAfterUpdate}).Duration)
 	bld := builder.
 		ControllerManagedBy(mgr).
 		Named(ControllerName).
@@ -184,10 +187,13 @@ func (r *Reconciler) allEntriesToReconcile(ctx context.Context) []reconcile.Requ
 	return requests
 }
 
-func (r *Reconciler) setReconciliationDelayAfterUpdate(reconciliationDelayAfterUpdate time.Duration) {
+func (r *Reconciler) setCachePeriods(reconciliationDelayAfterUpdate, driftCheckPeriod time.Duration) {
 	r.reconciliationDelayAfterUpdate = reconciliationDelayAfterUpdate
 	r.lastUpdate = ttlcache.New[client.ObjectKey, struct{}](
 		ttlcache.WithTTL[client.ObjectKey, struct{}](reconciliationDelayAfterUpdate),
+		ttlcache.WithDisableTouchOnHit[client.ObjectKey, struct{}]())
+	r.lastDriftCheck = ttlcache.New[client.ObjectKey, struct{}](
+		ttlcache.WithTTL[client.ObjectKey, struct{}](driftCheckPeriod),
 		ttlcache.WithDisableTouchOnHit[client.ObjectKey, struct{}]())
 }
 
