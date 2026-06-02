@@ -18,6 +18,8 @@ const (
 
 	// DefaultClass is the default DNS class used by the controller.
 	DefaultClass = "gardendns"
+	// NextGenMigrationClass is a special DNS class used during migration from legacy to next-generation controller.
+	NextGenMigrationClass = "gardendns-next-gen"
 	// AnnotationClass is the annotation key for specifying the DNS class.
 	AnnotationClass = "dns.gardener.cloud/class"
 	// AnnotationTTL is the annotation key for specifying the TTL (Time To Live) for DNS records.
@@ -30,6 +32,8 @@ const (
 
 	// FinalizerCompound is the finalizer for provider resources ("compound" to be backwards-compatible).
 	FinalizerCompound = "dns.gardener.cloud/compound"
+	// NextGenMigrationFinalizerCompound is the finalizer used for provider resources during migration from legacy to next-generation controller.
+	NextGenMigrationFinalizerCompound = NextGenMigrationClass + "." + FinalizerCompound
 	// FinalizerReplication is the finalizer for provider resources (exact name needed for backward compatibility).
 	FinalizerReplication = "garden.dns.gardener.cloud/dnsprovider-replication"
 	// FinalizerSourceTemplate is the finalizer template to be filled with class and controller (exact name needed for backward compatibility).

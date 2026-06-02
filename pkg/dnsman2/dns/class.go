@@ -62,6 +62,11 @@ func IsDefaultClass(class string) bool {
 	return NormalizeClass(class) == DefaultClass
 }
 
+// IsNextGenMigrationClass returns true if the provided class is the next-generation migration class.
+func IsNextGenMigrationClass(class string) bool {
+	return NormalizeClass(class) == NextGenMigrationClass
+}
+
 // EquivalentClass returns true if the annotation class are equivalent, i.e. equal after normalizing.
 func EquivalentClass(cls1, cls2 string) bool {
 	return NormalizeClass(cls1) == NormalizeClass(cls2)
@@ -69,7 +74,7 @@ func EquivalentClass(cls1, cls2 string) bool {
 
 // ClassFinalizerName returns the finalizer name for the provided class, which is either the default finalizer or the class name followed by the default finalizer.
 func ClassFinalizerName(class string) string {
-	if IsDefaultClass(class) {
+	if IsDefaultClass(class) || IsNextGenMigrationClass(class) {
 		return FinalizerCompound
 	}
 	return class + "." + FinalizerCompound
@@ -82,6 +87,12 @@ func HasSecondaryClassFinalizerNames(obj client.Object, secondaryClasses []strin
 			return true
 		}
 	}
+
+	// TODO(MartinWeindel) remove this cleanup code for the obsolete gardendns-next-gen finalizer after release v0.45.0
+	if slices.Contains(obj.GetFinalizers(), NextGenMigrationFinalizerCompound) {
+		return true
+	}
+
 	return false
 }
 
@@ -91,6 +102,10 @@ func MigrateSecondaryClassFinalizers(obj client.Object, class string, secondaryC
 	for _, secondaryClass := range secondaryClasses {
 		finalizers = slices.DeleteFunc(finalizers, func(f string) bool { return f == ClassFinalizerName(secondaryClass) })
 	}
+
+	// TODO(MartinWeindel) remove this cleanup code for the obsolete gardendns-next-gen finalizer after release v0.45.0
+	finalizers = slices.DeleteFunc(finalizers, func(f string) bool { return f == NextGenMigrationFinalizerCompound })
+
 	if !slices.Contains(finalizers, ClassFinalizerName(class)) {
 		finalizers = append(finalizers, ClassFinalizerName(class))
 	}
