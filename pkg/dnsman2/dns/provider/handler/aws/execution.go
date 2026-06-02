@@ -29,7 +29,7 @@ type wrappedChange struct {
 
 type execution struct {
 	log           logr.Logger
-	r53           route53.Client
+	r53           route53API
 	policyContext *routingPolicyContext
 	rateLimiter   flowcontrol.RateLimiter
 	zoneID        dns.ZoneID
