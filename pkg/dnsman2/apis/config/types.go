@@ -168,7 +168,7 @@ type DNSEntryControllerConfig struct {
 	// When an entry is in Error or Stale state, the reconciler additionally queries the alternative address record types
 	// (A, AAAA, CNAME) at the same name to detect a foreign record blocking the entry. This bounds the resulting query
 	// amplification: too short causes repeated full-spectrum queries during persistent error states, too long slows
-	// recovery once the conflict is resolved.
+	// recovery once the conflict is resolved. Default value is 12 hours.
 	DriftCheckPeriod *metav1.Duration
 }
 

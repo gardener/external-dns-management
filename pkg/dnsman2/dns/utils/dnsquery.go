@@ -44,8 +44,7 @@ type QueryDNS interface {
 type standardQueryDNS struct {
 	nameservers NameserversProvider
 	timeout     time.Duration
-	// dnsQueryFn allows tests to override the actual DNS exchange.
-	dnsQueryFn func(ctx context.Context, fqdn string, rtype uint16) (*miekgdns.Msg, error)
+	dnsQueryFn  func(ctx context.Context, fqdn string, rtype uint16) (*miekgdns.Msg, error)
 }
 
 // NewStandardQueryDNS creates a new StandardQueryDNS.
@@ -118,7 +117,8 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 			r, ok := rr.(*miekgdns.AAAA)
 			if !ok {
 				if isCNAMEAnswer(rr) {
-					// See comment above for TypeA.
+					// CNAME present means the name is an alias; AAAA records (if any) belong to the alias target,
+					// not to the queried name. Return an empty record set so the caller can detect the type mismatch.
 					return QueryDNSResult{RecordSet: dns.NewRecordSet(rstype, 0, nil)}
 				}
 				return QueryDNSResult{Err: fmt.Errorf("unexpected record type %T (AAAA)", rr)}
