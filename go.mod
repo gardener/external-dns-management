@@ -2,7 +2,7 @@ module github.com/gardener/external-dns-management
 
 go 1.25.9
 
-toolchain go1.26.3
+toolchain go1.26.4
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.21.0
