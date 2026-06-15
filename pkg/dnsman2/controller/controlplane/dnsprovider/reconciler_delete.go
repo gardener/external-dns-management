@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -52,7 +51,7 @@ func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1al
 			return res, err
 		}
 		return res, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
-			status.Message = ptr.To(fmt.Sprintf("cannot delete provider, %d DNSEntries still assigned to it", len(entries.Items)))
+			status.Message = new(fmt.Sprintf("cannot delete provider, %d DNSEntries still assigned to it", len(entries.Items)))
 			return nil
 		})
 	}
@@ -65,7 +64,8 @@ func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1al
 }
 
 func (r *Reconciler) handleEmptyProviderState(ctx context.Context, log logr.Logger, provider *v1alpha1.DNSProvider) (reconcile.Result, error) {
-	if r.state.GetProviderState(client.ObjectKeyFromObject(provider)) == nil {
+	providerState := r.state.GetProviderState(client.ObjectKeyFromObject(provider))
+	if providerState == nil || providerState.GetAccount() == nil {
 		// after controller restart, reconcile to recreate provider state
 		res, err := r.reconcile(ctx, log, provider)
 		if !res.IsZero() || err != nil {
