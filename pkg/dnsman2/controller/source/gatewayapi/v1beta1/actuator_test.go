@@ -210,6 +210,17 @@ var _ = Describe("Actuator", func() {
 			Expect(dnsEntries.Items).To(HaveLen(3))
 		})
 
+		It("should handle the wildcard DNS names annotation (alias value 'all')", func() {
+			gateway.Annotations["dns.gardener.cloud/dnsnames"] = "all"
+			Expect(fakeClientSrc.Create(ctx, gateway)).To(Succeed())
+
+			err := doReconcile(ctx, reconciler, gateway)
+			Expect(err).NotTo(HaveOccurred())
+
+			dnsEntries := getDNSEntries(ctx, fakeClientCtrl, reconciler)
+			Expect(dnsEntries.Items).To(HaveLen(3))
+		})
+
 		It("should create nothing without the DNS names annotation", func() {
 			delete(gateway.Annotations, "dns.gardener.cloud/dnsnames")
 			Expect(fakeClientSrc.Create(ctx, gateway)).To(Succeed())

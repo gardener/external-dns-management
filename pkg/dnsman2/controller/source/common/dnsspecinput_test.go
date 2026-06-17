@@ -16,6 +16,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 var _ = Describe("DNSSpecInput", func() {
@@ -60,6 +61,13 @@ var _ = Describe("DNSSpecInput", func() {
 
 		It("should handle the wildcard dns name annotation", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "*"
+			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(input.Names.ToSlice()).To(ConsistOf([]string{"example.com", "gardener.cloud", "wikipedia.org"}))
+		})
+
+		It("should handle the wildcard dns name annotation (alias value 'all')", func() {
+			ingress.Annotations[dns.AnnotationDNSNames] = "all"
 			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.Names.ToSlice()).To(ConsistOf([]string{"example.com", "gardener.cloud", "wikipedia.org"}))
@@ -276,6 +284,46 @@ var _ = Describe("DNSSpecInput", func() {
 
 		It("should match with a deeper base domain", func() {
 			Expect(common.MatchesWildcardSingleSubdomain("foo.api.gardener.cloud", "*.api.gardener.cloud")).To(BeTrue())
+		})
+	})
+
+	Describe("#HasDNSNamesWildcard", func() {
+		It("should return true when the set contains '*'", func() {
+			names := utils.NewUniqueStrings()
+			names.Add("*")
+			Expect(common.HasDNSNamesWildcard(names)).To(BeTrue())
+		})
+
+		It("should return true when the set contains 'all'", func() {
+			names := utils.NewUniqueStrings()
+			names.Add("all")
+			Expect(common.HasDNSNamesWildcard(names)).To(BeTrue())
+		})
+
+		It("should return false when neither '*' nor 'all' is in the set", func() {
+			names := utils.NewUniqueStrings()
+			names.Add("example.com")
+			Expect(common.HasDNSNamesWildcard(names)).To(BeFalse())
+		})
+
+		It("should return false for an empty set", func() {
+			Expect(common.HasDNSNamesWildcard(utils.NewUniqueStrings())).To(BeFalse())
+		})
+	})
+
+	Describe("#RemoveDNSNamesWildcard", func() {
+		It("should remove both '*' and 'all' entries", func() {
+			names := utils.NewUniqueStrings()
+			names.AddAll([]string{"*", "all", "example.com"})
+			common.RemoveDNSNamesWildcard(names)
+			Expect(names.ToSlice()).To(ConsistOf("example.com"))
+		})
+
+		It("should be a no-op when neither wildcard is present", func() {
+			names := utils.NewUniqueStrings()
+			names.AddAll([]string{"example.com", "gardener.cloud"})
+			common.RemoveDNSNamesWildcard(names)
+			Expect(names.ToSlice()).To(ConsistOf("example.com", "gardener.cloud"))
 		})
 	})
 })
