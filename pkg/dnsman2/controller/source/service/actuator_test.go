@@ -291,7 +291,7 @@ var _ = Describe("Actuator", func() {
 			testutils.AssertEvents(fakeRecorder.Events, "Warning Invalid ")
 		})
 
-		It("should fail if dnsnames are set to '*' (alias value 'all')", func() {
+		It("should fail if dnsnames are set to 'all'", func() {
 			svc.Annotations[dns.AnnotationDNSNames] = "all"
 			test(nil, "domain name annotation value \"*\" or \"all\" is not allowed for service objects")
 			testutils.AssertEvents(fakeRecorder.Events, "Warning Invalid ")
