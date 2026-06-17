@@ -39,10 +39,10 @@ func checkRoutingPolicyForDNSSet(name dns.DNSSetName, rs *dns.RecordSet) error {
 		return fmt.Errorf("unsupported routing policy")
 	}
 	switch rs.Type {
-	case dns.TypeA, dns.TypeAAAA:
+	case dns.TypeA, dns.TypeAAAA, dns.TypeCNAME:
 		// ok
 	default:
-		return fmt.Errorf("weighted routing policy only supported for A and AAAA records")
+		return fmt.Errorf("weighted routing policy only supported for A, AAAA, and CNAME records")
 	}
 	return nil
 }

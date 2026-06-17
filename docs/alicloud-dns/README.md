@@ -8,7 +8,7 @@ You need to provide an access key (access key ID and secret access key) for Alib
 authenticate to Alibaba Cloud DNS.
 
 For details see [AccessKey Client](https://github.com/aliyun/alibaba-cloud-sdk-go/blob/master/docs/2-Client-EN.md#accesskey-client).
-Currently the `regionId` is fixed to `cn-shanghai`. 
+Currently, the `regionId` is fixed to `cn-shanghai`. 
 
 ## Using the Access Key
 
@@ -50,7 +50,7 @@ If multiple targets are specified in the same `DNSEntry`, this is equivalent to 
 
 Every record set needs a `SetIdentifier` which must be a string containing only letters, digits, and '-'.
 
-The weighted routing policy is only supported for the `A` and `AAAA` record types.
+The weighted routing policy is only supported for the `A`, `AAAA`, and `CNAME` record types.
 
 All entries of the same domain name must have the same record type and TTL. Allowed values for weights are integer values between 1 and 100.
 
@@ -61,8 +61,8 @@ apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSEntry
 metadata:
   annotations:
-  # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
-  #dns.gardener.cloud/class: garden
+    # If you are delegating the DNS management to Gardener Shoot DNS Service, uncomment the following line
+    #dns.gardener.cloud/class: garden
   name: alidns-weighted
   namespace: default
 spec:

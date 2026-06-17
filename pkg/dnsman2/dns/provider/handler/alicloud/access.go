@@ -289,7 +289,7 @@ func (a *access) GetRecordList(_ context.Context, dnsName, rtype string, zone pr
 	for i, r := range rl {
 		if r.GetSetIdentifier() != "" {
 			switch r.GetType() {
-			case string(dns.TypeA), string(dns.TypeAAAA):
+			case string(dns.TypeA), string(dns.TypeAAAA), string(dns.TypeCNAME):
 				r := r.(*Record)
 				if r.Weight != nil {
 					routingPoliciesPerRecord[i] = dns.NewRoutingPolicy(dns.RoutingPolicyWeighted, "weight", strconv.FormatInt(int64(*r.Weight), 10))

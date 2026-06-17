@@ -112,7 +112,7 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 		r := (*Record)(record)
 		if id := r.GetSetIdentifier(); id != "" {
 			switch r.GetType() {
-			case dns.RS_A, dns.RS_AAAA:
+			case dns.RS_A, dns.RS_AAAA, dns.RS_CNAME:
 				// ok
 			default:
 				// ignore
