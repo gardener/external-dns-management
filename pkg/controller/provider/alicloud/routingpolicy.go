@@ -40,10 +40,10 @@ func checkRoutingPolicyForDNSSet(set *dns.DNSSet) error {
 	}
 	for t := range set.Sets {
 		switch t {
-		case dns.RS_A, dns.RS_AAAA:
+		case dns.RS_A, dns.RS_AAAA, dns.RS_CNAME:
 			// ok
 		default:
-			return fmt.Errorf("weighted routing policy only supported for A and AAAA records")
+			return fmt.Errorf("weighted routing policy only supported for A, AAAA, and CNAME records")
 		}
 	}
 	return nil
