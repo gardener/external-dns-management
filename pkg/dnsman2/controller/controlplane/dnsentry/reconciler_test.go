@@ -426,6 +426,43 @@ var _ = Describe("Reconcile", func() {
 		Expect(apierrors.IsNotFound(fakeClient.Get(ctx, client.ObjectKeyFromObject(entryA), entryA))).To(BeTrue(), "Entry should be not found")
 	})
 
+	It("should clean up status targets when spec targets are removed", func() {
+		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
+		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
+
+		entryA.Spec.Targets = nil
+		Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
+		checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", 0)
+		expectRecordSets(zoneID1, "test.sub.example.com")
+	})
+
+	It("should clean up status targets when spec text is removed from TXT entry", func() {
+		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+		Expect(fakeClient.Create(ctx, entryB)).To(Succeed())
+
+		checkEntryStatus(entryB, "test/p1", zoneID1, "Ready", defaultTTL, "\"This is a text!\"", "\"blabla\"")
+		expectRecordSets(zoneID1, "txt.sub.example.com", recordSetB)
+
+		entryB.Spec.Text = nil
+		Expect(fakeClient.Update(ctx, entryB)).To(Succeed())
+		checkEntryStatus(entryB, "test/p1", zoneID1, "Ready", 0)
+		expectRecordSets(zoneID1, "txt.sub.example.com")
+	})
+
+	It("should reject a new entry with neither targets nor text", func() {
+		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
+		entryA.Spec.Targets = nil
+		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
+
+		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(entryA)})
+		Expect(err).ToNot(HaveOccurred())
+		checkEntryStateAndMessage(entryA, "Invalid", ContainSubstring("no target or text specified"))
+		expectRecordSets(zoneID1, "test.sub.example.com")
+	})
+
 	It("should create/update/delete TXT record", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		Expect(fakeClient.Create(ctx, entryB)).To(Succeed())

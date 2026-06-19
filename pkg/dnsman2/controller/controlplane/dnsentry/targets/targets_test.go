@@ -46,7 +46,7 @@ var _ = Describe("SpecToTargets", func() {
 	It("returns targets for valid A record", func() {
 		spec.Targets = []string{ipv4Address}
 
-		result, err := producer.FromSpec(key, spec, "")
+		result, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result.HasWarnings()).To(BeFalse())
 		Expect(result.Targets).To(HaveLen(1))
@@ -59,7 +59,7 @@ var _ = Describe("SpecToTargets", func() {
 		spec.Targets = []string{ipv6Address}
 		spec.TTL = ptr.To[int64](120)
 
-		result, err := producer.FromSpec(key, spec, "")
+		result, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result.HasWarnings()).To(BeFalse())
 		Expect(result.Targets).To(HaveLen(1))
@@ -71,7 +71,7 @@ var _ = Describe("SpecToTargets", func() {
 	It("returns targets for valid A and AAAA records", func() {
 		spec.Targets = []string{ipv4Address, ipv4Address2, ipv6Address}
 
-		result, err := producer.FromSpec(key, spec, "")
+		result, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result.HasWarnings()).To(BeFalse())
 		Expect(result.Targets).To(HaveLen(3))
@@ -86,7 +86,7 @@ var _ = Describe("SpecToTargets", func() {
 	It("returns targets for valid CNAME record", func() {
 		spec.Targets = []string{"*.example.com"}
 
-		result, err := producer.FromSpec(key, spec, "")
+		result, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result.HasWarnings()).To(BeFalse())
 		Expect(result.Targets).To(HaveLen(1))
@@ -97,7 +97,7 @@ var _ = Describe("SpecToTargets", func() {
 	It("returns targets for valid TXT record", func() {
 		spec.Text = []string{"example.com", ipv4Address}
 
-		result, err := producer.FromSpec(key, spec, "")
+		result, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result.HasWarnings()).To(BeFalse())
 		Expect(result.Targets).To(HaveLen(2))
@@ -110,7 +110,7 @@ var _ = Describe("SpecToTargets", func() {
 	It("returns warning for duplicate targets", func() {
 		spec.Targets = []string{ipv4Address, ipv4Address}
 
-		result, err := producer.FromSpec(key, spec, "")
+		result, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result.Warnings).To(HaveLen(1))
 		Expect(result.Targets).To(HaveLen(1))
@@ -119,14 +119,14 @@ var _ = Describe("SpecToTargets", func() {
 	It("returns error for empty target", func() {
 		spec.Targets = []string{""}
 
-		_, err := producer.FromSpec(key, spec, "")
+		_, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).To(MatchError(ContainSubstring("must not be empty")))
 	})
 
 	It("returns warning for empty text", func() {
 		spec.Text = []string{""}
 
-		result, err := producer.FromSpec(key, spec, "")
+		result, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).To(MatchError(ContainSubstring("only empty text")))
 		Expect(result.Warnings).To(HaveLen(1))
 	})
@@ -135,26 +135,32 @@ var _ = Describe("SpecToTargets", func() {
 		spec.Targets = []string{ipv4Address}
 		spec.Text = []string{"foo"}
 
-		_, err := producer.FromSpec(key, spec, "")
+		_, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).To(MatchError(ContainSubstring("only text or targets possible")))
 	})
 
 	It("returns error if no targets or text are set", func() {
-		_, err := producer.FromSpec(key, spec, "")
+		_, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).To(MatchError(ContainSubstring("no target or text specified")))
+	})
+
+	It("returns empty targets without error if no targets or text are set but entry has existing targets", func() {
+		result, err := producer.FromSpec(key, spec, "", true)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result.Targets).To(BeEmpty())
 	})
 
 	It("returns error if there are too many CNAME targets", func() {
 		for i := range 26 {
 			spec.Targets = append(spec.Targets, fmt.Sprintf("cname%d.example.com", i))
 		}
-		_, err := producer.FromSpec(key, spec, "")
+		_, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).To(MatchError(ContainSubstring("too many CNAME targets (26), maximum is 25")))
 	})
 
 	It("returns error if there are CNAME target is mixed with IP addresses", func() {
 		spec.Targets = []string{"foo.example.com", ipv4Address}
-		_, err := producer.FromSpec(key, spec, "")
+		_, err := producer.FromSpec(key, spec, "", false)
 		Expect(err).To(MatchError(ContainSubstring("cannot mix CNAME and other record types in targets")))
 	})
 })

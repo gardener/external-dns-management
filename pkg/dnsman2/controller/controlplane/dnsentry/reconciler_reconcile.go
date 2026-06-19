@@ -359,7 +359,7 @@ func (r *entryReconciliation) checkProviderNotReady(data *providerselector.NewPr
 func (r *entryReconciliation) calcNewTargets(providerData *providerselector.NewProviderData, recordsToCheck records.FullRecordKeySet) (*newTargetsData, *common.ReconcileResult) {
 	producer := targets.NewTargetsProducer(r.Ctx, providerData.DefaultTTL, r.defaultCNAMELookupInterval, r.lookupProcessor)
 
-	result, err := producer.FromSpec(client.ObjectKeyFromObject(r.Entry), &r.Entry.Spec, r.Entry.Annotations[dns.AnnotationIPStack])
+	result, err := producer.FromSpec(client.ObjectKeyFromObject(r.Entry), &r.Entry.Spec, r.Entry.Annotations[dns.AnnotationIPStack], len(r.Entry.Status.Targets) > 0)
 	if err != nil {
 		return nil, common.InvalidReconcileResult(err.Error())
 	}

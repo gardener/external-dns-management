@@ -81,7 +81,7 @@ func NewTargetsProducer(ctx context.Context, defaultTTL, defaultCNAMELookupInter
 
 // FromSpec extracts dns.Targets from a DNSEntrySpec.
 // It validates the spec and returns warnings for duplicate targets or empty text.
-func (p *TargetsProducer) FromSpec(key client.ObjectKey, spec *v1alpha1.DNSEntrySpec, ipstack string) (result *TargetsResult, err error) {
+func (p *TargetsProducer) FromSpec(key client.ObjectKey, spec *v1alpha1.DNSEntrySpec, ipstack string, hasOldTargets bool) (result *TargetsResult, err error) {
 	if err = dns.ValidateDomainName(spec.DNSName); err != nil {
 		return
 	}
@@ -129,11 +129,6 @@ func (p *TargetsProducer) FromSpec(key client.ObjectKey, spec *v1alpha1.DNSEntry
 		return
 	}
 
-	if !result.HasTargets() {
-		err = fmt.Errorf("no target or text specified")
-		return
-	}
-
 	resolveTargetsToAddresses, err := checkCNAMETargets(spec, result.Targets)
 	if err != nil {
 		return
@@ -149,6 +144,12 @@ func (p *TargetsProducer) FromSpec(key client.ObjectKey, spec *v1alpha1.DNSEntry
 		if err != nil {
 			return
 		}
+	}
+
+	// if entry has existing targets, don't fail to allow cleanup
+	if !result.HasTargets() && !hasOldTargets {
+		err = fmt.Errorf("no target or text specified")
+		return
 	}
 
 	return
