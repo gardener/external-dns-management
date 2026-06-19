@@ -27,6 +27,13 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
+const (
+	// DNSNamesWildcard is the annotation value for 'dns.gardener.cloud/dnsnames' to add all hosts.
+	DNSNamesWildcard = "*"
+	// DNSNamesAll is an annotation value for 'dns.gardener.cloud/dnsnames' to add all hosts (alias of value "*").
+	DNSNamesAll = "all"
+)
+
 // DNSSpecInput specifies names, targets, and policies for DNS records.
 type DNSSpecInput struct {
 	Names                     *utils.UniqueStrings
@@ -51,8 +58,8 @@ func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk
 	if names == nil {
 		return nil, nil // no DNS names specified means no need to create DNS entries
 	}
-	if names.Contains("*") {
-		return nil, fmt.Errorf("domain name annotation value '*' is not allowed for service objects")
+	if HasDNSNamesWildcard(names) {
+		return nil, fmt.Errorf("domain name annotation value %q or %q is not allowed for service objects", DNSNamesWildcard, DNSNamesAll)
 	}
 
 	ipStack := annotations[dns.AnnotationIPStack]
@@ -124,7 +131,7 @@ func getDNSNamesForIngress(log logr.Logger, ingress *networkingv1.Ingress, annot
 		return nil, nil
 	}
 
-	all := annotatedNames.Contains("*")
+	all := HasDNSNamesWildcard(annotatedNames)
 	dnsNames := utils.NewUniqueStrings()
 	for _, rule := range ingress.Spec.Rules {
 		host := rule.Host
@@ -133,7 +140,7 @@ func getDNSNamesForIngress(log logr.Logger, ingress *networkingv1.Ingress, annot
 		}
 	}
 
-	annotatedNames.Remove("*")
+	RemoveDNSNamesWildcard(annotatedNames)
 	diff := annotatedNames.Difference(dnsNames)
 	if len(diff) > 0 {
 		return nil, fmt.Errorf("annotated dns names %s not declared by ingress", strings.Join(diff, ", "))
@@ -287,4 +294,15 @@ func BuildResourceReference(gvk schema.GroupVersionKind, obj metav1.Object) v1al
 //   - host: example.com,          h: *.gardener.cloud     -> false (unrelated domain)
 func MatchesWildcardSingleSubdomain(host, h string) bool {
 	return strings.HasPrefix(h, "*.") && strings.HasSuffix(host, h[1:]) && !strings.Contains(host[:len(host)-len(h)+1], ".")
+}
+
+// HasDNSNamesWildcard checks whether the given set of DNS names contains a wildcard entry (either "*" or "all").
+func HasDNSNamesWildcard(names *utils.UniqueStrings) bool {
+	return names.Contains(DNSNamesWildcard) || names.Contains(DNSNamesAll)
+}
+
+// RemoveDNSNamesWildcard removes wildcard entries (both "*" and "all") from the given set of DNS names.
+func RemoveDNSNamesWildcard(names *utils.UniqueStrings) {
+	names.Remove(DNSNamesWildcard)
+	names.Remove(DNSNamesAll)
 }

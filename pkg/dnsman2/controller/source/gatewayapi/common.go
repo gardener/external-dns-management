@@ -138,7 +138,7 @@ func getDNSNames[T client.Object](ctx context.Context, r *common.SourceReconcile
 	if err != nil {
 		return nil, err
 	}
-	all := annotatedNames.Contains("*")
+	all := common.HasDNSNamesWildcard(annotatedNames)
 	dnsNames := utils.NewUniqueStrings()
 	for _, host := range hosts {
 		if all || annotatedNames.Contains(host) {
@@ -146,7 +146,7 @@ func getDNSNames[T client.Object](ctx context.Context, r *common.SourceReconcile
 		}
 	}
 
-	annotatedNames.Remove("*")
+	common.RemoveDNSNamesWildcard(annotatedNames)
 	diff := annotatedNames.Difference(dnsNames)
 	if len(diff) > 0 {
 		return nil, fmt.Errorf("annotated dns names %s not declared by gateway.spec.listeners[].hostname", strings.Join(diff, ", "))

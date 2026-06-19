@@ -280,6 +280,13 @@ var _ = Describe("Common", func() {
 			Expect(names.ToSlice()).To(Equal([]string{"example.com", "wikipedia.org"}))
 		})
 
+		It("should get all DNS names with a wildcard annotation (alias value 'all')", func() {
+			gateway.Annotations["dns.gardener.cloud/dnsnames"] = "all"
+			names, err := getDNSNames(context.Background(), reconciler, gateway, gateway.Annotations)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(names.ToSlice()).To(Equal([]string{"example.com", "wikipedia.org"}))
+		})
+
 		It("should return an error if an annotated DNS name is not declared by the Gateway's listeners", func() {
 			gateway.Annotations["dns.gardener.cloud/dnsnames"] = "notlistened.to"
 			_, err := getDNSNames(context.Background(), reconciler, gateway, gateway.Annotations)
