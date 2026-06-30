@@ -28,7 +28,7 @@ require (
 	github.com/go-openapi/strfmt v0.26.4
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.13.0
-	github.com/gophercloud/utils/v2 v2.0.0-20260625225919-abcba73f9c96
+	github.com/gophercloud/utils/v2 v2.0.0-20260626221802-4ae35253ac13
 	github.com/infobloxopen/infoblox-go-client/v2 v2.11.0
 	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/joeig/go-powerdns/v3 v3.22.0
