@@ -96,7 +96,9 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		bld.WatchesRawSource(
 			source.Channel(ch,
 				handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) []reconcile.Request {
-					return r.allEntriesToReconcile(ctx)
+					requests := r.allEntriesToReconcile(ctx)
+					log.Info("periodic reconciliation", "requests", len(requests))
+					return requests
 				}),
 			),
 		)
