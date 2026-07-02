@@ -133,6 +133,19 @@ func (a *DNSAccount) GetZones(ctx context.Context) ([]DNSHostedZone, error) {
 	return zones, err
 }
 
+// GetCachedZone returns the cached hosted zone for the given zone ID, or nil if not found.
+func (a *DNSAccount) GetCachedZone(zoneID dns.ZoneID) DNSHostedZone {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
+	for _, zone := range a.cachedZones {
+		if zone.ZoneID() == zoneID {
+			return zone
+		}
+	}
+	return nil
+}
+
 // GetCustomQueryDNSFunc returns a custom query DNS function for the given zone.
 func (a *DNSAccount) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDNSFactoryFunc) (CustomQueryDNSFunc, error) {
 	return a.handler.GetCustomQueryDNSFunc(zone, factory)
@@ -330,15 +343,13 @@ func (m *AccountMap) GetDNSCachesByZone(ctx context.Context, zoneID dns.ZoneID) 
 
 	var result []*utils.DNSCache
 	for _, account := range m.accounts {
-		for _, zone := range account.cachedZones {
-			if zone.ZoneID() == zoneID {
-				zoneInfo := dns.NewZoneInfo(zone.ZoneID(), zone.Domain(), zone.IsPrivate(), zone.Key())
-				cache, err := account.getZoneQueryCache(ctx, zoneInfo)
-				if err != nil {
-					return nil, fmt.Errorf("failed to get DNS cache for zone %s: %w", zoneID, err)
-				}
-				result = append(result, cache)
+		if zone := account.GetCachedZone(zoneID); zone != nil {
+			zoneInfo := dns.NewZoneInfo(zone.ZoneID(), zone.Domain(), zone.IsPrivate(), zone.Key())
+			cache, err := account.getZoneQueryCache(ctx, zoneInfo)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get DNS cache for zone %s: %w", zoneID, err)
 			}
+			result = append(result, cache)
 		}
 	}
 	if len(result) == 0 {
