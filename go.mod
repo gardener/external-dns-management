@@ -12,12 +12,12 @@ require (
 	github.com/alibabacloud-go/alidns-20150109/v5 v5.4.1
 	github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.2
 	github.com/alibabacloud-go/tea v1.5.1
-	github.com/aws/aws-sdk-go-v2 v1.41.7
+	github.com/aws/aws-sdk-go-v2 v1.42.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.17
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.16
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.62.5
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.63.5
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.1
-	github.com/aws/smithy-go v1.25.1
+	github.com/aws/smithy-go v1.27.3
 	github.com/cloudflare/cloudflare-go/v7 v7.6.0
 	github.com/elastic/crd-ref-docs v0.3.0
 	github.com/gardener/controller-manager-library v0.2.1-0.20260508123052-a693015425a8
@@ -95,8 +95,8 @@ require (
 	github.com/andybalholm/brotli v1.2.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.23 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.23 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.23 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.30 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.30 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.24 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.9 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.23 // indirect
