@@ -41,6 +41,8 @@ import (
 // ControllerName is the name of this controller.
 const ControllerName = "dnsentry"
 
+const defaultProviderUpdateCachePeriod = 7 * 24 * time.Hour
+
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
 	r.Config = cfg.Controllers.DNSEntry
@@ -67,6 +69,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	r.setCachePeriods(
 		ptr.Deref(r.Config.ReconciliationDelayAfterUpdate, metav1.Duration{Duration: defaultReconciliationDelayAfterUpdate}).Duration,
 		ptr.Deref(r.Config.DriftCheckPeriod, metav1.Duration{Duration: defaultDriftCheckPeriod}).Duration,
+		defaultProviderUpdateCachePeriod,
 	)
 	if err := mgr.Add(r.lookupProcessor); err != nil {
 		return err
@@ -85,7 +88,17 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		WatchesRawSource(source.Kind[client.Object](controlPlaneCluster.GetCache(),
 			&v1alpha1.DNSProvider{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, provider client.Object) []reconcile.Request {
-				return r.entriesToReconcileOnProviderChanges(ctx, provider)
+				requests, unchanged, err := r.entriesToReconcileOnProviderChanges(ctx, provider)
+				if err != nil {
+					log.Error(err, "unable to reconcile provider changes")
+					return nil
+				}
+				if unchanged {
+					log.Info("DNSProvider unchanged", "provider", client.ObjectKeyFromObject(provider))
+					return nil
+				}
+				log.Info("trigger reconciliation by DNSProvider change", "entries", len(requests), "provider", client.ObjectKeyFromObject(provider))
+				return requests
 			}),
 			dnsman2controller.DNSClassesPredicate(r.Class, r.SecondaryClasses),
 		))
@@ -97,7 +110,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 			source.Channel(ch,
 				handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) []reconcile.Request {
 					requests := r.allEntriesToReconcile(ctx)
-					log.Info("periodic reconciliation", "requests", len(requests))
+					log.Info("periodic reconciliation", "entries", len(requests))
 					return requests
 				}),
 			),
@@ -138,17 +151,27 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		Complete(r)
 }
 
-func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, obj client.Object) []reconcile.Request {
+func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, obj client.Object) ([]reconcile.Request, bool, error) {
 	var requests []reconcile.Request
 	provider, ok := obj.(*v1alpha1.DNSProvider)
 	if !ok {
-		return nil
+		return nil, false, fmt.Errorf("unexpected object type: %T", obj)
+	}
+
+	var newLastUpdateTime time.Time
+	if provider.Status.LastUpdateTime != nil {
+		newLastUpdateTime = provider.Status.LastUpdateTime.Time
+	}
+	if item := r.lastProviderUpdate.Get(client.ObjectKeyFromObject(provider)); item != nil {
+		if item.Value().observedGeneration == provider.Generation && item.Value().lastUpdateTime.Equal(newLastUpdateTime) {
+			return nil, true, nil
+		}
 	}
 	providerName := provider.Namespace + "/" + provider.Name
 
 	entryList := &v1alpha1.DNSEntryList{}
 	if err := r.Client.List(ctx, entryList, client.InNamespace(r.Namespace)); err != nil {
-		return nil
+		return nil, false, err
 	}
 	for _, entry := range entryList.Items {
 		entryProviderName := ptr.Deref(entry.Status.Provider, "")
@@ -168,7 +191,12 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, ob
 			})
 		}
 	}
-	return requests
+	r.lastProviderUpdate.Set(
+		client.ObjectKeyFromObject(provider),
+		providerSnapshot{observedGeneration: provider.Status.ObservedGeneration, lastUpdateTime: newLastUpdateTime},
+		0,
+	)
+	return requests, false, nil
 }
 
 func (r *Reconciler) allEntriesToReconcile(ctx context.Context) []reconcile.Request {
@@ -189,7 +217,7 @@ func (r *Reconciler) allEntriesToReconcile(ctx context.Context) []reconcile.Requ
 	return requests
 }
 
-func (r *Reconciler) setCachePeriods(reconciliationDelayAfterUpdate, driftCheckPeriod time.Duration) {
+func (r *Reconciler) setCachePeriods(reconciliationDelayAfterUpdate, driftCheckPeriod, providerUpdateCachePeriod time.Duration) {
 	r.reconciliationDelayAfterUpdate = reconciliationDelayAfterUpdate
 	r.lastUpdate = ttlcache.New[client.ObjectKey, struct{}](
 		ttlcache.WithTTL[client.ObjectKey, struct{}](reconciliationDelayAfterUpdate),
@@ -197,6 +225,9 @@ func (r *Reconciler) setCachePeriods(reconciliationDelayAfterUpdate, driftCheckP
 	r.lastDriftCheck = ttlcache.New[client.ObjectKey, struct{}](
 		ttlcache.WithTTL[client.ObjectKey, struct{}](driftCheckPeriod),
 		ttlcache.WithDisableTouchOnHit[client.ObjectKey, struct{}]())
+	r.lastProviderUpdate = ttlcache.New[client.ObjectKey, providerSnapshot](
+		ttlcache.WithTTL[client.ObjectKey, providerSnapshot](providerUpdateCachePeriod),
+		ttlcache.WithDisableTouchOnHit[client.ObjectKey, providerSnapshot]())
 }
 
 func domainMatches(dnsName string, domains v1alpha1.DNSSelectionStatus) bool {

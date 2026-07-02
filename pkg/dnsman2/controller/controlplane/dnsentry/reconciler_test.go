@@ -344,7 +344,7 @@ var _ = Describe("Reconcile", func() {
 			state:           state.GetState(),
 			lookupProcessor: lookup.NewLookupProcessor(log.WithName("lookup-processor"), lookup.NewNullTrigger(), 1, 250*time.Millisecond),
 		}
-		reconciler.setCachePeriods(1*time.Microsecond, defaultDriftCheckPeriod)
+		reconciler.setCachePeriods(1*time.Microsecond, defaultDriftCheckPeriod, defaultProviderUpdateCachePeriod)
 		state.GetState().SetDNSHandlerFactory(registry)
 
 		mlh = lookup.NewMockLookupHost(map[string]lookup.MockLookupHostResult{

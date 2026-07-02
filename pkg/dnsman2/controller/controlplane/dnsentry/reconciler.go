@@ -45,10 +45,16 @@ type Reconciler struct {
 	defaultCNAMELookupInterval     int64
 	reconciliationDelayAfterUpdate time.Duration
 
-	state           *state.State
-	lookupProcessor lookup.LookupProcessor
-	lastUpdate      *ttlcache.Cache[client.ObjectKey, struct{}]
-	lastDriftCheck  *ttlcache.Cache[client.ObjectKey, struct{}]
+	state              *state.State
+	lookupProcessor    lookup.LookupProcessor
+	lastUpdate         *ttlcache.Cache[client.ObjectKey, struct{}]
+	lastDriftCheck     *ttlcache.Cache[client.ObjectKey, struct{}]
+	lastProviderUpdate *ttlcache.Cache[client.ObjectKey, providerSnapshot]
+}
+
+type providerSnapshot struct {
+	observedGeneration int64
+	lastUpdateTime     time.Time
 }
 
 // Reconcile reconciles DNSEntry resources.

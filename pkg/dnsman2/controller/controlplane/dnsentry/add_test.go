@@ -2,6 +2,7 @@ package dnsentry
 
 import (
 	"context"
+	"time"
 
 	"github.com/aws/smithy-go/ptr"
 	. "github.com/onsi/ginkgo/v2"
@@ -23,6 +24,14 @@ var _ = Describe("Add", func() {
 			fakeClient             client.Client
 			reconciler             *Reconciler
 			key1, key2, key3, key4 client.ObjectKey
+
+			checkEntriesToReconcileOnProviderChanges = func(ctx context.Context, provider client.Object) []reconcile.Request {
+				GinkgoHelper()
+				requests, unchanged, err := reconciler.entriesToReconcileOnProviderChanges(ctx, provider)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(unchanged).To(BeFalse())
+				return requests
+			}
 		)
 
 		BeforeEach(func() {
@@ -32,6 +41,7 @@ var _ = Describe("Add", func() {
 				Namespace: "test",
 				state:     state.GetState(),
 			}
+			reconciler.setCachePeriods(1*time.Microsecond, defaultDriftCheckPeriod, defaultProviderUpdateCachePeriod)
 
 			Expect(fakeClient.Create(ctx, &v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{Name: "entry1", Namespace: "test"},
@@ -78,14 +88,26 @@ var _ = Describe("Add", func() {
 					Domains: v1alpha1.DNSSelectionStatus{
 						Included: []string{"example.com"},
 					},
+					LastUpdateTime: &metav1.Time{Time: time.Now()},
 				},
 			}
-			Expect(reconciler.entriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(
+			expectedRequests := []any{
 				reconcile.Request{NamespacedName: key1},
 				reconcile.Request{NamespacedName: key2},
 				reconcile.Request{NamespacedName: key3},
 				reconcile.Request{NamespacedName: key4}, // matches because it is already assigned to the provider
-			))
+			}
+			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(expectedRequests...))
+
+			// second call should return empty list because unchanged
+			requests, unchanged, err := reconciler.entriesToReconcileOnProviderChanges(ctx, provider)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(requests).To(BeEmpty())
+			Expect(unchanged).To(BeTrue())
+
+			// after updating LastUpdateTime expected requests should be returned
+			provider.Status.LastUpdateTime.Time = provider.Status.LastUpdateTime.Add(1 * time.Microsecond)
+			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(expectedRequests...))
 		})
 
 		It("should return empty list for not matching provider", func() {
@@ -98,7 +120,7 @@ var _ = Describe("Add", func() {
 					},
 				},
 			}
-			Expect(reconciler.entriesToReconcileOnProviderChanges(ctx, provider)).To(BeEmpty())
+			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(BeEmpty())
 		})
 
 		It("should return exact matching domain", func() {
@@ -112,7 +134,7 @@ var _ = Describe("Add", func() {
 					},
 				},
 			}
-			Expect(reconciler.entriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(
+			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(
 				reconcile.Request{NamespacedName: key2},
 				reconcile.Request{NamespacedName: key3},
 			))
@@ -129,7 +151,7 @@ var _ = Describe("Add", func() {
 					},
 				},
 			}
-			Expect(reconciler.entriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(
+			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(
 				reconcile.Request{NamespacedName: key2},
 			))
 		})
@@ -144,7 +166,7 @@ var _ = Describe("Add", func() {
 					},
 				},
 			}
-			Expect(reconciler.entriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(
+			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(
 				reconcile.Request{NamespacedName: key3},
 			))
 		})
@@ -159,7 +181,7 @@ var _ = Describe("Add", func() {
 					},
 				},
 			}
-			Expect(reconciler.entriesToReconcileOnProviderChanges(ctx, provider)).To(BeEmpty())
+			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(BeEmpty())
 		})
 
 	})
