@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns/v2"
 	"github.com/go-logr/logr"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"

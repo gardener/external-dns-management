@@ -12,7 +12,7 @@ import (
 	"slices"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns/v2"
 	"github.com/go-logr/logr"
 	"k8s.io/utils/ptr"
 

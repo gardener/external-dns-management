@@ -7,7 +7,7 @@ package azureprivate
 import (
 	"strconv"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns/v2"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 
 	"github.com/gardener/external-dns-management/pkg/controller/provider/azure/utils"
