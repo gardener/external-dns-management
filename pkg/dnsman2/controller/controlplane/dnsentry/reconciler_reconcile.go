@@ -119,6 +119,11 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 	if res != nil {
 		return *res
 	}
+	if len(targetsData.targets) > 0 {
+		if res := r.StatusUpdater().AddFinalizer(); res != nil {
+			return *res
+		}
+	}
 
 	if r.shouldTryRecordTypeDriftRecovery() {
 		r.insertPossibleAlternativeKeys(recordsToCheck)
