@@ -21,8 +21,8 @@ require (
 	github.com/cloudflare/cloudflare-go/v7 v7.7.0
 	github.com/elastic/crd-ref-docs v0.3.0
 	github.com/gardener/controller-manager-library v0.2.1-0.20260703140944-c0ab44e1854d
-	github.com/gardener/gardener v1.145.1
-	github.com/gardener/gardener/pkg/apis v1.145.1
+	github.com/gardener/gardener v1.146.0
+	github.com/gardener/gardener/pkg/apis v1.146.0
 	github.com/go-logr/logr v1.4.3
 	github.com/go-openapi/runtime v0.32.4
 	github.com/go-openapi/strfmt v0.26.4
@@ -48,7 +48,7 @@ require (
 	google.golang.org/api v0.288.0
 	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
-	istio.io/api v1.29.4
+	istio.io/api v1.29.5
 	istio.io/client-go v1.29.2
 	k8s.io/api v0.35.5
 	k8s.io/apiextensions-apiserver v0.35.5
@@ -92,7 +92,7 @@ require (
 	github.com/alibabacloud-go/openapi-util v0.1.1 // indirect
 	github.com/alibabacloud-go/tea-utils/v2 v2.0.9 // indirect
 	github.com/aliyun/credentials-go v1.4.6 // indirect
-	github.com/andybalholm/brotli v1.2.1 // indirect
+	github.com/andybalholm/brotli v1.2.2 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.1 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.23 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.30 // indirect
