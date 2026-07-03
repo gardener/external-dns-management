@@ -106,6 +106,30 @@ var _ = Describe("Add", func() {
 			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(expectedRequests...))
 		})
 
+		It("should skip fan-out if provider status has not caught up with spec", func() {
+			provider := &v1alpha1.DNSProvider{
+				ObjectMeta: metav1.ObjectMeta{Name: "provider1", Namespace: "test", Generation: 2},
+				Status: v1alpha1.DNSProviderStatus{
+					ObservedGeneration: 1,
+					State:              v1alpha1.StateReady,
+					Domains: v1alpha1.DNSSelectionStatus{
+						Included: []string{"example.com"},
+					},
+					LastUpdateTime: &metav1.Time{Time: time.Now()},
+				},
+			}
+			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(BeEmpty())
+
+			// once status catches up, the fan-out should happen
+			provider.Status.ObservedGeneration = 2
+			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(
+				reconcile.Request{NamespacedName: key1},
+				reconcile.Request{NamespacedName: key2},
+				reconcile.Request{NamespacedName: key3},
+				reconcile.Request{NamespacedName: key4},
+			))
+		})
+
 		It("should return empty list for not matching provider", func() {
 			provider := &v1alpha1.DNSProvider{
 				ObjectMeta: metav1.ObjectMeta{Name: "other-provider", Namespace: "test"},

@@ -149,13 +149,14 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, lo
 		return nil
 	}
 	providerKey := client.ObjectKeyFromObject(provider)
+	observedGeneration := provider.Status.ObservedGeneration
 
 	// Gate: skip if provider hasn't caught up with its current spec.
-	if provider.Status.ObservedGeneration != provider.Generation {
+	if observedGeneration != provider.Generation {
 		log.V(1).Info("DNSProvider not yet reconciled, skipping entry fan-out",
 			"provider", providerKey,
 			"generation", provider.Generation,
-			"observedGeneration", provider.Status.ObservedGeneration)
+			"observedGeneration", observedGeneration)
 		return nil
 	}
 
@@ -165,9 +166,9 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, lo
 	}
 	// Cache: skip if we've already fanned out for this exact status snapshot.
 	if item := r.lastProviderUpdate.Get(providerKey); item != nil {
-		if item.Value().observedGeneration == provider.Status.ObservedGeneration &&
+		if item.Value().observedGeneration == observedGeneration &&
 			item.Value().lastUpdateTime.Equal(newLastUpdateTime) {
-			log.Info("DNSProvider unchanged", "provider", providerKey)
+			log.V(1).Info("DNSProvider unchanged", "provider", providerKey)
 			return nil
 		}
 	}
@@ -198,8 +199,8 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, lo
 		}
 	}
 	r.lastProviderUpdate.Set(
-		client.ObjectKeyFromObject(provider),
-		providerSnapshot{observedGeneration: provider.Status.ObservedGeneration, lastUpdateTime: newLastUpdateTime},
+		providerKey,
+		providerSnapshot{observedGeneration: observedGeneration, lastUpdateTime: newLastUpdateTime},
 		0,
 	)
 	log.Info("trigger reconciliation by DNSProvider change", "entries", len(requests), "provider", providerKey)
