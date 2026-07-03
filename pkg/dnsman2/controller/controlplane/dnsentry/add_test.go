@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/aws/smithy-go/ptr"
+	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -27,10 +28,7 @@ var _ = Describe("Add", func() {
 
 			checkEntriesToReconcileOnProviderChanges = func(ctx context.Context, provider client.Object) []reconcile.Request {
 				GinkgoHelper()
-				requests, unchanged, err := reconciler.entriesToReconcileOnProviderChanges(ctx, provider)
-				Expect(err).ToNot(HaveOccurred())
-				Expect(unchanged).To(BeFalse())
-				return requests
+				return reconciler.entriesToReconcileOnProviderChanges(ctx, logr.Discard(), provider)
 			}
 		)
 
@@ -100,10 +98,8 @@ var _ = Describe("Add", func() {
 			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(ConsistOf(expectedRequests...))
 
 			// second call should return empty list because unchanged
-			requests, unchanged, err := reconciler.entriesToReconcileOnProviderChanges(ctx, provider)
-			Expect(err).ToNot(HaveOccurred())
+			requests := reconciler.entriesToReconcileOnProviderChanges(ctx, logr.Discard(), provider)
 			Expect(requests).To(BeEmpty())
-			Expect(unchanged).To(BeTrue())
 
 			// after updating LastUpdateTime expected requests should be returned
 			provider.Status.LastUpdateTime.Time = provider.Status.LastUpdateTime.Add(1 * time.Microsecond)
