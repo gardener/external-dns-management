@@ -402,7 +402,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 			hello.Infof(logger)
 			logger.Infof("assigning to provider type %q responsible for zone %s", p.ptype, p.zoneid)
 			this.status.State = api.STATE_PENDING
-			this.status.Message = StatusMessage("waiting for dns reconciliation")
+			this.status.Message = new("waiting for dns reconciliation")
 		}
 	}
 
@@ -434,7 +434,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 
 	provider := ""
 	this.status.Zone = &p.zoneid
-	this.status.DNSName = ptr.To(this.DNSName())
+	this.status.DNSName = new(this.DNSName())
 	this.status.ProviderType = &p.ptype
 	this.responsible = true
 	if p.provider != nil {
@@ -477,7 +477,7 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 		if this.obsolete {
 			msg += "; no suitable provider available"
 		}
-		this.status.Message = StatusMessage(msg)
+		this.status.Message = new(msg)
 		this.valid = true
 		state.DeleteLookupJob(this.object.ObjectName())
 	} else {
@@ -536,12 +536,12 @@ func (this *EntryVersion) Setup(logger logger.LogContext, state *state, p *Entry
 				} else {
 					this.status.State = api.STATE_ERROR
 				}
-				this.status.Message = StatusMessage(err.Error())
+				this.status.Message = new(err.Error())
 			} else {
 				if strings.HasPrefix(*this.status.Message, MSG_PRESERVED) {
-					this.status.Message = StatusMessage(MSG_PRESERVED + ": " + err.Error())
+					this.status.Message = new(MSG_PRESERVED + ": " + err.Error())
 				} else {
-					this.status.Message = StatusMessage(err.Error())
+					this.status.Message = new(err.Error())
 				}
 			}
 		} else {
@@ -960,12 +960,13 @@ func (this EntryList) Unlock() {
 	}
 }
 
+//go:fix inline
 func StatusMessage(s string) *string {
-	return &s
+	return new(s)
 }
 
 func StatusMessagef(msgfmt string, args ...any) *string {
-	return StatusMessage(fmt.Sprintf(msgfmt, args...))
+	return new(fmt.Sprintf(msgfmt, args...))
 }
 
 func Provider(p DNSProvider) string {

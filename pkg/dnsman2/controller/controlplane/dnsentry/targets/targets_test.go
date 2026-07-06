@@ -175,7 +175,7 @@ var _ = Describe("StatusToTargets", func() {
 
 	It("returns A and AAAA targets for valid IPs", func() {
 		status := &v1alpha1.DNSEntryStatus{
-			Zone:    ptr.To("zone1"),
+			Zone:    new("zone1"),
 			Targets: []string{ipv4Address, ipv6Address},
 			TTL:     ptr.To[int64](120),
 		}
@@ -192,7 +192,7 @@ var _ = Describe("StatusToTargets", func() {
 
 	It("returns TXT targets for quoted strings", func() {
 		status := &v1alpha1.DNSEntryStatus{
-			Zone:    ptr.To("zone1"),
+			Zone:    new("zone1"),
 			Targets: []string{`"foo"`, `"bar"`},
 		}
 		targets, err := StatusToTargets(status, "")
@@ -208,7 +208,7 @@ var _ = Describe("StatusToTargets", func() {
 
 	It("returns CNAME target for non-IP, non-quoted string", func() {
 		status := &v1alpha1.DNSEntryStatus{
-			Zone:    ptr.To("zone1"),
+			Zone:    new("zone1"),
 			Targets: []string{"foo.example.com"},
 		}
 		targets, err := StatusToTargets(status, "")
@@ -219,7 +219,7 @@ var _ = Describe("StatusToTargets", func() {
 
 	It("skips duplicate targets", func() {
 		status := &v1alpha1.DNSEntryStatus{
-			Zone:    ptr.To("zone1"),
+			Zone:    new("zone1"),
 			Targets: []string{ipv4Address, ipv4Address},
 		}
 		targets, err := StatusToTargets(status, "")

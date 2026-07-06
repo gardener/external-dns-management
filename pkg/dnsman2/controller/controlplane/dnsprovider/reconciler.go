@@ -187,7 +187,7 @@ func (r *Reconciler) updateStatusFailed(ctx context.Context, provider *v1alpha1.
 		return err
 	}
 	return r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
-		status.Message = ptr.To(err.Error())
+		status.Message = new(err.Error())
 		status.State = state
 		status.ObservedGeneration = provider.Generation
 		status.Zones = v1alpha1.DNSSelectionStatus{}

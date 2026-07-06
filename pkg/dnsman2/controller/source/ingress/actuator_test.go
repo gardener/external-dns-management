@@ -188,8 +188,8 @@ var _ = Describe("Actuator", func() {
 
 			dnsEntries := getDNSEntries(ctx, fakeClientCtrl, reconciler)
 			Expect(dnsEntries.Items).To(HaveLen(1))
-			Expect(dnsEntries.Items[0].Spec.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
-			Expect(dnsEntries.Items[0].Spec.CNameLookupInterval).To(Equal(ptr.To(int64(456))))
+			Expect(dnsEntries.Items[0].Spec.ResolveTargetsToAddresses).To(Equal(new(true)))
+			Expect(dnsEntries.Items[0].Spec.CNameLookupInterval).To(Equal(new(int64(456))))
 		})
 
 		It("should handle the IP stack annotation", func() {

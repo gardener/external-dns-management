@@ -13,7 +13,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	. "github.com/onsi/gomega/gstruct"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
@@ -288,7 +287,7 @@ var _ = Describe("EntryLivecycle", func() {
 			e.Spec.Targets = []string{
 				"www.wikipedia.org",
 			}
-			e.Spec.ResolveTargetsToAddresses = ptr.To(true)
+			e.Spec.ResolveTargetsToAddresses = new(true)
 		}
 		e1, err := testEnv.CreateEntryGeneric(index, setSpec)
 		Ω(err).ShouldNot(HaveOccurred())
@@ -374,7 +373,7 @@ var _ = Describe("EntryLivecycle", func() {
 
 		e, err = testEnv.GetEntry(e.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
-		Ω(e.Data().(*v1alpha1.DNSEntry).Status.Message).To(Equal(ptr.To("entry is scheduled to be deleted; no suitable provider available")))
+		Ω(e.Data().(*v1alpha1.DNSEntry).Status.Message).To(Equal(new("entry is scheduled to be deleted; no suitable provider available")))
 
 		// revert domain to include entry domain
 		pr, err = testEnv.UpdateProviderSpec(pr, func(spec *v1alpha1.DNSProviderSpec) error {

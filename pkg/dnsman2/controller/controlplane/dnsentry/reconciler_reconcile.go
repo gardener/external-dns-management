@@ -257,19 +257,19 @@ func (r *entryReconciliation) updateStatusWithoutProvider() common.ReconcileResu
 			status.State = v1alpha1.StateError
 			status.ProviderType = nil
 		}
-		status.Message = ptr.To("no matching DNS provider found")
+		status.Message = new("no matching DNS provider found")
 		return nil
 	})
 }
 
 func (r *entryReconciliation) updateStatusWithProvider(targetsData *newTargetsData) common.ReconcileResult {
 	return r.StatusUpdater().UpdateStatus(func(status *v1alpha1.DNSEntryStatus) error {
-		status.Provider = ptr.To(targetsData.providerKey.String())
-		status.ProviderType = ptr.To(targetsData.providerType)
+		status.Provider = new(targetsData.providerKey.String())
+		status.ProviderType = new(targetsData.providerType)
 		status.Zone = &targetsData.zoneID.ID
 		name := targetsData.dnsSet.Name
 		rp := targetsData.routingPolicy
-		status.DNSName = ptr.To(name.DNSName)
+		status.DNSName = new(name.DNSName)
 		if name.SetIdentifier != "" && rp != nil {
 			status.RoutingPolicy = &v1alpha1.RoutingPolicy{
 				Type:          string(rp.Type),
@@ -281,7 +281,7 @@ func (r *entryReconciliation) updateStatusWithProvider(targetsData *newTargetsDa
 		}
 		status.Targets = targets.TargetsToStrings(targetsData.targets)
 		if len(targetsData.targets) > 0 {
-			status.TTL = ptr.To(targetsData.targets[0].GetTTL())
+			status.TTL = new(targetsData.targets[0].GetTTL())
 		} else {
 			status.TTL = nil
 		}
@@ -290,9 +290,9 @@ func (r *entryReconciliation) updateStatusWithProvider(targetsData *newTargetsDa
 		status.ObservedGeneration = r.Entry.Generation
 		status.State = v1alpha1.StateReady
 		if len(targetsData.warnings) > 0 {
-			status.Message = ptr.To(fmt.Sprintf("reconciled with warnings: %s", strings.Join(targetsData.warnings, ", ")))
+			status.Message = new(fmt.Sprintf("reconciled with warnings: %s", strings.Join(targetsData.warnings, ", ")))
 		} else {
-			status.Message = ptr.To("dns entry active")
+			status.Message = new("dns entry active")
 		}
 		return nil
 	})
@@ -314,7 +314,7 @@ func (r *entryReconciliation) ignoredByAnnotation() *common.ReconcileResult {
 		}
 		return &common.ReconcileResult{
 			State: ptr.To(v1alpha1.StateIgnored),
-			Message: ptr.To(fmt.Sprintf("entry is ignored due to annotation: %s",
+			Message: new(fmt.Sprintf("entry is ignored due to annotation: %s",
 				annotation)),
 		}
 	}

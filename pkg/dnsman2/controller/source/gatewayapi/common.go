@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapisv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
@@ -100,7 +99,7 @@ func DetermineAPIVersion(dc discovery.DiscoveryInterface) (*APIVersion, error) {
 		return nil, err
 	}
 	if v1 != nil && hasRelevantCRDs(v1.APIResources) {
-		return ptr.To(V1), nil // v1 CRDs found, no need to check for v1beta1
+		return new(V1), nil // v1 CRDs found, no need to check for v1beta1
 	}
 
 	v1beta1, err := dc.ServerResourcesForGroupVersion(GetGVKV1beta1().GroupVersion().String())
@@ -108,7 +107,7 @@ func DetermineAPIVersion(dc discovery.DiscoveryInterface) (*APIVersion, error) {
 		return nil, err
 	}
 	if v1beta1 != nil && hasRelevantCRDs(v1beta1.APIResources) {
-		return ptr.To(V1Beta1), nil // v1beta1 CRDs found
+		return new(V1Beta1), nil // v1beta1 CRDs found
 	}
 
 	return nil, nil // no relevant CRDs found
@@ -232,14 +231,14 @@ func listHTTPRoutesFor(ctx context.Context, c client.Client, gatewayObj client.O
 		for i, route := range list.Items {
 			routes[i] = gatewayapisv1.HTTPRoute(route)
 		}
-		return routes, ptr.To(GetGVKV1beta1()), nil
+		return routes, new(GetGVKV1beta1()), nil
 	case *gatewayapisv1.Gateway:
 		list := &gatewayapisv1.HTTPRouteList{}
 		err := c.List(ctx, list)
 		if err != nil {
 			return nil, nil, err
 		}
-		return list.Items, ptr.To(GetGVKV1()), nil
+		return list.Items, new(GetGVKV1()), nil
 	default:
 		return nil, nil, fmt.Errorf("unknown gateway object: %T", gateway)
 	}

@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -44,7 +43,7 @@ var _ = Describe("DeployCRDsWithClient", func() {
 	})
 
 	It("should skip deployment if DeployCRDs is false", func() {
-		cfg.DeployCRDs = ptr.To(false)
+		cfg.DeployCRDs = new(false)
 		err := app.DeployCRDsWithClient(ctx, log, c, cfg)
 		Expect(err).ToNot(HaveOccurred())
 		crds := &apiextensionsv1.CustomResourceDefinitionList{}
@@ -61,7 +60,7 @@ var _ = Describe("DeployCRDsWithClient", func() {
 	})
 
 	It("should deploy required CRDs when DeployCRDs is true", func() {
-		cfg.DeployCRDs = ptr.To(true)
+		cfg.DeployCRDs = new(true)
 		err := app.DeployCRDsWithClient(ctx, log, c, cfg)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -82,8 +81,8 @@ var _ = Describe("DeployCRDsWithClient", func() {
 	})
 
 	It("should deploy DNSProviders CRD when DNSProviderReplication is enabled", func() {
-		cfg.DeployCRDs = ptr.To(true)
-		cfg.Controllers.Source.DNSProviderReplication = ptr.To(true)
+		cfg.DeployCRDs = new(true)
+		cfg.Controllers.Source.DNSProviderReplication = new(true)
 		err := app.DeployCRDsWithClient(ctx, log, c, cfg)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -98,8 +97,8 @@ var _ = Describe("DeployCRDsWithClient", func() {
 	})
 
 	It("should add ShootNoCleanup annotation if specified", func() {
-		cfg.DeployCRDs = ptr.To(true)
-		cfg.AddShootNoCleanupLabelToCRDs = ptr.To(true)
+		cfg.DeployCRDs = new(true)
+		cfg.AddShootNoCleanupLabelToCRDs = new(true)
 		err := app.DeployCRDsWithClient(ctx, log, c, cfg)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -153,8 +152,8 @@ var _ = Describe("DeployCRDsWithClient", func() {
 		}
 		Expect(c.Create(ctx, mr)).To(Succeed())
 
-		cfg.DeployCRDs = ptr.To(true)
-		cfg.ConditionalDeployCRDs = ptr.To(true)
+		cfg.DeployCRDs = new(true)
+		cfg.ConditionalDeployCRDs = new(true)
 		err = app.DeployCRDsWithClient(ctx, log, c, cfg)
 		Expect(err).ToNot(HaveOccurred())
 

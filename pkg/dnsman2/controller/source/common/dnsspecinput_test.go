@@ -11,7 +11,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
@@ -92,7 +91,7 @@ var _ = Describe("DNSSpecInput", func() {
 			ingress.Annotations[dns.AnnotationResolveTargetsToAddresses] = "true"
 			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(input.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
+			Expect(input.ResolveTargetsToAddresses).To(Equal(new(true)))
 		})
 
 		It("should set IP Targets from ingress status", func() {

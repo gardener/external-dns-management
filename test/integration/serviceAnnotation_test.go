@@ -9,7 +9,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
@@ -106,7 +105,7 @@ var _ = Describe("ServiceAnnotation", func() {
 		entry5 := UnwrapEntry(entryObj5)
 		Ω(err).ShouldNot(HaveOccurred())
 		Ω(entry5.Spec.DNSName).Should(Equal(svcDomain5))
-		Ω(entry5.Spec.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
+		Ω(entry5.Spec.ResolveTargetsToAddresses).To(Equal(new(true)))
 
 		for _, item := range []resources.Object{svc, svc2, svc3, svc4, svc5} {
 			Ω(item.Delete()).ShouldNot(HaveOccurred())

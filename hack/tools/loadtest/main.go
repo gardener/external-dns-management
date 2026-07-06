@@ -41,7 +41,6 @@ import (
 	"github.com/gardener/gardener/pkg/controllerutils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -107,7 +106,7 @@ func createEntries(ctx context.Context, c client.Client, count int, nameTemplate
 			entry.Spec = dnsv1alpha1.DNSEntrySpec{
 				DNSName: fmt.Sprintf("%s.%s", name, baseDomain),
 				Targets: []string{fmt.Sprintf("2.%d.%d.%d", i>>16, (i&0xff00)>>8, i&0xff)},
-				TTL:     ptr.To(ttl),
+				TTL:     new(ttl),
 			}
 			if routingPolicy {
 				entry.Spec.RoutingPolicy = &dnsv1alpha1.RoutingPolicy{

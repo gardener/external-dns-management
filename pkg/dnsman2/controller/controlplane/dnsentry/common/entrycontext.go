@@ -45,7 +45,7 @@ type ReconcileResult struct {
 func InvalidReconcileResult(msg string) *ReconcileResult {
 	return &ReconcileResult{
 		State:   ptr.To(v1alpha1.StateInvalid),
-		Message: ptr.To(msg),
+		Message: new(msg),
 	}
 }
 
@@ -53,7 +53,7 @@ func InvalidReconcileResult(msg string) *ReconcileResult {
 func ErrorReconcileResult(msg string, retry bool) *ReconcileResult {
 	res := ReconcileResult{
 		State:   ptr.To(v1alpha1.StateError),
-		Message: ptr.To(msg),
+		Message: new(msg),
 	}
 	if retry {
 		// TODO (MartinWeindel): make retry interval configurable for testing and by last update time
@@ -67,7 +67,7 @@ func ErrorReconcileResult(msg string, retry bool) *ReconcileResult {
 func StaleReconcileResult(msg string, retry bool) *ReconcileResult {
 	res := ReconcileResult{
 		State:   ptr.To(v1alpha1.StateStale),
-		Message: ptr.To(msg),
+		Message: new(msg),
 	}
 	if retry {
 		// TODO (MartinWeindel): make retry interval configurable for testing and by last update time

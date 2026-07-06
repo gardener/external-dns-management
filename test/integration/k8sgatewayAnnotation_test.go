@@ -10,7 +10,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/ptr"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -65,7 +64,7 @@ var _ = Describe("GatewayAPIGatewayAnnotation", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		entry2 := UnwrapEntry(entryObj2)
 		Ω(entry2.Spec.DNSName).Should(Equal(svcDomain2))
-		Ω(entry2.Spec.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
+		Ω(entry2.Spec.ResolveTargetsToAddresses).To(Equal(new(true)))
 
 		err = gw.Delete()
 		Ω(err).ShouldNot(HaveOccurred())

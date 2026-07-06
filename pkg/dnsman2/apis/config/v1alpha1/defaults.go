@@ -102,7 +102,7 @@ func SetDefaults_ServerConfiguration(obj *ServerConfiguration) {
 // SetDefaults_DNSProviderControllerConfig sets defaults for the DNSProviderControllerConfig object.
 func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 	if obj.ConcurrentSyncs == nil {
-		obj.ConcurrentSyncs = ptr.To(2)
+		obj.ConcurrentSyncs = new(2)
 	}
 	if obj.SyncPeriod == nil {
 		obj.SyncPeriod = &metav1.Duration{Duration: time.Hour}
@@ -140,7 +140,7 @@ func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 // SetDefaults_DNSEntryControllerConfig sets defaults for the DNSEntryControllerConfig object.
 func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 	if obj.ConcurrentSyncs == nil {
-		obj.ConcurrentSyncs = ptr.To(5)
+		obj.ConcurrentSyncs = new(5)
 	}
 	if obj.SyncPeriod == nil {
 		// periodic sync is a safety net, not the primary trigger.
@@ -163,10 +163,10 @@ func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 // SetDefaults_SourceControllerConfig sets defaults for the SourceControllerConfig object.
 func SetDefaults_SourceControllerConfig(obj *SourceControllerConfig) {
 	if obj.ConcurrentSyncs == nil {
-		obj.ConcurrentSyncs = ptr.To(5)
+		obj.ConcurrentSyncs = new(5)
 	}
 	if ptr.Deref(obj.TargetNamespace, "") == "" {
-		obj.TargetNamespace = ptr.To(getDefaultNamespace())
+		obj.TargetNamespace = new(getDefaultNamespace())
 	}
 }
 

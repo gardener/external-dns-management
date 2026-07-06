@@ -275,7 +275,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 				status := &data.(*api.DNSEntry).Status
 				mod := utils.ModificationState{}
 				mod.AssureStringValue(&status.State, api.STATE_IGNORED)
-				mod.AssureStringPtrPtr(&status.Message, ptr.To(fmt.Sprintf("entry is ignored as annotated with %s", annotation)))
+				mod.AssureStringPtrPtr(&status.Message, new(fmt.Sprintf("entry is ignored as annotated with %s", annotation)))
 				return mod.IsModified(), nil
 			})
 		} else {
@@ -316,7 +316,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 					status := &data.(*api.DNSEntry).Status
 					mod := utils.ModificationState{}
 					mod.AssureStringValue(&status.State, api.STATE_ERROR)
-					mod.AssureStringPtrPtr(&status.Message, ptr.To(msg))
+					mod.AssureStringPtrPtr(&status.Message, new(msg))
 					return mod.IsModified(), nil
 				})
 				if err != nil {

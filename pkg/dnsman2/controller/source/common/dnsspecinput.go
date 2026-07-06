@@ -18,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
@@ -196,7 +195,7 @@ func AugmentFromCommonAnnotations(annotations map[string]string, input DNSSpecIn
 	}
 
 	if v := annotations[dns.AnnotationResolveTargetsToAddresses]; v != "" {
-		input.ResolveTargetsToAddresses = ptr.To(v == "true")
+		input.ResolveTargetsToAddresses = new(v == "true")
 	}
 
 	if a := annotations[dns.AnnotationCNameLookupInterval]; a != "" {

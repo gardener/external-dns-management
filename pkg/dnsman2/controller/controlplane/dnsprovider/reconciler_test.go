@@ -43,7 +43,7 @@ var _ = Describe("Reconcile", func() {
 			Expect(provider.Status.ObservedGeneration).To(Equal(provider.Generation))
 			Expect(provider.Status.State).To(Equal(expectedState))
 			Expect(provider.Status.LastUpdateTime.Time).To(Equal(startTime))
-			Expect(provider.Status.Message).To(Equal(ptr.To(expectedMessage)))
+			Expect(provider.Status.Message).To(Equal(new(expectedMessage)))
 		}
 
 		checkFailed = func(expectedState string, expectedMessage string) {
@@ -203,7 +203,7 @@ var _ = Describe("Reconcile", func() {
 	It("should update status for supported provider type if secret ref namespace is missing (variant migration mode)", func() {
 		provider.Spec.SecretRef.Namespace = ""
 		Expect(fakeClient.Create(ctx, provider)).To(Succeed())
-		reconciler.Config.MigrationMode = ptr.To(true)
+		reconciler.Config.MigrationMode = new(true)
 		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: providerKey})
 		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))
@@ -402,7 +402,7 @@ var _ = Describe("Reconcile", func() {
 				initialFinalizers:        []string{"class-b.dns.gardener.cloud/compound"},
 				reconcilerClass:          "class-a",
 				reconcilerSecondaryClass: []string{"class-b"},
-				expectedAnnotation:       ptr.To("class-a"),
+				expectedAnnotation:       new("class-a"),
 				expectedFinalizers:       []string{"class-a.dns.gardener.cloud/compound"},
 				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound"},
 				secretExpectedFinalizers: []string{"class-a.dns.gardener.cloud/compound"},
@@ -451,7 +451,7 @@ var _ = Describe("Reconcile", func() {
 				secretInitialFinalizers:  []string{"class-b.dns.gardener.cloud/compound"},
 				reconcilerClass:          "class-a",
 				reconcilerSecondaryClass: []string{"class-b"},
-				expectedAnnotation:       ptr.To("class-a"),
+				expectedAnnotation:       new("class-a"),
 				expectedFinalizers:       []string{"class-a.dns.gardener.cloud/compound"},
 				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound"},
 				secretExpectedFinalizers: []string{"class-a.dns.gardener.cloud/compound"},

@@ -987,7 +987,7 @@ func (te *TestEnv) CreateGatewayAPIGatewayWithAnnotation(name, domainName string
 			},
 		}
 		if domainName != "" {
-			gw.Spec.Listeners[0].Hostname = ptr.To(gatewayapisv1.Hostname(domainName))
+			gw.Spec.Listeners[0].Hostname = new(gatewayapisv1.Hostname(domainName))
 		}
 	}
 
@@ -1042,7 +1042,7 @@ func (te *TestEnv) CreateGatewayAPIHTTPRoute(name, hostname string, gateway reso
 		gw.Spec.Hostnames = []gatewayapisv1.Hostname{gatewayapisv1.Hostname(hostname)}
 		gw.Spec.ParentRefs = []gatewayapisv1.ParentReference{
 			{
-				Namespace: ptr.To(gatewayapisv1.Namespace(gateway.Namespace())),
+				Namespace: new(gatewayapisv1.Namespace(gateway.Namespace())),
 				Name:      gatewayapisv1.ObjectName(gateway.Name()),
 			},
 		}

@@ -7,7 +7,6 @@ package integration
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 )
@@ -78,7 +77,7 @@ var _ = Describe("IngressAnnotation", func() {
 		entryObj3, err := testEnv.AwaitObjectByOwner("Ingress", ingress3.GetName())
 		Ω(err).ShouldNot(HaveOccurred())
 		entry3 := UnwrapEntry(entryObj3)
-		Ω(entry3.Spec.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
+		Ω(entry3.Spec.ResolveTargetsToAddresses).To(Equal(new(true)))
 
 		err = ingress2.Delete()
 		Ω(err).ShouldNot(HaveOccurred())

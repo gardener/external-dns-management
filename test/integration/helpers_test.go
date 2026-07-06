@@ -7,7 +7,6 @@ package integration
 import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	. "github.com/onsi/gomega"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dns"
@@ -55,6 +54,6 @@ func checkEntryEx(te *TestEnv, obj resources.Object, provider resources.Object, 
 	Ω(entry.Status.Provider).ShouldNot(BeNil(), "Missing provider")
 	providerName := provider.ObjectName().String()
 	Ω(*entry.Status.Provider).Should(Equal(providerName))
-	Ω(entry.Status.DNSName).Should(Equal(ptr.To(dns.NormalizeHostname(entry.Spec.DNSName))))
+	Ω(entry.Status.DNSName).Should(Equal(new(dns.NormalizeHostname(entry.Spec.DNSName))))
 	return entry
 }
