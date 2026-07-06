@@ -143,6 +143,7 @@ func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 		obj.ConcurrentSyncs = ptr.To(5)
 	}
 	if obj.SyncPeriod == nil {
+		// periodic sync is a safety net, not the primary trigger.
 		obj.SyncPeriod = &metav1.Duration{Duration: 8 * time.Hour}
 	}
 	if obj.ReconciliationTimeout == nil {
