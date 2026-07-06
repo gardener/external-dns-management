@@ -194,7 +194,7 @@ var _ = Describe("Defaults", func() {
 					SetDefaults_DNSEntryControllerConfig(obj)
 
 					Expect(obj.ConcurrentSyncs).To(PointTo(Equal(5)))
-					Expect(obj.SyncPeriod).To(PointTo(Equal(metav1.Duration{Duration: time.Hour})))
+					Expect(obj.SyncPeriod).To(PointTo(Equal(metav1.Duration{Duration: 8 * time.Hour})))
 					Expect(obj.ReconciliationTimeout).To(PointTo(Equal(metav1.Duration{Duration: 2 * time.Minute})))
 					Expect(obj.ZoneMetricsInterval).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Second})))
 					Expect(obj.PropagationWaitTime).To(PointTo(Equal(metav1.Duration{Duration: 10 * time.Second})))

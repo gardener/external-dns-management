@@ -13,6 +13,7 @@ import (
 
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/gardener/gardener/pkg/utils/kubernetes"
+	"github.com/go-logr/logr"
 	"github.com/jellydator/ttlcache/v3"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -41,6 +42,8 @@ import (
 // ControllerName is the name of this controller.
 const ControllerName = "dnsentry"
 
+const defaultProviderUpdateCachePeriod = 7 * 24 * time.Hour
+
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
 	r.Config = cfg.Controllers.DNSEntry
@@ -67,6 +70,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	r.setCachePeriods(
 		ptr.Deref(r.Config.ReconciliationDelayAfterUpdate, metav1.Duration{Duration: defaultReconciliationDelayAfterUpdate}).Duration,
 		ptr.Deref(r.Config.DriftCheckPeriod, metav1.Duration{Duration: defaultDriftCheckPeriod}).Duration,
+		defaultProviderUpdateCachePeriod,
 	)
 	if err := mgr.Add(r.lookupProcessor); err != nil {
 		return err
@@ -85,7 +89,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		WatchesRawSource(source.Kind[client.Object](controlPlaneCluster.GetCache(),
 			&v1alpha1.DNSProvider{},
 			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, provider client.Object) []reconcile.Request {
-				return r.entriesToReconcileOnProviderChanges(ctx, provider)
+				return r.entriesToReconcileOnProviderChanges(ctx, log, provider)
 			}),
 			dnsman2controller.DNSClassesPredicate(r.Class, r.SecondaryClasses),
 		))
@@ -96,7 +100,9 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		bld.WatchesRawSource(
 			source.Channel(ch,
 				handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, _ client.Object) []reconcile.Request {
-					return r.allEntriesToReconcile(ctx)
+					requests := r.allEntriesToReconcile(ctx)
+					log.Info("periodic reconciliation", "entries", len(requests))
+					return requests
 				}),
 			),
 		)
@@ -136,18 +142,44 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		Complete(r)
 }
 
-func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, obj client.Object) []reconcile.Request {
-	var requests []reconcile.Request
+func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, log logr.Logger, obj client.Object) []reconcile.Request {
 	provider, ok := obj.(*v1alpha1.DNSProvider)
 	if !ok {
+		log.Error(fmt.Errorf("unexpected object type: %T", obj), "unable to reconcile provider changes")
 		return nil
+	}
+	providerKey := client.ObjectKeyFromObject(provider)
+	observedGeneration := provider.Status.ObservedGeneration
+
+	// Gate: skip if provider hasn't caught up with its current spec.
+	if observedGeneration != provider.Generation {
+		log.V(1).Info("DNSProvider not yet reconciled, skipping entry fan-out",
+			"provider", providerKey,
+			"generation", provider.Generation,
+			"observedGeneration", observedGeneration)
+		return nil
+	}
+
+	var newLastUpdateTime time.Time
+	if provider.Status.LastUpdateTime != nil {
+		newLastUpdateTime = provider.Status.LastUpdateTime.Time
+	}
+	// Cache: skip if we've already fanned out for this exact status snapshot.
+	if item := r.lastProviderUpdate.Get(providerKey); item != nil {
+		if item.Value().observedGeneration == observedGeneration &&
+			item.Value().lastUpdateTime.Equal(newLastUpdateTime) {
+			log.V(1).Info("DNSProvider unchanged", "provider", providerKey)
+			return nil
+		}
 	}
 	providerName := provider.Namespace + "/" + provider.Name
 
 	entryList := &v1alpha1.DNSEntryList{}
 	if err := r.Client.List(ctx, entryList, client.InNamespace(r.Namespace)); err != nil {
+		log.Error(err, "unable to reconcile provider changes", "provider", providerKey)
 		return nil
 	}
+	var requests []reconcile.Request
 	for _, entry := range entryList.Items {
 		entryProviderName := ptr.Deref(entry.Status.Provider, "")
 		add := false
@@ -166,6 +198,12 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, ob
 			})
 		}
 	}
+	r.lastProviderUpdate.Set(
+		providerKey,
+		providerSnapshot{observedGeneration: observedGeneration, lastUpdateTime: newLastUpdateTime},
+		0,
+	)
+	log.Info("trigger reconciliation by DNSProvider change", "entries", len(requests), "provider", providerKey)
 	return requests
 }
 
@@ -187,7 +225,7 @@ func (r *Reconciler) allEntriesToReconcile(ctx context.Context) []reconcile.Requ
 	return requests
 }
 
-func (r *Reconciler) setCachePeriods(reconciliationDelayAfterUpdate, driftCheckPeriod time.Duration) {
+func (r *Reconciler) setCachePeriods(reconciliationDelayAfterUpdate, driftCheckPeriod, providerUpdateCachePeriod time.Duration) {
 	r.reconciliationDelayAfterUpdate = reconciliationDelayAfterUpdate
 	r.lastUpdate = ttlcache.New[client.ObjectKey, struct{}](
 		ttlcache.WithTTL[client.ObjectKey, struct{}](reconciliationDelayAfterUpdate),
@@ -195,6 +233,9 @@ func (r *Reconciler) setCachePeriods(reconciliationDelayAfterUpdate, driftCheckP
 	r.lastDriftCheck = ttlcache.New[client.ObjectKey, struct{}](
 		ttlcache.WithTTL[client.ObjectKey, struct{}](driftCheckPeriod),
 		ttlcache.WithDisableTouchOnHit[client.ObjectKey, struct{}]())
+	r.lastProviderUpdate = ttlcache.New[client.ObjectKey, providerSnapshot](
+		ttlcache.WithTTL[client.ObjectKey, providerSnapshot](providerUpdateCachePeriod),
+		ttlcache.WithDisableTouchOnHit[client.ObjectKey, providerSnapshot]())
 }
 
 func domainMatches(dnsName string, domains v1alpha1.DNSSelectionStatus) bool {
