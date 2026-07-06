@@ -184,10 +184,10 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should create DNSEntry object for source entry on different clusters", func() {
-			reconciler.Config.TargetClusterID = ptr.To("target-cluster-id")
-			reconciler.Config.SourceClusterID = ptr.To("source-cluster-id")
+			reconciler.Config.TargetClusterID = new("target-cluster-id")
+			reconciler.Config.SourceClusterID = new("source-cluster-id")
 			reconciler.TargetClass = "target-dns-class"
-			reconciler.Config.TargetClass = ptr.To(reconciler.TargetClass)
+			reconciler.Config.TargetClass = new(reconciler.TargetClass)
 			reconciler.Config.TargetLabels = map[string]string{
 				"gardener.cloud/shoot-id": "source-cluster-id",
 			}
@@ -208,17 +208,17 @@ var _ = Describe("Actuator", func() {
 				dns.AnnotationIgnore:  dns.AnnotationIgnoreValueFull,
 				dns.AnnotationIPStack: dns.AnnotationValueIPStackIPDualStack,
 			}
-			sourceEntry.Spec.TTL = ptr.To(int64(123))
+			sourceEntry.Spec.TTL = new(int64(123))
 			sourceEntry.Spec.RoutingPolicy = &dnsv1alpha1.RoutingPolicy{
 				Type:          "weighted",
 				SetIdentifier: "route1",
 				Parameters:    map[string]string{"weight": "10"},
 			}
-			sourceEntry.Spec.ResolveTargetsToAddresses = ptr.To(true)
-			sourceEntry.Spec.CNameLookupInterval = ptr.To(int64(456))
+			sourceEntry.Spec.ResolveTargetsToAddresses = new(true)
+			sourceEntry.Spec.CNameLookupInterval = new(int64(456))
 
-			reconciler.Config.TargetClass = ptr.To("target-class")
-			reconciler.Config.TargetNamePrefix = ptr.To("prefix-")
+			reconciler.Config.TargetClass = new("target-class")
+			reconciler.Config.TargetNamePrefix = new("prefix-")
 			entries := test(&sourceEntry.Spec)
 			Expect(entries[0].Annotations).To(Equal(map[string]string{
 				"dns.gardener.cloud/class":        "target-class",

@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/discovery"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -281,7 +280,7 @@ func DetermineAPIVersion(dc discovery.DiscoveryInterface) (*APIVersion, error) {
 		return nil, err
 	}
 	if hasV1 {
-		return ptr.To(V1), nil // hasV1 CRDs found, no need to check for hasV1Beta1 or hasV1Alpha3
+		return new(V1), nil // hasV1 CRDs found, no need to check for hasV1Beta1 or hasV1Alpha3
 	}
 
 	hasV1Beta1, err := hasRelevantCRDs(dc, istionetworkingv1beta1.SchemeGroupVersion)
@@ -289,7 +288,7 @@ func DetermineAPIVersion(dc discovery.DiscoveryInterface) (*APIVersion, error) {
 		return nil, err
 	}
 	if hasV1Beta1 {
-		return ptr.To(V1Beta1), nil // hasV1Beta1 CRDs found, no need to check for hasV1Alpha3
+		return new(V1Beta1), nil // hasV1Beta1 CRDs found, no need to check for hasV1Alpha3
 	}
 
 	hasV1Alpha3, err := hasRelevantCRDs(dc, istionetworkingv1alpha3.SchemeGroupVersion)
@@ -297,7 +296,7 @@ func DetermineAPIVersion(dc discovery.DiscoveryInterface) (*APIVersion, error) {
 		return nil, err
 	}
 	if hasV1Alpha3 {
-		return ptr.To(V1Alpha3), nil // hasV1Alpha3 CRDs found
+		return new(V1Alpha3), nil // hasV1Alpha3 CRDs found
 	}
 
 	return nil, nil // no relevant CRDs found

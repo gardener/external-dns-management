@@ -346,7 +346,7 @@ var _ = Describe("DNSEntry source and DNSProvider replication controller tests",
 			Expect(tc1.client.Delete(ctx, provider3)).To(Succeed())
 		})
 
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			time.Sleep(1 * time.Millisecond)
 			found := false
 			Eventually(func(g Gomega) {

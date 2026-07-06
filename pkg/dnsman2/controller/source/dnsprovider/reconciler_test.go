@@ -264,13 +264,13 @@ var _ = Describe("Reconciler", func() {
 		})
 
 		It("should create target DNSProvider object in different cluster", func() {
-			reconciler.Config.TargetClusterID = ptr.To("target-cluster-id")
-			reconciler.Config.SourceClusterID = ptr.To("source-cluster-id")
+			reconciler.Config.TargetClusterID = new("target-cluster-id")
+			reconciler.Config.SourceClusterID = new("source-cluster-id")
 			reconciler.Config.TargetLabels = map[string]string{
 				"gardener.cloud/shoot-id": "source-cluster-id",
 			}
 			reconciler.TargetClass = "target-dns-class"
-			reconciler.Config.TargetClass = ptr.To(reconciler.TargetClass)
+			reconciler.Config.TargetClass = new(reconciler.TargetClass)
 			actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
 				Type: local.ProviderType,
 				SecretRef: &corev1.SecretReference{

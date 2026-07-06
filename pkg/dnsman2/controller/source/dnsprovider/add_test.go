@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -34,7 +33,7 @@ var _ = Describe("Add", func() {
 				Client:             fakeClientSrc,
 				ControlPlaneClient: fakeClientCtrl,
 				Config: config.SourceControllerConfig{
-					TargetNamespace: ptr.To("test"),
+					TargetNamespace: new("test"),
 				},
 			}
 
@@ -87,7 +86,7 @@ var _ = Describe("Add", func() {
 		BeforeEach(func() {
 			reconciler = &Reconciler{
 				Config: config.SourceControllerConfig{
-					TargetNamespace: ptr.To("target-namespace"),
+					TargetNamespace: new("target-namespace"),
 				},
 				GVK: v1alpha1.SchemeGroupVersion.WithKind(v1alpha1.DNSProviderKind),
 			}
@@ -109,8 +108,8 @@ var _ = Describe("Add", func() {
 		})
 
 		It("should return reconcile requests for valid DNSProvider on different cluster", func() {
-			reconciler.Config.TargetClusterID = ptr.To("my-seed")
-			reconciler.Config.SourceClusterID = ptr.To("other-cluster")
+			reconciler.Config.TargetClusterID = new("my-seed")
+			reconciler.Config.SourceClusterID = new("other-cluster")
 			targetProvider := &v1alpha1.DNSProvider{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "target-provider",

@@ -269,7 +269,7 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 		RenewDeadline:                 &cfg.LeaderElection.RenewDeadline.Duration,
 		RetryPeriod:                   &cfg.LeaderElection.RetryPeriod.Duration,
 		Controller: controllerconfig.Controller{
-			RecoverPanic: ptr.To(true),
+			RecoverPanic: new(true),
 		},
 	}
 	if controlPlaneRestConfig != restConfig {

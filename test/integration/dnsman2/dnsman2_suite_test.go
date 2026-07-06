@@ -16,7 +16,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -70,7 +69,7 @@ var _ = BeforeSuite(func() {
 				filepath.Join("..", "..", "..", "pkg", "apis", "dns", "crds", "dns.gardener.cloud_dnshostedzonepolicies.yaml"),
 			},
 		},
-		UseExistingCluster:    ptr.To(kubeConfig != nil),
+		UseExistingCluster:    new(kubeConfig != nil),
 		KubeConfig:            kubeConfig,
 		ErrorIfCRDPathMissing: true,
 	}

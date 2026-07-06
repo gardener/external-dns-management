@@ -37,7 +37,7 @@ func NewDedupRecorder(recorder events.EventRecorder, ttl time.Duration) Recorder
 	}
 }
 
-func (d *dedupRecorder) Eventf(regarding runtime.Object, related runtime.Object, eventtype, reason, action, messageFmt string, args ...interface{}) {
+func (d *dedupRecorder) Eventf(regarding runtime.Object, related runtime.Object, eventtype, reason, action, messageFmt string, args ...any) {
 	msg := fmt.Sprintf(messageFmt, args...)
 	obj, ok := regarding.(client.Object)
 	if ok {

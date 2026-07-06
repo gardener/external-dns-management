@@ -11,7 +11,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	api "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
@@ -62,7 +61,7 @@ func GetTargets(_ logger.LogContext, obj resources.ObjectData, names dns.DNSName
 		ipstack = dns.AnnotationValueIPStackIPDualStack
 	}
 	if v := svc.Annotations[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
-		resolveTargetsToAddresses = ptr.To(v == "true")
+		resolveTargetsToAddresses = new(v == "true")
 	}
 
 	return &source.TargetExtraction{

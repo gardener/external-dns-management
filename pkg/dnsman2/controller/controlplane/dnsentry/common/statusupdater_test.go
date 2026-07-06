@@ -15,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/clock/testing"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -119,7 +118,7 @@ var _ = Describe("EntryStatusUpdater", func() {
 
 			modifier := func(status *v1alpha1.DNSEntryStatus) error {
 				status.State = v1alpha1.StateReady
-				status.Message = ptr.To("dns entry active")
+				status.Message = new("dns entry active")
 				status.Targets = []string{"1.2.3.4"}
 				return nil
 			}

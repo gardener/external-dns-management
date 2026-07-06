@@ -9,7 +9,6 @@ import (
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
 	v12 "k8s.io/api/networking/v1"
-	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("IstioGatewayAnnotation", func() {
@@ -63,7 +62,7 @@ var _ = Describe("IstioGatewayAnnotation", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		entry2 := UnwrapEntry(entryObj2)
 		Ω(entry2.Spec.DNSName).Should(Equal(svcDomain2))
-		Ω(entry2.Spec.ResolveTargetsToAddresses).To(Equal(ptr.To(true)))
+		Ω(entry2.Spec.ResolveTargetsToAddresses).To(Equal(new(true)))
 
 		err = gw.Delete()
 		Ω(err).ShouldNot(HaveOccurred())

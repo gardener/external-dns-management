@@ -164,7 +164,7 @@ func (s *providerSelector) getZoneForProvider(provider *v1alpha1.DNSProvider, dn
 	if bestZone == nil {
 		return nil, common.ErrorReconcileResult(fmt.Sprintf("no matching zone found for DNS name %q in provider %q", dnsName, provider.Name), true)
 	}
-	return ptr.To(bestZone.ZoneID()), nil
+	return new(bestZone.ZoneID()), nil
 }
 
 type providerMatch struct {

@@ -224,10 +224,10 @@ var _ = Describe("Actuator", func() {
 		})
 
 		It("should create DNSEntry object for service of type load balancer on different clusters", func() {
-			reconciler.Config.TargetClusterID = ptr.To("target-cluster-id")
-			reconciler.Config.SourceClusterID = ptr.To("source-cluster-id")
+			reconciler.Config.TargetClusterID = new("target-cluster-id")
+			reconciler.Config.SourceClusterID = new("source-cluster-id")
 			reconciler.TargetClass = "target-dns-class"
-			reconciler.Config.TargetClass = ptr.To(reconciler.TargetClass)
+			reconciler.Config.TargetClass = new(reconciler.TargetClass)
 			reconciler.Config.TargetLabels = map[string]string{
 				"gardener.cloud/shoot-id": "source-cluster-id",
 			}
@@ -340,8 +340,8 @@ var _ = Describe("Actuator", func() {
 			svc.Annotations[dns.AnnotationIPStack] = dns.AnnotationValueIPStackIPDualStack
 			svc.Annotations[dns.AnnotationResolveTargetsToAddresses] = "true"
 			svc.Annotations[dns.AnnotationCNameLookupInterval] = "456"
-			reconciler.Config.TargetClass = ptr.To("target-class")
-			reconciler.Config.TargetNamePrefix = ptr.To("prefix-")
+			reconciler.Config.TargetClass = new("target-class")
+			reconciler.Config.TargetNamePrefix = new("prefix-")
 			entries := test(&dnsv1alpha1.DNSEntrySpec{
 				DNSName: "foo.example.com",
 				TTL:     ptr.To[int64](123),
@@ -350,7 +350,7 @@ var _ = Describe("Actuator", func() {
 					SetIdentifier: "route1",
 					Parameters:    map[string]string{"weight": "10"},
 				},
-				ResolveTargetsToAddresses: ptr.To(true),
+				ResolveTargetsToAddresses: new(true),
 				CNameLookupInterval:       ptr.To[int64](456),
 			})
 			Expect(entries[0].Annotations).To(Equal(map[string]string{

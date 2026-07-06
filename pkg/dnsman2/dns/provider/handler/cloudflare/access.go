@@ -13,7 +13,6 @@ import (
 	"github.com/cloudflare/cloudflare-go/v7/option"
 	cloudflarezones "github.com/cloudflare/cloudflare-go/v7/zones"
 	"k8s.io/client-go/util/flowcontrol"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
@@ -149,7 +148,7 @@ func (a *access) GetRecordList(ctx context.Context, dnsName, rtype string, zone 
 	err := a.listRecords(ctx,
 		zone.ZoneID().ID,
 		consume,
-		ptr.To(cloudflaredns.RecordListParamsType(rtype)),
+		new(cloudflaredns.RecordListParamsType(rtype)),
 		&cloudflaredns.RecordListParamsName{
 			Exact: cloudflare.F(dnsName),
 		})

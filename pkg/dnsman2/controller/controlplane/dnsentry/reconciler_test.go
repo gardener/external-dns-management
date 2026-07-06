@@ -257,13 +257,13 @@ var _ = Describe("Reconcile", func() {
 			}
 			var ptrName, ptrType, ptrZoneID *string
 			if providerName != "" {
-				ptrName = ptr.To(providerName)
+				ptrName = new(providerName)
 			}
 			if zoneID.ProviderType != "" {
-				ptrType = ptr.To(zoneID.ProviderType)
+				ptrType = new(zoneID.ProviderType)
 			}
 			if zoneID.ID != "" {
-				ptrZoneID = ptr.To(zoneID.ID)
+				ptrZoneID = new(zoneID.ID)
 			}
 			Expect(entry.Status.Provider).To(Equal(ptrName), "provider name should match")
 			Expect(entry.Status.ProviderType).To(Equal(ptrType), "provider type should match")
@@ -271,7 +271,7 @@ var _ = Describe("Reconcile", func() {
 			Expect(entry.Status.ObservedGeneration).To(Equal(entry.Generation), "observed generation should match")
 			var ptrTTL *int64
 			if ttl > 0 {
-				ptrTTL = ptr.To(ttl)
+				ptrTTL = new(ttl)
 			}
 			Expect(entry.Status.TTL).To(Equal(ptrTTL), "TTL should match")
 
@@ -504,7 +504,7 @@ var _ = Describe("Reconcile", func() {
 	It("should create Entry with single CNAME target and resolve the address as configured", func() {
 		createProvider("p1", []string{"example.com"}, nil, v1alpha1.StateReady, mockConfig1)
 		entryC.Spec.Targets = []string{"service-1.example.com"}
-		entryC.Spec.ResolveTargetsToAddresses = ptr.To(true)
+		entryC.Spec.ResolveTargetsToAddresses = new(true)
 		Expect(fakeClient.Create(ctx, entryC)).To(Succeed())
 
 		checkEntryStatus(entryC, "test/p1", zoneID1, "Ready", 120, "127.0.1.1", "2001:db8::1:1")
@@ -663,7 +663,7 @@ var _ = Describe("Reconcile", func() {
 		Expect(fakeClient.Update(ctx, entryA)).To(Succeed())
 		checkEntryStatus(entryA, "", zoneID1, "Stale", defaultTTL, "1.2.3.4")
 		expectRecordSets(zoneID1, "test.sub.example.com", recordSetA)
-		Expect(entryA.Status.Message).To(Equal(ptr.To("no matching DNS provider found")))
+		Expect(entryA.Status.Message).To(Equal(new("no matching DNS provider found")))
 	})
 
 	It("should go to error for unknown domain", func() {
@@ -671,7 +671,7 @@ var _ = Describe("Reconcile", func() {
 		entryA.Spec.DNSName = "*.unknown-example.com"
 		Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 		checkEntryStatus(entryA, "", dns.ZoneID{}, "Error", 0)
-		Expect(entryA.Status.Message).To(Equal(ptr.To("no matching DNS provider found")))
+		Expect(entryA.Status.Message).To(Equal(new("no matching DNS provider found")))
 	})
 
 	It("should assign requeue if provider state is missing", func() {
@@ -925,7 +925,7 @@ var _ = Describe("Reconcile", func() {
 			Expect(fakeClient.Create(ctx, entryA)).To(Succeed())
 			checkEntryStatus(entryA, "test/p1", zoneID1, "Ready", defaultTTL, "1.2.3.4")
 
-			entryA.Status.ProviderType = ptr.To("remote")
+			entryA.Status.ProviderType = new("remote")
 			Expect(fakeClient.Status().Update(ctx, entryA)).To(Succeed())
 			key := client.ObjectKeyFromObject(entryA)
 			result, err := reconcileEntry(key)
@@ -1130,7 +1130,7 @@ var _ = Describe("Reconcile", func() {
 				reconcilerSecondaryClass: []string{"class-b"},
 				setupProvider:            true,
 				providerClass:            "class-a",
-				expectedAnnotation:       ptr.To("class-a"),
+				expectedAnnotation:       new("class-a"),
 				expectedFinalizers:       []string{"class-a.dns.gardener.cloud/compound"},
 				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound"},
 			}),

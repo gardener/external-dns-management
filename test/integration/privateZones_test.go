@@ -12,7 +12,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/local"
@@ -151,7 +150,7 @@ var _ = Describe("PrivateZones", func() {
 			e := UnwrapEntry(obj)
 			g.Expect(e.Status.State).Should(Equal("Ready"))
 			return e.Status.Zone
-		}).WithPolling(1 * time.Second).WithTimeout(15 * time.Second).Should(Equal(ptr.To("z1:private:pr1.mock.xx")))
+		}).WithPolling(1 * time.Second).WithTimeout(15 * time.Second).Should(Equal(new("z1:private:pr1.mock.xx")))
 		testEnv.AwaitEntryReady(e.GetName())
 		Eventually(func() error {
 			return testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, "z1:private:", e)

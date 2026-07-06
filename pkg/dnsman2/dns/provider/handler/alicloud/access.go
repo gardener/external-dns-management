@@ -67,8 +67,8 @@ func newAccess(accessKeyId, accessKeySecret string, metrics provider.Metrics, ra
 	config := &openapi.Config{
 		AccessKeyId:     &accessKeyId,
 		AccessKeySecret: &accessKeySecret,
-		UserAgent:       ptr.To("gardener-external-dns-management/nextgen"),
-		RegionId:        ptr.To("cn-shanghai"), // Currently hardcoded, the limitation is documented.
+		UserAgent:       new("gardener-external-dns-management/nextgen"),
+		RegionId:        new("cn-shanghai"), // Currently hardcoded, the limitation is documented.
 	}
 	client, err := alidns.NewClient(config)
 	if err != nil {
@@ -89,13 +89,13 @@ func (a *access) nextPageNumber(pageNumber *int64, pageSize, totalCount int64) i
 
 func (a *access) ListDomains(consume func(domain *alidns.DescribeDomainsResponseBodyDomainsDomain) (bool, error)) error {
 	request := &alidns.DescribeDomainsRequest{}
-	request.PageSize = ptr.To(defaultPageSize)
+	request.PageSize = new(defaultPageSize)
 	var nextPage int64 = 1
 	rt := provider.MetricsRequestTypeListZones
 	for {
 		a.metrics.AddGenericRequests(rt, 1)
 		rt = provider.MetricsRequestTypeListZonesPages
-		request.PageNumber = ptr.To(nextPage)
+		request.PageNumber = new(nextPage)
 		a.rateLimiter.Accept()
 		resp, err := a.client.DescribeDomains(request)
 		if err != nil {
@@ -123,17 +123,17 @@ func (a *access) listRecords(zoneID, domain string, consume func(record *alidns.
 	requestModifier func(request *alidns.DescribeDomainRecordsRequest),
 ) error {
 	request := &alidns.DescribeDomainRecordsRequest{}
-	request.DomainName = ptr.To(domain)
+	request.DomainName = new(domain)
 	if requestModifier != nil {
 		requestModifier(request)
 	}
-	request.PageSize = ptr.To(defaultPageSize)
+	request.PageSize = new(defaultPageSize)
 	var nextPage int64 = 1
 	rt := provider.MetricsRequestTypeListRecords
 	for {
 		a.metrics.AddZoneRequests(zoneID, rt, 1)
 		rt = provider.MetricsRequestTypeListRecordPages
-		request.PageNumber = ptr.To(nextPage)
+		request.PageNumber = new(nextPage)
 		a.rateLimiter.Accept()
 		resp, err := a.client.DescribeDomainRecords(request)
 		if err != nil {
@@ -182,7 +182,7 @@ func (a *access) setRecordWeight(recordId *string, record raw.Record) error {
 	if ptr.Deref(r.Remark, "") == deleteRemark {
 		remarkRequest.Remark = nil
 	} else {
-		remarkRequest.Remark = ptr.To(routingPolicySetRemarkPrefix + record.GetSetIdentifier())
+		remarkRequest.Remark = new(routingPolicySetRemarkPrefix + record.GetSetIdentifier())
 	}
 	if _, err := a.client.UpdateDomainRecordRemark(remarkRequest); err != nil {
 		return err
@@ -200,7 +200,7 @@ func (a *access) setRecordWeight(recordId *string, record raw.Record) error {
 		slbRequest := &alidns.SetDNSSLBStatusRequest{}
 		slbRequest.Type = r.Type
 		slbRequest.DomainName = r.DomainName
-		slbRequest.SubDomain = ptr.To(r.GetDNSName())
+		slbRequest.SubDomain = new(r.GetDNSName())
 		if _, err := a.client.SetDNSSLBStatus(slbRequest); err != nil {
 			return fmt.Errorf("setDNSSLBStatus failed: %w", err)
 		}
@@ -258,7 +258,7 @@ func (a *access) UpdateRecord(_ context.Context, record raw.Record, zone provide
 
 func (a *access) DeleteRecord(_ context.Context, record raw.Record, zone provider.DNSHostedZone) error {
 	req := &alidns.DeleteDomainRecordRequest{}
-	req.RecordId = ptr.To(record.GetId())
+	req.RecordId = new(record.GetId())
 	a.metrics.AddZoneRequests(zone.ZoneID().ID, provider.MetricsRequestTypeUpdateRecords, 1)
 	a.rateLimiter.Accept()
 	_, err := a.client.DeleteDomainRecord(req)
@@ -268,8 +268,8 @@ func (a *access) DeleteRecord(_ context.Context, record raw.Record, zone provide
 func (a *access) GetRecordList(_ context.Context, dnsName, rtype string, zone provider.DNSHostedZone) (raw.RecordList, []*dns.RoutingPolicy, error) {
 	rr := GetRR(dnsName, zone.Domain())
 	requestModifier := func(request *alidns.DescribeDomainRecordsRequest) {
-		request.RRKeyWord = ptr.To(rr)
-		request.TypeKeyWord = ptr.To(rtype)
+		request.RRKeyWord = new(rr)
+		request.TypeKeyWord = new(rtype)
 	}
 
 	rl := raw.RecordList{}
@@ -305,11 +305,11 @@ func (a *access) GetRecordList(_ context.Context, dnsName, rtype string, zone pr
 func (a *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZone, ttl int64) raw.Record {
 	rr := GetRR(fqdn, zone.Domain())
 	return (*Record)(&alidns.DescribeDomainRecordsResponseBodyDomainRecordsRecord{
-		RR:         ptr.To(rr),
-		Type:       ptr.To(rtype),
-		Value:      ptr.To(value),
-		DomainName: ptr.To(zone.Domain()),
-		TTL:        ptr.To(ttl),
+		RR:         new(rr),
+		Type:       new(rtype),
+		Value:      new(value),
+		DomainName: new(zone.Domain()),
+		TTL:        new(ttl),
 	})
 }
 

@@ -117,7 +117,7 @@ var _ = Describe("Defaults", func() {
 
 			It("should not overwrite custom settings", func() {
 				expectedLeaderElection := componentbaseconfigv1alpha1.LeaderElectionConfiguration{
-					LeaderElect:       ptr.To(true),
+					LeaderElect:       new(true),
 					ResourceLock:      "foo",
 					RetryPeriod:       metav1.Duration{Duration: 40 * time.Second},
 					RenewDeadline:     metav1.Duration{Duration: 41 * time.Second},
@@ -157,7 +157,7 @@ var _ = Describe("Defaults", func() {
 
 				It("should not overwrite existing values", func() {
 					obj := &DNSProviderControllerConfig{
-						ConcurrentSyncs:       ptr.To(5),
+						ConcurrentSyncs:       new(5),
 						SyncPeriod:            &metav1.Duration{Duration: time.Second},
 						RecheckPeriod:         &metav1.Duration{Duration: 3 * time.Minute},
 						ReconciliationTimeout: &metav1.Duration{Duration: 30 * time.Second},
@@ -203,7 +203,7 @@ var _ = Describe("Defaults", func() {
 
 				It("should not overwrite existing values", func() {
 					obj := &DNSEntryControllerConfig{
-						ConcurrentSyncs:       ptr.To(7),
+						ConcurrentSyncs:       new(7),
 						SyncPeriod:            &metav1.Duration{Duration: 0 * time.Second},
 						ReconciliationTimeout: &metav1.Duration{Duration: 30 * time.Second},
 						ZoneMetricsInterval:   &metav1.Duration{Duration: 0},
@@ -246,8 +246,8 @@ var _ = Describe("Defaults", func() {
 
 				It("should not overwrite existing values", func() {
 					obj := &SourceControllerConfig{
-						ConcurrentSyncs: ptr.To(13),
-						TargetNamespace: ptr.To("other-namespace"),
+						ConcurrentSyncs: new(13),
+						TargetNamespace: new("other-namespace"),
 					}
 
 					SetDefaults_SourceControllerConfig(obj)

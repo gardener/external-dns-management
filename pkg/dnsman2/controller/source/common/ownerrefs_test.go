@@ -14,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
@@ -294,10 +293,10 @@ var _ = Describe("IsRelevantEntry", func() {
 	BeforeEach(func() {
 		entryOwnerData = common.EntryOwnerData{
 			Config: config.SourceControllerConfig{
-				TargetClass:     ptr.To("test-class"),
+				TargetClass:     new("test-class"),
 				TargetNamespace: nil,
-				SourceClusterID: ptr.To("source-cluster"),
-				TargetClusterID: ptr.To("target-cluster"),
+				SourceClusterID: new("source-cluster"),
+				TargetClusterID: new("target-cluster"),
 			},
 			GVK: schema.GroupVersionKind{
 				Group:   "apps",
@@ -363,7 +362,7 @@ var _ = Describe("IsRelevantEntry", func() {
 
 	Context("namespace filtering", func() {
 		It("should return false when target namespace is set but entry is in different namespace", func() {
-			entryOwnerData.Config.TargetNamespace = ptr.To("target-ns")
+			entryOwnerData.Config.TargetNamespace = new("target-ns")
 			entry.Namespace = "other-ns"
 
 			result := entryOwnerData.IsRelevantEntry(entry)
@@ -449,7 +448,7 @@ var _ = Describe("IsRelevantEntry", func() {
 
 	Context("different namespace or cluster (annotations)", func() {
 		BeforeEach(func() {
-			entryOwnerData.Config.TargetNamespace = ptr.To("default")
+			entryOwnerData.Config.TargetNamespace = new("default")
 		})
 
 		It("should return true when matching annotation owner exists", func() {

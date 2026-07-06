@@ -164,17 +164,17 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 					DefaultTTL: ptr.To[int64](300),
 				},
 				DNSEntry: config.DNSEntryControllerConfig{
-					ReconciliationDelayAfterUpdate: ptr.To(metav1.Duration{Duration: 10 * time.Millisecond}),
+					ReconciliationDelayAfterUpdate: new(metav1.Duration{Duration: 10 * time.Millisecond}),
 				},
 				Source: config.SourceControllerConfig{
-					TargetNamespace:        ptr.To(testRunID),
-					TargetClusterID:        ptr.To("test-cluster"),
+					TargetNamespace:        new(testRunID),
+					TargetClusterID:        new("test-cluster"),
 					SourceClusterID:        ptr.To(sourceClusterID),
-					DNSProviderReplication: ptr.To(true),
+					DNSProviderReplication: new(true),
 				},
-				SkipNameValidation: ptr.To(true),
+				SkipNameValidation: new(true),
 			},
-			DeployCRDs: ptr.To(true),
+			DeployCRDs: new(true),
 		}
 		cfg.LeaderElection.LeaderElect = false
 
@@ -317,7 +317,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 			},
 		}
 		Expect(sourceClient.Status().Patch(ctx, svc, patch)).To(Succeed())
-		checkForOwnedEntry("/Service", client.ObjectKeyFromObject(svc), ptr.To("1.2.3.4"), "test-service.first.example.com")
+		checkForOwnedEntry("/Service", client.ObjectKeyFromObject(svc), new("1.2.3.4"), "test-service.first.example.com")
 		checkSourceEvents(client.ObjectKeyFromObject(svc), ContainElements(
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryCreated"),
@@ -381,7 +381,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 			},
 		}
 		Expect(sourceClient.Status().Patch(ctx, ingress, patch)).To(Succeed())
-		checkForOwnedEntry("networking.k8s.io/Ingress", client.ObjectKeyFromObject(ingress), ptr.To("1.2.3.4"), "test-ingress.first.example.com")
+		checkForOwnedEntry("networking.k8s.io/Ingress", client.ObjectKeyFromObject(ingress), new("1.2.3.4"), "test-ingress.first.example.com")
 		checkSourceEvents(client.ObjectKeyFromObject(ingress), ContainElements(
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryCreated"),
@@ -444,7 +444,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 			},
 		}
 		Expect(sourceClient.Status().Patch(ctx, gateway, patch)).To(Succeed())
-		checkForOwnedEntry("gateway.networking.k8s.io/Gateway", client.ObjectKeyFromObject(gateway), ptr.To("1.2.3.4"), "test-gateway.first.example.com")
+		checkForOwnedEntry("gateway.networking.k8s.io/Gateway", client.ObjectKeyFromObject(gateway), new("1.2.3.4"), "test-gateway.first.example.com")
 		checkSourceEvents(client.ObjectKeyFromObject(gateway), ContainElements(
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryCreated"),
@@ -507,7 +507,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 			},
 		}
 		Expect(sourceClient.Status().Patch(ctx, gateway, patch)).To(Succeed())
-		checkForOwnedEntry("gateway.networking.k8s.io/Gateway", client.ObjectKeyFromObject(gateway), ptr.To("1.2.3.4"), "test-gateway.first.example.com")
+		checkForOwnedEntry("gateway.networking.k8s.io/Gateway", client.ObjectKeyFromObject(gateway), new("1.2.3.4"), "test-gateway.first.example.com")
 		checkSourceEvents(client.ObjectKeyFromObject(gateway), ContainElements(
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryCreated"),
@@ -560,7 +560,7 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 		patch := client.MergeFrom(sourceEntry.DeepCopy())
 		sourceEntry.Spec.Targets = []string{"1.2.3.4"}
 		Expect(sourceClient.Patch(ctx, sourceEntry, patch)).To(Succeed())
-		checkForOwnedEntry("dns.gardener.cloud/DNSEntry", client.ObjectKeyFromObject(sourceEntry), ptr.To("1.2.3.4"), "test-entry.first.example.com")
+		checkForOwnedEntry("dns.gardener.cloud/DNSEntry", client.ObjectKeyFromObject(sourceEntry), new("1.2.3.4"), "test-entry.first.example.com")
 		checkSourceEvents(client.ObjectKeyFromObject(sourceEntry), ContainElements(
 			MatchFields(IgnoreExtras, Fields{
 				"Reason":  Equal("DNSEntryCreated"),

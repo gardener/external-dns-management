@@ -54,11 +54,11 @@ var _ = Describe("CountEntriesForProvider", func() {
 		entries := []client.Object{
 			&v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{Name: "entry1", Namespace: namespace},
-				Status:     v1alpha1.DNSEntryStatus{Provider: ptr.To(providerName)},
+				Status:     v1alpha1.DNSEntryStatus{Provider: new(providerName)},
 			},
 			&v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{Name: "entry2", Namespace: namespace},
-				Status:     v1alpha1.DNSEntryStatus{Provider: ptr.To(providerName)},
+				Status:     v1alpha1.DNSEntryStatus{Provider: new(providerName)},
 			},
 		}
 
@@ -82,7 +82,7 @@ var _ = Describe("CountEntriesForProvider", func() {
 		entries := []client.Object{
 			&v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{Name: "entry1", Namespace: namespace},
-				Status:     v1alpha1.DNSEntryStatus{Provider: ptr.To(providerName)},
+				Status:     v1alpha1.DNSEntryStatus{Provider: new(providerName)},
 			},
 			&v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{Name: "entry2", Namespace: namespace},
@@ -114,11 +114,11 @@ var _ = Describe("CountEntriesForProvider", func() {
 		entries := []client.Object{
 			&v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{Name: "entry1", Namespace: namespace},
-				Status:     v1alpha1.DNSEntryStatus{Provider: ptr.To(providerName)},
+				Status:     v1alpha1.DNSEntryStatus{Provider: new(providerName)},
 			},
 			&v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{Name: "entry2", Namespace: namespace},
-				Status:     v1alpha1.DNSEntryStatus{Provider: ptr.To("default/other-provider")},
+				Status:     v1alpha1.DNSEntryStatus{Provider: new("default/other-provider")},
 			},
 		}
 

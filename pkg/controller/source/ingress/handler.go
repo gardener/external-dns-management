@@ -13,7 +13,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	networkingv1 "k8s.io/api/networking/v1"
 	networkingv1beta1 "k8s.io/api/networking/v1beta1"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/source"
@@ -49,7 +48,7 @@ func (this *IngressSource) GetDNSInfo(_ logger.LogContext, obj resources.ObjectD
 	info.Names = dns.NewDNSNameSetFromStringSet(names, current.GetSetIdentifier())
 	info.IPStack = obj.GetAnnotations()[dns.AnnotationIPStack]
 	if v := obj.GetAnnotations()[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
-		info.ResolveTargetsToAddresses = ptr.To(v == "true")
+		info.ResolveTargetsToAddresses = new(v == "true")
 	}
 	info.Ignore = obj.GetAnnotations()[dns.AnnotationIgnore]
 	return info, nil

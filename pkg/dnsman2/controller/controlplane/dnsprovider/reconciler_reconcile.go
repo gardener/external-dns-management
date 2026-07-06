@@ -112,7 +112,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 
 	return result, r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
 		if selectionResult.Error == "" {
-			status.Message = ptr.To("provider operational")
+			status.Message = new("provider operational")
 			status.State = v1alpha1.StateReady
 			// Set LastOperation to Succeeded and clear LastError on success
 			status.LastOperation = &gardencorev1beta1.LastOperation{
@@ -123,7 +123,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 			}
 			status.LastError = nil
 		} else {
-			status.Message = ptr.To(selectionResult.Error)
+			status.Message = new(selectionResult.Error)
 			status.State = v1alpha1.StateError
 			// Set LastError with error codes for selection errors
 			errorCodes := utils.DetermineErrorCodes(fmt.Errorf("%s", selectionResult.Error))
@@ -144,7 +144,7 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 		}
 		status.ObservedGeneration = provider.Generation
 		selectionResult.SetProviderStatusZonesAndDomains(status)
-		status.DefaultTTL = ptr.To[int64](providerState.GetDefaultTTL())
+		status.DefaultTTL = new(providerState.GetDefaultTTL())
 		if config.RateLimits != nil && config.RateLimits.Enabled {
 			status.RateLimit = &v1alpha1.RateLimit{
 				RequestsPerDay: int(config.RateLimits.QPS * 60 * 60 * 24),

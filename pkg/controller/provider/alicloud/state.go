@@ -48,7 +48,7 @@ func (r *Record) GetValue() string {
 	return v
 }
 func (r *Record) GetTTL() int64    { return ptr.Deref(r.TTL, 0) }
-func (r *Record) SetTTL(ttl int64) { r.TTL = ptr.To(ttl) }
+func (r *Record) SetTTL(ttl int64) { r.TTL = new(ttl) }
 func (r *Record) Copy() raw.Record { n := *r; return &n }
 
 func (r *Record) SetRoutingPolicy(setIdentifier string, policy *dns.RoutingPolicy) {
@@ -64,12 +64,12 @@ func (r *Record) SetRoutingPolicy(setIdentifier string, policy *dns.RoutingPolic
 	}
 
 	remark := routingPolicySetRemarkPrefix + setIdentifier
-	r.Remark = ptr.To(remark)
+	r.Remark = new(remark)
 	var weight int32 = 1
 	if w := policy.Parameters["weight"]; w != "" {
 		if v, err := strconv.Atoi(w); err == nil && v >= 1 && v <= 100 {
 			weight = int32(v) // #nosec G402 G115 G109 -- only values between 1 and 100
 		}
 	}
-	r.Weight = ptr.To(weight)
+	r.Weight = new(weight)
 }

@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/clock"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -101,7 +100,7 @@ func removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DN
 
 func (r *Reconciler) updateStatusInvalid(ctx context.Context, provider *v1alpha1.DNSProvider, msg string, codes ...gardencorev1beta1.ErrorCode) error {
 	return r.updateStatus(ctx, provider, func(status *v1alpha1.DNSProviderStatus) error {
-		status.Message = ptr.To(msg)
+		status.Message = new(msg)
 		status.State = v1alpha1.StateInvalid
 		status.ObservedGeneration = provider.Generation
 		status.Zones = v1alpha1.DNSSelectionStatus{}

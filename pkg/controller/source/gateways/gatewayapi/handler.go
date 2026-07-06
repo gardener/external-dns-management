@@ -13,7 +13,6 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 	gatewayapisv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
 
@@ -82,7 +81,7 @@ func (s *gatewaySource) GetDNSInfo(_ logger.LogContext, obj resources.ObjectData
 	info.Names = dns.NewDNSNameSetFromStringSet(names, current.GetSetIdentifier())
 	info.Targets = s.getTargets(obj)
 	if v := obj.GetAnnotations()[source.RESOLVE_TARGETS_TO_ADDRS_ANNOTATION]; v != "" {
-		info.ResolveTargetsToAddresses = ptr.To(v == "true")
+		info.ResolveTargetsToAddresses = new(v == "true")
 	}
 	info.Ignore = obj.GetAnnotations()[dns.AnnotationIgnore]
 	return info, nil
@@ -107,7 +106,7 @@ func (s *gatewaySource) extractServerHosts(obj resources.ObjectData) ([]string, 
 		return nil, fmt.Errorf("unexpected istio gateway type: %#v", obj)
 	}
 
-	routes, err := s.lister.ListHTTPRoutes(ptr.To(resources.NewObjectNameForData(obj)))
+	routes, err := s.lister.ListHTTPRoutes(new(resources.NewObjectNameForData(obj)))
 	if err != nil {
 		return nil, err
 	}

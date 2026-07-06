@@ -159,9 +159,9 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 					DefaultTTL: ptr.To[int64](300),
 				},
 				DNSEntry: config.DNSEntryControllerConfig{
-					ReconciliationDelayAfterUpdate: ptr.To(metav1.Duration{Duration: 10 * time.Millisecond}),
+					ReconciliationDelayAfterUpdate: new(metav1.Duration{Duration: 10 * time.Millisecond}),
 				},
-				SkipNameValidation: ptr.To(true),
+				SkipNameValidation: new(true),
 			},
 		}
 		cfg.LeaderElection.LeaderElect = false
@@ -846,7 +846,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 
 		By("Create and verify 2 entries succeed")
 		entries := make([]*v1alpha1.DNSEntry, 3)
-		for i := 0; i < 2; i++ {
+		for i := range 2 {
 			entries[i] = &v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("quota-entry-%d", i),
@@ -863,7 +863,7 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			})
 		}
 
-		for i := 0; i < 2; i++ {
+		for i := range 2 {
 			checkEntry(entries[i])
 		}
 

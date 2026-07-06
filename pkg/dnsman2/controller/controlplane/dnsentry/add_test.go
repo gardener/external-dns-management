@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/aws/smithy-go/ptr"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -72,7 +71,7 @@ var _ = Describe("Add", func() {
 				},
 				Status: v1alpha1.DNSEntryStatus{
 					State:    v1alpha1.StateReady,
-					Provider: ptr.String("test/provider1"),
+					Provider: new("test/provider1"),
 				},
 			})).To(Succeed())
 			key4 = client.ObjectKey{Name: "entry4", Namespace: "test"}
