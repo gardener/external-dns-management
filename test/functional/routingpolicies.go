@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"text/template"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -122,7 +123,7 @@ func functestRoutingPolicies(cfg *config.Config, p *config.ProviderConfig) {
 				}
 			}
 
-			err = u.AwaitDNSEntriesReady(entryNames...)
+			err = u.WithLongWait(60*time.Second, u.AwaitDNSEntriesReady, entryNames...)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			itemMap, err := u.KubectlGetAllDNSEntries()
@@ -165,7 +166,7 @@ func functestRoutingPolicies(cfg *config.Config, p *config.ProviderConfig) {
 			err = u.KubectlDelete(manifest2)
 			Ω(err).ShouldNot(HaveOccurred())
 
-			err = u.AwaitDNSEntriesDeleted(entryNames...)
+			err = u.WithLongWait(60*time.Second, u.AwaitDNSEntriesDeleted, entryNames...)
 			Ω(err).ShouldNot(HaveOccurred())
 
 			err = u.KubectlDelete(manifest1)
