@@ -114,6 +114,14 @@ func (u *TestUtils) AwaitDNSEntriesReady(names ...string) error {
 	return u.AwaitState("dnse", "Ready", names...)
 }
 
+func (u *TestUtils) WithLongWait(awaitTimeout time.Duration, f func(...string) error, names ...string) error {
+	oldWaitTimeout := u.nextAwaitTimeout
+	u.nextAwaitTimeout = awaitTimeout
+	err := f(names...)
+	u.nextAwaitTimeout = oldWaitTimeout
+	return err
+}
+
 func (u *TestUtils) AwaitDNSEntriesError(names ...string) error {
 	return u.AwaitState("dnse", "Error", names...)
 }
