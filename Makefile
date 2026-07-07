@@ -66,15 +66,28 @@ build-local:
 	    ./cmd/nextgen
 
 .PHONY: release
-release:
-	@CGO_ENABLED=0 go build -o $(EXECUTABLE) \
-	    -a \
-	    -ldflags "-w -X main.Version=$(VERSION)" \
-	    ./cmd/compound
-	@CGO_ENABLED=0 go build -o $(EXECUTABLE_NG) \
-	    -a \
-	    -ldflags "-w -X main.Version=$(VERSION)" \
-	    ./cmd/nextgen
+release: $(EXECUTABLE) $(EXECUTABLE_NG)
+
+# LDFLAGS_RELEASE:
+#   -s -w  strip symbol table and DWARF (smaller binary; no debuggability loss vs -w alone)
+#   -X ... embed the version. Overridable, e.g. `make release LDFLAGS_RELEASE_EXTRA=-X=...`.
+LDFLAGS_RELEASE ?= -s -w -X main.Version=$(VERSION) $(LDFLAGS_RELEASE_EXTRA)
+
+# GOFLAGS_RELEASE:
+#   -trimpath      remove absolute paths from binaries (reproducible builds).
+#   -buildvcs=false suppress VCS stamping (source tree in the Docker builder has no .git).
+GOFLAGS_RELEASE ?= -trimpath -buildvcs=false
+
+$(EXECUTABLE): FORCE
+	@CGO_ENABLED=0 go build $(GOFLAGS_RELEASE) -o $@ -ldflags '$(LDFLAGS_RELEASE)' ./cmd/compound
+
+$(EXECUTABLE_NG): FORCE
+	@CGO_ENABLED=0 go build $(GOFLAGS_RELEASE) -o $@ -ldflags '$(LDFLAGS_RELEASE)' ./cmd/nextgen
+
+# Phony marker so the two binary rules always re-evaluate (their real freshness
+# is handled by the Go build cache, not by mtime against ./cmd/... source trees).
+.PHONY: FORCE
+FORCE:
 
 .PHONY: unittests
 unittests: $(GINKGO)

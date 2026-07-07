@@ -1,44 +1,42 @@
+# syntax=docker/dockerfile:1.7
 # SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
 #
 # SPDX-License-Identifier: Apache-2.0
 
 #############      builder       #############
-FROM golang:1.26.5 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.5 AS builder
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /build
 
 # Copy go mod and sum files
 COPY go.mod go.sum ./
-# Download all dependencies. Dependencies will be cached if the go.mod and go.sum files are not changed
-RUN go mod download
+# Download all dependencies. Cached via BuildKit cache mount independent of layer cache.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
 
 COPY . .
 
-RUN make release
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    GOOS=$TARGETOS GOARCH=$TARGETARCH make release
 
 ############# base
 FROM gcr.io/distroless/static-debian13:nonroot AS base
+WORKDIR /
+USER nonroot:nonroot
 
 #############      dns-controller-manager     #############
 FROM base AS dns-controller-manager
-WORKDIR /
 
 COPY --from=builder /build/dns-controller-manager /dns-controller-manager
-
-WORKDIR /
-
-USER 65534:65534
 
 ENTRYPOINT ["/dns-controller-manager"]
 
 #############      dns-controller-manager-next-generation     #############
 FROM base AS dns-controller-manager-next-generation
-WORKDIR /
 
 COPY --from=builder /build/dns-controller-manager-next-generation /dns-controller-manager-next-generation
-
-WORKDIR /
-
-USER 65534:65534
 
 ENTRYPOINT ["/dns-controller-manager-next-generation"]
