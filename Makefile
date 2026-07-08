@@ -62,7 +62,7 @@ build-local:
 	    ./cmd/compound
 	@CGO_ENABLED=1 go build -o $(EXECUTABLE_NG) \
 	    -race \
-	    -ldflags "-X main.Version=$(VERSION)-$(shell git rev-parse HEAD)"\
+	    -ldflags "$(LDFLAGS_NG)"\
 	    ./cmd/nextgen
 
 .PHONY: release
@@ -70,8 +70,7 @@ release: $(EXECUTABLE) $(EXECUTABLE_NG)
 
 # LDFLAGS_RELEASE:
 #   -s -w  strip symbol table and DWARF (smaller binary; no debuggability loss vs -w alone)
-#   -X ... embed the version. Overridable, e.g. `make release LDFLAGS_RELEASE_EXTRA=-X=...`.
-LDFLAGS_RELEASE ?= -s -w -X main.Version=$(VERSION) $(LDFLAGS_RELEASE_EXTRA)
+LDFLAGS_RELEASE ?= -s -w
 
 # GOFLAGS_RELEASE:
 #   -trimpath      remove absolute paths from binaries (reproducible builds).
@@ -79,10 +78,14 @@ LDFLAGS_RELEASE ?= -s -w -X main.Version=$(VERSION) $(LDFLAGS_RELEASE_EXTRA)
 GOFLAGS_RELEASE ?= -trimpath -buildvcs=false
 
 $(EXECUTABLE): FORCE
-	@CGO_ENABLED=0 go build $(GOFLAGS_RELEASE) -o $@ -ldflags '$(LDFLAGS_RELEASE)' ./cmd/compound
+	@CGO_ENABLED=0 go build $(GOFLAGS_RELEASE) -o $@ -ldflags '$(LDFLAGS_RELEASE) -X main.Version=$(VERSION)' ./cmd/compound
+
+LDFLAGS_NG := $(shell bash $(GARDENER_HACK_DIR)/get-build-ld-flags.sh k8s.io/component-base $(REPO_ROOT)/VERSION $(EXECUTABLE_NG))
 
 $(EXECUTABLE_NG): FORCE
-	@CGO_ENABLED=0 go build $(GOFLAGS_RELEASE) -o $@ -ldflags '$(LDFLAGS_RELEASE)' ./cmd/nextgen
+	@CGO_ENABLED=0 go build $(GOFLAGS_RELEASE) -o $@ \
+	    -ldflags '$(LDFLAGS_NG) $(LDFLAGS_RELEASE)' \
+	    ./cmd/nextgen
 
 # Phony marker so the two binary rules always re-evaluate (their real freshness
 # is handled by the Go build cache, not by mtime against ./cmd/... source trees).
