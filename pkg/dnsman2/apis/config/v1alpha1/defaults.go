@@ -47,7 +47,7 @@ func SetDefaults_ClientConnection(obj *ClientConnection) {
 		obj.Burst = 130
 	}
 	if obj.CacheResyncPeriod == nil {
-		obj.CacheResyncPeriod = &metav1.Duration{Duration: time.Hour}
+		obj.CacheResyncPeriod = &metav1.Duration{Duration: 10 * time.Hour}
 	}
 }
 
@@ -60,7 +60,7 @@ func SetDefaults_ControlPlaneClientConnection(obj *ControlPlaneClientConnection)
 		obj.Burst = 130
 	}
 	if obj.CacheResyncPeriod == nil {
-		obj.CacheResyncPeriod = &metav1.Duration{Duration: time.Hour}
+		obj.CacheResyncPeriod = &metav1.Duration{Duration: 10 * time.Hour}
 	}
 }
 

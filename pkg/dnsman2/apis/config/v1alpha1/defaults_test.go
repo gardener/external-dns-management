@@ -86,7 +86,7 @@ var _ = Describe("Defaults", func() {
 					QPS:   100.0,
 					Burst: 130,
 				}))
-				Expect(obj.ClientConnection.CacheResyncPeriod).To(Equal(&metav1.Duration{Duration: time.Hour}))
+				Expect(obj.ClientConnection.CacheResyncPeriod).To(Equal(&metav1.Duration{Duration: 10*time.Hour}))
 			})
 
 			It("should correctly default ControlPlaneClientConnection", func() {
@@ -97,7 +97,7 @@ var _ = Describe("Defaults", func() {
 					QPS:   100.0,
 					Burst: 130,
 				}))
-				Expect(obj.ControlPlaneClientConnection.CacheResyncPeriod).To(Equal(&metav1.Duration{Duration: time.Hour}))
+				Expect(obj.ControlPlaneClientConnection.CacheResyncPeriod).To(Equal(&metav1.Duration{Duration: 10*time.Hour}))
 			})
 		})
 
