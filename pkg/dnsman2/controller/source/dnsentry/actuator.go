@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -37,7 +38,8 @@ func (a *Actuator) ReconcileSourceObject(
 	reconcile.Result,
 	error,
 ) {
-	r.Log.Info("reconcile")
+	log := logf.FromContext(ctx)
+	log.Info("reconcile")
 
 	var input *common.DNSSpecInput
 	if a.IsRelevantSourceObject(r, entry) {
@@ -52,12 +54,12 @@ func (a *Actuator) ReconcileSourceObject(
 	if targetKey := entry.Annotations[dns.AnnotationTargetEntry]; targetKey != "" {
 		objectKey := getTargetEntryObjectKey(targetKey)
 		if objectKey == nil {
-			r.Log.Error(nil, "Invalid target DNSEntry annotation", "value", targetKey)
+			log.Error(nil, "Invalid target DNSEntry annotation", "value", targetKey)
 			return res, nil
 		}
 		targetEntry := &dnsv1alpha1.DNSEntry{}
 		if err = r.ControlPlaneClient.Get(ctx, *objectKey, targetEntry); client.IgnoreNotFound(err) != nil {
-			r.Log.Error(err, "Could not get target DNSEntry", "key", targetKey)
+			log.Error(err, "Could not get target DNSEntry", "key", targetKey)
 			return res, err
 		}
 		if err == nil && targetEntry.DeletionTimestamp == nil {
@@ -65,7 +67,7 @@ func (a *Actuator) ReconcileSourceObject(
 			entry.Status = *targetEntry.Status.DeepCopy()
 			entry.Status.ObservedGeneration = entry.Generation
 			if err := r.Client.Status().Patch(ctx, entry, patch); err != nil {
-				r.Log.Error(err, "Could not update status")
+				log.Error(err, "Could not update status")
 				return res, err
 			}
 		}

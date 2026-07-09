@@ -7,7 +7,6 @@ package gatewayapi
 import (
 	"context"
 
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
@@ -56,7 +55,6 @@ var _ = Describe("Common", func() {
 			reconciler = &common.SourceReconciler[client.Object]{}
 
 			reconciler.Client = fakeClient
-			reconciler.Log = logr.Discard()
 			reconciler.State = state.GetState().GetAnnotationState()
 		})
 
@@ -263,7 +261,6 @@ var _ = Describe("Common", func() {
 			}
 
 			reconciler.Client = fakeClient
-			reconciler.Log = logr.Discard()
 		})
 
 		It("should get a single DNS name based on the annotation", func() {

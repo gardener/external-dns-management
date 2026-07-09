@@ -12,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,10 +46,10 @@ type DNSSpecInput struct {
 }
 
 // GetDNSSpecInputForService gets the DNS spec input for a service of type loadbalancer.
-func GetDNSSpecInputForService(log logr.Logger, state state.AnnotationState, gvk schema.GroupVersionKind, svc *corev1.Service) (*DNSSpecInput, error) {
+func GetDNSSpecInputForService(state state.AnnotationState, gvk schema.GroupVersionKind, svc *corev1.Service) (*DNSSpecInput, error) {
 	annotations := GetMergedAnnotation(gvk, state, svc)
 
-	names, err := GetDNSNamesFromAnnotations(log, annotations)
+	names, err := GetDNSNamesFromAnnotations(annotations)
 	if err != nil {
 		return nil, err
 	}
@@ -103,10 +102,10 @@ func GetTargetsForService(svc *corev1.Service, annotations map[string]string) *u
 }
 
 // GetDNSSpecInputForIngress gets the DNS spec input for an Ingress resource.
-func GetDNSSpecInputForIngress(log logr.Logger, state state.AnnotationState, gvk schema.GroupVersionKind, ingress *networkingv1.Ingress) (*DNSSpecInput, error) {
+func GetDNSSpecInputForIngress(state state.AnnotationState, gvk schema.GroupVersionKind, ingress *networkingv1.Ingress) (*DNSSpecInput, error) {
 	annotations := GetMergedAnnotation(gvk, state, ingress)
 
-	names, err := getDNSNamesForIngress(log, ingress, annotations)
+	names, err := getDNSNamesForIngress(ingress, annotations)
 	if err != nil {
 		return nil, err
 	}
@@ -121,8 +120,8 @@ func GetDNSSpecInputForIngress(log logr.Logger, state state.AnnotationState, gvk
 	})
 }
 
-func getDNSNamesForIngress(log logr.Logger, ingress *networkingv1.Ingress, annotations map[string]string) (*utils.UniqueStrings, error) {
-	annotatedNames, err := GetDNSNamesFromAnnotations(log, annotations)
+func getDNSNamesForIngress(ingress *networkingv1.Ingress, annotations map[string]string) (*utils.UniqueStrings, error) {
+	annotatedNames, err := GetDNSNamesFromAnnotations(annotations)
 	if err != nil {
 		return nil, err
 	}
@@ -242,10 +241,9 @@ func modifyEntryFor(entry *v1alpha1.DNSEntry, cfg config.SourceControllerConfig,
 }
 
 // GetDNSNamesFromAnnotations extracts DNS names from the corresponding annotation.
-func GetDNSNamesFromAnnotations(log logr.Logger, annotations map[string]string) (*utils.UniqueStrings, error) {
+func GetDNSNamesFromAnnotations(annotations map[string]string) (*utils.UniqueStrings, error) {
 	dnsNames, ok := annotations[dns.AnnotationDNSNames]
 	if !ok {
-		log.V(5).Info("No DNS names annotation", "key", dns.AnnotationDNSNames)
 		return nil, nil
 	}
 	if dnsNames == "" {

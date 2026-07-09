@@ -19,7 +19,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -62,7 +61,6 @@ func (r *SourceReconciler[SourceObject]) AddToManager(
 	r.SourceClass = config.GetSourceClass(cfg)
 	r.TargetClass = config.GetTargetClass(cfg)
 
-	r.Log = logf.Log.WithName(r.actuator.ControllerName() + "-controller")
 	r.Client = mgr.GetClient()
 	r.ControlPlaneClient = controlPlaneCluster.GetClient()
 	if r.Recorder == nil {
