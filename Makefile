@@ -137,7 +137,7 @@ integrationtests: $(GINKGO)
 	GINKGO=$(shell realpath $(GINKGO)) test/integration/run.sh -l $(kindargs) -- $(args)
 
 .PHONY: test-integration
-test-integration: integrationtests new-test-integration
+test-integration: new-test-integration integrationtests
 
 .PHONY: docker-images
 docker-images:
