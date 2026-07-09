@@ -198,11 +198,18 @@ func (r *Reconciler) entriesToReconcileOnProviderChanges(ctx context.Context, lo
 			})
 		}
 	}
-	r.lastProviderUpdate.Set(
-		providerKey,
-		providerSnapshot{observedGeneration: observedGeneration, lastUpdateTime: newLastUpdateTime},
-		0,
-	)
+	// Cache the snapshot only when the fan-out actually enqueued entries. Recording it on an empty
+	// fan-out would suppress the identical event even though no entry was triggered yet (e.g. an entry
+	// not yet visible in the informer cache when the provider turned ready), which - without a periodic
+	// SyncPeriod - could leave that entry stuck. Skipping the cache write here lets a later identical
+	// event retry the fan-out; the entry self-requeue is the primary safety net, this avoids relying on it.
+	if len(requests) > 0 {
+		r.lastProviderUpdate.Set(
+			providerKey,
+			providerSnapshot{observedGeneration: observedGeneration, lastUpdateTime: newLastUpdateTime},
+			0,
+		)
+	}
 	log.Info("trigger reconciliation by DNSProvider change", "entries", len(requests), "provider", providerKey)
 	return requests
 }
