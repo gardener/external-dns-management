@@ -15,6 +15,13 @@
       groupName: 'gardener/gardener',
       matchPackageNames: ['/^(github\\.com\\/)?gardener\\/gardener(\\/.*)?$/'],
       enabled: true
+    },
+    {
+      // Pin Dockerfile base images by digest for reproducible, supply-chain-safe builds.
+      // Renovate will open a PR to add @sha256:... to any unpinned FROM tag and to
+      // keep the digest in sync with the tag on subsequent updates.
+      matchManagers: ['dockerfile'],
+      pinDigests: true,
     }
   ],
   // The following list of dependencies to ignore is updated by `make generate`.
