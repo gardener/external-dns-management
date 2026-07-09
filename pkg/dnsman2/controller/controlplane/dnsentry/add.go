@@ -47,6 +47,13 @@ const defaultProviderUpdateCachePeriod = 7 * 24 * time.Hour
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
 	r.Config = cfg.Controllers.DNSEntry
+	var cacheSyncPeriod *metav1.Duration
+	if mgr == controlPlaneCluster {
+		cacheSyncPeriod = cfg.ClientConnection.CacheResyncPeriod
+	} else {
+		cacheSyncPeriod = cfg.ControlPlaneClientConnection.CacheResyncPeriod
+	}
+
 	r.Class = cfg.Class
 	r.SecondaryClasses = cfg.SecondaryClasses
 	r.Namespace = cfg.Controllers.DNSProvider.Namespace
@@ -127,6 +134,10 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 			return err
 		}
 		log.Info("Periodic reconciliation enabled", "syncPeriod", r.Config.SyncPeriod.Duration)
+	} else if cacheSyncPeriod != nil && cacheSyncPeriod.Duration > 0 {
+		log.Info("Periodic reconciliation relies on cache resync period", "cacheResyncPeriod", cacheSyncPeriod.Duration)
+	} else {
+		log.Info("No periodic reconciliation")
 	}
 
 	if interval := ptr.Deref(r.Config.ZoneMetricsInterval, metav1.Duration{}).Duration; interval > 0 {

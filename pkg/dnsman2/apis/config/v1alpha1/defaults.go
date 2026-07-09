@@ -142,10 +142,7 @@ func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 	if obj.ConcurrentSyncs == nil {
 		obj.ConcurrentSyncs = new(5)
 	}
-	if obj.SyncPeriod == nil {
-		// periodic sync is a safety net, not the primary trigger.
-		obj.SyncPeriod = &metav1.Duration{Duration: 8 * time.Hour}
-	}
+	// SyncPeriod is not activated by default. Instead, rely on the `CacheResyncPeriod` of the `ControlPlaneClientConnection`/`ClientConnection`.
 	if obj.ReconciliationTimeout == nil {
 		obj.ReconciliationTimeout = &metav1.Duration{Duration: 2 * time.Minute}
 	}
