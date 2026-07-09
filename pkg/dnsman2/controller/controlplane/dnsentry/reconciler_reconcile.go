@@ -27,6 +27,11 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
+// waitForProviderRetryInterval is the requeue delay used when an entry cannot proceed because no
+// matching provider was found or its provider is not ready yet. It lets the entry recover on its own
+// (independently of the DNSProvider->entry fan-out) and is kept short so recovery is prompt.
+const waitForProviderRetryInterval = 2 * time.Second
+
 type entryReconciliation struct {
 	common.EntryContext
 	namespace                  string
@@ -248,7 +253,7 @@ func validateDNSEntry(entry *v1alpha1.DNSEntry) error {
 }
 
 func (r *entryReconciliation) updateStatusWithoutProvider() common.ReconcileResult {
-	return r.StatusUpdater().UpdateStatus(func(status *v1alpha1.DNSEntryStatus) error {
+	res := r.StatusUpdater().UpdateStatus(func(status *v1alpha1.DNSEntryStatus) error {
 		status.Provider = nil
 		status.ObservedGeneration = r.Entry.Generation
 		if len(status.Targets) > 0 && status.Zone != nil {
@@ -260,6 +265,12 @@ func (r *entryReconciliation) updateStatusWithoutProvider() common.ReconcileResu
 		status.Message = new("no matching DNS provider found")
 		return nil
 	})
+	// Self-requeue so the entry recovers on its own once a matching provider becomes ready,
+	// even if the DNSProvider->entry fan-out (see entriesToReconcileOnProviderChanges) misses it.
+	if res.Err == nil && res.Result.IsZero() {
+		res.Result.RequeueAfter = waitForProviderRetryInterval
+	}
+	return res
 }
 
 func (r *entryReconciliation) updateStatusWithProvider(targetsData *newTargetsData) common.ReconcileResult {
@@ -356,7 +367,11 @@ func (r *entryReconciliation) checkProviderNotReady(data *providerselector.NewPr
 		} else {
 			msg = fmt.Sprintf("provider %s is not ready yet", data.ProviderKey)
 		}
-		return common.StaleReconcileResult(msg, false)
+		// Self-requeue so the entry recovers on its own once the provider becomes ready, even if the
+		// DNSProvider->entry fan-out (see entriesToReconcileOnProviderChanges) misses it.
+		res := common.StaleReconcileResult(msg, true)
+		res.Result.RequeueAfter = waitForProviderRetryInterval
+		return res
 	}
 	return nil
 }

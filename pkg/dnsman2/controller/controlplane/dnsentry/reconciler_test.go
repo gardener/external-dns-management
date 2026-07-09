@@ -250,7 +250,13 @@ var _ = Describe("Reconcile", func() {
 			Expect(entry.Status.State).To(Equal(state), "state should match")
 			if state != "Stale" || entry.Status.Provider == nil {
 				Expect(err).ToNot(HaveOccurred(), "failed to reconcile Entry")
-				Expect(result).To(Equal(reconcile.Result{}))
+				if entry.Status.Provider == nil && (state == "Error" || state == "Stale") {
+					// No matching provider found: the entry self-requeues so it recovers once a
+					// provider becomes ready, independently of the DNSProvider->entry fan-out.
+					Expect(result).To(Equal(reconcile.Result{RequeueAfter: waitForProviderRetryInterval}))
+				} else {
+					Expect(result).To(Equal(reconcile.Result{}))
+				}
 			} else {
 				Expect(err).ToNot(HaveOccurred(), "expected successful reconciliation with status update")
 				Expect(entry.Status.Message).NotTo(BeNil(), "expected non-empty status message")
