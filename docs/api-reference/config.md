@@ -344,7 +344,7 @@ integer
 </td>
 <td>
 <em>(Optional)</em>
-<p>SyncPeriod is the periodic reconciliation interval for all DNSEntry objects.<br />Note that even if not set, DNSObjects may still be reconciled periodically if `CacheResyncPeriod` is set<br />for the `ControlPlaneClientConnection` (`ClientConnection` in single-cluster mode).</p>
+<p>SyncPeriod is the periodic reconciliation interval for all DNSEntry objects.<br />Note that even if not set, `DNSEntry` objects may still be reconciled periodically if `CacheResyncPeriod` is set<br />for the `ControlPlaneClientConnection` (`ClientConnection` in single-cluster mode).</p>
 </td>
 </tr>
 <tr>

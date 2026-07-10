@@ -172,7 +172,7 @@ type DNSEntryControllerConfig struct {
 	// +optional
 	ConcurrentSyncs *int `json:"concurrentSyncs,omitempty"`
 	// SyncPeriod is the periodic reconciliation interval for all DNSEntry objects.
-	// Note that even if not set, DNSObjects may still be reconciled periodically if `CacheResyncPeriod` is set
+	// Note that even if not set, `DNSEntry` objects may still be reconciled periodically if `CacheResyncPeriod` is set
 	// for the `ControlPlaneClientConnection` (`ClientConnection` in single-cluster mode).
 	// +optional
 	SyncPeriod *metav1.Duration `json:"syncPeriod,omitempty"`
