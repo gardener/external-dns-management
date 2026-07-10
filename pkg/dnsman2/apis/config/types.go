@@ -148,6 +148,8 @@ type DNSEntryControllerConfig struct {
 	// ConcurrentSyncs is the number of concurrent reconciliations for this controller.
 	ConcurrentSyncs *int
 	// SyncPeriod is the periodic reconciliation interval for all DNSEntry objects.
+	// Note that even if not set, `DNSEntry` objects may still be reconciled periodically if `CacheResyncPeriod` is set
+	// for the `ControlPlaneClientConnection` (`ClientConnection` in single-cluster mode).
 	SyncPeriod *metav1.Duration
 	// ReconciliationTimeout is the maximum duration a reconciliation of a DNSEntry is allowed to take.
 	// Default value is 2 minutes.

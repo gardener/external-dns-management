@@ -5,7 +5,6 @@
 package common_test
 
 import (
-	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -21,7 +20,6 @@ import (
 var _ = Describe("DNSSpecInput", func() {
 	Describe("#GetDNSSpecInputForIngress", func() {
 		var (
-			log             = logr.Discard()
 			gkv             = networkingv1.SchemeGroupVersion.WithKind("Ingress")
 			annotationState = state.GetState().GetAnnotationState()
 			ingress         *networkingv1.Ingress
@@ -46,42 +44,42 @@ var _ = Describe("DNSSpecInput", func() {
 		})
 
 		It("should return nil when no dns names are specified", func() {
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input).To(BeNil())
 		})
 
 		It("should return an error when the dns names annotation is empty", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = ""
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).To(MatchError("empty value for annotation \"dns.gardener.cloud/dnsnames\""))
 			Expect(input).To(BeNil())
 		})
 
 		It("should handle the wildcard dns name annotation", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "*"
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.Names.ToSlice()).To(ConsistOf([]string{"example.com", "gardener.cloud", "wikipedia.org"}))
 		})
 
 		It("should handle the wildcard dns name annotation (alias value 'all')", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "all"
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.Names.ToSlice()).To(ConsistOf([]string{"example.com", "gardener.cloud", "wikipedia.org"}))
 		})
 
 		It("should handle a subset of dns names", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "example.com,gardener.cloud"
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.Names.ToSlice()).To(ConsistOf([]string{"example.com", "gardener.cloud"}))
 		})
 
 		It("should reject dns names not found in the ingress rules", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "example.com,notfound.com"
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).To(MatchError("annotated dns names notfound.com not declared by ingress"))
 			Expect(input).To(BeNil())
 		})
@@ -89,7 +87,7 @@ var _ = Describe("DNSSpecInput", func() {
 		It("should set ResolveTargetsToAddresses when annotation is present", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
 			ingress.Annotations[dns.AnnotationResolveTargetsToAddresses] = "true"
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.ResolveTargetsToAddresses).To(Equal(new(true)))
 		})
@@ -97,7 +95,7 @@ var _ = Describe("DNSSpecInput", func() {
 		It("should set IP Targets from ingress status", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
 			ingress.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: "1.1.1.1"}}
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.Targets.ToSlice()).To(ConsistOf([]string{"1.1.1.1"}))
 		})
@@ -105,7 +103,7 @@ var _ = Describe("DNSSpecInput", func() {
 		It("should set hostname Targets from ingress status", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
 			ingress.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{Hostname: "https://example.org"}}
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.Targets.ToSlice()).To(ConsistOf([]string{"https://example.org"}))
 		})
@@ -113,7 +111,7 @@ var _ = Describe("DNSSpecInput", func() {
 		It("should prefer IP Targets over hostnames ingress status", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
 			ingress.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: "1.1.1.1", Hostname: "https://example.org"}}
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.Targets.ToSlice()).To(ConsistOf([]string{"1.1.1.1"}))
 		})
@@ -121,7 +119,7 @@ var _ = Describe("DNSSpecInput", func() {
 		It("should collect multiple, unique Targets from ingress status", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
 			ingress.Status.LoadBalancer.Ingress = []networkingv1.IngressLoadBalancerIngress{{IP: "1.1.1.1"}, {IP: "1.0.0.1"}, {IP: "1.1.1.1"}}
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.Targets.ToSlice()).To(ConsistOf([]string{"1.1.1.1", "1.0.0.1"}))
 		})
@@ -129,7 +127,7 @@ var _ = Describe("DNSSpecInput", func() {
 		It("should set IPStack when annotation is present", func() {
 			ingress.Annotations[dns.AnnotationDNSNames] = "example.com"
 			ingress.Annotations[dns.AnnotationIPStack] = dns.AnnotationValueIPStackIPDualStack
-			input, err := common.GetDNSSpecInputForIngress(log, annotationState, gkv, ingress)
+			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.IPStack).To(Equal("dual-stack"))
 		})

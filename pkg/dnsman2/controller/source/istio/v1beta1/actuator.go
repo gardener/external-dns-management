@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
@@ -55,7 +56,7 @@ func (a *Actuator) ReconcileSourceObject(
 	reconcile.Result,
 	error,
 ) {
-	r.Log.Info("reconcile")
+	logf.FromContext(ctx).Info("reconcile")
 
 	var input *common.DNSSpecInput
 	if a.IsRelevantSourceObject(r, gateway) {

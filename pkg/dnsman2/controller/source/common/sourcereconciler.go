@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/gardener/gardener/pkg/controllerutils"
-	"github.com/go-logr/logr"
 	"golang.org/x/exp/maps"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -21,6 +20,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
@@ -31,7 +31,6 @@ import (
 // SourceReconciler is base for source reconcilers.
 type SourceReconciler[SourceObject client.Object] struct {
 	actuator           SourceActuator[SourceObject]
-	Log                logr.Logger
 	Client             client.Client
 	ControlPlaneClient client.Client
 	Recorder           RecorderWithDeduplication
@@ -109,6 +108,7 @@ func (r *SourceReconciler[SourceObject]) createOrUpdateDNSEntry(
 	dnsName string,
 	entry *dnsv1alpha1.DNSEntry,
 ) error {
+	log := logf.FromContext(ctx)
 	modifier := func() error {
 		modifyEntryFor(entry, r.Config, dnsSpecInput, dnsName)
 		return nil
@@ -120,7 +120,7 @@ func (r *SourceReconciler[SourceObject]) createOrUpdateDNSEntry(
 		if err := r.ControlPlaneClient.Create(ctx, entry); err != nil {
 			return fmt.Errorf("failed to create DNSEntry: %w", err)
 		}
-		r.Log.Info("created DNSEntry", "name", entry.Name)
+		log.Info("created DNSEntry", "name", entry.Name)
 		r.Recorder.Eventf(obj, nil, corev1.EventTypeNormal, "DNSEntryCreated", "Create", "%s: created entry %s in control plane", entry.Spec.DNSName, entry.Name)
 		return nil
 	}
@@ -130,7 +130,7 @@ func (r *SourceReconciler[SourceObject]) createOrUpdateDNSEntry(
 		return fmt.Errorf("failed to patch DNSEntry %s: %w", client.ObjectKeyFromObject(entry), err)
 	}
 	if result == controllerutil.OperationResultUpdated {
-		r.Log.Info("updated DNSEntry", "name", entry.Name)
+		log.Info("updated DNSEntry", "name", entry.Name)
 		r.Recorder.Eventf(obj, nil, corev1.EventTypeNormal, "DNSEntryUpdated", "Update", "%s: updated entry %s in control plane", entry.Spec.DNSName, entry.Name)
 	}
 	return nil
@@ -138,7 +138,8 @@ func (r *SourceReconciler[SourceObject]) createOrUpdateDNSEntry(
 
 // DoDelete performs delete reconciliation for given object.
 func (r *SourceReconciler[SourceObject]) DoDelete(ctx context.Context, obj client.Object) (reconcile.Result, error) {
-	r.Log.Info("cleanup")
+	log := logf.FromContext(ctx)
+	log.Info("cleanup")
 
 	ownedEntries, err := r.getExistingOwnedDNSEntries(ctx, obj)
 	if err != nil {
@@ -191,6 +192,7 @@ func (r *SourceReconciler[SourceObject]) deleteObsoleteOwnedDNSEntries(
 	ownedEntries []dnsv1alpha1.DNSEntry,
 	entriesToKeep []*dnsv1alpha1.DNSEntry,
 ) error {
+	log := logf.FromContext(ctx)
 outer:
 	for _, ownedEntry := range ownedEntries {
 		for _, entryToKeep := range entriesToKeep {
@@ -201,7 +203,7 @@ outer:
 		if err := r.ControlPlaneClient.Delete(ctx, &ownedEntry); client.IgnoreNotFound(err) != nil {
 			return fmt.Errorf("failed to delete obsolete owned DNSEntry %s: %w", client.ObjectKeyFromObject(&ownedEntry), err)
 		}
-		r.Log.Info("delete obsolete owned DNSEntry", "name", ownedEntry.Name)
+		log.Info("delete obsolete owned DNSEntry", "name", ownedEntry.Name)
 		r.Recorder.DedupEventf(obj, corev1.EventTypeNormal, "DNSEntryDeleted", "DNSEntryDeleted", "%s: deleted entry %s in control plane", ownedEntry.Spec.DNSName, ownedEntry.Name)
 	}
 	return nil
@@ -228,10 +230,12 @@ func (r *SourceReconciler[SourceObject]) targetNamespace(owner metav1.Object) st
 
 // Reconcile reconciles source objects using the actuator.
 func (r *SourceReconciler[SourceObject]) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
+	log := logf.FromContext(ctx).WithName(r.actuator.ControllerName())
+	ctx = logf.IntoContext(ctx, log)
 	sourceObject := r.actuator.NewSourceObject()
 	if err := r.Client.Get(ctx, req.NamespacedName, sourceObject); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.Log.V(1).Info("Object is gone, stop reconciling")
+			log.V(1).Info("Object is gone, stop reconciling")
 			r.actuator.OnDelete(req.NamespacedName)
 			return reconcile.Result{}, nil
 		}

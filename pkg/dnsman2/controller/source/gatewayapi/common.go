@@ -125,7 +125,7 @@ func hasRelevantCRDs(apiResources []metav1.APIResource) bool {
 }
 
 func getDNSNames[T client.Object](ctx context.Context, r *common.SourceReconciler[T], gatewayObj client.Object, annotations map[string]string) (*utils.UniqueStrings, error) {
-	annotatedNames, err := common.GetDNSNamesFromAnnotations(r.Log, annotations)
+	annotatedNames, err := common.GetDNSNamesFromAnnotations(annotations)
 	if err != nil {
 		return nil, err
 	}

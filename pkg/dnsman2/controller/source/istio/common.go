@@ -44,7 +44,7 @@ const (
 func GetDNSSpecInput[T client.Object](ctx context.Context, r *common.SourceReconciler[T], gatewayObj client.Object, state *ObjectToGatewaysState) (*common.DNSSpecInput, error) {
 	annotations := common.GetMergedAnnotation(r.GVK, r.State, gatewayObj)
 
-	annotatedNames, err := common.GetDNSNamesFromAnnotations(r.Log, annotations)
+	annotatedNames, err := common.GetDNSNamesFromAnnotations(annotations)
 	if err != nil {
 		return nil, err
 	}

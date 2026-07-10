@@ -151,8 +151,10 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		})
 
 		cfg := &config.DNSManagerConfiguration{
-			LogLevel:  "debug",
-			LogFormat: "text",
+			LogLevel:                     "debug",
+			LogFormat:                    "text",
+			ClientConnection:             &config.ClientConnection{},
+			ControlPlaneClientConnection: &config.ControlPlaneClientConnection{},
 			Controllers: config.ControllerConfiguration{
 				DNSProvider: config.DNSProviderControllerConfig{
 					Namespace:  testRunID,

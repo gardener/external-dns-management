@@ -156,8 +156,10 @@ var _ = Describe("Provider/Entry/Source collaboration tests", func() {
 		log.Info("Created Namespace for test on source cluster", "namespaceName", sourceNamespace.Name)
 
 		cfg := &config.DNSManagerConfiguration{
-			LogLevel:  "debug",
-			LogFormat: "text",
+			LogLevel:                     "debug",
+			LogFormat:                    "text",
+			ClientConnection:             &config.ClientConnection{},
+			ControlPlaneClientConnection: &config.ControlPlaneClientConnection{},
 			Controllers: config.ControllerConfiguration{
 				DNSProvider: config.DNSProviderControllerConfig{
 					Namespace:  testRunID,

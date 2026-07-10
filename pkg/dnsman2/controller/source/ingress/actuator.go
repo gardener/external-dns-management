@@ -11,6 +11,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
@@ -35,12 +36,13 @@ func (a *Actuator) ReconcileSourceObject(
 	reconcile.Result,
 	error,
 ) {
-	r.Log.Info("reconcile")
+	log := logf.FromContext(ctx)
+	log.Info("reconcile")
 
 	var input *common.DNSSpecInput
 	if a.IsRelevantSourceObject(r, ingress) {
 		var err error
-		input, err = common.GetDNSSpecInputForIngress(r.Log, r.State, r.GVK, ingress)
+		input, err = common.GetDNSSpecInputForIngress(r.State, r.GVK, ingress)
 		if err != nil {
 			r.Recorder.DedupEventf(ingress, corev1.EventTypeWarning, "Invalid", "Reconcile", "%s", err)
 			return reconcile.Result{}, err

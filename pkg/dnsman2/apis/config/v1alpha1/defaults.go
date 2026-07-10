@@ -47,7 +47,7 @@ func SetDefaults_ClientConnection(obj *ClientConnection) {
 		obj.Burst = 130
 	}
 	if obj.CacheResyncPeriod == nil {
-		obj.CacheResyncPeriod = &metav1.Duration{Duration: time.Hour}
+		obj.CacheResyncPeriod = &metav1.Duration{Duration: 10 * time.Hour}
 	}
 }
 
@@ -60,7 +60,7 @@ func SetDefaults_ControlPlaneClientConnection(obj *ControlPlaneClientConnection)
 		obj.Burst = 130
 	}
 	if obj.CacheResyncPeriod == nil {
-		obj.CacheResyncPeriod = &metav1.Duration{Duration: time.Hour}
+		obj.CacheResyncPeriod = &metav1.Duration{Duration: 10 * time.Hour}
 	}
 }
 
@@ -142,10 +142,7 @@ func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 	if obj.ConcurrentSyncs == nil {
 		obj.ConcurrentSyncs = new(5)
 	}
-	if obj.SyncPeriod == nil {
-		// periodic sync is a safety net, not the primary trigger.
-		obj.SyncPeriod = &metav1.Duration{Duration: 8 * time.Hour}
-	}
+	// SyncPeriod is not activated by default. Instead, rely on the `CacheResyncPeriod` of the `ControlPlaneClientConnection`/`ClientConnection`.
 	if obj.ReconciliationTimeout == nil {
 		obj.ReconciliationTimeout = &metav1.Duration{Duration: 2 * time.Minute}
 	}
