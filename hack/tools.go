@@ -9,13 +9,5 @@
 package tools
 
 import (
-	_ "github.com/elastic/crd-ref-docs"
-	_ "github.com/onsi/ginkgo/v2/ginkgo"
-	_ "github.com/onsi/gomega"
-	_ "golang.org/x/tools/cmd/goimports"
-	_ "k8s.io/code-generator"
-	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"
-	_ "sigs.k8s.io/kind"
-
-	_ "k8s.io/klog/v2" // import for klog to be available in the go.mod file, so that it is not removed by go mod tidy (used in hack/tools/bin/work/import-boss/main.go)
+	_ "github.com/gardener/gardener/hack/tools"
 )
