@@ -149,14 +149,14 @@ if [ "$VERBOSE" != "" ]; then
   set -x
 fi
 
+# prepare Kubernetes IN Docker - local clusters for testing Kubernetes
+make -C "$ROOTDIR" ensure-functional-test-deps
+export PATH="$ROOTDIR/hack/tools/bin/$(go env GOOS)-$(go env GOARCH)/kind:$PATH"
+
 globalLock
 
 if [ "$NOBOOTSTRAP" == "" ] && [ "$LOCAL_APISERVER" == "" ]; then
   echo Starting Kubernetes IN Docker...
-
-  # prepare Kubernetes IN Docker - local clusters for testing Kubernetes
-  go install sigs.k8s.io/kind
-
 
   rm $INTEGRATION_KUBECONFIG || true
   touch $INTEGRATION_KUBECONFIG
@@ -195,8 +195,7 @@ else
   echo dns-controller-manager must be started with arguments: '--controllers=dnscontrollers'
 fi
 
-GINKGO=${GINKGO:-ginkgo}
-FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER ${GINKGO} -v -p "$@"
+FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER ginkgo -v -p "$@"
 
 RETCODE=$?
 
