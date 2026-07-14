@@ -158,3 +158,6 @@ verify: check format sast
 
 .PHONY: verify-extended
 verify-extended: check-generate check format sast-report
+
+.PHONY: ensure-functional-test-deps
+ensure-functional-test-deps: $(KIND) $(KUBECTL) $(GINKGO)
