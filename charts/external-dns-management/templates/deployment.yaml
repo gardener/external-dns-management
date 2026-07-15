@@ -1071,8 +1071,8 @@ spec:
             path: /healthz
             port: {{ include "healthProbesPort" . }}
             scheme: HTTP
-          initialDelaySeconds: 30
-          timeoutSeconds: 5
+          initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
