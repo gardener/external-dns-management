@@ -19,7 +19,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: dnsannotations.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -154,7 +154,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: dnsentries.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -416,7 +416,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: dnshostedzonepolicies.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
@@ -543,7 +543,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.20.1
+    controller-gen.kubebuilder.io/version: v0.21.0
   name: dnsproviders.dns.gardener.cloud
 spec:
   group: dns.gardener.cloud
