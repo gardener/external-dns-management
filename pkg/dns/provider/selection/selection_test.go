@@ -386,6 +386,60 @@ var _ = Describe("Selection", func() {
 		}))
 	})
 
+	It("handles included subdomain of excluded domain", func() {
+		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
+			Domains: &v1alpha1.DNSSelection{
+				Include: []string{"sub.a.b"},
+				Exclude: []string{"a.b"},
+			},
+		}
+		result := CalcZoneAndDomainSelection(spec, []LightDNSHostedZone{zab})
+		Expect(result).To(Equal(SelectionResult{
+			Zones:       []LightDNSHostedZone{zab},
+			SpecZoneSel: NewSubSelection(),
+			SpecDomainSel: SubSelection{
+				Include: utils.NewStringSet("sub.a.b"),
+				Exclude: utils.NewStringSet("a.b"),
+			},
+			ZoneSel: SubSelection{
+				Include: utils.NewStringSet("ZAB"),
+				Exclude: utils.NewStringSet(),
+			},
+			DomainSel: SubSelection{
+				Include: utils.NewStringSet("sub.a.b"),
+				Exclude: utils.NewStringSet("a.b"),
+			},
+		}))
+	})
+
+	It("handles included subdomain of excluded domain with super zone", func() {
+		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
+			Domains: &v1alpha1.DNSSelection{
+				Include: []string{"sub.c.a.b"},
+				Exclude: []string{"a.b"},
+			},
+		}
+		result := CalcZoneAndDomainSelection(spec, []LightDNSHostedZone{zab, zcab})
+		Expect(result).To(Equal(SelectionResult{
+			Zones:       []LightDNSHostedZone{zcab},
+			SpecZoneSel: NewSubSelection(),
+			SpecDomainSel: SubSelection{
+				Include: utils.NewStringSet("sub.c.a.b"),
+				Exclude: utils.NewStringSet("a.b"),
+			},
+			ZoneSel: SubSelection{
+				Include: utils.NewStringSet("ZCAB"),
+				Exclude: utils.NewStringSet("ZAB"),
+			},
+			DomainSel: SubSelection{
+				Include: utils.NewStringSet("sub.c.a.b"),
+				Exclude: utils.NewStringSet("a.b"),
+			},
+		}))
+	})
+
 	Context("forwarded own zones", func() {
 		zb := &lightDNSHostedZone{
 			id:               dns.NewZoneID("test", "ZB"),
