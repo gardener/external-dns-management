@@ -127,6 +127,7 @@ type state struct {
 	outdated             *synchronizedEntries
 	blockingEntries      map[resources.ObjectName]time.Time
 	quotaExceededEntries map[resources.ClusterObjectKey]resources.ObjectName
+	entryBackoff         *entryFailureBackoff
 
 	updateEntryBlockedLock sync.Mutex
 	updateEntryBlocked     map[resources.ObjectName]struct{}
@@ -164,6 +165,7 @@ func NewDNSState(pctx ProviderContext, secretresc resources.Interface, classes *
 	pctx.Infof("using default ttl:           %d", config.TTL)
 	pctx.Infof("dry run mode:                %t", config.Dryrun)
 	pctx.Infof("reschedule delay:            %v", config.RescheduleDelay)
+	pctx.Infof("entry failure backoff:       base=%v factor=%v max=%v", config.EntryFailureBackoffBase, config.EntryFailureBackoffFactor, config.EntryFailureBackoffMax)
 	pctx.Infof("zone cache ttl for zones:    %v", config.CacheTTL)
 	pctx.Infof("disable zone state caching:  %t", !config.ZoneStateCaching)
 	pctx.Infof("disable DNS name validation:  %t", config.DisableDNSNameValidation)
@@ -195,11 +197,16 @@ func NewDNSState(pctx ProviderContext, secretresc resources.Interface, classes *
 		outdated:             newSynchronizedEntries(),
 		blockingEntries:      map[resources.ObjectName]time.Time{},
 		quotaExceededEntries: map[resources.ClusterObjectKey]resources.ObjectName{},
-		dnsnames:             map[ZonedDNSSetName]*Entry{},
-		references:           NewReferenceCache(),
-		providerRateLimiter:  map[resources.ObjectName]*rateLimiterData{},
-		updateEntryBlocked:   map[resources.ObjectName]struct{}{},
-		entriesLocking:       newEntriesLocking(),
+		entryBackoff: newEntryFailureBackoff(entryFailureBackoffConfig{
+			base:   config.EntryFailureBackoffBase,
+			factor: config.EntryFailureBackoffFactor,
+			max:    config.EntryFailureBackoffMax,
+		}),
+		dnsnames:            map[ZonedDNSSetName]*Entry{},
+		references:          NewReferenceCache(),
+		providerRateLimiter: map[resources.ObjectName]*rateLimiterData{},
+		updateEntryBlocked:  map[resources.ObjectName]struct{}{},
+		entriesLocking:      newEntriesLocking(),
 	}
 }
 

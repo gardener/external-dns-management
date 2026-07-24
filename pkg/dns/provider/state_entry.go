@@ -342,6 +342,13 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 
 	if new != nil {
 		if new.IsModified() && !new.ZoneId().IsEmpty() {
+			if until, blocked := this.entryBackoff.blockedUntil(object); blocked {
+				// entry keeps failing in the provider handler: suppress the hosted zone
+				// trigger and pace the entry itself to reduce the reconciliation frequency.
+				delay := time.Until(until)
+				this.smartInfof(logger, "entry within failure backoff -> skip trigger zone %q, reschedule in %s", new.ZoneId(), delay.Round(time.Second))
+				return reconcile.Succeeded(logger).RescheduleAfter(delay)
+			}
 			this.smartInfof(logger, "trigger zone %q", new.ZoneId())
 			this.triggerHostedZone(new.ZoneId())
 		} else {
@@ -369,6 +376,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 
 	delete(this.blockingEntries, key.ObjectName())
 	delete(this.quotaExceededEntries, key)
+	this.entryBackoff.clear(key.ObjectName())
 
 	old := this.entries[key.ObjectName()]
 	if old != nil {

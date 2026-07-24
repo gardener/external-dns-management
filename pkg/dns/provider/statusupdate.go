@@ -33,6 +33,7 @@ func (this *StatusUpdate) SetInvalid(err error) {
 	if !this.done {
 		this.done = true
 		this.modified = false
+		this.state.entryBackoff.clear(this.ObjectName())
 		if err := this.fhandler.RemoveFinalizer(this.object); err != nil {
 			this.logger.Errorf("cannot remove finalizer: %s", err)
 		}
@@ -55,6 +56,7 @@ func (this *StatusUpdate) Failed(err error) {
 		} else {
 			newState = api.STATE_STALE
 		}
+		this.state.entryBackoff.recordFailure(this.Object())
 		_, err := this.UpdateStatus(this.logger, newState, err.Error())
 		if err != nil {
 			this.logger.Errorf("cannot update: %s", err)
@@ -66,6 +68,7 @@ func (this *StatusUpdate) Succeeded() {
 	if !this.done {
 		this.done = true
 		this.modified = false
+		this.state.entryBackoff.clear(this.ObjectName())
 		if this.delete {
 			this.logger.Infof("removing finalizer for deleted entry %s", this.ZonedDNSName())
 			if err2 := this.fhandler.RemoveFinalizer(this.Object()); err2 != nil {

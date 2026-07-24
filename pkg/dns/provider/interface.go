@@ -23,18 +23,21 @@ import (
 )
 
 type Config struct {
-	TTL                      int64
-	CacheTTL                 time.Duration
-	RescheduleDelay          time.Duration
-	StatusCheckPeriod        time.Duration
-	Dryrun                   bool
-	ZoneStateCaching         bool
-	DisableDNSNameValidation bool
-	Delay                    time.Duration
-	EnabledTypes             utils.StringSet
-	Options                  *FactoryOptions
-	Factory                  DNSHandlerFactory
-	RemoteAccessConfig       *embed.RemoteAccessServerConfig
+	TTL                       int64
+	CacheTTL                  time.Duration
+	RescheduleDelay           time.Duration
+	StatusCheckPeriod         time.Duration
+	Dryrun                    bool
+	ZoneStateCaching          bool
+	DisableDNSNameValidation  bool
+	Delay                     time.Duration
+	EntryFailureBackoffBase   time.Duration
+	EntryFailureBackoffFactor float64
+	EntryFailureBackoffMax    time.Duration
+	EnabledTypes              utils.StringSet
+	Options                   *FactoryOptions
+	Factory                   DNSHandlerFactory
+	RemoteAccessConfig        *embed.RemoteAccessServerConfig
 }
 
 func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (*Config, error) {
@@ -60,6 +63,19 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	statuscheckperiod, err := c.GetDurationOption(OPT_LOCKSTATUSCHECKPERIOD)
 	if err != nil {
 		statuscheckperiod = 120 * time.Second
+	}
+
+	entryFailureBackoffBase, err := c.GetDurationOption(OPT_ENTRY_FAILURE_BACKOFF_BASE)
+	if err != nil {
+		entryFailureBackoffBase = 30 * time.Second
+	}
+	entryFailureBackoffFactor, err := c.GetIntOption(OPT_ENTRY_FAILURE_BACKOFF_FACTOR)
+	if err != nil || entryFailureBackoffFactor < 1 {
+		entryFailureBackoffFactor = 2
+	}
+	entryFailureBackoffMax, err := c.GetDurationOption(OPT_ENTRY_FAILURE_BACKOFF_MAX)
+	if err != nil {
+		entryFailureBackoffMax = 30 * time.Minute
 	}
 
 	RemoteAccessClientID, err = c.GetStringOption(OPT_REMOTE_ACCESS_CLIENT_ID)
@@ -96,18 +112,21 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 	fopts := GetFactoryOptions(osrc)
 
 	return &Config{
-		TTL:                      int64(ttl),
-		CacheTTL:                 time.Duration(cttl) * time.Second,
-		RescheduleDelay:          rescheduleDelay,
-		StatusCheckPeriod:        statuscheckperiod,
-		Dryrun:                   dryrun,
-		ZoneStateCaching:         !disableZoneStateCaching,
-		DisableDNSNameValidation: disableDNSNameValidation,
-		Delay:                    delay,
-		EnabledTypes:             enabled,
-		Options:                  fopts,
-		Factory:                  factory,
-		RemoteAccessConfig:       remoteAccessConfig,
+		TTL:                       int64(ttl),
+		CacheTTL:                  time.Duration(cttl) * time.Second,
+		RescheduleDelay:           rescheduleDelay,
+		StatusCheckPeriod:         statuscheckperiod,
+		Dryrun:                    dryrun,
+		ZoneStateCaching:          !disableZoneStateCaching,
+		DisableDNSNameValidation:  disableDNSNameValidation,
+		Delay:                     delay,
+		EntryFailureBackoffBase:   entryFailureBackoffBase,
+		EntryFailureBackoffFactor: float64(entryFailureBackoffFactor),
+		EntryFailureBackoffMax:    entryFailureBackoffMax,
+		EnabledTypes:              enabled,
+		Options:                   fopts,
+		Factory:                   factory,
+		RemoteAccessConfig:        remoteAccessConfig,
 	}, nil
 }
 

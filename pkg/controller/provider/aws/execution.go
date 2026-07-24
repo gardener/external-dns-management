@@ -152,7 +152,7 @@ func (this *Execution) submitChanges(ctx context.Context, metrics provider.Metri
 			for _, c := range failedChanges {
 				failed++
 				if c.Done != nil {
-					c.Done.Failed(err)
+					c.Done.Failed(stableError(err))
 				}
 			}
 			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)
