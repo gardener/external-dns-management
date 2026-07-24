@@ -211,19 +211,13 @@ outer:
 		}
 	}
 
-outerExclude:
 	for _, zone := range result.Zones {
 		for domain := range result.DomainSel.Exclude {
 			if dnsutils.Match(zone.Domain(), domain) {
-				// Only exclude the zone if no included domain is a subdomain of the excluded domain,
-				// because an included subdomain of an excluded domain still needs the zone.
-				for includedDomain := range result.DomainSel.Include {
-					if dnsutils.Match(includedDomain, domain) && includedDomain != domain {
-						continue outerExclude
-					}
+				if !hasIncludedSubdomainOf(result.DomainSel.Include, domain) {
+					zoneExcludeCandidates.Insert(zone)
 				}
-				zoneExcludeCandidates.Insert(zone)
-				continue outerExclude
+				break
 			}
 		}
 	}
@@ -254,6 +248,15 @@ outerExcludeDomain:
 	}
 
 	return result
+}
+
+func hasIncludedSubdomainOf(included sets.Set[string], domain string) bool {
+	for d := range included {
+		if dnsutils.Match(d, domain) && d != domain {
+			return true
+		}
+	}
+	return false
 }
 
 func validateDomains(domains sets.Set[string], name string) error {
