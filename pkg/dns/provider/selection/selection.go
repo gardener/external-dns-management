@@ -65,6 +65,14 @@ func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, allzones []LightD
 		this.Error = err.Error()
 		return this
 	}
+	if err := validateNoOverlap(this.SpecDomainSel.Include, this.SpecDomainSel.Exclude, "domains"); err != nil {
+		this.Error = err.Error()
+		return this
+	}
+	if err := validateNoOverlap(this.SpecZoneSel.Include, this.SpecZoneSel.Exclude, "zones"); err != nil {
+		this.Error = err.Error()
+		return this
+	}
 
 	var zones []LightDNSHostedZone
 	for _, z := range allzones {
@@ -185,6 +193,15 @@ func validateDomains(domains utils.StringSet, name string) error {
 	for domain := range domains {
 		if strings.HasPrefix(domain, "*.") {
 			return fmt.Errorf("wildcards are not allowed in %s '%s' (hint: remove the wildcard)", name, domain)
+		}
+	}
+	return nil
+}
+
+func validateNoOverlap(include, exclude utils.StringSet, kind string) error {
+	for item := range include {
+		if exclude.Contains(item) {
+			return fmt.Errorf("%s '%s' is specified in both include and exclude", kind, item)
 		}
 	}
 	return nil

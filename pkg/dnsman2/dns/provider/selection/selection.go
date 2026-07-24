@@ -80,6 +80,14 @@ func CalcZoneAndDomainSelection(spec v1alpha1.DNSProviderSpec, allzones []LightD
 		result.Error = err.Error()
 		return result
 	}
+	if err := validateNoOverlap(result.SpecDomainSel.Include, result.SpecDomainSel.Exclude, "domains"); err != nil {
+		result.Error = err.Error()
+		return result
+	}
+	if err := validateNoOverlap(result.SpecZoneSel.Include, result.SpecZoneSel.Exclude, "zones"); err != nil {
+		result.Error = err.Error()
+		return result
+	}
 
 	forwardedZones := map[string][]LightDNSHostedZone{}
 	for _, z1 := range allzones {
@@ -203,12 +211,13 @@ outer:
 		}
 	}
 
-outerExclude:
 	for _, zone := range result.Zones {
 		for domain := range result.DomainSel.Exclude {
 			if dnsutils.Match(zone.Domain(), domain) {
-				zoneExcludeCandidates.Insert(zone)
-				continue outerExclude
+				if !hasIncludedSubdomainOf(result.DomainSel.Include, domain) {
+					zoneExcludeCandidates.Insert(zone)
+				}
+				break
 			}
 		}
 	}
@@ -241,10 +250,28 @@ outerExcludeDomain:
 	return result
 }
 
+func hasIncludedSubdomainOf(included sets.Set[string], domain string) bool {
+	for d := range included {
+		if dnsutils.Match(d, domain) && d != domain {
+			return true
+		}
+	}
+	return false
+}
+
 func validateDomains(domains sets.Set[string], name string) error {
 	for domain := range domains {
 		if strings.HasPrefix(domain, "*.") {
 			return fmt.Errorf("wildcards are not allowed in %s '%s' (hint: remove the wildcard)", name, domain)
+		}
+	}
+	return nil
+}
+
+func validateNoOverlap(include, exclude sets.Set[string], kind string) error {
+	for item := range include {
+		if exclude.Has(item) {
+			return fmt.Errorf("%s '%s' is specified in both include and exclude", kind, item)
 		}
 	}
 	return nil
