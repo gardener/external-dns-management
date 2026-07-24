@@ -44,3 +44,22 @@ func IsThrottlingError(err error) bool {
 	_, ok := err.(*ThrottlingError)
 	return ok
 }
+
+func NewAllChangesFailedError(err error) *AllChangesFailedError {
+	return &AllChangesFailedError{err: err}
+}
+
+// AllChangesFailedError is an error wrapper to mark that all changes have failed.
+// It is used to avoid dropping the zone cache in this case, similar to throttling.
+type AllChangesFailedError struct {
+	err error
+}
+
+func (e *AllChangesFailedError) Error() string {
+	return e.err.Error()
+}
+
+func IsAllChangesFailedError(err error) bool {
+	_, ok := err.(*AllChangesFailedError)
+	return ok
+}

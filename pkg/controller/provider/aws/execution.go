@@ -108,6 +108,7 @@ func (this *Execution) submitChanges(ctx context.Context, metrics provider.Metri
 
 	failed := 0
 	throttlingErrCount := 0
+	successCount := 0
 	limitedChanges := limitChangeSet(this.changes, this.batchSize)
 	this.Infof("require %d batches for %d dns names", len(limitedChanges), len(this.changes))
 	for i, changes := range limitedChanges {
@@ -157,6 +158,7 @@ func (this *Execution) submitChanges(ctx context.Context, metrics provider.Metri
 			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)
 		}
 		if len(succeededChanges) > 0 {
+			successCount += len(succeededChanges)
 			for _, c := range succeededChanges {
 				if c.Done != nil {
 					c.Done.Succeeded()
@@ -169,6 +171,9 @@ func (this *Execution) submitChanges(ctx context.Context, metrics provider.Metri
 		err := fmt.Errorf("%d changes failed", failed)
 		if throttlingErrCount == len(limitedChanges) {
 			err = dnserrors.NewThrottlingError(err)
+		}
+		if successCount == 0 {
+			return dnserrors.NewAllChangesFailedError(err)
 		}
 		return err
 	}
