@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.1
 	github.com/aws/smithy-go v1.27.3
 	github.com/cloudflare/cloudflare-go/v7 v7.7.0
-	github.com/gardener/controller-manager-library 05652acf3093
+	github.com/gardener/controller-manager-library v0.2.1-0.20260727113103-05652acf3093
 	github.com/gardener/gardener v1.147.1
 	github.com/gardener/gardener/hack/tools v1.147.1
 	github.com/gardener/gardener/pkg/apis v1.147.1
@@ -49,11 +49,11 @@ require (
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af
 	istio.io/api v1.29.5
 	istio.io/client-go v1.29.2
-	k8s.io/api v0.36.2
-	k8s.io/apiextensions-apiserver v0.36.2
-	k8s.io/apimachinery v0.36.2
-	k8s.io/client-go v0.36.2
-	k8s.io/component-base v0.36.2
+	k8s.io/api v0.36.3
+	k8s.io/apiextensions-apiserver v0.36.3
+	k8s.io/apimachinery v0.36.3
+	k8s.io/client-go v0.36.3
+	k8s.io/component-base v0.36.3
 	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 	sigs.k8s.io/controller-runtime v0.24.1
 	sigs.k8s.io/gateway-api v1.5.0
@@ -242,7 +242,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	helm.sh/helm/v4 v4.2.3 // indirect
-	k8s.io/apiserver v0.36.2 // indirect
+	k8s.io/apiserver v0.36.3 // indirect
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.6.0 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-aggregator v0.36.2 // indirect
@@ -250,7 +250,7 @@ require (
 	k8s.io/kubelet v0.36.2 // indirect
 	k8s.io/metrics v0.36.2 // indirect
 	k8s.io/pod-security-admission v0.36.2 // indirect
-	k8s.io/streaming v0.36.2 // indirect
+	k8s.io/streaming v0.36.3 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.0 // indirect
