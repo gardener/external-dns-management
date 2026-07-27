@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.42.1
 	github.com/aws/smithy-go v1.27.3
 	github.com/cloudflare/cloudflare-go/v7 v7.7.0
-	github.com/gardener/controller-manager-library v0.2.1-0.20260703140944-c0ab44e1854d
+	github.com/gardener/controller-manager-library v0.2.1-0.20260727103935-3acf64a48d5f
 	github.com/gardener/gardener v1.147.1
 	github.com/gardener/gardener/hack/tools v1.147.1
 	github.com/gardener/gardener/pkg/apis v1.147.1
@@ -35,7 +35,7 @@ require (
 	github.com/miekg/dns v1.1.72
 	github.com/netlify/open-api v1.4.0
 	github.com/onsi/ginkgo/v2 v2.32.0
-	github.com/onsi/gomega v1.42.0
+	github.com/onsi/gomega v1.42.1
 	github.com/prometheus/client_golang v1.23.3-0.20260710134234-de192175ccd6
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
@@ -226,13 +226,13 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.2 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
-	golang.org/x/mod v0.37.0 // indirect
+	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/net v0.57.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/term v0.45.0 // indirect
 	golang.org/x/text v0.40.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
-	golang.org/x/tools v0.47.0 // indirect
+	golang.org/x/tools v0.48.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260630182238-925bb5da69e7 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
