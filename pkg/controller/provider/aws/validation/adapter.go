@@ -47,7 +47,7 @@ func NewAdapter() provider.DNSHandlerAdapter {
 	checks.Add(provider.OptionalProperty("AWS_USE_CREDENTIALS_CHAIN").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.BoolValidator))
 	checks.Add(provider.OptionalProperty("AWS_SESSION_TOKEN", "sessionToken").
-		Validators(provider.MaxLengthValidator(512)).
+		Validators(provider.MaxLengthValidator(8192)). // AWS does not specify a maximum size for session tokens. Therefore, the typical maximum length of HTTP headers is used.
 		HideValue())
 	checks.Add(provider.OptionalProperty(securityv1alpha1constants.DataKeyToken).
 		Validators(provider.MaxLengthValidator(4096)))
