@@ -199,16 +199,22 @@ var _ = Describe("Defaults", func() {
 					Expect(obj.ZoneMetricsInterval).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Second})))
 					Expect(obj.PropagationWaitTime).To(PointTo(Equal(metav1.Duration{Duration: 10 * time.Second})))
 					Expect(obj.DriftCheckPeriod).To(PointTo(Equal(metav1.Duration{Duration: 12 * time.Hour})))
+					Expect(obj.EntryFailureBackoffBase).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Second})))
+					Expect(obj.EntryFailureBackoffFactor).To(PointTo(Equal(2)))
+					Expect(obj.EntryFailureBackoffMax).To(PointTo(Equal(metav1.Duration{Duration: 10 * time.Minute})))
 				})
 
 				It("should not overwrite existing values", func() {
 					obj := &DNSEntryControllerConfig{
-						ConcurrentSyncs:       new(7),
-						SyncPeriod:            &metav1.Duration{Duration: 0 * time.Second},
-						ReconciliationTimeout: &metav1.Duration{Duration: 30 * time.Second},
-						ZoneMetricsInterval:   &metav1.Duration{Duration: 0},
-						PropagationWaitTime:   &metav1.Duration{Duration: 5 * time.Second},
-						DriftCheckPeriod:      &metav1.Duration{Duration: 6 * time.Hour},
+						ConcurrentSyncs:           new(7),
+						SyncPeriod:                &metav1.Duration{Duration: 0 * time.Second},
+						ReconciliationTimeout:     &metav1.Duration{Duration: 30 * time.Second},
+						ZoneMetricsInterval:       &metav1.Duration{Duration: 0},
+						PropagationWaitTime:       &metav1.Duration{Duration: 5 * time.Second},
+						DriftCheckPeriod:          &metav1.Duration{Duration: 6 * time.Hour},
+						EntryFailureBackoffBase:   &metav1.Duration{Duration: 15 * time.Second},
+						EntryFailureBackoffFactor: new(3),
+						EntryFailureBackoffMax:    &metav1.Duration{Duration: 5 * time.Minute},
 					}
 
 					SetDefaults_DNSEntryControllerConfig(obj)
@@ -219,6 +225,9 @@ var _ = Describe("Defaults", func() {
 					Expect(obj.ZoneMetricsInterval).To(PointTo(Equal(metav1.Duration{Duration: 0})))
 					Expect(obj.PropagationWaitTime).To(PointTo(Equal(metav1.Duration{Duration: 5 * time.Second})))
 					Expect(obj.DriftCheckPeriod).To(PointTo(Equal(metav1.Duration{Duration: 6 * time.Hour})))
+					Expect(obj.EntryFailureBackoffBase).To(PointTo(Equal(metav1.Duration{Duration: 15 * time.Second})))
+					Expect(obj.EntryFailureBackoffFactor).To(PointTo(Equal(3)))
+					Expect(obj.EntryFailureBackoffMax).To(PointTo(Equal(metav1.Duration{Duration: 5 * time.Minute})))
 				})
 			})
 			Describe("Source controller", func() {

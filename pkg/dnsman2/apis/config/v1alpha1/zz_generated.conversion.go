@@ -303,6 +303,9 @@ func autoConvert_v1alpha1_DNSEntryControllerConfig_To_config_DNSEntryControllerC
 	out.ReconciliationDelayAfterUpdate = (*v1.Duration)(unsafe.Pointer(in.ReconciliationDelayAfterUpdate))
 	out.ZoneMetricsInterval = (*v1.Duration)(unsafe.Pointer(in.ZoneMetricsInterval))
 	out.DriftCheckPeriod = (*v1.Duration)(unsafe.Pointer(in.DriftCheckPeriod))
+	out.EntryFailureBackoffBase = (*v1.Duration)(unsafe.Pointer(in.EntryFailureBackoffBase))
+	out.EntryFailureBackoffFactor = (*int)(unsafe.Pointer(in.EntryFailureBackoffFactor))
+	out.EntryFailureBackoffMax = (*v1.Duration)(unsafe.Pointer(in.EntryFailureBackoffMax))
 	return nil
 }
 
@@ -321,6 +324,9 @@ func autoConvert_config_DNSEntryControllerConfig_To_v1alpha1_DNSEntryControllerC
 	out.ReconciliationDelayAfterUpdate = (*v1.Duration)(unsafe.Pointer(in.ReconciliationDelayAfterUpdate))
 	out.ZoneMetricsInterval = (*v1.Duration)(unsafe.Pointer(in.ZoneMetricsInterval))
 	out.DriftCheckPeriod = (*v1.Duration)(unsafe.Pointer(in.DriftCheckPeriod))
+	out.EntryFailureBackoffBase = (*v1.Duration)(unsafe.Pointer(in.EntryFailureBackoffBase))
+	out.EntryFailureBackoffFactor = (*int)(unsafe.Pointer(in.EntryFailureBackoffFactor))
+	out.EntryFailureBackoffMax = (*v1.Duration)(unsafe.Pointer(in.EntryFailureBackoffMax))
 	return nil
 }
 
