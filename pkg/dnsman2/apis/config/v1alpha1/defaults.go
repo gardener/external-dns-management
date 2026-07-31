@@ -162,7 +162,7 @@ func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 		obj.EntryFailureBackoffFactor = new(2)
 	}
 	if obj.EntryFailureBackoffMax == nil {
-		obj.EntryFailureBackoffMax = &metav1.Duration{Duration: 10 * time.Minute}
+		obj.EntryFailureBackoffMax = &metav1.Duration{Duration: 30 * time.Minute}
 	}
 }
 

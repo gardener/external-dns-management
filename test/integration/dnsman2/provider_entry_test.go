@@ -162,6 +162,9 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 				},
 				DNSEntry: config.DNSEntryControllerConfig{
 					ReconciliationDelayAfterUpdate: new(metav1.Duration{Duration: 10 * time.Millisecond}),
+					// keep the failure backoff short so temporary-backend-failure recovery is observed within retryTimeout
+					EntryFailureBackoffBase: new(metav1.Duration{Duration: 50 * time.Millisecond}),
+					EntryFailureBackoffMax:  new(metav1.Duration{Duration: 500 * time.Millisecond}),
 				},
 				SkipNameValidation: new(true),
 			},

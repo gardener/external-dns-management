@@ -201,7 +201,7 @@ var _ = Describe("Defaults", func() {
 					Expect(obj.DriftCheckPeriod).To(PointTo(Equal(metav1.Duration{Duration: 12 * time.Hour})))
 					Expect(obj.EntryFailureBackoffBase).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Second})))
 					Expect(obj.EntryFailureBackoffFactor).To(PointTo(Equal(2)))
-					Expect(obj.EntryFailureBackoffMax).To(PointTo(Equal(metav1.Duration{Duration: 10 * time.Minute})))
+					Expect(obj.EntryFailureBackoffMax).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Minute})))
 				})
 
 				It("should not overwrite existing values", func() {

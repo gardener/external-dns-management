@@ -140,7 +140,7 @@ func (ex *execution) submitChanges(ctx context.Context, metrics provider.Metrics
 		if len(failedChanges) > 0 {
 			failed += len(failedChanges)
 			ex.log.Error(err, fmt.Sprintf("%d records failed", len(failedChanges)), "zoneID", ex.zoneID)
-			failedErr = errors.Join(failedErr, err)
+			failedErr = errors.Join(failedErr, stableError(err))
 		}
 		if len(succeededChanges) > 0 {
 			ex.log.Info(fmt.Sprintf("%d records were successfully updated", len(succeededChanges)), "zoneID", ex.zoneID)

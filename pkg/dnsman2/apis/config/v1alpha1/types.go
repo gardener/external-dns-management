@@ -212,7 +212,7 @@ type DNSEntryControllerConfig struct {
 	// EntryFailureBackoffFactor is the multiplier applied per consecutive failure to the entry failure backoff. Default value is 2.
 	// +optional
 	EntryFailureBackoffFactor *int `json:"entryFailureBackoffFactor,omitempty"`
-	// EntryFailureBackoffMax is the maximum delay for the entry failure backoff. Default value is 10 minutes.
+	// EntryFailureBackoffMax is the maximum delay for the entry failure backoff. Default value is 30 minutes.
 	// +optional
 	EntryFailureBackoffMax *metav1.Duration `json:"entryFailureBackoffMax,omitempty"`
 }

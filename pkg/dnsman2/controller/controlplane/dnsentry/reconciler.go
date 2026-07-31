@@ -50,6 +50,7 @@ type Reconciler struct {
 	lastUpdate         *ttlcache.Cache[client.ObjectKey, struct{}]
 	lastDriftCheck     *ttlcache.Cache[client.ObjectKey, struct{}]
 	lastProviderUpdate *ttlcache.Cache[client.ObjectKey, providerSnapshot]
+	failureBackoff     *entryFailureBackoff
 }
 
 type providerSnapshot struct {
@@ -97,6 +98,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		defaultCNAMELookupInterval: r.defaultCNAMELookupInterval,
 		lastUpdate:                 r.lastUpdate,
 		lastDriftCheck:             r.lastDriftCheck,
+		failureBackoff:             r.failureBackoff,
 	}
 	res := er.reconcile()
 	if res.Err != nil {

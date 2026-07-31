@@ -464,7 +464,7 @@ integer
 </td>
 <td>
 <em>(Optional)</em>
-<p>EntryFailureBackoffMax is the maximum delay for the entry failure backoff. Default value is 10 minutes.</p>
+<p>EntryFailureBackoffMax is the maximum delay for the entry failure backoff. Default value is 30 minutes.</p>
 </td>
 </tr>
 

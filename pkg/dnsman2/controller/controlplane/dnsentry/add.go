@@ -44,6 +44,12 @@ const ControllerName = "dnsentry"
 
 const defaultProviderUpdateCachePeriod = 7 * 24 * time.Hour
 
+const (
+	defaultEntryFailureBackoffBase   = 30 * time.Second
+	defaultEntryFailureBackoffFactor = 2
+	defaultEntryFailureBackoffMax    = 30 * time.Minute
+)
+
 // AddToManager adds Reconciler to the given manager.
 func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster cluster.Cluster, cfg *config.DNSManagerConfiguration) error {
 	r.Config = cfg.Controllers.DNSEntry
@@ -67,9 +73,14 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	r.MigrationMode = ptr.Deref(cfg.Controllers.DNSProvider.MigrationMode, false)
 	r.state = state.GetState()
 	log := mgr.GetLogger().WithName(ControllerName)
+	r.failureBackoff = newEntryFailureBackoff(entryFailureBackoffConfig{
+		base:   ptr.Deref(r.Config.EntryFailureBackoffBase, metav1.Duration{Duration: defaultEntryFailureBackoffBase}).Duration,
+		factor: float64(ptr.Deref(r.Config.EntryFailureBackoffFactor, defaultEntryFailureBackoffFactor)),
+		max:    ptr.Deref(r.Config.EntryFailureBackoffMax, metav1.Duration{Duration: defaultEntryFailureBackoffMax}).Duration,
+	}, r.Clock)
 	r.lookupProcessor = lookup.NewLookupProcessor(
 		log.WithName("lookupProcessor"),
-		newReconcileTrigger(r.Client),
+		newReconcileTrigger(r.Client, r.failureBackoff),
 		max(ptr.Deref(r.Config.MaxConcurrentLookups, 2), 2),
 		15*time.Second,
 	)
@@ -256,6 +267,19 @@ func (r *Reconciler) setCachePeriods(reconciliationDelayAfterUpdate, driftCheckP
 		ttlcache.WithDisableTouchOnHit[client.ObjectKey, providerSnapshot]())
 }
 
+// initDefaultFailureBackoff initializes the failure backoff with default settings if it has not been set yet.
+// AddToManager sets it from the configured values; this fallback keeps the backoff non-nil when the reconciler
+// is constructed directly (e.g. in tests) without AddToManager.
+func (r *Reconciler) initDefaultFailureBackoff() {
+	if r.failureBackoff == nil {
+		r.failureBackoff = newEntryFailureBackoff(entryFailureBackoffConfig{
+			base:   defaultEntryFailureBackoffBase,
+			factor: float64(defaultEntryFailureBackoffFactor),
+			max:    defaultEntryFailureBackoffMax,
+		}, r.Clock)
+	}
+}
+
 func domainMatches(dnsName string, domains v1alpha1.DNSSelectionStatus) bool {
 	dnsName = dns.NormalizeDomainName(dnsName)
 	for _, domain := range domains.Excluded {
@@ -272,14 +296,16 @@ func domainMatches(dnsName string, domains v1alpha1.DNSSelectionStatus) bool {
 }
 
 type reconcileTrigger struct {
-	client client.Client
+	client         client.Client
+	failureBackoff *entryFailureBackoff
 }
 
 var _ lookup.EntryTrigger = &reconcileTrigger{}
 
-func newReconcileTrigger(c client.Client) lookup.EntryTrigger {
+func newReconcileTrigger(c client.Client, failureBackoff *entryFailureBackoff) lookup.EntryTrigger {
 	return &reconcileTrigger{
-		client: c,
+		client:         c,
+		failureBackoff: failureBackoff,
 	}
 }
 
@@ -290,6 +316,13 @@ func (r *reconcileTrigger) TriggerReconciliation(ctx context.Context, key client
 			return nil // Entry is gone, no need to trigger reconciliation
 		}
 		return err
+	}
+	// Suppress the lookup-driven trigger while the entry is within its failure backoff window. Otherwise a
+	// persistently failing entry with periodic CNAME lookups would keep re-triggering reconciliations (and thus
+	// provider updates) at the lookup cadence. The backoff resets on success and whenever the entry changes
+	// (generation or dns.gardener.cloud annotations), so user edits are still picked up immediately.
+	if _, blocked := r.failureBackoff.blockedUntil(entry); blocked {
+		return nil
 	}
 	return kubernetes.SetAnnotationAndUpdate(ctx, r.client, entry, v1beta1constants.GardenerOperation, v1beta1constants.GardenerOperationReconcile)
 }

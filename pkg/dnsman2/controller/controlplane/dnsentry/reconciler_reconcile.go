@@ -42,6 +42,7 @@ type entryReconciliation struct {
 	defaultCNAMELookupInterval int64
 	lastUpdate                 *ttlcache.Cache[client.ObjectKey, struct{}]
 	lastDriftCheck             *ttlcache.Cache[client.ObjectKey, struct{}]
+	failureBackoff             *entryFailureBackoff
 }
 
 type newTargetsData struct {
@@ -63,6 +64,8 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 
 	r.state.GetQuotaReservationsMap().Release(client.ObjectKeyFromObject(r.Entry))
 
+	r.applyFailureBackoff(&orgResult)
+
 	// update status if state/message changed
 	res := orgResult
 	if orgResult.State != nil {
@@ -77,6 +80,23 @@ func (r *entryReconciliation) reconcile() common.ReconcileResult {
 		}
 	}
 	return res
+}
+
+// applyFailureBackoff updates the per-entry failure backoff based on the reconciliation outcome. When the entry ends up
+// in error state with a scheduled retry, the retry delay is stretched by the exponential backoff so that persistently
+// failing entries are reconciled less frequently. Any other terminal outcome clears the backoff so the entry recovers
+// promptly. The backoff itself resets whenever the entry changes (see entryFailureBackoff).
+func (r *entryReconciliation) applyFailureBackoff(result *common.ReconcileResult) {
+	key := client.ObjectKeyFromObject(r.Entry)
+	if result.Err == nil && ptr.Deref(result.State, "") == v1alpha1.StateError && result.Result.RequeueAfter > 0 {
+		nextRetry := r.failureBackoff.recordFailure(r.Entry)
+		if backoff := nextRetry.Sub(r.Clock.Now()); backoff > result.Result.RequeueAfter {
+			result.Result.RequeueAfter = backoff
+		}
+		return
+	}
+	// Not a retryable error outcome -> reset the backoff so the next failure starts from the base delay again.
+	r.failureBackoff.clear(key)
 }
 
 func (r *entryReconciliation) doReconcile() common.ReconcileResult {
