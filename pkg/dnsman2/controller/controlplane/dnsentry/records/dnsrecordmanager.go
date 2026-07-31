@@ -55,7 +55,9 @@ func (m *DNSRecordManager) ApplyChangeRequests(providerData *providerselector.Ne
 		if zone == nil {
 			return common.ErrorReconcileResult(fmt.Sprintf("zone %s not found in provider %s", newZoneID.ID, providerData.ProviderKey), true)
 		}
-		for _, changeRequests := range changeRequestsPerName {
+		orderedKeys := m.orderChanges(changeRequestsPerName)
+		for _, key := range orderedKeys {
+			changeRequests := changeRequestsPerName[key]
 			m.Log.V(1).Info("applying change requests", "zone", zone.ZoneID(), "requests", changeRequests)
 			if err := providerData.ProviderState.GetAccount().ExecuteRequests(m.Ctx, zone, *changeRequests); err != nil {
 				return common.ErrorReconcileResult(fmt.Sprintf("failed to execute DNS change requests: %s", err), true)
@@ -63,6 +65,50 @@ func (m *DNSRecordManager) ApplyChangeRequests(providerData *providerselector.Ne
 		}
 	}
 	return nil
+}
+
+func (m *DNSRecordManager) orderChanges(changeRequestsPerName map[dns.DNSSetName]*provider.ChangeRequests) []dns.DNSSetName {
+	// if there are changes transitioning from plain to routing-policy records or vice versa for the same domain name, ensure that the deletion happens first.
+	var (
+		plainKeys   []dns.DNSSetName
+		policyKeys  []dns.DNSSetName
+		orderedKeys []dns.DNSSetName
+	)
+	for key := range changeRequestsPerName {
+		if key.SetIdentifier == "" {
+			plainKeys = append(plainKeys, key)
+		} else {
+			policyKeys = append(policyKeys, key)
+		}
+	}
+	if len(policyKeys) == 0 {
+		return plainKeys
+	}
+	if len(plainKeys) == 0 {
+		return policyKeys
+	}
+
+	handledPolicyKeys := sets.New[dns.DNSSetName]()
+	for _, k1 := range plainKeys {
+		if !isDeletion(changeRequestsPerName[k1]) {
+			for _, k2 := range policyKeys {
+				if k1.DNSName == k2.DNSName {
+					if isDeletion(changeRequestsPerName[k2]) {
+						orderedKeys = append(orderedKeys, k2)
+						handledPolicyKeys.Insert(k2)
+					}
+				}
+			}
+		}
+		orderedKeys = append(orderedKeys, k1)
+	}
+
+	for _, key := range policyKeys {
+		if !handledPolicyKeys.Has(key) {
+			orderedKeys = append(orderedKeys, key)
+		}
+	}
+	return orderedKeys
 }
 
 // QueryRecords queries DNS records for the given set of record keys.
@@ -132,4 +178,13 @@ func (m *DNSRecordManager) cleanupCrossZoneRecords(zoneID dns.ZoneID, perName ma
 		}
 	}
 	return nil
+}
+
+func isDeletion(changeRequests *provider.ChangeRequests) bool {
+	for _, changeRequest := range changeRequests.Updates {
+		if changeRequest.New == nil {
+			return true
+		}
+	}
+	return false
 }
