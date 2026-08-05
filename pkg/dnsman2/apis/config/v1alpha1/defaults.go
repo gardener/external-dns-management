@@ -155,6 +155,15 @@ func SetDefaults_DNSEntryControllerConfig(obj *DNSEntryControllerConfig) {
 	if obj.DriftCheckPeriod == nil {
 		obj.DriftCheckPeriod = &metav1.Duration{Duration: 12 * time.Hour}
 	}
+	if obj.EntryFailureBackoffBase == nil {
+		obj.EntryFailureBackoffBase = &metav1.Duration{Duration: 30 * time.Second}
+	}
+	if obj.EntryFailureBackoffFactor == nil {
+		obj.EntryFailureBackoffFactor = new(2)
+	}
+	if obj.EntryFailureBackoffMax == nil {
+		obj.EntryFailureBackoffMax = &metav1.Duration{Duration: 30 * time.Minute}
+	}
 }
 
 // SetDefaults_SourceControllerConfig sets defaults for the SourceControllerConfig object.

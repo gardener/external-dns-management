@@ -4,10 +4,13 @@ import (
 	"context"
 	"time"
 
+	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/clock"
+	testclock "k8s.io/utils/clock/testing"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -37,7 +40,9 @@ var _ = Describe("Add", func() {
 				Client:    fakeClient,
 				Namespace: "test",
 				state:     state.GetState(),
+				Clock:     clock.RealClock{},
 			}
+			reconciler.initDefaultFailureBackoff()
 			reconciler.setCachePeriods(1*time.Microsecond, defaultDriftCheckPeriod, defaultProviderUpdateCachePeriod)
 
 			Expect(fakeClient.Create(ctx, &v1alpha1.DNSEntry{
@@ -203,5 +208,69 @@ var _ = Describe("Add", func() {
 			Expect(checkEntriesToReconcileOnProviderChanges(ctx, provider)).To(BeEmpty())
 		})
 
+	})
+
+	Describe("#TriggerReconciliation (failure backoff)", func() {
+		var (
+			ctx        = context.Background()
+			fakeClient client.Client
+			fakeClock  *testclock.FakeClock
+			backoff    *entryFailureBackoff
+			trigger    *reconcileTrigger
+			entry      *v1alpha1.DNSEntry
+			key        client.ObjectKey
+		)
+
+		BeforeEach(func() {
+			fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).Build()
+			fakeClock = testclock.NewFakeClock(time.Now())
+			backoff = newEntryFailureBackoff(entryFailureBackoffConfig{base: 30 * time.Second, factor: 2, max: 10 * time.Minute}, fakeClock)
+			trigger = newReconcileTrigger(fakeClient, backoff).(*reconcileTrigger)
+
+			entry = &v1alpha1.DNSEntry{
+				ObjectMeta: metav1.ObjectMeta{Name: "entry1", Namespace: "test", Generation: 1},
+				Spec:       v1alpha1.DNSEntrySpec{DNSName: "foo.example.com"},
+			}
+			Expect(fakeClient.Create(ctx, entry)).To(Succeed())
+			key = client.ObjectKeyFromObject(entry)
+		})
+
+		hasReconcileAnnotation := func() bool {
+			GinkgoHelper()
+			e := &v1alpha1.DNSEntry{}
+			Expect(fakeClient.Get(ctx, key, e)).To(Succeed())
+			return e.Annotations[v1beta1constants.GardenerOperation] == v1beta1constants.GardenerOperationReconcile
+		}
+
+		It("triggers reconciliation when the entry is not within a backoff window", func() {
+			Expect(trigger.TriggerReconciliation(ctx, key)).To(Succeed())
+			Expect(hasReconcileAnnotation()).To(BeTrue())
+		})
+
+		It("suppresses the trigger while the entry is within its backoff window", func() {
+			backoff.recordFailure(entry)
+
+			Expect(trigger.TriggerReconciliation(ctx, key)).To(Succeed())
+			Expect(hasReconcileAnnotation()).To(BeFalse())
+		})
+
+		It("triggers again once the backoff window elapsed", func() {
+			next := backoff.recordFailure(entry)
+			fakeClock.SetTime(next)
+
+			Expect(trigger.TriggerReconciliation(ctx, key)).To(Succeed())
+			Expect(hasReconcileAnnotation()).To(BeTrue())
+		})
+
+		It("triggers immediately once the entry changed despite an active backoff", func() {
+			backoff.recordFailure(entry)
+
+			// a user edit bumps the generation -> the backoff must not suppress the trigger anymore
+			entry.Generation++
+			Expect(fakeClient.Update(ctx, entry)).To(Succeed())
+
+			Expect(trigger.TriggerReconciliation(ctx, key)).To(Succeed())
+			Expect(hasReconcileAnnotation()).To(BeTrue())
+		})
 	})
 })

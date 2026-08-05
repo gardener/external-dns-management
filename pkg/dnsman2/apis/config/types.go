@@ -172,6 +172,14 @@ type DNSEntryControllerConfig struct {
 	// amplification: too short causes repeated full-spectrum queries during persistent error states, too long slows
 	// recovery once the conflict is resolved. Default value is 12 hours.
 	DriftCheckPeriod *metav1.Duration
+	// EntryFailureBackoffBase is the base delay of the exponential backoff applied to a DNSEntry that keeps ending up in
+	// error state (e.g. because a provider update repeatedly fails). While within the backoff window the entry is not
+	// reconciled again, reducing the reconciliation frequency of persistently failing entries. Default value is 30 seconds.
+	EntryFailureBackoffBase *metav1.Duration
+	// EntryFailureBackoffFactor is the multiplier applied per consecutive failure to the entry failure backoff. Default value is 2.
+	EntryFailureBackoffFactor *int
+	// EntryFailureBackoffMax is the maximum delay for the entry failure backoff. Default value is 30 minutes.
+	EntryFailureBackoffMax *metav1.Duration
 }
 
 // DNSAnnotationControllerConfig is the configuration for the DNSAnnotation controller.

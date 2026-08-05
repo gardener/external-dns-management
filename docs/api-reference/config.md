@@ -431,6 +431,42 @@ integer
 <p>DriftCheckPeriod is the minimum interval between two record-type drift recovery attempts for the same DNSEntry.<br />When an entry is in Error or Stale state, the reconciler additionally queries the alternative address record types<br />(A, AAAA, CNAME) at the same name to detect a foreign record blocking the entry. This bounds the resulting query<br />amplification: too short causes repeated full-spectrum queries during persistent error states, too long slows<br />recovery once the conflict is resolved. Default value is 12 hours.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>entryFailureBackoffBase</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta">Duration</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EntryFailureBackoffBase is the base delay of the exponential backoff applied to a DNSEntry that keeps ending up in<br />error state (e.g. because a provider update repeatedly fails). While within the backoff window the entry is not<br />reconciled again, reducing the reconciliation frequency of persistently failing entries. Default value is 30 seconds.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>entryFailureBackoffFactor</code></br>
+<em>
+integer
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EntryFailureBackoffFactor is the multiplier applied per consecutive failure to the entry failure backoff. Default value is 2.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>entryFailureBackoffMax</code></br>
+<em>
+<a href="https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.33/#duration-v1-meta">Duration</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>EntryFailureBackoffMax is the maximum delay for the entry failure backoff. Default value is 30 minutes.</p>
+</td>
+</tr>
 
 </tbody>
 </table>

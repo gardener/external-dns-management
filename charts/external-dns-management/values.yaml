@@ -124,6 +124,9 @@ configuration:
   # compoundDnsPoolResyncPeriod: 30s
   # compoundDnsPoolSize: 1
   # compoundDryRun: false
+  # compoundEntryFailureBackoffBase:
+  # compoundEntryFailureBackoffFactor:
+  # compoundEntryFailureBackoffMax:
   # compoundGoogleClouddnsAdvancedBatchSize:
   # compoundGoogleClouddnsAdvancedMaxRetries:
   # compoundGoogleClouddnsRatelimiterBurst:
@@ -134,6 +137,11 @@ configuration:
   # compoundInfobloxDnsRatelimiterBurst:
   # compoundInfobloxDnsRatelimiterEnabled:
   # compoundInfobloxDnsRatelimiterQps:
+  # compoundLocalAdvancedBatchSize:
+  # compoundLocalAdvancedMaxRetries:
+  # compoundLocalRatelimiterBurst:
+  # compoundLocalRatelimiterEnabled:
+  # compoundLocalRatelimiterQps:
   # compoundLockStatusCheckPeriod:
   # compoundNetlifyDnsAdvancedBatchSize:
   # compoundNetlifyDnsAdvancedMaxRetries:
@@ -213,6 +221,9 @@ configuration:
   # dnsproviderReplicationTargetRealms:
   # dnsproviderReplicationTargetsPoolSize:
   # enableProfiling:
+  # entryFailureBackoffBase:
+  # entryFailureBackoffFactor:
+  # entryFailureBackoffMax:
   # excludeDomains: google.com
   # forceCrdUpdate: false
   # googleCloudDNSAdvancedBatchSize:
@@ -285,10 +296,14 @@ configuration:
   # leaseRenewDeadline:
   # leaseResourceLock:
   # leaseRetryPeriod:
+  # localAdvancedBatchSize:
+  # localAdvancedMaxRetries:
+  # localRatelimiterBurst:
+  # localRatelimiterEnabled:
+  # localRatelimiterQps:
   # lockStatusCheckPeriod:
   # logLevel: info
   # maintainer:
-  # maxMetadataRecordDeletionsPerReconciliation:
   # namespace: default
   # namespaceLocalAccessOnly: false
   # netlifyDnsAdvancedBatchSize:

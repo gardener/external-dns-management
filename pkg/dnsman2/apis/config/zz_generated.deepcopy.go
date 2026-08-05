@@ -188,6 +188,21 @@ func (in *DNSEntryControllerConfig) DeepCopyInto(out *DNSEntryControllerConfig) 
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.EntryFailureBackoffBase != nil {
+		in, out := &in.EntryFailureBackoffBase, &out.EntryFailureBackoffBase
+		*out = new(v1.Duration)
+		**out = **in
+	}
+	if in.EntryFailureBackoffFactor != nil {
+		in, out := &in.EntryFailureBackoffFactor, &out.EntryFailureBackoffFactor
+		*out = new(int)
+		**out = **in
+	}
+	if in.EntryFailureBackoffMax != nil {
+		in, out := &in.EntryFailureBackoffMax, &out.EntryFailureBackoffMax
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	return
 }
 

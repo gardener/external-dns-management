@@ -167,12 +167,19 @@ func (c *defaultZoneCache) ApplyRequests(logctx logger.LogContext, err error, zo
 	if err == nil {
 		c.zoneStates.ExecuteRequests(zone.Id(), reqs)
 	} else {
-		if !errors.IsThrottlingError(err) {
+		untouchedDetails := ""
+		if errors.IsThrottlingError(err) {
+			untouchedDetails = "only throttling"
+		} else if errors.IsAllChangesFailedError(err) {
+			untouchedDetails = "all changes failed"
+		}
+
+		if untouchedDetails == "" {
 			logctx.Infof("zone cache discarded because of error during ExecuteRequests")
 			c.cleanZoneState(zone.Id())
 			metrics.AddZoneCacheDiscarding(zone.Id())
 		} else {
-			logctx.Infof("zone cache untouched (only throttling during ExecuteRequests)")
+			logctx.Infof("zone cache untouched (" + untouchedDetails + " during ExecuteRequests)")
 		}
 	}
 }

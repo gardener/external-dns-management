@@ -639,6 +639,9 @@ Flags:
       --compound.dns.pool.resync-period duration                      Period for resynchronization for pool dns of controller compound
       --compound.dns.pool.size int                                    Worker pool size for pool dns of controller compound
       --compound.dry-run                                              just check, don't modify of controller compound
+      --compound.entry-failure-backoff-base duration                  base delay for the exponential backoff applied to persistently failing entries before they trigger a hosted zone reconciliation again of controller compound
+      --compound.entry-failure-backoff-factor int                     multiplier applied per consecutive failure for the entry failure backoff of controller compound
+      --compound.entry-failure-backoff-max duration                   maximum delay for the entry failure backoff of controller compound
       --compound.google-clouddns.advanced.batch-size int              batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.google-clouddns.advanced.max-retries int             maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
       --compound.google-clouddns.blocked-zone zone-id                 Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
@@ -651,6 +654,12 @@ Flags:
       --compound.infoblox-dns.ratelimiter.burst int                   number of burst requests for rate limiter of controller compound
       --compound.infoblox-dns.ratelimiter.enabled                     enables rate limiter for DNS provider requests of controller compound
       --compound.infoblox-dns.ratelimiter.qps int                     maximum requests/queries per second of controller compound
+      --compound.local.advanced.batch-size int                        batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.local.advanced.max-retries int                       maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.local.blocked-zone zone-id                           Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
+      --compound.local.ratelimiter.burst int                          number of burst requests for rate limiter of controller compound
+      --compound.local.ratelimiter.enabled                            enables rate limiter for DNS provider requests of controller compound
+      --compound.local.ratelimiter.qps int                            maximum requests/queries per second of controller compound
       --compound.lock-status-check-period duration                    interval for dns lock status checks of controller compound
       --compound.netlify-dns.advanced.batch-size int                  batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.netlify-dns.advanced.max-retries int                 maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
@@ -740,6 +749,9 @@ Flags:
       --dnsprovider-replication.targets.pool.size int                 Worker pool size for pool targets of controller dnsprovider-replication
       --dry-run                                                       just check, don't modify
       --enable-profiling                                              enables profiling server at path /debug/pprof (needs option --server-port-http)
+      --entry-failure-backoff-base duration                           base delay for the exponential backoff applied to persistently failing entries before they trigger a hosted zone reconciliation again
+      --entry-failure-backoff-factor int                              multiplier applied per consecutive failure for the entry failure backoff
+      --entry-failure-backoff-max duration                            maximum delay for the entry failure backoff
       --exclude-domains stringArray                                   excluded domains
       --force-crd-update                                              enforce update of crds even they are unmanaged
       --google-clouddns.advanced.batch-size int                       batch size for change requests (currently only used for aws-route53)
@@ -804,18 +816,24 @@ Flags:
       --k8s-gateways-dns.targets.pool.size int                        Worker pool size for pool targets of controller k8s-gateways-dns
       --key string                                                    selecting key for annotation
       --kubeconfig string                                             default cluster access
-      --kubeconfig.burst int                                          option to set the maximum burst to the apiserver of the cluster default
+      --kubeconfig.burst int                                          option to set the maximum burst to the apiserver of the cluster default (default 100)
       --kubeconfig.conditional-deploy-crds                            deployment of required crds for cluster default only if there is no managed resource in garden namespace deploying it
       --kubeconfig.crds-shoot-no-cleanup-label                        add the label 'shoot.gardener.cloud/no-cleanup=true' for CRDS deployed on cluster default
       --kubeconfig.disable-deploy-crds                                disable deployment of required crds for cluster default
       --kubeconfig.id string                                          id for cluster default
       --kubeconfig.migration-ids string                               migration id for cluster default
-      --kubeconfig.qps int                                            option to set the maximum QPS to the apiserver of the cluster default
+      --kubeconfig.qps int                                            option to set the maximum QPS to the apiserver of the cluster default (default 50)
       --lease-duration duration                                       lease duration
       --lease-name string                                             name for lease object
       --lease-renew-deadline duration                                 lease renew deadline
       --lease-resource-lock string                                    determines which resource lock to use for leader election, defaults to 'leases'
       --lease-retry-period duration                                   lease retry period
+      --local.advanced.batch-size int                                 batch size for change requests (currently only used for aws-route53)
+      --local.advanced.max-retries int                                maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --local.blocked-zone zone-id                                    Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
+      --local.ratelimiter.burst int                                   number of burst requests for rate limiter
+      --local.ratelimiter.enabled                                     enables rate limiter for DNS provider requests
+      --local.ratelimiter.qps int                                     maximum requests/queries per second
       --lock-status-check-period duration                             interval for dns lock status checks
   -D, --log-level string                                              logrus log level
       --maintainer string                                             maintainer key for crds (default "dns-controller-manager")
@@ -846,7 +864,7 @@ Flags:
       --powerdns.ratelimiter.qps int                                  maximum requests/queries per second
       --provider-types string                                         comma separated list of provider types to enable
       --providers string                                              cluster to look for provider objects
-      --providers.burst int                                           option to set the maximum burst to the apiserver of the cluster provider
+      --providers.burst int                                           option to set the maximum burst to the apiserver of the cluster provider (default 100)
       --providers.conditional-deploy-crds                             deployment of required crds for cluster provider only if there is no managed resource in garden namespace deploying it
       --providers.crds-shoot-no-cleanup-label                         add the label 'shoot.gardener.cloud/no-cleanup=true' for CRDS deployed on cluster provider
       --providers.disable-deploy-crds                                 disable deployment of required crds for cluster provider
@@ -854,7 +872,7 @@ Flags:
       --providers.migration-ids string                                migration id for cluster provider
       --providers.pool.resync-period duration                         Period for resynchronization for pool providers
       --providers.pool.size int                                       Worker pool size for pool providers
-      --providers.qps int                                             option to set the maximum QPS to the apiserver of the cluster provider
+      --providers.qps int                                             option to set the maximum QPS to the apiserver of the cluster provider (default 50)
       --ratelimiter.burst int                                         number of burst requests for rate limiter
       --ratelimiter.enabled                                           enables rate limiter for DNS provider requests
       --ratelimiter.qps int                                           maximum requests/queries per second
@@ -898,13 +916,13 @@ Flags:
       --target-name-prefix string                                     name prefix in target namespace for cross cluster generation, name prefix in target namespace for cross cluster replication
       --target-namespace string                                       target namespace for cross cluster generation
       --target-realms string                                          realm(s) to use for generated DNS entries, realm(s) to use for replicated DNS provider
-      --target.burst int                                              option to set the maximum burst to the apiserver of the cluster target
+      --target.burst int                                              option to set the maximum burst to the apiserver of the cluster target (default 100)
       --target.conditional-deploy-crds                                deployment of required crds for cluster target only if there is no managed resource in garden namespace deploying it
       --target.crds-shoot-no-cleanup-label                            add the label 'shoot.gardener.cloud/no-cleanup=true' for CRDS deployed on cluster target
       --target.disable-deploy-crds                                    disable deployment of required crds for cluster target
       --target.id string                                              id for cluster target
       --target.migration-ids string                                   migration id for cluster target
-      --target.qps int                                                option to set the maximum QPS to the apiserver of the cluster target
+      --target.qps int                                                option to set the maximum QPS to the apiserver of the cluster target (default 50)
       --targets.pool.size int                                         Worker pool size for pool targets
       --targetsources.pool.size int                                   Worker pool size for pool targetsources
       --ttl int                                                       Default time-to-live for DNS entries. Defines how long the record is kept in cache by DNS servers or resolvers.

@@ -22,6 +22,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	dnsmanclient "github.com/gardener/external-dns-management/pkg/dnsman2/client"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/lookup"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	dnsprovider "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
@@ -350,6 +351,7 @@ var _ = Describe("Reconcile", func() {
 			state:           state.GetState(),
 			lookupProcessor: lookup.NewLookupProcessor(log.WithName("lookup-processor"), lookup.NewNullTrigger(), 1, 250*time.Millisecond),
 		}
+		reconciler.initDefaultFailureBackoff()
 		reconciler.setCachePeriods(1*time.Microsecond, defaultDriftCheckPeriod, defaultProviderUpdateCachePeriod)
 		state.GetState().SetDNSHandlerFactory(registry)
 
@@ -1163,5 +1165,48 @@ var _ = Describe("Reconcile", func() {
 				unexpectedFinalizers:     []string{"class-b.dns.gardener.cloud/compound", "class-c.dns.gardener.cloud/compound", "class-d.dns.gardener.cloud/compound"},
 			}),
 		)
+	})
+
+	Context("failure backoff", func() {
+		It("grows the error requeue delay and resets it on success", func() {
+			er := &entryReconciliation{
+				EntryContext:   common.EntryContext{Clock: clock, Log: log, Entry: entryA},
+				failureBackoff: reconciler.failureBackoff,
+			}
+
+			errResult := func() common.ReconcileResult {
+				return common.ReconcileResult{State: ptr.To(v1alpha1.StateError), Result: reconcile.Result{RequeueAfter: 5 * time.Second}}
+			}
+
+			first := errResult()
+			er.applyFailureBackoff(&first)
+			// base 30s +/- 10% jitter, always longer than the original 5s
+			Expect(first.Result.RequeueAfter).To(BeNumerically(">", 5*time.Second))
+
+			second := errResult()
+			er.applyFailureBackoff(&second)
+			// second consecutive failure -> ~base*factor, longer than the first
+			Expect(second.Result.RequeueAfter).To(BeNumerically(">", first.Result.RequeueAfter))
+
+			// a successful reconciliation clears the backoff, so the next failure starts again from the base delay
+			success := common.ReconcileResult{State: ptr.To(v1alpha1.StateReady)}
+			er.applyFailureBackoff(&success)
+
+			third := errResult()
+			er.applyFailureBackoff(&third)
+			Expect(third.Result.RequeueAfter).To(BeNumerically("<", second.Result.RequeueAfter))
+		})
+
+		It("does not stretch the requeue for non-error outcomes", func() {
+			er := &entryReconciliation{
+				EntryContext:   common.EntryContext{Clock: clock, Log: log, Entry: entryA},
+				failureBackoff: reconciler.failureBackoff,
+			}
+
+			// a stale self-requeue keeps its short delay (it is not paced by the failure backoff)
+			stale := common.ReconcileResult{State: ptr.To(v1alpha1.StateStale), Result: reconcile.Result{RequeueAfter: waitForProviderRetryInterval}}
+			er.applyFailureBackoff(&stale)
+			Expect(stale.Result.RequeueAfter).To(Equal(waitForProviderRetryInterval))
+		})
 	})
 })

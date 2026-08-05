@@ -102,6 +102,9 @@ func DNSController(name string, factory DNSHandlerFactory) controller.Configurat
 		DefaultedDurationOption(OPT_DNSDELAY, 10*time.Second, "delay between two dns reconciliations").
 		DefaultedDurationOption(OPT_RESCHEDULEDELAY, 120*time.Second, "reschedule delay after losing provider").
 		DefaultedDurationOption(OPT_LOCKSTATUSCHECKPERIOD, 120*time.Second, "interval for dns lock status checks").
+		DefaultedDurationOption(OPT_ENTRY_FAILURE_BACKOFF_BASE, 30*time.Second, "base delay for the exponential backoff applied to persistently failing entries before they trigger a hosted zone reconciliation again").
+		DefaultedIntOption(OPT_ENTRY_FAILURE_BACKOFF_FACTOR, 2, "multiplier applied per consecutive failure for the entry failure backoff").
+		DefaultedDurationOption(OPT_ENTRY_FAILURE_BACKOFF_MAX, 30*time.Minute, "maximum delay for the entry failure backoff").
 		DefaultedIntOption(OPT_REMOTE_ACCESS_PORT, 0, "port of remote access server for remote-enabled providers").
 		DefaultedStringOption(OPT_REMOTE_ACCESS_CACERT, "", "CA who signed client certs file").
 		DefaultedStringOption(OPT_REMOTE_ACCESS_SERVER_SECRET_NAME, "", "name of secret containing remote access server's certificate").

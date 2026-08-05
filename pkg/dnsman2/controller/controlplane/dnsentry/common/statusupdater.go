@@ -39,6 +39,17 @@ func (u *EntryStatusUpdater) UpdateStatus(modifier func(status *v1alpha1.DNSEntr
 		if res := u.RemoveFinalizer(); res != nil {
 			return *res
 		}
+	} else {
+		// Add the finalizer only once we have provisioned DNS state (Status.Targets is set by
+		// updateStatusWithProvider after a successful apply). Tying add and keep to the same signal
+		// avoids the add/remove flapping seen when ApplyChangeRequests fails before targets are persisted.
+		// Ideally the finalizer would be set before applying the changes to close the crash window between
+		// a successful apply and persisting the finalizer, but that is not possible here: adding it before
+		// the apply reintroduces the flapping, since a failed apply never persists Status.Targets and the
+		// finalizer would then be removed again on the same reconcile.
+		if res := u.AddFinalizer(); res != nil {
+			return *res
+		}
 	}
 
 	return ReconcileResult{}

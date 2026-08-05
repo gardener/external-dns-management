@@ -25,6 +25,10 @@ const (
 	OPT_DISABLE_ZONE_STATE_CACHING = "disable-zone-state-caching"
 	OPT_DISABLE_DNSNAME_VALIDATION = "disable-dnsname-validation"
 
+	OPT_ENTRY_FAILURE_BACKOFF_BASE   = "entry-failure-backoff-base"
+	OPT_ENTRY_FAILURE_BACKOFF_FACTOR = "entry-failure-backoff-factor"
+	OPT_ENTRY_FAILURE_BACKOFF_MAX    = "entry-failure-backoff-max"
+
 	OPT_REMOTE_ACCESS_PORT               = "remote-access-port"
 	OPT_REMOTE_ACCESS_CACERT             = "remote-access-cacert"
 	OPT_REMOTE_ACCESS_SERVER_SECRET_NAME = "remote-access-server-secret-name"
