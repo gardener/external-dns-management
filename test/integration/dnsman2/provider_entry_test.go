@@ -580,8 +580,11 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		Eventually(func(g Gomega) {
 			checkDeleted(g, ctx, e1)
 		}).Should(Succeed())
-		e2.Annotations = map[string]string{"dns.gardener.cloud/ignore": "full"}
-		Expect(testClient.Update(ctx, e2)).To(Succeed())
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e2), e2)).To(Succeed())
+			e2.Annotations = map[string]string{"dns.gardener.cloud/ignore": "full"}
+			g.Expect(testClient.Update(ctx, e2)).To(Succeed())
+		}).Should(Succeed())
 
 		By("Await deletion of provider")
 		Eventually(func(g Gomega) {
