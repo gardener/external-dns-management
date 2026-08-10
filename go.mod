@@ -19,7 +19,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
 	github.com/aws/smithy-go v1.27.6
 	github.com/cloudflare/cloudflare-go/v7 v7.8.0
-	github.com/gardener/controller-manager-library v0.2.1-0.20260727113103-05652acf3093
+	github.com/gardener/controller-manager-library v0.2.1-0.20260810082918-803e32762328
 	github.com/gardener/gardener v1.148.2
 	github.com/gardener/gardener/hack/tools v1.148.2
 	github.com/gardener/gardener/pkg/apis v1.148.2
