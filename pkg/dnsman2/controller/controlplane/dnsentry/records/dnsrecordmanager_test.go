@@ -34,8 +34,6 @@ func deleteCR(dnsName, setID string) *provider.ChangeRequests {
 }
 
 var _ = Describe("orderChanges", func() {
-	var mgr DNSRecordManager
-
 	plain := func(dnsName string) dns.DNSSetName {
 		return dns.DNSSetName{DNSName: dnsName}
 	}
@@ -45,7 +43,7 @@ var _ = Describe("orderChanges", func() {
 
 	DescribeTable("ordering change requests",
 		func(input map[dns.DNSSetName]*provider.ChangeRequests, assertFn func([]dns.DNSSetName)) {
-			result := mgr.orderChanges(input)
+			result := orderChanges(input)
 			assertFn(result)
 		},
 
