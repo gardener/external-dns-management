@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/clock"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -39,9 +40,9 @@ func newQuotaReservationsMap(clock clock.Clock, ttl time.Duration) *quotaReserva
 }
 
 // Reserve creates a reservation for an entry with the specified provider.
-// The allow function is called with the current count of reservations for the provider (including this one) and should return true if the reservation is allowed (i.e. does not exceed quota).
+// The allow function is called with the set of entry keys currently reserved for the provider (including this entry).
 // Returns true if the reservation was created or already exists.
-func (m *quotaReservationsMap) Reserve(entryKey, providerKey client.ObjectKey, allow func(reservedCount int32) bool) bool {
+func (m *quotaReservationsMap) Reserve(entryKey, providerKey client.ObjectKey, allow func(reservedEntryKeys sets.Set[client.ObjectKey]) bool) bool {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -54,7 +55,7 @@ func (m *quotaReservationsMap) Reserve(entryKey, providerKey client.ObjectKey, a
 		timestamp:   m.clock.Now(),
 	}
 
-	if !allow(m.countReservationsForProvider(providerKey)) {
+	if !allow(m.reservedEntryKeysForProviderLocked(providerKey)) {
 		delete(m.reservations, entryKey)
 		return false
 	}
@@ -76,18 +77,19 @@ func (m *quotaReservationsMap) CountReservationsForProvider(providerKey client.O
 
 	m.cleanupExpiredLocked()
 
-	return m.countReservationsForProvider(providerKey)
+	return int32(len(m.reservedEntryKeysForProviderLocked(providerKey)))
 }
 
-// countReservationsForProvider counts active (non-expired) reservations for a provider. Must be called with lock held.
-func (m *quotaReservationsMap) countReservationsForProvider(providerKey client.ObjectKey) int32 {
-	var count int32
+// reservedEntryKeysForProviderLocked returns the set of entry keys with active reservations for a provider.
+// Must be called with lock held.
+func (m *quotaReservationsMap) reservedEntryKeysForProviderLocked(providerKey client.ObjectKey) sets.Set[client.ObjectKey] {
+	keys := sets.New[client.ObjectKey]()
 	for _, r := range m.reservations {
 		if r.providerKey == providerKey {
-			count++
+			keys.Insert(r.entryKey)
 		}
 	}
-	return count
+	return keys
 }
 
 // cleanupExpiredLocked removes expired reservations. Must be called with lock held.
