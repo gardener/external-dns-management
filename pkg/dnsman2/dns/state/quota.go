@@ -71,13 +71,13 @@ func (m *quotaReservationsMap) Release(entryKey client.ObjectKey) {
 }
 
 // CountReservationsForProvider counts active (non-expired) reservations for a provider.
-func (m *quotaReservationsMap) CountReservationsForProvider(providerKey client.ObjectKey) int32 {
+func (m *quotaReservationsMap) CountReservationsForProvider(providerKey client.ObjectKey) int {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
 	m.cleanupExpiredLocked()
 
-	return int32(len(m.reservedEntryKeysForProviderLocked(providerKey)))
+	return len(m.reservedEntryKeysForProviderLocked(providerKey))
 }
 
 // reservedEntryKeysForProviderLocked returns the set of entry keys with active reservations for a provider.

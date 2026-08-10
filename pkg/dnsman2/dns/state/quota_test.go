@@ -40,7 +40,7 @@ var _ = Describe("QuotaReservationsMap", func() {
 			Expect(success).To(BeTrue())
 
 			count := rmap.CountReservationsForProvider(providerKey)
-			Expect(count).To(Equal(int32(1)))
+			Expect(count).To(Equal(1))
 		})
 
 		It("should release reservation", func() {
@@ -51,7 +51,7 @@ var _ = Describe("QuotaReservationsMap", func() {
 			rmap.Release(entryKey)
 
 			count := rmap.CountReservationsForProvider(providerKey)
-			Expect(count).To(Equal(int32(0)))
+			Expect(count).To(Equal(0))
 		})
 
 		It("should reject reservation when allow function returns false", func() {
@@ -64,7 +64,7 @@ var _ = Describe("QuotaReservationsMap", func() {
 			Expect(success).To(BeFalse())
 
 			count := rmap.CountReservationsForProvider(providerKey)
-			Expect(count).To(Equal(int32(0)))
+			Expect(count).To(Equal(0))
 		})
 	})
 
@@ -81,16 +81,16 @@ var _ = Describe("QuotaReservationsMap", func() {
 			rmap.Reserve(entry3, provider2, allowAll)
 
 			count1 := rmap.CountReservationsForProvider(provider1)
-			Expect(count1).To(Equal(int32(2)))
+			Expect(count1).To(Equal(2))
 
 			count2 := rmap.CountReservationsForProvider(provider2)
-			Expect(count2).To(Equal(int32(1)))
+			Expect(count2).To(Equal(1))
 		})
 
 		It("should return 0 for provider with no reservations", func() {
 			providerKey := client.ObjectKey{Namespace: "default", Name: "provider1"}
 			count := rmap.CountReservationsForProvider(providerKey)
-			Expect(count).To(Equal(int32(0)))
+			Expect(count).To(Equal(0))
 		})
 	})
 
@@ -102,12 +102,12 @@ var _ = Describe("QuotaReservationsMap", func() {
 			rmap.Reserve(entryKey, providerKey, allowAll)
 
 			count := rmap.CountReservationsForProvider(providerKey)
-			Expect(count).To(Equal(int32(1)))
+			Expect(count).To(Equal(1))
 
 			clock.Step(testTTL * 3 / 2)
 
 			count = rmap.CountReservationsForProvider(providerKey)
-			Expect(count).To(Equal(int32(0)))
+			Expect(count).To(Equal(0))
 		})
 
 		It("should clean up expired reservations during Reserve", func() {
@@ -116,14 +116,14 @@ var _ = Describe("QuotaReservationsMap", func() {
 			providerKey := client.ObjectKey{Namespace: "default", Name: "provider1"}
 
 			rmap.Reserve(entry1, providerKey, allowAll)
-			Expect(rmap.CountReservationsForProvider(providerKey)).To(Equal(int32(1)))
+			Expect(rmap.CountReservationsForProvider(providerKey)).To(Equal(1))
 
 			clock.Step(testTTL * 3 / 2)
 
 			rmap.Reserve(entry2, providerKey, allowAll)
 
 			count := rmap.CountReservationsForProvider(providerKey)
-			Expect(count).To(Equal(int32(1)))
+			Expect(count).To(Equal(1))
 		})
 
 		It("should allow reservation check function to see current reserved keys", func() {
@@ -145,7 +145,7 @@ var _ = Describe("QuotaReservationsMap", func() {
 			})
 
 			finalCount := rmap.CountReservationsForProvider(providerKey)
-			Expect(finalCount).To(Equal(int32(2)))
+			Expect(finalCount).To(Equal(2))
 		})
 
 		It("should reject reservation when quota would be exceeded", func() {
@@ -163,7 +163,7 @@ var _ = Describe("QuotaReservationsMap", func() {
 			Expect(success).To(BeFalse())
 
 			count := rmap.CountReservationsForProvider(providerKey)
-			Expect(count).To(Equal(int32(2)))
+			Expect(count).To(Equal(2))
 		})
 	})
 
@@ -223,8 +223,8 @@ var _ = Describe("QuotaReservationsMap", func() {
 			count1 := rmap.CountReservationsForProvider(provider1)
 			count2 := rmap.CountReservationsForProvider(provider2)
 
-			Expect(count1).To(Equal(int32(1)))
-			Expect(count2).To(Equal(int32(1)))
+			Expect(count1).To(Equal(1))
+			Expect(count2).To(Equal(1))
 		})
 	})
 })
