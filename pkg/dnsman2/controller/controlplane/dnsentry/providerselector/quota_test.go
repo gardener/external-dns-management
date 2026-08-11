@@ -19,7 +19,19 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 )
 
-var _ = Describe("CountEntriesForProvider", func() {
+func buildFakeClient(scheme *runtime.Scheme, objects ...client.Object) client.Client {
+	return fake.NewClientBuilder().
+		WithScheme(scheme).
+		WithObjects(objects...).
+		WithIndex(&v1alpha1.DNSEntry{}, dnsprovider.EntryStatusProvider,
+			func(obj client.Object) []string {
+				entry := obj.(*v1alpha1.DNSEntry)
+				return []string{ptr.Deref(entry.Status.Provider, "")}
+			}).
+		Build()
+}
+
+var _ = Describe("ListEntriesForProvider", func() {
 	var (
 		ctx         context.Context
 		namespace   string
@@ -34,24 +46,15 @@ var _ = Describe("CountEntriesForProvider", func() {
 		providerKey = client.ObjectKey{Namespace: namespace, Name: "test-provider"}
 	})
 
-	It("should return 0 when no entries exist", func() {
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithIndex(&v1alpha1.DNSEntry{}, dnsprovider.EntryStatusProvider,
-				func(obj client.Object) []string {
-					entry := obj.(*v1alpha1.DNSEntry)
-					return []string{ptr.Deref(entry.Status.Provider, "")}
-				}).
-			Build()
-
-		count, err := CountEntriesForProvider(ctx, fakeClient, namespace, providerKey)
+	It("should return empty list when no entries exist", func() {
+		entries, err := ListEntriesForProvider(ctx, buildFakeClient(scheme), namespace, providerKey)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(count).To(Equal(int32(0)))
+		Expect(entries).To(BeEmpty())
 	})
 
-	It("should count entries with provider set", func() {
+	It("should list entries with provider set", func() {
 		providerName := providerKey.String()
-		entries := []client.Object{
+		fakeClient := buildFakeClient(scheme,
 			&v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{Name: "entry1", Namespace: namespace},
 				Status:     v1alpha1.DNSEntryStatus{Provider: new(providerName)},
@@ -60,26 +63,16 @@ var _ = Describe("CountEntriesForProvider", func() {
 				ObjectMeta: metav1.ObjectMeta{Name: "entry2", Namespace: namespace},
 				Status:     v1alpha1.DNSEntryStatus{Provider: new(providerName)},
 			},
-		}
+		)
 
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithObjects(entries...).
-			WithIndex(&v1alpha1.DNSEntry{}, dnsprovider.EntryStatusProvider,
-				func(obj client.Object) []string {
-					entry := obj.(*v1alpha1.DNSEntry)
-					return []string{ptr.Deref(entry.Status.Provider, "")}
-				}).
-			Build()
-
-		count, err := CountEntriesForProvider(ctx, fakeClient, namespace, providerKey)
+		entries, err := ListEntriesForProvider(ctx, fakeClient, namespace, providerKey)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(count).To(Equal(int32(2)))
+		Expect(entries).To(HaveLen(2))
 	})
 
-	It("should only count entries with status.provider set", func() {
+	It("should only list entries with status.provider set", func() {
 		providerName := providerKey.String()
-		entries := []client.Object{
+		fakeClient := buildFakeClient(scheme,
 			&v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{Name: "entry1", Namespace: namespace},
 				Status:     v1alpha1.DNSEntryStatus{Provider: new(providerName)},
@@ -92,26 +85,17 @@ var _ = Describe("CountEntriesForProvider", func() {
 				ObjectMeta: metav1.ObjectMeta{Name: "entry3", Namespace: namespace},
 				Status:     v1alpha1.DNSEntryStatus{},
 			},
-		}
+		)
 
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithObjects(entries...).
-			WithIndex(&v1alpha1.DNSEntry{}, dnsprovider.EntryStatusProvider,
-				func(obj client.Object) []string {
-					entry := obj.(*v1alpha1.DNSEntry)
-					return []string{ptr.Deref(entry.Status.Provider, "")}
-				}).
-			Build()
-
-		count, err := CountEntriesForProvider(ctx, fakeClient, namespace, providerKey)
+		entries, err := ListEntriesForProvider(ctx, fakeClient, namespace, providerKey)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(count).To(Equal(int32(1)))
+		Expect(entries).To(HaveLen(1))
+		Expect(entries[0].Name).To(Equal("entry1"))
 	})
 
-	It("should only count entries for the specified provider", func() {
+	It("should only list entries for the specified provider", func() {
 		providerName := providerKey.String()
-		entries := []client.Object{
+		fakeClient := buildFakeClient(scheme,
 			&v1alpha1.DNSEntry{
 				ObjectMeta: metav1.ObjectMeta{Name: "entry1", Namespace: namespace},
 				Status:     v1alpha1.DNSEntryStatus{Provider: new(providerName)},
@@ -120,21 +104,12 @@ var _ = Describe("CountEntriesForProvider", func() {
 				ObjectMeta: metav1.ObjectMeta{Name: "entry2", Namespace: namespace},
 				Status:     v1alpha1.DNSEntryStatus{Provider: new("default/other-provider")},
 			},
-		}
+		)
 
-		fakeClient := fake.NewClientBuilder().
-			WithScheme(scheme).
-			WithObjects(entries...).
-			WithIndex(&v1alpha1.DNSEntry{}, dnsprovider.EntryStatusProvider,
-				func(obj client.Object) []string {
-					entry := obj.(*v1alpha1.DNSEntry)
-					return []string{ptr.Deref(entry.Status.Provider, "")}
-				}).
-			Build()
-
-		count, err := CountEntriesForProvider(ctx, fakeClient, namespace, providerKey)
+		entries, err := ListEntriesForProvider(ctx, fakeClient, namespace, providerKey)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(count).To(Equal(int32(1)))
+		Expect(entries).To(HaveLen(1))
+		Expect(entries[0].Name).To(Equal("entry1"))
 	})
 })
 

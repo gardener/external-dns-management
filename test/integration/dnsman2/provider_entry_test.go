@@ -316,13 +316,23 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 			checkEntry(entry)
 		}
 
-		e1.Spec.DNSName = "e1-update.first.example.com"
-		e2.Spec.Targets = []string{"1.1.2.10", "1.1.2.2", "1::20"}
-		e3.Spec.Text = []string{"foo bar2", "blabla2"}
-		e4.Spec.Targets = []string{"1.1.1.1"}
-
 		for _, entry := range []*v1alpha1.DNSEntry{e1, e2, e3, e4} {
-			Expect(testClient.Update(ctx, entry)).To(Succeed())
+			Eventually(func(g Gomega) {
+				g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
+				switch entry.Name {
+				case "e1":
+					entry.Spec.DNSName = "e1-update.first.example.com"
+				case "e2":
+					entry.Spec.Targets = []string{"1.1.2.10", "1.1.2.2", "1::20"}
+				case "e3":
+					entry.Spec.Text = []string{"foo bar2", "blabla2"}
+				case "e4":
+					entry.Spec.Targets = []string{"1.1.1.1"}
+				default:
+					g.Expect(true).To(BeFalse())
+				}
+				g.Expect(testClient.Update(ctx, entry)).To(Succeed())
+			}).Should(Succeed(), entry.Name)
 		}
 
 		for _, entry := range []*v1alpha1.DNSEntry{e1, e2, e3, e4} {
@@ -580,8 +590,11 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		Eventually(func(g Gomega) {
 			checkDeleted(g, ctx, e1)
 		}).Should(Succeed())
-		e2.Annotations = map[string]string{"dns.gardener.cloud/ignore": "full"}
-		Expect(testClient.Update(ctx, e2)).To(Succeed())
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e2), e2)).To(Succeed())
+			e2.Annotations = map[string]string{"dns.gardener.cloud/ignore": "full"}
+			g.Expect(testClient.Update(ctx, e2)).To(Succeed())
+		}).Should(Succeed())
 
 		By("Await deletion of provider")
 		Eventually(func(g Gomega) {

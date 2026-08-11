@@ -14,18 +14,17 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsprovider"
 )
 
-// CountEntriesForProvider counts the number of DNSEntry resources currently assigned to the specified provider.
-// It uses the field indexer on status.provider for efficient O(1) lookup.
-// Only entries that have status.provider set are counted (i.e., entries that have been successfully provisioned).
-func CountEntriesForProvider(ctx context.Context, c client.Client, namespace string, providerKey client.ObjectKey) (int32, error) {
+// ListEntriesForProvider returns the DNSEntry resources currently assigned to the specified provider.
+// Only entries that have status.provider set are returned (i.e., entries that have been successfully provisioned).
+func ListEntriesForProvider(ctx context.Context, c client.Client, namespace string, providerKey client.ObjectKey) ([]v1alpha1.DNSEntry, error) {
 	entryList := &v1alpha1.DNSEntryList{}
 	if err := c.List(ctx, entryList,
 		client.InNamespace(namespace),
 		client.MatchingFields{dnsprovider.EntryStatusProvider: providerKey.String()},
 	); err != nil {
-		return 0, err
+		return nil, err
 	}
-	return int32(len(entryList.Items)), nil // #nosec G115 -- number of entries will never reach 2 billion, so int32 is sufficient
+	return entryList.Items, nil
 }
 
 // quotaExceededError is returned when a provider has reached its entries quota.

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -66,8 +67,7 @@ func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.Reconcil
 
 	// Check entries quota before assigning entry to provider
 	if err := s.checkEntriesQuota(newProvider, providerKey); err != nil {
-		var quotaErr *quotaExceededError
-		if errors.As(err, &quotaErr) {
+		if errors.As(err, new(*quotaExceededError)) {
 			res := common.ErrorReconcileResult(err.Error(), false)
 			res.Result.RequeueAfter = rescheduleTimeQuotaExceeded
 			return nil, res
@@ -113,15 +113,22 @@ func (s *providerSelector) checkEntriesQuota(provider *v1alpha1.DNSProvider, pro
 	}
 
 	// Count provisioned entries (those with status.provider set)
-	provisionedCount, err := CountEntriesForProvider(s.Ctx, s.Client, s.namespace, providerKey)
+	provisionedEntries, err := ListEntriesForProvider(s.Ctx, s.Client, s.namespace, providerKey)
 	if err != nil {
 		return fmt.Errorf("failed to count entries for provider: %w", err)
 	}
+	provisionedKeys := sets.New[client.ObjectKey]()
+	for i := range provisionedEntries {
+		provisionedKeys.Insert(client.ObjectKeyFromObject(&provisionedEntries[i]))
+	}
 
-	// Reserve slot for this entry to prevent race conditions
-	reserved := s.state.GetQuotaReservationsMap().Reserve(client.ObjectKeyFromObject(s.Entry), providerKey, func(reservedCount int32) bool {
-		// Check total count against quota
-		return provisionedCount+reservedCount <= *quota.Entries
+	// Reserve slot for this entry to prevent race conditions.
+	// reservedEntryKeys contains entry keys with active reservations for this provider (including this entry).
+	// Some of those entries may already appear in provisionedKeys (they were provisioned but Release hasn't
+	// been called yet), so we subtract the overlap to avoid double-counting.
+	reserved := s.state.GetQuotaReservationsMap().Reserve(client.ObjectKeyFromObject(s.Entry), providerKey, func(reservedEntryKeys sets.Set[client.ObjectKey]) bool {
+		overlap := provisionedKeys.Intersection(reservedEntryKeys).Len()
+		return provisionedKeys.Len()+reservedEntryKeys.Len()-overlap <= int(*quota.Entries)
 	})
 
 	if !reserved {
