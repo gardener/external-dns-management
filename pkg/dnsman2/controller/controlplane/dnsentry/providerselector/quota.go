@@ -27,17 +27,6 @@ func ListEntriesForProvider(ctx context.Context, c client.Client, namespace stri
 	return entryList.Items, nil
 }
 
-// CountEntriesForProvider counts the number of DNSEntry resources currently assigned to the specified provider.
-// It uses the field indexer on status.provider for efficient O(1) lookup.
-// Only entries that have status.provider set are counted (i.e., entries that have been successfully provisioned).
-func CountEntriesForProvider(ctx context.Context, c client.Client, namespace string, providerKey client.ObjectKey) (int32, error) {
-	entries, err := ListEntriesForProvider(ctx, c, namespace, providerKey)
-	if err != nil {
-		return 0, err
-	}
-	return int32(len(entries)), nil // #nosec G115 -- number of entries will never reach 2 billion, so int32 is sufficient
-}
-
 // quotaExceededError is returned when a provider has reached its entries quota.
 type quotaExceededError struct {
 	providerKey client.ObjectKey
