@@ -15,10 +15,12 @@
     {
       groupName: 'gardener/gardener',
       matchPackageNames: ['/^(github\\.com\\/)?gardener\\/gardener(\\/.*)?$/'],
-      postUpgradeTasks: [
-        'make tidy',
-        'make generate MODE=sequential',
-      ],
+      postUpgradeTasks: {
+        commands: [
+          'make tidy',
+          'make generate MODE=sequential',
+        ],
+      },
       enabled: true,
     },
     {
