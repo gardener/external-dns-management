@@ -3,6 +3,7 @@
   extends: [
     'config:recommended',
     'github>gardener/ci-infra//config/renovate/group-go-updates.json5',
+    'github>gardener/ci-infra//config/renovate/automerge-with-tide.json5',
   ],
   labels: [
     'kind/enhancement',
@@ -14,7 +15,11 @@
     {
       groupName: 'gardener/gardener',
       matchPackageNames: ['/^(github\\.com\\/)?gardener\\/gardener(\\/.*)?$/'],
-      enabled: true
+      postUpgradeTasks: [
+        'make tidy',
+        'make generate MODE=sequential',
+      ],
+      enabled: true,
     },
     {
       // Pin Dockerfile base images by digest for reproducible, supply-chain-safe builds.
@@ -22,6 +27,14 @@
       // keep the digest in sync with the tag on subsequent updates.
       matchManagers: ['dockerfile'],
       pinDigests: true,
+    },
+    {
+      description: 'Automerge patch and digest updates',
+      matchUpdateTypes: [
+        'patch',
+        'digest',
+      ],
+      automerge: true,
     }
   ],
   // The following list of dependencies to ignore is updated by `make generate`.
