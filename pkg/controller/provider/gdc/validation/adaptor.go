@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/json"
 
+	"github.com/gardener/external-dns-management/pkg/controller/provider/gdc/client/constants"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
@@ -33,14 +34,14 @@ type adapter struct {
 	checks *provider.DNSHandlerAdapterChecks
 }
 
-// NewAdapter creates a new DNSHandlerAdapter for the Google Cloud DNS provider.
+// NewAdapter creates a new DNSHandlerAdapter for the GDC DNS provider.
 func NewAdapter() provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
-	checks.Add(provider.RequiredProperty("serviceaccount.json").Validators(func(value string) error {
+	checks.Add(provider.RequiredProperty(constants.ServiceAccountJSONField).Validators(func(value string) error {
 		_, err := ValidateServiceAccountJSON([]byte(value))
 		return err
 	}).HideValue())
-	checks.Add(provider.RequiredProperty("gdch-config").HideValue())
+	checks.Add(provider.RequiredProperty(constants.GDCHConfigJSONField).HideValue())
 	return &adapter{checks: checks}
 }
 
@@ -61,13 +62,13 @@ func ValidateServiceAccountJSON(data []byte) (LightCredentialsFile, error) {
 	var credInfo LightCredentialsFile
 
 	if err := json.Unmarshal(data, &credInfo); err != nil {
-		return credInfo, fmt.Errorf("'serviceaccount.json' data field does not contain a valid JSON: %s", err)
+		return credInfo, fmt.Errorf("'%s' data field does not contain a valid JSON: %s", constants.ServiceAccountJSONField, err)
 	}
 	if !projectIDRegexp.MatchString(credInfo.Project) {
-		return credInfo, fmt.Errorf("'serviceaccount.json' field 'project' is not a valid project")
+		return credInfo, fmt.Errorf("'%s' field 'project' is not a valid project", constants.ServiceAccountJSONField)
 	}
 	if credInfo.Type != "gdch_service_account" {
-		return credInfo, fmt.Errorf("'serviceaccount.json' field 'type' is not 'gdch_service_account'")
+		return credInfo, fmt.Errorf("'%s' field 'type' is not 'gdch_service_account'", constants.ServiceAccountJSONField)
 	}
 	return credInfo, nil
 }

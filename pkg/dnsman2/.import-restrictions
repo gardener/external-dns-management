@@ -3,6 +3,7 @@ rules:
     allowedPrefixes:
       - github.com/gardener/external-dns-management/pkg/apis
       - github.com/gardener/external-dns-management/pkg/dnsman2
+      - github.com/gardener/external-dns-management/pkg/controller/provider/gdc/client
   - selectorRegexp: github[.]com/gardener/controller-manager-library
     forbiddenPrefixes:
       - ''
