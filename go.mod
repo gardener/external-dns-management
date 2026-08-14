@@ -17,6 +17,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
 	github.com/aws/smithy-go v1.27.7
 	github.com/cloudflare/cloudflare-go/v7 v7.8.0
+	github.com/coredns/corefile-migration/migration v1.0.1
 	github.com/gardener/controller-manager-library v0.2.1-0.20260810082918-803e32762328
 	github.com/gardener/gardener v1.149.0
 	github.com/gardener/gardener/hack/tools v1.149.0
@@ -24,6 +25,8 @@ require (
 	github.com/go-logr/logr v1.4.4
 	github.com/go-openapi/runtime v0.33.0
 	github.com/go-openapi/strfmt v0.27.0
+	github.com/google/go-cmp v0.7.0
+	github.com/google/tink/go v1.7.0
 	github.com/google/uuid v1.6.0
 	github.com/gophercloud/gophercloud/v2 v2.13.0
 	github.com/gophercloud/utils/v2 v2.0.0-20260626221802-4ae35253ac13
@@ -37,6 +40,7 @@ require (
 	github.com/prometheus/client_golang v1.24.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
+	gke-internal.googlesource.com/private-cloud v0.0.0-00010101000000-000000000000
 	go.uber.org/atomic v1.11.0
 	go.uber.org/automaxprocs v1.6.0
 	golang.org/x/exp v0.0.0-20260611194520-c48552f49976
@@ -156,7 +160,6 @@ require (
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/cel-go v0.29.2 // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20260604005048-7023385849c0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.20 // indirect
@@ -288,3 +291,5 @@ require (
 
 // need open PR https://github.com/infobloxopen/infoblox-go-client/pull/195
 replace github.com/infobloxopen/infoblox-go-client/v2 => github.com/MartinWeindel/infoblox-go-client/v2 v2.0.0-20221122085954-b7d80ebb106b
+
+replace gke-internal.googlesource.com/private-cloud => github.com/GoogleCloudPlatform/google-distributed-cloud-apis v0.0.0-20260810140508-9f68f8bfc794
