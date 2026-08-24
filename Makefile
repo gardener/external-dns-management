@@ -22,6 +22,8 @@ IMAGE_TAG                         := $(VERSION)
 # Tools                                 #
 #########################################
 
+GOLANGCI_LINT_VERSION := "v2.13.1" # TODO(MartinWeindel) remove when it has been updated in gardener/gardener
+
 TOOLS_DIR := hack/tools
 include $(GARDENER_HACK_DIR)/tools.mk
 
