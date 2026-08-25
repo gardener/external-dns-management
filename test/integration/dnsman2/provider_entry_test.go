@@ -743,8 +743,11 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 		e1org := e1.DeepCopy()
 
 		By("change the dnsname to make the entry stale")
-		e1.Spec.DNSName = e1.Spec.DNSName + ".other"
-		Expect(testClient.Update(ctx, e1)).To(Succeed())
+		Eventually(func(g Gomega) {
+			g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+			e1.Spec.DNSName = e1.Spec.DNSName + ".other"
+			g.Expect(testClient.Update(ctx, e1)).To(Succeed())
+		}).Should(Succeed())
 
 		By("check that the entry is now stale")
 		Eventually(func(g Gomega) {
