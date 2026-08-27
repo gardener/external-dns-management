@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: Copyright Contributors to the Gardener project
+// SPDX-FileCopyrightText: Contributors to the Gardener project
 //
 // SPDX-License-Identifier: Apache-2.0
 
@@ -38,7 +38,7 @@ func init() {
 		StringOption(source.OPT_TARGET_REALMS, "realm(s) to use for replicated DNS provider").
 		FinalizerDomain(api.GroupName).
 		Reconciler(DNSProviderReplicationReconciler).
-		Cluster(cluster.DEFAULT).             // first one used as MAIN cluster
+		Cluster(cluster.DEFAULT). // first one used as MAIN cluster
 		DefaultWorkerPool(2, 10*time.Minute). // period reconcile as provider secrets are not watched
 		MainResource(gkDNSProvider.Group, gkDNSProvider.Kind).
 		CustomResourceDefinitions(gkDNSProvider).
