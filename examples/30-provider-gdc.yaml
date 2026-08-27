@@ -1,0 +1,13 @@
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSProvider
+metadata:
+  name: gdc
+  namespace: default
+spec:
+  type: gdch-dns
+  secretRef:
+    name: gdc-credentials
+  domains:
+    include:
+    # this must be a (sub)domain of the hosted zone
+    - mydns.org-1.zone1.google.gdc.test

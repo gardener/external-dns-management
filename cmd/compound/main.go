@@ -35,6 +35,7 @@ import (
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/azure-private"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/cloudflare"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/compound/controller"
+	_ "github.com/gardener/external-dns-management/pkg/controller/provider/gdc"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/google"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/infoblox"
 	_ "github.com/gardener/external-dns-management/pkg/controller/provider/local"
