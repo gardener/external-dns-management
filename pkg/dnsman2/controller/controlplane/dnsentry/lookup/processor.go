@@ -429,6 +429,9 @@ func lookupIPs(hostname string) lookupIPsResult {
 }
 
 func sleep(ctx context.Context, d time.Duration) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if d < 1*time.Microsecond {
 		return nil
 	} else if d > 30*time.Second {

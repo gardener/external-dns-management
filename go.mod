@@ -24,7 +24,10 @@ require (
 	github.com/go-logr/logr v1.4.4
 	github.com/go-openapi/runtime v0.33.0
 	github.com/go-openapi/strfmt v0.27.0
+	github.com/google/go-cmp v0.7.0
+	github.com/google/tink/go v1.7.0
 	github.com/google/uuid v1.6.0
+	github.com/googlecloudplatform/google-distributed-cloud-apis v0.0.0-20260824201624-0c18fa0ddc04
 	github.com/gophercloud/gophercloud/v2 v2.14.0
 	github.com/gophercloud/utils/v2 v2.0.0-20260824073324-42b9474d09d4
 	github.com/infobloxopen/infoblox-go-client/v2 v2.11.0
@@ -156,7 +159,6 @@ require (
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/cel-go v0.29.2 // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
-	github.com/google/go-cmp v0.7.0 // indirect
 	github.com/google/pprof v0.0.0-20260604005048-7023385849c0 // indirect
 	github.com/google/s2a-go v0.1.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.20 // indirect
