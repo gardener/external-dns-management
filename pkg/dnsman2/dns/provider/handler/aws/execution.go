@@ -243,8 +243,12 @@ func (ex *execution) submitBisected(ctx context.Context, changes []*wrappedChang
 	mid := len(changes) / 2
 	s1, f1, err1 := ex.submitBisected(ctx, changes[:mid])
 	s2, f2, err2 := ex.submitBisected(ctx, changes[mid:])
-	succeeded = append(s1, s2...)
-	failed = append(f1, f2...)
+	// Build fresh slices: s1/f1 may alias the backing array of changes[:mid],
+	// so append(s1, s2...) could overwrite changes[mid] (and thus corrupt f2).
+	succeeded = append(succeeded, s1...)
+	succeeded = append(succeeded, s2...)
+	failed = append(failed, f1...)
+	failed = append(failed, f2...)
 	// Prefer a leaf (single-change) error so the message names a real cause.
 	err = err1
 	if err == nil {
