@@ -244,5 +244,16 @@ var _ = Describe("QueryDNS with mocked DNS responses", func() {
 			Not(HaveOccurred()),
 			ConsistOf(&dns.Record{Value: "1.2.3.4"}, &dns.Record{Value: "5.6.7.8"}),
 		),
+		Entry("CNAME query with full chain keeps only the record for the queried name",
+			dns.TypeCNAME,
+			[]miekgdns.RR{
+				cnameRR("example.com.", "alias1.example.net.", 60),
+				cnameRR("alias1.example.net.", "alias2.example.net.", 60),
+				cnameRR("alias2.example.net.", "target.example.org.", 60),
+			},
+			miekgdns.RcodeSuccess,
+			Not(HaveOccurred()),
+			ConsistOf(&dns.Record{Value: "alias1.example.net"}),
+		),
 	)
 })
