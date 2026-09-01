@@ -13,7 +13,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.45.1
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.24
-	github.com/aws/aws-sdk-go-v2/service/route53 v1.67.1
+	github.com/aws/aws-sdk-go-v2/service/route53 v1.68.0
 	github.com/aws/aws-sdk-go-v2/service/sts v1.43.3
 	github.com/aws/smithy-go v1.28.1
 	github.com/cloudflare/cloudflare-go/v7 v7.9.0
