@@ -144,7 +144,7 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 				return QueryDNSResult{Err: fmt.Errorf("unexpected record type %T (CNAME)", rr)}
 			}
 			// Recursive resolvers return the full CNAME chain; only keep the record for the queried name.
-			if rr.Header().Name == ToFQDN(setName.DNSName) {
+			if dns.NormalizeDomainName(rr.Header().Name) == dns.NormalizeDomainName(setName.DNSName) {
 				addRecord(dns.NormalizeDomainName(r.Target), r.Hdr.Ttl)
 			}
 		default:
