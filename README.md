@@ -18,6 +18,7 @@ It contains provisioning controllers for creating DNS records in one of the DNS 
   - [_remote_](docs/remote/README.md),
   - [_DNS servers supporting RFC 2136 (DNS Update)_](docs/rfc2136/README.md) *(alpha - not recommended for productive usage)*,
   - [_powerdns_](docs/powerdns/README.md),
+  - [_Google Distributed Cloud air-gapped DNS_](docs/gdc-dns/README.md),
 
 and source controllers for services and ingresses to create DNS entries by annotations.
 
@@ -550,6 +551,7 @@ The following provider types can be selected (comma separated):
 - `netlify-dns`: Netlify DNS provider
 - `remote`: Remote DNS provider (a dns-controller-manager with enabled remote access service)
 - `powerdns`: PowerDNS provider
+- `gdch-dns`: Google Distributed Cloud air-gapped DNS provider
 
 Here is the complete list of options provided:
 
@@ -642,6 +644,12 @@ Flags:
       --compound.entry-failure-backoff-base duration                  base delay for the exponential backoff applied to persistently failing entries before they trigger a hosted zone reconciliation again of controller compound
       --compound.entry-failure-backoff-factor int                     multiplier applied per consecutive failure for the entry failure backoff of controller compound
       --compound.entry-failure-backoff-max duration                   maximum delay for the entry failure backoff of controller compound
+      --compound.gdch-dns.advanced.batch-size int                     batch size for change requests (currently only used for aws-route53) of controller compound
+      --compound.gdch-dns.advanced.max-retries int                    maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
+      --compound.gdch-dns.blocked-zone zone-id                        Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
+      --compound.gdch-dns.ratelimiter.burst int                       number of burst requests for rate limiter of controller compound
+      --compound.gdch-dns.ratelimiter.enabled                         enables rate limiter for DNS provider requests of controller compound
+      --compound.gdch-dns.ratelimiter.qps int                         maximum requests/queries per second of controller compound
       --compound.google-clouddns.advanced.batch-size int              batch size for change requests (currently only used for aws-route53) of controller compound
       --compound.google-clouddns.advanced.max-retries int             maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53) of controller compound
       --compound.google-clouddns.blocked-zone zone-id                 Blocks a zone given in the format zone-id from a provider as if the zone is not existing. of controller compound
@@ -754,6 +762,12 @@ Flags:
       --entry-failure-backoff-max duration                            maximum delay for the entry failure backoff
       --exclude-domains stringArray                                   excluded domains
       --force-crd-update                                              enforce update of crds even they are unmanaged
+      --gdch-dns.advanced.batch-size int                              batch size for change requests (currently only used for aws-route53)
+      --gdch-dns.advanced.max-retries int                             maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
+      --gdch-dns.blocked-zone zone-id                                 Blocks a zone given in the format zone-id from a provider as if the zone is not existing.
+      --gdch-dns.ratelimiter.burst int                                number of burst requests for rate limiter
+      --gdch-dns.ratelimiter.enabled                                  enables rate limiter for DNS provider requests
+      --gdch-dns.ratelimiter.qps int                                  maximum requests/queries per second
       --google-clouddns.advanced.batch-size int                       batch size for change requests (currently only used for aws-route53)
       --google-clouddns.advanced.max-retries int                      maximum number of retries to avoid paging stops on throttling (currently only used for aws-route53)
       --google-clouddns.blocked-zone zone-id                          Blocks a zone given in the format zone-id from a provider as if the zone is not existing.

@@ -1,6 +1,6 @@
-# Google Distributed Cloud (GDC) air-gapped DNS Provider
+# Google Distributed Cloud air-gapped DNS Provider
 
-This DNS provider allows you to create and manage DNS entries in Google Distributed Cloud (GDC) air-gapped Managed DNS zones.
+This DNS provider allows you to create and manage DNS entries in Google Distributed Cloud air-gapped Managed DNS zones.
 
 ## Overview
 
