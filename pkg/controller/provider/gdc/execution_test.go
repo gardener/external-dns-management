@@ -17,6 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	dnsutil "github.com/gardener/external-dns-management/pkg/controller/provider/gdc/client/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
@@ -39,10 +40,11 @@ func TestApplyChange(t *testing.T) {
 		},
 	}
 
+	hostedZone := provider.NewDNSHostedZone("GDC", "test-zone-id", "test.com", "test-zone-key", true)
 	exec := &Execution{
 		LogContext: logger.NewContext("test", "applyChange"),
 		handler:    handler,
-		zone:       provider.NewDNSHostedZone("GDC", "test-zone-id", "test.com", "test-zone-key", true),
+		zone:       hostedZone,
 	}
 
 	tests := []struct {
@@ -58,12 +60,19 @@ func TestApplyChange(t *testing.T) {
 					ttl:  300,
 					data: []string{"1.2.3.4"},
 				},
-				RecordType:     "A",
-				ChangeType:     provider.R_CREATE,
-				ObjectMetaName: "a-test.example.com",
+				DnsZone:             hostedZone.Key(),
+				RecordType:          "A",
+				ChangeType:          provider.R_CREATE,
+				ObjectMetaName:      "a-test.example.com",
+				ObjectMetaNamespace: "test-project",
 			},
 			wantRRS: &globalnetworkingv1.ResourceRecordSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "a-test.example.com", Namespace: "test-project", ResourceVersion: "1"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "a-test.example.com", Namespace: "test-project", ResourceVersion: "1",
+					Annotations: map[string]string{
+						dnsutil.OriginalFQDNAnnotationKey: "test.example.com",
+					},
+				},
 				Spec: globalnetworkingv1.ResourceRecordSetSpec{
 					Name:       "test.example.com",
 					TTLSeconds: &ttl,
@@ -81,12 +90,19 @@ func TestApplyChange(t *testing.T) {
 					ttl:  300,
 					data: []string{"5.6.7.8"},
 				},
-				RecordType:     "A",
-				ChangeType:     provider.R_UPDATE,
-				ObjectMetaName: "a-test.example.com",
+				DnsZone:             hostedZone.Key(),
+				RecordType:          "A",
+				ChangeType:          provider.R_UPDATE,
+				ObjectMetaName:      "a-test.example.com",
+				ObjectMetaNamespace: "test-project",
 			},
 			wantRRS: &globalnetworkingv1.ResourceRecordSet{
-				ObjectMeta: metav1.ObjectMeta{Name: "a-test.example.com", Namespace: "test-project", ResourceVersion: "2"},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "a-test.example.com", Namespace: "test-project", ResourceVersion: "2",
+					Annotations: map[string]string{
+						dnsutil.OriginalFQDNAnnotationKey: "test.example.com",
+					},
+				},
 				Spec: globalnetworkingv1.ResourceRecordSetSpec{
 					Name:       "test.example.com",
 					TTLSeconds: &ttl,

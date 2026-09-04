@@ -118,9 +118,16 @@ func (exec *Execution) applyChange(change *Change) error {
 	exec.handler.config.RateLimiter.Accept()
 
 	recordSet := resourceRecordSetForChange(change)
-
+	ttl := uint32(change.RecordSet.ttl) // #nosec G115 -- TTL is safe bounded integer
 	if change.ChangeType == provider.R_CREATE || change.ChangeType == provider.R_UPDATE {
 		_, err := controllerutil.CreateOrUpdate(context.Background(), exec.handler.client, recordSet, func() error {
+			recordSet.Spec = globalnetworkingv1.ResourceRecordSetSpec{
+				Name:       change.RecordSet.fqdn,
+				TTLSeconds: &ttl,
+				Type:       change.RecordType,
+				RRData:     change.RecordSet.data,
+				DNSZone:    change.DnsZone,
+			}
 			return nil
 		})
 		if err != nil {
