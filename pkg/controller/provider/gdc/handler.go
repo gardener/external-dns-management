@@ -155,8 +155,23 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 					Value: value,
 				})
 			}
-			logger.Infof("DNS Name: %v, Records of type %s: %s", rrSet.Spec.Name, recordType, spec.RRData)
-			dnssets.AddRecordSetFromProvider(rrSet.Spec.Name, dns.NewRecordSet(recordType, int64(ttl), records))
+
+			dnsSetName := dns.DNSSetName{}
+			// when creating the rrSet from the retrieved hosted zone, we need to make sure that the generated
+			// record sets can match with those created from the existing k8s resources. The required information
+			// is added to the ResourceRecordSet via annotations
+			if unmodifiedFqdn, ok := rrSet.Annotations[dnsconst.OriginalFQDNAnnotationKey]; ok {
+				dnsSetName.DNSName = unmodifiedFqdn
+				if setIdentifier, ok := rrSet.Annotations[dnsconst.SetIdentifierKey]; ok {
+					dnsSetName.SetIdentifier = setIdentifier
+				}
+			} else {
+				// legacy behaviour
+				dnsSetName.DNSName = rrSet.Spec.Name
+			}
+
+			logger.Infof("DNS Name: %v, Records of type %s: %s", dnsSetName, recordType, spec.RRData)
+			dnssets.AddRecordSetFromProviderEx(dnsSetName, nil, dns.NewRecordSet(recordType, int64(ttl), records))
 		}
 	}
 

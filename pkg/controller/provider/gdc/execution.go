@@ -20,10 +20,13 @@ import (
 )
 
 type Change struct {
-	RecordSet      *resourceRecordSet
-	RecordType     string // supported record type: A, TXT
-	ChangeType     string // supported change type: create, update, delete
-	ObjectMetaName string // ResourceRecordSet Name
+	RecordSet           *resourceRecordSet
+	RecordType          string // supported record type: A, TXT
+	DnsZone             string // Name of the DNS zone the record will be in
+	ChangeType          string // supported change type: create, update, delete
+	ObjectMetaName      string // ResourceRecordSet Name
+	ObjectMetaNamespace string // ResourceRecordSet Namespace
+	SetIdentifier       string // (Optional) Identifier for the RecordSet
 }
 
 type Execution struct {
@@ -61,11 +64,48 @@ func (exec *Execution) prepareChange(req *provider.ChangeRequest) (*Change, erro
 
 	rrSet := mapRecordSet(dnsset.Name.DNSName, newSet)
 	return &Change{
-		RecordSet:      rrSet,
-		RecordType:     newSet.Type,
-		ChangeType:     req.Action,
-		ObjectMetaName: objectMetaName,
+		RecordSet:           rrSet,
+		RecordType:          newSet.Type,
+		DnsZone:             exec.zone.Key(),
+		ChangeType:          req.Action,
+		ObjectMetaName:      objectMetaName,
+		ObjectMetaNamespace: exec.handler.project,
+		SetIdentifier:       dnsset.Name.SetIdentifier,
 	}, nil
+}
+
+func resourceRecordSetForChange(change *Change) *globalnetworkingv1.ResourceRecordSet {
+	recordSet := &globalnetworkingv1.ResourceRecordSet{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      change.ObjectMetaName,
+			Namespace: change.ObjectMetaNamespace,
+			Annotations: map[string]string{
+				// We need to make sure to preserve the original FQDN (before changes due to
+				// k8s-object-name limitations) since this will be used at a later point to match
+				// records retrieved from a hosted zone with records known to a running instance
+				// of the controller in the seed
+				dnsutil.OriginalFQDNAnnotationKey: change.RecordSet.fqdn,
+			},
+		},
+	}
+	if change.SetIdentifier != "" {
+		// Similar to above, the set identifier (if it exists) is used when matching records
+		// retrieved from the infra to those known to the controller in the case of
+		// routing policies.
+		recordSet.Annotations[dnsutil.SetIdentifierKey] = change.SetIdentifier
+	}
+	if change.ChangeType == provider.R_CREATE || change.ChangeType == provider.R_UPDATE {
+		ttl := uint32(change.RecordSet.ttl) // #nosec G115 -- TTL is safe bounded integer
+		recordSet.Spec = globalnetworkingv1.ResourceRecordSetSpec{
+			Name:       change.RecordSet.fqdn,
+			TTLSeconds: &ttl,
+			Type:       change.RecordType,
+			RRData:     change.RecordSet.data,
+			DNSZone:    change.DnsZone,
+		}
+	}
+
+	return recordSet
 }
 
 func (exec *Execution) applyChange(change *Change) error {
@@ -77,23 +117,10 @@ func (exec *Execution) applyChange(change *Change) error {
 	exec.handler.config.Metrics.AddZoneRequests(exec.zone.Id().ID, provider.M_UPDATERECORDS, 1)
 	exec.handler.config.RateLimiter.Accept()
 
-	ttl := uint32(change.RecordSet.ttl) // #nosec G115 -- TTL is safe bounded integer
-	recordSet := &globalnetworkingv1.ResourceRecordSet{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      change.ObjectMetaName,
-			Namespace: exec.handler.project,
-		},
-	}
+	recordSet := resourceRecordSetForChange(change)
 
 	if change.ChangeType == provider.R_CREATE || change.ChangeType == provider.R_UPDATE {
 		_, err := controllerutil.CreateOrUpdate(context.Background(), exec.handler.client, recordSet, func() error {
-			recordSet.Spec = globalnetworkingv1.ResourceRecordSetSpec{
-				Name:       change.RecordSet.fqdn,
-				TTLSeconds: &ttl,
-				Type:       change.RecordType,
-				RRData:     change.RecordSet.data,
-				DNSZone:    exec.zone.Key(),
-			}
 			return nil
 		})
 		if err != nil {
