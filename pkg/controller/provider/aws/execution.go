@@ -38,6 +38,7 @@ type changeRecordsAPI interface {
 
 type Execution struct {
 	logger.LogContext
+	metrics       provider.Metrics
 	r53           changeRecordsAPI
 	policyContext *routingPolicyContext
 	rateLimiter   flowcontrol.RateLimiter
@@ -50,6 +51,7 @@ type Execution struct {
 func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZone) *Execution {
 	return &Execution{
 		LogContext:    logger,
+		metrics:       h.config.Metrics,
 		r53:           &h.r53,
 		policyContext: h.policyContext,
 		rateLimiter:   h.config.RateLimiter,
@@ -109,7 +111,7 @@ func (this *Execution) addRawChange(name dns.DNSSetName, updateGroup string, cha
 	this.changes[name] = append(this.changes[name], &Change{Change: change, Done: done, UpdateGroup: updateGroup})
 }
 
-func (this *Execution) submitChanges(ctx context.Context, metrics provider.Metrics) error {
+func (this *Execution) submitChanges(ctx context.Context) error {
 	if len(this.changes) == 0 {
 		return nil
 	}
@@ -136,7 +138,7 @@ func (this *Execution) submitChanges(ctx context.Context, metrics provider.Metri
 			},
 		}
 
-		metrics.AddZoneRequests(this.zone.Id().ID, provider.M_UPDATERECORDS, 1)
+		this.metrics.AddZoneRequests(this.zone.Id().ID, provider.M_UPDATERECORDS, 1)
 		this.rateLimiter.Accept()
 		var succeededChanges, failedChanges []*Change
 		_, err := this.r53.ChangeResourceRecordSets(ctx, params)
@@ -176,7 +178,7 @@ func (this *Execution) submitChanges(ctx context.Context, metrics provider.Metri
 					c.Done.Failed(stableError(err))
 				}
 			}
-			this.Errorf("%d records in zone %s fail: %s", len(changes), this.zone.Id(), err)
+			this.Errorf("%d records in zone %s fail: %s", len(failedChanges), this.zone.Id(), err)
 		}
 		if len(succeededChanges) > 0 {
 			successCount += len(succeededChanges)
@@ -264,6 +266,7 @@ func (this *Execution) submitBisected(ctx context.Context, changes []*Change) (s
 			Changes: mapChanges(changes),
 		},
 	}
+	this.metrics.AddZoneRequests(this.zone.Id().ID, provider.M_UPDATERECORDS, 1)
 	this.rateLimiter.Accept()
 	if _, callErr := this.r53.ChangeResourceRecordSets(ctx, params); callErr == nil {
 		return changes, nil, nil

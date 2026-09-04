@@ -259,7 +259,7 @@ func (h *Handler) executeRequests(ctx context.Context, logger logger.LogContext,
 		logger.Infof("no changes in dryrun mode for AWS")
 		return nil
 	}
-	return exec.submitChanges(ctx, h.config.Metrics)
+	return exec.submitChanges(ctx)
 }
 
 func (h *Handler) MapTargets(_ string, targets []provider.Target) []provider.Target {
@@ -401,7 +401,7 @@ func (h *Handler) executeRecordSetChange(ctx context.Context, action route53type
 	if err := exec.addChange(ctx, action, &provider.ChangeRequest{Type: rs.Type}, dnsset); err != nil {
 		return err
 	}
-	return exec.submitChanges(ctx, h.config.Metrics)
+	return exec.submitChanges(ctx)
 }
 
 // ensure staticTokenRetriever implements github.com/aws/aws-sdk-go-v2/credentials/stscreds.IdentityTokenRetriever

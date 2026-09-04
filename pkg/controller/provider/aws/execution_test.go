@@ -70,6 +70,7 @@ func newTestExecution(api changeRecordsAPI) *Execution {
 	zone := provider.NewDNSHostedZone(TYPE_CODE, "Z1", "example.org", "/hostedzone/Z1", false)
 	return &Execution{
 		LogContext:  logger.New(),
+		metrics:     &provider.NullMetrics{},
 		r53:         api,
 		rateLimiter: flowcontrol.NewFakeAlwaysRateLimiter(),
 		zone:        zone,
@@ -79,10 +80,7 @@ func newTestExecution(api changeRecordsAPI) *Execution {
 }
 
 var _ = Describe("Execution submitChanges", func() {
-	var (
-		ctx     context.Context
-		metrics = &provider.NullMetrics{}
-	)
+	var ctx context.Context
 
 	BeforeEach(func() {
 		ctx = context.Background()
@@ -109,7 +107,7 @@ var _ = Describe("Execution submitChanges", func() {
 		exec.changes[dns.DNSSetName{DNSName: "good2.example.org"}] = []*Change{upsertChange("good2.example.org", "1.2.3.4", good2Done)}
 		exec.changes[dns.DNSSetName{DNSName: "bad.example.org"}] = []*Change{upsertChange("bad.example.org", "bad", badDone)}
 
-		err := exec.submitChanges(ctx, metrics)
+		err := exec.submitChanges(ctx)
 		Expect(err).To(MatchError(ContainSubstring("1 changes failed")))
 
 		// The valid change was applied and reported success; only the bad one failed.
@@ -129,7 +127,7 @@ var _ = Describe("Execution submitChanges", func() {
 		exec.changes[dns.DNSSetName{DNSName: "a.example.org"}] = []*Change{upsertChange("a.example.org", "1.2.3.4", d1)}
 		exec.changes[dns.DNSSetName{DNSName: "b.example.org"}] = []*Change{upsertChange("b.example.org", "1.2.3.5", d2)}
 
-		Expect(exec.submitChanges(ctx, metrics)).To(Succeed())
+		Expect(exec.submitChanges(ctx)).To(Succeed())
 		// One batch call, no splitting on the happy path.
 		Expect(fake.changeCalls).To(HaveLen(1))
 		Expect(fake.changeCalls[0].ChangeBatch.Changes).To(HaveLen(2))
@@ -149,7 +147,7 @@ var _ = Describe("Execution submitChanges", func() {
 		exec.changes[dns.DNSSetName{DNSName: "a.example.org"}] = []*Change{upsertChange("a.example.org", "1.2.3.4", d1)}
 		exec.changes[dns.DNSSetName{DNSName: "b.example.org"}] = []*Change{upsertChange("b.example.org", "1.2.3.5", d2)}
 
-		err := exec.submitChanges(ctx, metrics)
+		err := exec.submitChanges(ctx)
 		Expect(err).To(HaveOccurred())
 		// Both changes were throttled, so this surfaces as an "all changes failed"
 		// error wrapping the throttling error; neither is bisected.
