@@ -101,7 +101,13 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	if v.IsDeleting() {
 		var err error
 		if old != nil {
-			this.cleanupEntry(logger, old, oldDNSSet)
+			// Only allow the backend record to be deleted via the zone transaction
+			// when a valid provider currently resolves the entry's zone. For a
+			// stale/foreign entry (no valid provider) the record must be preserved;
+			// scheduling a delete here would orphan it and get it removed on the
+			// next zone reconcile ("found unapplied managed set" -> DELETE).
+			zoneResolvable := new.valid && !new.activezone.IsEmpty() && this.zones[new.activezone] != nil
+			this.cleanupEntry(logger, old, oldDNSSet, zoneResolvable)
 		}
 		if new.valid {
 			if !new.activezone.IsEmpty() && this.zones[new.activezone] != nil {
@@ -146,7 +152,7 @@ func (this *state) addEntryVersion(logger logger.LogContext, v *EntryVersion, st
 	if old != nil && old != new {
 		// DNS name changed -> clean up old dns name
 		logger.Infof("dns name changed to %q", new.ZonedDNSName())
-		this.cleanupEntry(logger, old, oldDNSSet)
+		this.cleanupEntry(logger, old, oldDNSSet, true)
 		if !old.activezone.IsEmpty() && old.activezone != new.ZoneId() {
 			if this.zones[old.activezone] != nil {
 				logger.Infof("dns zone changed -> trigger old zone '%s'", old.ZoneId())
@@ -388,7 +394,7 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 		} else {
 			this.smartInfof(logger, "removing foreign entry %q (%s)", key.ObjectName(), old.ZonedDNSName())
 		}
-		this.cleanupEntry(logger, old, this.dnsSetFromEntry(old))
+		this.cleanupEntry(logger, old, this.dnsSetFromEntry(old), zone != nil)
 	} else {
 		logger.Debugf("removing unknown entry %q", key.ObjectName())
 	}
@@ -406,7 +412,21 @@ func (this *state) countEntriesForProvider(provider resources.ObjectName) int32 
 	return count
 }
 
-func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *dns.DNSSet) {
+// cleanupInBackend reports whether the backend DNS record of an entry being
+// cleaned up may be deleted via the zone transaction.
+//
+// It must return false when:
+//   - the entry is obsolete, i.e. only handled by a fallback provider, or
+//   - no valid provider currently resolves a managed zone for the entry
+//     (zoneResolvable == false). This is the stale/foreign case: the record is
+//     preserved elsewhere (see the stale handling in addEntriesForZone and
+//     ChangeGroup.cleanup), so scheduling a delete here would orphan and
+//     eventually remove a record that must be kept.
+func cleanupInBackend(obsolete, zoneResolvable bool) bool {
+	return !obsolete && zoneResolvable
+}
+
+func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *dns.DNSSet, zoneResolvable bool) {
 	this.smartInfof(logger, "cleanup old entry (duplicate=%t)", e.duplicate)
 	this.entries.Delete(e)
 	this.DeleteLookupJob(e.ObjectName())
@@ -432,7 +452,7 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *d
 			}
 		}
 		if txn := this.getActiveZoneTransaction(e.activezone); txn != nil {
-			if !e.obsolete {
+			if cleanupInBackend(e.obsolete, zoneResolvable) {
 				txn.AddEntryChange(e.ObjectKey(), e.object.GetGeneration(), oldDNSSet, nil)
 			} else {
 				logger.Warnf("cannot cleanup stale entry %s(%s)", e.ObjectName(), e.DNSSetName())
