@@ -145,18 +145,12 @@ func (this *Execution) submitChanges(ctx context.Context) error {
 		if err != nil {
 			failedChanges = changes
 			handled := false
-			throttling := false
+			throttling := isThrottlingError(err)
 			var apiError smithy.APIError
-			if errors.As(err, &apiError) {
-				switch v := apiError.(type) {
-				case *route53types.InvalidChangeBatch:
+			if !throttling && errors.As(err, &apiError) {
+				if v, ok := apiError.(*route53types.InvalidChangeBatch); ok {
 					succeededChanges, failedChanges, err = this.tryFixChanges(ctx, v.ErrorMessage(), changes)
 					handled = true // tryFixChanges already bisects its unclear remainder
-				default:
-					if v.ErrorCode() == "Throttling" {
-						throttling = true
-						throttlingErrCount++
-					}
 				}
 			}
 			// For non-throttling errors that were not already handled as an InvalidChangeBatch,
@@ -167,6 +161,12 @@ func (this *Execution) submitChanges(ctx context.Context) error {
 				var additionalSucceededChanges []*Change
 				additionalSucceededChanges, failedChanges, err = this.submitBisected(ctx, failedChanges)
 				succeededChanges = append(succeededChanges, additionalSucceededChanges...)
+			}
+			// Count the batch as throttled if the initial call throttled or if
+			// throttling surfaced later while bisecting (submitBisected/tryFixChanges
+			// propagate the throttling error instead of splitting further).
+			if len(failedChanges) > 0 && isThrottlingError(err) {
+				throttlingErrCount++
 			}
 		} else {
 			succeededChanges = changes
@@ -270,8 +270,14 @@ func (this *Execution) submitBisected(ctx context.Context, changes []*Change) (s
 	this.rateLimiter.Accept()
 	if _, callErr := this.r53.ChangeResourceRecordSets(ctx, params); callErr == nil {
 		return changes, nil, nil
+	} else if isThrottlingError(callErr) {
+		// Throttling is not evidence that any change is bad. Stop bisecting:
+		// splitting further would only amplify load on an already-throttling
+		// API, and blaming a leaf would wrongly mark a valid change as failed.
+		// Fail the whole sub-batch so it is retried later as a unit.
+		return nil, changes, callErr
 	} else if len(changes) == 1 {
-		// A single change still fails: it is the bad one.
+		// A single change still fails with a non-throttling error: it is the bad one.
 		return nil, changes, callErr
 	}
 
@@ -314,6 +320,15 @@ func (this *Execution) isFetchedRecordSetEqual(ctx context.Context, change *Chan
 		}
 	}
 	return true
+}
+
+// isThrottlingError reports whether err is a Route53 throttling error.
+func isThrottlingError(err error) bool {
+	var apiError smithy.APIError
+	if errors.As(err, &apiError) {
+		return apiError.ErrorCode() == "Throttling"
+	}
+	return false
 }
 
 func safeCompareInt64(a, b *int64) bool {

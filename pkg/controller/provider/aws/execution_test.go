@@ -156,4 +156,42 @@ var _ = Describe("Execution submitChanges", func() {
 		// The batch is retried as a whole, not bisected: exactly one attempt.
 		Expect(fake.changeCalls).To(HaveLen(1))
 	})
+
+	It("stops bisecting and does not blame a leaf when throttling surfaces mid-bisection", func() {
+		// The first (whole-batch) call fails with a non-throttling error, which
+		// forces bisection. As soon as bisection issues its first sub-batch call,
+		// the API starts throttling. The bisection must then stop splitting and
+		// fail the whole sub-batch rather than isolating a valid change as "bad".
+		call := 0
+		fake := &fakeChangeRecordsAPI{
+			changeFn: func(_ *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
+				call++
+				if call == 1 {
+					return nil, errors.New("server error")
+				}
+				return nil, &smithy.GenericAPIError{Code: "Throttling", Message: "Rate exceeded"}
+			},
+		}
+		d1 := &recordingDoneHandler{}
+		d2 := &recordingDoneHandler{}
+		exec := newTestExecution(fake)
+		exec.changes[dns.DNSSetName{DNSName: "a.example.org"}] = []*Change{upsertChange("a.example.org", "1.2.3.4", d1)}
+		exec.changes[dns.DNSSetName{DNSName: "b.example.org"}] = []*Change{upsertChange("b.example.org", "1.2.3.5", d2)}
+
+		err := exec.submitChanges(ctx)
+		Expect(err).To(HaveOccurred())
+		// The batch's final error is a throttle, so it is classified as throttling
+		// (all changes failed) rather than a partial bisection result.
+		Expect(dnserrors.IsAllChangesFailedError(err)).To(BeTrue())
+		Expect(err).To(MatchError(ContainSubstring("Throttling")))
+		// No change is falsely reported as succeeded, and none is isolated as the
+		// bad leaf: both are failed together for a later retry.
+		Expect(d1.succeeded).To(BeFalse())
+		Expect(d2.succeeded).To(BeFalse())
+		Expect(d1.failed).To(BeTrue())
+		Expect(d2.failed).To(BeTrue())
+		// The sub-batch is not split down to single changes once throttling hits:
+		// one whole-batch call plus one throttled sub-batch call, no leaf calls.
+		Expect(fake.changeCalls).To(HaveLen(2))
+	})
 })
