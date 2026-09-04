@@ -123,16 +123,29 @@ func (ex *execution) submitChanges(ctx context.Context, metrics provider.Metrics
 		_, err := ex.r53.ChangeResourceRecordSets(ctx, params)
 		if err != nil {
 			failedChanges = changes
+			handled := false
+			throttling := isThrottlingError(err)
 			var apiError smithy.APIError
-			if errors.As(err, &apiError) {
-				switch v := apiError.(type) {
-				case *route53types.InvalidChangeBatch:
+			if !throttling && errors.As(err, &apiError) {
+				if v, ok := apiError.(*route53types.InvalidChangeBatch); ok {
 					succeededChanges, failedChanges, err = ex.tryFixChanges(ctx, v.ErrorMessage(), changes)
-				default:
-					if v.ErrorCode() == "Throttling" {
-						throttlingErrCount++
-					}
+					handled = true // tryFixChanges already bisects its unclear remainder
 				}
+			}
+			// For non-throttling errors that were not already handled as an InvalidChangeBatch,
+			// bisect the batch so a single bad change does not fail its valid batch-mates.
+			// Throttling errors are left as a whole-batch failure to be retried later;
+			// bisecting them would not help and would only multiply the load.
+			if !handled && !throttling && len(failedChanges) > 1 {
+				var additionalSucceededChanges []*wrappedChange
+				additionalSucceededChanges, failedChanges, err = ex.submitBisected(ctx, failedChanges)
+				succeededChanges = append(succeededChanges, additionalSucceededChanges...)
+			}
+			// Count the batch as throttled if the initial call throttled or if
+			// throttling surfaced later while bisecting (submitBisected/tryFixChanges
+			// propagate the throttling error instead of splitting further).
+			if len(failedChanges) > 0 && isThrottlingError(err) {
+				throttlingErrCount++
 			}
 		} else {
 			succeededChanges = changes
@@ -193,18 +206,59 @@ outer:
 	}
 
 	if len(unclear) > 0 {
-		params := &route53.ChangeResourceRecordSetsInput{
-			HostedZoneId: aws.String(ex.zoneID.ID),
-			ChangeBatch: &route53types.ChangeBatch{
-				Changes: mapChanges(unclear),
-			},
+		s, f, ferr := ex.submitBisected(ctx, unclear)
+		succeeded = append(succeeded, s...)
+		failed = append(failed, f...)
+		if ferr != nil {
+			err = ferr
 		}
-		_, err = ex.r53.ChangeResourceRecordSets(ctx, params)
-		if err != nil {
-			failed = append(failed, unclear...)
-		} else {
-			succeeded = append(succeeded, unclear...)
-		}
+	}
+	return
+}
+
+// submitBisected submits the given changes as one batch. On rejection it splits
+// the batch in half and retries each half recursively, so a single bad change
+// only fails itself instead of its valid batch-mates. It returns the changes
+// that were successfully applied, the ones that could not be applied, and the
+// error from the smallest failing batch (nil if all changes succeeded).
+func (ex *execution) submitBisected(ctx context.Context, changes []*wrappedChange) (succeeded, failed []*wrappedChange, err error) {
+	if len(changes) == 0 {
+		return nil, nil, nil
+	}
+
+	params := &route53.ChangeResourceRecordSetsInput{
+		HostedZoneId: aws.String(ex.zoneID.ID),
+		ChangeBatch: &route53types.ChangeBatch{
+			Changes: mapChanges(changes),
+		},
+	}
+	ex.rateLimiter.Accept()
+	if _, callErr := ex.r53.ChangeResourceRecordSets(ctx, params); callErr == nil {
+		return changes, nil, nil
+	} else if isThrottlingError(callErr) {
+		// Throttling is not evidence that any change is bad. Stop bisecting:
+		// splitting further would only amplify load on an already-throttling
+		// API, and blaming a leaf would wrongly mark a valid change as failed.
+		// Fail the whole sub-batch so it is retried later as a unit.
+		return nil, changes, callErr
+	} else if len(changes) == 1 {
+		// A single change still fails with a non-throttling error: it is the bad one.
+		return nil, changes, callErr
+	}
+
+	mid := len(changes) / 2
+	s1, f1, err1 := ex.submitBisected(ctx, changes[:mid])
+	s2, f2, err2 := ex.submitBisected(ctx, changes[mid:])
+	// Build fresh slices: s1/f1 may alias the backing array of changes[:mid],
+	// so append(s1, s2...) could overwrite changes[mid] (and thus corrupt f2).
+	succeeded = append(succeeded, s1...)
+	succeeded = append(succeeded, s2...)
+	failed = append(failed, f1...)
+	failed = append(failed, f2...)
+	// Prefer a leaf (single-change) error so the message names a real cause.
+	err = err1
+	if err == nil {
+		err = err2
 	}
 	return
 }
@@ -231,6 +285,15 @@ func (ex *execution) isFetchedRecordSetEqual(ctx context.Context, change *wrappe
 		}
 	}
 	return true
+}
+
+// isThrottlingError reports whether err is a Route53 throttling error.
+func isThrottlingError(err error) bool {
+	var apiError smithy.APIError
+	if errors.As(err, &apiError) {
+		return apiError.ErrorCode() == "Throttling"
+	}
+	return false
 }
 
 func safeCompareInt64(a, b *int64) bool {

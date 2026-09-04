@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/route53"
 	route53types "github.com/aws/aws-sdk-go-v2/service/route53/types"
+	"github.com/aws/smithy-go"
 	"github.com/go-logr/logr"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -369,6 +370,80 @@ var _ = Describe("DNSHandler", func() {
 
 			err := h.ExecuteRequests(ctx, zone, reqs)
 			Expect(err).To(MatchError(ContainSubstring("changes failed")))
+		})
+
+		It("bisects a rejected batch so only the bad change fails", func() {
+			h = newTestHandler(fake)
+			// The batch contains two upserts (TypeA + TypeAAAA). The provider rejects any
+			// batch that still contains the bad IPv6 record; valid batches succeed. Bisection
+			// must isolate the bad change so the good one is applied.
+			fake.changeResourceRecordsFn = func(_ context.Context, params *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
+				for _, c := range params.ChangeBatch.Changes {
+					for _, rr := range c.ResourceRecordSet.ResourceRecords {
+						if aws.ToString(rr.Value) == "bad::1" {
+							return nil, errors.New("server error")
+						}
+					}
+				}
+				return &route53.ChangeResourceRecordSetsOutput{}, nil
+			}
+			reqs := provider.ChangeRequests{
+				Name: dns.DNSSetName{DNSName: "x.example.org"},
+				Updates: map[dns.RecordType]*provider.ChangeRequestUpdate{
+					dns.TypeA:    {New: dns.NewRecordSet(dns.TypeA, 60, []*dns.Record{{Value: "1.2.3.4"}})},
+					dns.TypeAAAA: {New: dns.NewRecordSet(dns.TypeAAAA, 60, []*dns.Record{{Value: "bad::1"}})},
+				},
+			}
+
+			err := h.ExecuteRequests(ctx, zone, reqs)
+			// Exactly one change (the bad AAAA) could not be applied.
+			Expect(err).To(MatchError(ContainSubstring("1 changes failed")))
+
+			// The good A record must have been applied in an isolated (size-1) batch.
+			appliedGoodA := false
+			for _, call := range fake.changeCalls {
+				changes := call.ChangeBatch.Changes
+				if len(changes) == 1 && changes[0].ResourceRecordSet.Type == route53types.RRTypeA {
+					appliedGoodA = true
+				}
+			}
+			Expect(appliedGoodA).To(BeTrue(), "expected the valid A record to be applied in its own batch")
+		})
+
+		It("does not bisect a fully valid multi-change batch", func() {
+			h = newTestHandler(fake)
+			reqs := provider.ChangeRequests{
+				Name: dns.DNSSetName{DNSName: "x.example.org"},
+				Updates: map[dns.RecordType]*provider.ChangeRequestUpdate{
+					dns.TypeA:    {New: dns.NewRecordSet(dns.TypeA, 60, []*dns.Record{{Value: "1.2.3.4"}})},
+					dns.TypeAAAA: {New: dns.NewRecordSet(dns.TypeAAAA, 60, []*dns.Record{{Value: "2001:db8::1"}})},
+				},
+			}
+
+			Expect(h.ExecuteRequests(ctx, zone, reqs)).To(Succeed())
+			// A single batch call, no splitting on the happy path.
+			Expect(fake.changeCalls).To(HaveLen(1))
+			Expect(fake.changeCalls[0].ChangeBatch.Changes).To(HaveLen(2))
+		})
+
+		It("does not bisect a throttled batch", func() {
+			h = newTestHandler(fake)
+			fake.changeResourceRecordsFn = func(_ context.Context, _ *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
+				return nil, &smithy.GenericAPIError{Code: "Throttling", Message: "Rate exceeded"}
+			}
+			reqs := provider.ChangeRequests{
+				Name: dns.DNSSetName{DNSName: "x.example.org"},
+				Updates: map[dns.RecordType]*provider.ChangeRequestUpdate{
+					dns.TypeA:    {New: dns.NewRecordSet(dns.TypeA, 60, []*dns.Record{{Value: "1.2.3.4"}})},
+					dns.TypeAAAA: {New: dns.NewRecordSet(dns.TypeAAAA, 60, []*dns.Record{{Value: "2001:db8::1"}})},
+				},
+			}
+
+			err := h.ExecuteRequests(ctx, zone, reqs)
+			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError(ContainSubstring("Throttling")))
+			// The batch is retried as a whole, not bisected: exactly one attempt.
+			Expect(fake.changeCalls).To(HaveLen(1))
 		})
 	})
 })
