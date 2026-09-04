@@ -10,4 +10,6 @@ const (
 
 	// GDCHConfigJSONField is the field in a secret where the GDCH configuration is stored at.
 	GDCHConfigJSONField = "gdch-config"
+
+	SetIdentifierAnnotationKey = "setIdentifier"
 )
