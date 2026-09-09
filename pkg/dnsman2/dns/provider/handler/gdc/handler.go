@@ -111,6 +111,13 @@ func (h *handler) queryDNS(ctx context.Context, _ dns.ZoneInfo, setName dns.DNSS
 		return nil, fmt.Errorf("failed to get ResourceRecordSet %q: %w", recordSetName, err)
 	}
 
+	// The ResourceRecordSet name is derived from record type and DNS name only, so it does not
+	// distinguish records by set identifier. Match the stored set identifier against the queried one
+	// to preserve records with routing policies and avoid recreating/orphaning them.
+	if gdcRecordSet.Annotations[constants.SetIdentifierAnnotationKey] != setName.SetIdentifier {
+		return nil, nil
+	}
+
 	ttl := int64(0)
 	if gdcRecordSet.Spec.TTLSeconds != nil {
 		ttl = int64(*gdcRecordSet.Spec.TTLSeconds)
@@ -171,6 +178,14 @@ func (h *handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZo
 			}
 
 			_, err := controllerutil.CreateOrUpdate(ctx, h.client, gdcRecordSet, func() error {
+				if requests.Name.SetIdentifier != "" {
+					if gdcRecordSet.Annotations == nil {
+						gdcRecordSet.Annotations = map[string]string{}
+					}
+					gdcRecordSet.Annotations[constants.SetIdentifierAnnotationKey] = requests.Name.SetIdentifier
+				} else {
+					delete(gdcRecordSet.Annotations, constants.SetIdentifierAnnotationKey)
+				}
 				gdcRecordSet.Spec = globalnetworkingv1.ResourceRecordSetSpec{
 					Name:       trimTrailingDot(requests.Name.DNSName),
 					Type:       string(recordType),
