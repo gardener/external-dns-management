@@ -14,6 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/gardener/external-dns-management/pkg/controller/provider/gdc/client/constants"
 	dnsutil "github.com/gardener/external-dns-management/pkg/controller/provider/gdc/client/dns"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
@@ -24,6 +25,7 @@ type Change struct {
 	RecordType     string // supported record type: A, TXT
 	ChangeType     string // supported change type: create, update, delete
 	ObjectMetaName string // ResourceRecordSet Name
+	SetIdentifier  string // Set identifier of the record
 }
 
 type Execution struct {
@@ -65,6 +67,7 @@ func (exec *Execution) prepareChange(req *provider.ChangeRequest) (*Change, erro
 		RecordType:     newSet.Type,
 		ChangeType:     req.Action,
 		ObjectMetaName: objectMetaName,
+		SetIdentifier:  dnsset.Name.SetIdentifier,
 	}, nil
 }
 
@@ -83,6 +86,12 @@ func (exec *Execution) applyChange(change *Change) error {
 			Name:      change.ObjectMetaName,
 			Namespace: exec.handler.project,
 		},
+	}
+
+	if change.SetIdentifier != "" {
+		recordSet.Annotations = map[string]string{
+			constants.SetIdentifierAnnotationKey: change.SetIdentifier,
+		}
 	}
 
 	if change.ChangeType == provider.R_CREATE || change.ChangeType == provider.R_UPDATE {

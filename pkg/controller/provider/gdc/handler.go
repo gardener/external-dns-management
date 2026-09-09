@@ -155,8 +155,14 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 					Value: value,
 				})
 			}
-			logger.Infof("DNS Name: %v, Records of type %s: %s", rrSet.Spec.Name, recordType, spec.RRData)
-			dnssets.AddRecordSetFromProvider(rrSet.Spec.Name, dns.NewRecordSet(recordType, int64(ttl), records))
+
+			dnsSetName := dns.DNSSetName{DNSName: rrSet.Spec.Name}
+			if setIdentifier, ok := rrSet.Annotations[constants.SetIdentifierAnnotationKey]; ok {
+				dnsSetName.SetIdentifier = setIdentifier
+			}
+
+			logger.Infof("DNS Name: %v, Records of type %s: %s", dnsSetName, recordType, spec.RRData)
+			dnssets.AddRecordSetFromProviderEx(dnsSetName, nil, dns.NewRecordSet(recordType, int64(ttl), records))
 		}
 	}
 
