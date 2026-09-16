@@ -7,6 +7,7 @@ package provider
 import (
 	"container/heap"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sort"
@@ -310,7 +311,7 @@ type lookupAllResults struct {
 // HasTemporaryError returns true if any of the lookup results has a temporary error.
 func (r lookupAllResults) HasTemporaryError() bool {
 	for _, err := range r.errs {
-		if netErr, ok := err.(net.Error); ok && netErr.Temporary() {
+		if isTemporaryError(err) {
 			return true
 		}
 	}
@@ -320,7 +321,7 @@ func (r lookupAllResults) HasTemporaryError() bool {
 // HasTimeoutError returns true if any of the lookup results has a timeout error.
 func (r lookupAllResults) HasTimeoutError() bool {
 	for _, err := range r.errs {
-		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		if isTimeoutError(err) {
 			return true
 		}
 	}
@@ -408,7 +409,7 @@ func lookupIPs(hostname string) lookupIPsResult {
 		if err == nil || i == lookupHost.maxLookupRetries {
 			break
 		}
-		if netErr, ok := err.(net.Error); !ok || (!netErr.Timeout() && !netErr.Temporary()) {
+		if !isTimeoutError(err) && !isTemporaryError(err) {
 			break
 		}
 		time.Sleep(lookupHost.waitLookupRetry)
@@ -457,21 +458,26 @@ func sleep(ctx context.Context, d time.Duration) error {
 }
 
 func isTemporaryError(err error) bool {
-	if netErr, ok := err.(net.Error); ok {
-		return netErr.Temporary()
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
+		// mirror the (now deprecated) (*net.DNSError).Temporary(), which
+		// treated timeouts as temporary errors too.
+		return dnsErr.IsTemporary || dnsErr.IsTimeout
 	}
 	return false
 }
 
 func isTimeoutError(err error) bool {
-	if netErr, ok := err.(net.Error); ok {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
 		return netErr.Timeout()
 	}
 	return false
 }
 
 func isNotFoundError(err error) bool {
-	if dnsErr, ok := err.(*net.DNSError); ok {
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
 		return dnsErr.IsNotFound
 	}
 	return false
