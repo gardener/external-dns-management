@@ -7,6 +7,7 @@ package lookup
 import (
 	"container/heap"
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"sort"
@@ -308,7 +309,7 @@ func (r LookupAllResults) HasErrors() bool {
 // HasTimeoutError returns true if any of the lookup results has a timeout error.
 func (r LookupAllResults) HasTimeoutError() bool {
 	for _, err := range r.Errs {
-		if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+		if isTimeoutError(err) {
 			return true
 		}
 	}
@@ -321,7 +322,7 @@ func (r LookupAllResults) HasOnlyNotFoundError() bool {
 		return false
 	}
 	for _, err := range r.Errs {
-		if dnsErr, ok := err.(*net.DNSError); !ok || !dnsErr.IsNotFound {
+		if !isNotFoundError(err) {
 			return false
 		}
 	}
@@ -397,7 +398,7 @@ func lookupIPs(hostname string) lookupIPsResult {
 		if err == nil || i == lookupHost.maxLookupRetries {
 			break
 		}
-		if netErr, ok := err.(net.Error); !ok || !netErr.Timeout() {
+		if !isTimeoutError(err) {
 			break
 		}
 		time.Sleep(lookupHost.waitLookupRetry)
@@ -448,14 +449,16 @@ func sleep(ctx context.Context, d time.Duration) error {
 }
 
 func isTimeoutError(err error) bool {
-	if netErr, ok := err.(net.Error); ok {
+	var netErr net.Error
+	if errors.As(err, &netErr) {
 		return netErr.Timeout()
 	}
 	return false
 }
 
 func isNotFoundError(err error) bool {
-	if dnsErr, ok := err.(*net.DNSError); ok {
+	var dnsErr *net.DNSError
+	if errors.As(err, &dnsErr) {
 		return dnsErr.IsNotFound
 	}
 	return false
