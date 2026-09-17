@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -17,6 +18,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/common"
+	sourcecommon "github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/selection"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
@@ -34,19 +36,21 @@ type NewProviderData struct {
 }
 
 // CalcNewProvider is a utility function to calculate a new DNS provider for the given EntryContext, namespace, and class.
-func CalcNewProvider(ec common.EntryContext, namespace string, state *state.State) (*NewProviderData, *common.ReconcileResult) {
+func CalcNewProvider(ec common.EntryContext, namespace string, state *state.State, ownerNamespaceRestricted bool) (*NewProviderData, *common.ReconcileResult) {
 	selector := providerSelector{
-		EntryContext: ec,
-		namespace:    namespace,
-		state:        state,
+		EntryContext:             ec,
+		namespace:                namespace,
+		state:                    state,
+		ownerNamespaceRestricted: ownerNamespaceRestricted,
 	}
 	return selector.calcNewProvider()
 }
 
 type providerSelector struct {
 	common.EntryContext
-	namespace string
-	state     *state.State
+	namespace                string
+	state                    *state.State
+	ownerNamespaceRestricted bool
 }
 
 func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.ReconcileResult) {
@@ -58,8 +62,20 @@ func (s *providerSelector) calcNewProvider() (*NewProviderData, *common.Reconcil
 	if res := s.haveAllProvidersBeenReconciled(providers); res != nil {
 		return nil, res
 	}
+	providers, excludedProviders := s.filterByOwnerNamespaceRestriction(providers)
 	newProvider := findBestMatchingProvider(providers, s.Entry.Spec.DNSName, s.Entry.Status.Provider)
 	if newProvider == nil {
+		if len(excludedProviders) > 0 {
+			excludedNewProvider := findBestMatchingProvider(excludedProviders, s.Entry.Spec.DNSName, s.Entry.Status.Provider)
+			if excludedNewProvider != nil {
+				key := client.ObjectKeyFromObject(excludedNewProvider)
+				s.Log.Info("Excluded existing provider because of namespace restriction", "provider", key)
+				return nil, &common.ReconcileResult{
+					State:   ptr.To(v1alpha1.StateError),
+					Message: new(fmt.Sprintf("Excluded existing provider %s because of namespace restriction", key)),
+				}
+			}
+		}
 		return nil, nil
 	}
 
@@ -174,6 +190,25 @@ func (s *providerSelector) getZoneForProvider(provider *v1alpha1.DNSProvider, dn
 	return new(bestZone.ZoneID()), nil
 }
 
+func (s *providerSelector) filterByOwnerNamespaceRestriction(providers []v1alpha1.DNSProvider) (allowed []v1alpha1.DNSProvider, excluded []v1alpha1.DNSProvider) {
+	if !s.ownerNamespaceRestricted {
+		return providers, nil
+	}
+	entrySourceNamespace := getNamespaceFromOwner(s.Entry)
+	if entrySourceNamespace == "" {
+		return providers, nil
+	}
+	for _, provider := range providers {
+		sourceNamespace := getNamespaceFromOwner(&provider)
+		if sourceNamespace == "" || sourceNamespace == entrySourceNamespace {
+			allowed = append(allowed, provider)
+		} else {
+			excluded = append(excluded, provider)
+		}
+	}
+	return
+}
+
 type providerMatch struct {
 	found *v1alpha1.DNSProvider
 	match int
@@ -236,4 +271,16 @@ func matchDomains(name string, domains []string) int {
 // MatchesSuffix checks if the given name matches the suffix, either as an exact match or as a subdomain.
 func MatchesSuffix(name, suffix string) bool {
 	return name == suffix || strings.HasSuffix(name, "."+suffix)
+}
+
+func getNamespaceFromOwner(obj metav1.Object) string {
+	owners := sourcecommon.GetAnnotatedOwners(obj)
+	if len(owners) == 0 {
+		return ""
+	}
+	parts := strings.Split(owners[0], "/")
+	if len(parts) < 2 {
+		return ""
+	}
+	return parts[len(parts)-2]
 }

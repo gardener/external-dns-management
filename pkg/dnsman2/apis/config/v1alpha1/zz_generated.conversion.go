@@ -12,6 +12,7 @@ import (
 	unsafe "unsafe"
 
 	config "github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	componentbaseconfig "k8s.io/component-base/config"
@@ -159,7 +160,10 @@ func RegisterConversions(s *runtime.Scheme) error {
 }
 
 func autoConvert_v1alpha1_AdvancedOptions_To_config_AdvancedOptions(in *AdvancedOptions, out *config.AdvancedOptions, s conversion.Scope) error {
-	*out = *(*config.AdvancedOptions)(unsafe.Pointer(in))
+	out.RateLimits = (*config.RateLimiterOptions)(unsafe.Pointer(in.RateLimits))
+	out.BatchSize = (*int)(unsafe.Pointer(in.BatchSize))
+	out.MaxRetries = (*int)(unsafe.Pointer(in.MaxRetries))
+	out.BlockedZones = *(*[]string)(unsafe.Pointer(&in.BlockedZones))
 	return nil
 }
 
@@ -169,7 +173,10 @@ func Convert_v1alpha1_AdvancedOptions_To_config_AdvancedOptions(in *AdvancedOpti
 }
 
 func autoConvert_config_AdvancedOptions_To_v1alpha1_AdvancedOptions(in *config.AdvancedOptions, out *AdvancedOptions, s conversion.Scope) error {
-	*out = *(*AdvancedOptions)(unsafe.Pointer(in))
+	out.RateLimits = (*RateLimiterOptions)(unsafe.Pointer(in.RateLimits))
+	out.BatchSize = (*int)(unsafe.Pointer(in.BatchSize))
+	out.MaxRetries = (*int)(unsafe.Pointer(in.MaxRetries))
+	out.BlockedZones = *(*[]string)(unsafe.Pointer(&in.BlockedZones))
 	return nil
 }
 
@@ -179,7 +186,8 @@ func Convert_config_AdvancedOptions_To_v1alpha1_AdvancedOptions(in *config.Advan
 }
 
 func autoConvert_v1alpha1_ClientConnection_To_config_ClientConnection(in *ClientConnection, out *config.ClientConnection, s conversion.Scope) error {
-	*out = *(*config.ClientConnection)(unsafe.Pointer(in))
+	out.ClientConnectionConfiguration = in.ClientConnectionConfiguration
+	out.CacheResyncPeriod = (*v1.Duration)(unsafe.Pointer(in.CacheResyncPeriod))
 	return nil
 }
 
@@ -189,7 +197,8 @@ func Convert_v1alpha1_ClientConnection_To_config_ClientConnection(in *ClientConn
 }
 
 func autoConvert_config_ClientConnection_To_v1alpha1_ClientConnection(in *config.ClientConnection, out *ClientConnection, s conversion.Scope) error {
-	*out = *(*ClientConnection)(unsafe.Pointer(in))
+	out.ClientConnectionConfiguration = in.ClientConnectionConfiguration
+	out.CacheResyncPeriod = (*v1.Duration)(unsafe.Pointer(in.CacheResyncPeriod))
 	return nil
 }
 
@@ -199,7 +208,8 @@ func Convert_config_ClientConnection_To_v1alpha1_ClientConnection(in *config.Cli
 }
 
 func autoConvert_v1alpha1_ControlPlaneClientConnection_To_config_ControlPlaneClientConnection(in *ControlPlaneClientConnection, out *config.ControlPlaneClientConnection, s conversion.Scope) error {
-	*out = *(*config.ControlPlaneClientConnection)(unsafe.Pointer(in))
+	out.ClientConnectionConfiguration = in.ClientConnectionConfiguration
+	out.CacheResyncPeriod = (*v1.Duration)(unsafe.Pointer(in.CacheResyncPeriod))
 	return nil
 }
 
@@ -209,7 +219,8 @@ func Convert_v1alpha1_ControlPlaneClientConnection_To_config_ControlPlaneClientC
 }
 
 func autoConvert_config_ControlPlaneClientConnection_To_v1alpha1_ControlPlaneClientConnection(in *config.ControlPlaneClientConnection, out *ControlPlaneClientConnection, s conversion.Scope) error {
-	*out = *(*ControlPlaneClientConnection)(unsafe.Pointer(in))
+	out.ClientConnectionConfiguration = in.ClientConnectionConfiguration
+	out.CacheResyncPeriod = (*v1.Duration)(unsafe.Pointer(in.CacheResyncPeriod))
 	return nil
 }
 
@@ -219,7 +230,19 @@ func Convert_config_ControlPlaneClientConnection_To_v1alpha1_ControlPlaneClientC
 }
 
 func autoConvert_v1alpha1_ControllerConfiguration_To_config_ControllerConfiguration(in *ControllerConfiguration, out *config.ControllerConfiguration, s conversion.Scope) error {
-	*out = *(*config.ControllerConfiguration)(unsafe.Pointer(in))
+	if err := Convert_v1alpha1_DNSProviderControllerConfig_To_config_DNSProviderControllerConfig(&in.DNSProvider, &out.DNSProvider, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_DNSEntryControllerConfig_To_config_DNSEntryControllerConfig(&in.DNSEntry, &out.DNSEntry, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_DNSAnnotationControllerConfig_To_config_DNSAnnotationControllerConfig(&in.DNSAnnotation, &out.DNSAnnotation, s); err != nil {
+		return err
+	}
+	if err := Convert_v1alpha1_SourceControllerConfig_To_config_SourceControllerConfig(&in.Source, &out.Source, s); err != nil {
+		return err
+	}
+	out.SkipNameValidation = (*bool)(unsafe.Pointer(in.SkipNameValidation))
 	return nil
 }
 
@@ -229,7 +252,19 @@ func Convert_v1alpha1_ControllerConfiguration_To_config_ControllerConfiguration(
 }
 
 func autoConvert_config_ControllerConfiguration_To_v1alpha1_ControllerConfiguration(in *config.ControllerConfiguration, out *ControllerConfiguration, s conversion.Scope) error {
-	*out = *(*ControllerConfiguration)(unsafe.Pointer(in))
+	if err := Convert_config_DNSProviderControllerConfig_To_v1alpha1_DNSProviderControllerConfig(&in.DNSProvider, &out.DNSProvider, s); err != nil {
+		return err
+	}
+	if err := Convert_config_DNSEntryControllerConfig_To_v1alpha1_DNSEntryControllerConfig(&in.DNSEntry, &out.DNSEntry, s); err != nil {
+		return err
+	}
+	if err := Convert_config_DNSAnnotationControllerConfig_To_v1alpha1_DNSAnnotationControllerConfig(&in.DNSAnnotation, &out.DNSAnnotation, s); err != nil {
+		return err
+	}
+	if err := Convert_config_SourceControllerConfig_To_v1alpha1_SourceControllerConfig(&in.Source, &out.Source, s); err != nil {
+		return err
+	}
+	out.SkipNameValidation = (*bool)(unsafe.Pointer(in.SkipNameValidation))
 	return nil
 }
 
@@ -239,7 +274,7 @@ func Convert_config_ControllerConfiguration_To_v1alpha1_ControllerConfiguration(
 }
 
 func autoConvert_v1alpha1_DNSAnnotationControllerConfig_To_config_DNSAnnotationControllerConfig(in *DNSAnnotationControllerConfig, out *config.DNSAnnotationControllerConfig, s conversion.Scope) error {
-	*out = *(*config.DNSAnnotationControllerConfig)(unsafe.Pointer(in))
+	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
 	return nil
 }
 
@@ -249,7 +284,7 @@ func Convert_v1alpha1_DNSAnnotationControllerConfig_To_config_DNSAnnotationContr
 }
 
 func autoConvert_config_DNSAnnotationControllerConfig_To_v1alpha1_DNSAnnotationControllerConfig(in *config.DNSAnnotationControllerConfig, out *DNSAnnotationControllerConfig, s conversion.Scope) error {
-	*out = *(*DNSAnnotationControllerConfig)(unsafe.Pointer(in))
+	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
 	return nil
 }
 
@@ -259,7 +294,18 @@ func Convert_config_DNSAnnotationControllerConfig_To_v1alpha1_DNSAnnotationContr
 }
 
 func autoConvert_v1alpha1_DNSEntryControllerConfig_To_config_DNSEntryControllerConfig(in *DNSEntryControllerConfig, out *config.DNSEntryControllerConfig, s conversion.Scope) error {
-	*out = *(*config.DNSEntryControllerConfig)(unsafe.Pointer(in))
+	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
+	out.SyncPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncPeriod))
+	out.ReconciliationTimeout = (*v1.Duration)(unsafe.Pointer(in.ReconciliationTimeout))
+	out.MaxConcurrentLookups = (*int)(unsafe.Pointer(in.MaxConcurrentLookups))
+	out.DefaultCNAMELookupInterval = (*int64)(unsafe.Pointer(in.DefaultCNAMELookupInterval))
+	out.PropagationWaitTime = (*v1.Duration)(unsafe.Pointer(in.PropagationWaitTime))
+	out.ReconciliationDelayAfterUpdate = (*v1.Duration)(unsafe.Pointer(in.ReconciliationDelayAfterUpdate))
+	out.ZoneMetricsInterval = (*v1.Duration)(unsafe.Pointer(in.ZoneMetricsInterval))
+	out.DriftCheckPeriod = (*v1.Duration)(unsafe.Pointer(in.DriftCheckPeriod))
+	out.EntryFailureBackoffBase = (*v1.Duration)(unsafe.Pointer(in.EntryFailureBackoffBase))
+	out.EntryFailureBackoffFactor = (*int)(unsafe.Pointer(in.EntryFailureBackoffFactor))
+	out.EntryFailureBackoffMax = (*v1.Duration)(unsafe.Pointer(in.EntryFailureBackoffMax))
 	return nil
 }
 
@@ -269,7 +315,18 @@ func Convert_v1alpha1_DNSEntryControllerConfig_To_config_DNSEntryControllerConfi
 }
 
 func autoConvert_config_DNSEntryControllerConfig_To_v1alpha1_DNSEntryControllerConfig(in *config.DNSEntryControllerConfig, out *DNSEntryControllerConfig, s conversion.Scope) error {
-	*out = *(*DNSEntryControllerConfig)(unsafe.Pointer(in))
+	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
+	out.SyncPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncPeriod))
+	out.ReconciliationTimeout = (*v1.Duration)(unsafe.Pointer(in.ReconciliationTimeout))
+	out.MaxConcurrentLookups = (*int)(unsafe.Pointer(in.MaxConcurrentLookups))
+	out.DefaultCNAMELookupInterval = (*int64)(unsafe.Pointer(in.DefaultCNAMELookupInterval))
+	out.PropagationWaitTime = (*v1.Duration)(unsafe.Pointer(in.PropagationWaitTime))
+	out.ReconciliationDelayAfterUpdate = (*v1.Duration)(unsafe.Pointer(in.ReconciliationDelayAfterUpdate))
+	out.ZoneMetricsInterval = (*v1.Duration)(unsafe.Pointer(in.ZoneMetricsInterval))
+	out.DriftCheckPeriod = (*v1.Duration)(unsafe.Pointer(in.DriftCheckPeriod))
+	out.EntryFailureBackoffBase = (*v1.Duration)(unsafe.Pointer(in.EntryFailureBackoffBase))
+	out.EntryFailureBackoffFactor = (*int)(unsafe.Pointer(in.EntryFailureBackoffFactor))
+	out.EntryFailureBackoffMax = (*v1.Duration)(unsafe.Pointer(in.EntryFailureBackoffMax))
 	return nil
 }
 
@@ -353,7 +410,20 @@ func Convert_config_DNSManagerConfiguration_To_v1alpha1_DNSManagerConfiguration(
 }
 
 func autoConvert_v1alpha1_DNSProviderControllerConfig_To_config_DNSProviderControllerConfig(in *DNSProviderControllerConfig, out *config.DNSProviderControllerConfig, s conversion.Scope) error {
-	*out = *(*config.DNSProviderControllerConfig)(unsafe.Pointer(in))
+	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
+	out.SyncPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncPeriod))
+	out.RecheckPeriod = (*v1.Duration)(unsafe.Pointer(in.RecheckPeriod))
+	out.ReconciliationTimeout = (*v1.Duration)(unsafe.Pointer(in.ReconciliationTimeout))
+	out.Namespace = in.Namespace
+	out.EnabledProviderTypes = *(*[]string)(unsafe.Pointer(&in.EnabledProviderTypes))
+	out.DisabledProviderTypes = *(*[]string)(unsafe.Pointer(&in.DisabledProviderTypes))
+	out.DefaultRateLimits = (*config.RateLimiterOptions)(unsafe.Pointer(in.DefaultRateLimits))
+	out.DefaultTTL = (*int64)(unsafe.Pointer(in.DefaultTTL))
+	out.ZoneCacheTTL = (*v1.Duration)(unsafe.Pointer(in.ZoneCacheTTL))
+	out.MigrationMode = (*bool)(unsafe.Pointer(in.MigrationMode))
+	if err := Convert_v1alpha1_GCPWorkloadIdentityConfig_To_config_GCPWorkloadIdentityConfig(&in.GCPWorkloadIdentityConfig, &out.GCPWorkloadIdentityConfig, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -363,7 +433,20 @@ func Convert_v1alpha1_DNSProviderControllerConfig_To_config_DNSProviderControlle
 }
 
 func autoConvert_config_DNSProviderControllerConfig_To_v1alpha1_DNSProviderControllerConfig(in *config.DNSProviderControllerConfig, out *DNSProviderControllerConfig, s conversion.Scope) error {
-	*out = *(*DNSProviderControllerConfig)(unsafe.Pointer(in))
+	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
+	out.SyncPeriod = (*v1.Duration)(unsafe.Pointer(in.SyncPeriod))
+	out.RecheckPeriod = (*v1.Duration)(unsafe.Pointer(in.RecheckPeriod))
+	out.ReconciliationTimeout = (*v1.Duration)(unsafe.Pointer(in.ReconciliationTimeout))
+	out.Namespace = in.Namespace
+	out.EnabledProviderTypes = *(*[]string)(unsafe.Pointer(&in.EnabledProviderTypes))
+	out.DisabledProviderTypes = *(*[]string)(unsafe.Pointer(&in.DisabledProviderTypes))
+	out.DefaultRateLimits = (*RateLimiterOptions)(unsafe.Pointer(in.DefaultRateLimits))
+	out.DefaultTTL = (*int64)(unsafe.Pointer(in.DefaultTTL))
+	out.ZoneCacheTTL = (*v1.Duration)(unsafe.Pointer(in.ZoneCacheTTL))
+	out.MigrationMode = (*bool)(unsafe.Pointer(in.MigrationMode))
+	if err := Convert_config_GCPWorkloadIdentityConfig_To_v1alpha1_GCPWorkloadIdentityConfig(&in.GCPWorkloadIdentityConfig, &out.GCPWorkloadIdentityConfig, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -373,7 +456,8 @@ func Convert_config_DNSProviderControllerConfig_To_v1alpha1_DNSProviderControlle
 }
 
 func autoConvert_v1alpha1_GCPWorkloadIdentityConfig_To_config_GCPWorkloadIdentityConfig(in *GCPWorkloadIdentityConfig, out *config.GCPWorkloadIdentityConfig, s conversion.Scope) error {
-	*out = *(*config.GCPWorkloadIdentityConfig)(unsafe.Pointer(in))
+	out.AllowedTokenURLs = *(*[]string)(unsafe.Pointer(&in.AllowedTokenURLs))
+	out.AllowedServiceAccountImpersonationURLRegExps = *(*[]string)(unsafe.Pointer(&in.AllowedServiceAccountImpersonationURLRegExps))
 	return nil
 }
 
@@ -383,7 +467,8 @@ func Convert_v1alpha1_GCPWorkloadIdentityConfig_To_config_GCPWorkloadIdentityCon
 }
 
 func autoConvert_config_GCPWorkloadIdentityConfig_To_v1alpha1_GCPWorkloadIdentityConfig(in *config.GCPWorkloadIdentityConfig, out *GCPWorkloadIdentityConfig, s conversion.Scope) error {
-	*out = *(*GCPWorkloadIdentityConfig)(unsafe.Pointer(in))
+	out.AllowedTokenURLs = *(*[]string)(unsafe.Pointer(&in.AllowedTokenURLs))
+	out.AllowedServiceAccountImpersonationURLRegExps = *(*[]string)(unsafe.Pointer(&in.AllowedServiceAccountImpersonationURLRegExps))
 	return nil
 }
 
@@ -393,7 +478,9 @@ func Convert_config_GCPWorkloadIdentityConfig_To_v1alpha1_GCPWorkloadIdentityCon
 }
 
 func autoConvert_v1alpha1_RateLimiterOptions_To_config_RateLimiterOptions(in *RateLimiterOptions, out *config.RateLimiterOptions, s conversion.Scope) error {
-	*out = *(*config.RateLimiterOptions)(unsafe.Pointer(in))
+	out.Enabled = in.Enabled
+	out.QPS = in.QPS
+	out.Burst = in.Burst
 	return nil
 }
 
@@ -403,7 +490,9 @@ func Convert_v1alpha1_RateLimiterOptions_To_config_RateLimiterOptions(in *RateLi
 }
 
 func autoConvert_config_RateLimiterOptions_To_v1alpha1_RateLimiterOptions(in *config.RateLimiterOptions, out *RateLimiterOptions, s conversion.Scope) error {
-	*out = *(*RateLimiterOptions)(unsafe.Pointer(in))
+	out.Enabled = in.Enabled
+	out.QPS = in.QPS
+	out.Burst = in.Burst
 	return nil
 }
 
@@ -413,7 +502,8 @@ func Convert_config_RateLimiterOptions_To_v1alpha1_RateLimiterOptions(in *config
 }
 
 func autoConvert_v1alpha1_Server_To_config_Server(in *Server, out *config.Server, s conversion.Scope) error {
-	*out = *(*config.Server)(unsafe.Pointer(in))
+	out.BindAddress = in.BindAddress
+	out.Port = in.Port
 	return nil
 }
 
@@ -423,7 +513,8 @@ func Convert_v1alpha1_Server_To_config_Server(in *Server, out *config.Server, s 
 }
 
 func autoConvert_config_Server_To_v1alpha1_Server(in *config.Server, out *Server, s conversion.Scope) error {
-	*out = *(*Server)(unsafe.Pointer(in))
+	out.BindAddress = in.BindAddress
+	out.Port = in.Port
 	return nil
 }
 
@@ -433,7 +524,11 @@ func Convert_config_Server_To_v1alpha1_Server(in *config.Server, out *Server, s 
 }
 
 func autoConvert_v1alpha1_ServerConfiguration_To_config_ServerConfiguration(in *ServerConfiguration, out *config.ServerConfiguration, s conversion.Scope) error {
-	*out = *(*config.ServerConfiguration)(unsafe.Pointer(in))
+	if err := Convert_v1alpha1_Server_To_config_Server(&in.Webhooks, &out.Webhooks, s); err != nil {
+		return err
+	}
+	out.HealthProbes = (*config.Server)(unsafe.Pointer(in.HealthProbes))
+	out.Metrics = (*config.Server)(unsafe.Pointer(in.Metrics))
 	return nil
 }
 
@@ -443,7 +538,11 @@ func Convert_v1alpha1_ServerConfiguration_To_config_ServerConfiguration(in *Serv
 }
 
 func autoConvert_config_ServerConfiguration_To_v1alpha1_ServerConfiguration(in *config.ServerConfiguration, out *ServerConfiguration, s conversion.Scope) error {
-	*out = *(*ServerConfiguration)(unsafe.Pointer(in))
+	if err := Convert_config_Server_To_v1alpha1_Server(&in.Webhooks, &out.Webhooks, s); err != nil {
+		return err
+	}
+	out.HealthProbes = (*Server)(unsafe.Pointer(in.HealthProbes))
+	out.Metrics = (*Server)(unsafe.Pointer(in.Metrics))
 	return nil
 }
 
@@ -453,7 +552,15 @@ func Convert_config_ServerConfiguration_To_v1alpha1_ServerConfiguration(in *conf
 }
 
 func autoConvert_v1alpha1_SourceControllerConfig_To_config_SourceControllerConfig(in *SourceControllerConfig, out *config.SourceControllerConfig, s conversion.Scope) error {
-	*out = *(*config.SourceControllerConfig)(unsafe.Pointer(in))
+	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
+	out.SourceClass = (*string)(unsafe.Pointer(in.SourceClass))
+	out.TargetClass = (*string)(unsafe.Pointer(in.TargetClass))
+	out.TargetNamespace = (*string)(unsafe.Pointer(in.TargetNamespace))
+	out.TargetNamePrefix = (*string)(unsafe.Pointer(in.TargetNamePrefix))
+	out.TargetLabels = *(*map[string]string)(unsafe.Pointer(&in.TargetLabels))
+	out.TargetClusterID = (*string)(unsafe.Pointer(in.TargetClusterID))
+	out.SourceClusterID = (*string)(unsafe.Pointer(in.SourceClusterID))
+	out.DNSProviderReplication = (*bool)(unsafe.Pointer(in.DNSProviderReplication))
 	return nil
 }
 
@@ -463,7 +570,15 @@ func Convert_v1alpha1_SourceControllerConfig_To_config_SourceControllerConfig(in
 }
 
 func autoConvert_config_SourceControllerConfig_To_v1alpha1_SourceControllerConfig(in *config.SourceControllerConfig, out *SourceControllerConfig, s conversion.Scope) error {
-	*out = *(*SourceControllerConfig)(unsafe.Pointer(in))
+	out.ConcurrentSyncs = (*int)(unsafe.Pointer(in.ConcurrentSyncs))
+	out.SourceClass = (*string)(unsafe.Pointer(in.SourceClass))
+	out.TargetClass = (*string)(unsafe.Pointer(in.TargetClass))
+	out.TargetNamespace = (*string)(unsafe.Pointer(in.TargetNamespace))
+	out.TargetNamePrefix = (*string)(unsafe.Pointer(in.TargetNamePrefix))
+	out.TargetLabels = *(*map[string]string)(unsafe.Pointer(&in.TargetLabels))
+	out.TargetClusterID = (*string)(unsafe.Pointer(in.TargetClusterID))
+	out.SourceClusterID = (*string)(unsafe.Pointer(in.SourceClusterID))
+	out.DNSProviderReplication = (*bool)(unsafe.Pointer(in.DNSProviderReplication))
 	return nil
 }
 

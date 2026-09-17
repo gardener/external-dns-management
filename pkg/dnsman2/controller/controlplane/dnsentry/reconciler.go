@@ -41,6 +41,7 @@ type Reconciler struct {
 	Namespace                      string
 	Class                          string
 	SecondaryClasses               []string
+	OwnerNamespaceRestricted       bool
 	MigrationMode                  bool
 	defaultCNAMELookupInterval     int64
 	reconciliationDelayAfterUpdate time.Duration
@@ -92,6 +93,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 		},
 		namespace:                  r.Namespace,
 		migrationMode:              r.MigrationMode,
+		ownerNamespaceRestricted:   r.OwnerNamespaceRestricted,
 		propagationWaitTime:        ptr.Deref(r.Config.PropagationWaitTime, metav1.Duration{}).Duration,
 		lookupProcessor:            r.lookupProcessor,
 		state:                      r.state,

@@ -357,5 +357,124 @@ var _ = Describe("Reconciler", func() {
 			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(sourceProvider), sourceProvider)).To(Succeed())
 			Expect(sourceProvider.Finalizers).NotTo(ContainElement("garden.dns.gardener.cloud/dnsprovider-replication"))
 		})
+
+		Context("with DNSProviderNamespaceRestriction enabled", func() {
+			BeforeEach(func() {
+				reconciler.Config.DNSProviderNamespaceRestriction = ptr.To(true)
+			})
+
+			It("should replicate normally when the source secret ref has no explicit namespace", func() {
+				// SecretRef.Namespace is empty, so it implicitly refers to the source provider namespace.
+				actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
+					Type: local.ProviderType,
+					SecretRef: &corev1.SecretReference{
+						Name: "foo-secret",
+					},
+				})
+				checkTargetSecret(actualTarget, sourceSecret.Data)
+				checkSourceProviderState("")
+				testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
+
+				testDeletion(actualTarget)
+			})
+
+			It("should replicate normally when the source secret ref namespace equals the provider namespace", func() {
+				sourceSecret.Namespace = defaultSourceNamespace
+				sourceProvider.Spec.SecretRef.Namespace = defaultSourceNamespace
+				actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
+					Type: local.ProviderType,
+					SecretRef: &corev1.SecretReference{
+						Name:      "foo-secret",
+						Namespace: defaultSourceNamespace,
+					},
+				})
+				checkTargetSecret(actualTarget, sourceSecret.Data)
+				checkSourceProviderState("")
+				testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
+
+				testDeletion(actualTarget)
+			})
+
+			It("should reject a source secret ref referring to a foreign namespace", func() {
+				const foreignNamespace = "other-namespace"
+				sourceSecret.Namespace = foreignNamespace
+				sourceProvider.Spec.SecretRef.Namespace = foreignNamespace
+
+				actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
+					Type: local.ProviderType,
+					SecretRef: &corev1.SecretReference{
+						Name:      "foo-secret",
+						Namespace: foreignNamespace,
+					},
+				})
+				// Validation fails, so the target secret data is cleared and the source provider is marked Invalid.
+				checkTargetSecret(actualTarget, nil)
+				checkSourceProviderState("Invalid", "namespace restriction is enabled")
+				testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
+
+				testDeletion(actualTarget)
+			})
+
+			It("should report the restricted namespace in the source provider status message", func() {
+				const foreignNamespace = "other-namespace"
+				sourceSecret.Namespace = foreignNamespace
+				sourceProvider.Spec.SecretRef.Namespace = foreignNamespace
+
+				actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
+					Type: local.ProviderType,
+					SecretRef: &corev1.SecretReference{
+						Name:      "foo-secret",
+						Namespace: foreignNamespace,
+					},
+				})
+				checkTargetSecret(actualTarget, nil)
+				// The credentials themselves are valid, so the restriction is the sole reason for the Invalid state.
+				checkSourceProviderState("Invalid", "is not allowed in DNS provider")
+
+				testDeletion(actualTarget)
+			})
+
+			It("should join the restriction error with a credentials validation error", func() {
+				const foreignNamespace = "other-namespace"
+				sourceSecret.Namespace = foreignNamespace
+				sourceSecret.Data[local.BadKeyProperty] = []byte("something")
+				sourceProvider.Spec.SecretRef.Namespace = foreignNamespace
+
+				actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
+					Type: local.ProviderType,
+					SecretRef: &corev1.SecretReference{
+						Name:      "foo-secret",
+						Namespace: foreignNamespace,
+					},
+				})
+				checkTargetSecret(actualTarget, nil)
+				// Both the credentials validation error and the namespace restriction error must be reported.
+				checkSourceProviderState("Invalid", "'bad_key' is not allowed in local provider properties")
+				Expect(*sourceProvider.Status.Message).To(ContainSubstring("namespace restriction is enabled"))
+
+				testDeletion(actualTarget)
+			})
+		})
+
+		Context("with DNSProviderNamespaceRestriction disabled (default)", func() {
+			It("should replicate a source secret ref referring to a foreign namespace", func() {
+				const foreignNamespace = "other-namespace"
+				sourceSecret.Namespace = foreignNamespace
+				sourceProvider.Spec.SecretRef.Namespace = foreignNamespace
+
+				actualTarget := test(&dnsv1alpha1.DNSProviderSpec{
+					Type: local.ProviderType,
+					SecretRef: &corev1.SecretReference{
+						Name:      "foo-secret",
+						Namespace: foreignNamespace,
+					},
+				})
+				checkTargetSecret(actualTarget, sourceSecret.Data)
+				checkSourceProviderState("")
+				testutils.AssertEvents(fakeRecorder.Events, "Normal DNSProviderCreated ")
+
+				testDeletion(actualTarget)
+			})
+		})
 	})
 })

@@ -488,6 +488,11 @@ func (in *SourceControllerConfig) DeepCopyInto(out *SourceControllerConfig) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.DNSProviderNamespaceRestriction != nil {
+		in, out := &in.DNSProviderNamespaceRestriction, &out.DNSProviderNamespaceRestriction
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
