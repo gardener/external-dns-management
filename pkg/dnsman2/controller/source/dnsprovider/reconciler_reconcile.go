@@ -6,13 +6,14 @@ package dnsprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -208,7 +209,7 @@ func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 		},
 	}
 	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(sourceSecret), sourceSecret); err != nil {
-		if errors.IsNotFound(err) {
+		if apierrors.IsNotFound(err) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get secret %s for source DNSProvider %s: %w", client.ObjectKeyFromObject(sourceSecret), client.ObjectKeyFromObject(sourceProvider), err)
@@ -220,6 +221,12 @@ func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 	if validationErr == nil {
 		validationErr = adapter.ValidateCredentialsAndProviderConfig(props, sourceProvider.Spec.ProviderConfig)
 	}
+	if ptr.Deref(r.Config.DNSProviderNamespaceRestriction, false) {
+		if ref := sourceProvider.Spec.SecretRef; ref != nil && ref.Namespace != "" && ref.Namespace != sourceProvider.Namespace {
+			validationErr = errors.Join(validationErr, fmt.Errorf("namespace %s is not allowed in DNS provider %s as namespace restriction is enabled", sourceProvider.Namespace, ref.Namespace))
+		}
+	}
+
 	sourceSecretData := sourceSecret.Data
 	if validationErr != nil {
 		// If validation fails, we store the error in the secret annotations.

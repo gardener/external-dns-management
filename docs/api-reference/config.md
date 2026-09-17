@@ -1168,6 +1168,18 @@ boolean
 <p>DNSProviderReplication indicates whether DNSProvider replication from source to target cluster is enabled.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>dnsProviderNamespaceRestriction</code></br>
+<em>
+boolean
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>DNSProviderNamespaceRestriction restricts replicated shoot DNSProviders so that they can only be used by<br />source resources (e.g. DNSEntries, Services) in the same namespace where the original shoot DNSProvider was defined.<br />Only effective when dnsProviderReplication is enabled.</p>
+</td>
+</tr>
 
 </tbody>
 </table>
