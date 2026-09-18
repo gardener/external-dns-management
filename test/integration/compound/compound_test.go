@@ -401,6 +401,28 @@ var _ = Describe("Compound controller tests", func() {
 		checkSingleEntryInMockDatabase(nil)
 	})
 
+	It("should preserve backend record when entry DNS class changes to an unhandled class", func() {
+		By("Create and provision DNS entry")
+		Expect(testClient.Create(ctx, e1)).To(Succeed())
+		DeferCleanup(func() {
+			_ = testClient.Delete(ctx, e1)
+		})
+		checkEntry(e1)
+		checkSingleEntryInMockDatabase(e1)
+
+		By("Change DNS class to a class not handled by this controller")
+		Expect(testClient.Get(ctx, client.ObjectKeyFromObject(e1), e1)).To(Succeed())
+		if e1.Annotations == nil {
+			e1.Annotations = map[string]string{}
+		}
+		e1.Annotations[dns.CLASS_ANNOTATION] = "other"
+		Expect(testClient.Update(ctx, e1)).To(Succeed())
+
+		By("Assert backend record is preserved after the class change")
+		time.Sleep(2 * time.Second)
+		checkSingleEntryInMockDatabase(e1)
+	})
+
 	It("should remove the Gardener reconcile operation annotation after reconciliation", func() {
 		By("Create new DNS entry")
 		Expect(testClient.Create(ctx, e1)).To(Succeed())

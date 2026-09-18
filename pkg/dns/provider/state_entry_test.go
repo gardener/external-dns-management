@@ -27,8 +27,8 @@ var _ = g.Describe("cleanupEntry backend deletion guard", func() {
 		g.It("deletes only when the entry is managed and a zone is currently resolvable", func() {
 			Expect(cleanupInBackend(false, true)).To(BeTrue(), "managed entry with resolvable zone -> delete")
 
-			// the regression: provider temporarily invalid, no zone resolvable
-			Expect(cleanupInBackend(false, false)).To(BeFalse(), "no resolvable zone -> preserve (foreign/stale)")
+			// the regression: provider temporarily invalid, no zone resolvable, or entry handed over
+			Expect(cleanupInBackend(false, false)).To(BeFalse(), "handed-over or stale entry -> preserve")
 
 			// obsolete = handled only by a fallback provider
 			Expect(cleanupInBackend(true, true)).To(BeFalse(), "obsolete entry -> preserve")
@@ -68,7 +68,7 @@ var _ = g.Describe("cleanupEntry backend deletion guard", func() {
 			Expect(txn.OldDNSSets()).To(HaveKey(setName))
 		})
 
-		g.It("does NOT queue the record for deletion for a foreign/stale entry (no resolvable zone)", func() {
+		g.It("does NOT queue the record for deletion when handed over or stale (shouldCleanupBackend=false)", func() {
 			txn := applyCleanup(false, false)
 			Expect(txn.OldDNSSets()).To(BeEmpty())
 		})
