@@ -160,6 +160,12 @@ var _ = Describe("QueryDNS with mocked DNS responses", func() {
 			Mx:         "mail.example.com.",
 		}
 	}
+	txtRR := func(name, value string, ttl uint32) *miekgdns.TXT {
+		return &miekgdns.TXT{
+			Hdr: miekgdns.RR_Header{Name: name, Rrtype: miekgdns.TypeTXT, Class: miekgdns.ClassINET, Ttl: ttl},
+			Txt: []string{value},
+		}
+	}
 
 	DescribeTable("record-type / answer combinations",
 		func(rstype dns.RecordType, answer []miekgdns.RR, rcode int, errMatcher types.GomegaMatcher, recordsMatcher types.GomegaMatcher) {
@@ -205,6 +211,37 @@ var _ = Describe("QueryDNS with mocked DNS responses", func() {
 			miekgdns.RcodeSuccess,
 			Not(HaveOccurred()),
 			BeEmpty(),
+		),
+		Entry("TXT query with only CNAME RR returns no records and no error",
+			dns.TypeTXT,
+			[]miekgdns.RR{cnameRR("example.com.", "alias.example.net.", 60)},
+			miekgdns.RcodeSuccess,
+			Not(HaveOccurred()),
+			BeEmpty(),
+		),
+		Entry("TXT query with mixed CNAME + TXT RRs discards TXT records",
+			dns.TypeTXT,
+			[]miekgdns.RR{
+				cnameRR("example.com.", "alias.example.net.", 60),
+				txtRR("alias.example.net.", "some-token", 60),
+			},
+			miekgdns.RcodeSuccess,
+			Not(HaveOccurred()),
+			BeEmpty(),
+		),
+		Entry("TXT query with only TXT RRs returns those records",
+			dns.TypeTXT,
+			[]miekgdns.RR{txtRR("example.com.", "some-token", 60)},
+			miekgdns.RcodeSuccess,
+			Not(HaveOccurred()),
+			ConsistOf(&dns.Record{Value: "some-token"}),
+		),
+		Entry("TXT query with truly unexpected RR type errors",
+			dns.TypeTXT,
+			[]miekgdns.RR{mxRR("example.com.", 60)},
+			miekgdns.RcodeSuccess,
+			MatchError(ContainSubstring("unexpected record type")),
+			nil,
 		),
 		Entry("A query with truly unexpected RR type errors",
 			dns.TypeA,

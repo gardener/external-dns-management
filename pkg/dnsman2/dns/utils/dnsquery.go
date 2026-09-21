@@ -127,6 +127,11 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 		case dns.TypeTXT:
 			r, ok := rr.(*miekgdns.TXT)
 			if !ok {
+				if isCNAMEAnswer(rr) {
+					// CNAME present means the name is an alias; TXT records (if any) belong to the alias target,
+					// not to the queried name. Return an empty record set so the caller can detect the type mismatch.
+					return QueryDNSResult{RecordSet: dns.NewRecordSet(rstype, 0, nil)}
+				}
 				return QueryDNSResult{Err: fmt.Errorf("unexpected record type %T (TXT)", rr)}
 			}
 			for _, txt := range r.Txt {
