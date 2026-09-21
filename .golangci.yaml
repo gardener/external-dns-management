@@ -37,7 +37,7 @@ linters:
       - path: pkg/server/remote/embed/dynamictransportcreds\.go$
         text: 'Will be supported throughout 1.x.' # use grpc.WithAuthority instead
       - path: pkg/dns/provider/lookupprocessor\.go$
-        text: 'netErr.Temporary has been deprecated since Go 1.18'
+        text: 'Temporary has been deprecated since Go 1.18'
       - path: pkg/(apis|controller|dns|server)/(.+)\.go$
         text: 'exported: '
       - path: test/(.+)\.go$
