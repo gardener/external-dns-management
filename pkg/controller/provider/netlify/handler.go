@@ -35,7 +35,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		ctx:               c.Context,
 	}
 
-	apiToken, err := c.GetRequiredProperty("NETLIFY_AUTH_TOKEN", "NETLIFY_API_TOKEN")
+	apiToken, err := c.GetRequiredProperty("NETLIFY_AUTH_TOKEN", "NETLIFY_API_TOKEN", "apiToken")
 	if err != nil {
 		return nil, err
 	}

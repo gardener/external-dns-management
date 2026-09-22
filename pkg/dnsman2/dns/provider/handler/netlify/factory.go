@@ -39,7 +39,7 @@ type adapter struct {
 // newAdapter creates a new DNSHandlerAdapter for the Netlify DNS provider
 func newAdapter() provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
-	checks.Add(provider.RequiredProperty("NETLIFY_AUTH_TOKEN", "NETLIFY_API_TOKEN").
+	checks.Add(provider.RequiredProperty("NETLIFY_AUTH_TOKEN", "NETLIFY_API_TOKEN", "apiToken").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.Base64CharactersUnderscoreValidator, provider.MaxLengthValidator(64)).
 		HideValue())
 	return &adapter{checks: checks}
