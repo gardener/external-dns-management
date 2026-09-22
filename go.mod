@@ -29,7 +29,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/googlecloudplatform/google-distributed-cloud-apis v0.0.0-20260824201624-0c18fa0ddc04
 	github.com/gophercloud/gophercloud/v2 v2.15.0
-	github.com/gophercloud/utils/v2 v2.0.0-20260824073324-42b9474d09d4
+	github.com/gophercloud/utils/v2 v2.0.0-20260922174841-b4759ea0529b
 	github.com/infobloxopen/infoblox-go-client/v2 v2.11.0
 	github.com/jellydator/ttlcache/v3 v3.4.1
 	github.com/joeig/go-powerdns/v3 v3.23.0
