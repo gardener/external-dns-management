@@ -35,5 +35,5 @@ data:
   # replace '...' with values encoded as base64
   # see https://docs.netlify.com/cli/get-started/
   NETLIFY_AUTH_TOKEN: ...
-  # Alternativly the key NETLIFY_API_TOKEN can be used
+  # Alternatively the key NETLIFY_API_TOKEN or apiToken can be used
 ``` 
