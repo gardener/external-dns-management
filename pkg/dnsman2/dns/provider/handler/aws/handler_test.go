@@ -186,21 +186,28 @@ var _ = Describe("DNSHandler", func() {
 			Expect(factoryQueriedTypes).To(BeEmpty(), "factory must not be invoked when SetIdentifier is set")
 		})
 
-		It("synthesizes an alias record from a TXT lookup for ALIAS_A in public zones", func() {
+		It("synthesizes an alias record from a TXT lookup for ALIAS_A when the target IPs match", func() {
 			h = newTestHandler(fake)
+			// defaultQueryFunc handles zone queries (alias name A/AAAA and TXT)
 			factory := utils.QueryDNSFactoryFunc(func() (utils.QueryDNS, error) {
 				return &fakeQueryDNS{
-					queryFn: func(_ context.Context, _ dns.DNSSetName, t dns.RecordType) utils.QueryDNSResult {
-						switch t {
-						case dns.TypeA:
+					queryFn: func(_ context.Context, setName dns.DNSSetName, t dns.RecordType) utils.QueryDNSResult {
+						switch {
+						case t == dns.TypeA && setName.DNSName == "alias.example.org":
 							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeA, 60, []*dns.Record{{Value: "1.2.3.4"}})}
-						case dns.TypeTXT:
+						case t == dns.TypeTXT && setName.DNSName == "alias.example.org":
 							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeTXT, 60, []*dns.Record{{Value: "alias-target.elb.amazonaws.com."}})}
 						}
-						return utils.QueryDNSResult{Err: fmt.Errorf("unexpected type %s", t)}
+						return utils.QueryDNSResult{Err: fmt.Errorf("unexpected query %s / %s", setName.DNSName, t)}
 					},
 				}, nil
 			})
+			// systemQueryFunc handles the target domain lookup via the recursive resolver
+			h.systemQueryDNS = &fakeQueryDNS{
+				queryFn: func(_ context.Context, _ dns.DNSSetName, _ dns.RecordType) utils.QueryDNSResult {
+					return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeA, 60, []*dns.Record{{Value: "1.2.3.4"}})}
+				},
+			}
 
 			fn, err := h.GetCustomQueryDNSFunc(zoneInfoPublic, factory)
 			Expect(err).NotTo(HaveOccurred())
@@ -210,6 +217,38 @@ var _ = Describe("DNSHandler", func() {
 			Expect(rs).NotTo(BeNil())
 			Expect(rs.Type).To(Equal(dns.TypeAWS_ALIAS_A))
 			Expect(rs.TTL).To(BeZero())
+			Expect(rs.Records).To(HaveLen(1))
+			Expect(rs.Records[0].Value).To(Equal("alias-target.elb.amazonaws.com"))
+		})
+
+		It("synthesizes an alias record for ALIAS_AAAA when the target IPs match", func() {
+			h = newTestHandler(fake)
+			factory := utils.QueryDNSFactoryFunc(func() (utils.QueryDNS, error) {
+				return &fakeQueryDNS{
+					queryFn: func(_ context.Context, setName dns.DNSSetName, t dns.RecordType) utils.QueryDNSResult {
+						switch {
+						case t == dns.TypeAAAA && setName.DNSName == "alias6.example.org":
+							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeAAAA, 60, []*dns.Record{{Value: "fe80::1"}})}
+						case t == dns.TypeTXT && setName.DNSName == "alias6.example.org":
+							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeTXT, 60, []*dns.Record{{Value: "alias-target.elb.amazonaws.com."}})}
+						}
+						return utils.QueryDNSResult{Err: fmt.Errorf("unexpected query %s / %s", setName.DNSName, t)}
+					},
+				}, nil
+			})
+			h.systemQueryDNS = &fakeQueryDNS{
+				queryFn: func(_ context.Context, _ dns.DNSSetName, _ dns.RecordType) utils.QueryDNSResult {
+					return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeAAAA, 60, []*dns.Record{{Value: "fe80::1"}})}
+				},
+			}
+
+			fn, err := h.GetCustomQueryDNSFunc(zoneInfoPublic, factory)
+			Expect(err).NotTo(HaveOccurred())
+
+			rs, err := fn(ctx, zoneInfoPublic, dns.DNSSetName{DNSName: "alias6.example.org"}, dns.TypeAWS_ALIAS_AAAA)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rs).NotTo(BeNil())
+			Expect(rs.Type).To(Equal(dns.TypeAWS_ALIAS_AAAA))
 			Expect(rs.Records).To(HaveLen(1))
 			Expect(rs.Records[0].Value).To(Equal("alias-target.elb.amazonaws.com"))
 		})
@@ -235,6 +274,114 @@ var _ = Describe("DNSHandler", func() {
 			Expect(rs).To(BeNil())
 		})
 
+		It("returns nil when the alias name no longer resolves although the TXT bookmark still exists", func() {
+			// Regression test for #1095: a third party deleted the ALIAS record but the TXT
+			// bookmark is still present. The alias name resolves to no address, so it must be
+			// treated as absent instead of trusting the stale bookmark.
+			h = newTestHandler(fake)
+			factory := utils.QueryDNSFactoryFunc(func() (utils.QueryDNS, error) {
+				return &fakeQueryDNS{
+					queryFn: func(_ context.Context, setName dns.DNSSetName, t dns.RecordType) utils.QueryDNSResult {
+						if t == dns.TypeTXT && setName.DNSName == "alias.example.org" {
+							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeTXT, 60, []*dns.Record{{Value: "alias-target.elb.amazonaws.com."}})}
+						}
+						// alias name A query resolves to no address
+						return utils.QueryDNSResult{}
+					},
+				}, nil
+			})
+
+			fn, err := h.GetCustomQueryDNSFunc(zoneInfoPublic, factory)
+			Expect(err).NotTo(HaveOccurred())
+
+			rs, err := fn(ctx, zoneInfoPublic, dns.DNSSetName{DNSName: "alias.example.org"}, dns.TypeAWS_ALIAS_A)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rs).To(BeNil())
+		})
+
+		It("falls back to the Route53 read when the alias IPs differ from the target IPs", func() {
+			// The alias name resolves to a different address than the TXT-recorded target,
+			// so the bookmark is stale and the authoritative Route53 read must be used.
+			h = newTestHandler(fake)
+			factory := utils.QueryDNSFactoryFunc(func() (utils.QueryDNS, error) {
+				return &fakeQueryDNS{
+					queryFn: func(_ context.Context, setName dns.DNSSetName, t dns.RecordType) utils.QueryDNSResult {
+						switch {
+						case t == dns.TypeA && setName.DNSName == "alias.example.org":
+							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeA, 60, []*dns.Record{{Value: "1.2.3.4"}})}
+						case t == dns.TypeTXT && setName.DNSName == "alias.example.org":
+							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeTXT, 60, []*dns.Record{{Value: "alias-target.elb.amazonaws.com."}})}
+						}
+						return utils.QueryDNSResult{Err: fmt.Errorf("unexpected query %s / %s", setName.DNSName, t)}
+					},
+				}, nil
+			})
+			// target resolves to a different IP via the recursive resolver
+			h.systemQueryDNS = &fakeQueryDNS{
+				queryFn: func(_ context.Context, _ dns.DNSSetName, _ dns.RecordType) utils.QueryDNSResult {
+					return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeA, 60, []*dns.Record{{Value: "5.6.7.8"}})}
+				},
+			}
+
+			// authoritative Route53 read returns the real alias target
+			fake.listResourceRecordsFn = func(_ context.Context, _ *route53.ListResourceRecordSetsInput) (*route53.ListResourceRecordSetsOutput, error) {
+				return &route53.ListResourceRecordSetsOutput{
+					ResourceRecordSets: []route53types.ResourceRecordSet{
+						{
+							Name: aws.String("alias.example.org."),
+							Type: route53types.RRTypeA,
+							AliasTarget: &route53types.AliasTarget{
+								DNSName: aws.String("real-target.elb.amazonaws.com."),
+							},
+						},
+					},
+				}, nil
+			}
+
+			fn, err := h.GetCustomQueryDNSFunc(zoneInfoPublic, factory)
+			Expect(err).NotTo(HaveOccurred())
+
+			rs, err := fn(ctx, zoneInfoPublic, dns.DNSSetName{DNSName: "alias.example.org"}, dns.TypeAWS_ALIAS_A)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rs).NotTo(BeNil())
+			Expect(rs.Type).To(Equal(dns.TypeAWS_ALIAS_A))
+			Expect(rs.Records).To(HaveLen(1))
+			Expect(rs.Records[0].Value).To(Equal("real-target.elb.amazonaws.com"))
+		})
+
+		It("falls back to the Route53 read and returns nil when the alias is gone in Route53 too", func() {
+			h = newTestHandler(fake)
+			factory := utils.QueryDNSFactoryFunc(func() (utils.QueryDNS, error) {
+				return &fakeQueryDNS{
+					queryFn: func(_ context.Context, setName dns.DNSSetName, t dns.RecordType) utils.QueryDNSResult {
+						switch {
+						case t == dns.TypeA && setName.DNSName == "alias.example.org":
+							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeA, 60, []*dns.Record{{Value: "1.2.3.4"}})}
+						case t == dns.TypeTXT && setName.DNSName == "alias.example.org":
+							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeTXT, 60, []*dns.Record{{Value: "alias-target.elb.amazonaws.com."}})}
+						}
+						return utils.QueryDNSResult{Err: fmt.Errorf("unexpected query %s / %s", setName.DNSName, t)}
+					},
+				}, nil
+			})
+			h.systemQueryDNS = &fakeQueryDNS{
+				queryFn: func(_ context.Context, _ dns.DNSSetName, _ dns.RecordType) utils.QueryDNSResult {
+					return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeA, 60, []*dns.Record{{Value: "5.6.7.8"}})}
+				},
+			}
+
+			fake.listResourceRecordsFn = func(_ context.Context, _ *route53.ListResourceRecordSetsInput) (*route53.ListResourceRecordSetsOutput, error) {
+				return &route53.ListResourceRecordSetsOutput{}, nil
+			}
+
+			fn, err := h.GetCustomQueryDNSFunc(zoneInfoPublic, factory)
+			Expect(err).NotTo(HaveOccurred())
+
+			rs, err := fn(ctx, zoneInfoPublic, dns.DNSSetName{DNSName: "alias.example.org"}, dns.TypeAWS_ALIAS_A)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(rs).To(BeNil())
+		})
+
 		It("returns the IP query error from the alias path", func() {
 			h = newTestHandler(fake)
 			factory := utils.QueryDNSFactoryFunc(func() (utils.QueryDNS, error) {
@@ -250,6 +397,34 @@ var _ = Describe("DNSHandler", func() {
 
 			_, qErr := fn(ctx, zoneInfoPublic, dns.DNSSetName{DNSName: "alias.example.org"}, dns.TypeAWS_ALIAS_A)
 			Expect(qErr).To(MatchError(ContainSubstring("ip lookup failed")))
+		})
+
+		It("returns the target IP query error from the alias path", func() {
+			h = newTestHandler(fake)
+			factory := utils.QueryDNSFactoryFunc(func() (utils.QueryDNS, error) {
+				return &fakeQueryDNS{
+					queryFn: func(_ context.Context, setName dns.DNSSetName, t dns.RecordType) utils.QueryDNSResult {
+						switch {
+						case t == dns.TypeA && setName.DNSName == "alias.example.org":
+							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeA, 60, []*dns.Record{{Value: "1.2.3.4"}})}
+						case t == dns.TypeTXT && setName.DNSName == "alias.example.org":
+							return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(dns.TypeTXT, 60, []*dns.Record{{Value: "alias-target.elb.amazonaws.com."}})}
+						}
+						return utils.QueryDNSResult{Err: fmt.Errorf("unexpected query %s / %s", setName.DNSName, t)}
+					},
+				}, nil
+			})
+			h.systemQueryDNS = &fakeQueryDNS{
+				queryFn: func(_ context.Context, _ dns.DNSSetName, _ dns.RecordType) utils.QueryDNSResult {
+					return utils.QueryDNSResult{Err: errors.New("target lookup failed")}
+				},
+			}
+
+			fn, err := h.GetCustomQueryDNSFunc(zoneInfoPublic, factory)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, qErr := fn(ctx, zoneInfoPublic, dns.DNSSetName{DNSName: "alias.example.org"}, dns.TypeAWS_ALIAS_A)
+			Expect(qErr).To(MatchError(ContainSubstring("target lookup failed")))
 		})
 	})
 
