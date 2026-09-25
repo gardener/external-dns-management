@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/source/common"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
@@ -130,6 +131,67 @@ var _ = Describe("DNSSpecInput", func() {
 			input, err := common.GetDNSSpecInputForIngress(annotationState, gkv, ingress)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(input.IPStack).To(Equal("dual-stack"))
+		})
+	})
+
+	Describe("#GetMergedAnnotation", func() {
+		var (
+			gvk             = networkingv1.SchemeGroupVersion.WithKind("Ingress")
+			annotationState state.AnnotationState
+			ingress         *networkingv1.Ingress
+		)
+
+		BeforeEach(func() {
+			annotationState = state.GetState().GetAnnotationState()
+			annotationState.Reset()
+			ingress = &networkingv1.Ingress{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "ing1",
+					Namespace: "ns",
+					Annotations: map[string]string{
+						dns.AnnotationDNSNames: "from-object.example.com",
+						dns.AnnotationTTL:      "60",
+					},
+				},
+			}
+		})
+
+		setExternalAnnotations := func(annotations map[string]string) {
+			ref := common.BuildResourceReference(gvk, ingress)
+			Expect(annotationState.SetResourceAnnotations(ref, client.ObjectKey{Namespace: "ns", Name: "anno1"}, annotations)).To(Succeed())
+		}
+
+		It("should return only the object annotations when no external annotations exist", func() {
+			merged := common.GetMergedAnnotation(gvk, annotationState, ingress)
+			Expect(merged).To(Equal(map[string]string{
+				dns.AnnotationDNSNames: "from-object.example.com",
+				dns.AnnotationTTL:      "60",
+			}))
+		})
+
+		It("should merge external annotations that do not conflict with object annotations", func() {
+			setExternalAnnotations(map[string]string{
+				dns.AnnotationIPStack: dns.AnnotationValueIPStackIPDualStack,
+			})
+			merged := common.GetMergedAnnotation(gvk, annotationState, ingress)
+			Expect(merged).To(Equal(map[string]string{
+				dns.AnnotationDNSNames: "from-object.example.com",
+				dns.AnnotationTTL:      "60",
+				dns.AnnotationIPStack:  dns.AnnotationValueIPStackIPDualStack,
+			}))
+		})
+
+		It("should let external annotations take precedence over conflicting object annotations", func() {
+			// Regression test: external annotations from DNSAnnotation must win over the object's own annotations.
+			setExternalAnnotations(map[string]string{
+				dns.AnnotationDNSNames: "from-external.example.com",
+				dns.AnnotationTTL:      "120",
+			})
+			merged := common.GetMergedAnnotation(gvk, annotationState, ingress)
+			Expect(merged).To(Equal(map[string]string{
+				dns.AnnotationDNSNames: "from-external.example.com",
+				dns.AnnotationTTL:      "120",
+			}))
 		})
 	})
 
