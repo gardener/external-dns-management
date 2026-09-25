@@ -214,7 +214,7 @@ func (this *reconciler) Reconcile(logger logger.LogContext, obj resources.Object
 		if this.state.IsResponsibleFor(logger, obj) {
 			return this.state.UpdateEntry(logger, dnsutils.DNSEntry(obj))
 		} else {
-			return this.state.EntryDeleted(logger, obj.ClusterKey())
+			return this.state.EntryDeleted(logger, obj.ClusterKey(), true)
 		}
 	case obj.IsA(&api.DNSHostedZonePolicy{}):
 		if this.state.IsResponsibleFor(logger, obj) {
@@ -250,7 +250,7 @@ func (this *reconciler) Deleted(logger logger.LogContext, key resources.ClusterO
 	case providerGroupKind:
 		return this.state.ProviderDeleted(logger, key.ObjectKey())
 	case entryGroupKind:
-		return this.state.EntryDeleted(logger, key)
+		return this.state.EntryDeleted(logger, key, false)
 	case zonePolicyGroupKind:
 		return this.state.ZonePolicyDeleted(logger, key)
 	}
