@@ -141,4 +141,55 @@ var _ = Describe("execution submitChanges", func() {
 		// one whole-batch call plus one throttled sub-batch call, no leaf calls.
 		Expect(fake.changeCalls).To(HaveLen(2))
 	})
+
+	It("does not skip a CREATE when the existing record has a different SetIdentifier (weighted-to-plain transition)", func() {
+		// Simulate: a weighted record (SetIdentifier="envoy-dns") exists for foo.example.org. A/60/1.2.3.4.
+		// Controller issues CREATE for a plain record (nil SetIdentifier) with the same
+		// name/type/TTL/value. Route53 rejects with InvalidChangeBatch because the weighted
+		// record is still present. Without the SetIdentifier check, isFetchedRecordSetEqual
+		// would wrongly return true and skip the CREATE, leaving the name DNS-less after
+		// the DELETE removes the weighted record.
+		existingWeighted := route53types.ResourceRecordSet{
+			Name:          aws.String("foo.example.org."),
+			Type:          route53types.RRTypeA,
+			TTL:           aws.Int64(60),
+			SetIdentifier: aws.String("envoy-dns"),
+			Weight:        aws.Int64(100),
+			ResourceRecords: []route53types.ResourceRecord{
+				{Value: aws.String("1.2.3.4")},
+			},
+		}
+
+		changeCallCount := 0
+		fake := &fakeRoute53{
+			listResourceRecordsFn: func(_ context.Context, _ *route53.ListResourceRecordSetsInput) (*route53.ListResourceRecordSetsOutput, error) {
+				return &route53.ListResourceRecordSetsOutput{
+					ResourceRecordSets: []route53types.ResourceRecordSet{existingWeighted},
+				}, nil
+			},
+			changeResourceRecordsFn: func(_ context.Context, params *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
+				changeCallCount++
+				if changeCallCount == 1 {
+					msg := "Tried to create resource record set [name='foo.example.org.', type='A'] but it already exists"
+					return nil, &route53types.InvalidChangeBatch{Message: aws.String(msg)}
+				}
+				return &route53.ChangeResourceRecordSetsOutput{}, nil
+			},
+		}
+
+		plainCreate := &route53types.ResourceRecordSet{
+			Name:            aws.String("foo.example.org."),
+			Type:            route53types.RRTypeA,
+			TTL:             aws.Int64(60),
+			SetIdentifier:   nil,
+			ResourceRecords: []route53types.ResourceRecord{{Value: aws.String("1.2.3.4")}},
+		}
+		exec := newTestExecution(fake)
+		exec.changes = []*wrappedChange{
+			{Change: &route53types.Change{Action: route53types.ChangeActionCreate, ResourceRecordSet: plainCreate}},
+		}
+
+		Expect(exec.submitChanges(ctx, metrics)).To(Succeed())
+		Expect(changeCallCount).To(Equal(2), "CREATE must be retried, not silently skipped")
+	})
 })
