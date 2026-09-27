@@ -265,8 +265,8 @@ func GetDNSNamesFromAnnotations(annotations map[string]string) (*utils.UniqueStr
 func GetMergedAnnotation(gvk schema.GroupVersionKind, state state.AnnotationState, obj metav1.Object) map[string]string {
 	annotations := map[string]string{}
 	externalAnnotations, _, _ := state.GetResourceAnnotationStatus(BuildResourceReference(gvk, obj))
-	maps.Copy(annotations, externalAnnotations)
 	maps.Copy(annotations, obj.GetAnnotations())
+	maps.Copy(annotations, externalAnnotations)
 	return annotations
 }
 
