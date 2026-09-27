@@ -24,6 +24,7 @@ import (
 	"github.com/aws/smithy-go"
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
 	"github.com/go-logr/logr"
+	k8ssets "k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/yaml"
@@ -42,6 +43,9 @@ type handler struct {
 	accessKeyID   string // for logging purposes
 	r53           route53API
 	policyContext *routingPolicyContext
+	// systemQueryDNS is used for DNS lookups outside the managed zone (e.g. alias target
+	// domains). Defaults to a recursive resolver via SystemNameservers; overridden in tests.
+	systemQueryDNS utils.QueryDNS
 }
 
 var _ provider.DNSHandler = &handler{}
@@ -194,43 +198,109 @@ func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDN
 	if err != nil {
 		return nil, fmt.Errorf("failed to create default query function: %w", err)
 	}
+	// Use a system-level recursive resolver for target domain lookups. The target domain
+	// (e.g. an ELB hostname) is in a different DNS zone than the one managed by Route53, so
+	// the zone's authoritative nameservers (used by defaultQueryFunc) cannot answer for it.
+	systemQueryFunc := h.systemQueryDNS
+	if systemQueryFunc == nil {
+		systemQueryFunc = utils.NewStandardQueryDNS(utils.SystemNameservers)
+	}
 	return func(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
 		switch {
 		case setName.SetIdentifier != "":
 			// routing policies with set identifiers are not supported by the default query function
 			return h.queryDNS(ctx, zone, setName, recordType)
 		case recordType == dns.TypeAWS_ALIAS_A, recordType == dns.TypeAWS_ALIAS_AAAA:
-			// For AWS alias records, we query A/AAAA/TXT records by DNS queries.
-			// It is expected that the DNS query will return the alias target as a TXT record.
-			var queryRecordType dns.RecordType
-			switch recordType {
-			case dns.TypeAWS_ALIAS_A:
-				queryRecordType = dns.TypeA
-			case dns.TypeAWS_ALIAS_AAAA:
-				queryRecordType = dns.TypeAAAA
-			}
-			queryResultIP := defaultQueryFunc.Query(ctx, setName, queryRecordType)
-			if queryResultIP.Err != nil {
-				return nil, queryResultIP.Err
-			}
-			queryResult := defaultQueryFunc.Query(ctx, setName, dns.TypeTXT)
-			if queryResult.Err != nil {
-				return nil, queryResult.Err
-			}
-			if queryResult.RecordSet == nil || len(queryResult.RecordSet.Records) != 1 {
-				return nil, nil
-			}
-			// fake an alias record set from the TXT record
-			queryResult.RecordSet.Records[0].Value = strings.TrimSuffix(queryResult.RecordSet.Records[0].Value, ".")
-			queryResult.RecordSet.Type = recordType
-			queryResult.RecordSet.TTL = 0
-			return queryResult.RecordSet, nil
+			return h.queryAliasDNS(ctx, zone, setName, recordType, defaultQueryFunc, systemQueryFunc)
 		default:
 			// For all other record types, we can use the default query function
 			queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
 			return queryResult.RecordSet, queryResult.Err
 		}
 	}, nil
+}
+
+// queryAliasDNS resolves an AWS alias record (ALIAS_A/ALIAS_AAAA) via DNS queries.
+//
+// AWS alias targets cannot be read back via a normal recursive DNS query (the resolver
+// returns the resolved A/AAAA addresses of the target, not the target hostname). A TXT
+// "bookmark" record is therefore maintained alongside the alias, holding the alias target
+// hostname. The TXT record is only trusted as a hint: the alias is considered in place only
+// if the alias name resolves to the same IP addresses as its recorded target. If the alias
+// name no longer resolves (deleted by a third party) or resolves to different addresses (the
+// target changed), the authoritative Route53 API read via queryDNS is used instead so the
+// reconciler observes the true state and repairs the record.
+func (h *handler) queryAliasDNS(
+	ctx context.Context,
+	zone dns.ZoneInfo,
+	setName dns.DNSSetName,
+	recordType dns.RecordType,
+	defaultQueryFunc utils.QueryDNS,
+	systemQueryFunc utils.QueryDNS,
+) (*dns.RecordSet, error) {
+	var queryRecordType dns.RecordType
+	switch recordType {
+	case dns.TypeAWS_ALIAS_A:
+		queryRecordType = dns.TypeA
+	case dns.TypeAWS_ALIAS_AAAA:
+		queryRecordType = dns.TypeAAAA
+	}
+
+	queryResultIP := defaultQueryFunc.Query(ctx, setName, queryRecordType)
+	if queryResultIP.Err != nil {
+		return nil, queryResultIP.Err
+	}
+	queryResult := defaultQueryFunc.Query(ctx, setName, dns.TypeTXT)
+	if queryResult.Err != nil {
+		return nil, queryResult.Err
+	}
+	if queryResult.RecordSet == nil || len(queryResult.RecordSet.Records) != 1 {
+		return nil, nil
+	}
+	target := strings.TrimSuffix(queryResult.RecordSet.Records[0].Value, ".")
+
+	// If the alias name itself no longer resolves to any A/AAAA address, the alias record is
+	// gone regardless of the (possibly stale) TXT bookmark. Treat it as absent so the
+	// reconciler recreates it.
+	if queryResultIP.RecordSet == nil || len(queryResultIP.RecordSet.Records) == 0 {
+		return nil, nil
+	}
+
+	// Verify the alias is actually in place by resolving the recorded target's IP addresses
+	// and comparing them with the addresses the alias name resolves to. The target domain
+	// lives outside the managed zone, so a recursive resolver (systemQueryFunc) is used
+	// rather than the zone's authoritative nameservers. On mismatch the TXT bookmark is
+	// stale, so fall back to the authoritative Route53 read.
+	queryResultTargetIP := systemQueryFunc.Query(ctx, setName.WithDNSName(target), queryRecordType)
+	if queryResultTargetIP.Err != nil {
+		return nil, queryResultTargetIP.Err
+	}
+	if !sameIPRecords(queryResultIP.RecordSet, queryResultTargetIP.RecordSet) {
+		return h.queryDNS(ctx, zone, setName, recordType)
+	}
+
+	// The alias is verified: fake an alias record set from the TXT bookmark.
+	queryResult.RecordSet.Records[0].Value = target
+	queryResult.RecordSet.Type = recordType
+	queryResult.RecordSet.TTL = 0
+	return queryResult.RecordSet, nil
+}
+
+// sameIPRecords reports whether both record sets are non-empty and contain the same set of
+// record values (order-independent). Two empty or nil record sets are not considered a match.
+func sameIPRecords(a, b *dns.RecordSet) bool {
+	if a == nil || b == nil || len(a.Records) == 0 || len(b.Records) == 0 {
+		return false
+	}
+	setA := k8ssets.New[string]()
+	for _, r := range a.Records {
+		setA.Insert(r.Value)
+	}
+	setB := k8ssets.New[string]()
+	for _, r := range b.Records {
+		setB.Insert(r.Value)
+	}
+	return setA.Equal(setB)
 }
 
 // queryDNS queries the DNS provider for the given DNS name and record type.
