@@ -372,7 +372,7 @@ func (this *state) HandleUpdateEntry(logger logger.LogContext, op string, object
 	return status
 }
 
-func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterObjectKey) reconcile.Status {
+func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterObjectKey, foreign bool) reconcile.Status {
 	this.lock.Lock()
 	defer func() {
 		this.lock.Unlock()
@@ -388,13 +388,18 @@ func (this *state) EntryDeleted(logger logger.LogContext, key resources.ClusterO
 	if old != nil {
 		provider, _, _ := this.lookupProvider(old.object)
 		zone := this.getProviderZoneForName(old.DNSName(), provider)
-		if zone != nil {
+		shouldCleanupBackend := zone != nil && !foreign
+		if shouldCleanupBackend {
 			logger.Infof("removing entry %q (%s[%s])", key.ObjectName(), old.DNSName(), zone.Id())
 			this.triggerHostedZone(zone.Id())
 		} else {
-			this.smartInfof(logger, "removing foreign entry %q (%s)", key.ObjectName(), old.ZonedDNSName())
+			if foreign {
+				this.smartInfof(logger, "handing over entry %q (%s) to another controller", key.ObjectName(), old.ZonedDNSName())
+			} else {
+				this.smartInfof(logger, "removing stale entry %q (%s): no provider resolves its zone", key.ObjectName(), old.ZonedDNSName())
+			}
 		}
-		this.cleanupEntry(logger, old, this.dnsSetFromEntry(old), zone != nil)
+		this.cleanupEntry(logger, old, this.dnsSetFromEntry(old), shouldCleanupBackend)
 	} else {
 		logger.Debugf("removing unknown entry %q", key.ObjectName())
 	}
@@ -417,16 +422,17 @@ func (this *state) countEntriesForProvider(provider resources.ObjectName) int32 
 //
 // It must return false when:
 //   - the entry is obsolete, i.e. only handled by a fallback provider, or
-//   - no valid provider currently resolves a managed zone for the entry
-//     (zoneResolvable == false). This is the stale/foreign case: the record is
-//     preserved elsewhere (see the stale handling in addEntriesForZone and
-//     ChangeGroup.cleanup), so scheduling a delete here would orphan and
-//     eventually remove a record that must be kept.
-func cleanupInBackend(obsolete, zoneResolvable bool) bool {
-	return !obsolete && zoneResolvable
+//   - shouldCleanupBackend is false: either no valid provider currently resolves
+//     a managed zone for the entry (stale case), or the entry was handed over to
+//     another controller by a DNS class change (foreign case). In both cases the
+//     record is preserved elsewhere (see addEntriesForZone and ChangeGroup.cleanup),
+//     so scheduling a delete here would orphan and eventually remove a record that
+//     must be kept.
+func cleanupInBackend(obsolete, shouldCleanupBackend bool) bool {
+	return !obsolete && shouldCleanupBackend
 }
 
-func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *dns.DNSSet, zoneResolvable bool) {
+func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *dns.DNSSet, shouldCleanupBackend bool) {
 	this.smartInfof(logger, "cleanup old entry (duplicate=%t)", e.duplicate)
 	this.entries.Delete(e)
 	this.DeleteLookupJob(e.ObjectName())
@@ -452,11 +458,12 @@ func (this *state) cleanupEntry(logger logger.LogContext, e *Entry, oldDNSSet *d
 			}
 		}
 		if txn := this.getActiveZoneTransaction(e.activezone); txn != nil {
-			if cleanupInBackend(e.obsolete, zoneResolvable) {
+			if cleanupInBackend(e.obsolete, shouldCleanupBackend) {
 				txn.AddEntryChange(e.ObjectKey(), e.object.GetGeneration(), oldDNSSet, nil)
-			} else {
-				logger.Warnf("cannot cleanup stale entry %s(%s)", e.ObjectName(), e.DNSSetName())
+			} else if !shouldCleanupBackend {
+				this.smartInfof(logger, "keeping backend record for handed-over/stale entry %s(%s)", e.ObjectName(), e.DNSSetName())
 			}
+			// else: obsolete (fallback provider only) — record preserved by fallback, no action needed
 		}
 		if found == nil {
 			logger.Infof("no duplicate found to reactivate")
