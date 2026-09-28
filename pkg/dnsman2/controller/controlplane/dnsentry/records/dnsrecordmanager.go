@@ -95,6 +95,7 @@ func (m *DNSRecordManager) QueryRecords(ctx context.Context, keys FullRecordKeyS
 				results[key] = dnsSet.Sets[key.RecordType]
 			}
 		}
+		filterPolicyRelatedDuplicates(results, keys)
 	}
 	return results, nil
 }
@@ -187,4 +188,19 @@ func isDeletion(changeRequests *provider.ChangeRequests) bool {
 		}
 	}
 	return false
+}
+
+func filterPolicyRelatedDuplicates(records map[FullRecordSetKey]*dns.RecordSet, keys FullRecordKeySet) {
+	for key := range keys {
+		// When transitioning a name from a routing policy to a plain record, both the routing-policy key
+		// and the plain key are queried. The plain query uses a normal DNS resolver, which may still resolve
+		// the routing-policy record that has not been removed yet, producing a false positive under the plain key.
+		// When the routing-policy key resolved (i.e. its record still exists), drop the plain key's result so the
+		// plain record's creation/update is not skipped by mistaking the leftover routing-policy record for it.
+		if _, ok := records[key]; ok && key.Name.SetIdentifier != "" {
+			plainKey := key
+			plainKey.Name.SetIdentifier = ""
+			delete(records, plainKey)
+		}
+	}
 }

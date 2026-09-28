@@ -167,7 +167,7 @@ var _ = Describe("execution submitChanges", func() {
 					ResourceRecordSets: []route53types.ResourceRecordSet{existingWeighted},
 				}, nil
 			},
-			changeResourceRecordsFn: func(_ context.Context, params *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
+			changeResourceRecordsFn: func(_ context.Context, _ *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
 				changeCallCount++
 				if changeCallCount == 1 {
 					msg := "Tried to create resource record set [name='foo.example.org.', type='A'] but it already exists"
