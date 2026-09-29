@@ -95,8 +95,8 @@ func (m *DNSRecordManager) QueryRecords(ctx context.Context, keys FullRecordKeyS
 				results[key] = dnsSet.Sets[key.RecordType]
 			}
 		}
-		filterPolicyRelatedDuplicates(results, keys)
 	}
+	filterPolicyRelatedDuplicates(results, keys)
 	return results, nil
 }
 
