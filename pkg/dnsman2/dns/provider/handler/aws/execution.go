@@ -276,7 +276,7 @@ func (ex *execution) isFetchedRecordSetEqual(ctx context.Context, change *wrappe
 	}
 	crrs := change.ResourceRecordSet
 	orrs := output.ResourceRecordSets[0]
-	if dns.NormalizeDomainName(*crrs.Name) != dns.NormalizeDomainName(*orrs.Name) || crrs.Type != orrs.Type || !safeCompareInt64(crrs.TTL, orrs.TTL) || len(crrs.ResourceRecords) != len(orrs.ResourceRecords) {
+	if dns.NormalizeDomainName(*crrs.Name) != dns.NormalizeDomainName(*orrs.Name) || crrs.Type != orrs.Type || !safeCompareInt64(crrs.TTL, orrs.TTL) || len(crrs.ResourceRecords) != len(orrs.ResourceRecords) || !safeCompareString(crrs.SetIdentifier, orrs.SetIdentifier) {
 		return false
 	}
 	for i := range crrs.ResourceRecords {
@@ -297,6 +297,13 @@ func isThrottlingError(err error) bool {
 }
 
 func safeCompareInt64(a, b *int64) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+	return *a == *b
+}
+
+func safeCompareString(a, b *string) bool {
 	if a == nil || b == nil {
 		return a == b
 	}

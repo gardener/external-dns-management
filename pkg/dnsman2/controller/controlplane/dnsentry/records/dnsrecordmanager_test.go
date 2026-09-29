@@ -5,6 +5,9 @@
 package records
 
 import (
+	"maps"
+	"slices"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -180,6 +183,77 @@ var _ = Describe("isDeletion", func() {
 				Updates: map[dns.RecordType]*provider.ChangeRequestUpdate{},
 			},
 			false,
+		),
+	)
+})
+
+var _ = Describe("filterPolicyRelatedDuplicates", func() {
+	zone := dns.ZoneID{ID: "zone1", ProviderType: "aws"}
+
+	key := func(dnsName, setID string, rtype dns.RecordType) FullRecordSetKey {
+		return FullRecordSetKey{
+			FullDNSSetName: FullDNSSetName{
+				ZoneID: zone,
+				Name:   dns.DNSSetName{DNSName: dnsName, SetIdentifier: setID},
+			},
+			RecordType: rtype,
+		}
+	}
+	rs := func() *dns.RecordSet { return &dns.RecordSet{Type: dns.TypeA} }
+
+	DescribeTable("dropping false-positive plain results during policy->plain transitions",
+		func(records map[FullRecordSetKey]*dns.RecordSet, keys FullRecordKeySet, expectedKeys []FullRecordSetKey) {
+			filterPolicyRelatedDuplicates(records, keys)
+			Expect(slices.Collect(maps.Keys(records))).To(ConsistOf(expectedKeys))
+		},
+
+		Entry("policy record still exists: plain false positive is dropped",
+			map[FullRecordSetKey]*dns.RecordSet{
+				key("a.example.com", "", dns.TypeA):   rs(), // false positive from plain DNS query
+				key("a.example.com", "p1", dns.TypeA): rs(), // routing-policy record still present
+			},
+			FullRecordKeySet{}.Insert(
+				key("a.example.com", "", dns.TypeA),
+				key("a.example.com", "p1", dns.TypeA),
+			),
+			[]FullRecordSetKey{key("a.example.com", "p1", dns.TypeA)},
+		),
+
+		Entry("policy key queried but not resolved: plain result is kept (guard requires policy key present in records)",
+			map[FullRecordSetKey]*dns.RecordSet{
+				key("a.example.com", "", dns.TypeA): rs(),
+			},
+			FullRecordKeySet{}.Insert(
+				key("a.example.com", "", dns.TypeA),
+				key("a.example.com", "p1", dns.TypeA),
+			),
+			[]FullRecordSetKey{key("a.example.com", "", dns.TypeA)},
+		),
+
+		Entry("no policy sibling for the name: plain result is kept",
+			map[FullRecordSetKey]*dns.RecordSet{
+				key("a.example.com", "", dns.TypeA): rs(),
+			},
+			FullRecordKeySet{}.Insert(key("a.example.com", "", dns.TypeA)),
+			[]FullRecordSetKey{key("a.example.com", "", dns.TypeA)},
+		),
+
+		Entry("policy sibling is a different record type: plain result of other type is kept",
+			map[FullRecordSetKey]*dns.RecordSet{
+				key("a.example.com", "", dns.TypeAAAA): rs(),
+				key("a.example.com", "p1", dns.TypeA):  rs(),
+			},
+			FullRecordKeySet{}.Insert(
+				key("a.example.com", "", dns.TypeAAAA),
+				key("a.example.com", "p1", dns.TypeA),
+			),
+			[]FullRecordSetKey{key("a.example.com", "", dns.TypeAAAA), key("a.example.com", "p1", dns.TypeA)},
+		),
+
+		Entry("empty records: no panic, nothing removed",
+			map[FullRecordSetKey]*dns.RecordSet{},
+			FullRecordKeySet{}.Insert(key("a.example.com", "p1", dns.TypeA)),
+			[]FullRecordSetKey{},
 		),
 	)
 })
