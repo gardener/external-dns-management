@@ -56,6 +56,7 @@ For extending or adapting this project with your own source or provisioning cont
     - [Setting Up a Controller Manager](#setting-up-a-controller-manager)
     - [Using the standard Compound Provisioning Controller](#using-the-standard-compound-provisioning-controller)
     - [Multiple Cluster Support](#multiple-cluster-support)
+      - [Multi-tenant single-cluster support for the source cluster](#multi-tenant-single-cluster-support-for-the-source-cluster)
   - [DNS Controller Manager Next Generation](#dns-controller-manager-next-generation)
   - [Why not use the community `external-dns` solution?](#why-not-use-the-community-external-dns-solution)
 
@@ -1203,6 +1204,54 @@ this cluster. If no such option is specified the default is used.
 Therefore, even if the configuration is prepared for multiple clusters,
 such a controller manager can easily work on a single cluster if no special
 options are given on the command line.
+
+### Multi-tenant single-cluster support for the source cluster
+
+In a source/target cluster setup, `DNSProvider` objects on the source cluster
+are replicated to the target cluster together with their referenced credentials
+(`Secret`). When several tenants share a single source cluster and are separated
+only by namespace, this replication needs to be constrained by namespace. The
+credentials themselves are never handed to the tenant — they are only read and
+used by the dns-controller-manager — but without a constraint a tenant could
+reference a `Secret` from a foreign namespace in its own `DNSProvider` and
+thereby have the dns-controller-manager provision DNS records using credentials
+that tenant does not own.
+
+**Background**
+
+Without any restriction, a namespaced `DNSProvider` can use and replicate
+credentials from arbitrary namespaces:
+
+- the `DNSProvider` `spec.secretRef` may point at a `Secret` in a *foreign*
+  namespace, i.e. one different from the `DNSProvider`'s own namespace;
+- the reconciler has cluster-wide `Secret` read access and copies that `Secret`
+  to the target cluster, after which the replicated provider is used for
+  provisioning;
+- credential-shape validation only checks that the credentials are
+  well-formed — it does **not** authorize the requesting tenant to use that
+  `Secret`.
+
+**Restriction**
+
+To make a shared source cluster safe for multiple tenants, the next-generation
+DNS controller manager provides the source controller configuration flag
+[`dnsProviderNamespaceRestriction`](docs/dnsman2/README.md). It is only
+supported by the next generation and only applies to `DNSProvider` objects on
+the source cluster.
+
+When enabled (and only effective if DNSProvider replication is enabled), it
+restricts replicated source `DNSProvider` objects so that:
+
+- a `DNSProvider` may only reference credentials via `spec.secretRef` in its
+  own namespace; a `secretRef` pointing at a foreign namespace is rejected and
+  the source `DNSProvider` is marked `Invalid`, and
+- a replicated provider may only be used by source resources (e.g. `DNSEntry`,
+  `Service`) originating from the same namespace as the original source
+  `DNSProvider`.
+
+> **Note**: This restriction is not available in the legacy DNS controller
+> manager. Use the next-generation controller manager if you need multi-tenant
+> isolation on a shared source cluster.
 
 ## DNS Controller Manager Next Generation
 
