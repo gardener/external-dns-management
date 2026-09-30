@@ -202,29 +202,42 @@ func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 	if sourceProvider.Spec.SecretRef == nil {
 		return nil, nil
 	}
+	var namespaceRestrictionErr error
+	if ptr.Deref(r.Config.DNSProviderNamespaceRestriction, false) {
+		if ref := sourceProvider.Spec.SecretRef; ref != nil && ref.Namespace != "" && ref.Namespace != sourceProvider.Namespace {
+			namespaceRestrictionErr = fmt.Errorf("namespace %s is not allowed in DNS provider %s as namespace restriction is enabled", ref.Namespace, client.ObjectKeyFromObject(sourceProvider))
+		}
+	}
+
 	sourceSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      sourceProvider.Spec.SecretRef.Name,
 			Namespace: getSecretRefNamespace(sourceProvider),
 		},
 	}
+	secretExists := true
 	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(sourceSecret), sourceSecret); err != nil {
-		if apierrors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get secret %s for source DNSProvider %s: %w", client.ObjectKeyFromObject(sourceSecret), client.ObjectKeyFromObject(sourceProvider), err)
+		}
+		// Even if the referenced secret does not exist, a cross-namespace reference must still be
+		// rejected when namespace restriction is enabled, so that the violation is reported instead
+		// of being silently skipped.
+		if namespaceRestrictionErr == nil {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get secret %s for source DNSProvider %s: %w", client.ObjectKeyFromObject(sourceSecret), client.ObjectKeyFromObject(sourceProvider), err)
+		secretExists = false
 	}
 
-	props := utils.NewPropertiesFromSecretData(sourceSecret.Data)
 	var annotations map[string]string
-	adapter, validationErr := r.DNSHandlerFactory.GetDNSHandlerAdapter(sourceProvider.Spec.Type)
-	if validationErr == nil {
-		validationErr = adapter.ValidateCredentialsAndProviderConfig(props, sourceProvider.Spec.ProviderConfig)
-	}
-	if ptr.Deref(r.Config.DNSProviderNamespaceRestriction, false) {
-		if ref := sourceProvider.Spec.SecretRef; ref != nil && ref.Namespace != "" && ref.Namespace != sourceProvider.Namespace {
-			validationErr = errors.Join(validationErr, fmt.Errorf("namespace %s is not allowed in DNS provider %s as namespace restriction is enabled", sourceProvider.Namespace, ref.Namespace))
+	validationErr := namespaceRestrictionErr
+	if secretExists {
+		props := utils.NewPropertiesFromSecretData(sourceSecret.Data)
+		adapter, err := r.DNSHandlerFactory.GetDNSHandlerAdapter(sourceProvider.Spec.Type)
+		if err == nil {
+			err = adapter.ValidateCredentialsAndProviderConfig(props, sourceProvider.Spec.ProviderConfig)
 		}
+		validationErr = errors.Join(err, namespaceRestrictionErr)
 	}
 
 	sourceSecretData := sourceSecret.Data
