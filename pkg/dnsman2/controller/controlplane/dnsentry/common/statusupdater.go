@@ -16,6 +16,7 @@ import (
 
 	"github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 // EntryStatusUpdater is a utility to update the status of a DNSEntry resource and handle finalizers.
@@ -121,10 +122,7 @@ func (u *EntryStatusUpdater) RemoveFinalizer() *ReconcileResult {
 		if err := u.Client.Get(u.Ctx, client.ObjectKeyFromObject(u.Entry), fresh); err != nil {
 			return client.IgnoreNotFound(err)
 		}
-		if !controllerutil.ContainsFinalizer(fresh, u.finalizerName()) {
-			return nil
-		}
-		return client.IgnoreNotFound(controllerutils.RemoveFinalizers(u.Ctx, u.Client, fresh, u.finalizerName()))
+		return client.IgnoreNotFound(utils.NiceRemoveFinalizers(u.Ctx, u.Client, fresh, u.finalizerName()))
 	}); err != nil {
 		u.Log.Error(err, "failed to remove finalizer")
 		return &ReconcileResult{Err: err}

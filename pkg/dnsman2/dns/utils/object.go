@@ -5,7 +5,12 @@
 package utils
 
 import (
+	"context"
+
+	"github.com/gardener/gardener/pkg/controllerutils"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 // SetAnnotation sets the given annotation key to the specified value on the provided object.
@@ -46,4 +51,21 @@ func RemoveLabel(obj metav1.Object, key string) {
 	}
 	delete(labels, key)
 	obj.SetLabels(labels)
+}
+
+// NiceRemoveFinalizers removes the given finalizers from the provided object.
+// It is a no-op if the object contains none of the given finalizers, avoiding
+// an unnecessary patch request.
+func NiceRemoveFinalizers(ctx context.Context, writer client.Writer, obj client.Object, finalizers ...string) error {
+	needRemoveFinalizers := false
+	for _, finalizer := range finalizers {
+		if controllerutil.ContainsFinalizer(obj, finalizer) {
+			needRemoveFinalizers = true
+			break
+		}
+	}
+	if !needRemoveFinalizers {
+		return nil
+	}
+	return controllerutils.RemoveFinalizers(ctx, writer, obj, finalizers...)
 }

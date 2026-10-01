@@ -103,7 +103,7 @@ func (r *Reconciler) addFinalizer(ctx context.Context, provider *v1alpha1.DNSPro
 }
 
 func (r *Reconciler) removeFinalizer(ctx context.Context, provider *v1alpha1.DNSProvider) error {
-	if err := controllerutils.RemoveFinalizers(ctx, r.Client, provider, r.finalizerName()); err != nil {
+	if err := utils.NiceRemoveFinalizers(ctx, r.Client, provider, r.finalizerName()); err != nil {
 		return err
 	}
 	secret, err := getSpecSecret(ctx, r.Client, provider)
@@ -113,7 +113,7 @@ func (r *Reconciler) removeFinalizer(ctx context.Context, provider *v1alpha1.DNS
 	if secret == nil {
 		return nil
 	}
-	return controllerutils.RemoveFinalizers(ctx, r.Client, secret, r.finalizerName())
+	return utils.NiceRemoveFinalizers(ctx, r.Client, secret, r.finalizerName())
 }
 
 func (r *Reconciler) finalizerName() string {
@@ -276,7 +276,7 @@ func (r *Reconciler) checkChangedSecretRef(ctx context.Context, provider *v1alph
 	if secret == nil {
 		return nil
 	}
-	return controllerutils.RemoveFinalizers(ctx, r.Client, secret, dns.FinalizerCompound)
+	return utils.NiceRemoveFinalizers(ctx, r.Client, secret, dns.FinalizerCompound)
 }
 
 func getSpecSecret(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) (*corev1.Secret, error) {
