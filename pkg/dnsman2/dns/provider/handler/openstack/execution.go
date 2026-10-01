@@ -6,6 +6,7 @@ package openstack
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -16,6 +17,10 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 )
+
+// errRecordSetNotFound is returned by lookupRecordSetID when no matching record set exists in the zone.
+// It is a sentinel so callers can distinguish a clean "not found" from a genuine API lookup error.
+var errRecordSetNotFound = errors.New("record set not found")
 
 type execution struct {
 	log     logr.Logger
@@ -107,7 +112,7 @@ func (exec *execution) lookupRecordSetID(ctx context.Context, rset *recordsets.R
 		return "", fmt.Errorf("RecordSet lookup for %s %s failed with: %s", rset.Type, rset.Name, err)
 	}
 	if recordSetID == "" {
-		return "", fmt.Errorf("RecordSet %s %s not found for update", rset.Type, rset.Name)
+		return "", fmt.Errorf("RecordSet %s %s: %w", rset.Type, rset.Name, errRecordSetNotFound)
 	}
 	return recordSetID, nil
 }
@@ -116,6 +121,12 @@ func (exec *execution) update(ctx context.Context, rs *recordsets.RecordSet) err
 	exec.logAction(rs.Name, "update", rs)
 
 	recordSetID, err := exec.lookupRecordSetID(ctx, rs)
+	if errors.Is(err, errRecordSetNotFound) {
+		// The desired-state computation may mark a record as "existing" based on a wildcard-synthesized
+		// DNS answer (e.g. a `*.zone` record answering for a sibling name). Designate has no explicit
+		// record set to update in that case, so reconcile the desired state by creating it instead.
+		return exec.create(ctx, rs)
+	}
 	if err != nil {
 		return err
 	}
@@ -133,6 +144,10 @@ func (exec *execution) delete(ctx context.Context, rs *recordsets.RecordSet) err
 	exec.logAction(rs.Name, "delete", rs)
 
 	recordSetID, err := exec.lookupRecordSetID(ctx, rs)
+	if errors.Is(err, errRecordSetNotFound) {
+		// Nothing to delete: the record set is already absent, which satisfies the delete intent.
+		return nil
+	}
 	if err != nil {
 		return err
 	}
