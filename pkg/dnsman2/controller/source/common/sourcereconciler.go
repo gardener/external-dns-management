@@ -26,6 +26,7 @@ import (
 	dnsv1alpha1 "github.com/gardener/external-dns-management/pkg/apis/dns/v1alpha1"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 // SourceReconciler is base for source reconcilers.
@@ -92,7 +93,7 @@ func (r *SourceReconciler[SourceObject]) DoReconcile(ctx context.Context, obj cl
 			return reconcile.Result{}, fmt.Errorf("failed to add finalizer from %s %s: %w", r.GVK.Kind, obj.GetName(), err)
 		}
 	} else {
-		if err := controllerutils.RemoveFinalizers(ctx, r.Client, obj, r.FinalizerName); err != nil {
+		if err := utils.NiceRemoveFinalizers(ctx, r.Client, obj, r.FinalizerName); err != nil {
 			return reconcile.Result{}, fmt.Errorf("failed to remove finalizer from %s %s: %w", r.GVK.Kind, obj.GetName(), err)
 		}
 	}
@@ -150,7 +151,7 @@ func (r *SourceReconciler[SourceObject]) DoDelete(ctx context.Context, obj clien
 		return reconcile.Result{}, err
 	}
 
-	if err := controllerutils.RemoveFinalizers(ctx, r.Client, obj, r.FinalizerName); err != nil {
+	if err := utils.NiceRemoveFinalizers(ctx, r.Client, obj, r.FinalizerName); err != nil {
 		return reconcile.Result{}, fmt.Errorf("failed to remove finalizer from %s %s: %w", r.GVK.Kind, obj.GetName(), err)
 	}
 
@@ -171,6 +172,60 @@ func (r *SourceReconciler[SourceObject]) getExistingOwnedDNSEntries(ctx context.
 		}
 	}
 	return ownedEntries, nil
+}
+
+// CleanupOrphanOwnedDNSEntries performs a one-shot sweep to remove orphan target DNSEntries whose
+// source object no longer exists (e.g. it was deleted while the controller was down, so the delete
+// event was missed). It lists all relevant target DNSEntries once, groups them by their owning
+// source object, and for every distinct source that no longer exists runs the delete path to clean
+// up its orphan entries. Grouping by source means the cost is one List plus one Get per distinct
+// source, rather than per entry.
+func (r *SourceReconciler[SourceObject]) CleanupOrphanOwnedDNSEntries(ctx context.Context) error {
+	log := logf.FromContext(ctx).WithName(r.actuator.ControllerName()).WithName("orphan-cleanup")
+
+	candidates := &dnsv1alpha1.DNSEntryList{}
+	listOpts := []client.ListOption(nil)
+	if ns := ptr.Deref(r.Config.TargetNamespace, ""); ns != "" {
+		listOpts = append(listOpts, client.InNamespace(ns))
+	}
+	if err := r.ControlPlaneClient.List(ctx, candidates, listOpts...); err != nil {
+		return fmt.Errorf("failed to list target DNSEntries for orphan cleanup: %w", err)
+	}
+
+	entryOwnerData := EntryOwnerData{Config: r.Config, GVK: r.GVK}
+	sourceKeys := map[client.ObjectKey]struct{}{}
+	for i := range candidates.Items {
+		entry := &candidates.Items[i]
+		if !entryOwnerData.IsRelevantEntry(entry) {
+			continue
+		}
+		for _, key := range entryOwnerData.GetOwnerObjectKeys(entry) {
+			sourceKeys[key] = struct{}{}
+		}
+	}
+
+	orphans := 0
+	for key := range sourceKeys {
+		sourceObject := r.actuator.NewSourceObject()
+		if err := r.Client.Get(ctx, key, sourceObject); err != nil {
+			if !apierrors.IsNotFound(err) {
+				return fmt.Errorf("failed to get source %s %s during orphan cleanup: %w", r.GVK.Kind, key, err)
+			}
+			// Source object no longer exists: clean up its orphan target DNSEntries via the delete
+			// path, using a stub owner synthesized from the key (same as Reconcile for a gone source).
+			stub := r.actuator.NewSourceObject()
+			stub.SetNamespace(key.Namespace)
+			stub.SetName(key.Name)
+			r.actuator.OnDelete(key)
+			if _, err := r.DoDelete(ctx, stub); err != nil {
+				return fmt.Errorf("failed to clean up orphan DNSEntries for missing source %s %s: %w", r.GVK.Kind, key, err)
+			}
+			orphans++
+		}
+	}
+
+	log.Info("orphan cleanup sweep completed", "entriesScanned", len(candidates.Items), "distinctSources", len(sourceKeys), "orphanSourcesCleaned", orphans)
+	return nil
 }
 
 // IsOwnedByController checks whether the given DNSEntry is owned by the given owner.

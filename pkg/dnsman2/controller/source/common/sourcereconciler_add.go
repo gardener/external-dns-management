@@ -90,6 +90,14 @@ func (r *SourceReconciler[SourceObject]) AddToManager(
 	if err != nil {
 		return err
 	}
+	// Register a one-shot startup sweep that cleans up orphan target DNSEntries whose source object
+	// no longer exists. This runs once after caches are synced (and only on the elected leader),
+	// avoiding a per-entry reconcile burst on startup.
+	if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+		return r.CleanupOrphanOwnedDNSEntries(ctx)
+	})); err != nil {
+		return err
+	}
 	entryOwnerData := EntryOwnerData{
 		Config: r.Config,
 		GVK:    r.GVK,

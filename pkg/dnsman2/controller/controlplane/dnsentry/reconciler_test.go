@@ -225,7 +225,7 @@ var _ = Describe("Reconcile", func() {
 				},
 			}
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(provider), provider)).To(Succeed())
-			Expect(controllerutils.RemoveFinalizers(ctx, fakeClient, provider, "deletion-marker")).To(Succeed())
+			Expect(utils.NiceRemoveFinalizers(ctx, fakeClient, provider, "deletion-marker")).To(Succeed())
 		}
 		updateProvider = func(name string, included, excluded []string, state string, ptrMockConfig *local.MockConfig) {
 			GinkgoHelper()
