@@ -71,6 +71,8 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 		return fmt.Errorf("namespace must be set for %s controller", ControllerName)
 	}
 	r.MigrationMode = ptr.Deref(cfg.Controllers.DNSProvider.MigrationMode, false)
+	r.OwnerNamespaceRestricted = ptr.Deref(cfg.Controllers.Source.DNSProviderReplication, false) &&
+		ptr.Deref(cfg.Controllers.Source.DNSProviderNamespaceRestriction, false)
 	r.state = state.GetState()
 	log := mgr.GetLogger().WithName(ControllerName)
 	r.failureBackoff = newEntryFailureBackoff(entryFailureBackoffConfig{

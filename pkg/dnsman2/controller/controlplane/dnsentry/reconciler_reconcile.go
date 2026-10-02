@@ -36,6 +36,7 @@ type entryReconciliation struct {
 	common.EntryContext
 	namespace                  string
 	migrationMode              bool
+	ownerNamespaceRestricted   bool
 	state                      *state.State
 	propagationWaitTime        time.Duration
 	lookupProcessor            lookup.LookupProcessor
@@ -124,7 +125,7 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 		return *common.InvalidReconcileResult(fmt.Sprintf("validation failed: %s", err))
 	}
 
-	newProviderData, res := providerselector.CalcNewProvider(r.EntryContext, r.namespace, r.state)
+	newProviderData, res := providerselector.CalcNewProvider(r.EntryContext, r.namespace, r.state, r.ownerNamespaceRestricted)
 	if res != nil {
 		return *res
 	}
