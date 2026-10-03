@@ -7,3 +7,9 @@ aliases:
   external-dns-management-approvers:
   - MartinWeindel
   - marc1404
+  external-dns-management-gdc-maintainers:
+  - AndreasBurger
+  - dilipkumar2k6
+  - HophinKibona
+  - fuzzdota
+  - matthias-horne
