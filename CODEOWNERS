@@ -1,3 +1,8 @@
 # dns-controller-manager maintainers
 *   @mandelsoft
 *   @gardener/external-dns-management-maintainers
+
+# GDC provider maintainers
+/pkg/controller/provider/gdc/           @AndreasBurger @dilipkumar2k6 @HophinKibona @fuzzdota @matthias-horne
+/pkg/dnsman2/dns/provider/handler/gdc/  @AndreasBurger @dilipkumar2k6 @HophinKibona @fuzzdota @matthias-horne
+/docs/gdc-dns/                          @AndreasBurger @dilipkumar2k6 @HophinKibona @fuzzdota @matthias-horne
