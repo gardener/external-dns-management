@@ -140,6 +140,10 @@ integrationtests: $(GINKGO)
 .PHONY: test-integration
 test-integration: new-test-integration integrationtests
 
+.PHONY: test-integration-gdc
+test-integration-gdc:
+	@./hack/ci-gdc-integration-test.sh
+
 .PHONY: docker-images
 docker-images:
 	@docker build -t $(IMAGE_REPOSITORY):$(IMAGE_TAG) -f Dockerfile --target dns-controller-manager .

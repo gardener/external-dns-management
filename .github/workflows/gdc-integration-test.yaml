@@ -1,0 +1,204 @@
+# SPDX-FileCopyrightText: Contributors to the Gardener project
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: GDC Presubmit Integration Test
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - master
+    paths:
+      - 'pkg/controller/provider/gdc/**'
+      - 'pkg/dnsman2/dns/provider/handler/gdc/**'
+      - 'examples/*gdc*'
+      - 'test/integration/gdc/**'
+      - 'hack/ci-gdc-integration-test.sh'
+      - '.github/workflows/gdc-integration-test.yaml'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'Pull Request number to test (optional if git_ref is set)'
+        required: false
+        type: string
+      git_ref:
+        description: 'Git branch or commit SHA to test (defaults to master if pr_number is empty)'
+        required: false
+        default: 'master'
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  authorize:
+    name: Authorize GDC Maintainer
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      authorized: ${{ steps.auth.outputs.authorized }}
+      target_sha: ${{ steps.auth.outputs.target_sha }}
+      base_sha: ${{ steps.auth.outputs.base_sha }}
+      pr_number: ${{ steps.auth.outputs.pr_number }}
+      force_run: ${{ steps.auth.outputs.force_run }}
+    steps:
+      - name: Checkout maintainer files from master
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: master
+          sparse-checkout: |
+            OWNERS
+            OWNERS_ALIASES
+            CODEOWNERS
+
+      - name: Check GDC maintainer authorization and changed files
+        id: auth
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+          ACTOR: ${{ github.actor }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_NUMBER_EVENT: ${{ github.event.pull_request.number }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_GIT_REF: ${{ inputs.git_ref }}
+        run: |
+          set -euo pipefail
+
+          # Only authorize members of the GDC-specific alias in OWNERS_ALIASES on master
+          GDC_MAINTAINERS=$(yq '.aliases["external-dns-management-gdc-maintainers"][]' OWNERS_ALIASES 2>/dev/null || true)
+          APPROVED_LIST=$(printf "%s\n" "${GDC_MAINTAINERS}" | tr '[:upper:]' '[:lower:]' | sort -u | sed '/^$/d')
+
+          is_approved() {
+            local user_lc
+            user_lc=$(echo "$1" | tr '[:upper:]' '[:lower:]')
+            echo "${APPROVED_LIST}" | grep -Fxq "${user_lc}"
+          }
+
+          AUTHORIZED="false"
+          FORCE_RUN="false"
+          TARGET_SHA=""
+          BASE_SHA=""
+          PR_NUM=""
+
+          if [[ "${EVENT_NAME}" == "pull_request" ]]; then
+            PR_NUM="${PR_NUMBER_EVENT}"
+            TARGET_SHA="${PR_HEAD_SHA}"
+            BASE_SHA="${PR_BASE_SHA}"
+            if [[ "${PR_HEAD_REPO}" != "${GITHUB_REPOSITORY}" ]]; then
+              echo "PR is from a fork ('${PR_HEAD_REPO}'). Skipping auto-trigger because secrets are not available on fork pull_request events."
+              echo "A GDC maintainer can trigger the test manually via workflow_dispatch with pr_number=${PR_NUM}."
+            elif is_approved "${PR_AUTHOR}" && is_approved "${ACTOR}"; then
+              echo "PR author '${PR_AUTHOR}' and actor '${ACTOR}' are approved GDC maintainers. Auto-triggering GDC integration test."
+              AUTHORIZED="true"
+            else
+              echo "PR author '${PR_AUTHOR}' is not in external-dns-management-gdc-maintainers in OWNERS_ALIASES. Skipping auto-trigger."
+              echo "A GDC maintainer can trigger the test manually via workflow_dispatch with pr_number=${PR_NUM}."
+            fi
+
+          elif [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            if ! is_approved "${ACTOR}"; then
+              echo "Actor '${ACTOR}' is not an approved GDC maintainer in external-dns-management-gdc-maintainers."
+              exit 1
+            fi
+            FORCE_RUN="true"
+            if [[ -n "${INPUT_PR_NUMBER}" ]]; then
+              PR_NUM="${INPUT_PR_NUMBER}"
+              TARGET_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUM}" --jq '.head.sha')
+              BASE_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUM}" --jq '.base.sha')
+            else
+              TARGET_SHA=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${INPUT_GIT_REF}" --jq '.sha')
+            fi
+            AUTHORIZED="true"
+          fi
+
+          echo "authorized=${AUTHORIZED}" >> "${GITHUB_OUTPUT}"
+          echo "target_sha=${TARGET_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "base_sha=${BASE_SHA}" >> "${GITHUB_OUTPUT}"
+          echo "pr_number=${PR_NUM}" >> "${GITHUB_OUTPUT}"
+          echo "force_run=${FORCE_RUN}" >> "${GITHUB_OUTPUT}"
+
+  integration-test:
+    name: GDC External DNS Management Integration Test (GDC Staging)
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+      statuses: write
+    steps:
+      - name: Set commit status to pending
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_SHA: ${{ needs.authorize.outputs.target_sha }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}" \
+            -f state="pending" \
+            -f context="ci/gdc-integration-test (GDC Staging)" \
+            -f description="Running GDC external-dns-management integration test..." \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      - name: Checkout target commit
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ needs.authorize.outputs.target_sha }}
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@f111f3307d8850f501ac008e886eec1fd1932a34 # v5.3.0
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Log in to ghcr.io
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run GDC Integration Test
+        env:
+          COMMIT_HASH: ${{ needs.authorize.outputs.target_sha }}
+          BASE_REF: ${{ needs.authorize.outputs.base_sha }}
+          FORCE_RUN: ${{ needs.authorize.outputs.force_run }}
+          IMAGE_REPOSITORY: ghcr.io/${{ github.repository }}/dns-controller-manager
+          GDC_SERVICE_ACCOUNT_KEY: ${{ secrets.GDC_SERVICE_ACCOUNT_KEY }}
+        run: |
+          set -o pipefail
+          SHORT_SHA="${COMMIT_HASH:0:7}"
+          if ! COMMIT_HASH="${SHORT_SHA}" make test-integration-gdc 2>&1 | tee /tmp/gdc-integration-test.log; then
+            FAIL_SUMMARY=$(grep -E '(--- FAIL:|FAIL\s|_test\.go:[0-9]+:|Error:|error executing)' /tmp/gdc-integration-test.log | tail -n 45 || tail -n 35 /tmp/gdc-integration-test.log)
+            ENCODED_LOG=$(printf '%s' "${FAIL_SUMMARY}" | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            echo "::error title=GDC Integration Test Failure::${ENCODED_LOG}"
+            exit 1
+          fi
+
+      - name: Update commit status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_SHA: ${{ needs.authorize.outputs.target_sha }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          STATE="failure"
+          DESC="GDC external-dns-management integration test failed."
+          if [[ "${JOB_STATUS}" == "success" ]]; then
+            STATE="success"
+            DESC="GDC external-dns-management integration test passed."
+          elif [[ "${JOB_STATUS}" == "cancelled" ]]; then
+            STATE="error"
+            DESC="GDC external-dns-management integration test was cancelled."
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${TARGET_SHA}" \
+            -f state="${STATE}" \
+            -f context="ci/gdc-integration-test (GDC Staging)" \
+            -f description="${DESC}" \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
