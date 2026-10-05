@@ -16,6 +16,7 @@ import (
 
 	"golang.org/x/oauth2"
 	"k8s.io/client-go/transport"
+	"k8s.io/client-go/util/retry"
 	"k8s.io/utils/clock"
 )
 
@@ -105,34 +106,59 @@ func (ts *stsTokenSource) Token() (*oauth2.Token, error) {
 		return nil, fmt.Errorf("marshal request body: %w", err)
 	}
 
-	body := bytes.NewReader(jsonData)
-	req, err := http.NewRequest("POST", ts.tokenURI, body)
-	if err != nil {
-		return nil, fmt.Errorf("create request: %w", err)
+	hc := &http.Client{
+		Timeout: 30 * time.Second,
 	}
-	req.Header.Set("Content-Type", "application/json")
-
-	hc := &http.Client{}
 
 	if len(ts.caCert) != 0 {
 		caCertPool := x509.NewCertPool()
 		caCertPool.AppendCertsFromPEM(ts.caCert)
 		hc.Transport = &http.Transport{
 			TLSClientConfig: &tls.Config{
-				RootCAs: caCertPool,
+				RootCAs:    caCertPool,
+				MinVersion: tls.VersionTLS12,
 			},
 		}
 	}
 
-	resp, err := hc.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("fetch token: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
+	// Use Kubernetes' standard retry.OnError (retry.DefaultBackoff) to retry
+	// transient network errors, TLS handshake resets, or HTTP 5xx responses when
+	// exchanging tokens against the GDC STS endpoint from external CI runners.
+	var (
+		resp     *http.Response
+		respBody []byte
+	)
+	err = retry.OnError(retry.DefaultBackoff, func(err error) bool {
+		return err != nil
+	}, func() error {
+		req, reqErr := http.NewRequest("POST", ts.tokenURI, bytes.NewReader(jsonData))
+		if reqErr != nil {
+			return fmt.Errorf("create request: %w", reqErr)
+		}
+		req.Header.Set("Content-Type", "application/json")
 
-	respBody, err := io.ReadAll(resp.Body)
+		var doErr error
+		resp, doErr = hc.Do(req)
+		if doErr != nil {
+			return fmt.Errorf("fetch token: %w", doErr)
+		}
+		var readErr error
+		respBody, readErr = io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
+		if readErr != nil {
+			return fmt.Errorf("read fetched token: %w", readErr)
+		}
+		if resp.StatusCode >= http.StatusInternalServerError {
+			// Retry on HTTP 5xx server errors; 4xx client errors do not retry.
+			return &oauth2.RetrieveError{
+				Response: resp,
+				Body:     respBody,
+			}
+		}
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("read fetched token: %w", err)
+		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
