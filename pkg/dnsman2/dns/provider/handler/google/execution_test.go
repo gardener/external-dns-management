@@ -25,6 +25,55 @@ type namedRecordSet struct {
 	rs   *dns.RecordSet
 }
 
+var _ = Describe("isNotFound", func() {
+	It("returns true for a googleapi.Error with code 404", func() {
+		Expect(isNotFound(&googleapi.Error{Code: 404})).To(BeTrue())
+	})
+	It("returns false for a googleapi.Error with code 412", func() {
+		Expect(isNotFound(&googleapi.Error{Code: 412})).To(BeFalse())
+	})
+	It("returns false for a plain error", func() {
+		Expect(isNotFound(fmt.Errorf("not a google api error"))).To(BeFalse())
+	})
+	It("returns false for nil", func() {
+		Expect(isNotFound(nil)).To(BeFalse())
+	})
+})
+
+var _ = Describe("compareRecordSets", func() {
+	It("reports order-only difference for identical rrdatas (no structural mismatch)", func() {
+		rs := &googledns.ResourceRecordSet{Ttl: 300, Rrdatas: []string{"1.1.1.1", "2.2.2.2"}}
+		Expect(compareRecordSets(rs, rs)).To(ContainSubstring("rrdatas match, but order may differ"))
+	})
+	It("detects TTL mismatch", func() {
+		expected := &googledns.ResourceRecordSet{Ttl: 300, Rrdatas: []string{"1.1.1.1"}}
+		actual := &googledns.ResourceRecordSet{Ttl: 600, Rrdatas: []string{"1.1.1.1"}}
+		Expect(compareRecordSets(expected, actual)).To(ContainSubstring("TTL mismatch"))
+	})
+	It("detects extra rrdatas in expected", func() {
+		expected := &googledns.ResourceRecordSet{Ttl: 300, Rrdatas: []string{"1.1.1.1", "3.3.3.3"}}
+		actual := &googledns.ResourceRecordSet{Ttl: 300, Rrdatas: []string{"1.1.1.1"}}
+		Expect(compareRecordSets(expected, actual)).To(ContainSubstring("extra rrdatas in expected"))
+	})
+	It("detects extra rrdatas in actual", func() {
+		expected := &googledns.ResourceRecordSet{Ttl: 300, Rrdatas: []string{"1.1.1.1"}}
+		actual := &googledns.ResourceRecordSet{Ttl: 300, Rrdatas: []string{"1.1.1.1", "3.3.3.3"}}
+		Expect(compareRecordSets(expected, actual)).To(ContainSubstring("extra rrdatas in actual"))
+	})
+	It("reports order-only difference when rrdatas match as sets", func() {
+		expected := &googledns.ResourceRecordSet{Ttl: 300, Rrdatas: []string{"2.2.2.2", "1.1.1.1"}}
+		actual := &googledns.ResourceRecordSet{Ttl: 300, Rrdatas: []string{"1.1.1.1", "2.2.2.2"}}
+		Expect(compareRecordSets(expected, actual)).To(ContainSubstring("rrdatas match, but order may differ"))
+	})
+	It("reports both TTL mismatch and rrdata differences", func() {
+		expected := &googledns.ResourceRecordSet{Ttl: 300, Rrdatas: []string{"1.1.1.1", "3.3.3.3"}}
+		actual := &googledns.ResourceRecordSet{Ttl: 600, Rrdatas: []string{"1.1.1.1"}}
+		msg := compareRecordSets(expected, actual)
+		Expect(msg).To(ContainSubstring("TTL mismatch"))
+		Expect(msg).To(ContainSubstring("extra rrdatas in expected"))
+	})
+})
+
 var _ = Describe("execution", func() {
 	var (
 		nameFunc = func(element any) string {
