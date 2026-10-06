@@ -180,6 +180,23 @@ spec:
   - 22.22.22.22
 `
 
+// wildcardSubdomainEntryTemplate defines a DNS A record for a subdomain that is covered by the
+// existing wildcard entry (`*.<prefix>wildcard.<domain>`). It is applied only for the
+// next-generation controller to cover the scenario from
+// https://github.com/gardener/external-dns-management/pull/1105.
+var wildcardSubdomainEntryTemplate = `
+apiVersion: dns.gardener.cloud/v1alpha1
+kind: DNSEntry
+metadata:
+  name: {{.Prefix}}wildcard-sub
+  namespace: {{.Namespace}}
+spec:
+  dnsName: sub.{{.Prefix}}wildcard.{{.Domain}}
+  ttl: {{.TTL}}
+  targets:
+  - 55.55.55.55
+`
+
 func init() {
 	addProviderTests(functestBasics)
 }
@@ -349,6 +366,52 @@ func functestBasics(cfg *config.Config, p *config.ProviderConfig) {
 					}),
 				}),
 			}))
+
+			if cfg.Nextgen {
+				// Scenario from https://github.com/gardener/external-dns-management/pull/1105:
+				// the wildcard entry `*.<prefix>wildcard.<domain>` already exists and is Ready.
+				// Creating a subdomain A record covered by that wildcard used to fail in the
+				// next-generation controller, because the authoritative server synthesizes an
+				// answer for the subdomain from the wildcard, which the controller mistook for an
+				// existing explicit record and tried to update ("not found for update"). The
+				// bug and its fix only exist in the next-generation controller.
+				By("creates a subdomain record covered by an existing wildcard record", func() {
+					tmplSub, err := template.New("Manifest").Parse(wildcardSubdomainEntryTemplate)
+					Ω(err).ShouldNot(HaveOccurred())
+					manifestSub, err := p.CreateTempManifest(basePath, "basics-wildcard-sub", tmplSub)
+					Ω(err).ShouldNot(HaveOccurred())
+					defer p.DeleteTempManifest(manifestSub)
+
+					subEntry := entryName(p, "wildcard-sub")
+
+					err = u.KubectlApply(manifestSub)
+					Ω(err).ShouldNot(HaveOccurred())
+					defer func() {
+						err = u.KubectlDelete(manifestSub)
+						Ω(err).ShouldNot(HaveOccurred())
+						err = u.AwaitDNSEntriesDeleted(subEntry)
+						Ω(err).ShouldNot(HaveOccurred())
+					}()
+					err = u.AwaitDNSEntriesReady(subEntry)
+					Ω(err).ShouldNot(HaveOccurred())
+
+					subItemMap, err := u.KubectlGetAllDNSEntries()
+					Ω(err).ShouldNot(HaveOccurred())
+					Ω(subItemMap).Should(MatchKeys(IgnoreExtras, Keys{
+						subEntry: MatchKeys(IgnoreExtras, Keys{
+							"spec": MatchKeys(IgnoreExtras, Keys{
+								"dnsName": Equal("sub." + dnsName(p, "wildcard")),
+								"targets": And(HaveLen(1), ContainElement("55.55.55.55")),
+							}),
+							"status": MatchKeys(IgnoreExtras, Keys{
+								"state":   Equal("Ready"),
+								"ttl":     Equal(float64(ttl)),
+								"targets": And(HaveLen(1), ContainElement("55.55.55.55")),
+							}),
+						}),
+					}))
+				})
+			}
 
 			if p.AliasTarget != "" {
 				By("handles AliasTarget", func() {

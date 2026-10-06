@@ -22,6 +22,7 @@ var (
 	namespace      = "default"
 	dnsServer      = ""
 	dnsLookup      = true
+	nextgen        = false
 )
 
 func init() {
@@ -32,7 +33,7 @@ func init() {
 
 	value := os.Getenv("DNS_LOOKUP")
 	if value != "" {
-		dnsLookup = strings.ToLower(value) == "true"
+		dnsLookup, _ = strconv.ParseBool(value)
 	}
 
 	value = os.Getenv("DNS_SERVER")
@@ -49,6 +50,11 @@ func init() {
 	if value != "" {
 		configFilename = value
 	}
+
+	value = os.Getenv("FUNCTEST_NEXTGEN")
+	if value != "" {
+		nextgen, _ = strconv.ParseBool(value)
+	}
 }
 
 func PrintConfigEnv() {
@@ -57,6 +63,7 @@ func PrintConfigEnv() {
 	fmt.Printf("DNS_LOOKUP=%t\n", dnsLookup)
 	fmt.Printf("DNS_SERVER=%s\n", dnsServer)
 	fmt.Printf("NAMESPACE=%s\n", namespace)
+	fmt.Printf("FUNCTEST_NEXTGEN=%t\n", nextgen)
 }
 
 type ProviderConfig struct {
@@ -90,6 +97,7 @@ type Config struct {
 	KubeConfig string
 	Namespace  string
 	DNSLookup  bool
+	Nextgen    bool
 	Utils      *TestUtils
 }
 
@@ -100,6 +108,7 @@ func InitConfig() *Config {
 	}
 	cfg.Namespace = namespace
 	cfg.DNSLookup = dnsLookup
+	cfg.Nextgen = nextgen
 	cfg.KubeConfig = kubeconfig
 	return cfg
 }

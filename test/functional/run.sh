@@ -195,7 +195,7 @@ else
   echo dns-controller-manager must be started with arguments: '--controllers=dnscontrollers'
 fi
 
-FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER ginkgo -v -p "$@"
+FUNCTEST_CONFIG=$FUNCTEST_CONFIG DNS_LOOKUP=$DNS_LOOKUP DNS_SERVER=$DNS_SERVER FUNCTEST_NEXTGEN=$NEXTGEN ginkgo -v -p "$@"
 
 RETCODE=$?
 
