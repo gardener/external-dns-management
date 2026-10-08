@@ -1,0 +1,89 @@
+name: Renovate Post-Upgrade Tasks
+
+on:
+  pull_request:
+    branches:
+      - master
+      - 'release-v*'
+
+permissions:
+  contents: read
+
+jobs:
+  post-upgrade-tasks:
+    name: Run Post-Upgrade Tasks
+    # Only run for Renovate PRs originating from a branch in this repository.
+    if: >-
+      github.repository == 'gardener/external-dns-management' &&
+      startsWith(github.head_ref, 'renovate/') &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      has-changes: ${{ steps.diff.outputs.has-changes }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          persist-credentials: false
+          # Full history is required to diff against the PR base commit.
+          fetch-depth: 0
+      - name: Set up Go
+        uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Run post-upgrade tasks
+        run: |
+          set -euo pipefail
+          export PATH="${PATH}:$(go env GOROOT)/bin"
+          make tidy
+          make generate MODE=sequential
+      - name: Capture changes
+        id: diff
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "has-changes=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "has-changes=true" >> "${GITHUB_OUTPUT}"
+            git diff --cached --binary > "${RUNNER_TEMP}/post-upgrade.patch"
+          fi
+      - name: Upload patch
+        if: steps.diff.outputs.has-changes == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: post-upgrade-changes
+          path: ${{ runner.temp }}/post-upgrade.patch
+          retention-days: 1
+
+  commit:
+    name: Commit Changes
+    needs: post-upgrade-tasks
+    if: needs.post-upgrade-tasks.outputs.has-changes == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      - name: Set up git identity
+        uses: gardener/cc-utils/.github/actions/setup-git-identity@v1
+      - name: Download patch
+        uses: actions/download-artifact@v8
+        with:
+          name: post-upgrade-changes
+          path: ${{ runner.temp }}
+      - name: Apply patch and push
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          git apply --3way --whitespace=nowarn "${RUNNER_TEMP}/post-upgrade.patch"
+          git add -A
+          git commit -m "Run make tidy and make generate"
+          git push origin "HEAD:${HEAD_REF}"
