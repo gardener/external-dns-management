@@ -21,11 +21,39 @@ import (
 )
 
 // DNSHostedZonePolicyInformer provides access to a shared informer and lister for
-// DNSHostedZonePolicies.
+// DNSHostedZonePolicies. Prefer using the type-safe variant (see [TypedDNSHostedZonePolicyInformer]).
 type DNSHostedZonePolicyInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() dnsv1alpha1.DNSHostedZonePolicyLister
 }
+
+// TypedDNSHostedZonePolicyInformer provides access to a shared informer and lister for
+// DNSHostedZonePolicies, including the type-safe TypedInformer variant.
+// It is a superset of DNSHostedZonePolicyInformer.
+type TypedDNSHostedZonePolicyInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() DNSHostedZonePolicyIndexInformer
+	Lister() dnsv1alpha1.DNSHostedZonePolicyLister
+}
+
+// DNSHostedZonePolicyIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type DNSHostedZonePolicyIndexInformer cache.TypedSharedIndexInformer[*apisdnsv1alpha1.DNSHostedZonePolicy]
+
+// DNSHostedZonePolicyHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for DNSHostedZonePolicy.
+type DNSHostedZonePolicyHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisdnsv1alpha1.DNSHostedZonePolicy]
+
+// DNSHostedZonePolicyDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for DNSHostedZonePolicy.
+type DNSHostedZonePolicyDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisdnsv1alpha1.DNSHostedZonePolicy]
+
+// DNSHostedZonePolicyFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for DNSHostedZonePolicy.
+type DNSHostedZonePolicyFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisdnsv1alpha1.DNSHostedZonePolicy]
+
+// DNSHostedZonePolicyIndexers is a specialization of [cache.TypedIndexers] for DNSHostedZonePolicy.
+type DNSHostedZonePolicyIndexers = cache.TypedIndexers[*apisdnsv1alpha1.DNSHostedZonePolicy]
+
+// DeletedDNSHostedZonePolicy is a specialization of [cache.DeletedObject] for DNSHostedZonePolicy.
+type DeletedDNSHostedZonePolicy = cache.DeletedObject[*apisdnsv1alpha1.DNSHostedZonePolicy]
 
 type dNSHostedZonePolicyInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -36,25 +64,49 @@ type dNSHostedZonePolicyInformer struct {
 // NewDNSHostedZonePolicyInformer constructs a new informer for DNSHostedZonePolicy type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDNSHostedZonePolicyInformer]).
 func NewDNSHostedZonePolicyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewDNSHostedZonePolicyInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedDNSHostedZonePolicyInformer constructs a new informer for DNSHostedZonePolicy type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDNSHostedZonePolicyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers DNSHostedZonePolicyIndexers) DNSHostedZonePolicyIndexInformer {
+	return NewTypedDNSHostedZonePolicyInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredDNSHostedZonePolicyInformer constructs a new informer for DNSHostedZonePolicy type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredDNSHostedZonePolicyInformer]).
 func NewFilteredDNSHostedZonePolicyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewDNSHostedZonePolicyInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedDNSHostedZonePolicyInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredDNSHostedZonePolicyInformer constructs a new informer for DNSHostedZonePolicy type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredDNSHostedZonePolicyInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers DNSHostedZonePolicyIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) DNSHostedZonePolicyIndexInformer {
+	return NewTypedDNSHostedZonePolicyInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewDNSHostedZonePolicyInformerWithOptions constructs a new informer for DNSHostedZonePolicy type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDNSHostedZonePolicyInformerWithOptions]).
 func NewDNSHostedZonePolicyInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedDNSHostedZonePolicyInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedDNSHostedZonePolicyInformerWithOptions constructs a new informer for DNSHostedZonePolicy type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDNSHostedZonePolicyInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) DNSHostedZonePolicyIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "dns.gardener.cloud", Version: "v1alpha1", Resource: "dnshostedzonepolicys"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSHostedZonePolicy](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -87,17 +139,57 @@ func NewDNSHostedZonePolicyInformerWithOptions(client versioned.Interface, names
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *dNSHostedZonePolicyInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewDNSHostedZonePolicyInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedDNSHostedZonePolicyInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *dNSHostedZonePolicyInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisdnsv1alpha1.DNSHostedZonePolicy{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *dNSHostedZonePolicyInformer) TypedInformer() DNSHostedZonePolicyIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSHostedZonePolicy](f.factory.InformerFor(&apisdnsv1alpha1.DNSHostedZonePolicy{}, f.defaultInformer))
 }
 
 func (f *dNSHostedZonePolicyInformer) Lister() dnsv1alpha1.DNSHostedZonePolicyLister {
 	return dnsv1alpha1.NewDNSHostedZonePolicyLister(f.Informer().GetIndexer())
+}
+
+// ToTypedDNSHostedZonePolicyInformer converts an untyped informer into a TypedDNSHostedZonePolicyInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DNSHostedZonePolicy. If that is not the case, calling type-safe methods of the returned
+// TypedDNSHostedZonePolicyInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedDNSHostedZonePolicyInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedDNSHostedZonePolicyInformer(informer DNSHostedZonePolicyInformer) TypedDNSHostedZonePolicyInformer {
+	if informer, ok := informer.(TypedDNSHostedZonePolicyInformer); ok {
+		return informer
+	}
+	return &dNSHostedZonePolicyTypedInformerAdapter{informer}
+}
+
+type dNSHostedZonePolicyTypedInformerAdapter struct {
+	DNSHostedZonePolicyInformer
+}
+
+func (a *dNSHostedZonePolicyTypedInformerAdapter) TypedInformer() DNSHostedZonePolicyIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSHostedZonePolicy](a.Informer())
+}
+
+// ToDNSHostedZonePolicyIndexInformer converts an untyped informer into a DNSHostedZonePolicyIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DNSHostedZonePolicy. If that is not the case, calling type-safe methods of the returned
+// DNSHostedZonePolicyIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a DNSHostedZonePolicyIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToDNSHostedZonePolicyIndexInformer(informer cache.SharedIndexInformer) DNSHostedZonePolicyIndexInformer {
+	if informer, ok := informer.(DNSHostedZonePolicyIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSHostedZonePolicy](informer)
 }

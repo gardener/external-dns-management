@@ -21,11 +21,39 @@ import (
 )
 
 // DNSProviderInformer provides access to a shared informer and lister for
-// DNSProviders.
+// DNSProviders. Prefer using the type-safe variant (see [TypedDNSProviderInformer]).
 type DNSProviderInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() dnsv1alpha1.DNSProviderLister
 }
+
+// TypedDNSProviderInformer provides access to a shared informer and lister for
+// DNSProviders, including the type-safe TypedInformer variant.
+// It is a superset of DNSProviderInformer.
+type TypedDNSProviderInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() DNSProviderIndexInformer
+	Lister() dnsv1alpha1.DNSProviderLister
+}
+
+// DNSProviderIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type DNSProviderIndexInformer cache.TypedSharedIndexInformer[*apisdnsv1alpha1.DNSProvider]
+
+// DNSProviderHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for DNSProvider.
+type DNSProviderHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisdnsv1alpha1.DNSProvider]
+
+// DNSProviderDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for DNSProvider.
+type DNSProviderDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisdnsv1alpha1.DNSProvider]
+
+// DNSProviderFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for DNSProvider.
+type DNSProviderFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisdnsv1alpha1.DNSProvider]
+
+// DNSProviderIndexers is a specialization of [cache.TypedIndexers] for DNSProvider.
+type DNSProviderIndexers = cache.TypedIndexers[*apisdnsv1alpha1.DNSProvider]
+
+// DeletedDNSProvider is a specialization of [cache.DeletedObject] for DNSProvider.
+type DeletedDNSProvider = cache.DeletedObject[*apisdnsv1alpha1.DNSProvider]
 
 type dNSProviderInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -36,25 +64,49 @@ type dNSProviderInformer struct {
 // NewDNSProviderInformer constructs a new informer for DNSProvider type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDNSProviderInformer]).
 func NewDNSProviderInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewDNSProviderInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedDNSProviderInformer constructs a new informer for DNSProvider type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDNSProviderInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers DNSProviderIndexers) DNSProviderIndexInformer {
+	return NewTypedDNSProviderInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredDNSProviderInformer constructs a new informer for DNSProvider type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredDNSProviderInformer]).
 func NewFilteredDNSProviderInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewDNSProviderInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedDNSProviderInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredDNSProviderInformer constructs a new informer for DNSProvider type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredDNSProviderInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers DNSProviderIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) DNSProviderIndexInformer {
+	return NewTypedDNSProviderInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewDNSProviderInformerWithOptions constructs a new informer for DNSProvider type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDNSProviderInformerWithOptions]).
 func NewDNSProviderInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedDNSProviderInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedDNSProviderInformerWithOptions constructs a new informer for DNSProvider type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDNSProviderInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) DNSProviderIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "dns.gardener.cloud", Version: "v1alpha1", Resource: "dnsproviders"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSProvider](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -87,17 +139,57 @@ func NewDNSProviderInformerWithOptions(client versioned.Interface, namespace str
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *dNSProviderInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewDNSProviderInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedDNSProviderInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *dNSProviderInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisdnsv1alpha1.DNSProvider{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *dNSProviderInformer) TypedInformer() DNSProviderIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSProvider](f.factory.InformerFor(&apisdnsv1alpha1.DNSProvider{}, f.defaultInformer))
 }
 
 func (f *dNSProviderInformer) Lister() dnsv1alpha1.DNSProviderLister {
 	return dnsv1alpha1.NewDNSProviderLister(f.Informer().GetIndexer())
+}
+
+// ToTypedDNSProviderInformer converts an untyped informer into a TypedDNSProviderInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DNSProvider. If that is not the case, calling type-safe methods of the returned
+// TypedDNSProviderInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedDNSProviderInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedDNSProviderInformer(informer DNSProviderInformer) TypedDNSProviderInformer {
+	if informer, ok := informer.(TypedDNSProviderInformer); ok {
+		return informer
+	}
+	return &dNSProviderTypedInformerAdapter{informer}
+}
+
+type dNSProviderTypedInformerAdapter struct {
+	DNSProviderInformer
+}
+
+func (a *dNSProviderTypedInformerAdapter) TypedInformer() DNSProviderIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSProvider](a.Informer())
+}
+
+// ToDNSProviderIndexInformer converts an untyped informer into a DNSProviderIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DNSProvider. If that is not the case, calling type-safe methods of the returned
+// DNSProviderIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a DNSProviderIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToDNSProviderIndexInformer(informer cache.SharedIndexInformer) DNSProviderIndexInformer {
+	if informer, ok := informer.(DNSProviderIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSProvider](informer)
 }

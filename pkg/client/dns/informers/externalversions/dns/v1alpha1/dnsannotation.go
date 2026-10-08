@@ -21,11 +21,39 @@ import (
 )
 
 // DNSAnnotationInformer provides access to a shared informer and lister for
-// DNSAnnotations.
+// DNSAnnotations. Prefer using the type-safe variant (see [TypedDNSAnnotationInformer]).
 type DNSAnnotationInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() dnsv1alpha1.DNSAnnotationLister
 }
+
+// TypedDNSAnnotationInformer provides access to a shared informer and lister for
+// DNSAnnotations, including the type-safe TypedInformer variant.
+// It is a superset of DNSAnnotationInformer.
+type TypedDNSAnnotationInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() DNSAnnotationIndexInformer
+	Lister() dnsv1alpha1.DNSAnnotationLister
+}
+
+// DNSAnnotationIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type DNSAnnotationIndexInformer cache.TypedSharedIndexInformer[*apisdnsv1alpha1.DNSAnnotation]
+
+// DNSAnnotationHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for DNSAnnotation.
+type DNSAnnotationHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apisdnsv1alpha1.DNSAnnotation]
+
+// DNSAnnotationDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for DNSAnnotation.
+type DNSAnnotationDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apisdnsv1alpha1.DNSAnnotation]
+
+// DNSAnnotationFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for DNSAnnotation.
+type DNSAnnotationFilteringHandler = cache.TypedFilteringResourceEventHandler[*apisdnsv1alpha1.DNSAnnotation]
+
+// DNSAnnotationIndexers is a specialization of [cache.TypedIndexers] for DNSAnnotation.
+type DNSAnnotationIndexers = cache.TypedIndexers[*apisdnsv1alpha1.DNSAnnotation]
+
+// DeletedDNSAnnotation is a specialization of [cache.DeletedObject] for DNSAnnotation.
+type DeletedDNSAnnotation = cache.DeletedObject[*apisdnsv1alpha1.DNSAnnotation]
 
 type dNSAnnotationInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -36,25 +64,49 @@ type dNSAnnotationInformer struct {
 // NewDNSAnnotationInformer constructs a new informer for DNSAnnotation type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDNSAnnotationInformer]).
 func NewDNSAnnotationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewDNSAnnotationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedDNSAnnotationInformer constructs a new informer for DNSAnnotation type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDNSAnnotationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers DNSAnnotationIndexers) DNSAnnotationIndexInformer {
+	return NewTypedDNSAnnotationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredDNSAnnotationInformer constructs a new informer for DNSAnnotation type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredDNSAnnotationInformer]).
 func NewFilteredDNSAnnotationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewDNSAnnotationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedDNSAnnotationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredDNSAnnotationInformer constructs a new informer for DNSAnnotation type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredDNSAnnotationInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers DNSAnnotationIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) DNSAnnotationIndexInformer {
+	return NewTypedDNSAnnotationInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewDNSAnnotationInformerWithOptions constructs a new informer for DNSAnnotation type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedDNSAnnotationInformerWithOptions]).
 func NewDNSAnnotationInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedDNSAnnotationInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedDNSAnnotationInformerWithOptions constructs a new informer for DNSAnnotation type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedDNSAnnotationInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) DNSAnnotationIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "dns.gardener.cloud", Version: "v1alpha1", Resource: "dnsannotations"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSAnnotation](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -87,17 +139,57 @@ func NewDNSAnnotationInformerWithOptions(client versioned.Interface, namespace s
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *dNSAnnotationInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewDNSAnnotationInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedDNSAnnotationInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *dNSAnnotationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apisdnsv1alpha1.DNSAnnotation{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *dNSAnnotationInformer) TypedInformer() DNSAnnotationIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSAnnotation](f.factory.InformerFor(&apisdnsv1alpha1.DNSAnnotation{}, f.defaultInformer))
 }
 
 func (f *dNSAnnotationInformer) Lister() dnsv1alpha1.DNSAnnotationLister {
 	return dnsv1alpha1.NewDNSAnnotationLister(f.Informer().GetIndexer())
+}
+
+// ToTypedDNSAnnotationInformer converts an untyped informer into a TypedDNSAnnotationInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DNSAnnotation. If that is not the case, calling type-safe methods of the returned
+// TypedDNSAnnotationInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedDNSAnnotationInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedDNSAnnotationInformer(informer DNSAnnotationInformer) TypedDNSAnnotationInformer {
+	if informer, ok := informer.(TypedDNSAnnotationInformer); ok {
+		return informer
+	}
+	return &dNSAnnotationTypedInformerAdapter{informer}
+}
+
+type dNSAnnotationTypedInformerAdapter struct {
+	DNSAnnotationInformer
+}
+
+func (a *dNSAnnotationTypedInformerAdapter) TypedInformer() DNSAnnotationIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSAnnotation](a.Informer())
+}
+
+// ToDNSAnnotationIndexInformer converts an untyped informer into a DNSAnnotationIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *DNSAnnotation. If that is not the case, calling type-safe methods of the returned
+// DNSAnnotationIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a DNSAnnotationIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToDNSAnnotationIndexInformer(informer cache.SharedIndexInformer) DNSAnnotationIndexInformer {
+	if informer, ok := informer.(DNSAnnotationIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apisdnsv1alpha1.DNSAnnotation](informer)
 }
