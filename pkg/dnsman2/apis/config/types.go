@@ -227,4 +227,8 @@ type SourceControllerConfig struct {
 	SourceClusterID *string
 	// DNSProviderReplication indicates whether DNSProvider replication from source to target cluster is enabled.
 	DNSProviderReplication *bool
+	// DNSProviderNamespaceRestriction restricts replicated shoot DNSProviders so that they can only be used by
+	// source resources (e.g. DNSEntries, Services) in the same namespace where the original shoot DNSProvider was defined.
+	// Only effective when DNSProviderReplication is enabled.
+	DNSProviderNamespaceRestriction *bool
 }

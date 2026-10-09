@@ -6,13 +6,14 @@ package dnsprovider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -201,25 +202,44 @@ func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 	if sourceProvider.Spec.SecretRef == nil {
 		return nil, nil
 	}
+	var namespaceRestrictionErr error
+	if ptr.Deref(r.Config.DNSProviderNamespaceRestriction, false) {
+		if ref := sourceProvider.Spec.SecretRef; ref != nil && ref.Namespace != "" && ref.Namespace != sourceProvider.Namespace {
+			namespaceRestrictionErr = fmt.Errorf("namespace %s is not allowed in DNS provider %s as namespace restriction is enabled", ref.Namespace, client.ObjectKeyFromObject(sourceProvider))
+		}
+	}
+
 	sourceSecret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      sourceProvider.Spec.SecretRef.Name,
 			Namespace: getSecretRefNamespace(sourceProvider),
 		},
 	}
+	secretExists := true
 	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(sourceSecret), sourceSecret); err != nil {
-		if errors.IsNotFound(err) {
+		if !apierrors.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get secret %s for source DNSProvider %s: %w", client.ObjectKeyFromObject(sourceSecret), client.ObjectKeyFromObject(sourceProvider), err)
+		}
+		// Even if the referenced secret does not exist, a cross-namespace reference must still be
+		// rejected when namespace restriction is enabled, so that the violation is reported instead
+		// of being silently skipped.
+		if namespaceRestrictionErr == nil {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("failed to get secret %s for source DNSProvider %s: %w", client.ObjectKeyFromObject(sourceSecret), client.ObjectKeyFromObject(sourceProvider), err)
+		secretExists = false
 	}
 
-	props := utils.NewPropertiesFromSecretData(sourceSecret.Data)
 	var annotations map[string]string
-	adapter, validationErr := r.DNSHandlerFactory.GetDNSHandlerAdapter(sourceProvider.Spec.Type)
-	if validationErr == nil {
-		validationErr = adapter.ValidateCredentialsAndProviderConfig(props, sourceProvider.Spec.ProviderConfig)
+	validationErr := namespaceRestrictionErr
+	if secretExists {
+		props := utils.NewPropertiesFromSecretData(sourceSecret.Data)
+		adapter, err := r.DNSHandlerFactory.GetDNSHandlerAdapter(sourceProvider.Spec.Type)
+		if err == nil {
+			err = adapter.ValidateCredentialsAndProviderConfig(props, sourceProvider.Spec.ProviderConfig)
+		}
+		validationErr = errors.Join(err, namespaceRestrictionErr)
 	}
+
 	sourceSecretData := sourceSecret.Data
 	if validationErr != nil {
 		// If validation fails, we store the error in the secret annotations.
