@@ -1,3 +1,15 @@
 # dns-controller-manager maintainers
 *   @mandelsoft
 *   @gardener/external-dns-management-maintainers
+
+# GDC provider maintainers
+# TODO: Replace individual GitHub handles with @gardener/gdc-maintainers once all GDC
+# maintainers are members of the team and the team is granted write access to this
+# repository in gardener/org (GitHub CODEOWNERS does not support Prow OWNERS_ALIASES).
+/.github/workflows/gdc-integration-test.yaml  @AndreasBurger @dilipkumar2k6 @HophinKibona @fuzzdota @matthias-horne
+/docs/gdc-dns/                                @AndreasBurger @dilipkumar2k6 @HophinKibona @fuzzdota @matthias-horne
+/hack/ci-gdc-common.sh                        @AndreasBurger @dilipkumar2k6 @HophinKibona @fuzzdota @matthias-horne
+/hack/ci-gdc-integration-test.sh              @AndreasBurger @dilipkumar2k6 @HophinKibona @fuzzdota @matthias-horne
+/pkg/controller/provider/gdc/                 @AndreasBurger @dilipkumar2k6 @HophinKibona @fuzzdota @matthias-horne
+/pkg/dnsman2/dns/provider/handler/gdc/        @AndreasBurger @dilipkumar2k6 @HophinKibona @fuzzdota @matthias-horne
+/test/integration/gdc/                        @AndreasBurger @dilipkumar2k6 @HophinKibona @fuzzdota @matthias-horne
