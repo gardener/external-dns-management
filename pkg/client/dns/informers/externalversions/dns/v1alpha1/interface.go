@@ -12,13 +12,13 @@ import (
 // Interface provides access to all the informers in this group version.
 type Interface interface {
 	// DNSAnnotations returns a DNSAnnotationInformer.
-	DNSAnnotations() DNSAnnotationInformer
+	DNSAnnotations() TypedDNSAnnotationInformer
 	// DNSEntries returns a DNSEntryInformer.
-	DNSEntries() DNSEntryInformer
+	DNSEntries() TypedDNSEntryInformer
 	// DNSHostedZonePolicies returns a DNSHostedZonePolicyInformer.
-	DNSHostedZonePolicies() DNSHostedZonePolicyInformer
+	DNSHostedZonePolicies() TypedDNSHostedZonePolicyInformer
 	// DNSProviders returns a DNSProviderInformer.
-	DNSProviders() DNSProviderInformer
+	DNSProviders() TypedDNSProviderInformer
 }
 
 type version struct {
@@ -32,22 +32,22 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// DNSAnnotations returns a DNSAnnotationInformer.
-func (v *version) DNSAnnotations() DNSAnnotationInformer {
+// DNSAnnotations returns a TypedDNSAnnotationInformer.
+func (v *version) DNSAnnotations() TypedDNSAnnotationInformer {
 	return &dNSAnnotationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// DNSEntries returns a DNSEntryInformer.
-func (v *version) DNSEntries() DNSEntryInformer {
+// DNSEntries returns a TypedDNSEntryInformer.
+func (v *version) DNSEntries() TypedDNSEntryInformer {
 	return &dNSEntryInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// DNSHostedZonePolicies returns a DNSHostedZonePolicyInformer.
-func (v *version) DNSHostedZonePolicies() DNSHostedZonePolicyInformer {
+// DNSHostedZonePolicies returns a TypedDNSHostedZonePolicyInformer.
+func (v *version) DNSHostedZonePolicies() TypedDNSHostedZonePolicyInformer {
 	return &dNSHostedZonePolicyInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
-// DNSProviders returns a DNSProviderInformer.
-func (v *version) DNSProviders() DNSProviderInformer {
+// DNSProviders returns a TypedDNSProviderInformer.
+func (v *version) DNSProviders() TypedDNSProviderInformer {
 	return &dNSProviderInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
