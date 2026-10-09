@@ -157,7 +157,11 @@ func (r *Reconciler) cleanupOrphanTargetProviders(ctx context.Context) error {
 	providerOwnerData := common.EntryOwnerData{Config: r.Config, GVK: r.GVK}
 	sourceKeys := map[client.ObjectKey]struct{}{}
 	for i := range candidates.Items {
-		for _, key := range providerOwnerData.GetOwnerObjectKeys(&candidates.Items[i]) {
+		provider := &candidates.Items[i]
+		if !dns.EquivalentClass(provider.Annotations[dns.AnnotationClass], r.TargetClass) {
+			continue
+		}
+		for _, key := range providerOwnerData.GetOwnerObjectKeys(provider) {
 			sourceKeys[key] = struct{}{}
 		}
 	}
