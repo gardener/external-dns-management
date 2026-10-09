@@ -81,7 +81,7 @@ func addFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSPr
 }
 
 func removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DNSProvider) error {
-	if err := controllerutils.RemoveFinalizers(ctx, c, provider, dns.FinalizerReplication); err != nil {
+	if err := utils.NiceRemoveFinalizers(ctx, c, provider, dns.FinalizerReplication); err != nil {
 		return err
 	}
 	if provider.Spec.SecretRef == nil {
@@ -95,7 +95,7 @@ func removeFinalizer(ctx context.Context, c client.Client, provider *v1alpha1.DN
 		}
 		return fmt.Errorf("error retrieving secret %s/%s: %w", getSecretRefNamespace(provider), provider.Spec.SecretRef.Name, err)
 	}
-	return controllerutils.RemoveFinalizers(ctx, c, secret, dns.FinalizerReplication)
+	return utils.NiceRemoveFinalizers(ctx, c, secret, dns.FinalizerReplication)
 }
 
 func (r *Reconciler) updateStatusInvalid(ctx context.Context, provider *v1alpha1.DNSProvider, msg string, codes ...gardencorev1beta1.ErrorCode) error {
