@@ -155,3 +155,17 @@ func CanonicalHostedZones() map[string]string {
 		//"execute-api.us-gov-west-1.amazonaws.com":  "Z1K6XKP9SAGWDV",
 	}
 }
+
+// DisabledCanonicalHostedZones listed the disabled canonical hosted zones
+func DisabledCanonicalHostedZones() map[string]string {
+	return map[string]string{
+		"us-gov-west-1.elb.amazonaws.com":         "Z33AYJ8TM3BH4J",
+		"us-gov-east-1.elb.amazonaws.com":         "Z166TLBEWOO7G0",
+		"elb.us-gov-west-1.amazonaws.com":         "ZMG1MZ2THAWF1",
+		"elb.us-gov-east-1.amazonaws.com":         "Z1ZSMQQ6Q24QQ8",
+		"us-gov-east-1.vpce.amazonaws.com":        "Z2MU5TEIGO9WXB",
+		"us-gov-west-1.vpce.amazonaws.com":        "Z12529ZODG2B6H",
+		"execute-api.us-gov-east-1.amazonaws.com": "Z3SE9ATJYCRCZJ",
+		"execute-api.us-gov-west-1.amazonaws.com": "Z1K6XKP9SAGWDV",
+	}
+}

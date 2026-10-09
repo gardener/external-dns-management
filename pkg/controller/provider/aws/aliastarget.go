@@ -38,7 +38,7 @@ func buildRecordSetFromAliasTarget(r route53types.ResourceRecordSet) *dns.Record
 
 // buildResourceRecordSetForAliasTarget transforms a ALIAS_A or ALIAS_AAAA dns.RecordSet to a route53 resource record set.
 // Otherwise returns nil.
-func buildResourceRecordSetForAliasTarget(ctx context.Context, name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) (*route53types.ResourceRecordSet, error) {
+func buildResourceRecordSetForAliasTarget(ctx context.Context, name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet, deleting bool) (*route53types.ResourceRecordSet, error) {
 	var rtype route53types.RRType
 	switch rset.Type {
 	case dns.RS_ALIAS_A:
@@ -51,6 +51,9 @@ func buildResourceRecordSetForAliasTarget(ctx context.Context, name dns.DNSSetNa
 
 	target := dns.NormalizeHostname(rset.Records[0].Value)
 	hostedZone := mapping.CanonicalHostedZone(target)
+	if hostedZone == "" && deleting {
+		hostedZone = mapping.DisabledCanonicalHostedZone(target)
+	}
 	if hostedZone == "" {
 		return nil, fmt.Errorf("corrupted alias record set")
 	}
