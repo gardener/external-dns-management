@@ -196,6 +196,9 @@ func (h *handler) queryDNS(_ context.Context, zone dns.ZoneInfo, setName dns.DNS
 	}
 	r, err := h.getResourceRecordSet(projectID, zoneName, dns.EnsureTrailingDot(setName.DNSName), string(recordType))
 	if err != nil {
+		if isNotFound(err) {
+			return nil, nil
+		}
 		return nil, err
 	}
 

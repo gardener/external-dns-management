@@ -137,10 +137,10 @@ func (ex *execution) submitChanges(metrics provider.Metrics) error {
 	metrics.AddZoneRequests(ex.zoneID.ID, provider.MetricsRequestTypeUpdateRecords, 1)
 	ex.handler.config.RateLimiter.Accept()
 	if _, err := ex.handler.service.Changes.Create(projectID, zoneName, ex.change).Do(); err != nil {
-		if apiErr, ok := err.(*googleapi.Error); ok && apiErr.Code == 412 {
-			// Check if the order of the records is the problem
-			// Background: The record order for A and AAAA records is not guaranteed for DNS queries.
-			// Most DNS servers, including authoritative ones, may randomize or rotate the order for load balancing or other reasons.
+		if apiErr, ok := err.(*googleapi.Error); ok && (apiErr.Code == 412 || apiErr.Code == 404) {
+			// 412: deletion record set doesn't match the live record (e.g. A/AAAA rdata order differs due to DNS load balancing).
+			// 404: deletion target doesn't exist (e.g. a wildcard synthesized a match that has no real record set).
+			// In both cases, re-fetch the actual record sets and retry with their current state.
 			err = ex.retryDeletionWithActualRecords(err, projectID, zoneName)
 		}
 		if err != nil {
@@ -176,6 +176,9 @@ func (ex *execution) retryDeletionWithActualRecords(oldErr error, projectID, zon
 		newDeletions = append(newDeletions, realRS)
 	}
 	ex.change.Deletions = newDeletions
+	if len(ex.change.Additions) == 0 && len(ex.change.Deletions) == 0 {
+		return nil
+	}
 	_, err := ex.handler.service.Changes.Create(projectID, zoneName, ex.change).Do()
 	return err
 }
