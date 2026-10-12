@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Package gdc_test contains the integration test suite for the GDC DNS provider.
 package gdc_test
 
 import (
