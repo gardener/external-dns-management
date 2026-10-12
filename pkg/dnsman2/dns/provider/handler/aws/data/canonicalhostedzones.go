@@ -156,7 +156,7 @@ func CanonicalHostedZones() map[string]string {
 	}
 }
 
-// DisabledCanonicalHostedZones listed the disabled canonical hosted zones
+// DisabledCanonicalHostedZones lists the disabled canonical hosted zones.
 func DisabledCanonicalHostedZones() map[string]string {
 	return map[string]string{
 		"us-gov-west-1.elb.amazonaws.com":         "Z33AYJ8TM3BH4J",
