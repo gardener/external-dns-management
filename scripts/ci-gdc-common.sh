@@ -18,13 +18,11 @@ check_ci_preconditions() {
     export CI_TEE_PID
   fi
 
-  # For pull_request events, only run automatically on same-repository PRs
-  # authored by a non-bot repository collaborator or Gardener organization member.
-  # Exiting with code 1 when skipped ensures the required status check blocks
-  # merging until a maintainer manually triggers workflow_dispatch with pr_number.
-  if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" && -f "${GITHUB_EVENT_PATH:-}" ]]; then
-    local head_repo author_association pr_user pr_number
-    head_repo=$(jq -r '.pull_request.head.repo.full_name // empty' "${GITHUB_EVENT_PATH}")
+  # For pull_request and pull_request_target events, verify the PR author is a
+  # trusted collaborator/member or listed in OWNERS_ALIASES before checking out
+  # and running PR code.
+  if [[ ( "${GITHUB_EVENT_NAME:-}" == "pull_request" || "${GITHUB_EVENT_NAME:-}" == "pull_request_target" ) && -f "${GITHUB_EVENT_PATH:-}" ]]; then
+    local author_association pr_user pr_number
     author_association=$(jq -r '.pull_request.author_association // empty' "${GITHUB_EVENT_PATH}")
     pr_user=$(jq -r '.pull_request.user.login // empty' "${GITHUB_EVENT_PATH}")
     pr_number=$(jq -r '.pull_request.number // empty' "${GITHUB_EVENT_PATH}")
@@ -35,25 +33,35 @@ check_ci_preconditions() {
       exit 1
     fi
 
-    if [[ "${head_repo}" != "${GITHUB_REPOSITORY:-}" ]]; then
-      echo "Skipping automatic integration test for forked PR (${head_repo})."
-      echo "A maintainer must trigger this test manually via workflow_dispatch with pr_number=${pr_number}."
-      if ! gh api "repos/${GITHUB_REPOSITORY}/contents/.github/workflows/gdc-integration-test.yaml" >/dev/null 2>&1; then
-        echo "Workflow .github/workflows/gdc-integration-test.yaml is not yet on the default branch of ${GITHUB_REPOSITORY}; skipping until merged."
-        exit 0
+    local is_trusted_author=false
+    case "${author_association}" in
+      COLLABORATOR|MEMBER|OWNER)
+        is_trusted_author=true
+        ;;
+    esac
+
+    if [[ "${is_trusted_author}" != "true" && -f "OWNERS_ALIASES" ]]; then
+      if grep -qE "^[[:space:]]*-[[:space:]]*${pr_user}[[:space:]]*$" OWNERS_ALIASES; then
+        is_trusted_author=true
       fi
+    fi
+
+    if [[ "${is_trusted_author}" != "true" ]]; then
+      echo "Skipping automatic integration test for untrusted author '${pr_user}' (author_association='${author_association}')."
+      echo "A maintainer must trigger this test manually via workflow_dispatch with pr_number=${pr_number}."
       exit 1
     fi
 
-    case "${author_association}" in
-      COLLABORATOR|MEMBER|OWNER)
-        ;;
-      *)
-        echo "Skipping automatic integration test for untrusted author_association '${author_association}'."
-        echo "A maintainer must trigger this test manually via workflow_dispatch with pr_number=${pr_number}."
-        exit 1
-        ;;
-    esac
+    if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request_target" && -n "${pr_number}" ]]; then
+      PR_NUMBER="${pr_number}"
+      export PR_NUMBER
+      echo "Fetching and checking out PR #${PR_NUMBER}..."
+      git fetch origin "pull/${PR_NUMBER}/head:pr-${PR_NUMBER}"
+      git checkout "pr-${PR_NUMBER}"
+      PR_HEAD_SHA="$(git rev-parse HEAD)"
+      export PR_HEAD_SHA
+      start_pr_check_run "${CHECK_NAME:-GDC External DNS Management Integration Test (GDC Staging)}"
+    fi
   fi
 
   # When triggered manually via workflow_dispatch with a pr_number input,
@@ -69,7 +77,7 @@ check_ci_preconditions() {
 }
 
 # start_pr_check_run creates an in_progress GitHub Check Run on PR_HEAD_SHA when
-# triggered via workflow_dispatch so the manual run satisfies required status checks on the PR.
+# triggered via pull_request_target or workflow_dispatch so the run reports status on the PR commit.
 start_pr_check_run() {
   local check_name="$1"
   if [[ -z "${PR_HEAD_SHA:-}" || -z "${GH_TOKEN:-}" || -z "${GITHUB_REPOSITORY:-}" ]]; then
@@ -83,17 +91,19 @@ start_pr_check_run() {
     -f head_sha="${PR_HEAD_SHA}" \
     -f status="in_progress" \
     -f details_url="${run_url}" \
-    -f "output[title]=Running via manual workflow_dispatch" \
-    -f "output[summary]=Triggered manually by @${GITHUB_ACTOR:-maintainer} for PR #${PR_NUMBER} (${run_url})." \
+    -f "output[title]=Running GDC integration test" \
+    -f "output[summary]=Triggered via ${GITHUB_EVENT_NAME:-workflow} by @${GITHUB_ACTOR:-maintainer} for PR #${PR_NUMBER} (${run_url})." \
     --jq '.id' 2>/dev/null || true)
   export PR_CHECK_RUN_ID
 }
 
 # complete_pr_check_run emits a GitHub Actions failure annotation (if non-zero)
-# and updates the manual check-run on PR_HEAD_SHA with the final conclusion.
+# and updates the check-run on PR_HEAD_SHA with the final conclusion.
 complete_pr_check_run() {
   local exit_code="$1"
-  if [[ -n "${PR_CHECK_RUN_ID:-}" && -n "${GH_TOKEN:-}" && -n "${GITHUB_REPOSITORY:-}" ]]; then
+  if [[ -n "${PR_CHECK_RUN_ID:-}" && -n "${GH_TOKEN:-}" && -z "${PR_CHECK_RUN_COMPLETED:-}" && -n "${GITHUB_REPOSITORY:-}" ]]; then
+    PR_CHECK_RUN_COMPLETED=true
+    export PR_CHECK_RUN_COMPLETED
     local conclusion="failure"
     local title="Integration test failed"
     if [[ "${exit_code}" -eq 0 ]]; then
@@ -108,7 +118,7 @@ complete_pr_check_run() {
       -f conclusion="${conclusion}" \
       -f details_url="${run_url}" \
       -f "output[title]=${title}" \
-      -f "output[summary]=Manual workflow_dispatch run completed with ${conclusion} (${run_url})." >/dev/null 2>&1 || \
+      -f "output[summary]=GDC integration test run completed with ${conclusion} (${run_url})." >/dev/null 2>&1 || \
       echo "Warning: Failed to update check-run ${PR_CHECK_RUN_ID} on PR #${PR_NUMBER}."
   fi
 
