@@ -23,6 +23,16 @@ func CanonicalHostedZone(hostname string) string {
 	return ""
 }
 
+// DisabledCanonicalHostedZone returns the matching disabled canonical zone for a given hostname.
+func DisabledCanonicalHostedZone(hostname string) string {
+	for suffix, zone := range data.DisabledCanonicalHostedZones() {
+		if strings.HasSuffix(hostname, suffix) {
+			return zone
+		}
+	}
+	return ""
+}
+
 // MapTargets maps CNAME records to A/AAAA records for hosted zones used for AWS load balancers.
 func MapTargets(targets []dnsutils.Target) []dnsutils.Target {
 	mapped := make([]dnsutils.Target, 0, len(targets)+1)

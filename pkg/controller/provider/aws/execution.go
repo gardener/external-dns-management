@@ -61,8 +61,8 @@ func NewExecution(logger logger.LogContext, h *Handler, zone provider.DNSHostedZ
 	}
 }
 
-func buildResourceRecordSet(ctx context.Context, name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) (*route53types.ResourceRecordSet, error) {
-	if rrs, err := buildResourceRecordSetForAliasTarget(ctx, name, policy, policyContext, rset); rrs != nil || err != nil {
+func buildResourceRecordSet(ctx context.Context, name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet, deleting bool) (*route53types.ResourceRecordSet, error) {
+	if rrs, err := buildResourceRecordSetForAliasTarget(ctx, name, policy, policyContext, rset, deleting); rrs != nil || err != nil {
 		return rrs, err
 	}
 	rrs := &route53types.ResourceRecordSet{}
@@ -95,7 +95,7 @@ func (this *Execution) addChange(ctx context.Context, action route53types.Change
 	} else if req.Deletion != nil {
 		policy = req.Deletion.RoutingPolicy
 	}
-	rrs, err := buildResourceRecordSet(ctx, name, policy, this.policyContext, rset)
+	rrs, err := buildResourceRecordSet(ctx, name, policy, this.policyContext, rset, action == route53types.ChangeActionDelete)
 	if err != nil {
 		this.Errorf("addChange failed for %s[%s]: %s", name, this.zone.Id(), err)
 		return err

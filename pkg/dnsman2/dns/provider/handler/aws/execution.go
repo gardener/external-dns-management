@@ -49,8 +49,8 @@ func newExecution(log logr.Logger, h *handler, zoneID dns.ZoneID) *execution {
 	}
 }
 
-func buildResourceRecordSet(ctx context.Context, name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet) (*route53types.ResourceRecordSet, error) {
-	if rrs, err := buildResourceRecordSetForAliasTarget(ctx, name, policy, policyContext, rset); rrs != nil || err != nil {
+func buildResourceRecordSet(ctx context.Context, name dns.DNSSetName, policy *dns.RoutingPolicy, policyContext *routingPolicyContext, rset *dns.RecordSet, deleting bool) (*route53types.ResourceRecordSet, error) {
+	if rrs, err := buildResourceRecordSetForAliasTarget(ctx, name, policy, policyContext, rset, deleting); rrs != nil || err != nil {
 		return rrs, err
 	}
 	rrs := &route53types.ResourceRecordSet{}
@@ -78,7 +78,7 @@ func (ex *execution) addChange(ctx context.Context, action route53types.ChangeAc
 
 	ex.log.Info(fmt.Sprintf("%s %s record set %s: %s(%d)", action, rs.Type, name, rs.RecordString(), rs.TTL), "zoneID", ex.zoneID)
 
-	rrs, err := buildResourceRecordSet(ctx, name, rs.RoutingPolicy, ex.policyContext, rs)
+	rrs, err := buildResourceRecordSet(ctx, name, rs.RoutingPolicy, ex.policyContext, rs, action == route53types.ChangeActionDelete)
 	if err != nil {
 		ex.log.Error(err, "addChange failed", "name", name, "zoneID", ex.zoneID)
 		return err
