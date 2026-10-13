@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Package auth provides Security Token Service (STS) authentication utilities for GDC.
 package auth
 
 import (
