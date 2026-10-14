@@ -23,7 +23,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     GOOS=$TARGETOS GOARCH=$TARGETARCH make release
 
 ############# base
-FROM gcr.io/distroless/static-debian13:nonroot AS base
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3 AS base
 WORKDIR /
 USER nonroot:nonroot
 
