@@ -1,3 +1,4 @@
+# Example DNSProvider manifest for Google Distributed Cloud (GDC) air-gapped DNS (gdch-dns).
 apiVersion: dns.gardener.cloud/v1alpha1
 kind: DNSProvider
 metadata:
@@ -9,5 +10,5 @@ spec:
     name: gdc-credentials
   domains:
     include:
-    # this must be a (sub)domain of the hosted zone
+    # this must be a (sub)domain of the GDC ManagedDNSZone
     - mydns.org-1.zone1.google.gdc.test

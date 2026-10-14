@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Package gdc implements the dnsman2 provider handler for Google Distributed Cloud (GDC) air-gapped DNS.
 package gdc
 
 import (
