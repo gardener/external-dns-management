@@ -69,7 +69,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 }
 
 func newHttpClient(insecureSkipVerify bool, trustedCaCert string) *http.Client {
-	httpClient := http.DefaultClient
+	httpClient := &http.Client{}
 
 	if insecureSkipVerify {
 		httpClient.Transport = &http.Transport{
