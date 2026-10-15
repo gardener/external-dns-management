@@ -13,12 +13,9 @@ is_authorized_maintainer() {
     return 1
   fi
 
-  if [[ "${actor}" == *"[bot]" || "${actor}" == *"-robot" ]]; then
-    return 1
-  fi
-
-  local actor_lc owners_list="" owners_ref="HEAD"
+  local actor_lc actor_base_lc owners_list="" owners_ref="HEAD"
   actor_lc=$(printf '%s' "${actor}" | tr '[:upper:]' '[:lower:]')
+  actor_base_lc="${actor_lc%\[bot\]}"
   if git rev-parse --verify origin/master >/dev/null 2>&1; then
     owners_ref="origin/master"
   fi
@@ -41,8 +38,13 @@ is_authorized_maintainer() {
     owners_list+=$(printf '%s\n' "${codeowners_content}" | grep -v '^#' | grep -oE '@[A-Za-z0-9_-]+' | tr -d '@' || true)
   fi
 
-  if printf '%s\n' "${owners_list}" | tr '[:upper:]' '[:lower:]' | grep -Fxq "${actor_lc}"; then
+  if printf '%s\n' "${owners_list}" | tr '[:upper:]' '[:lower:]' | grep -Fxq "${actor_lc}" || \
+     printf '%s\n' "${owners_list}" | tr '[:upper:]' '[:lower:]' | sed 's/\[bot\]$//' | grep -Fxq "${actor_base_lc}"; then
     return 0
+  fi
+
+  if [[ "${actor}" == *"[bot]" || "${actor}" == *"-robot" ]]; then
+    return 1
   fi
 
   return 1
@@ -159,6 +161,10 @@ should_skip_non_code_changes() {
     git fetch origin master >/dev/null 2>&1 || true
   fi
 
+  if [[ -n "${PR_NUMBER:-}" ]] && ! git cat-file -e "${pr_head_sha}^{commit}" 2>/dev/null; then
+    git fetch origin "pull/${PR_NUMBER}/head" >/dev/null 2>&1 || true
+  fi
+
   local pr_files
   pr_files=$(git diff --name-only "origin/master...${pr_head_sha}" 2>/dev/null || git diff --name-only "origin/master" "${pr_head_sha}" 2>/dev/null || true)
   if [[ -n "${pr_files}" ]]; then
@@ -200,12 +206,6 @@ check_ci_preconditions() {
     pr_number=$(jq -r '.pull_request.number // empty' "${GITHUB_EVENT_PATH}")
     PR_NUMBER="${pr_number}"
     export PR_NUMBER
-
-    if [[ "${GITHUB_ACTOR:-}" == *"[bot]" || "${GITHUB_ACTOR:-}" == *"-robot" || "${pr_user}" == *"[bot]" || "${pr_user}" == *"-robot" ]]; then
-      echo "Skipping automatic integration test for automated bot account (${pr_user:-${GITHUB_ACTOR}})."
-      echo "A maintainer must trigger this test manually by commenting '/test-gdc-integration' on the PR or via workflow_dispatch with pr_number=${pr_number}."
-      exit 1
-    fi
 
     if ! is_authorized_maintainer "${pr_user}"; then
       echo "Skipping automatic integration test for untrusted author '${pr_user}' (author_association='${author_association}')."
