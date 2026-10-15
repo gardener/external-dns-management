@@ -35,6 +35,7 @@ require (
 	github.com/joeig/go-powerdns/v3 v3.23.0
 	github.com/miekg/dns v1.1.73
 	github.com/netlify/open-api v1.4.0
+	github.com/netlify/open-api/v2 v2.60.0
 	github.com/onsi/ginkgo/v2 v2.33.0
 	github.com/onsi/gomega v1.44.0
 	github.com/prometheus/client_golang v1.24.1
