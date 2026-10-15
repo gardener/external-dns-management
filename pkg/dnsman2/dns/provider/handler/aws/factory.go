@@ -58,12 +58,14 @@ var (
 )
 
 func newAdapter() provider.DNSHandlerAdapter {
+	// A parse error is treated as disabled (fail closed); NewHandler surfaces it to the operator.
+	allowChain, _ := allowCredentialsChain()
 	checks := provider.NewDNSHandlerAdapterChecks()
 	disjunctSets := [][]string{
 		{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
 		{securityv1alpha1constants.DataKeyToken, securityv1alpha1constants.DataKeyConfig, securityv1alpha1constants.LabelWorkloadIdentityProvider},
 	}
-	if allowCredentialsChain() {
+	if allowChain {
 		disjunctSets = append(disjunctSets, []string{"AWS_USE_CREDENTIALS_CHAIN"})
 	}
 	checks.SetDisjunctPropertySets(disjunctSets...)
@@ -75,8 +77,12 @@ func newAdapter() provider.DNSHandlerAdapter {
 	checks.Add(provider.OptionalProperty("AWS_REGION", "region").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.MaxLengthValidator(32), provider.RegExValidator(regionRegex)).
 		AllowEmptyValue())
-	checks.Add(provider.OptionalProperty("AWS_USE_CREDENTIALS_CHAIN").
-		Validators(provider.NoTrailingWhitespaceValidator, provider.BoolValidator))
+	// Only register (= allow) AWS_USE_CREDENTIALS_CHAIN when the operator enabled it; otherwise the
+	// property is rejected as not allowed, so validation fails up front instead of only at handler creation.
+	if allowChain {
+		checks.Add(provider.OptionalProperty("AWS_USE_CREDENTIALS_CHAIN").
+			Validators(provider.NoTrailingWhitespaceValidator, provider.BoolValidator))
+	}
 	checks.Add(provider.OptionalProperty("AWS_SESSION_TOKEN", "sessionToken").
 		Validators(provider.MaxLengthValidator(8192)). // AWS does not specify a maximum size for session tokens. Therefore, the typical maximum length of HTTP headers is used.
 		HideValue())

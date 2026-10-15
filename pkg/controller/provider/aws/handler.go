@@ -112,7 +112,11 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		token := c.GetProperty("AWS_SESSION_TOKEN", "sessionToken")
 		configOptions = append(configOptions, v2config.WithCredentialsProvider(aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token))))
 	default:
-		if !config.AllowCredentialsChain() {
+		allowChain, err := config.AllowCredentialsChain()
+		if err != nil {
+			return nil, err
+		}
+		if !allowChain {
 			return nil, fmt.Errorf("AWS_USE_CREDENTIALS_CHAIN is not allowed: set the %s environment variable on the controller to enable it", config.EnvAllowCredentialsChain)
 		}
 		if c.GetProperty("AWS_ACCESS_KEY_ID", "accessKeyID") != "" {

@@ -5,8 +5,10 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 type AWSConfig struct {
@@ -19,7 +21,16 @@ type AWSConfig struct {
 const EnvAllowCredentialsChain = "ALLOW_AWS_CREDENTIALS_CHAIN"
 
 // AllowCredentialsChain reports whether using AWS_USE_CREDENTIALS_CHAIN in provider secrets is enabled.
-func AllowCredentialsChain() bool {
-	b, _ := strconv.ParseBool(os.Getenv(EnvAllowCredentialsChain))
-	return b
+// It returns an error for a non-empty but unparseable value so the operator gets a signal instead of
+// the gate silently staying closed.
+func AllowCredentialsChain() (bool, error) {
+	value := strings.TrimSpace(os.Getenv(EnvAllowCredentialsChain))
+	if value == "" {
+		return false, nil
+	}
+	b, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("invalid value %q for %s: %w", value, EnvAllowCredentialsChain, err)
+	}
+	return b, nil
 }

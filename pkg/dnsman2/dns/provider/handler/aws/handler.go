@@ -124,7 +124,11 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 		token := c.GetProperty("AWS_SESSION_TOKEN", "sessionToken")
 		configOptions = append(configOptions, v2config.WithCredentialsProvider(aws.NewCredentialsCache(credentials.NewStaticCredentialsProvider(accessKeyID, secretAccessKey, token))))
 	default:
-		if !allowCredentialsChain() {
+		allowChain, err := allowCredentialsChain()
+		if err != nil {
+			return nil, err
+		}
+		if !allowChain {
 			return nil, fmt.Errorf("AWS_USE_CREDENTIALS_CHAIN is not allowed: set the %s environment variable on the controller to enable it", envAllowCredentialsChain)
 		}
 		if c.GetProperty("AWS_ACCESS_KEY_ID", "accessKeyID") != "" {
@@ -153,9 +157,18 @@ func (h *handler) Release() {
 const envAllowCredentialsChain = "ALLOW_AWS_CREDENTIALS_CHAIN"
 
 // allowCredentialsChain reports whether using AWS_USE_CREDENTIALS_CHAIN in provider secrets is enabled.
-func allowCredentialsChain() bool {
-	b, _ := strconv.ParseBool(os.Getenv(envAllowCredentialsChain))
-	return b
+// It returns an error for a non-empty but unparseable value so the operator gets a signal instead of
+// the gate silently staying closed.
+func allowCredentialsChain() (bool, error) {
+	value := strings.TrimSpace(os.Getenv(envAllowCredentialsChain))
+	if value == "" {
+		return false, nil
+	}
+	b, err := strconv.ParseBool(value)
+	if err != nil {
+		return false, fmt.Errorf("invalid value %q for %s: %w", value, envAllowCredentialsChain, err)
+	}
+	return b, nil
 }
 
 func (h *handler) getAdvancedOptions() config.AdvancedOptions {
