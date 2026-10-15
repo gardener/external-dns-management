@@ -59,9 +59,14 @@ var (
 
 func newAdapter() provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
-	checks.SetDisjunctPropertySets([]string{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
-		[]string{"AWS_USE_CREDENTIALS_CHAIN"},
-		[]string{securityv1alpha1constants.DataKeyToken, securityv1alpha1constants.DataKeyConfig, securityv1alpha1constants.LabelWorkloadIdentityProvider})
+	disjunctSets := [][]string{
+		{"AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"},
+		{securityv1alpha1constants.DataKeyToken, securityv1alpha1constants.DataKeyConfig, securityv1alpha1constants.LabelWorkloadIdentityProvider},
+	}
+	if allowCredentialsChain() {
+		disjunctSets = append(disjunctSets, []string{"AWS_USE_CREDENTIALS_CHAIN"})
+	}
+	checks.SetDisjunctPropertySets(disjunctSets...)
 	checks.Add(provider.OptionalProperty("AWS_ACCESS_KEY_ID", "accessKeyID").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.AlphaNumericValidator, provider.MaxLengthValidator(128)))
 	checks.Add(provider.OptionalProperty("AWS_SECRET_ACCESS_KEY", "secretAccessKey").

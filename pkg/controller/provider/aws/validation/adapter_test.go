@@ -103,7 +103,18 @@ var _ = Describe("Adapter", func() {
 		})
 
 		Context("credentials chain", func() {
-			It("should accept credentials chain", func() {
+			It("should reject credentials chain when not enabled by the operator", func() {
+				props := utils.Properties{
+					"AWS_USE_CREDENTIALS_CHAIN": "true",
+				}
+
+				Expect(adapter.ValidateCredentialsAndProviderConfig(props, nil)).To(HaveOccurred())
+			})
+
+			It("should accept credentials chain when enabled by the operator", func() {
+				GinkgoT().Setenv(config.EnvAllowCredentialsChain, "true")
+				adapter = NewAdapter() // re-create: opt-in is read at construction time
+
 				props := utils.Properties{
 					"AWS_USE_CREDENTIALS_CHAIN": "true",
 				}

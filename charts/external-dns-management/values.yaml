@@ -9,6 +9,10 @@ image:
   pullPolicy: IfNotPresent
 
 env: []
+# Set ALLOW_AWS_CREDENTIALS_CHAIN=true to permit aws-route53 providers using AWS_USE_CREDENTIALS_CHAIN.
+#env:
+#- name: ALLOW_AWS_CREDENTIALS_CHAIN
+#  value: "true"
 
 livenessProbe:
   initialDelaySeconds: 30

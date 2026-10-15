@@ -93,6 +93,11 @@ Alternatively the credentials can be provided externally, i.e. by using the
 chain of credential providers to search for credentials in environment
 variables, shared credential file, and EC2 Instance Roles.
 
+> [!NOTE]
+> This mode is only accepted when the operator has set the environment
+> variable `ALLOW_AWS_CREDENTIALS_CHAIN=true` on the dns-controller-manager.
+> Without it, a provider using `AWS_USE_CREDENTIALS_CHAIN` is rejected.
+
 In this case create a `Secret` with the data field `AWS_USE_CREDENTIALS_CHAIN` and set the value to 
 `true` (encoded as base64). Typical examples are usage of an AWS Web Identity provider or
 [IAM role assigned to the service account](https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html).
