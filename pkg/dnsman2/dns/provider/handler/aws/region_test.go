@@ -37,4 +37,25 @@ var _ = Describe("region defaulting for workload identity", func() {
 		Expect(ok).To(BeTrue())
 		Expect(client.Options().Region).To(Equal("us-gov-west-1"))
 	})
+
+	It("should use the China region for a role in the aws-cn partition", func() {
+		GinkgoT().Setenv("AWS_REGION", "")
+		cfg := &provider.DNSHandlerConfig{
+			Log: logr.Discard(),
+			Properties: utils.Properties{
+				securityv1alpha1constants.LabelWorkloadIdentityProvider: "aws",
+				securityv1alpha1constants.DataKeyToken:                  "token",
+			},
+			Config: &runtime.RawExtension{Raw: []byte(`{}`)},
+		}
+		cfg.Properties[securityv1alpha1constants.DataKeyConfig] = "apiVersion: aws.provider.extensions.gardener.cloud/v1alpha1\n" +
+			"kind: WorkloadIdentityConfig\n" +
+			"roleARN: arn:aws-cn:iam::123456789012:role/dns\n"
+
+		h, err := NewHandler(cfg)
+		Expect(err).NotTo(HaveOccurred())
+		client, ok := h.(*handler).r53.(*route53.Client)
+		Expect(ok).To(BeTrue())
+		Expect(client.Options().Region).To(Equal("cn-north-1"))
+	})
 })

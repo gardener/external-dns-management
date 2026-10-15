@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
 	v2config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
@@ -67,7 +68,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	if region == "" {
 		region = os.Getenv("AWS_REGION")
 		if region == "" {
-			region = "us-west-2"
+			region = defaultRegion(c)
 		}
 	}
 	c.Logger.Infof("using region %s", region)
@@ -433,6 +434,25 @@ func getRoleARN(c *provider.DNSHandlerConfig) (string, error) {
 		return "", err
 	}
 	return cfg.RoleARN, nil
+}
+
+// defaultRegion returns the region used when none is configured explicitly.
+// A workload identity role in a non-commercial partition must be validated by that partition's STS endpoint,
+// so the region is derived from the role ARN's partition in that case.
+func defaultRegion(c *provider.DNSHandlerConfig) string {
+	if c.GetProperty(securityv1alpha1constants.LabelWorkloadIdentityProvider) == "aws" {
+		if roleARN, err := getRoleARN(c); err == nil {
+			if parsed, err := arn.Parse(roleARN); err == nil {
+				switch parsed.Partition {
+				case "aws-us-gov":
+					return "us-gov-west-1"
+				case "aws-cn":
+					return "cn-north-1"
+				}
+			}
+		}
+	}
+	return "us-west-2"
 }
 
 var (

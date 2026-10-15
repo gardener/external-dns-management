@@ -544,13 +544,18 @@ func getRoleARN(c *provider.DNSHandlerConfig) (string, error) {
 }
 
 // defaultRegion returns the region used when none is configured explicitly.
-// A workload identity role in the aws-us-gov partition must be validated by the GovCloud STS endpoint,
-// so the region is derived from the role ARN in that case.
+// A workload identity role in a non-commercial partition must be validated by that partition's STS endpoint,
+// so the region is derived from the role ARN's partition in that case.
 func defaultRegion(c *provider.DNSHandlerConfig) string {
 	if c.GetProperty(securityv1alpha1constants.LabelWorkloadIdentityProvider) == "aws" {
 		if roleARN, err := getRoleARN(c); err == nil {
-			if parsed, err := arn.Parse(roleARN); err == nil && parsed.Partition == "aws-us-gov" {
-				return "us-gov-west-1"
+			if parsed, err := arn.Parse(roleARN); err == nil {
+				switch parsed.Partition {
+				case "aws-us-gov":
+					return "us-gov-west-1"
+				case "aws-cn":
+					return "cn-north-1"
+				}
 			}
 		}
 	}
