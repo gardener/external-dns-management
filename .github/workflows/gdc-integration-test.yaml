@@ -29,10 +29,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ inputs.pr_number || github.event.issue.number || github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   integration-test:
     name: GDC External DNS Management Integration Test (GDC Staging)
@@ -40,6 +36,9 @@ jobs:
       github.event_name != 'issue_comment' ||
       (github.event.issue.pull_request != null &&
        contains(github.event.comment.body, '/test-gdc-integration'))
+    concurrency:
+      group: ${{ github.workflow }}-${{ inputs.pr_number || github.event.issue.number || github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     environment: gdc-staging
     timeout-minutes: 30
@@ -100,7 +99,6 @@ jobs:
         if: steps.preconditions.outputs.should_run == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ inputs.pr_number }}
           CHECK_NAME: GDC External DNS Management Integration Test (GDC Staging)
           IMAGE_REPOSITORY: ghcr.io/${{ github.repository }}/dns-controller-manager
           GDC_DNS_SERVICE_ACCOUNT_KEY: ${{ secrets.GDC_DNS_SERVICE_ACCOUNT_KEY }}

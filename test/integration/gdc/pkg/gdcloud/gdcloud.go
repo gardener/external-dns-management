@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
+	"time"
 )
 
 var gdcloudLocation = func() string {
@@ -74,21 +76,33 @@ func (c *TestingClient) Exec(args ...string) ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("cannot locate gdcloud binary: %w", err)
 	}
-	cmd := exec.Command(executable, args...) // #nosec G204 -- test helper executing gdcloud CLI
-	// Override HOME and XDG_CONFIG_HOME to guarantee hermetic testing.
-	// This forces gdcloud to write its configuration to our isolated test directory
-	// instead of mutating the global ~/.config/gdcloud state. We override both
-	// because some processes/libraries rigidly default to HOME while others
-	// adhere strictly to XDG_CONFIG_HOME. exec.Cmd automatically uses the
-	// last occurrence of duplicate environment keys.
-	cmd.Env = append(os.Environ(),
-		"HOME="+c.configDir,
-		"XDG_CONFIG_HOME="+c.configDir,
-	)
-
-	result, err := cmd.CombinedOutput()
-	if err != nil {
-		return result, fmt.Errorf("cannot execute gdcloud command: %w", err)
+	maxAttempts := 1
+	if len(args) > 0 && (args[0] == "auth" || args[0] == "clusters") {
+		maxAttempts = 6
 	}
-	return result, nil
+
+	var result []byte
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		cmd := exec.Command(executable, args...) // #nosec G204 -- test helper executing gdcloud CLI
+		// Override HOME and XDG_CONFIG_HOME to guarantee hermetic testing.
+		// This forces gdcloud to write its configuration to our isolated test directory
+		// instead of mutating the global ~/.config/gdcloud state. We override both
+		// because some processes/libraries rigidly default to HOME while others
+		// adhere strictly to XDG_CONFIG_HOME. exec.Cmd automatically uses the
+		// last occurrence of duplicate environment keys.
+		cmd.Env = append(os.Environ(),
+			"HOME="+c.configDir,
+			"XDG_CONFIG_HOME="+c.configDir,
+		)
+
+		result, err = cmd.CombinedOutput()
+		if err == nil {
+			return result, nil
+		}
+		if strings.Contains(string(result), "unknown flag") || attempt == maxAttempts {
+			break
+		}
+		time.Sleep(5 * time.Second)
+	}
+	return result, fmt.Errorf("cannot execute gdcloud command: %w", err)
 }
