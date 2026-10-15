@@ -154,7 +154,7 @@ func (h *handler) Release() {
 // envAllowCredentialsChain is the operator-controlled environment variable that, when set to a
 // truthy value, allows tenant secrets to request AWS_USE_CREDENTIALS_CHAIN. Without it, a tenant
 // could borrow the controller's ambient AWS identity (env/web-identity token/IMDS role).
-const envAllowCredentialsChain = "ALLOW_AWS_CREDENTIALS_CHAIN"
+const envAllowCredentialsChain = "ALLOW_AWS_CREDENTIALS_CHAIN" // #nosec G101 -- false positive
 
 // allowCredentialsChain reports whether using AWS_USE_CREDENTIALS_CHAIN in provider secrets is enabled.
 // It returns an error for a non-empty but unparseable value so the operator gets a signal instead of
