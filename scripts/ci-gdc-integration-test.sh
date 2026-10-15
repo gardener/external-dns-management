@@ -13,6 +13,21 @@ source "${REPO_ROOT}/scripts/ci-gdc-common.sh"
 
 check_ci_preconditions
 
+if [[ -n "${GITHUB_WORKSPACE:-}" ]]; then
+  REPO_ROOT="${GITHUB_WORKSPACE}"
+  cd "${REPO_ROOT}"
+fi
+if [[ -z "${CI_PRECONDITIONS_VERIFIED:-}" ]]; then
+  # Re-source ci-gdc-common.sh after pull_request_target checkout when origin/master
+  # has not yet switched to the staged /tmp/ci-trusted precondition step.
+  # shellcheck source=scripts/ci-gdc-common.sh
+  source "${REPO_ROOT}/scripts/ci-gdc-common.sh"
+  if should_skip_non_code_changes; then
+    complete_pr_check_run 0
+    exit 0
+  fi
+fi
+
 COMMIT_HASH="${COMMIT_HASH:-$(git rev-parse --short HEAD)}"
 ZONE="${GDC_ZONE:-us-west6-a}"
 GDCH_PROJECT="${GDC_PROJECT:-sapbtp}"

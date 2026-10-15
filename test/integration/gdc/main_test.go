@@ -21,8 +21,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
@@ -49,12 +51,13 @@ var (
 	chartPackagePath    string
 	managedDNSZone      string
 	priorityClassName   = "gardener-system-900"
-	dnsDeploymentLabels = map[string]string{"app": "dns-controller-manager"}
+	dnsDeploymentLabels = map[string]string{"app.kubernetes.io/instance": "dns-controller-manager"}
 )
 
 const (
-	// Ready status condition string used by GDC networking CRDs
-	statusReady = "Ready"
+	// Ready and Synced status condition strings used by GDC networking CRDs
+	statusReady  = "Ready"
+	statusSynced = "Synced"
 )
 
 type config struct {
@@ -164,6 +167,14 @@ func setup(ctx context.Context, t *testing.T) *config {
 
 	values := map[string]interface{}{
 		"replicaCount": 0,
+		"vpa": map[string]interface{}{
+			"enabled": false,
+		},
+		"gardener": map[string]interface{}{
+			"seed": map[string]interface{}{
+				"name": "my-seed",
+			},
+		},
 		"dnsControllerManager": map[string]interface{}{
 			"deploy":     true,
 			"createCRDs": true,
@@ -171,13 +182,8 @@ func setup(ctx context.Context, t *testing.T) *config {
 				"repository": imageRepo,
 				"tag":        tag,
 			},
-			"configuration": map[string]interface{}{
-				"controllers":           "gdch-dns,dnssources",
-				"serverPortHttp":        8080,
-				"ttl":                   120,
-				"rescheduleDelay":       "120s",
-				"lockStatusCheckPeriod": "5s",
-				"poolResyncPeriod":      "30s",
+			"vpa": map[string]interface{}{
+				"enabled": false,
 			},
 		},
 	}
@@ -286,11 +292,15 @@ func TestExternalDNSManagement(t *testing.T) {
 	ctx := context.Background()
 	testConfig := setup(ctx, t)
 
-	providerName := "gdc-test-provider"
+	dnsProviderDomain := fmt.Sprintf("mydns-%s.%s", commitHash, testConfig.managedDNSZone)
+	providerName := fmt.Sprintf("dnsprovider-presubmit-%s", commitHash)
 	dnsProvider := &dnsv1alpha1.DNSProvider{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      providerName,
 			Namespace: testConfig.namespace,
+			Annotations: map[string]string{
+				"dns.gardener.cloud/class": "gardendns",
+			},
 		},
 		Spec: dnsv1alpha1.DNSProviderSpec{
 			Type: "gdch-dns",
@@ -299,7 +309,7 @@ func TestExternalDNSManagement(t *testing.T) {
 				Namespace: testConfig.namespace,
 			},
 			Domains: &dnsv1alpha1.DNSSelection{
-				Include: []string{testConfig.managedDNSZone},
+				Include: []string{dnsProviderDomain},
 			},
 		},
 	}
@@ -312,13 +322,17 @@ func TestExternalDNSManagement(t *testing.T) {
 		t.Logf("Deleting DNSProvider %s", providerName)
 		if err := testConfig.vucClient.Delete(ctx, dnsProvider); err != nil && !apierrors.IsNotFound(err) {
 			t.Errorf("Failed to delete DNSProvider: %v", err)
+			return
+		}
+		if err := waitForResourceDeletion(ctx, testConfig.vucClient, dnsProvider, 2*time.Minute, t); err != nil {
+			t.Errorf("DNSProvider %s was not deleted in time: %v", providerName, err)
 		}
 	})
 
 	t.Logf("Waiting for DNSProvider %s to become Ready", providerName)
 	providerList := &dnsv1alpha1.DNSProviderList{}
 	err := kubernetes.WaitForCondition[*dnsv1alpha1.DNSProvider](
-		ctx, 2*time.Minute,
+		ctx, 4*time.Minute,
 		func() (watch.Interface, error) {
 			return testConfig.vucClient.Watch(ctx, providerList, client.InNamespace(testConfig.namespace), client.MatchingFields{"metadata.name": providerName})
 		},
@@ -347,8 +361,8 @@ func TestExternalDNSManagement(t *testing.T) {
 	}{
 		{
 			name:            "Verify GDC DNSEntry for A-record",
-			entryName:       "test-a-record",
-			dnsName:         fmt.Sprintf("a-record-test.%s", testConfig.managedDNSZone),
+			entryName:       fmt.Sprintf("dnsentry-presubmit-%s", commitHash),
+			dnsName:         fmt.Sprintf("myentry-%s.%s", commitHash, dnsProviderDomain),
 			recordType:      "A",
 			initialTargets:  []string{"1.2.3.4"},
 			expectedInitial: []string{"1.2.3.4"},
@@ -357,8 +371,8 @@ func TestExternalDNSManagement(t *testing.T) {
 		},
 		{
 			name:            "Verify GDC DNSEntry for TXT-record",
-			entryName:       "test-txt-record",
-			dnsName:         fmt.Sprintf("txt-record-test.%s", testConfig.managedDNSZone),
+			entryName:       fmt.Sprintf("txt-dnsentry-presubmit-%s", commitHash),
+			dnsName:         fmt.Sprintf("myentry-txt-%s.%s", commitHash, dnsProviderDomain),
 			recordType:      "TXT",
 			initialText:     []string{"initial-verification-token"},
 			expectedInitial: []string{"\"initial-verification-token\""},
@@ -422,18 +436,7 @@ func verifyDNSEntry(
 			return
 		}
 
-		entryList := &dnsv1alpha1.DNSEntryList{}
-		err := kubernetes.WaitForCondition[*dnsv1alpha1.DNSEntry](
-			ctx, 2*time.Minute,
-			func() (watch.Interface, error) {
-				return testConfig.vucClient.Watch(ctx, entryList, client.InNamespace(testConfig.namespace), client.MatchingFields{"metadata.name": entryName})
-			},
-			func(_ *dnsv1alpha1.DNSEntry) bool {
-				err := testConfig.vucClient.Get(ctx, client.ObjectKey{Namespace: testConfig.namespace, Name: entryName}, &dnsv1alpha1.DNSEntry{})
-				return apierrors.IsNotFound(err)
-			},
-		)
-		if err != nil {
+		if err := waitForResourceDeletion(ctx, testConfig.vucClient, dnsEntry, 2*time.Minute, t); err != nil {
 			t.Errorf("DNSEntry %s was not deleted in time: %v", entryName, err)
 		}
 	})
@@ -441,7 +444,7 @@ func verifyDNSEntry(
 	t.Logf("Waiting for DNSEntry %s to become Ready", entryName)
 	entryList := &dnsv1alpha1.DNSEntryList{}
 	err := kubernetes.WaitForCondition[*dnsv1alpha1.DNSEntry](
-		ctx, 2*time.Minute,
+		ctx, 4*time.Minute,
 		func() (watch.Interface, error) {
 			return testConfig.vucClient.Watch(ctx, entryList, client.InNamespace(testConfig.namespace), client.MatchingFields{"metadata.name": entryName})
 		},
@@ -459,23 +462,7 @@ func verifyDNSEntry(
 	rrSetName := fmt.Sprintf("%s-%s", strings.ToLower(recordType), dnsName)
 	t.Logf("Verifying ResourceRecordSet %s on GDC Global Cluster in namespace %s", rrSetName, testConfig.gdchProject)
 
-	rrSetList := &globalnetworkingv1.ResourceRecordSetList{}
-	var createdRRSet *globalnetworkingv1.ResourceRecordSet
-	err = kubernetes.WaitForCondition[*globalnetworkingv1.ResourceRecordSet](
-		ctx, 2*time.Minute,
-		func() (watch.Interface, error) {
-			return testConfig.globalClient.Watch(ctx, rrSetList, client.InNamespace(testConfig.gdchProject), client.MatchingFields{"metadata.name": rrSetName})
-		},
-		func(rr *globalnetworkingv1.ResourceRecordSet) bool {
-			for _, cond := range rr.Status.Conditions {
-				if cond.Type == statusReady && cond.Status == metav1.ConditionTrue {
-					createdRRSet = rr
-					return true
-				}
-			}
-			return false
-		},
-	)
+	createdRRSet, err := waitForResourceRecordSet(ctx, testConfig.globalClient, testConfig.gdchProject, rrSetName, expectedInitial, 4*time.Minute, t)
 	if err != nil {
 		t.Fatalf("ResourceRecordSet %s was not found or Ready in GDC: %v", rrSetName, err)
 	}
@@ -498,24 +485,7 @@ func verifyDNSEntry(
 	}
 
 	t.Logf("Waiting for ResourceRecordSet %s on GDC to reflect updated data", rrSetName)
-	var updatedRRSet *globalnetworkingv1.ResourceRecordSet
-	err = kubernetes.WaitForCondition[*globalnetworkingv1.ResourceRecordSet](
-		ctx, 2*time.Minute,
-		func() (watch.Interface, error) {
-			return testConfig.globalClient.Watch(ctx, rrSetList, client.InNamespace(testConfig.gdchProject), client.MatchingFields{"metadata.name": rrSetName})
-		},
-		func(rr *globalnetworkingv1.ResourceRecordSet) bool {
-			if cmp.Equal(rr.Spec.RRData, expectedUpdated) {
-				for _, cond := range rr.Status.Conditions {
-					if cond.Type == statusReady && cond.Status == metav1.ConditionTrue {
-						updatedRRSet = rr
-						return true
-					}
-				}
-			}
-			return false
-		},
-	)
+	updatedRRSet, err := waitForResourceRecordSet(ctx, testConfig.globalClient, testConfig.gdchProject, rrSetName, expectedUpdated, 4*time.Minute, t)
 	if err != nil {
 		t.Fatalf("ResourceRecordSet %s did not update in time on GDC: %v", rrSetName, err)
 	}
@@ -524,6 +494,77 @@ func verifyDNSEntry(
 		t.Errorf("ResourceRecordSet %s updated RRData mismatch (-want +got):\n%s", rrSetName, diff)
 	}
 	t.Logf("Successfully verified updated ResourceRecordSet %s on GDC!", rrSetName)
+}
+
+func waitForResourceRecordSet(
+	ctx context.Context,
+	c client.Client,
+	namespace, name string,
+	expectedRRData []string,
+	timeout time.Duration,
+	t *testing.T,
+) (*globalnetworkingv1.ResourceRecordSet, error) {
+	t.Helper()
+	var matched *globalnetworkingv1.ResourceRecordSet
+	err := wait.PollUntilContextTimeout(ctx, 5*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		rrs := &globalnetworkingv1.ResourceRecordSet{}
+		if err := c.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, rrs); err != nil {
+			t.Logf("Waiting for ResourceRecordSet %q to be available: %v", name, err)
+			return false, nil
+		}
+		if !cmp.Equal(rrs.Spec.RRData, expectedRRData) {
+			t.Logf("Waiting for ResourceRecordSet %q RRData (want %v, got %v)", name, expectedRRData, rrs.Spec.RRData)
+			return false, nil
+		}
+		if !isResourceRecordSetReady(t, rrs) {
+			return false, nil
+		}
+		matched = rrs
+		return true, nil
+	})
+	return matched, err
+}
+
+func isResourceRecordSetReady(t *testing.T, obj *globalnetworkingv1.ResourceRecordSet) bool {
+	t.Helper()
+	if len(obj.Status.Zones) == 0 {
+		t.Logf("Waiting for RRS %q status.zones to be populated", obj.Name)
+		return false
+	}
+
+	for _, z := range obj.Status.Zones {
+		readyCondition := meta.FindStatusCondition(z.ReplicaStatus.Conditions, statusReady)
+		if readyCondition == nil || readyCondition.Status != metav1.ConditionTrue {
+			t.Logf("Waiting for RRS %q in zone %q to be ready", obj.Name, z.Name)
+			return false
+		}
+		rollOutCondition := meta.FindStatusCondition(z.RolloutStatus.Conditions, statusSynced)
+		if rollOutCondition == nil || rollOutCondition.Status != metav1.ConditionTrue {
+			t.Logf("Waiting for RRS %q in zone %q to be synced", obj.Name, z.Name)
+			return false
+		}
+	}
+	return true
+}
+
+func waitForResourceDeletion(
+	ctx context.Context,
+	c client.Client,
+	obj client.Object,
+	timeout time.Duration,
+	t *testing.T,
+) error {
+	t.Helper()
+	return wait.PollUntilContextTimeout(ctx, 5*time.Second, timeout, true, func(ctx context.Context) (bool, error) {
+		if err := c.Get(ctx, client.ObjectKeyFromObject(obj), obj); err != nil {
+			if apierrors.IsNotFound(err) {
+				return true, nil
+			}
+			t.Logf("Waiting for %q to be deleted: %v", obj.GetName(), err)
+			return false, nil
+		}
+		return false, nil
+	})
 }
 
 func verifyPodHealth(ctx context.Context, t *testing.T, testConfig *config) {
@@ -536,7 +577,21 @@ func verifyPodHealth(ctx context.Context, t *testing.T, testConfig *config) {
 		t.Fatalf("Failed to list pods for health check: %v", err)
 	}
 
-	for _, pod := range podList.Items {
+	for i := range podList.Items {
+		pod := &podList.Items[i]
+		// Ensure the pod is at least 35 seconds old so the liveness probe (initialDelaySeconds: 30) has executed.
+		age := time.Since(pod.CreationTimestamp.Time)
+		if age < 35*time.Second {
+			sleepTime := 35*time.Second - age
+			t.Logf("Waiting %v to ensure liveness probe has run...", sleepTime)
+			time.Sleep(sleepTime)
+		}
+
+		if err := testConfig.vucClient.Get(ctx, client.ObjectKeyFromObject(pod), pod); err != nil {
+			t.Errorf("Failed to refresh pod %s status: %v", pod.Name, err)
+			continue
+		}
+
 		for _, status := range pod.Status.ContainerStatuses {
 			if status.RestartCount > 0 {
 				t.Errorf("Container %s in pod %s restarted %d times (expected 0). Termination reason: %v",
@@ -545,18 +600,13 @@ func verifyPodHealth(ctx context.Context, t *testing.T, testConfig *config) {
 		}
 
 		eventList := &corev1.EventList{}
-		fieldSelector := client.MatchingFields{
-			"involvedObject.name":      pod.Name,
-			"involvedObject.namespace": testConfig.namespace,
-			"involvedObject.kind":      "Pod",
-		}
-		if err := testConfig.vucClient.List(ctx, eventList, client.InNamespace(testConfig.namespace), fieldSelector); err != nil {
-			t.Errorf("Failed to list events for pod %s: %v", pod.Name, err)
+		if err := testConfig.vucClient.List(ctx, eventList, client.InNamespace(testConfig.namespace)); err != nil {
+			t.Errorf("Failed to list events in namespace %s: %v", testConfig.namespace, err)
 			continue
 		}
 
 		for _, event := range eventList.Items {
-			if event.Type == corev1.EventTypeWarning && event.Reason == "Unhealthy" {
+			if event.InvolvedObject.Name == pod.Name && event.Type == corev1.EventTypeWarning && event.Reason == "Unhealthy" {
 				t.Errorf("Pod %s experienced health probe failure: %s", pod.Name, event.Message)
 			}
 		}

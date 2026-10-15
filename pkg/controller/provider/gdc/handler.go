@@ -24,6 +24,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dns/provider"
 )
 
+// Handler implements provider.DNSHandler to manage ManagedDNSZone and ResourceRecordSet
+// resources in a Google Distributed Cloud (GDC) air-gapped project namespace.
 type Handler struct {
 	provider.DefaultDNSHandler
 	config  provider.DNSHandlerConfig
@@ -34,6 +36,8 @@ type Handler struct {
 
 var _ provider.DNSHandler = &Handler{}
 
+// NewHandler creates and initializes a new GDC DNS provider Handler using the service
+// account credentials and organization cluster configuration from the provider secret.
 func NewHandler(config *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 	var err error
 

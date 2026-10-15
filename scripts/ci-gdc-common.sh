@@ -3,14 +3,183 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+# is_authorized_maintainer checks whether a GitHub user is an authorized
+# maintainer listed in OWNERS_ALIASES, OWNERS, or CODEOWNERS read strictly
+# from origin/master.
+is_authorized_maintainer() {
+  local actor="$1"
+
+  if [[ -z "${actor}" ]]; then
+    return 1
+  fi
+
+  if [[ "${actor}" == *"[bot]" || "${actor}" == *"-robot" ]]; then
+    return 1
+  fi
+
+  local actor_lc owners_list="" owners_ref="HEAD"
+  actor_lc=$(printf '%s' "${actor}" | tr '[:upper:]' '[:lower:]')
+  if git rev-parse --verify origin/master >/dev/null 2>&1; then
+    owners_ref="origin/master"
+  fi
+
+  local owners_aliases_content owners_content codeowners_content
+  owners_aliases_content=$(git show "${owners_ref}:OWNERS_ALIASES" 2>/dev/null || true)
+  if [[ -n "${owners_aliases_content}" ]]; then
+    owners_list+=$(printf '%s\n' "${owners_aliases_content}" | grep -E '^[[:space:]]*-[[:space:]]*[A-Za-z0-9_-]+' | sed -E 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' || true)
+    owners_list+=$'\n'
+  fi
+
+  owners_content=$(git show "${owners_ref}:OWNERS" 2>/dev/null || true)
+  if [[ -n "${owners_content}" ]]; then
+    owners_list+=$(printf '%s\n' "${owners_content}" | grep -E '^[[:space:]]*-[[:space:]]*[A-Za-z0-9_-]+' | sed -E 's/^[[:space:]]*-[[:space:]]*//; s/[[:space:]]*$//' || true)
+    owners_list+=$'\n'
+  fi
+
+  codeowners_content=$(git show "${owners_ref}:CODEOWNERS" 2>/dev/null || true)
+  if [[ -n "${codeowners_content}" ]]; then
+    owners_list+=$(printf '%s\n' "${codeowners_content}" | grep -v '^#' | grep -oE '@[A-Za-z0-9_-]+' | tr -d '@' || true)
+  fi
+
+  if printf '%s\n' "${owners_list}" | tr '[:upper:]' '[:lower:]' | grep -Fxq "${actor_lc}"; then
+    return 0
+  fi
+
+  return 1
+}
+
+# prepare_trusted_ci_files copies the CI runner scripts and compiles the
+# token-helper binary into an isolated directory (/tmp/ci-trusted) outside the
+# repository working tree before any untrusted PR ref is checked out. When
+# origin/master already contains the updated CI scripts and token-helper, they
+# are extracted and built strictly from origin/master.
+prepare_trusted_ci_files() {
+  CI_TRUSTED_DIR="/tmp/ci-trusted"
+  rm -rf "${CI_TRUSTED_DIR}"
+  mkdir -p "${CI_TRUSTED_DIR}/scripts" "${CI_TRUSTED_DIR}/bin"
+
+  if git rev-parse --verify origin/master >/dev/null 2>&1 && \
+     git show origin/master:scripts/ci-gdc-common.sh 2>/dev/null | grep -q 'verify_pr_head_at_comment_time' && \
+     git cat-file -e origin/master:test/integration/gdc/cmd/token-helper/main.go 2>/dev/null; then
+    echo "Staging trusted CI scripts and token-helper from origin/master..."
+    git show origin/master:scripts/ci-gdc-common.sh > "${CI_TRUSTED_DIR}/scripts/ci-gdc-common.sh"
+    git show origin/master:scripts/ci-gdc-integration-test.sh > "${CI_TRUSTED_DIR}/scripts/ci-gdc-integration-test.sh"
+    mkdir -p "${CI_TRUSTED_DIR}/src"
+    git archive origin/master | tar -x -C "${CI_TRUSTED_DIR}/src"
+    (
+      cd "${CI_TRUSTED_DIR}/src"
+      go build -o "${CI_TRUSTED_DIR}/bin/token-helper" ./test/integration/gdc/cmd/token-helper
+    )
+    rm -rf "${CI_TRUSTED_DIR}/src"
+  else
+    echo "Staging trusted CI scripts and token-helper from current base checkout..."
+    cp ./scripts/ci-gdc-common.sh "${CI_TRUSTED_DIR}/scripts/ci-gdc-common.sh"
+    cp ./scripts/ci-gdc-integration-test.sh "${CI_TRUSTED_DIR}/scripts/ci-gdc-integration-test.sh"
+    if [[ -f "./test/integration/gdc/cmd/token-helper/main.go" ]]; then
+      go build -o "${CI_TRUSTED_DIR}/bin/token-helper" ./test/integration/gdc/cmd/token-helper
+    fi
+  fi
+
+  chmod +x "${CI_TRUSTED_DIR}/scripts/ci-gdc-common.sh" "${CI_TRUSTED_DIR}/scripts/ci-gdc-integration-test.sh"
+  export CI_TRUSTED_DIR
+}
+
+# verify_pr_head_at_comment_time ensures that when triggered via
+# '/test-gdc-integration' (issue_comment), the fetched PR head commit already
+# existed on the PR before the comment was posted, preventing a TOCTOU race if a
+# commit is pushed right after the maintainer comments.
+verify_pr_head_at_comment_time() {
+  if [[ "${GITHUB_EVENT_NAME:-}" != "issue_comment" || ! -f "${GITHUB_EVENT_PATH:-}" ]]; then
+    return 0
+  fi
+
+  local comment_created_at comment_epoch
+  comment_created_at=$(jq -r '.comment.created_at // empty' "${GITHUB_EVENT_PATH}")
+  if [[ -z "${comment_created_at}" ]]; then
+    echo "::error::Missing .comment.created_at in issue_comment event payload."
+    exit 1
+  fi
+  comment_epoch=$(date -d "${comment_created_at}" +%s)
+
+  local commit_date commit_epoch
+  commit_date=$(git show -s --format=%cI "${PR_HEAD_SHA}")
+  commit_epoch=$(date -d "${commit_date}" +%s)
+  if [[ "${commit_epoch}" -gt "${comment_epoch}" ]]; then
+    echo "::error::PR #${PR_NUMBER} head commit ${PR_HEAD_SHA:0:7} was committed at ${commit_date}, which is after the '/test-gdc-integration' comment was posted at ${comment_created_at}. Aborting to prevent executing unreviewed code."
+    exit 1
+  fi
+
+  if [[ -n "${GH_TOKEN:-}" && -n "${GITHUB_REPOSITORY:-}" ]]; then
+    local latest_timeline_event_at
+    latest_timeline_event_at=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/timeline?per_page=100" 2>/dev/null | \
+      jq -rs '[ .[][] | select(.event == "committed" or .event == "head_ref_force_pushed") | (.created_at // .committer.date // empty) | select(length > 0) ] | sort | last // empty' || true)
+    if [[ -n "${latest_timeline_event_at}" ]]; then
+      local timeline_epoch
+      timeline_epoch=$(date -d "${latest_timeline_event_at}" +%s)
+      if [[ "${timeline_epoch}" -gt "${comment_epoch}" ]]; then
+        echo "::error::PR #${PR_NUMBER} had a commit or force-push at ${latest_timeline_event_at}, which is after the '/test-gdc-integration' comment was posted at ${comment_created_at}. Aborting to prevent executing unreviewed code."
+        exit 1
+      fi
+    fi
+
+    local earliest_suite_at
+    earliest_suite_at=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${PR_HEAD_SHA}/check-suites" \
+      --jq '[ .check_suites[]?.created_at // empty | select(length > 0) ] | sort | first // empty' 2>/dev/null || true)
+    if [[ -n "${earliest_suite_at}" ]]; then
+      local suite_epoch
+      suite_epoch=$(date -d "${earliest_suite_at}" +%s)
+      if [[ "${suite_epoch}" -gt "${comment_epoch}" ]]; then
+        echo "::error::PR #${PR_NUMBER} head commit ${PR_HEAD_SHA:0:7} was pushed to GitHub at ${earliest_suite_at}, which is after the '/test-gdc-integration' comment was posted at ${comment_created_at}. Aborting to prevent executing unreviewed code."
+        exit 1
+      fi
+    fi
+  fi
+
+  echo "Verified PR #${PR_NUMBER} head commit ${PR_HEAD_SHA:0:7} predates '/test-gdc-integration' comment (${comment_created_at})."
+}
+
+# should_skip_non_code_changes returns 0 (true) on pull_request / pull_request_target
+# events when all files modified in the PR relative to origin/master are CI scripts,
+# workflow configs, or documentation (excluding Go provider/test code and examples).
+should_skip_non_code_changes() {
+  if [[ "${GITHUB_EVENT_NAME:-}" != "pull_request" && "${GITHUB_EVENT_NAME:-}" != "pull_request_target" ]]; then
+    return 1
+  fi
+
+  local non_code_regex='^(\.gitignore|\.dockerignore|\.golangci\.yaml|OWNERS.*|CODEOWNERS|LICENSE.*|NOTICE.*|VERSION|Makefile|.*\.md|docs/.*|\.github/.*|scripts/ci-gdc-.*\.sh)$'
+  local pr_head_sha="${PR_HEAD_SHA:-}"
+  if [[ -z "${pr_head_sha}" && -f "${GITHUB_EVENT_PATH:-}" ]]; then
+    pr_head_sha=$(jq -r '.pull_request.head.sha // empty' "${GITHUB_EVENT_PATH}")
+  fi
+  if [[ -z "${pr_head_sha}" ]]; then
+    pr_head_sha=$(git rev-parse HEAD)
+  fi
+
+  if ! git rev-parse --verify origin/master >/dev/null 2>&1; then
+    git fetch origin master >/dev/null 2>&1 || true
+  fi
+
+  local pr_files
+  pr_files=$(git diff --name-only "origin/master...${pr_head_sha}" 2>/dev/null || git diff --name-only "origin/master" "${pr_head_sha}" 2>/dev/null || true)
+  if [[ -n "${pr_files}" ]]; then
+    if ! printf '%s\n' "${pr_files}" | grep -qvE "${non_code_regex}"; then
+      echo "All files changed in PR (${pr_files//$'\n'/, }) are CI/non-code files. Skipping automatic GDC cluster integration test."
+      return 0
+    fi
+  fi
+
+  return 1
+}
+
 # check_ci_preconditions verifies whether the integration test should run when
-# triggered by GitHub Actions, and checks out the target PR on manual dispatch.
+# triggered by GitHub Actions, and checks out the target PR on pull_request_target,
+# '/test-gdc-integration' comment, or manual workflow_dispatch.
 check_ci_preconditions() {
   if [[ "${GITHUB_ACTIONS:-}" != "true" ]]; then
     return 0
   fi
 
-  if [[ -z "${CI_LOG_FILE:-}" ]]; then
+  if [[ "${CI_STAGE_PRECONDITIONS:-}" != "true" && -z "${CI_LOG_FILE:-}" ]]; then
     CI_LOG_FILE="$(mktemp /tmp/ci-integration-XXXXXX.log)"
     export CI_LOG_FILE
     exec > >(tee -a "${CI_LOG_FILE}") 2>&1
@@ -18,66 +187,135 @@ check_ci_preconditions() {
     export CI_TEE_PID
   fi
 
-  # For pull_request and pull_request_target events, verify the PR author is a
-  # trusted collaborator/member or listed in OWNERS_ALIASES before checking out
-  # and running PR code.
+  if [[ "${CI_PRECONDITIONS_VERIFIED:-}" == "true" ]]; then
+    return 0
+  fi
+
+  # For pull_request and pull_request_target events, verify the PR author is an
+  # authorized maintainer on origin/master before checking out and running PR code.
   if [[ ( "${GITHUB_EVENT_NAME:-}" == "pull_request" || "${GITHUB_EVENT_NAME:-}" == "pull_request_target" ) && -f "${GITHUB_EVENT_PATH:-}" ]]; then
     local author_association pr_user pr_number
     author_association=$(jq -r '.pull_request.author_association // empty' "${GITHUB_EVENT_PATH}")
     pr_user=$(jq -r '.pull_request.user.login // empty' "${GITHUB_EVENT_PATH}")
     pr_number=$(jq -r '.pull_request.number // empty' "${GITHUB_EVENT_PATH}")
+    PR_NUMBER="${pr_number}"
+    export PR_NUMBER
 
     if [[ "${GITHUB_ACTOR:-}" == *"[bot]" || "${GITHUB_ACTOR:-}" == *"-robot" || "${pr_user}" == *"[bot]" || "${pr_user}" == *"-robot" ]]; then
       echo "Skipping automatic integration test for automated bot account (${pr_user:-${GITHUB_ACTOR}})."
-      echo "A maintainer must trigger this test manually via workflow_dispatch with pr_number=${pr_number}."
+      echo "A maintainer must trigger this test manually by commenting '/test-gdc-integration' on the PR or via workflow_dispatch with pr_number=${pr_number}."
       exit 1
     fi
 
-    local is_trusted_author=false
-    case "${author_association}" in
-      COLLABORATOR|MEMBER|OWNER)
-        is_trusted_author=true
-        ;;
-    esac
-
-    if [[ "${is_trusted_author}" != "true" && -f "OWNERS_ALIASES" ]]; then
-      if grep -qE "^[[:space:]]*-[[:space:]]*${pr_user}[[:space:]]*$" OWNERS_ALIASES; then
-        is_trusted_author=true
-      fi
-    fi
-
-    if [[ "${is_trusted_author}" != "true" ]]; then
+    if ! is_authorized_maintainer "${pr_user}"; then
       echo "Skipping automatic integration test for untrusted author '${pr_user}' (author_association='${author_association}')."
-      echo "A maintainer must trigger this test manually via workflow_dispatch with pr_number=${pr_number}."
+      echo "A maintainer must trigger this test manually by commenting '/test-gdc-integration' on the PR or via workflow_dispatch with pr_number=${pr_number}."
       exit 1
     fi
 
-    if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request_target" && -n "${pr_number}" ]]; then
-      PR_NUMBER="${pr_number}"
-      export PR_NUMBER
-      echo "Fetching and checking out PR #${PR_NUMBER}..."
-      git fetch origin "pull/${PR_NUMBER}/head:pr-${PR_NUMBER}"
-      git checkout "pr-${PR_NUMBER}"
-      PR_HEAD_SHA="$(git rev-parse HEAD)"
-      export PR_HEAD_SHA
-      start_pr_check_run "${CHECK_NAME:-GDC External DNS Management Integration Test (GDC Staging)}"
+    if should_skip_non_code_changes; then
+      if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+        echo "should_run=false" >> "${GITHUB_OUTPUT}"
+      fi
+      exit 0
     fi
   fi
 
-  # When triggered manually via workflow_dispatch with a pr_number input,
-  # fetch and check out that PR's head commit and attach a check-run to its SHA.
-  if [[ "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" && -n "${PR_NUMBER:-}" ]]; then
+  if [[ "${GITHUB_EVENT_NAME:-}" == "issue_comment" && -f "${GITHUB_EVENT_PATH:-}" ]]; then
+    local is_pr comment_body comment_user comment_assoc comment_id cmd_line
+    is_pr=$(jq -r '.issue.pull_request.url // empty' "${GITHUB_EVENT_PATH}")
+    comment_body=$(jq -r '.comment.body // empty' "${GITHUB_EVENT_PATH}")
+    comment_user=$(jq -r '.comment.user.login // empty' "${GITHUB_EVENT_PATH}")
+    comment_assoc=$(jq -r '.comment.author_association // empty' "${GITHUB_EVENT_PATH}")
+    comment_id=$(jq -r '.comment.id // empty' "${GITHUB_EVENT_PATH}")
+    PR_NUMBER=$(jq -r '.issue.number // empty' "${GITHUB_EVENT_PATH}")
+    export PR_NUMBER
+
+    cmd_line=$(printf '%s\n' "${comment_body}" | tr -d '\r' | grep -E '^[[:space:]]*/test-gdc-integration([[:space:]]|$)' | head -n 1 || true)
+    if [[ -z "${is_pr}" || -z "${cmd_line}" ]]; then
+      echo "Comment does not contain a '/test-gdc-integration' command line on a pull request. Skipping."
+      if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+        echo "should_run=false" >> "${GITHUB_OUTPUT}"
+      fi
+      exit 0
+    fi
+
+    if ! is_authorized_maintainer "${comment_user}"; then
+      echo "::error::User '${comment_user}' (author_association='${comment_assoc}') is not listed as an authorized maintainer on origin/master and cannot trigger '/test-gdc-integration'."
+      exit 1
+    fi
+
+    if [[ -n "${comment_id}" && -n "${GH_TOKEN:-}" && -n "${GITHUB_REPOSITORY:-}" ]]; then
+      gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}/reactions" \
+        -f content='rocket' >/dev/null 2>&1 || true
+    fi
+  fi
+
+  if [[ "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" ]]; then
+    if ! is_authorized_maintainer "${GITHUB_ACTOR:-}"; then
+      echo "::error::User '${GITHUB_ACTOR:-}' is not listed as an authorized maintainer on origin/master and cannot trigger workflow_dispatch."
+      exit 1
+    fi
+  fi
+
+  # Stage trusted CI scripts and compile token-helper before checking out any PR branch.
+  prepare_trusted_ci_files
+
+  # When triggered via pull_request_target, '/test-gdc-integration' comment, or
+  # workflow_dispatch with a pr_number input, fetch and check out that PR's head
+  # commit, merge origin/master, and attach a check-run to the PR's head SHA.
+  if [[ ( "${GITHUB_EVENT_NAME:-}" == "pull_request_target" || "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" || "${GITHUB_EVENT_NAME:-}" == "issue_comment" ) && -n "${PR_NUMBER:-}" ]]; then
+    local base_branch_sha
+    if git rev-parse --verify origin/master >/dev/null 2>&1; then
+      base_branch_sha="$(git rev-parse origin/master)"
+    else
+      base_branch_sha="$(git rev-parse HEAD)"
+    fi
     echo "Fetching and checking out PR #${PR_NUMBER}..."
     git fetch origin "pull/${PR_NUMBER}/head:pr-${PR_NUMBER}"
-    git checkout "pr-${PR_NUMBER}"
-    PR_HEAD_SHA="$(git rev-parse HEAD)"
+    PR_HEAD_SHA="$(git rev-parse "pr-${PR_NUMBER}")"
     export PR_HEAD_SHA
-    start_pr_check_run "${CHECK_NAME:-GDC External DNS Management Integration Test (GDC Staging)}"
+    COMMIT_HASH="${PR_HEAD_SHA:0:7}"
+    export COMMIT_HASH
+    verify_pr_head_at_comment_time
+    if [[ "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" || "${GITHUB_EVENT_NAME:-}" == "issue_comment" ]]; then
+      start_pr_check_run "${CHECK_NAME:-GDC External DNS Management Integration Test (GDC Staging)}"
+    fi
+    git checkout "pr-${PR_NUMBER}"
+    echo "Merging base branch (${base_branch_sha:0:7}) into PR #${PR_NUMBER} (${COMMIT_HASH})..."
+    if ! git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+      merge --no-edit "${base_branch_sha}"; then
+      echo "::error::Failed to merge base branch (${base_branch_sha:0:7}) into PR #${PR_NUMBER} (${COMMIT_HASH}). Please rebase the PR onto master."
+      complete_pr_check_run 1
+      exit 1
+    fi
+  fi
+}
+
+# verify_and_prepare_ci runs in the dedicated secret-less precondition step in
+# GitHub Actions and exports verified state to GITHUB_ENV and GITHUB_OUTPUT.
+verify_and_prepare_ci() {
+  CI_STAGE_PRECONDITIONS=true check_ci_preconditions
+
+  if [[ -n "${GITHUB_ENV:-}" ]]; then
+    {
+      echo "CI_PRECONDITIONS_VERIFIED=true"
+      echo "CI_TRUSTED_DIR=${CI_TRUSTED_DIR}"
+      [[ -n "${PR_NUMBER:-}" ]] && echo "PR_NUMBER=${PR_NUMBER}"
+      [[ -n "${PR_HEAD_SHA:-}" ]] && echo "PR_HEAD_SHA=${PR_HEAD_SHA}"
+      [[ -n "${PR_CHECK_RUN_ID:-}" ]] && echo "PR_CHECK_RUN_ID=${PR_CHECK_RUN_ID}"
+      [[ -n "${COMMIT_HASH:-}" ]] && echo "COMMIT_HASH=${COMMIT_HASH}"
+    } >> "${GITHUB_ENV}"
+  fi
+
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "should_run=true" >> "${GITHUB_OUTPUT}"
   fi
 }
 
 # start_pr_check_run creates an in_progress GitHub Check Run on PR_HEAD_SHA when
-# triggered via pull_request_target or workflow_dispatch so the run reports status on the PR commit.
+# triggered via '/test-gdc-integration' or workflow_dispatch so the manual run
+# reports status on the PR commit.
 start_pr_check_run() {
   local check_name="$1"
   if [[ -z "${PR_HEAD_SHA:-}" || -z "${GH_TOKEN:-}" || -z "${GITHUB_REPOSITORY:-}" ]]; then
@@ -237,7 +475,13 @@ install_gdcloud_cli() {
 
   echo "Minting STS token using GDC ServiceAccount to query CLIBundleMetadata..."
   local sts_token
-  if ! sts_token=$(go run "${token_helper_pkg}" \
+  local -a token_helper_cmd=("go" "run" "${token_helper_pkg}")
+  if [[ -n "${CI_TRUSTED_DIR:-}" && -x "${CI_TRUSTED_DIR}/bin/token-helper" ]]; then
+    token_helper_cmd=("${CI_TRUSTED_DIR}/bin/token-helper")
+  elif [[ -x "${token_helper_pkg}" ]]; then
+    token_helper_cmd=("${token_helper_pkg}")
+  fi
+  if ! sts_token=$("${token_helper_cmd[@]}" \
     --service-account-file="${sa_file}" \
     --ca-cert-file="${ca_file}" \
     --audience="${mgmt_url}"); then
@@ -305,10 +549,8 @@ delete_ghcr_image_tag() {
       --jq ".[] | select(.metadata.container.tags[]? == \"${image_tag}\") | .id" 2>/dev/null | head -n 1 || true)
 
     if [[ -n "${version_id}" ]]; then
-      # Delete the specific package version; if it is the sole version in the package,
-      # fall back to deleting the temporary package itself.
       if ! gh api --method DELETE "/${scope}/packages/container/${encoded_pkg}/versions/${version_id}" >/dev/null 2>&1; then
-          echo "Warning: Failed to delete ${image_repo}:${image_tag} from ghcr.io."
+        echo "Warning: Failed to delete ${image_repo}:${image_tag} from ghcr.io."
       fi
       return 0
     fi
