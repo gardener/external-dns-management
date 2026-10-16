@@ -62,6 +62,23 @@ var _ = Describe("Adapter", func() {
 				Expect(err).To(HaveOccurred())
 				Expect(err).To(MatchError(ContainSubstring("not 'service_account'")))
 			})
+
+			It("should reject service account with a non-Google token_uri", func() {
+				serviceAccountJSON := `{
+   "type": "service_account",
+   "project_id": "my-project-123",
+   "private_key_id": "key-id",
+   "client_email": "test@my-project.iam.gserviceaccount.com",
+   "token_uri": "http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token"
+  }`
+				props := utils.Properties{
+					"serviceaccount.json": serviceAccountJSON,
+				}
+
+				err := adapter.ValidateCredentialsAndProviderConfig(props, nil)
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("'token_uri' is not an allowed value")))
+			})
 		})
 
 		Context("workload identity credentials", func() {

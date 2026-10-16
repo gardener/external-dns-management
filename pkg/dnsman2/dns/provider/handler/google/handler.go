@@ -49,6 +49,14 @@ type lightCredentialsFile struct {
 	ClientEmail  string `json:"client_email"`
 	PrivateKeyID string `json:"private_key_id"`
 	ProjectID    string `json:"project_id"`
+	TokenURI     string `json:"token_uri"`
+}
+
+// allowedTokenURIs are the Google OAuth token endpoints a service account may
+// point its token_uri at.
+var allowedTokenURIs = []string{
+	"https://oauth2.googleapis.com/token",
+	"https://accounts.google.com/o/oauth2/token",
 }
 
 const epsilon = 0.00001
@@ -283,6 +291,11 @@ func validateServiceAccountJSON(data []byte) (lightCredentialsFile, error) {
 	}
 	if credInfo.Type != "service_account" {
 		return credInfo, fmt.Errorf("'serviceaccount.json' field 'type' is not 'service_account'")
+	}
+	// token_uri is optional; when empty the oauth2 library defaults to the Google
+	// endpoint. When set it must be a known Google token endpoint.
+	if credInfo.TokenURI != "" && !slices.Contains(allowedTokenURIs, credInfo.TokenURI) {
+		return credInfo, fmt.Errorf("'serviceaccount.json' field 'token_uri' is not an allowed value, must be one of %q", allowedTokenURIs)
 	}
 	return credInfo, nil
 }

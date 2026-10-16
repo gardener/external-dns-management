@@ -34,6 +34,16 @@ var _ = Describe("ValidateServiceAccountJSON", func() {
 	missingTypeJSON := `{
 		"project_id": "valid-project-id"
 	}`
+	allowedTokenURIJSON := `{
+		"project_id": "valid-project-id",
+		"type": "service_account",
+		"token_uri": "https://oauth2.googleapis.com/token"
+	}`
+	forbiddenTokenURIJSON := `{
+		"project_id": "valid-project-id",
+		"type": "service_account",
+		"token_uri": "http://169.254.169.254/computeMetadata/v1/instance/service-accounts/default/token"
+	}`
 
 	tests := []struct {
 		name    string
@@ -46,6 +56,8 @@ var _ = Describe("ValidateServiceAccountJSON", func() {
 		{"Invalid Format", invalidFormatJSON, true},
 		{"Invalid Type", invalidTypeJSON, true},
 		{"Missing Type", missingTypeJSON, true},
+		{"Allowed token_uri", allowedTokenURIJSON, false},
+		{"Forbidden token_uri", forbiddenTokenURIJSON, true},
 	}
 
 	for _, tt := range tests {
