@@ -89,7 +89,7 @@ var _ = Describe("Reconcile", func() {
 	BeforeEach(func() {
 		clock.SetTime(startTime)
 		factory = dnsprovider.NewDNSHandlerRegistry(clock)
-		local.RegisterTo(factory)
+		local.RegisterTo(factory, config.DNSProviderControllerConfig{})
 		state.GetState().SetDNSHandlerFactory(factory)
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSProvider{}).Build()
 		reconciler = &Reconciler{

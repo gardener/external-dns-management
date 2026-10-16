@@ -74,7 +74,7 @@ var _ = Describe("#cleanupOrphanTargetProviders", func() {
 		fakeClientCtrl = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSProvider{}).Build()
 		fakeRecorder = events.NewFakeRecorder(32)
 		registry := provider.NewDNSHandlerRegistry(clock.RealClock{})
-		local.RegisterTo(registry)
+		local.RegisterTo(registry, config.DNSProviderControllerConfig{})
 		reconciler = &Reconciler{
 			Clock:              clock.RealClock{},
 			Client:             fakeClientSrc,

@@ -135,6 +135,12 @@ func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 	if len(obj.GCPWorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps) == 0 {
 		obj.GCPWorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps = []string{`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`}
 	}
+	if len(obj.GCPServiceAccountConfig.AllowedTokenURLs) == 0 {
+		obj.GCPServiceAccountConfig.AllowedTokenURLs = []string{
+			"https://oauth2.googleapis.com/token",
+			"https://accounts.google.com/o/oauth2/token",
+		}
+	}
 }
 
 // SetDefaults_DNSEntryControllerConfig sets defaults for the DNSEntryControllerConfig object.

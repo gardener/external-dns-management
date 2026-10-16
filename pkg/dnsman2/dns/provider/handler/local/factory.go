@@ -9,6 +9,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 
+	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
@@ -20,7 +21,7 @@ const ProviderType = "local"
 const BadKeyProperty = "bad_key"
 
 // RegisterTo registers the local DNS handler to the given registry.
-func RegisterTo(registry *provider.DNSHandlerRegistry) {
+func RegisterTo(registry *provider.DNSHandlerRegistry, _ config.DNSProviderControllerConfig) {
 	registry.Register(ProviderType, NewHandler, &adapter{}, nil, nil)
 }
 

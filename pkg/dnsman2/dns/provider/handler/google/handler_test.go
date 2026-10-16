@@ -62,7 +62,8 @@ var _ = Describe("ValidateServiceAccountJSON", func() {
 
 	for _, tt := range tests {
 		It(tt.name, func() {
-			_, err := validateServiceAccountJSON([]byte(tt.data))
+			allowedTokenURLs := []string{"https://oauth2.googleapis.com/token", "https://accounts.google.com/o/oauth2/token"}
+			_, err := validateServiceAccountJSON([]byte(tt.data), allowedTokenURLs)
 			if tt.wantErr {
 				Expect(err).To(HaveOccurred())
 			} else {

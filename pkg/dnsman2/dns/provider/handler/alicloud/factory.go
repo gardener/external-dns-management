@@ -18,7 +18,7 @@ import (
 const ProviderType = "alicloud-dns"
 
 // RegisterTo registers the Alicloud DNS handler to the given registry.
-func RegisterTo(registry *provider.DNSHandlerRegistry) {
+func RegisterTo(registry *provider.DNSHandlerRegistry, _ config.DNSProviderControllerConfig) {
 	registry.Register(
 		ProviderType,
 		NewHandler,

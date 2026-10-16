@@ -52,7 +52,7 @@ func CreateStandardDNSHandlerFactory(cfg config.DNSProviderControllerConfig) pro
 		if slices.Contains(disabledTypes, providerType) {
 			continue
 		}
-		addToRegistry(registry)
+		addToRegistry(registry, cfg)
 	}
 	return registry
 }
