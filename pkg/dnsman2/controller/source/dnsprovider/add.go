@@ -107,6 +107,9 @@ func (r *Reconciler) providersToReconcileOnSecretChanges(ctx context.Context, cl
 		return nil
 	}
 	for _, provider := range dns.FilterProvidersByClass(providerList.Items, class, nil) {
+		if provider.Spec.SecretRef == nil {
+			continue
+		}
 		if provider.Spec.SecretRef.Name == secret.GetName() && getSecretRefNamespace(&provider) == secret.GetNamespace() {
 			requests = append(requests, reconcile.Request{
 				NamespacedName: types.NamespacedName{
