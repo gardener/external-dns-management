@@ -269,7 +269,11 @@ func matchDomains(name string, domains []string) int {
 }
 
 // MatchesSuffix checks if the given name matches the suffix, either as an exact match or as a subdomain.
+// The name is normalized (lower-cased, trailing dot removed) before comparison, because the included/excluded
+// domains and zone domains it is matched against are always stored normalized. Comparing a raw, tenant-controlled
+// DNSName case-sensitively would otherwise let a mixed-case name bypass an excluded (lower-cased) subdomain.
 func MatchesSuffix(name, suffix string) bool {
+	name = dns.NormalizeDomainName(name)
 	return name == suffix || strings.HasSuffix(name, "."+suffix)
 }
 
