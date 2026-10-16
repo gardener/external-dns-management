@@ -165,3 +165,19 @@ var _ = Describe("filterByOwnerNamespaceRestriction", func() {
 		})
 	})
 })
+
+var _ = Describe("MatchesSuffix", func() {
+	// Included/Excluded domains are always stored lower-cased, so the (tenant-controlled) name must be
+	// normalized before comparison. Otherwise a mixed-case name shadows a lower-cased excluded subdomain.
+	It("should match exact and subdomain names", func() {
+		Expect(MatchesSuffix("example.com", "example.com")).To(BeTrue())
+		Expect(MatchesSuffix("foo.example.com", "example.com")).To(BeTrue())
+		Expect(MatchesSuffix("foo.other.com", "example.com")).To(BeFalse())
+	})
+
+	It("should match case-insensitively and ignore a trailing dot (defeats exclusion bypass)", func() {
+		// excluded is lower-cased "secret.example.com"; a mixed-case name must still match it
+		Expect(MatchesSuffix("www.Secret.example.com", "secret.example.com")).To(BeTrue())
+		Expect(MatchesSuffix("SECRET.EXAMPLE.COM.", "secret.example.com")).To(BeTrue())
+	})
+})

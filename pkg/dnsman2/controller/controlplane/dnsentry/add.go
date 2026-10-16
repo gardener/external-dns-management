@@ -283,7 +283,6 @@ func (r *Reconciler) initDefaultFailureBackoff() {
 }
 
 func domainMatches(dnsName string, domains v1alpha1.DNSSelectionStatus) bool {
-	dnsName = dns.NormalizeDomainName(dnsName)
 	for _, domain := range domains.Excluded {
 		if providerselector.MatchesSuffix(dnsName, domain) {
 			return false
