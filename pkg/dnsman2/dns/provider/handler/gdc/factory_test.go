@@ -12,6 +12,7 @@ import (
 	"k8s.io/utils/clock"
 
 	"github.com/gardener/external-dns-management/pkg/controller/provider/gdc/client/constants"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
@@ -19,7 +20,7 @@ import (
 func TestRegisterAndFactory(t *testing.T) {
 	registry := provider.NewDNSHandlerRegistry(clock.RealClock{})
 
-	RegisterTo(registry)
+	RegisterTo(registry, config.DNSProviderControllerConfig{})
 
 	// Assert provider type support
 	if !registry.Supports(ProviderType) {

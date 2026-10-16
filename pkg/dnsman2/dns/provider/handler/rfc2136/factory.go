@@ -21,7 +21,7 @@ import (
 const ProviderType = "rfc2136"
 
 // RegisterTo registers the RFC2136 DNS handler to the given registry.
-func RegisterTo(registry *provider.DNSHandlerRegistry) {
+func RegisterTo(registry *provider.DNSHandlerRegistry, _ config.DNSProviderControllerConfig) {
 	registry.Register(
 		ProviderType,
 		NewHandler,

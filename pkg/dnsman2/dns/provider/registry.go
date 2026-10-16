@@ -31,7 +31,7 @@ type dnsHandlerCreatorConfig struct {
 var _ DNSHandlerFactory = &DNSHandlerRegistry{}
 
 // AddToRegistryFunc is a function type that can be used to add a DNS handler to the registry.
-type AddToRegistryFunc func(registry *DNSHandlerRegistry)
+type AddToRegistryFunc func(registry *DNSHandlerRegistry, cfg config.DNSProviderControllerConfig)
 
 // NewDNSHandlerRegistry creates a new DNSHandlerRegistry.
 func NewDNSHandlerRegistry(clock clock.Clock) *DNSHandlerRegistry {

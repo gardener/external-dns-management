@@ -133,6 +133,14 @@ type DNSProviderControllerConfig struct {
 	MigrationMode *bool
 	// GCPWorkloadIdentityConfig is the configuration for GCP workload identity.
 	GCPWorkloadIdentityConfig GCPWorkloadIdentityConfig
+	// GCPServiceAccountConfig is the configuration for GCP service account credentials.
+	GCPServiceAccountConfig GCPServiceAccountConfig
+}
+
+// GCPServiceAccountConfig is the configuration for GCP service account credentials.
+type GCPServiceAccountConfig struct {
+	// AllowedTokenURLs are the allowed token URLs for the service account token_uri field.
+	AllowedTokenURLs []string
 }
 
 // GCPWorkloadIdentityConfig is the configuration for GCP workload identity.

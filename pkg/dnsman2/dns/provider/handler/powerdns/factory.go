@@ -18,7 +18,7 @@ import (
 const ProviderType = "powerdns"
 
 // RegisterTo registers the PowerDNS handler to the given registry.
-func RegisterTo(registry *provider.DNSHandlerRegistry) {
+func RegisterTo(registry *provider.DNSHandlerRegistry, _ config.DNSProviderControllerConfig) {
 	registry.Register(
 		ProviderType,
 		NewHandler,
