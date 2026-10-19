@@ -37,3 +37,30 @@ func TestSanitizeOpenStackError(t *testing.T) {
 	Expect(other.Error()).To(Equal("authentication at Keystone failed"))
 	Expect(other.Error()).NotTo(ContainSubstring("10.0.0.5"))
 }
+
+func TestDenyNonGlobalUnicastDial(t *testing.T) {
+	RegisterTestingT(t)
+
+	denied := []string{
+		"169.254.169.254:80", // cloud metadata (link-local)
+		"127.0.0.1:443",      // loopback
+		"[::1]:443",          // IPv6 loopback
+		"0.0.0.0:443",        // unspecified
+		"224.0.0.1:443",      // multicast
+	}
+	for _, addr := range denied {
+		Expect(denyNonGlobalUnicastDial("tcp", addr, nil)).To(HaveOccurred(), "expected %s to be denied", addr)
+	}
+
+	allowed := []string{
+		"93.184.216.34:443",       // public IPv4
+		"[2606:2800:220:1::]:443", // public IPv6
+		"10.0.0.5:443",            // private
+		"192.168.1.1:443",         // private
+		"172.16.0.1:443",          // private
+		"[fd00::1]:443",            // IPv6 unique-local
+	}
+	for _, addr := range allowed {
+		Expect(denyNonGlobalUnicastDial("tcp", addr, nil)).NotTo(HaveOccurred(), "expected %s to be allowed", addr)
+	}
+}

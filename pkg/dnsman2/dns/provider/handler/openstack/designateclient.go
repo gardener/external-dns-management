@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"syscall"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -109,6 +110,7 @@ func createDesignateServiceClient(ctx context.Context, logger logr.Logger, clien
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
+			Control:   denyNonGlobalUnicastDial,
 		}).DialContext,
 		MaxIdleConns:          100,
 		IdleConnTimeout:       90 * time.Second,
@@ -145,6 +147,25 @@ func sanitizeOpenStackError(msg string, err error) error {
 		return fmt.Errorf("%s: unexpected HTTP status %d from Keystone endpoint", msg, codeErr.Actual)
 	}
 	return fmt.Errorf("%s", msg)
+}
+
+// denyNonGlobalUnicastDial is a net.Dialer Control hook that rejects connections to
+// non-global-unicast destinations (loopback, link-local incl. cloud metadata at 169.254.169.254,
+// multicast, unspecified). It runs after DNS resolution with the concrete IP about
+// to be dialed, so it also defends against DNS-rebinding of a tenant-supplied OS_AUTH_URL.
+func denyNonGlobalUnicastDial(_, address string, _ syscall.RawConn) error {
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		return fmt.Errorf("cannot parse dial address: %w", err)
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return fmt.Errorf("unexpected non-IP dial address %q", host)
+	}
+	if !ip.IsGlobalUnicast() {
+		return fmt.Errorf("refusing to connect to non-public address")
+	}
+	return nil
 }
 
 // ForEachZone calls handler for each zone managed by the Designate
