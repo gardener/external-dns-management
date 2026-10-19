@@ -213,6 +213,11 @@ To install the **DNS controller manager** in your Kubernetes cluster, follow the
    dig @8.8.8.8 +short myentry.my-own-domain.com
    ```
 
+> [!NOTE]
+> The `DNSEntry` field `.spec.reference` is not supported anymore. `DNSEntries` with
+> `.spec.reference` set fail reconciliation instead of inheriting attributes from the
+> referenced entry.
+
 For more examples about the custom resources and the annotations for services and ingresses
 see the [examples](examples/) directory and [translation of `DNSEntries` examples](docs/usage/dnsentry_translation.md)
 
