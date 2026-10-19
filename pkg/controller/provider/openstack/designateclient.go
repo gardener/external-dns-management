@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -119,7 +120,8 @@ func createDesignateServiceClient(ctx context.Context, logger logger.LogContext,
 	providerClient.HTTPClient.Transport = transport
 
 	if err = openstack.Authenticate(ctx, providerClient, *ao); err != nil {
-		return nil, err
+		logger.Errorf("authentication at Keystone at %s failed: %s", ao.IdentityEndpoint, err)
+		return nil, sanitizeOpenStackError("authentication at Keystone failed", err)
 	}
 
 	eo := gophercloud.EndpointOpts{
@@ -132,6 +134,18 @@ func createDesignateServiceClient(ctx context.Context, logger logger.LogContext,
 	}
 	logger.Infof("Found OpenStack Designate service at %s", client.Endpoint)
 	return client, nil
+}
+
+// sanitizeOpenStackError wraps errors from the Keystone endpoint so that the raw upstream
+// response body is never surfaced in the tenant-readable DNSProvider status. The HTTP status
+// code is retained as it is harmless and useful for diagnostics; the full error (incl. body) is
+// kept only for operator-side logs by the caller.
+func sanitizeOpenStackError(msg string, err error) error {
+	var codeErr gophercloud.ErrUnexpectedResponseCode
+	if errors.As(err, &codeErr) {
+		return fmt.Errorf("%s: unexpected HTTP status %d from Keystone endpoint", msg, codeErr.Actual)
+	}
+	return fmt.Errorf("%s", msg)
 }
 
 // ForEachZone calls handler for each zone managed by the Designate

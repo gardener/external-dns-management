@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -63,8 +64,7 @@ type clientAuthConfig struct {
 }
 
 // authenticate in OpenStack and obtain Designate service endpoint
-func createDesignateServiceClient(ctx context.Context, logger logr.Logger, clientAuthConfig *clientAuthConfig) (*gophercloud.ServiceClient, error) {
-	clientOpts := new(clientconfig.ClientOpts)
+func createDesignateServiceClient(ctx context.Context, logger logr.Logger, clientAuthConfig *clientAuthConfig) (*gophercloud.ServiceClient, error) {	clientOpts := new(clientconfig.ClientOpts)
 	clientOpts.AuthInfo = &clientAuthConfig.AuthInfo
 	if clientAuthConfig.ApplicationCredentialSecret != "" {
 		clientOpts.AuthType = clientconfig.AuthV3ApplicationCredential
@@ -119,7 +119,8 @@ func createDesignateServiceClient(ctx context.Context, logger logr.Logger, clien
 	providerClient.HTTPClient.Transport = transport
 
 	if err = openstack.Authenticate(ctx, providerClient, *ao); err != nil {
-		return nil, err
+		logger.Error(err, "authentication at Keystone failed", "endpoint", ao.IdentityEndpoint)
+		return nil, sanitizeOpenStackError("authentication at Keystone failed", err)
 	}
 
 	eo := gophercloud.EndpointOpts{
@@ -132,6 +133,18 @@ func createDesignateServiceClient(ctx context.Context, logger logr.Logger, clien
 	}
 	logger.Info("Found OpenStack Designate service", "endpoint", client.Endpoint)
 	return client, nil
+}
+
+// sanitizeOpenStackError wraps errors from the Keystone endpoint so that the raw upstream
+// response body is never surfaced in the tenant-readable DNSProvider status. The HTTP status
+// code is retained as it is harmless and useful for diagnostics; the full error (incl. body) is
+// kept only for operator-side logs by the caller.
+func sanitizeOpenStackError(msg string, err error) error {
+	var codeErr gophercloud.ErrUnexpectedResponseCode
+	if errors.As(err, &codeErr) {
+		return fmt.Errorf("%s: unexpected HTTP status %d from Keystone endpoint", msg, codeErr.Actual)
+	}
+	return fmt.Errorf("%s", msg)
 }
 
 // ForEachZone calls handler for each zone managed by the Designate
