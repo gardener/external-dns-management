@@ -65,7 +65,8 @@ type clientAuthConfig struct {
 }
 
 // authenticate in OpenStack and obtain Designate service endpoint
-func createDesignateServiceClient(ctx context.Context, logger logr.Logger, clientAuthConfig *clientAuthConfig) (*gophercloud.ServiceClient, error) {	clientOpts := new(clientconfig.ClientOpts)
+func createDesignateServiceClient(ctx context.Context, logger logr.Logger, clientAuthConfig *clientAuthConfig) (*gophercloud.ServiceClient, error) {
+	clientOpts := new(clientconfig.ClientOpts)
 	clientOpts.AuthInfo = &clientAuthConfig.AuthInfo
 	if clientAuthConfig.ApplicationCredentialSecret != "" {
 		clientOpts.AuthType = clientconfig.AuthV3ApplicationCredential

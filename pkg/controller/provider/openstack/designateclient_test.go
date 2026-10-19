@@ -58,7 +58,7 @@ func TestDenyNonGlobalUnicastDial(t *testing.T) {
 		"10.0.0.5:443",            // private
 		"192.168.1.1:443",         // private
 		"172.16.0.1:443",          // private
-		"[fd00::1]:443",            // IPv6 unique-local
+		"[fd00::1]:443",           // IPv6 unique-local
 	}
 	for _, addr := range allowed {
 		Expect(denyNonGlobalUnicastDial("tcp", addr, nil)).NotTo(HaveOccurred(), "expected %s to be allowed", addr)
