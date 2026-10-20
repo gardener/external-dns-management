@@ -85,7 +85,6 @@ func (a *adapter) ValidateCredentialsAndProviderConfig(properties utils.Properti
 		if cfg.BatchSize < 1 || cfg.BatchSize > 50 {
 			return fmt.Errorf("invalid batch size %d, must be between 1 and 50", cfg.BatchSize)
 		}
-		return nil
 	}
 	return a.checks.ValidateProperties(a.ProviderType(), properties)
 }
