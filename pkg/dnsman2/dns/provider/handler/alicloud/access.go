@@ -314,7 +314,7 @@ func (a *access) NewRecord(fqdn, rtype, value string, zone provider.DNSHostedZon
 }
 
 func isSDKErrorWithCode(err error, code string) bool {
-	if sdkErr := err.(*tea.SDKError); sdkErr != nil {
+	if sdkErr, ok := err.(*tea.SDKError); ok {
 		return ptr.Deref(sdkErr.Code, "") == code
 	}
 	return false
