@@ -202,7 +202,6 @@ var _ = Describe("Reconcile", func() {
 				},
 			}
 			Expect(fakeClient.Delete(ctx, provider)).To(Succeed())
-			state.GetState().DeleteProviderState(client.ObjectKeyFromObject(provider))
 		}
 		markProviderDeleted = func(name string) {
 			GinkgoHelper()

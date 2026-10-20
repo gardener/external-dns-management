@@ -148,11 +148,23 @@ func (s *State) ClearDNSCaches(ctx context.Context, log logr.Logger, zoneID dns.
 	return nil
 }
 
-// DeleteProviderState removes the ProviderState for the given provider key.
-func (s *State) DeleteProviderState(providerKey client.ObjectKey) {
+// DeleteProviderState removes the ProviderState for the given provider key,
+// releasing its DNSAccount so credential-bearing handlers are not leaked.
+func (s *State) DeleteProviderState(log logr.Logger, providerKey client.ObjectKey) {
 	s.providers.lock.Lock()
 	defer s.providers.lock.Unlock()
+	if ps := s.providers.providers[providerKey]; ps != nil {
+		s.accounts.Release(log, ps.GetAccount(), providerKey)
+		ps.SetAccount(nil)
+	}
 	delete(s.providers.providers, providerKey)
+}
+
+// ReleaseAccount releases the DNSAccount currently held by the provider state
+// for the given key (e.g. before replacing it on a credential change), so the
+// old credential-bearing handler is not leaked in the account map.
+func (s *State) ReleaseAccount(log logr.Logger, providerKey client.ObjectKey, account *provider.DNSAccount) {
+	s.accounts.Release(log, account, providerKey)
 }
 
 // GetDNSQueryHandler returns a DNSQueryHandler for the given zone ID.
