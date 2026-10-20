@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -96,6 +97,18 @@ func (h *Handler) Release() {
 	h.cache.Release()
 }
 
+// sanitizePowerDNSError wraps errors from the PowerDNS endpoint so that the raw upstream response
+// body is never surfaced in the tenant-readable DNSProvider status. The HTTP status code is retained
+// as it is harmless and useful for diagnostics; the full error is kept only for operator-side logs
+// by the caller.
+func sanitizePowerDNSError(msg string, err error) error {
+	var pdErr *powerdns.Error
+	if errors.As(err, &pdErr) {
+		return fmt.Errorf("%s: unexpected HTTP status %d from PowerDNS endpoint", msg, pdErr.StatusCode)
+	}
+	return fmt.Errorf("%s", msg)
+}
+
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
@@ -104,7 +117,8 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 	hostedZones := provider.DNSHostedZones{}
 	zones, err := h.powerdns.Zones.List(h.ctx)
 	if err != nil {
-		return nil, err
+		h.config.Logger.Errorf("listing zones at PowerDNS failed: %s", err)
+		return nil, sanitizePowerDNSError("listing zones at PowerDNS failed", err)
 	}
 
 	for _, z := range zones {
@@ -128,7 +142,8 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 
 	state, err := h.powerdns.Zones.Get(h.ctx, zone.Id().ID)
 	if err != nil {
-		return nil, err
+		h.config.Logger.Errorf("fetching zone state from PowerDNS failed: %s", err)
+		return nil, sanitizePowerDNSError("fetching zone state from PowerDNS failed", err)
 	}
 
 	for _, rrset := range state.RRsets {

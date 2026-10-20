@@ -100,6 +100,12 @@ func (h *Handler) Release() {
 	h.cache.Release()
 }
 
+// sanitizeRFC2136Error returns a generic error that never surfaces the raw net/DNS dial detail in
+// the tenant-readable DNSProvider status. The caller logs the full error operator-side.
+func sanitizeRFC2136Error(msg string) error {
+	return fmt.Errorf("%s", msg)
+}
+
 func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
@@ -133,7 +139,8 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 	}
 	env, err := t.In(msg, h.nameserver)
 	if err != nil {
-		return nil, fmt.Errorf("axfr request failed: %w", err)
+		h.config.Logger.Errorf("axfr request failed: %s", err)
+		return nil, sanitizeRFC2136Error("axfr request failed")
 	}
 
 	for e := range env {
@@ -142,7 +149,8 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 			if e.Error == miekgdns.ErrSoa {
 				return nil, fmt.Errorf("AXFR error: unexpected response received from the server")
 			} else {
-				return nil, fmt.Errorf("AXFR error: %v", e.Error)
+				h.config.Logger.Errorf("AXFR error: %v", e.Error)
+				return nil, sanitizeRFC2136Error("AXFR error")
 			}
 		}
 
