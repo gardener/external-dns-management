@@ -5,16 +5,20 @@
 package embed
 
 import (
+	"context"
 	"crypto/x509"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"runtime/debug"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/gardener/external-dns-management/pkg/server/remote/common"
@@ -69,7 +73,7 @@ func StartDNSHandlerServer(logctx logger.LogContext, config *RemoteAccessServerC
 	if err != nil {
 		return nil, err
 	}
-	s := grpc.NewServer(grpc.Creds(creds))
+	s := grpc.NewServer(grpc.Creds(creds), grpc.UnaryInterceptor(recoveryUnaryInterceptor(logctx)))
 	server, err := serverFunc(logctx)
 	if err != nil {
 		return nil, err
@@ -82,4 +86,18 @@ func StartDNSHandlerServer(logctx logger.LogContext, config *RemoteAccessServerC
 		}
 	}()
 	return server, nil
+}
+
+// recoveryUnaryInterceptor turns a panic in a handler into an Internal gRPC error
+// instead of letting it crash the whole process.
+func recoveryUnaryInterceptor(logctx logger.LogContext) grpc.UnaryServerInterceptor {
+	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp any, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				logctx.Errorf("panic in %s: %v\n%s", info.FullMethod, r, debug.Stack())
+				err = status.Errorf(codes.Internal, "internal error")
+			}
+		}()
+		return handler(ctx, req)
+	}
 }

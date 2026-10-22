@@ -71,6 +71,9 @@ func TestUnmarshalChangeRequestNil(t *testing.T) {
 	if _, err := UnmarshalChangeRequest(&common.ChangeRequest{}, nil); err == nil {
 		t.Error("expected error for nil remote.Change")
 	}
+	if _, err := UnmarshalChangeRequest(&common.ChangeRequest{Change: &common.PartialDNSSet{}}, nil); err == nil {
+		t.Error("expected error for nil remote.Change.RecordSet")
+	}
 }
 
 func doTestMarshalChangeRequest(t *testing.T, withPolicy bool) {
