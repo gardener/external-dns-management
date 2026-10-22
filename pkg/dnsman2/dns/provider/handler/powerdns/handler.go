@@ -91,11 +91,26 @@ func newHttpClient(insecureSkipVerify bool, trustedCaCert string) *http.Client {
 func (h *handler) Release() {
 }
 
+// sanitizePowerDNSError wraps errors from the PowerDNS endpoint so that the raw upstream response
+// body is never surfaced in the tenant-readable DNSProvider status. The HTTP status code is retained
+// as it is harmless and useful for diagnostics; the full error is kept only for operator-side logs
+// by the caller.
+func sanitizePowerDNSError(msg string, err error) error {
+	var pdErr *powerdns.Error
+	if errors.As(err, &pdErr) {
+		return fmt.Errorf("%s: unexpected HTTP status %d from PowerDNS endpoint", msg, pdErr.StatusCode)
+	}
+	return fmt.Errorf("%s", msg)
+}
+
 func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error) {
 	var hostedZones []provider.DNSHostedZone
 	zones, err := h.powerdns.Zones.List(ctx)
 	if err != nil {
-		return nil, err
+		if log, lerr := h.getLogFromContext(ctx); lerr == nil {
+			log.Error(err, "listing zones at PowerDNS failed")
+		}
+		return nil, sanitizePowerDNSError("listing zones at PowerDNS failed", err)
 	}
 
 	for _, z := range zones {

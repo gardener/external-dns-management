@@ -25,6 +25,12 @@ type execution struct {
 	zone    provider.DNSHostedZone
 }
 
+// sanitizeRFC2136Error returns a generic error that never surfaces the raw net/DNS dial detail in
+// the tenant-readable DNSProvider status. The caller logs the full error operator-side.
+func sanitizeRFC2136Error(msg string) error {
+	return fmt.Errorf("%s", msg)
+}
+
 func newExecution(log logr.Logger, h *handler, zone provider.DNSHostedZone) *execution {
 	return &execution{log: log, handler: h, zone: zone}
 }
@@ -180,7 +186,8 @@ func (exec *execution) exchange(records []miekgdns.RR, apply func(*miekgdns.Msg,
 	retMsg, _, err := c.Exchange(msg, exec.handler.nameserver)
 	metrics.AddZoneRequests(exec.handler.zone, requestType, 1)
 	if err != nil {
-		return err
+		exec.log.Error(err, "DNS exchange failed")
+		return sanitizeRFC2136Error("DNS exchange failed")
 	}
 
 	if retMsg.Rcode != miekgdns.RcodeSuccess {

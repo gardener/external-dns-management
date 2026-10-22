@@ -158,13 +158,21 @@ func NewHandler(cfg *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 // Infoblox does not support zone forwarding???
 // Just removed the forwarding stuff from code
 
+// sanitizeInfobloxError returns a generic error that never surfaces the raw WAPI response body in
+// the tenant-readable DNSProvider status. The infoblox client returns the full response contents as
+// an untyped error, so the caller logs the full error operator-side and this returns only msg.
+func sanitizeInfobloxError(msg string) error {
+	return fmt.Errorf("%s", msg)
+}
+
 func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	var raw []ibclient.ZoneAuth
 	h.config.Metrics.AddGenericRequests(provider.M_LISTZONES, 1)
 	obj := ibclient.NewZoneAuth(ibclient.ZoneAuth{})
 	err := h.access.GetObject(obj, "", &ibclient.QueryParams{}, &raw)
-	if filterNotFound(err) != nil {
-		return nil, err
+	if ferr := filterNotFound(err); ferr != nil {
+		h.config.Logger.Errorf("listing zones at Infoblox failed: %s", ferr)
+		return nil, sanitizeInfobloxError("listing zones at Infoblox failed")
 	}
 
 	blockedZones := h.config.Options.GetBlockedZones()
@@ -190,8 +198,9 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resA []RecordA
 	err := h.access.GetObject(ibclient.NewEmptyRecordA(), "", params, &resA)
-	if filterNotFound(err) != nil {
-		return nil, fmt.Errorf("could not fetch A records from zone '%s': %s", zone.Key(), err)
+	if ferr := filterNotFound(err); ferr != nil {
+		h.config.Logger.Errorf("could not fetch A records from zone '%s': %s", zone.Key(), ferr)
+		return nil, sanitizeInfobloxError(fmt.Sprintf("could not fetch A records from zone '%s'", zone.Key()))
 	}
 	for _, res := range resA {
 		state.AddRecord((&res).Copy())
@@ -200,8 +209,9 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resAAAA []RecordAAAA
 	err = h.access.GetObject(ibclient.NewEmptyRecordAAAA(), "", params, &resAAAA)
-	if filterNotFound(err) != nil {
-		return nil, fmt.Errorf("could not fetch AAAA records from zone '%s': %s", zone.Key(), err)
+	if ferr := filterNotFound(err); ferr != nil {
+		h.config.Logger.Errorf("could not fetch AAAA records from zone '%s': %s", zone.Key(), ferr)
+		return nil, sanitizeInfobloxError(fmt.Sprintf("could not fetch AAAA records from zone '%s'", zone.Key()))
 	}
 	for _, res := range resAAAA {
 		state.AddRecord((&res).Copy())
@@ -210,8 +220,9 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resC []RecordCNAME
 	err = h.access.GetObject(ibclient.NewEmptyRecordCNAME(), "", params, &resC)
-	if filterNotFound(err) != nil {
-		return nil, fmt.Errorf("could not fetch CNAME records from zone '%s': %s", zone.Key(), err)
+	if ferr := filterNotFound(err); ferr != nil {
+		h.config.Logger.Errorf("could not fetch CNAME records from zone '%s': %s", zone.Key(), ferr)
+		return nil, sanitizeInfobloxError(fmt.Sprintf("could not fetch CNAME records from zone '%s'", zone.Key()))
 	}
 	for _, res := range resC {
 		state.AddRecord((&res).Copy())
@@ -220,8 +231,9 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 	h.config.Metrics.AddZoneRequests(zone.Id().ID, rt, 1)
 	var resT []RecordTXT
 	err = h.access.GetObject(ibclient.NewEmptyRecordTXT(), "", params, &resT)
-	if filterNotFound(err) != nil {
-		return nil, fmt.Errorf("could not fetch TXT records from zone '%s': %s", zone.Key(), err)
+	if ferr := filterNotFound(err); ferr != nil {
+		h.config.Logger.Errorf("could not fetch TXT records from zone '%s': %s", zone.Key(), ferr)
+		return nil, sanitizeInfobloxError(fmt.Sprintf("could not fetch TXT records from zone '%s'", zone.Key()))
 	}
 	for _, res := range resT {
 		state.AddRecord((&res).Copy())
