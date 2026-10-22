@@ -23,7 +23,8 @@ type AnnotationState interface {
 	// DeleteResourceAnnotations removes the annotations for a given resource reference.
 	DeleteResourceAnnotations(ref v1alpha1.ResourceReference)
 	// DeleteByAnnotationKey removes the annotations associated with a given annotation object key.
-	DeleteByAnnotationKey(annotationKey client.ObjectKey)
+	// It returns the freed resource reference, or nil if no entry was found.
+	DeleteByAnnotationKey(annotationKey client.ObjectKey) *v1alpha1.ResourceReference
 	// UpdateStatus updates the status message and active state for a given resource reference.
 	UpdateStatus(ctx context.Context, c client.Client, ref v1alpha1.ResourceReference, active bool) error
 	// Reset clears all stored annotations.
@@ -107,15 +108,18 @@ func (s *annotationState) DeleteResourceAnnotations(ref v1alpha1.ResourceReferen
 	delete(s.resourceAnnotations, key)
 }
 
-func (s *annotationState) DeleteByAnnotationKey(annotationKey client.ObjectKey) {
+func (s *annotationState) DeleteByAnnotationKey(annotationKey client.ObjectKey) *v1alpha1.ResourceReference {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	for key, data := range s.resourceAnnotations {
 		if data.annotationRef == annotationKey {
 			delete(s.resourceAnnotations, key)
+			ref := data.resourceRef
+			return &ref
 		}
 	}
+	return nil
 }
 
 func (s *annotationState) Reset() {

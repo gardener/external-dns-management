@@ -151,6 +151,48 @@ var _ = Describe("Reconcile", func() {
 		Expect(annotation2.Status.Active).To(BeFalse())
 	})
 
+	It("should allow conflicting DNSAnnotation to take over after the active one is deleted", func() {
+		Expect(fakeClient.Create(ctx, annotation)).To(Succeed())
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: annotationKey})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+
+		annotation2 := &v1alpha1.DNSAnnotation{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "annotation2",
+				Namespace: "test-namespace",
+			},
+			Spec: v1alpha1.DNSAnnotationSpec{
+				ResourceRef: annotation.Spec.ResourceRef,
+				Annotations: map[string]string{
+					"baz": "qux",
+				},
+			},
+		}
+		annotation2Key := client.ObjectKeyFromObject(annotation2)
+		Expect(fakeClient.Create(ctx, annotation2)).To(Succeed())
+		result, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: annotation2Key})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+
+		// annotation2 is conflicting; annotation is active
+		Expect(fakeClient.Get(ctx, annotation2Key, annotation2)).To(Succeed())
+		Expect(annotation2.Status.Message).To(ContainSubstring("conflicting DNSAnnotation"))
+
+		// Delete annotation (a1); annotation2 should take over
+		Expect(fakeClient.Delete(ctx, annotation)).To(Succeed())
+		result, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: annotationKey})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+
+		annotations, message, _ := state.GetState().GetAnnotationState().GetResourceAnnotationStatus(annotation.Spec.ResourceRef)
+		Expect(annotations).To(Equal(map[string]string{"baz": "qux"}))
+		Expect(message).To(BeEmpty())
+
+		Expect(fakeClient.Get(ctx, annotation2Key, annotation2)).To(Succeed())
+		Expect(annotation2.Status.Message).To(BeEmpty())
+	})
+
 	It("should allow to annotate a reference in another namespace", func() {
 		annotation.Spec.ResourceRef.Namespace = "other-namespace"
 		Expect(fakeClient.Create(ctx, annotation)).To(Succeed())
