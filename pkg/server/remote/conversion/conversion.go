@@ -139,6 +139,12 @@ func UnmarshalPartialDNSSet(remote *common.PartialDNSSet) *dns.DNSSet {
 }
 
 func UnmarshalChangeRequest(remote *common.ChangeRequest, done provider.DoneHandler) (*provider.ChangeRequest, error) {
+	if remote == nil || remote.Change == nil {
+		return nil, fmt.Errorf("remote.Change is nil")
+	}
+	if remote.Change.RecordSet == nil {
+		return nil, fmt.Errorf("remote.Change.RecordSet is nil")
+	}
 	local := &provider.ChangeRequest{
 		Type: remote.Change.RecordType,
 		Done: done,
