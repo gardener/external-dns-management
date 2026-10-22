@@ -40,7 +40,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req reconcile.Request) (reco
 	annotation := &v1alpha1.DNSAnnotation{}
 	if err := r.Client.Get(ctx, req.NamespacedName, annotation); err != nil {
 		if apierrors.IsNotFound(err) {
-			r.deleteByKey(req.NamespacedName)
+			r.deleteByKey(ctx, log, req.NamespacedName)
 			log.V(1).Info("Object is gone, stop reconciling")
 			return reconcile.Result{}, nil
 		}
