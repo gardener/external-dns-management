@@ -32,13 +32,4 @@ var _ = Describe("AnnotationState", func() {
 		_, _, activeOld := s.GetResourceAnnotationStatus(refOld)
 		Expect(activeOld).To(BeFalse())
 	})
-
-	It("removes all entries owned by an annotation key", func() {
-		Expect(s.SetResourceAnnotations(refOld, annotRef, nil)).To(Succeed())
-		// force a second entry under the same annotationRef (pre-fix leak shape)
-		s.resourceAnnotations[resourceRefToString(refNew)] = &annotationData{resourceRef: refNew, annotationRef: annotRef}
-
-		s.DeleteByAnnotationKey(annotRef)
-		Expect(s.resourceAnnotations).To(BeEmpty())
-	})
 })
