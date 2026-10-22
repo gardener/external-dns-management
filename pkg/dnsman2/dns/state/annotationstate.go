@@ -63,6 +63,15 @@ func (s *annotationState) SetResourceAnnotations(ref v1alpha1.ResourceReference,
 			return fmt.Errorf("conflicting DNSAnnotation for the same resource reference: %s", data.annotationRef)
 		}
 	} else {
+		// Evict any stale entry this annotation previously owned under a different
+		// resourceRef (e.g. after spec.resourceRef was changed), otherwise it would
+		// leak for the process lifetime.
+		for k, d := range s.resourceAnnotations {
+			if d.annotationRef == annotationRef {
+				delete(s.resourceAnnotations, k)
+			}
+		}
+
 		data = &annotationData{
 			resourceRef:   ref,
 			annotations:   annotations,
@@ -105,7 +114,6 @@ func (s *annotationState) DeleteByAnnotationKey(annotationKey client.ObjectKey) 
 	for key, data := range s.resourceAnnotations {
 		if data.annotationRef == annotationKey {
 			delete(s.resourceAnnotations, key)
-			break
 		}
 	}
 }
