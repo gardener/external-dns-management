@@ -28,12 +28,21 @@ var _ = Describe("Adapter", func() {
 
 	Describe("ValidateCredentialsAndProviderConfig", func() {
 		Context("with valid provider config", func() {
+			var validProps utils.Properties
+
+			BeforeEach(func() {
+				validProps = utils.Properties{
+					"AWS_ACCESS_KEY_ID":     "AKIAIOSFODNN7EXAMPLE",
+					"AWS_SECRET_ACCESS_KEY": base64.StdEncoding.EncodeToString([]byte("example-key")),
+				}
+			})
+
 			It("should accept valid batch size", func() {
 				cfg := config.AWSConfig{BatchSize: 25}
 				raw, err := json.Marshal(cfg)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})).To(Succeed())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(validProps, &runtime.RawExtension{Raw: raw})).To(Succeed())
 			})
 
 			It("should accept minimum batch size of 1", func() {
@@ -41,7 +50,7 @@ var _ = Describe("Adapter", func() {
 				raw, err := json.Marshal(cfg)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})).To(Succeed())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(validProps, &runtime.RawExtension{Raw: raw})).To(Succeed())
 			})
 
 			It("should accept maximum batch size of 50", func() {
@@ -49,7 +58,7 @@ var _ = Describe("Adapter", func() {
 				raw, err := json.Marshal(cfg)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(adapter.ValidateCredentialsAndProviderConfig(nil, &runtime.RawExtension{Raw: raw})).To(Succeed())
+				Expect(adapter.ValidateCredentialsAndProviderConfig(validProps, &runtime.RawExtension{Raw: raw})).To(Succeed())
 			})
 		})
 
