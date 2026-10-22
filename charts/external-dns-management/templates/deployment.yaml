@@ -278,6 +278,9 @@ spec:
         {{- if .Values.configuration.compoundDisableZoneStateCaching }}
         - --compound.disable-zone-state-caching={{ .Values.configuration.compoundDisableZoneStateCaching }}
         {{- end }}
+        {{- if .Values.configuration.compoundDisableProviderTypes }}
+        - --compound.disable-provider-types={{ .Values.configuration.compoundDisableProviderTypes }}
+        {{- end }}
         {{- if .Values.configuration.compoundDnsClass }}
         - --compound.dns-class={{ .Values.configuration.compoundDnsClass }}
         {{- end }}
@@ -301,6 +304,21 @@ spec:
         {{- end }}
         {{- if .Values.configuration.compoundEntryFailureBackoffMax }}
         - --compound.entry-failure-backoff-max={{ .Values.configuration.compoundEntryFailureBackoffMax }}
+        {{- end }}
+        {{- if .Values.configuration.compoundGdchDnsAdvancedBatchSize }}
+        - --compound.gdch-dns.advanced.batch-size={{ .Values.configuration.compoundGdchDnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.compoundGdchDnsAdvancedMaxRetries }}
+        - --compound.gdch-dns.advanced.max-retries={{ .Values.configuration.compoundGdchDnsAdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.compoundGdchDnsRatelimiterBurst }}
+        - --compound.gdch-dns.ratelimiter.burst={{ .Values.configuration.compoundGdchDnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.compoundGdchDnsRatelimiterEnabled }}
+        - --compound.gdch-dns.ratelimiter.enabled={{ .Values.configuration.compoundGdchDnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.compoundGdchDnsRatelimiterQps }}
+        - --compound.gdch-dns.ratelimiter.qps={{ .Values.configuration.compoundGdchDnsRatelimiterQps }}
         {{- end }}
         {{- if .Values.configuration.compoundGoogleClouddnsAdvancedBatchSize }}
         - --compound.google-clouddns.advanced.batch-size={{ .Values.configuration.compoundGoogleClouddnsAdvancedBatchSize }}
@@ -488,6 +506,9 @@ spec:
         {{- if .Values.configuration.disableZoneStateCaching }}
         - --disable-zone-state-caching={{ .Values.configuration.disableZoneStateCaching }}
         {{- end }}
+        {{- if .Values.configuration.disableProviderTypes }}
+        - --disable-provider-types={{ .Values.configuration.disableProviderTypes }}
+        {{- end }}
         {{- if .Values.configuration.dnsClass }}
         - --dns-class={{ .Values.configuration.dnsClass }}
         {{- end }}
@@ -598,6 +619,21 @@ spec:
         {{- end }}
         {{- if .Values.configuration.forceCrdUpdate }}
         - --force-crd-update={{ .Values.configuration.forceCrdUpdate }}
+        {{- end }}
+        {{- if .Values.configuration.gdchDnsAdvancedBatchSize }}
+        - --gdch-dns.advanced.batch-size={{ .Values.configuration.gdchDnsAdvancedBatchSize }}
+        {{- end }}
+        {{- if .Values.configuration.gdchDnsAdvancedMaxRetries }}
+        - --gdch-dns.advanced.max-retries={{ .Values.configuration.gdchDnsAdvancedMaxRetries }}
+        {{- end }}
+        {{- if .Values.configuration.gdchDnsRatelimiterBurst }}
+        - --gdch-dns.ratelimiter.burst={{ .Values.configuration.gdchDnsRatelimiterBurst }}
+        {{- end }}
+        {{- if .Values.configuration.gdchDnsRatelimiterEnabled }}
+        - --gdch-dns.ratelimiter.enabled={{ .Values.configuration.gdchDnsRatelimiterEnabled }}
+        {{- end }}
+        {{- if .Values.configuration.gdchDnsRatelimiterQps }}
+        - --gdch-dns.ratelimiter.qps={{ .Values.configuration.gdchDnsRatelimiterQps }}
         {{- end }}
         {{- if .Values.configuration.googleCloudDNSAdvancedBatchSize }}
         - --google-clouddns.advanced.batch-size={{ .Values.configuration.googleCloudDNSAdvancedBatchSize }}

@@ -107,6 +107,15 @@ func NewConfigForController(c controller.Interface, factory DNSHandlerFactory) (
 			return nil, fmt.Errorf("unknown providers types %s", del)
 		}
 	}
+	disabledTypes, err := c.GetStringOption(OPT_DISABLE_PROVIDERTYPES)
+	if err != nil {
+		return nil, err
+	}
+	if disabledTypes != "" {
+		disabled := utils.StringSet{}
+		disabled.AddAllSplitted(disabledTypes)
+		enabled.RemoveSet(disabled)
+	}
 
 	osrc, _ := c.GetOptionSource(FACTORY_OPTIONS)
 	fopts := GetFactoryOptions(osrc)
