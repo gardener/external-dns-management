@@ -56,8 +56,15 @@ func (c *DNSCache) Get(ctx context.Context, log logr.Logger, setName dns.DNSSetN
 		log.V(2).Info("caching negative result", "key", key, "ttl", c.ttl)
 		c.cache.Set(key, result, c.ttl)
 	} else {
-		log.V(2).Info("caching query result", "key", key, "ttl", c.ttl)
-		c.cache.Set(key, result, time.Duration(result.RecordSet.TTL)*time.Second)
+		// Cap the cache TTL at the configured c.ttl: the record's TTL is attacker-controllable via a
+		// spoofed answer (plain UDP, no DNSSEC), and an uncapped value would let one forged response
+		// suppress corrective writes for up to ~136 years. Capping bounds any poisoning to one reconcile window.
+		ttl := time.Duration(result.RecordSet.TTL) * time.Second
+		if ttl > c.ttl {
+			ttl = c.ttl
+		}
+		log.V(2).Info("caching query result", "key", key, "ttl", ttl)
+		c.cache.Set(key, result, ttl)
 	}
 	return result.RecordSet, result.Err
 }

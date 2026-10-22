@@ -71,16 +71,17 @@ type HostedZoneNameserversProvider struct {
 	lock              sync.Mutex
 	fqdnZone          string
 	nextUpdate        time.Time
-	minRefreshPeriod  time.Duration
+	maxCachePeriod    time.Duration
 	nameservers       []string
 	systemNameservers NameserversProvider
 }
 
 // NewHostedZoneNameserversProvider creates a new HostedZoneNameserversProvider.
-func NewHostedZoneNameserversProvider(ctx context.Context, fqdnZone string, minRefreshPeriod time.Duration, systemNameservers NameserversProvider) (*HostedZoneNameserversProvider, error) {
+// maxCachePeriod caps how long NS answers are cached: the cache holds for min(maxCachePeriod, response TTL).
+func NewHostedZoneNameserversProvider(ctx context.Context, fqdnZone string, maxCachePeriod time.Duration, systemNameservers NameserversProvider) (*HostedZoneNameserversProvider, error) {
 	instance := &HostedZoneNameserversProvider{
 		fqdnZone:          dns.EnsureTrailingDot(fqdnZone),
-		minRefreshPeriod:  minRefreshPeriod,
+		maxCachePeriod:    maxCachePeriod,
 		systemNameservers: systemNameservers,
 	}
 
@@ -119,7 +120,7 @@ func (h *HostedZoneNameserversProvider) Nameservers(ctx context.Context) ([]stri
 			return nil, err
 		}
 		h.nameservers = ns
-		h.nextUpdate = time.Now().Add(min(h.minRefreshPeriod, time.Duration(ttl)*time.Second))
+		h.nextUpdate = time.Now().Add(min(h.maxCachePeriod, time.Duration(ttl)*time.Second))
 	}
 
 	return h.nameservers, nil

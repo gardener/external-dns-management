@@ -158,7 +158,7 @@ func (a *DNSAccount) getZoneQueryCache(ctx context.Context, zone dns.ZoneInfo) (
 	cache, ok := a.dnsCaches[zone.ZoneID()]
 	if !ok {
 		factory := func() (utils.QueryDNS, error) {
-			nsProvider, err := utils.NewHostedZoneNameserversProvider(ctx, zone.Domain(), 12*time.Hour, utils.SystemNameservers) // TODO make minRefreshPeriod configurable
+			nsProvider, err := utils.NewHostedZoneNameserversProvider(ctx, zone.Domain(), 12*time.Hour, utils.SystemNameservers) // TODO make maxCachePeriod configurable
 			if err != nil {
 				return nil, fmt.Errorf("failed to create nameservers provider for zone %s: %w", zone.ZoneID(), err)
 			}
