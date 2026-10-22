@@ -205,7 +205,7 @@ var _ = Describe("Reconciler", func() {
 		fakeRecorder = events.NewFakeRecorder(32)
 		clock := clock.RealClock{}
 		registry := provider.NewDNSHandlerRegistry(clock)
-		local.RegisterTo(registry)
+		local.RegisterTo(registry, config.DNSProviderControllerConfig{})
 		reconciler = &Reconciler{
 			Clock:              clock,
 			Client:             fakeClientSrc,

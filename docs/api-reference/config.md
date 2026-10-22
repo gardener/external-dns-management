@@ -819,6 +819,54 @@ boolean
 <p>GCPWorkloadIdentityConfig is the configuration for GCP workload identity.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>gcpServiceAccountConfig</code></br>
+<em>
+<a href="#gcpserviceaccountconfig">GCPServiceAccountConfig</a>
+</em>
+</td>
+<td>
+<p>GCPServiceAccountConfig is the configuration for GCP service account credentials.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="gcpserviceaccountconfig">GCPServiceAccountConfig
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#dnsprovidercontrollerconfig">DNSProviderControllerConfig</a>)
+</p>
+
+<p>
+GCPServiceAccountConfig is the configuration for GCP service account credentials.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>allowedTokenURLs</code></br>
+<em>
+string array
+</em>
+</td>
+<td>
+<p>AllowedTokenURLs are the allowed token URLs for the service account token_uri field.</p>
+</td>
+</tr>
 
 </tbody>
 </table>

@@ -18,7 +18,7 @@ import (
 const ProviderType = "cloudflare-dns"
 
 // RegisterTo registers the Cloudflare DNS provider to the given registry.
-func RegisterTo(registry *provider.DNSHandlerRegistry) {
+func RegisterTo(registry *provider.DNSHandlerRegistry, _ config.DNSProviderControllerConfig) {
 	registry.Register(
 		ProviderType,
 		NewHandler,

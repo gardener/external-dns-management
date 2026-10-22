@@ -339,7 +339,7 @@ var _ = Describe("Reconcile", func() {
 	BeforeEach(func() {
 		if registry == nil {
 			registry = dnsprovider.NewDNSHandlerRegistry(clock)
-			local.RegisterTo(registry)
+			local.RegisterTo(registry, config.DNSProviderControllerConfig{})
 		}
 		clock.SetTime(startTime)
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSEntry{}).Build()

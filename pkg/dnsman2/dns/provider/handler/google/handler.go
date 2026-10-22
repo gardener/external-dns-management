@@ -49,6 +49,14 @@ type lightCredentialsFile struct {
 	ClientEmail  string `json:"client_email"`
 	PrivateKeyID string `json:"private_key_id"`
 	ProjectID    string `json:"project_id"`
+	TokenURI     string `json:"token_uri"`
+}
+
+// defaultAllowedTokenURLs are the Google OAuth token endpoints a service account
+// may point its token_uri at when no allowlist is configured.
+var defaultAllowedTokenURLs = []string{
+	"https://oauth2.googleapis.com/token",
+	"https://accounts.google.com/o/oauth2/token",
 }
 
 const epsilon = 0.00001
@@ -96,7 +104,7 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 			return nil, fmt.Errorf("%q required in secret", ServiceAccountJSONField)
 		}
 
-		info, err := validateServiceAccountJSON([]byte(serviceAccountJSON))
+		info, err := validateServiceAccountJSON([]byte(serviceAccountJSON), c.GlobalConfig.Controllers.DNSProvider.GCPServiceAccountConfig.AllowedTokenURLs)
 		if err != nil {
 			return nil, err
 		}
@@ -272,7 +280,7 @@ func (h *handler) getLogFromContext(ctx context.Context) (logr.Logger, error) {
 
 var projectIDRegexp = regexp.MustCompile(`^(?P<project>[a-z][a-z0-9-]{4,28}[a-z0-9])$`)
 
-func validateServiceAccountJSON(data []byte) (lightCredentialsFile, error) {
+func validateServiceAccountJSON(data []byte, allowedTokenURLs []string) (lightCredentialsFile, error) {
 	var credInfo lightCredentialsFile
 
 	if err := json.Unmarshal(data, &credInfo); err != nil {
@@ -283,6 +291,11 @@ func validateServiceAccountJSON(data []byte) (lightCredentialsFile, error) {
 	}
 	if credInfo.Type != "service_account" {
 		return credInfo, fmt.Errorf("'serviceaccount.json' field 'type' is not 'service_account'")
+	}
+	// token_uri is optional; when empty the oauth2 library defaults to the Google
+	// endpoint. When set it must be one of the allowed token URLs.
+	if credInfo.TokenURI != "" && !slices.Contains(allowedTokenURLs, credInfo.TokenURI) {
+		return credInfo, fmt.Errorf("'serviceaccount.json' field 'token_uri' is not an allowed value, must be one of %q", allowedTokenURLs)
 	}
 	return credInfo, nil
 }

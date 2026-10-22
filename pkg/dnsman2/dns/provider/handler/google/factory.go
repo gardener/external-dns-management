@@ -19,11 +19,11 @@ import (
 const ProviderType = "google-clouddns"
 
 // RegisterTo registers the Google Cloud DNS handler to the given registry.
-func RegisterTo(registry *provider.DNSHandlerRegistry) {
+func RegisterTo(registry *provider.DNSHandlerRegistry, cfg config.DNSProviderControllerConfig) {
 	registry.Register(
 		ProviderType,
 		NewHandler,
-		newAdapter(),
+		newAdapter(cfg.GCPServiceAccountConfig.AllowedTokenURLs),
 		&config.RateLimiterOptions{
 			Enabled: true,
 			QPS:     100,
@@ -37,12 +37,15 @@ type adapter struct {
 	checks *provider.DNSHandlerAdapterChecks
 }
 
-func newAdapter() provider.DNSHandlerAdapter {
+func newAdapter(allowedTokenURLs []string) provider.DNSHandlerAdapter {
+	if len(allowedTokenURLs) == 0 {
+		allowedTokenURLs = defaultAllowedTokenURLs
+	}
 	checks := provider.NewDNSHandlerAdapterChecks()
 	checks.SetDisjunctPropertySets([]string{"serviceaccount.json"},
 		[]string{securityv1alpha1constants.DataKeyToken, securityv1alpha1constants.DataKeyConfig, securityv1alpha1constants.LabelWorkloadIdentityProvider})
 	checks.Add(provider.OptionalProperty("serviceaccount.json").Validators(func(value string) error {
-		_, err := validateServiceAccountJSON([]byte(value))
+		_, err := validateServiceAccountJSON([]byte(value), allowedTokenURLs)
 		return err
 	}).HideValue())
 	checks.Add(provider.OptionalProperty(securityv1alpha1constants.DataKeyToken).

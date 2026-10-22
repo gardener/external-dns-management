@@ -22,7 +22,7 @@ import (
 const ProviderType = "gdch-dns"
 
 // RegisterTo registers the GDC DNS handler to the registry.
-func RegisterTo(registry *provider.DNSHandlerRegistry) {
+func RegisterTo(registry *provider.DNSHandlerRegistry, _ config.DNSProviderControllerConfig) {
 	registry.Register(ProviderType, NewHandler, newAdapter(), &config.RateLimiterOptions{
 		Enabled: true,
 		QPS:     100,
