@@ -17,10 +17,8 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller/reconcile"
 	"github.com/gardener/controller-manager-library/pkg/logger"
 	"github.com/gardener/controller-manager-library/pkg/resources"
-	"github.com/gardener/controller-manager-library/pkg/resources/access"
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -227,56 +225,10 @@ func (this *EntryVersion) ProviderName() resources.ObjectName {
 	return this.providername
 }
 
-func complete(logger logger.LogContext, state *state, entry *dnsutils.DNSEntryObject, prefix string) (*api.DNSEntrySpec, error) {
+func complete(_ logger.LogContext, _ *state, entry *dnsutils.DNSEntryObject, prefix string) (*api.DNSEntrySpec, error) {
 	if ref := entry.GetReference(); ref != nil && ref.Name != "" {
-		newSpec := entry.Spec().DeepCopy()
-		ns := ref.Namespace
-		if ns == "" {
-			ns = entry.GetNamespace()
-		}
-		dnsref := resources.NewObjectName(ns, ref.Name)
-		logger.Infof("completeing spec by reference: %s%s", prefix, dnsref)
-
-		cur := entry.ClusterKey()
-		key := resources.NewClusterKey(cur.Cluster(), cur.GroupKind(), dnsref.Namespace(), dnsref.Name())
-		state.references.AddRef(cur, key)
-
-		ref, err := entry.GetResource().GetCached(dnsref)
-		if err != nil {
-			if errors.IsNotFound(err) {
-				err = fmt.Errorf("entry reference %s%q not found", prefix, dnsref)
-			}
-			logger.Warn(err)
-			return nil, err
-		}
-		err = access.CheckAccessWithRealms(entry, "use", ref, state.realms)
-		if err != nil {
-			return nil, fmt.Errorf("%s%s", prefix, err)
-		}
-		rspec, err := complete(logger, state, dnsutils.DNSEntry(ref), fmt.Sprintf("%s%s->", prefix, dnsref))
-		if err != nil {
-			return nil, err
-		}
-
-		if entry.GetTargets() != nil {
-			return nil, fmt.Errorf("%stargets specified together with entry reference", prefix)
-		}
-		if entry.GetText() != nil {
-			err = fmt.Errorf("%stext specified together with entry reference", prefix)
-			return nil, err
-		}
-		newSpec.Targets = rspec.Targets
-		newSpec.Text = rspec.Text
-
-		if entry.GetTTL() == nil {
-			newSpec.TTL = rspec.TTL
-		}
-		if entry.GetCNameLookupInterval() == nil {
-			newSpec.CNameLookupInterval = rspec.CNameLookupInterval
-		}
-		return newSpec, nil
-	} else {
-		state.references.DelRef(entry.ClusterKey())
+		// the reference field is not supported anymore
+		return nil, fmt.Errorf("%s`reference` field is not supported anymore", prefix)
 	}
 	return entry.Spec(), nil
 }

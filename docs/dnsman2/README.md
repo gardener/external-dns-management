@@ -41,7 +41,7 @@ Additionally, it contains some major changes to the architecture and features of
 | `infoblox` provider type    | ✅ Supported                    | ❌ Not supported                                    |
 | `remote` provider type      | ✅ Supported                    | ❌ Not supported                                    |
 | Zone state caching          | ✅ Uses cached state            | ❌ Queries authoritative nameservers                |
-| `.spec.reference`           | ✅ Supported                    | ❌ Not supported                                    |
+| `.spec.reference`           |  ❌ Not supported (>= v0.54.0)  | ❌ Not supported                                    |
 
 ## Configuration
 

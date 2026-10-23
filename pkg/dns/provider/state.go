@@ -135,8 +135,7 @@ type state struct {
 	providerRateLimiter map[resources.ObjectName]*rateLimiterData
 	prlock              sync.RWMutex
 
-	dnsnames   ZonedDNSSetNames
-	references *References
+	dnsnames ZonedDNSSetNames
 
 	initialized bool
 
@@ -203,7 +202,6 @@ func NewDNSState(pctx ProviderContext, secretresc resources.Interface, classes *
 			max:    config.EntryFailureBackoffMax,
 		}),
 		dnsnames:            map[ZonedDNSSetName]*Entry{},
-		references:          NewReferenceCache(),
 		providerRateLimiter: map[resources.ObjectName]*rateLimiterData{},
 		updateEntryBlocked:  map[resources.ObjectName]struct{}{},
 		entriesLocking:      newEntriesLocking(),
