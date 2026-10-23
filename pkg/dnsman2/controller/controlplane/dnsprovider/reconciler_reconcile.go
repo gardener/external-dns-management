@@ -100,6 +100,11 @@ func (r *Reconciler) reconcile(ctx context.Context, log logr.Logger, provider *v
 
 	selectionResult := selection.CalcZoneAndDomainSelection(provider.Spec, toLightZones(zones))
 	providerState.SetSelection(selectionResult)
+	// Release the previously held account if the credentials/config changed, so the
+	// old credential-bearing handler is not leaked in the account map.
+	if oldAccount := providerState.GetAccount(); oldAccount != nil && oldAccount != newAccount {
+		r.state.ReleaseAccount(log, client.ObjectKeyFromObject(provider), oldAccount)
+	}
 	providerState.SetAccount(newAccount)
 
 	for _, warning := range selectionResult.Warnings {

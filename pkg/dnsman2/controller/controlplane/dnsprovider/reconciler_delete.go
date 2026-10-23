@@ -60,6 +60,8 @@ func (r *Reconciler) delete(ctx context.Context, log logr.Logger, provider *v1al
 		return reconcile.Result{}, fmt.Errorf("error removing finalizer from provider %s: %w", provider.Name, err)
 	}
 
+	r.state.DeleteProviderState(log, client.ObjectKeyFromObject(provider))
+
 	return reconcile.Result{}, nil
 }
 
