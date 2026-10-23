@@ -89,19 +89,12 @@ func ValidateWorkloadIdentityConfig(config *WorkloadIdentityConfig, fldPath *fie
 		rawTokenURL, ok := retrievedTokenURL.(string)
 		if !ok {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be string"))
-		}
+		} else {
+			allErrs = append(allErrs, validateHTTPSURL(rawTokenURL, fldPath.Child("credentialsConfig").Child(keyTokenURL))...)
 
-		tokenURL, err := url.Parse(rawTokenURL)
-		if err != nil {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should be a valid URL"))
-		}
-
-		if tokenURL.Scheme != "https" {
-			allErrs = append(allErrs, field.Invalid(fldPath.Child("credentialsConfig").Child(keyTokenURL), cfg[keyTokenURL], "should start with https://"))
-		}
-
-		if !slices.Contains(allowedTokenURLs, rawTokenURL) {
-			allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig").Child(keyTokenURL), fmt.Sprintf("allowed values are %q", allowedTokenURLs)))
+			if !slices.Contains(allowedTokenURLs, rawTokenURL) {
+				allErrs = append(allErrs, field.Forbidden(fldPath.Child("credentialsConfig").Child(keyTokenURL), fmt.Sprintf("allowed values are %q", allowedTokenURLs)))
+			}
 		}
 
 		if retrievedURL, ok := cfg[keyServiceAccountImpersonationURL]; ok {
@@ -112,41 +105,42 @@ func ValidateWorkloadIdentityConfig(config *WorkloadIdentityConfig, fldPath *fie
 					cfg[keyServiceAccountImpersonationURL],
 					"should be string"),
 				)
-			}
+			} else {
+				allowed := slices.ContainsFunc(allowedServiceAccountImpersonationURLRegExps, func(allowedRegexp *regexp.Regexp) bool {
+					return allowedRegexp.MatchString(rawURL)
+				})
 
-			allowed := slices.ContainsFunc(allowedServiceAccountImpersonationURLRegExps, func(allowedRegexp *regexp.Regexp) bool {
-				return allowedRegexp.MatchString(rawURL)
-			})
-
-			if !allowed {
-				regexpStrings := []string{}
-				for _, r := range allowedServiceAccountImpersonationURLRegExps {
-					regexpStrings = append(regexpStrings, r.String())
+				if !allowed {
+					regexpStrings := []string{}
+					for _, r := range allowedServiceAccountImpersonationURLRegExps {
+						regexpStrings = append(regexpStrings, r.String())
+					}
+					allErrs = append(allErrs, field.Invalid(
+						fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
+						rawURL,
+						"should match one of the allowed regular expressions: "+strings.Join(regexpStrings, ", ")),
+					)
 				}
-				allErrs = append(allErrs, field.Invalid(
-					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
-					rawURL,
-					"should match one of the allowed regular expressions: "+strings.Join(regexpStrings, ", ")),
-				)
-			}
 
-			serviceAccountImpersonationURL, err := url.Parse(rawURL)
-			if err != nil {
-				allErrs = append(allErrs, field.Invalid(
-					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
-					rawURL,
-					"should be a valid URL"),
-				)
-			}
-
-			if serviceAccountImpersonationURL.Scheme != "https" {
-				allErrs = append(allErrs, field.Invalid(
-					fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL),
-					rawURL,
-					"should start with https://"),
-				)
+				allErrs = append(allErrs, validateHTTPSURL(rawURL, fldPath.Child("credentialsConfig").Child(keyServiceAccountImpersonationURL))...)
 			}
 		}
+	}
+
+	return allErrs
+}
+
+func validateHTTPSURL(rawURL string, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		allErrs = append(allErrs, field.Invalid(fldPath, rawURL, "should be a valid URL"))
+		return allErrs
+	}
+
+	if u.Scheme != "https" {
+		allErrs = append(allErrs, field.Invalid(fldPath, rawURL, "should start with https://"))
 	}
 
 	return allErrs

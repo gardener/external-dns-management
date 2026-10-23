@@ -122,6 +122,43 @@ var _ = Describe("#ValidateWorkloadIdentityConfig", func() {
 		))
 	})
 
+	It("should reject an unparseable token_url without panicking", func() {
+		workloadIdentityConfig.CredentialsConfig.Raw = []byte(`
+{
+	"universe_domain": "googleapis.com",
+	"type": "external_account",
+	"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
+	"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+	"token_url": "https://a b"
+}
+`)
+		errorList := gcp.ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)
+		Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+			"Type":   Equal(field.ErrorTypeInvalid),
+			"Field":  Equal("providerConfig.credentialsConfig.token_url"),
+			"Detail": Equal("should be a valid URL"),
+		}))))
+	})
+
+	It("should reject an unparseable service_account_impersonation_url without panicking", func() {
+		workloadIdentityConfig.CredentialsConfig.Raw = []byte(`
+{
+	"universe_domain": "googleapis.com",
+	"type": "external_account",
+	"audience": "//iam.googleapis.com/projects/11111111/locations/global/workloadIdentityPools/foopool/providers/fooprovider",
+	"subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+	"token_url": "https://sts.googleapis.com/v1/token",
+	"service_account_impersonation_url": "https://a b"
+}
+`)
+		errorList := gcp.ValidateWorkloadIdentityConfig(workloadIdentityConfig, field.NewPath("providerConfig"), allowedTokenURLs, allowedServiceAccountImpersonationURLRegExps)
+		Expect(errorList).To(ContainElement(PointTo(MatchFields(IgnoreExtras, Fields{
+			"Type":   Equal(field.ErrorTypeInvalid),
+			"Field":  Equal("providerConfig.credentialsConfig.service_account_impersonation_url"),
+			"Detail": Equal("should be a valid URL"),
+		}))))
+	})
+
 	It("should return an validation error if CredentialsConfig is not set", func() {
 		workloadIdentityConfig.ProjectID = "my-project"
 		workloadIdentityConfig.CredentialsConfig = nil
