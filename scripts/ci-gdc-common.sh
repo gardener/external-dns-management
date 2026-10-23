@@ -358,6 +358,28 @@ complete_pr_check_run() {
       -f "output[title]=${title}" \
       -f "output[summary]=GDC integration test run completed with ${conclusion} (${run_url})." >/dev/null 2>&1 || \
       echo "Warning: Failed to update check-run ${PR_CHECK_RUN_ID} on PR #${PR_NUMBER}."
+
+    # When a manual /test-gdc-integration or workflow_dispatch run succeeds, also
+    # update any previously failed API check-runs with the same name on PR_HEAD_SHA
+    # (for example, an earlier manual run that failed) so the PR check status is not
+    # left in a failed state. This only supersedes check-runs created via the
+    # check-runs API by this script; it cannot patch the workflow job's own check-run.
+    if [[ "${exit_code}" -eq 0 && -n "${PR_HEAD_SHA:-}" ]]; then
+      local check_name="${CHECK_NAME:-GDC External DNS Management Integration Test (GDC Staging)}"
+      local failed_ids existing_id
+      failed_ids=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${PR_HEAD_SHA}/check-runs" 2>/dev/null \
+        | jq -r --arg name "${check_name}" --arg skip "${PR_CHECK_RUN_ID}" \
+          '.check_runs[] | select(.name == $name and .conclusion == "failure" and (.id | tostring) != $skip) | .id' \
+        2>/dev/null || true)
+      for existing_id in ${failed_ids}; do
+        gh api --method PATCH "repos/${GITHUB_REPOSITORY}/check-runs/${existing_id}" \
+          -f status="completed" \
+          -f conclusion="success" \
+          -f details_url="${run_url}" \
+          -f "output[title]=${title}" \
+          -f "output[summary]=Superseded by passing manual GDC integration test run (${run_url})." >/dev/null 2>&1 || true
+      done
+    fi
   fi
 
   if [[ "${GITHUB_ACTIONS:-}" == "true" && -n "${CI_LOG_FILE:-}" ]]; then
