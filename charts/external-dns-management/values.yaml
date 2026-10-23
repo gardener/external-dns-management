@@ -122,6 +122,7 @@ configuration:
   # compoundCloudflareDnsRatelimiterQps:
   # compoundDefaultPoolSize: 2
   # compoundDisableDnsnameValidation: false
+  # compoundDisableProviderTypes: ""
   # compoundDisableZoneStateCaching: false
   # compoundDnsClass: "gardendns"
   # compoundDnsDelay: 10s
@@ -131,6 +132,11 @@ configuration:
   # compoundEntryFailureBackoffBase:
   # compoundEntryFailureBackoffFactor:
   # compoundEntryFailureBackoffMax:
+  # compoundGdchDnsAdvancedBatchSize:
+  # compoundGdchDnsAdvancedMaxRetries:
+  # compoundGdchDnsRatelimiterBurst:
+  # compoundGdchDnsRatelimiterEnabled:
+  # compoundGdchDnsRatelimiterQps:
   # compoundGoogleClouddnsAdvancedBatchSize:
   # compoundGoogleClouddnsAdvancedMaxRetries:
   # compoundGoogleClouddnsRatelimiterBurst:
@@ -192,6 +198,7 @@ configuration:
   # defaultPoolSize:
   # disableDnsnameValidation: false
   # disableNamespaceRestriction: false
+  # disableProviderTypes: ""
   # disableZoneStateCaching: false
   # dnsClass: "gardendns"
   # dnsDelay: 10s
@@ -230,6 +237,11 @@ configuration:
   # entryFailureBackoffMax:
   # excludeDomains: google.com
   # forceCrdUpdate: false
+  # gdchDnsAdvancedBatchSize:
+  # gdchDnsAdvancedMaxRetries:
+  # gdchDnsRatelimiterBurst:
+  # gdchDnsRatelimiterEnabled:
+  # gdchDnsRatelimiterQps:
   # googleCloudDNSAdvancedBatchSize:
   # googleCloudDNSAdvancedMaxRetries:
   # googleCloudDNSRatelimiterBurst:

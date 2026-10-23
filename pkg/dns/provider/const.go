@@ -34,7 +34,8 @@ const (
 	OPT_REMOTE_ACCESS_SERVER_SECRET_NAME = "remote-access-server-secret-name"
 	OPT_REMOTE_ACCESS_CLIENT_ID          = "remote-access-client-id"
 
-	OPT_PROVIDERTYPES = "provider-types"
+	OPT_PROVIDERTYPES         = "provider-types"
+	OPT_DISABLE_PROVIDERTYPES = "disable-provider-types"
 
 	OPT_RATELIMITER_ENABLED = "ratelimiter.enabled"
 	OPT_RATELIMITER_QPS     = "ratelimiter.qps"

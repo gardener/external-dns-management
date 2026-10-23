@@ -6,6 +6,7 @@ package provider
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -159,8 +160,8 @@ type rateLimiterData struct {
 
 func NewDNSState(pctx ProviderContext, secretresc resources.Interface, classes *controller.Classes, config Config) *state {
 	pctx.Infof("responsible for classes:     %s (%s)", classes, classes.Main())
-	pctx.Infof("availabled providers types   %s", config.Factory.TypeCodes())
-	pctx.Infof("enabled providers types:     %s", config.EnabledTypes)
+	pctx.Infof("availabled providers types   %s", setSortedAsString(config.Factory.TypeCodes()))
+	pctx.Infof("enabled providers types:     %s", setSortedAsString(config.EnabledTypes))
 	pctx.Infof("using default ttl:           %d", config.TTL)
 	pctx.Infof("dry run mode:                %t", config.Dryrun)
 	pctx.Infof("reschedule delay:            %v", config.RescheduleDelay)
@@ -736,4 +737,10 @@ func forwarded(nested utils.StringSet, dnsname string) bool {
 		}
 	}
 	return false
+}
+
+func setSortedAsString(set utils.StringSet) string {
+	arr := set.AsArray()
+	sort.Strings(arr)
+	return "[" + strings.Join(arr, ",") + "]"
 }

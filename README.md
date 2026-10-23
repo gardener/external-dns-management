@@ -642,6 +642,7 @@ Flags:
       --compound.default.pool.size int                                Worker pool size for pool default of controller compound
       --compound.disable-dnsname-validation                           disable validation of domain names according to RFC 1123. of controller compound
       --compound.disable-zone-state-caching                           disable use of cached dns zone state on changes of controller compound
+      --compound.disable-provider-types string                        comma separated list of provider types to disable of controller compound
       --compound.dns-class string                                     identifier used to differentiate responsible controllers for entries of controller compound
       --compound.dns-delay duration                                   delay between two dns reconciliations of controller compound
       --compound.dns.pool.resync-period duration                      Period for resynchronization for pool dns of controller compound
@@ -730,6 +731,7 @@ Flags:
       --disable-dnsname-validation                                    disable validation of domain names according to RFC 1123.
       --disable-namespace-restriction                                 disable access restriction for namespace local access only
       --disable-zone-state-caching                                    disable use of cached dns zone state on changes
+      --disable-provider-types string                                 comma separated list of provider types to disable
       --dns-class string                                              identifier used to differentiate responsible controllers for entries, identifier used to differentiate responsible controllers for providers
       --dns-delay duration                                            delay between two dns reconciliations
       --dns-target-class string                                       identifier used to differentiate responsible dns controllers for target entries, identifier used to differentiate responsible dns controllers for target providers

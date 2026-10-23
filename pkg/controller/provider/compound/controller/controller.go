@@ -11,6 +11,8 @@ import (
 
 func init() {
 	provider.DNSController("", compound.Factory).
-		FinalizerDomain("dns.gardener.cloud").StringOption(provider.OPT_PROVIDERTYPES, "comma separated list of provider types to enable").
+		FinalizerDomain("dns.gardener.cloud").
+		StringOption(provider.OPT_PROVIDERTYPES, "comma separated list of provider types to enable").
+		StringOption(provider.OPT_DISABLE_PROVIDERTYPES, "comma separated list of provider types to disable").
 		MustRegister(provider.CONTROLLER_GROUP_DNS_CONTROLLERS)
 }
