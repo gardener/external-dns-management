@@ -215,7 +215,7 @@ var _ = Describe("PrivateZones", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
-	It("should complain about a provider with overlapping domains from two private zones", func() {
+	It("should not complain about a provider with domain and sub domain from two private zones", func() {
 		secret, err := testEnv.CreateSecret(1)
 		Ω(err).ShouldNot(HaveOccurred())
 
@@ -231,13 +231,19 @@ var _ = Describe("PrivateZones", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 		defer testEnv.DeleteProviderAndSecret(pr1)
 
-		testEnv.AwaitProviderState(pr1.GetName(), "Error")
+		testEnv.AwaitProviderReady(pr1.GetName())
 
-		_, pr1b, err := testEnv.GetProvider(pr1.GetName())
+		// entry in sub-zone must land in a.mock.xx zone, not mock.xx
+		e, err := testEnv.CreateEntry(0, "a.mock.xx")
 		Ω(err).ShouldNot(HaveOccurred())
-		Ω(pr1b.Status.Message).ShouldNot(BeNil())
-		Ω(*pr1b.Status.Message).Should(ContainSubstring("overlapping zones"))
+		testEnv.AwaitEntryReady(e.GetName())
+		err = testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, testEnv.ZonePrefix+"private:second:a.mock.xx", e)
+		Ω(err).ShouldNot(HaveOccurred())
+		err = testEnv.MockInMemoryHasNotEntryEx(testEnv.Namespace, testEnv.ZonePrefix+"private:mock.xx", e)
+		Ω(err).ShouldNot(HaveOccurred())
 
+		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).ShouldNot(HaveOccurred())
 		err = testEnv.DeleteProviderAndSecret(pr1)
 		Ω(err).ShouldNot(HaveOccurred())
 	})
