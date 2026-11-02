@@ -66,6 +66,70 @@ var _ = Describe("Selection", func() {
 		}))
 	})
 
+	It("uses zone include", func() {
+		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
+			Domains: &v1alpha1.DNSSelection{
+				Include: []string{"x.a.b"},
+			},
+			Zones: &v1alpha1.DNSSelection{
+				Include: []string{"ZAB"},
+			},
+		}
+		result := CalcZoneAndDomainSelection(spec, allzones)
+		Expect(result).To(Equal(SelectionResult{
+			Zones: []LightDNSHostedZone{zab},
+			SpecZoneSel: SubSelection{
+				Include: sets.New("ZAB"),
+				Exclude: sets.New[string](),
+			},
+			SpecDomainSel: SubSelection{
+				Include: sets.New[string]("x.a.b"),
+				Exclude: sets.New[string](),
+			},
+			ZoneSel: SubSelection{
+				Include: sets.New[string]("ZAB"),
+				Exclude: sets.New[string]("ZCAB", "ZOP"),
+			},
+			DomainSel: SubSelection{
+				Include: sets.New[string]("x.a.b"),
+				Exclude: sets.New[string]("c.a.b", "o.p"),
+			},
+		}))
+	})
+
+	It("prioritizes zone include over subdomain", func() {
+		spec := v1alpha1.DNSProviderSpec{
+			Type: "test",
+			Domains: &v1alpha1.DNSSelection{
+				Include: []string{"c.a.b"},
+			},
+			Zones: &v1alpha1.DNSSelection{
+				Include: []string{"ZAB"},
+			},
+		}
+		result := CalcZoneAndDomainSelection(spec, allzones)
+		Expect(result).To(Equal(SelectionResult{
+			Zones: []LightDNSHostedZone{zab},
+			SpecZoneSel: SubSelection{
+				Include: sets.New("ZAB"),
+				Exclude: sets.New[string](),
+			},
+			SpecDomainSel: SubSelection{
+				Include: sets.New[string]("c.a.b"),
+				Exclude: sets.New[string](),
+			},
+			ZoneSel: SubSelection{
+				Include: sets.New[string]("ZAB"),
+				Exclude: sets.New[string]("ZCAB", "ZOP"),
+			},
+			DomainSel: SubSelection{
+				Include: sets.New[string]("c.a.b"),
+				Exclude: sets.New[string]("o.p"),
+			},
+		}))
+	})
+
 	It("deals with uppercase domain selection and final dot", func() {
 		spec := v1alpha1.DNSProviderSpec{
 			Type: "test",
