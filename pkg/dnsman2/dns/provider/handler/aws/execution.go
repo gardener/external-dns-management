@@ -193,11 +193,16 @@ outer:
 		case route53types.ChangeActionCreate:
 			for _, m := range submatchExists {
 				if dns.NormalizeDomainName(m[1]) == dns.NormalizeDomainName(*change.ResourceRecordSet.Name) && m[2] == string(change.ResourceRecordSet.Type) {
-					if ex.isFetchedRecordSetEqual(ctx, change) {
+					switch ex.compareToFetchedRecordSet(ctx, change) {
+					case cmpEqual:
 						ex.log.Info("ignoring already created record", "record",
 							fmt.Sprintf("%s (%s)", *change.ResourceRecordSet.Name, change.ResourceRecordSet.Type))
 						succeeded = append(succeeded, change)
 						continue outer
+					case cmpExistsButNotEqual:
+						ex.log.Info("changing action from create to upsert record", "record",
+							fmt.Sprintf("%s (%s)", *change.ResourceRecordSet.Name, change.ResourceRecordSet.Type))
+						change.Action = route53types.ChangeActionUpsert
 					}
 				}
 			}
@@ -263,7 +268,15 @@ func (ex *execution) submitBisected(ctx context.Context, changes []*wrappedChang
 	return
 }
 
-func (ex *execution) isFetchedRecordSetEqual(ctx context.Context, change *wrappedChange) bool {
+type compareResult int
+
+const (
+	cmpNotFound compareResult = iota
+	cmpEqual
+	cmpExistsButNotEqual
+)
+
+func (ex *execution) compareToFetchedRecordSet(ctx context.Context, change *wrappedChange) compareResult {
 	output, err := ex.r53.ListResourceRecordSets(ctx, &route53.ListResourceRecordSetsInput{
 		HostedZoneId:          aws.String(ex.zoneID.ID),
 		MaxItems:              aws.Int32(1),
@@ -272,19 +285,25 @@ func (ex *execution) isFetchedRecordSetEqual(ctx context.Context, change *wrappe
 		StartRecordType:       change.ResourceRecordSet.Type,
 	})
 	if err != nil || len(output.ResourceRecordSets) == 0 {
-		return false
+		return cmpNotFound
 	}
 	crrs := change.ResourceRecordSet
 	orrs := output.ResourceRecordSets[0]
-	if dns.NormalizeDomainName(*crrs.Name) != dns.NormalizeDomainName(*orrs.Name) || crrs.Type != orrs.Type || !safeCompareInt64(crrs.TTL, orrs.TTL) || len(crrs.ResourceRecords) != len(orrs.ResourceRecords) || !safeCompareString(crrs.SetIdentifier, orrs.SetIdentifier) {
-		return false
+	if dns.NormalizeDomainName(*crrs.Name) != dns.NormalizeDomainName(*orrs.Name) || crrs.Type != orrs.Type {
+		return cmpNotFound
+	}
+	if !safeCompareInt64(crrs.TTL, orrs.TTL) ||
+		len(crrs.ResourceRecords) != len(orrs.ResourceRecords) ||
+		!safeCompareString(crrs.SetIdentifier, orrs.SetIdentifier) ||
+		!equalAliasTarget(crrs.AliasTarget, orrs.AliasTarget) {
+		return cmpExistsButNotEqual
 	}
 	for i := range crrs.ResourceRecords {
 		if *crrs.ResourceRecords[i].Value != *orrs.ResourceRecords[i].Value {
-			return false
+			return cmpExistsButNotEqual
 		}
 	}
-	return true
+	return cmpEqual
 }
 
 // isThrottlingError reports whether err is a Route53 throttling error.
@@ -353,4 +372,16 @@ func mapChanges(changes []*wrappedChange) []route53types.Change {
 		dest = append(dest, *c.Change)
 	}
 	return dest
+}
+
+func equalAliasTarget(a, b *route53types.AliasTarget) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return safeCompareString(a.DNSName, b.DNSName) &&
+		safeCompareString(a.HostedZoneId, b.HostedZoneId) &&
+		a.EvaluateTargetHealth == b.EvaluateTargetHealth
 }
