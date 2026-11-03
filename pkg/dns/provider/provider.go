@@ -105,14 +105,11 @@ func addObviousForwardedDomains(zones DNSHostedZones) DNSHostedZones {
 	result := make(DNSHostedZones, len(zones))
 	for i, zone := range zones {
 		result[i] = zone
-		if zone.IsPrivate() {
-			continue
-		}
 		changed := false
 		forwarded := zone.ForwardedDomains()
 	otherloop:
 		for j, other := range zones {
-			if i == j || other.IsPrivate() || zone.Domain() == other.Domain() {
+			if i == j || zone.IsPrivate() != other.IsPrivate() || zone.Domain() == other.Domain() {
 				continue
 			}
 			if Match(zone, other.Domain()) > 0 {

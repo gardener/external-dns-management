@@ -57,7 +57,8 @@ const (
 	FailDeleteEntry
 	FailSecondZoneWithSameBaseDomain
 	AlternativeMockName
-	PrivateZones
+	PrivateZone1
+	PrivateZone2
 	Quotas4PerMin
 	RemoveAccess
 	DisableCache
@@ -270,12 +271,14 @@ func (te *TestEnv) CreateSecretEx(secret *corev1.Secret) (resources.Object, erro
 
 func (te *TestEnv) BuildProviderConfig(domain, domain2 string, failOptions ...ProviderTestOption) *runtime.RawExtension {
 	name := te.Namespace
-	prefix2 := ""
+	var prefix1, prefix2 string
 	for _, opt := range failOptions {
 		switch opt {
 		case AlternativeMockName:
 			name = name + "-alt"
-		case PrivateZones:
+		case PrivateZone1:
+			prefix1 = "private:"
+		case PrivateZone2:
 			prefix2 = "private:"
 		}
 	}
@@ -283,7 +286,7 @@ func (te *TestEnv) BuildProviderConfig(domain, domain2 string, failOptions ...Pr
 	input := local.MockConfig{
 		Name: name,
 		Zones: []local.MockZone{
-			{ZonePrefix: te.ZonePrefix + prefix2, DNSName: domain},
+			{ZonePrefix: te.ZonePrefix + prefix1, DNSName: domain},
 			{ZonePrefix: te.ZonePrefix + prefix2 + "second:", DNSName: domain2},
 		},
 	}

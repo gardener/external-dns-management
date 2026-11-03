@@ -215,7 +215,7 @@ var _ = Describe("PrivateZones", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
-	It("should complain about a provider with overlapping domains from two private zones", func() {
+	It("should complain about a provider with domain and sub domain from public/private zones", func() {
 		secret, err := testEnv.CreateSecret(1)
 		Ω(err).ShouldNot(HaveOccurred())
 
@@ -223,7 +223,7 @@ var _ = Describe("PrivateZones", func() {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
 			spec.Type = "local"
-			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "a.mock.xx", PrivateZones)
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "a.mock.xx", PrivateZone2)
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
 
@@ -234,10 +234,42 @@ var _ = Describe("PrivateZones", func() {
 		testEnv.AwaitProviderState(pr1.GetName(), "Error")
 
 		_, pr1b, err := testEnv.GetProvider(pr1.GetName())
-		Ω(err).ShouldNot(HaveOccurred())
 		Ω(pr1b.Status.Message).ShouldNot(BeNil())
 		Ω(*pr1b.Status.Message).Should(ContainSubstring("overlapping zones"))
 
+		Ω(err).ShouldNot(HaveOccurred())
+		defer testEnv.DeleteProviderAndSecret(pr1)
+	})
+
+	It("should not complain about a provider with domain and sub domain from two private zones", func() {
+		secret, err := testEnv.CreateSecret(1)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		setSpec := func(provider *v1alpha1.DNSProvider) {
+			spec := &provider.Spec
+			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
+			spec.Type = "local"
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "a.mock.xx", PrivateZone1, PrivateZone2)
+			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
+		}
+
+		pr1, err := testEnv.CreateProviderEx(1, setSpec)
+		Ω(err).ShouldNot(HaveOccurred())
+		defer testEnv.DeleteProviderAndSecret(pr1)
+
+		testEnv.AwaitProviderReady(pr1.GetName())
+
+		// entry in sub-zone must land in a.mock.xx zone, not mock.xx
+		e, err := testEnv.CreateEntry(0, "a.mock.xx")
+		Ω(err).ShouldNot(HaveOccurred())
+		testEnv.AwaitEntryReady(e.GetName())
+		err = testEnv.MockInMemoryHasEntryEx(testEnv.Namespace, testEnv.ZonePrefix+"private:second:a.mock.xx", e)
+		Ω(err).ShouldNot(HaveOccurred())
+		err = testEnv.MockInMemoryHasNotEntryEx(testEnv.Namespace, testEnv.ZonePrefix+"private:mock.xx", e)
+		Ω(err).ShouldNot(HaveOccurred())
+
+		err = testEnv.DeleteEntryAndWait(e)
+		Ω(err).ShouldNot(HaveOccurred())
 		err = testEnv.DeleteProviderAndSecret(pr1)
 		Ω(err).ShouldNot(HaveOccurred())
 	})
@@ -250,7 +282,7 @@ var _ = Describe("PrivateZones", func() {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"a.mock.xx"}}
 			spec.Type = "local"
-			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "mock.xx", PrivateZones)
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "mock.xx", PrivateZone1, PrivateZone2)
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
 
@@ -269,7 +301,7 @@ var _ = Describe("PrivateZones", func() {
 		Ω(err).ShouldNot(HaveOccurred())
 	})
 
-	It("should not complain about a provider with zones forming domain and forwareded subdomain", func() {
+	It("should not complain about a provider with zones forming domain and forwarded subdomain", func() {
 		secret, err := testEnv.CreateSecret(1)
 		Ω(err).ShouldNot(HaveOccurred())
 
@@ -277,7 +309,7 @@ var _ = Describe("PrivateZones", func() {
 			spec := &provider.Spec
 			spec.Domains = &v1alpha1.DNSSelection{Include: []string{"mock.xx"}}
 			spec.Type = "local"
-			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "sub.mock.xx", PrivateZones)
+			spec.ProviderConfig = testEnv.BuildProviderConfig("mock.xx", "sub.mock.xx", PrivateZone1, PrivateZone2)
 			spec.SecretRef = &corev1.SecretReference{Name: secret.GetName(), Namespace: testEnv.Namespace}
 		}
 
