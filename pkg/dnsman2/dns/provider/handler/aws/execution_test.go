@@ -142,6 +142,56 @@ var _ = Describe("execution submitChanges", func() {
 		Expect(fake.changeCalls).To(HaveLen(2))
 	})
 
+	It("retries CREATE as UPSERT when orphan alias record exists with different target", func() {
+		// Scenario from the commit: an alias record pointing to a deleted LB exists in the
+		// zone. A DNS query returns no A/AAAA records (alias resolves to nothing), so the
+		// controller issues CREATE. Route53 rejects with InvalidChangeBatch because the alias
+		// RRS is still there. On retry, compareToFetchedRecordSet must return cmpExistsButNotEqual
+		// so the action is upgraded to UPSERT and the second call succeeds.
+		orphanAlias := route53types.ResourceRecordSet{
+			Name: aws.String("svc.example.org."),
+			Type: route53types.RRTypeA,
+			AliasTarget: &route53types.AliasTarget{
+				DNSName:              aws.String("old-lb.us-east-1.elb.amazonaws.com."),
+				HostedZoneId:         aws.String("Z35SXDOTRQ7X7K"),
+				EvaluateTargetHealth: true,
+			},
+		}
+		newRRS := &route53types.ResourceRecordSet{
+			Name:            aws.String("svc.example.org."),
+			Type:            route53types.RRTypeA,
+			TTL:             aws.Int64(60),
+			ResourceRecords: []route53types.ResourceRecord{{Value: aws.String("1.2.3.4")}},
+		}
+
+		changeCallCount := 0
+		fake := &fakeRoute53{
+			listResourceRecordsFn: func(_ context.Context, _ *route53.ListResourceRecordSetsInput) (*route53.ListResourceRecordSetsOutput, error) {
+				return &route53.ListResourceRecordSetsOutput{
+					ResourceRecordSets: []route53types.ResourceRecordSet{orphanAlias},
+				}, nil
+			},
+			changeResourceRecordsFn: func(_ context.Context, params *route53.ChangeResourceRecordSetsInput) (*route53.ChangeResourceRecordSetsOutput, error) {
+				changeCallCount++
+				if changeCallCount == 1 {
+					msg := "Tried to create resource record set [name='svc.example.org.', type='A'] but it already exists"
+					return nil, &route53types.InvalidChangeBatch{Message: aws.String(msg)}
+				}
+				// Second call must be an UPSERT, not a CREATE.
+				Expect(params.ChangeBatch.Changes[0].Action).To(Equal(route53types.ChangeActionUpsert))
+				return &route53.ChangeResourceRecordSetsOutput{}, nil
+			},
+		}
+
+		exec := newTestExecution(fake)
+		exec.changes = []*wrappedChange{
+			{Change: &route53types.Change{Action: route53types.ChangeActionCreate, ResourceRecordSet: newRRS}},
+		}
+
+		Expect(exec.submitChanges(ctx, metrics)).To(Succeed())
+		Expect(changeCallCount).To(Equal(2), "CREATE must be retried as UPSERT, not silently skipped")
+	})
+
 	It("does not skip a CREATE when the existing record has a different SetIdentifier (weighted-to-plain transition)", func() {
 		// Simulate: a weighted record (SetIdentifier="envoy-dns") exists for foo.example.org. A/60/1.2.3.4.
 		// Controller issues CREATE for a plain record (nil SetIdentifier) with the same
@@ -191,5 +241,29 @@ var _ = Describe("execution submitChanges", func() {
 
 		Expect(exec.submitChanges(ctx, metrics)).To(Succeed())
 		Expect(changeCallCount).To(Equal(2), "CREATE must be retried, not silently skipped")
+	})
+})
+
+var _ = Describe("equalAliasTarget", func() {
+	alias := func(name, zone string) *route53types.AliasTarget {
+		return &route53types.AliasTarget{
+			DNSName:              aws.String(name),
+			HostedZoneId:         aws.String(zone),
+			EvaluateTargetHealth: true,
+		}
+	}
+
+	It("returns true for two nils", func() {
+		Expect(equalAliasTarget(nil, nil)).To(BeTrue())
+	})
+	It("returns false when one side is nil", func() {
+		Expect(equalAliasTarget(alias("a.elb.aws.", "Z1"), nil)).To(BeFalse())
+		Expect(equalAliasTarget(nil, alias("a.elb.aws.", "Z1"))).To(BeFalse())
+	})
+	It("returns true for identical alias targets", func() {
+		Expect(equalAliasTarget(alias("a.elb.aws.", "Z1"), alias("a.elb.aws.", "Z1"))).To(BeTrue())
+	})
+	It("returns false when DNS names differ", func() {
+		Expect(equalAliasTarget(alias("old.elb.aws.", "Z1"), alias("new.elb.aws.", "Z1"))).To(BeFalse())
 	})
 })
