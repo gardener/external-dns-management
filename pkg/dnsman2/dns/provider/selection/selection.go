@@ -183,7 +183,7 @@ outer:
 			if dnsutils.Match(domain, zone.Domain()) {
 				isMatching := true
 				for _, forwardedZone := range forwardedZones[zone.ZoneID().ID] {
-					if dnsutils.Match(domain, forwardedZone.Domain()) {
+					if dnsutils.Match(domain, forwardedZone.Domain()) && !result.ZoneSel.Exclude.Has(forwardedZone.ZoneID().ID) {
 						isMatching = false
 						break
 					}
