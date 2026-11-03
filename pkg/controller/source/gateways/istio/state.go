@@ -5,6 +5,7 @@
 package istio
 
 import (
+	"slices"
 	"sync"
 
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
@@ -49,6 +50,19 @@ func (s *resourcesState) AddTargetSource(source resources.ObjectKey, gateways []
 	copy(value, gateways)
 
 	s.sourcesToGateways[source] = value
+}
+
+// AddGatewayForTargetSource adds the gateway to the gateways using the target source,
+// keeping the gateways already registered for it.
+func (s *resourcesState) AddGatewayForTargetSource(source resources.ObjectKey, gateway resources.ObjectName) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	gateways := s.sourcesToGateways[source]
+	if slices.ContainsFunc(gateways, func(g resources.ObjectName) bool { return resources.EqualsObjectName(g, gateway) }) {
+		return
+	}
+	s.sourcesToGateways[source] = append(gateways, gateway)
 }
 
 func (s *resourcesState) RemoveTargetSource(source resources.ObjectKey) {

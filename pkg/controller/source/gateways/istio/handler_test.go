@@ -22,6 +22,8 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/gardener/external-dns-management/pkg/controller/source/ingress"
+	"github.com/gardener/external-dns-management/pkg/controller/source/service"
 	"github.com/gardener/external-dns-management/pkg/dns"
 	dnssource "github.com/gardener/external-dns-management/pkg/dns/source"
 )
@@ -256,6 +258,51 @@ var _ = Describe("Istio Gateway Handler", func() {
 				Selector: selectorService2,
 			},
 		}, makeDNSInfo([]string{"foo.example.com", "bar.example.com"}, []string{"lb-example.com"})),
+	)
+
+	var _ = DescribeTable("tracks all gateways sharing a target source",
+		func(annotations map[string]string, selector map[string]string, targetSource resources.ObjectKey) {
+			lister := &testResourceLister{sources: defaultSources, virtualServices: virtualServices}
+			state := newState()
+			handler, err := newGatewaySourceWithResourceLister(lister, state)
+			Expect(err).To(Succeed())
+
+			for _, name := range []string{"g1", "g2"} {
+				gateway := &istionetworkingv1beta1.Gateway{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace:   "test",
+						Name:        name,
+						Annotations: annotations,
+					},
+					Spec: apinetworkingv1beta1.Gateway{
+						Servers: []*apinetworkingv1beta1.Server{
+							{Hosts: []string{name + ".example.com"}},
+						},
+						Selector: selector,
+					},
+				}
+				current := &dnssource.DNSCurrentState{Names: map[dns.DNSSetName]*dnssource.DNSState{}, Targets: utils.StringSet{}}
+				current.AnnotatedNames = utils.StringSet{}
+				current.AnnotatedNames.AddAllSplittedSelected(annotations[dnssource.DNS_ANNOTATION], utils.StandardNonEmptyStringElement)
+				_, err := handler.GetDNSInfo(log, gateway, current)
+				Expect(err).To(Succeed())
+				_, err = handler.GetDNSInfo(log, gateway, current)
+				Expect(err).To(Succeed())
+			}
+
+			Expect(state.MatchingGatewaysByTargetSource(targetSource)).To(ConsistOf(
+				resources.NewObjectName("test", "g1"),
+				resources.NewObjectName("test", "g2"),
+			))
+		},
+		Entry("service selected by both gateways",
+			map[string]string{dnssource.DNS_ANNOTATION: "*"},
+			selectorService1,
+			resources.NewKey(service.MainResource, "foo", "svc")),
+		Entry("ingress referenced by both gateways",
+			map[string]string{dnssource.DNS_ANNOTATION: "*", IngressTargetSourceAnnotation: "foo/bar"},
+			nil,
+			resources.NewKey(ingress.MainResource, "foo", "bar")),
 	)
 })
 
