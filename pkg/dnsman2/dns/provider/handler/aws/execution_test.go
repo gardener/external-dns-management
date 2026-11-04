@@ -143,7 +143,7 @@ var _ = Describe("execution submitChanges", func() {
 	})
 
 	It("retries CREATE as UPSERT when orphan alias record exists with different target", func() {
-		// Scenario from the commit: an alias record pointing to a deleted LB exists in the
+		// An alias record pointing to a deleted LB exists in the
 		// zone. A DNS query returns no A/AAAA records (alias resolves to nothing), so the
 		// controller issues CREATE. Route53 rejects with InvalidChangeBatch because the alias
 		// RRS is still there. On retry, compareToFetchedRecordSet must return cmpExistsButNotEqual
