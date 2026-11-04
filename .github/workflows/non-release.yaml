@@ -1,10 +1,16 @@
 name: Build
 on:
   push:
+    branches:
+      - master
+      - 'release-v*'
   pull_request_target:
+    types:
+      - labeled
 
 jobs:
   build:
+    if: ${{ github.repository == 'gardener/external-dns-management' && (github.event.action != 'labeled' || (github.event.label.name == vars.DEFAULT_LABEL_OK_TO_TEST && vars.DEFAULT_LABEL_OK_TO_TEST != '')) }}
     uses: ./.github/workflows/build.yaml
     with:
       mode: snapshot
@@ -15,6 +21,7 @@ jobs:
       id-token: write
 
   component-descriptor:
+    if: ${{ github.repository == 'gardener/external-dns-management' && (github.event.action != 'labeled' || (github.event.label.name == vars.DEFAULT_LABEL_OK_TO_TEST && vars.DEFAULT_LABEL_OK_TO_TEST != '')) }}
     uses: gardener/cc-utils/.github/workflows/post-build.yaml@v1
     needs:
       - build
