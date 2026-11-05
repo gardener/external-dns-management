@@ -164,7 +164,13 @@ func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, request dnsut
 		return dnsutils.QueryDNSResult{Err: err}
 	}
 
-	response, err := h.recordsClient.Get(ctx, resourceGroup, zoneID, request.SetName.DNSName, *azureRecordType, nil)
+	// Azure expects the zone-relative record name (e.g. "foo"), not the FQDN "foo.example.com".
+	recordName, ok := azutils.DropZoneName(request.SetName.DNSName, zone.Domain())
+	if !ok {
+		return dnsutils.QueryDNSResult{Err: fmt.Errorf("unexpected dns name %s", request.SetName.DNSName)}
+	}
+
+	response, err := h.recordsClient.Get(ctx, resourceGroup, zoneID, recordName, *azureRecordType, nil)
 	if err != nil {
 		var responseError *azcore.ResponseError
 		if errors.As(err, &responseError) && responseError.StatusCode == http.StatusNotFound {
