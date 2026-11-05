@@ -49,6 +49,7 @@ var _ = Describe("#hasMatchingWildcardEntry", func() {
 		Entry("wildcard entry itself is not shadowed", "*.example.com", []client.Object{entry("*.example.com")}, false),
 		Entry("different base domain does not match", "foo.example.com", []client.Object{entry("*.other.com")}, false),
 		Entry("non-wildcard entry is ignored", "foo.example.com", []client.Object{entry("bar.example.com")}, false),
+		Entry("bare asterisk entry does not match", "foo", []client.Object{entry("*")}, false),
 		Entry("no entries", "foo.example.com", nil, false),
 	)
 

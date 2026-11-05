@@ -249,7 +249,9 @@ func (r *entryReconciliation) hasMatchingWildcardEntry() (bool, *common.Reconcil
 		return false, &common.ReconcileResult{Err: err}
 	}
 	for _, entry := range list.Items {
-		if suffix, ok := strings.CutPrefix(entry.Spec.DNSName, "*"); ok {
+		// A wildcard entry starts with "*." and matches exactly one extra label, so its suffix
+		// (".example.com") must be present and leave a non-empty, dot-free prefix.
+		if suffix, ok := strings.CutPrefix(entry.Spec.DNSName, "*"); ok && strings.HasPrefix(suffix, ".") {
 			if prefix, found := strings.CutSuffix(name, suffix); found && prefix != "" && !strings.Contains(prefix, ".") {
 				return true, nil
 			}
