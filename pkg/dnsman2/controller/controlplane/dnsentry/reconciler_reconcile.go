@@ -151,7 +151,12 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 		r.markDriftCheckAttempted()
 	}
 
-	actualRecords, res := r.dnsRecordManager().QueryRecords(r.Ctx, recordsToCheck)
+	hasWildcardEntry, res := r.hasMatchingWildcardEntry()
+	if res != nil {
+		return *res
+	}
+
+	actualRecords, res := r.dnsRecordManager().QueryRecords(r.Ctx, recordsToCheck, hasWildcardEntry)
 	if res != nil {
 		return *res
 	}
@@ -227,6 +232,30 @@ func (r *entryReconciliation) acquireDNSNameLock() ([]string, *common.ReconcileR
 		}
 	}
 	return names, nil
+}
+
+// hasMatchingWildcardEntry reports whether another DNS entry in the same namespace has a wildcard
+// DNSName (e.g. "*.example.com") that shadows this entry's DNSName. A wildcard matches exactly one
+// extra label, so "*.example.com" shadows "foo.example.com" but not "example.com" or "a.b.example.com".
+// Wildcard entries themselves are never considered shadowed.
+func (r *entryReconciliation) hasMatchingWildcardEntry() (bool, *common.ReconcileResult) {
+	name := r.Entry.Spec.DNSName
+	if strings.HasPrefix(name, "*.") {
+		return false, nil
+	}
+
+	list := &v1alpha1.DNSEntryList{}
+	if err := r.Client.List(r.Ctx, list, client.InNamespace(r.namespace)); err != nil {
+		return false, &common.ReconcileResult{Err: err}
+	}
+	for _, entry := range list.Items {
+		if suffix, ok := strings.CutPrefix(entry.Spec.DNSName, "*"); ok {
+			if prefix, found := strings.CutSuffix(name, suffix); found && prefix != "" && !strings.Contains(prefix, ".") {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func validateDNSEntry(entry *v1alpha1.DNSEntry) error {

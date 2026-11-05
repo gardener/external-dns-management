@@ -50,11 +50,11 @@ var _ = Describe("DNSCache", func() {
 	Describe("Get", func() {
 		It("should query DNS and cache the result if not present", func() {
 			for i := range 7 {
-				rs, err := dnsCache.Get(ctx, logr.Discard(), dns.DNSSetName{DNSName: "example.com"}, dns.TypeA)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(rs).NotTo(BeNil())
-				Expect(rs.TTL).To(Equal(int64(1)))
-				Expect(rs.Records).To(ConsistOf(&dns.Record{Value: "1.2.3.4"}))
+				result := dnsCache.Get(ctx, logr.Discard(), QueryDNSRequest{SetName: dns.DNSSetName{DNSName: "example.com"}, RecordType: dns.TypeA})
+				Expect(result.Err).NotTo(HaveOccurred())
+				Expect(result.RecordSet).NotTo(BeNil())
+				Expect(result.RecordSet.TTL).To(Equal(int64(1)))
+				Expect(result.RecordSet.Records).To(ConsistOf(&dns.Record{Value: "1.2.3.4"}))
 				if i < 3 {
 					Expect(mockQuery.queryCount).To(Equal(1))
 				} else if i > 4 {

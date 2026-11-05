@@ -44,14 +44,14 @@ func NewDNSCache(dnsQuery QueryDNS, ttl time.Duration) *DNSCache {
 }
 
 // Get returns the DNS records for the given DNS name and record type.
-func (c *DNSCache) Get(ctx context.Context, log logr.Logger, setName dns.DNSSetName, rstype dns.RecordType) (*dns.RecordSet, error) {
-	key := RecordSetKey{Name: setName, RecordType: rstype}
+func (c *DNSCache) Get(ctx context.Context, log logr.Logger, request QueryDNSRequest) QueryDNSResult {
+	key := RecordSetKey{Name: request.SetName, RecordType: request.RecordType}
 	item := c.cache.Get(key)
 	if item != nil {
 		log.V(2).Info("found in cache", "key", key)
-		return item.Value().RecordSet, item.Value().Err
+		return item.Value()
 	}
-	result := c.dnsQuery.Query(ctx, QueryDNSRequest{SetName: setName, RecordType: rstype})
+	result := c.dnsQuery.Query(ctx, request)
 	if result.Err != nil || result.RecordSet == nil || len(result.RecordSet.Records) == 0 {
 		log.V(2).Info("caching negative result", "key", key, "ttl", c.ttl)
 		c.cache.Set(key, result, c.ttl)
@@ -66,7 +66,7 @@ func (c *DNSCache) Get(ctx context.Context, log logr.Logger, setName dns.DNSSetN
 		log.V(2).Info("caching query result", "key", key, "ttl", ttl)
 		c.cache.Set(key, result, ttl)
 	}
-	return result.RecordSet, result.Err
+	return result
 }
 
 // Clear removes all entries from the cache.
