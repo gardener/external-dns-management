@@ -48,6 +48,15 @@ type QueryDNSRequest struct {
 	PreferAPICall bool
 }
 
+// String returns a human-readable representation of the request.
+func (r QueryDNSRequest) String() string {
+	s := r.SetName.String() + "/" + string(r.RecordType)
+	if !r.PreferAPICall {
+		return s
+	}
+	return s + ";prefer-api"
+}
+
 type standardQueryDNS struct {
 	nameservers NameserversProvider
 	timeout     time.Duration

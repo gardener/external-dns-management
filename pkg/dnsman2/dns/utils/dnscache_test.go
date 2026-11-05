@@ -67,7 +67,7 @@ var _ = Describe("DNSCache", func() {
 
 	Describe("Len and Clear", func() {
 		It("should remove all entries from the cache", func() {
-			dnsCache.cache.Set(RecordSetKey{Name: dns.DNSSetName{DNSName: "example.com"}, RecordType: dns.TypeA}, sampleResult, ttlcache.DefaultTTL)
+			dnsCache.cache.Set(QueryDNSRequest{SetName: dns.DNSSetName{DNSName: "example.com"}, RecordType: dns.TypeA}, sampleResult, ttlcache.DefaultTTL)
 
 			Expect(dnsCache.cache.Len()).To(Equal(1))
 			dnsCache.Clear()

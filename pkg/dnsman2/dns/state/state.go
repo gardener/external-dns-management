@@ -137,7 +137,7 @@ func (s *State) FindAccountForZone(ctx context.Context, zoneID dns.ZoneID) (*pro
 }
 
 // ClearDNSCaches clears the DNS caches for the given zone ID and optional record set keys.
-func (s *State) ClearDNSCaches(ctx context.Context, log logr.Logger, zoneID dns.ZoneID, keys ...utils.RecordSetKey) error {
+func (s *State) ClearDNSCaches(ctx context.Context, log logr.Logger, zoneID dns.ZoneID, keys ...utils.QueryDNSRequest) error {
 	caches, err := s.accounts.GetDNSCachesByZone(ctx, zoneID)
 	if err != nil {
 		return err

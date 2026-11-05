@@ -483,10 +483,10 @@ func (r *entryReconciliation) insertPossibleAlternativeKeys(recordsToCheck recor
 // clearDNSCaches clears the DNS caches for the zones that are being updated
 func (r *entryReconciliation) clearDNSCaches(zonedRequests zonedRequests) {
 	for zoneID, requests := range zonedRequests {
-		var keys []utils.RecordSetKey
+		var keys []utils.QueryDNSRequest
 		for name, changes := range requests {
 			for recordType := range changes.Updates {
-				keys = append(keys, utils.RecordSetKey{Name: name, RecordType: recordType})
+				keys = append(keys, utils.QueryDNSRequest{SetName: name, RecordType: recordType}, utils.QueryDNSRequest{SetName: name, RecordType: recordType, PreferAPICall: true})
 			}
 		}
 		if err := r.state.ClearDNSCaches(r.Ctx, r.Log, zoneID, keys...); err != nil {
