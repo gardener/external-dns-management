@@ -235,7 +235,7 @@ func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDN
 	}
 	return func(ctx context.Context, zone dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
 		switch {
-		case request.SetName.SetIdentifier != "":
+		case request.PreferAPICall || request.SetName.SetIdentifier != "":
 			// routing policies with set identifiers are not supported by the default query function
 			return h.queryDNS(ctx, zone, request)
 		case request.RecordType == dns.TypeAWS_ALIAS_A, request.RecordType == dns.TypeAWS_ALIAS_AAAA:

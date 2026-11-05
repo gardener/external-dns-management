@@ -43,8 +43,9 @@ type QueryDNS interface {
 
 // QueryDNSRequest holds the parameters for a DNS query.
 type QueryDNSRequest struct {
-	SetName    dns.DNSSetName
-	RecordType dns.RecordType
+	SetName       dns.DNSSetName
+	RecordType    dns.RecordType
+	PreferAPICall bool
 }
 
 type standardQueryDNS struct {

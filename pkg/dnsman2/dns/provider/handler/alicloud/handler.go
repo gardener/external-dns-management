@@ -121,7 +121,7 @@ func (h *handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, factory utils.QueryDNSFa
 	}
 	return func(ctx context.Context, zone dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
 		switch {
-		case request.SetName.SetIdentifier != "":
+		case request.PreferAPICall || request.SetName.SetIdentifier != "":
 			// routing policies with set identifiers are not supported by the default query function
 			rs, err := h.queryDNS(ctx, zone, request.SetName, request.RecordType)
 			return utils.QueryDNSResult{RecordSet: rs, Err: err}

@@ -154,7 +154,7 @@ func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, request dnsut
 	h.config.RateLimiter.Accept()
 
 	resourceGroup, zoneID := azutils.SplitZoneID(zone.ZoneID().ID)
-	azureRecordType, err := utils.ToAzureRecordType(request.RecordType)
+	azureRecordType, err := utils.ToAzurePrivateRecordType(request.RecordType)
 	if err != nil {
 		return dnsutils.QueryDNSResult{Err: err}
 	}
@@ -167,7 +167,7 @@ func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, request dnsut
 		}
 		return dnsutils.QueryDNSResult{Err: err}
 	}
-	rs, err := utils.FromAzureRecordSet(response.RecordSet, request.RecordType)
+	rs, err := utils.FromAzurePrivateRecordSet(response.RecordSet, request.RecordType)
 	return dnsutils.QueryDNSResult{RecordSet: rs, Err: err}
 }
 
