@@ -15,6 +15,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 var _ = Describe("queryDNS wildcard / TXT fixes", func() {
@@ -79,12 +80,12 @@ var _ = Describe("queryDNS wildcard / TXT fixes", func() {
 			}
 			h := newTestHandler(fake)
 
-			rs, err := h.queryDNS(ctx, zoneInfo, dns.DNSSetName{DNSName: "*.example.org."}, dns.TypeTXT)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(rs).NotTo(BeNil())
-			Expect(rs.Records).To(HaveLen(2))
-			Expect(rs.Records[0].Value).To(Equal("hello"))
-			Expect(rs.Records[1].Value).To(Equal("world"))
+			result := h.queryDNS(ctx, zoneInfo, utils.QueryDNSRequest{SetName: dns.DNSSetName{DNSName: "*.example.org."}, RecordType: dns.TypeTXT})
+			Expect(result.Err).NotTo(HaveOccurred())
+			Expect(result.RecordSet).NotTo(BeNil())
+			Expect(result.RecordSet.Records).To(HaveLen(2))
+			Expect(result.RecordSet.Records[0].Value).To(Equal("hello"))
+			Expect(result.RecordSet.Records[1].Value).To(Equal("world"))
 		})
 
 		It("matches a wildcard A record and leaves its value untouched", func() {
@@ -102,13 +103,13 @@ var _ = Describe("queryDNS wildcard / TXT fixes", func() {
 			}
 			h := newTestHandler(fake)
 
-			rs, err := h.queryDNS(ctx, zoneInfo, dns.DNSSetName{DNSName: "*.example.org."}, dns.TypeA)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(rs).NotTo(BeNil())
-			Expect(rs.Type).To(Equal(dns.TypeA))
-			Expect(rs.TTL).To(Equal(int64(60)))
-			Expect(rs.Records).To(HaveLen(1))
-			Expect(rs.Records[0].Value).To(Equal("1.2.3.4"))
+			result := h.queryDNS(ctx, zoneInfo, utils.QueryDNSRequest{SetName: dns.DNSSetName{DNSName: "*.example.org."}, RecordType: dns.TypeA})
+			Expect(result.Err).NotTo(HaveOccurred())
+			Expect(result.RecordSet).NotTo(BeNil())
+			Expect(result.RecordSet.Type).To(Equal(dns.TypeA))
+			Expect(result.RecordSet.TTL).To(Equal(int64(60)))
+			Expect(result.RecordSet.Records).To(HaveLen(1))
+			Expect(result.RecordSet.Records[0].Value).To(Equal("1.2.3.4"))
 		})
 	})
 })

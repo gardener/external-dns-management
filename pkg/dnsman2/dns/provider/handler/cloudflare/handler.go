@@ -112,15 +112,15 @@ func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDN
 		return nil, fmt.Errorf("failed to create default query function: %w", err)
 	}
 	// routing policies with set identifiers are not supported by the default query function
-	return func(ctx context.Context, _ dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+	return func(ctx context.Context, _ dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
 		switch {
-		case setName.SetIdentifier == SetIdentifierProxied:
-			return h.queryDNS(ctx, zone, setName, recordType)
-		case setName.SetIdentifier != "":
-			return nil, fmt.Errorf("unsupported set identifier: %s", setName.SetIdentifier)
+		case request.SetName.SetIdentifier == SetIdentifierProxied:
+			rs, err := h.queryDNS(ctx, zone, request.SetName, request.RecordType)
+			return utils.QueryDNSResult{RecordSet: rs, Err: err}
+		case request.SetName.SetIdentifier != "":
+			return utils.QueryDNSResult{Err: fmt.Errorf("unsupported set identifier: %s", request.SetName.SetIdentifier)}
 		default:
-			queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
-			return queryResult.RecordSet, queryResult.Err
+			return defaultQueryFunc.Query(ctx, request)
 		}
 	}, nil
 }

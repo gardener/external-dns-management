@@ -51,7 +51,7 @@ func (c *DNSCache) Get(ctx context.Context, log logr.Logger, setName dns.DNSSetN
 		log.V(2).Info("found in cache", "key", key)
 		return item.Value().RecordSet, item.Value().Err
 	}
-	result := c.dnsQuery.Query(ctx, setName, rstype)
+	result := c.dnsQuery.Query(ctx, QueryDNSRequest{SetName: setName, RecordType: rstype})
 	if result.Err != nil || result.RecordSet == nil || len(result.RecordSet.Records) == 0 {
 		log.V(2).Info("caching negative result", "key", key, "ttl", c.ttl)
 		c.cache.Set(key, result, c.ttl)

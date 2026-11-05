@@ -38,7 +38,13 @@ type QueryDNSFactoryFunc func() (QueryDNS, error)
 // QueryDNS is an interface for querying DNS records.
 type QueryDNS interface {
 	// Query returns the DNS records for the given DNS name and record type.
-	Query(ctx context.Context, setName dns.DNSSetName, rstype dns.RecordType) QueryDNSResult
+	Query(ctx context.Context, request QueryDNSRequest) QueryDNSResult
+}
+
+// QueryDNSRequest holds the parameters for a DNS query.
+type QueryDNSRequest struct {
+	SetName    dns.DNSSetName
+	RecordType dns.RecordType
 }
 
 type standardQueryDNS struct {
@@ -61,14 +67,14 @@ func NewStandardQueryDNSWithTimeout(nameservers NameserversProvider, timeout tim
 	return q
 }
 
-func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rstype dns.RecordType) QueryDNSResult {
-	if setName.SetIdentifier != "" {
+func (q *standardQueryDNS) Query(ctx context.Context, request QueryDNSRequest) QueryDNSResult {
+	if request.SetName.SetIdentifier != "" {
 		return QueryDNSResult{Err: fmt.Errorf("set identifier is not supported for DNS queries")}
 	}
 	var (
 		rtype uint16
 	)
-	switch rstype {
+	switch request.RecordType {
 	case dns.TypeA:
 		rtype = miekgdns.TypeA
 	case dns.TypeAAAA:
@@ -80,10 +86,10 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 	case dns.TypeTXT:
 		rtype = miekgdns.TypeTXT
 	default:
-		return QueryDNSResult{Err: fmt.Errorf("unsupported record type %s", rstype)}
+		return QueryDNSResult{Err: fmt.Errorf("unsupported record type %s", request.RecordType)}
 	}
 
-	msg, err := q.dnsQueryFn(ctx, ToFQDN(setName.DNSName), rtype)
+	msg, err := q.dnsQueryFn(ctx, ToFQDN(request.SetName.DNSName), rtype)
 	if err != nil {
 		return QueryDNSResult{Err: err}
 	}
@@ -93,7 +99,7 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 		}
 		return QueryDNSResult{Err: fmt.Errorf("DNS lookup failed with rcode %d", msg.Rcode)}
 	}
-	rs := dns.NewRecordSet(rstype, 0, nil)
+	rs := dns.NewRecordSet(request.RecordType, 0, nil)
 	addRecord := func(value string, ttl uint32) {
 		if len(rs.Records) == 0 || int64(ttl) < rs.TTL {
 			rs.TTL = int64(ttl)
@@ -101,14 +107,14 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 		rs.Add(&dns.Record{Value: value})
 	}
 	for _, rr := range msg.Answer {
-		switch rstype {
+		switch request.RecordType {
 		case dns.TypeA:
 			r, ok := rr.(*miekgdns.A)
 			if !ok {
 				if isCNAMEAnswer(rr) {
 					// CNAME present means the name is an alias; A records (if any) belong to the alias target,
 					// not to the queried name. Return an empty record set so the caller can detect the type mismatch.
-					return QueryDNSResult{RecordSet: dns.NewRecordSet(rstype, 0, nil)}
+					return QueryDNSResult{RecordSet: dns.NewRecordSet(request.RecordType, 0, nil)}
 				}
 				return QueryDNSResult{Err: fmt.Errorf("unexpected record type %T (A)", rr)}
 			}
@@ -119,7 +125,7 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 				if isCNAMEAnswer(rr) {
 					// CNAME present means the name is an alias; AAAA records (if any) belong to the alias target,
 					// not to the queried name. Return an empty record set so the caller can detect the type mismatch.
-					return QueryDNSResult{RecordSet: dns.NewRecordSet(rstype, 0, nil)}
+					return QueryDNSResult{RecordSet: dns.NewRecordSet(request.RecordType, 0, nil)}
 				}
 				return QueryDNSResult{Err: fmt.Errorf("unexpected record type %T (AAAA)", rr)}
 			}
@@ -130,7 +136,7 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 				if isCNAMEAnswer(rr) {
 					// CNAME present means the name is an alias; TXT records (if any) belong to the alias target,
 					// not to the queried name. Return an empty record set so the caller can detect the type mismatch.
-					return QueryDNSResult{RecordSet: dns.NewRecordSet(rstype, 0, nil)}
+					return QueryDNSResult{RecordSet: dns.NewRecordSet(request.RecordType, 0, nil)}
 				}
 				return QueryDNSResult{Err: fmt.Errorf("unexpected record type %T (TXT)", rr)}
 			}
@@ -149,11 +155,11 @@ func (q *standardQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, rs
 				return QueryDNSResult{Err: fmt.Errorf("unexpected record type %T (CNAME)", rr)}
 			}
 			// Recursive resolvers return the full CNAME chain; only keep the record for the queried name.
-			if dns.NormalizeDomainName(rr.Header().Name) == dns.NormalizeDomainName(setName.DNSName) {
+			if dns.NormalizeDomainName(rr.Header().Name) == dns.NormalizeDomainName(request.SetName.DNSName) {
 				addRecord(dns.NormalizeDomainName(r.Target), r.Hdr.Ttl)
 			}
 		default:
-			return QueryDNSResult{Err: fmt.Errorf("unsupported record type %s in DNS response", rstype)}
+			return QueryDNSResult{Err: fmt.Errorf("unsupported record type %s in DNS response", request.RecordType)}
 		}
 	}
 	return QueryDNSResult{RecordSet: rs}

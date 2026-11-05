@@ -128,7 +128,7 @@ func (h *HostedZoneNameserversProvider) Nameservers(ctx context.Context) ([]stri
 
 func (h *HostedZoneNameserversProvider) retrieveNameservers(ctx context.Context) ([]string, int64, error) {
 	queryDNS := NewStandardQueryDNS(h.systemNameservers)
-	result := queryDNS.Query(ctx, dns.DNSSetName{DNSName: h.fqdnZone}.Normalize(), dns.TypeNS)
+	result := queryDNS.Query(ctx, QueryDNSRequest{SetName: dns.DNSSetName{DNSName: h.fqdnZone}.Normalize(), RecordType: dns.TypeNS})
 	if result.Err != nil || result.RecordSet == nil || len(result.RecordSet.Records) == 0 {
 		return nil, 0, result.Err
 	}

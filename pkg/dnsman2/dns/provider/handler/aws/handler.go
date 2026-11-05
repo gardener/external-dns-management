@@ -233,17 +233,16 @@ func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDN
 	if systemQueryFunc == nil {
 		systemQueryFunc = utils.NewStandardQueryDNS(utils.SystemNameservers)
 	}
-	return func(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+	return func(ctx context.Context, zone dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
 		switch {
-		case setName.SetIdentifier != "":
+		case request.SetName.SetIdentifier != "":
 			// routing policies with set identifiers are not supported by the default query function
-			return h.queryDNS(ctx, zone, setName, recordType)
-		case recordType == dns.TypeAWS_ALIAS_A, recordType == dns.TypeAWS_ALIAS_AAAA:
-			return h.queryAliasDNS(ctx, zone, setName, recordType, defaultQueryFunc, systemQueryFunc)
+			return h.queryDNS(ctx, zone, request)
+		case request.RecordType == dns.TypeAWS_ALIAS_A, request.RecordType == dns.TypeAWS_ALIAS_AAAA:
+			return h.queryAliasDNS(ctx, zone, request, defaultQueryFunc, systemQueryFunc)
 		default:
 			// For all other record types, we can use the default query function
-			queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
-			return queryResult.RecordSet, queryResult.Err
+			return defaultQueryFunc.Query(ctx, request)
 		}
 	}, nil
 }
@@ -261,11 +260,11 @@ func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDN
 func (h *handler) queryAliasDNS(
 	ctx context.Context,
 	zone dns.ZoneInfo,
-	setName dns.DNSSetName,
-	recordType dns.RecordType,
+	request utils.QueryDNSRequest,
 	defaultQueryFunc utils.QueryDNS,
 	systemQueryFunc utils.QueryDNS,
-) (*dns.RecordSet, error) {
+) utils.QueryDNSResult {
+	setName, recordType := request.SetName, request.RecordType
 	var queryRecordType dns.RecordType
 	switch recordType {
 	case dns.TypeAWS_ALIAS_A:
@@ -274,16 +273,16 @@ func (h *handler) queryAliasDNS(
 		queryRecordType = dns.TypeAAAA
 	}
 
-	queryResultIP := defaultQueryFunc.Query(ctx, setName, queryRecordType)
+	queryResultIP := defaultQueryFunc.Query(ctx, utils.QueryDNSRequest{SetName: setName, RecordType: queryRecordType})
 	if queryResultIP.Err != nil {
-		return nil, queryResultIP.Err
+		return utils.QueryDNSResult{Err: queryResultIP.Err}
 	}
-	queryResult := defaultQueryFunc.Query(ctx, setName, dns.TypeTXT)
+	queryResult := defaultQueryFunc.Query(ctx, utils.QueryDNSRequest{SetName: setName, RecordType: dns.TypeTXT})
 	if queryResult.Err != nil {
-		return nil, queryResult.Err
+		return utils.QueryDNSResult{Err: queryResult.Err}
 	}
 	if queryResult.RecordSet == nil || len(queryResult.RecordSet.Records) != 1 {
-		return nil, nil
+		return utils.QueryDNSResult{}
 	}
 	target := strings.TrimSuffix(queryResult.RecordSet.Records[0].Value, ".")
 
@@ -291,7 +290,7 @@ func (h *handler) queryAliasDNS(
 	// gone regardless of the (possibly stale) TXT bookmark. Treat it as absent so the
 	// reconciler recreates it.
 	if queryResultIP.RecordSet == nil || len(queryResultIP.RecordSet.Records) == 0 {
-		return nil, nil
+		return utils.QueryDNSResult{}
 	}
 
 	// Verify the alias is actually in place by resolving the recorded target's IP addresses
@@ -299,19 +298,19 @@ func (h *handler) queryAliasDNS(
 	// lives outside the managed zone, so a recursive resolver (systemQueryFunc) is used
 	// rather than the zone's authoritative nameservers. On mismatch the TXT bookmark is
 	// stale, so fall back to the authoritative Route53 read.
-	queryResultTargetIP := systemQueryFunc.Query(ctx, setName.WithDNSName(target), queryRecordType)
+	queryResultTargetIP := systemQueryFunc.Query(ctx, utils.QueryDNSRequest{SetName: setName.WithDNSName(target), RecordType: queryRecordType})
 	if queryResultTargetIP.Err != nil {
-		return nil, queryResultTargetIP.Err
+		return utils.QueryDNSResult{Err: queryResultTargetIP.Err}
 	}
 	if !sameIPRecords(queryResultIP.RecordSet, queryResultTargetIP.RecordSet) {
-		return h.queryDNS(ctx, zone, setName, recordType)
+		return h.queryDNS(ctx, zone, request)
 	}
 
 	// The alias is verified: fake an alias record set from the TXT bookmark.
 	queryResult.RecordSet.Records[0].Value = target
 	queryResult.RecordSet.Type = recordType
 	queryResult.RecordSet.TTL = 0
-	return queryResult.RecordSet, nil
+	return utils.QueryDNSResult{RecordSet: queryResult.RecordSet}
 }
 
 // sameIPRecords reports whether both record sets are non-empty and contain the same set of
@@ -332,15 +331,16 @@ func sameIPRecords(a, b *dns.RecordSet) bool {
 }
 
 // queryDNS queries the DNS provider for the given DNS name and record type.
-func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-	setName = setName.EnsureTrailingDot()
+func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
+	setName := request.SetName.EnsureTrailingDot()
+	recordType := request.RecordType
 	var recordIdentifier *string
 	if setName.SetIdentifier != "" {
 		recordIdentifier = &setName.SetIdentifier
 	}
 	rrType, err := toAWSRecordType(recordType)
 	if err != nil {
-		return nil, err
+		return utils.QueryDNSResult{Err: err}
 	}
 	h.config.RateLimiter.Accept()
 	h.config.Metrics.AddZoneRequests(zone.ZoneID().ID, provider.MetricsRequestTypeListRecords, 1)
@@ -352,7 +352,7 @@ func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, setName dns.D
 		StartRecordType:       rrType,
 	})
 	if err != nil {
-		return nil, err
+		return utils.QueryDNSResult{Err: err}
 	}
 
 	for _, r := range sets.ResourceRecordSets {
@@ -370,10 +370,10 @@ func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, setName dns.D
 				rs = dns.NewRecordSet(recordType, ttl, records)
 			}
 			rs.RoutingPolicy = h.policyContext.extractRoutingPolicy(ctx, &r)
-			return rs, nil
+			return utils.QueryDNSResult{RecordSet: rs}
 		}
 	}
-	return nil, nil
+	return utils.QueryDNSResult{}
 }
 
 func (h *handler) ExecuteRequests(ctx context.Context, zone provider.DNSHostedZone, reqs provider.ChangeRequests) error {

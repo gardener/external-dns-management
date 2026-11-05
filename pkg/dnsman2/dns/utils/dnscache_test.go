@@ -82,16 +82,16 @@ type mockQueryDNS struct {
 	queryCount int
 }
 
-func (m *mockQueryDNS) Query(_ context.Context, setName dns.DNSSetName, rtype dns.RecordType) QueryDNSResult {
-	rsmap := m.records[setName.EnsureTrailingDot().DNSName]
+func (m *mockQueryDNS) Query(_ context.Context, request QueryDNSRequest) QueryDNSResult {
+	rsmap := m.records[request.SetName.EnsureTrailingDot().DNSName]
 	if rsmap == nil {
 		return QueryDNSResult{Err: errors.New("domain name not found")}
 	}
-	records := rsmap[rtype]
+	records := rsmap[request.RecordType]
 	if records == nil {
 		return QueryDNSResult{Err: errors.New("record type not found")}
 	}
 
 	m.queryCount++
-	return QueryDNSResult{RecordSet: dns.NewRecordSet(rtype, int64(m.ttl), records)}
+	return QueryDNSResult{RecordSet: dns.NewRecordSet(request.RecordType, int64(m.ttl), records)}
 }

@@ -20,6 +20,7 @@ import (
 	dnsconst "github.com/gardener/external-dns-management/pkg/controller/provider/gdc/client/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 type noopMetrics struct{}
@@ -190,13 +191,13 @@ func TestQueryDNS(t *testing.T) {
 			setName := dns.DNSSetName{DNSName: tc.queryName}
 
 			// Action
-			rs, err := h.queryDNS(ctx, zoneInfo, setName, tc.queryType)
+			result := h.queryDNS(ctx, zoneInfo, utils.QueryDNSRequest{SetName: setName, RecordType: tc.queryType})
 
 			// Assert
-			if err != nil {
-				t.Fatalf("unexpected error querying dns: %v", err)
+			if result.Err != nil {
+				t.Fatalf("unexpected error querying dns: %v", result.Err)
 			}
-			if diff := cmp.Diff(tc.expectedRS, rs, cmp.AllowUnexported(dns.RecordSet{})); diff != "" {
+			if diff := cmp.Diff(tc.expectedRS, result.RecordSet, cmp.AllowUnexported(dns.RecordSet{})); diff != "" {
 				t.Errorf("queryDNS mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -396,13 +397,13 @@ func TestGetCustomQueryDNSFunc(t *testing.T) {
 
 	ctx := context.Background()
 	setName := dns.DNSSetName{DNSName: "host.zone1.gdc.sap.corp"}
-	rs, err := queryFn(ctx, zoneInfo, setName, dns.TypeA)
-	if err != nil {
-		t.Fatalf("unexpected error running query function: %v", err)
+	result := queryFn(ctx, zoneInfo, utils.QueryDNSRequest{SetName: setName, RecordType: dns.TypeA})
+	if result.Err != nil {
+		t.Fatalf("unexpected error running query function: %v", result.Err)
 	}
 
 	expected := dns.NewRecordSet(dns.TypeA, 300, []*dns.Record{{Value: "1.2.3.4"}})
-	if diff := cmp.Diff(expected, rs, cmp.AllowUnexported(dns.RecordSet{})); diff != "" {
+	if diff := cmp.Diff(expected, result.RecordSet, cmp.AllowUnexported(dns.RecordSet{})); diff != "" {
 		t.Errorf("custom resolver result mismatch (-want +got):\n%s", diff)
 	}
 }

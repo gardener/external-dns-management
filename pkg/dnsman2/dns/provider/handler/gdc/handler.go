@@ -84,13 +84,14 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 // GetCustomQueryDNSFunc registers and returns the custom authoritative resolver query function
 // for a given DNS zone. This redirects Gardener's record lookups to GDC API servers directly.
 func (h *handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, _ utils.QueryDNSFactoryFunc) (provider.CustomQueryDNSFunc, error) {
-	return func(ctx context.Context, localZoneInfo dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-		return h.queryDNS(ctx, localZoneInfo, setName, recordType)
+	return func(ctx context.Context, localZoneInfo dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
+		return h.queryDNS(ctx, localZoneInfo, request)
 	}, nil
 }
 
 // queryDNS queries ResourceRecordSets custom resources directly from GDC APIs.
-func (h *handler) queryDNS(ctx context.Context, _ dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+func (h *handler) queryDNS(ctx context.Context, _ dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
+	setName, recordType := request.SetName, request.RecordType
 	// Apply rate limiting and report metrics to prevent API throttling and enable operational visibility.
 	h.config.RateLimiter.Accept()
 	h.config.Metrics.AddGenericRequests(provider.MetricsRequestTypeListRecords, 1)
@@ -106,16 +107,16 @@ func (h *handler) queryDNS(ctx context.Context, _ dns.ZoneInfo, setName dns.DNSS
 
 	if err != nil {
 		if client.IgnoreNotFound(err) == nil {
-			return nil, nil
+			return utils.QueryDNSResult{}
 		}
-		return nil, fmt.Errorf("failed to get ResourceRecordSet %q: %w", recordSetName, err)
+		return utils.QueryDNSResult{Err: fmt.Errorf("failed to get ResourceRecordSet %q: %w", recordSetName, err)}
 	}
 
 	// The ResourceRecordSet name is derived from record type and DNS name only, so it does not
 	// distinguish records by set identifier. Match the stored set identifier against the queried one
 	// to preserve records with routing policies and avoid recreating/orphaning them.
 	if gdcRecordSet.Annotations[constants.SetIdentifierAnnotationKey] != setName.SetIdentifier {
-		return nil, nil
+		return utils.QueryDNSResult{}
 	}
 
 	ttl := int64(0)
@@ -135,7 +136,7 @@ func (h *handler) queryDNS(ctx context.Context, _ dns.ZoneInfo, setName dns.DNSS
 	}
 
 	h.config.Log.Info("Resolved DNS record from GDC API", "name", setName.DNSName, "type", recordType, "records", len(records), "provider", h.ProviderType(), "project", h.project)
-	return dns.NewRecordSet(recordType, ttl, records), nil
+	return utils.QueryDNSResult{RecordSet: dns.NewRecordSet(recordType, ttl, records)}
 }
 
 // ExecuteRequests executes DNS record changes by creating, updating, or deleting ResourceRecordSet

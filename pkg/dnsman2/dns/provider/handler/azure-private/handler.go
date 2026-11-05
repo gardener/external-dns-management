@@ -150,24 +150,25 @@ func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, _ dnsutils.QueryDNSFa
 	return h.queryDNS, nil
 }
 
-func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, request dnsutils.QueryDNSRequest) dnsutils.QueryDNSResult {
 	h.config.RateLimiter.Accept()
 
 	resourceGroup, zoneID := azutils.SplitZoneID(zone.ZoneID().ID)
-	azureRecordType, err := utils.ToAzureRecordType(recordType)
+	azureRecordType, err := utils.ToAzureRecordType(request.RecordType)
 	if err != nil {
-		return nil, err
+		return dnsutils.QueryDNSResult{Err: err}
 	}
 
-	response, err := h.recordsClient.Get(ctx, resourceGroup, zoneID, *azureRecordType, setName.DNSName, nil)
+	response, err := h.recordsClient.Get(ctx, resourceGroup, zoneID, *azureRecordType, request.SetName.DNSName, nil)
 	if err != nil {
 		var responseError *azcore.ResponseError
 		if errors.As(err, &responseError) && responseError.StatusCode == http.StatusNotFound {
-			return nil, nil
+			return dnsutils.QueryDNSResult{}
 		}
-		return nil, err
+		return dnsutils.QueryDNSResult{Err: err}
 	}
-	return utils.FromAzureRecordSet(response.RecordSet, recordType)
+	rs, err := utils.FromAzureRecordSet(response.RecordSet, request.RecordType)
+	return dnsutils.QueryDNSResult{RecordSet: rs, Err: err}
 }
 
 // ExecuteRequests applies a given change request to a given hosted zone.

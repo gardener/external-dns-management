@@ -169,12 +169,8 @@ func (h *Handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, _ utils.QueryDNSFactoryF
 }
 
 // QueryDNS queries DNS records in the local provider.
-func (h *Handler) queryDNS(_ context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-	result := h.mock.GetRecordset(zone.ZoneID(), setName.Normalize(), recordType)
-	if result == nil {
-		return nil, nil
-	}
-	return result, nil
+func (h *Handler) queryDNS(_ context.Context, zone dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
+	return utils.QueryDNSResult{RecordSet: h.mock.GetRecordset(zone.ZoneID(), request.SetName.Normalize(), request.RecordType)}
 }
 
 // ExecuteRequests executes DNS change requests in the local provider.

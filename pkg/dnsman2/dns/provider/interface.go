@@ -148,7 +148,7 @@ type TargetsMapper interface {
 }
 
 // CustomQueryDNSFunc is a function type for custom DNS queries.
-type CustomQueryDNSFunc func(ctx context.Context, zoneInfo dns.ZoneInfo, dnsName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error)
+type CustomQueryDNSFunc func(ctx context.Context, zoneInfo dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult
 
 // DefaultDNSHandler is a default implementation of DNSHandler for a provider type.
 type DefaultDNSHandler struct {

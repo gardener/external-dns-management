@@ -183,45 +183,47 @@ func (h *handler) GetCustomQueryDNSFunc(zone dns.ZoneInfo, factory utils.QueryDN
 	if err != nil {
 		return nil, fmt.Errorf("failed to create default query function: %w", err)
 	}
-	return func(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+	return func(ctx context.Context, zone dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
 		switch {
-		case setName.SetIdentifier != "":
+		case request.SetName.SetIdentifier != "":
 			// routing policies with set identifiers are not supported by the default query function
-			return h.queryDNS(ctx, zone, setName, recordType)
+			return h.queryDNS(ctx, zone, request)
 		default:
 			// For all other record types, we can use the default query function
-			queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
-			return queryResult.RecordSet, queryResult.Err
+			return defaultQueryFunc.Query(ctx, request)
 		}
 	}, nil
 }
 
 // queryDNS queries the DNS provider for the given DNS name and record type.
-func (h *handler) queryDNS(_ context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+func (h *handler) queryDNS(_ context.Context, zone dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
+	setName, recordType := request.SetName, request.RecordType
 	projectID, zoneName, err := splitZoneID(zone.ZoneID().ID)
 	if err != nil {
-		return nil, err
+		return utils.QueryDNSResult{Err: err}
 	}
 	r, err := h.getResourceRecordSet(projectID, zoneName, dns.EnsureTrailingDot(setName.DNSName), string(recordType))
 	if err != nil {
 		if isNotFound(err) {
-			return nil, nil
+			return utils.QueryDNSResult{}
 		}
-		return nil, err
+		return utils.QueryDNSResult{Err: err}
 	}
 
 	switch {
 	case setName.SetIdentifier == "":
 		// standard record set without routing policy
-		return buildRecordSet(recordType, r.Ttl, r.Rrdatas), nil
+		return utils.QueryDNSResult{RecordSet: buildRecordSet(recordType, r.Ttl, r.Rrdatas)}
 	case setName.SetIdentifier != "" && r.RoutingPolicy != nil && r.RoutingPolicy.Wrr != nil:
 		// weighted round-robin record set with set identifier
-		return buildRecordSetWeightedRoundRobin(r, setName, recordType)
+		rs, err := buildRecordSetWeightedRoundRobin(r, setName, recordType)
+		return utils.QueryDNSResult{RecordSet: rs, Err: err}
 	case setName.SetIdentifier != "" && r.RoutingPolicy != nil && r.RoutingPolicy.Geo != nil:
 		// geo location record set with set identifier
-		return buildRecordSetGeoLocation(r, setName, recordType)
+		rs, err := buildRecordSetGeoLocation(r, setName, recordType)
+		return utils.QueryDNSResult{RecordSet: rs, Err: err}
 	default:
-		return nil, fmt.Errorf("unsupported record set type for %s[%s] with set identifier %s", setName.DNSName, recordType, setName.SetIdentifier)
+		return utils.QueryDNSResult{Err: fmt.Errorf("unsupported record set type for %s[%s] with set identifier %s", setName.DNSName, recordType, setName.SetIdentifier)}
 	}
 }
 
