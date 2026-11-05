@@ -160,11 +160,9 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 	if len(zonedRequests) > 0 {
 		r.clearDNSCaches(zonedRequests)
 		r.lastUpdate.Set(client.ObjectKeyFromObject(r.Entry), struct{}{}, ttlcache.DefaultTTL)
-	}
-	if res := r.dnsRecordManager().ApplyChangeRequests(newProviderData, zonedRequests); res != nil {
-		return *res
-	}
-	if len(zonedRequests) > 0 {
+		if res := r.dnsRecordManager().ApplyChangeRequests(newProviderData, zonedRequests); res != nil {
+			return *res
+		}
 		reservation = r.propagationWaitTime
 	}
 
