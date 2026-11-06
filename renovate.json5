@@ -187,6 +187,7 @@
     "github.com/oklog/ulid/v2",
     "github.com/open-telemetry/opentelemetry-operator/apis",
     "github.com/opencontainers/go-digest",
+    "github.com/pandatix/go-abnf",
     "github.com/perses/common",
     "github.com/perses/perses",
     "github.com/perses/perses-operator",
