@@ -49,7 +49,7 @@ var _ = Describe("QueryDNS", func() {
 	})
 
 	It("should return A records", func() {
-		result := queryDNS.Query(ctx, setName, dns.TypeA)
+		result := queryDNS.Query(ctx, QueryDNSRequest{SetName: setName, RecordType: dns.TypeA})
 		Expect(result.Err).NotTo(HaveOccurred())
 		Expect(result.RecordSet).NotTo(BeNil())
 		Expect(result.RecordSet.TTL).NotTo(BeZero())
@@ -62,7 +62,7 @@ var _ = Describe("QueryDNS", func() {
 	})
 
 	It("should return AAAA records", func() {
-		result := queryDNS.Query(ctx, setName, dns.TypeAAAA)
+		result := queryDNS.Query(ctx, QueryDNSRequest{SetName: setName, RecordType: dns.TypeAAAA})
 		Expect(result.Err).NotTo(HaveOccurred())
 		Expect(result.RecordSet).NotTo(BeNil())
 		Expect(result.RecordSet.TTL).NotTo(BeZero())
@@ -75,7 +75,7 @@ var _ = Describe("QueryDNS", func() {
 	})
 
 	It("should return TXT records", func() {
-		result := queryDNS.Query(ctx, setName, dns.TypeTXT)
+		result := queryDNS.Query(ctx, QueryDNSRequest{SetName: setName, RecordType: dns.TypeTXT})
 		Expect(result.RecordSet).NotTo(BeNil())
 		Expect(result.RecordSet.TTL).NotTo(BeZero())
 		Expect(result.Err).NotTo(HaveOccurred())
@@ -83,7 +83,7 @@ var _ = Describe("QueryDNS", func() {
 	})
 
 	It("should return NS records", func() {
-		result := queryDNS.Query(ctx, setName, dns.TypeNS)
+		result := queryDNS.Query(ctx, QueryDNSRequest{SetName: setName, RecordType: dns.TypeNS})
 		Expect(result.Err).NotTo(HaveOccurred())
 		Expect(result.RecordSet).NotTo(BeNil())
 		Expect(result.RecordSet.TTL).NotTo(BeZero())
@@ -91,7 +91,7 @@ var _ = Describe("QueryDNS", func() {
 	})
 
 	It("should return CNAME records", func() {
-		result := queryDNS.Query(ctx, dns.DNSSetName{DNSName: "www.sap.com"}, dns.TypeCNAME)
+		result := queryDNS.Query(ctx, QueryDNSRequest{SetName: dns.DNSSetName{DNSName: "www.sap.com"}, RecordType: dns.TypeCNAME})
 		Expect(result.Err).NotTo(HaveOccurred())
 		Expect(result.RecordSet).NotTo(BeNil())
 		Expect(result.RecordSet.TTL).NotTo(BeZero())
@@ -99,13 +99,13 @@ var _ = Describe("QueryDNS", func() {
 	})
 
 	It("should return an error for unsupported record type", func() {
-		result := queryDNS.Query(ctx, setName, dns.TypeAWS_ALIAS_A)
+		result := queryDNS.Query(ctx, QueryDNSRequest{SetName: setName, RecordType: dns.TypeAWS_ALIAS_A})
 		Expect(result.Err).To(HaveOccurred())
 		Expect(result.Err.Error()).To(ContainSubstring("unsupported record type"))
 	})
 
 	It("should return an error if setIdentifier is set", func() {
-		result := queryDNS.Query(ctx, dns.DNSSetName{DNSName: "example.com", SetIdentifier: "set1"}, dns.TypeA)
+		result := queryDNS.Query(ctx, QueryDNSRequest{SetName: dns.DNSSetName{DNSName: "example.com", SetIdentifier: "set1"}, RecordType: dns.TypeA})
 		Expect(result.Err).To(HaveOccurred())
 		Expect(result.Err.Error()).To(ContainSubstring("set identifier is not supported for DNS queries"))
 	})
@@ -170,7 +170,7 @@ var _ = Describe("QueryDNS with mocked DNS responses", func() {
 	DescribeTable("record-type / answer combinations",
 		func(rstype dns.RecordType, answer []miekgdns.RR, rcode int, errMatcher types.GomegaMatcher, recordsMatcher types.GomegaMatcher) {
 			q := makeQueryDNS(answer, rcode)
-			result := q.Query(ctx, setName, rstype)
+			result := q.Query(ctx, QueryDNSRequest{SetName: setName, RecordType: rstype})
 			Expect(result.Err).To(errMatcher)
 			if result.Err == nil && result.RecordSet != nil {
 				Expect(result.RecordSet.Records).To(recordsMatcher)

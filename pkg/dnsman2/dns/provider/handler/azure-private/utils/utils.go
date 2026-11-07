@@ -15,8 +15,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
-// ToAzureRecordType converts a dns.RecordType to an armprivatedns.RecordType.
-func ToAzureRecordType(recordType dns.RecordType) (*armprivatedns.RecordType, error) {
+// ToAzurePrivateRecordType converts a dns.RecordType to an armprivatedns.RecordType.
+func ToAzurePrivateRecordType(recordType dns.RecordType) (*armprivatedns.RecordType, error) {
 	switch recordType {
 	case dns.TypeA:
 		return ptr.To(armprivatedns.RecordTypeA), nil
@@ -31,8 +31,8 @@ func ToAzureRecordType(recordType dns.RecordType) (*armprivatedns.RecordType, er
 	}
 }
 
-// FromAzureRecordSet converts an armprivatedns.RecordSet to a dns.RecordSet.
-func FromAzureRecordSet(azureRecordSet armprivatedns.RecordSet, recordType dns.RecordType) (*dns.RecordSet, error) {
+// FromAzurePrivateRecordSet converts an armprivatedns.RecordSet to a dns.RecordSet.
+func FromAzurePrivateRecordSet(azureRecordSet armprivatedns.RecordSet, recordType dns.RecordType) (*dns.RecordSet, error) {
 	props := azureRecordSet.Properties
 	recordSet := dns.NewRecordSet(recordType, *props.TTL, nil)
 	switch recordType {

@@ -10,51 +10,38 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/jellydator/ttlcache/v3"
-
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
 // DNSCache is a TTL cache for DNS records.
 type DNSCache struct {
 	dnsQuery QueryDNS
-	cache    *ttlcache.Cache[RecordSetKey, QueryDNSResult]
+	cache    *ttlcache.Cache[QueryDNSRequest, QueryDNSResult]
 	ttl      time.Duration
-}
-
-// RecordSetKey represents a key for a DNS record set, including name and record type.
-type RecordSetKey struct {
-	Name       dns.DNSSetName
-	RecordType dns.RecordType
-}
-
-func (k RecordSetKey) String() string {
-	return k.Name.String() + "/" + string(k.RecordType)
 }
 
 // NewDNSCache creates a new DNSCache.
 func NewDNSCache(dnsQuery QueryDNS, ttl time.Duration) *DNSCache {
 	return &DNSCache{
 		dnsQuery: dnsQuery,
-		cache: ttlcache.New[RecordSetKey, QueryDNSResult](
-			ttlcache.WithTTL[RecordSetKey, QueryDNSResult](ttl),
-			ttlcache.WithDisableTouchOnHit[RecordSetKey, QueryDNSResult](),
+		cache: ttlcache.New[QueryDNSRequest, QueryDNSResult](
+			ttlcache.WithTTL[QueryDNSRequest, QueryDNSResult](ttl),
+			ttlcache.WithDisableTouchOnHit[QueryDNSRequest, QueryDNSResult](),
 		),
 		ttl: ttl,
 	}
 }
 
 // Get returns the DNS records for the given DNS name and record type.
-func (c *DNSCache) Get(ctx context.Context, log logr.Logger, setName dns.DNSSetName, rstype dns.RecordType) (*dns.RecordSet, error) {
-	key := RecordSetKey{Name: setName, RecordType: rstype}
-	item := c.cache.Get(key)
+func (c *DNSCache) Get(ctx context.Context, log logr.Logger, request QueryDNSRequest) QueryDNSResult {
+	item := c.cache.Get(request)
 	if item != nil {
-		log.V(2).Info("found in cache", "key", key)
-		return item.Value().RecordSet, item.Value().Err
+		log.V(2).Info("found in cache", "key", request)
+		return item.Value()
 	}
-	result := c.dnsQuery.Query(ctx, setName, rstype)
+	result := c.dnsQuery.Query(ctx, request)
 	if result.Err != nil || result.RecordSet == nil || len(result.RecordSet.Records) == 0 {
-		log.V(2).Info("caching negative result", "key", key, "ttl", c.ttl)
-		c.cache.Set(key, result, c.ttl)
+		log.V(2).Info("caching negative result", "key", request, "ttl", c.ttl)
+		c.cache.Set(request, result, c.ttl)
 	} else {
 		// Cap the cache TTL at the configured c.ttl: the record's TTL is attacker-controllable via a
 		// spoofed answer (plain UDP, no DNSSEC), and an uncapped value would let one forged response
@@ -63,10 +50,10 @@ func (c *DNSCache) Get(ctx context.Context, log logr.Logger, setName dns.DNSSetN
 		if ttl > c.ttl {
 			ttl = c.ttl
 		}
-		log.V(2).Info("caching query result", "key", key, "ttl", ttl)
-		c.cache.Set(key, result, ttl)
+		log.V(2).Info("caching query result", "key", request, "ttl", ttl)
+		c.cache.Set(request, result, ttl)
 	}
-	return result.RecordSet, result.Err
+	return result
 }
 
 // Clear removes all entries from the cache.
@@ -75,7 +62,7 @@ func (c *DNSCache) Clear() {
 }
 
 // ClearKeys removes specific keys from the cache.
-func (c *DNSCache) ClearKeys(log logr.Logger, keys ...RecordSetKey) {
+func (c *DNSCache) ClearKeys(log logr.Logger, keys ...QueryDNSRequest) {
 	c.cache.DeleteExpired()
 	for _, key := range keys {
 		c.cache.Delete(key)

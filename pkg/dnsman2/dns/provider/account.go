@@ -72,12 +72,8 @@ type handlerZoneQueryDNS struct {
 
 var _ utils.QueryDNS = &handlerZoneQueryDNS{}
 
-func (h *handlerZoneQueryDNS) Query(ctx context.Context, setName dns.DNSSetName, recordType dns.RecordType) utils.QueryDNSResult {
-	rs, err := h.queryFunc(ctx, h.zone, setName, recordType)
-	if err != nil {
-		return utils.QueryDNSResult{Err: err}
-	}
-	return utils.QueryDNSResult{RecordSet: rs, Err: err}
+func (h *handlerZoneQueryDNS) Query(ctx context.Context, request utils.QueryDNSRequest) utils.QueryDNSResult {
+	return h.queryFunc(ctx, h.zone, request)
 }
 
 // NewDNSAccount creates a new DNSAccount with the given handler, hash, and config.
