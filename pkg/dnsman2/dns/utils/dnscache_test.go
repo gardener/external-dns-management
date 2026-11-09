@@ -50,11 +50,11 @@ var _ = Describe("DNSCache", func() {
 	Describe("Get", func() {
 		It("should query DNS and cache the result if not present", func() {
 			for i := range 7 {
-				rs, err := dnsCache.Get(ctx, logr.Discard(), dns.DNSSetName{DNSName: "example.com"}, dns.TypeA)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(rs).NotTo(BeNil())
-				Expect(rs.TTL).To(Equal(int64(1)))
-				Expect(rs.Records).To(ConsistOf(&dns.Record{Value: "1.2.3.4"}))
+				result := dnsCache.Get(ctx, logr.Discard(), QueryDNSRequest{SetName: dns.DNSSetName{DNSName: "example.com"}, RecordType: dns.TypeA})
+				Expect(result.Err).NotTo(HaveOccurred())
+				Expect(result.RecordSet).NotTo(BeNil())
+				Expect(result.RecordSet.TTL).To(Equal(int64(1)))
+				Expect(result.RecordSet.Records).To(ConsistOf(&dns.Record{Value: "1.2.3.4"}))
 				if i < 3 {
 					Expect(mockQuery.queryCount).To(Equal(1))
 				} else if i > 4 {
@@ -67,7 +67,7 @@ var _ = Describe("DNSCache", func() {
 
 	Describe("Len and Clear", func() {
 		It("should remove all entries from the cache", func() {
-			dnsCache.cache.Set(RecordSetKey{Name: dns.DNSSetName{DNSName: "example.com"}, RecordType: dns.TypeA}, sampleResult, ttlcache.DefaultTTL)
+			dnsCache.cache.Set(QueryDNSRequest{SetName: dns.DNSSetName{DNSName: "example.com"}, RecordType: dns.TypeA}, sampleResult, ttlcache.DefaultTTL)
 
 			Expect(dnsCache.cache.Len()).To(Equal(1))
 			dnsCache.Clear()
@@ -82,16 +82,16 @@ type mockQueryDNS struct {
 	queryCount int
 }
 
-func (m *mockQueryDNS) Query(_ context.Context, setName dns.DNSSetName, rtype dns.RecordType) QueryDNSResult {
-	rsmap := m.records[setName.EnsureTrailingDot().DNSName]
+func (m *mockQueryDNS) Query(_ context.Context, request QueryDNSRequest) QueryDNSResult {
+	rsmap := m.records[request.SetName.EnsureTrailingDot().DNSName]
 	if rsmap == nil {
 		return QueryDNSResult{Err: errors.New("domain name not found")}
 	}
-	records := rsmap[rtype]
+	records := rsmap[request.RecordType]
 	if records == nil {
 		return QueryDNSResult{Err: errors.New("record type not found")}
 	}
 
 	m.queryCount++
-	return QueryDNSResult{RecordSet: dns.NewRecordSet(rtype, int64(m.ttl), records)}
+	return QueryDNSResult{RecordSet: dns.NewRecordSet(request.RecordType, int64(m.ttl), records)}
 }

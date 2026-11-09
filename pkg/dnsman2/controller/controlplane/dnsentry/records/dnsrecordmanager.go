@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/common"
@@ -68,7 +69,7 @@ func (m *DNSRecordManager) ApplyChangeRequests(providerData *providerselector.Ne
 }
 
 // QueryRecords queries DNS records for the given set of record keys.
-func (m *DNSRecordManager) QueryRecords(ctx context.Context, keys FullRecordKeySet) (map[FullRecordSetKey]*dns.RecordSet, *common.ReconcileResult) {
+func (m *DNSRecordManager) QueryRecords(ctx context.Context, keys FullRecordKeySet, preferAPICall bool) (map[FullRecordSetKey]*dns.RecordSet, *common.ReconcileResult) {
 	zonesToCheck := sets.Set[dns.ZoneID]{}
 	for key := range keys {
 		zonesToCheck.Insert(key.ZoneID)
@@ -84,7 +85,7 @@ func (m *DNSRecordManager) QueryRecords(ctx context.Context, keys FullRecordKeyS
 			if key.ZoneID != zoneID {
 				continue
 			}
-			targets, policy, err := queryHandler.Query(m.Ctx, m.Log, key.Name, key.RecordType)
+			targets, policy, err := queryHandler.Query(m.Ctx, m.Log, utils.QueryDNSRequest{SetName: key.Name, RecordType: key.RecordType, PreferAPICall: preferAPICall})
 			if err != nil {
 				m.Log.Error(err, "failed to query DNS records", "name", key.Name, "type", key.RecordType, "zoneID", zoneID.ID)
 				return nil, common.ErrorReconcileResult(fmt.Sprintf("failed to query DNS records for %s, type %s in zone %s: %s", key.Name, key.RecordType, zoneID.ID, err), true)

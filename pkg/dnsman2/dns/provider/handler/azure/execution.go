@@ -67,7 +67,7 @@ func (exec *execution) buildRecordSet(name dns.DNSSetName, rs *dns.RecordSet) (*
 	if rs.RoutingPolicy != nil || name.SetIdentifier != "" {
 		return nil, fmt.Errorf("routing policies are not supported by the Azure DNS provider")
 	}
-	recordName, ok := utils.DropZoneName(name.DNSName, exec.zone.Domain())
+	recordName, ok := utils.RelativeRecordSetName(name.DNSName, exec.zone.Domain())
 	if !ok {
 		return nil, fmt.Errorf("unexpected dns name %s", name.DNSName)
 	}

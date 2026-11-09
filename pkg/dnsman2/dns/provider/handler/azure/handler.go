@@ -8,8 +8,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"slices"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns"
 	"github.com/go-logr/logr"
 	"k8s.io/utils/ptr"
@@ -145,10 +147,39 @@ func (h *handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, factory dnsutils.QueryDN
 	if err != nil {
 		return nil, fmt.Errorf("failed to create default query function: %w", err)
 	}
-	return func(ctx context.Context, _ dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-		queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
-		return queryResult.RecordSet, queryResult.Err
+	return func(ctx context.Context, zone dns.ZoneInfo, request dnsutils.QueryDNSRequest) dnsutils.QueryDNSResult {
+		if request.PreferAPICall {
+			return h.queryDNS(ctx, zone, request)
+		}
+		return defaultQueryFunc.Query(ctx, request)
 	}, nil
+}
+
+func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, request dnsutils.QueryDNSRequest) dnsutils.QueryDNSResult {
+	h.config.RateLimiter.Accept()
+
+	resourceGroup, zoneID := azutils.SplitZoneID(zone.ZoneID().ID)
+	azureRecordType, err := azutils.ToAzureRecordType(request.RecordType)
+	if err != nil {
+		return dnsutils.QueryDNSResult{Err: err}
+	}
+
+	// Azure expects the zone-relative record name (e.g. "foo"), not the FQDN "foo.example.com".
+	recordName, ok := azutils.DropZoneName(request.SetName.DNSName, zone.Domain())
+	if !ok {
+		return dnsutils.QueryDNSResult{Err: fmt.Errorf("unexpected dns name %s", request.SetName.DNSName)}
+	}
+
+	response, err := h.recordsClient.Get(ctx, resourceGroup, zoneID, recordName, *azureRecordType, nil)
+	if err != nil {
+		var responseError *azcore.ResponseError
+		if errors.As(err, &responseError) && responseError.StatusCode == http.StatusNotFound {
+			return dnsutils.QueryDNSResult{}
+		}
+		return dnsutils.QueryDNSResult{Err: err}
+	}
+	rs, err := azutils.FromAzureRecordSet(response.RecordSet, request.RecordType)
+	return dnsutils.QueryDNSResult{RecordSet: rs, Err: err}
 }
 
 // ExecuteRequests applies a given change request to a given hosted zone.

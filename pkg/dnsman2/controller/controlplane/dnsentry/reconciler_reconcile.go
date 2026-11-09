@@ -151,7 +151,12 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 		r.markDriftCheckAttempted()
 	}
 
-	actualRecords, res := r.dnsRecordManager().QueryRecords(r.Ctx, recordsToCheck)
+	hasWildcardEntry, res := r.hasMatchingWildcardEntry()
+	if res != nil {
+		return *res
+	}
+
+	actualRecords, res := r.dnsRecordManager().QueryRecords(r.Ctx, recordsToCheck, hasWildcardEntry)
 	if res != nil {
 		return *res
 	}
@@ -160,11 +165,9 @@ func (r *entryReconciliation) doReconcile() common.ReconcileResult {
 	if len(zonedRequests) > 0 {
 		r.clearDNSCaches(zonedRequests)
 		r.lastUpdate.Set(client.ObjectKeyFromObject(r.Entry), struct{}{}, ttlcache.DefaultTTL)
-	}
-	if res := r.dnsRecordManager().ApplyChangeRequests(newProviderData, zonedRequests); res != nil {
-		return *res
-	}
-	if len(zonedRequests) > 0 {
+		if res := r.dnsRecordManager().ApplyChangeRequests(newProviderData, zonedRequests); res != nil {
+			return *res
+		}
 		reservation = r.propagationWaitTime
 	}
 
@@ -229,6 +232,33 @@ func (r *entryReconciliation) acquireDNSNameLock() ([]string, *common.ReconcileR
 		}
 	}
 	return names, nil
+}
+
+// hasMatchingWildcardEntry reports whether another DNS entry in the same namespace has a wildcard
+// DNSName that shadows this entry's DNSName. Per RFC 1034 a wildcard matches exactly one label
+// (*.example.com → foo.example.com only), but many DNS servers extend this to any depth
+// (*.example.com → a.b.example.com as well). This function uses the permissive interpretation
+// to avoid false negatives: a wildcard suffix match with a non-empty prefix counts as shadowed.
+// Wildcard entries themselves are never considered shadowed.
+func (r *entryReconciliation) hasMatchingWildcardEntry() (bool, *common.ReconcileResult) {
+	name := dns.NormalizeDomainName(r.Entry.Spec.DNSName)
+	statusName := dns.NormalizeDomainName(ptr.Deref(r.Entry.Status.DNSName, name))
+	if strings.HasPrefix(name, "*.") && strings.HasPrefix(statusName, "*.") {
+		return false, nil
+	}
+
+	list := &v1alpha1.DNSEntryList{}
+	if err := r.Client.List(r.Ctx, list, client.InNamespace(r.namespace)); err != nil {
+		return false, &common.ReconcileResult{Err: err}
+	}
+	for _, entry := range list.Items {
+		if suffix, ok := strings.CutPrefix(dns.NormalizeDomainName(entry.Spec.DNSName), "*"); ok && strings.HasPrefix(suffix, ".") {
+			if prefix, found := strings.CutSuffix(name, suffix); found && prefix != "" {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func validateDNSEntry(entry *v1alpha1.DNSEntry) error {
@@ -456,10 +486,10 @@ func (r *entryReconciliation) insertPossibleAlternativeKeys(recordsToCheck recor
 // clearDNSCaches clears the DNS caches for the zones that are being updated
 func (r *entryReconciliation) clearDNSCaches(zonedRequests zonedRequests) {
 	for zoneID, requests := range zonedRequests {
-		var keys []utils.RecordSetKey
+		var keys []utils.QueryDNSRequest
 		for name, changes := range requests {
 			for recordType := range changes.Updates {
-				keys = append(keys, utils.RecordSetKey{Name: name, RecordType: recordType})
+				keys = append(keys, utils.QueryDNSRequest{SetName: name, RecordType: recordType}, utils.QueryDNSRequest{SetName: name, RecordType: recordType, PreferAPICall: true})
 			}
 		}
 		if err := r.state.ClearDNSCaches(r.Ctx, r.Log, zoneID, keys...); err != nil {

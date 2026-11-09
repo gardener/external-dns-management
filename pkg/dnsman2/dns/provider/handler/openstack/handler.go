@@ -9,9 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
+	"github.com/gophercloud/gophercloud/v2/openstack/dns/v2/recordsets"
 	"github.com/gophercloud/gophercloud/v2/openstack/dns/v2/zones"
 	"github.com/gophercloud/utils/v2/openstack/clientconfig"
 
@@ -180,10 +182,46 @@ func (h *handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, factory utils.QueryDNSFa
 	if err != nil {
 		return nil, fmt.Errorf("failed to create default query function: %w", err)
 	}
-	return func(ctx context.Context, _ dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
-		queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
-		return queryResult.RecordSet, queryResult.Err
+	return func(ctx context.Context, zone dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
+		if request.PreferAPICall {
+			return h.queryDNS(ctx, zone, request)
+		}
+		return defaultQueryFunc.Query(ctx, request)
 	}, nil
+}
+
+// queryDNS queries the DNS provider for the given DNS name and record type.
+func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
+	var rs *dns.RecordSet
+	recordSetHandler := func(recordSet *recordsets.RecordSet) error {
+		if dns.NormalizeDomainName(recordSet.Name) == dns.NormalizeDomainName(request.SetName.DNSName) {
+			switch recordSet.Type {
+			case string(dns.TypeA), string(dns.TypeAAAA), string(dns.TypeCNAME), string(dns.TypeTXT):
+				rs = dns.NewRecordSet(dns.RecordType(recordSet.Type), int64(recordSet.TTL), nil)
+				for _, record := range recordSet.Records {
+					value := record
+					switch recordSet.Type {
+					case string(dns.TypeCNAME):
+						value = dns.NormalizeDomainName(value)
+					case string(dns.TypeTXT):
+						unquoted, err := strconv.Unquote(value)
+						if err != nil {
+							unquoted = value
+						}
+						value = unquoted
+					}
+					rs.Add(&dns.Record{Value: value})
+				}
+			}
+		}
+		return nil
+	}
+
+	if err := h.client.ForEachRecordSetFilterByTypeAndName(ctx, zone.ZoneID().ID, string(request.RecordType), dns.EnsureTrailingDot(request.SetName.DNSName), recordSetHandler); err != nil {
+		return utils.QueryDNSResult{Err: fmt.Errorf("failed to query DNS records: %w", err)}
+	}
+
+	return utils.QueryDNSResult{RecordSet: rs}
 }
 
 // ExecuteRequests applies a given change request to a given hosted zone.

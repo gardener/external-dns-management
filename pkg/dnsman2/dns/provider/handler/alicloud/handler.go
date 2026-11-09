@@ -119,15 +119,15 @@ func (h *handler) GetCustomQueryDNSFunc(_ dns.ZoneInfo, factory utils.QueryDNSFa
 	if err != nil {
 		return nil, fmt.Errorf("failed to create default query function: %w", err)
 	}
-	return func(ctx context.Context, zone dns.ZoneInfo, setName dns.DNSSetName, recordType dns.RecordType) (*dns.RecordSet, error) {
+	return func(ctx context.Context, zone dns.ZoneInfo, request utils.QueryDNSRequest) utils.QueryDNSResult {
 		switch {
-		case setName.SetIdentifier != "":
+		case request.PreferAPICall || request.SetName.SetIdentifier != "":
 			// routing policies with set identifiers are not supported by the default query function
-			return h.queryDNS(ctx, zone, setName, recordType)
+			rs, err := h.queryDNS(ctx, zone, request.SetName, request.RecordType)
+			return utils.QueryDNSResult{RecordSet: rs, Err: err}
 		default:
 			// For all other record types, we can use the default query function
-			queryResult := defaultQueryFunc.Query(ctx, setName, recordType)
-			return queryResult.RecordSet, queryResult.Err
+			return defaultQueryFunc.Query(ctx, request)
 		}
 	}, nil
 }

@@ -6,7 +6,6 @@ package utils
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns/v2"
@@ -15,8 +14,8 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 )
 
-// ToAzureRecordType converts a dns.RecordType to an armprivatedns.RecordType.
-func ToAzureRecordType(recordType dns.RecordType) (*armprivatedns.RecordType, error) {
+// ToAzurePrivateRecordType converts a dns.RecordType to an armprivatedns.RecordType.
+func ToAzurePrivateRecordType(recordType dns.RecordType) (*armprivatedns.RecordType, error) {
 	switch recordType {
 	case dns.TypeA:
 		return ptr.To(armprivatedns.RecordTypeA), nil
@@ -31,8 +30,8 @@ func ToAzureRecordType(recordType dns.RecordType) (*armprivatedns.RecordType, er
 	}
 }
 
-// FromAzureRecordSet converts an armprivatedns.RecordSet to a dns.RecordSet.
-func FromAzureRecordSet(azureRecordSet armprivatedns.RecordSet, recordType dns.RecordType) (*dns.RecordSet, error) {
+// FromAzurePrivateRecordSet converts an armprivatedns.RecordSet to a dns.RecordSet.
+func FromAzurePrivateRecordSet(azureRecordSet armprivatedns.RecordSet, recordType dns.RecordType) (*dns.RecordSet, error) {
 	props := azureRecordSet.Properties
 	recordSet := dns.NewRecordSet(recordType, *props.TTL, nil)
 	switch recordType {
@@ -60,9 +59,6 @@ func FromAzureRecordSet(azureRecordSet armprivatedns.RecordSet, recordType dns.R
 					values[i] = *value
 				}
 				value := strings.Join(values, "\n")
-				if !isQuoted(value) {
-					value = strconv.Quote(value)
-				}
 				recordSet.Add(&dns.Record{Value: value})
 			}
 		}
@@ -70,8 +66,4 @@ func FromAzureRecordSet(azureRecordSet armprivatedns.RecordSet, recordType dns.R
 		return nil, fmt.Errorf("record type %s not supported by Azure Private DNS provider", recordType)
 	}
 	return recordSet, nil
-}
-
-func isQuoted(s string) bool {
-	return len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"'
 }

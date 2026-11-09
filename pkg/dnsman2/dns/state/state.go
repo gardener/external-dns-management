@@ -74,7 +74,7 @@ func newProviderMap() providerMap {
 // DNSQueryHandler defines an interface for querying DNS records.
 type DNSQueryHandler interface {
 	// Query performs either a DNS query to the authoritative nameservers or uses the provider API.
-	Query(ctx context.Context, log logr.Logger, setName dns.DNSSetName, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error)
+	Query(ctx context.Context, log logr.Logger, request utils.QueryDNSRequest) (dns.Targets, *dns.RoutingPolicy, error)
 }
 
 // GetOrCreateProviderState returns the ProviderState for the given DNSProvider, creating it if necessary.
@@ -137,7 +137,7 @@ func (s *State) FindAccountForZone(ctx context.Context, zoneID dns.ZoneID) (*pro
 }
 
 // ClearDNSCaches clears the DNS caches for the given zone ID and optional record set keys.
-func (s *State) ClearDNSCaches(ctx context.Context, log logr.Logger, zoneID dns.ZoneID, keys ...utils.RecordSetKey) error {
+func (s *State) ClearDNSCaches(ctx context.Context, log logr.Logger, zoneID dns.ZoneID, keys ...utils.QueryDNSRequest) error {
 	caches, err := s.accounts.GetDNSCachesByZone(ctx, zoneID)
 	if err != nil {
 		return err
@@ -199,25 +199,25 @@ func newDNSCachesQueryHandler(dnscaches []*utils.DNSCache) DNSQueryHandler {
 	return &dnsCachesQueryHandler{dnscaches: dnscaches}
 }
 
-func (h *dnsCachesQueryHandler) Query(ctx context.Context, log logr.Logger, setName dns.DNSSetName, rstype dns.RecordType) (dns.Targets, *dns.RoutingPolicy, error) {
+func (h *dnsCachesQueryHandler) Query(ctx context.Context, log logr.Logger, request utils.QueryDNSRequest) (dns.Targets, *dns.RoutingPolicy, error) {
 	var errs []error
 	for _, cache := range h.dnscaches {
-		rs, err := cache.Get(ctx, log, setName, rstype)
-		if err != nil {
-			errs = append(errs, err)
+		result := cache.Get(ctx, log, request)
+		if result.Err != nil {
+			errs = append(errs, result.Err)
 			continue
 		}
 		var (
 			targets       dns.Targets
 			routingPolicy *dns.RoutingPolicy
 		)
-		if rs != nil {
+		if rs := result.RecordSet; rs != nil {
 			for _, record := range rs.Records {
-				targets = append(targets, dns.NewTarget(rstype, record.Value, rs.TTL))
+				targets = append(targets, dns.NewTarget(request.RecordType, record.Value, rs.TTL))
 			}
 			routingPolicy = rs.RoutingPolicy
 		}
-		return targets, routingPolicy, err
+		return targets, routingPolicy, nil
 	}
 	return nil, nil, errors.Join(errs...)
 }

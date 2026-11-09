@@ -20,9 +20,12 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/dns/armdns"
 	securityv1alpha1constants "github.com/gardener/gardener/pkg/apis/security/v1alpha1/constants"
+	"k8s.io/utils/ptr"
 
 	workloadidentityazure "github.com/gardener/external-dns-management/pkg/apis/dns/workloadidentity/azure"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	perrs "github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/errors"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider/handler/azure/constants"
@@ -49,6 +52,15 @@ func ExtractResourceGroup(id string) (string, error) {
 func DropZoneName(dnsName, zoneName string) (string, bool) {
 	trimmed := strings.TrimSuffix(dnsName, fmt.Sprintf(".%s", zoneName))
 	return trimmed, trimmed != dnsName
+}
+
+// RelativeRecordSetName returns the zone-relative record name used when writing record sets via the Azure API,
+// mapping the zone apex (dnsName == zoneName) to "@". Use only for writing; DNS queries must not substitute "@".
+func RelativeRecordSetName(dnsName, zoneName string) (string, bool) {
+	if dnsName == zoneName {
+		return "@", true
+	}
+	return DropZoneName(dnsName, zoneName)
 }
 
 // MakeZoneID creates a zone ID from the resource group and zone name
@@ -151,6 +163,60 @@ func StableError(err error) error {
 		return fmt.Errorf("%s - details see log", msg)
 	}
 	return err
+}
+
+// ToAzureRecordType converts a dns.RecordType to an armdns.RecordType.
+func ToAzureRecordType(recordType dns.RecordType) (*armdns.RecordType, error) {
+	switch recordType {
+	case dns.TypeA:
+		return ptr.To(armdns.RecordTypeA), nil
+	case dns.TypeAAAA:
+		return ptr.To(armdns.RecordTypeAAAA), nil
+	case dns.TypeCNAME:
+		return ptr.To(armdns.RecordTypeCNAME), nil
+	case dns.TypeTXT:
+		return ptr.To(armdns.RecordTypeTXT), nil
+	default:
+		return nil, fmt.Errorf("unsupported record type %q", recordType)
+	}
+}
+
+// FromAzureRecordSet converts an armdns.RecordSet to a dns.RecordSet.
+func FromAzureRecordSet(azureRecordSet armdns.RecordSet, recordType dns.RecordType) (*dns.RecordSet, error) {
+	props := azureRecordSet.Properties
+	recordSet := dns.NewRecordSet(recordType, *props.TTL, nil)
+	switch recordType {
+	case dns.TypeA:
+		if props.ARecords != nil {
+			for _, record := range props.ARecords {
+				recordSet.Add(&dns.Record{Value: *record.IPv4Address})
+			}
+		}
+	case dns.TypeAAAA:
+		if props.AaaaRecords != nil {
+			for _, record := range props.AaaaRecords {
+				recordSet.Add(&dns.Record{Value: *record.IPv6Address})
+			}
+		}
+	case dns.TypeCNAME:
+		if props.CnameRecord != nil {
+			recordSet.Add(&dns.Record{Value: *props.CnameRecord.Cname})
+		}
+	case dns.TypeTXT:
+		if props.TxtRecords != nil {
+			for _, record := range props.TxtRecords {
+				values := make([]string, len(record.Value))
+				for i, value := range record.Value {
+					values[i] = *value
+				}
+				value := strings.Join(values, "\n")
+				recordSet.Add(&dns.Record{Value: value})
+			}
+		}
+	default:
+		return nil, fmt.Errorf("record type %s not supported by Azure DNS provider", recordType)
+	}
+	return recordSet, nil
 }
 
 func getAzureCloudConfiguration(c *provider.DNSHandlerConfig) (*cloud.Configuration, error) {
