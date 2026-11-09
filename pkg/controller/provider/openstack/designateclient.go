@@ -95,7 +95,7 @@ func createDesignateServiceClient(ctx context.Context, logger logger.LogContext,
 		tlscfg.RootCAs = caCertPool
 	}
 	if clientAuthConfig.Insecure {
-		tlscfg.InsecureSkipVerify = true
+		tlscfg.InsecureSkipVerify = true // #nosec G402 -- InsecureSkipVerify is used to allow insecure connections
 	}
 
 	if clientAuthConfig.ClientCert != "" && clientAuthConfig.ClientKey != "" {
