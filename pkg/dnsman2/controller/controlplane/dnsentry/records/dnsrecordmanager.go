@@ -8,7 +8,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 	"k8s.io/apimachinery/pkg/util/sets"
 
 	"github.com/gardener/external-dns-management/pkg/dnsman2/controller/controlplane/dnsentry/common"
@@ -16,6 +15,7 @@ import (
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/state"
+	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/utils"
 )
 
 // DNSRecordManager manages DNS record changes and queries for DNS entries.
