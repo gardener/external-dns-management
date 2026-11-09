@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -199,8 +200,15 @@ func (h *handler) queryDNS(ctx context.Context, zone dns.ZoneInfo, request utils
 				rs = dns.NewRecordSet(dns.RecordType(recordSet.Type), int64(recordSet.TTL), nil)
 				for _, record := range recordSet.Records {
 					value := record
-					if recordSet.Type == string(dns.TypeCNAME) {
+					switch recordSet.Type {
+					case string(dns.TypeCNAME):
 						value = dns.NormalizeDomainName(value)
+					case string(dns.TypeTXT):
+						unquoted, err := strconv.Unquote(value)
+						if err != nil {
+							unquoted = value
+						}
+						value = unquoted
 					}
 					rs.Add(&dns.Record{Value: value})
 				}

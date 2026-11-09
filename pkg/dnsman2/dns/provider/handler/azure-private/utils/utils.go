@@ -6,7 +6,6 @@ package utils
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/privatedns/armprivatedns/v2"
@@ -60,9 +59,6 @@ func FromAzurePrivateRecordSet(azureRecordSet armprivatedns.RecordSet, recordTyp
 					values[i] = *value
 				}
 				value := strings.Join(values, "\n")
-				if !isQuoted(value) {
-					value = strconv.Quote(value)
-				}
 				recordSet.Add(&dns.Record{Value: value})
 			}
 		}
@@ -70,8 +66,4 @@ func FromAzurePrivateRecordSet(azureRecordSet armprivatedns.RecordSet, recordTyp
 		return nil, fmt.Errorf("record type %s not supported by Azure Private DNS provider", recordType)
 	}
 	return recordSet, nil
-}
-
-func isQuoted(s string) bool {
-	return len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"'
 }

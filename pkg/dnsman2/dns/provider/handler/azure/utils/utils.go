@@ -12,7 +12,6 @@ import (
 	"net"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -53,6 +52,15 @@ func ExtractResourceGroup(id string) (string, error) {
 func DropZoneName(dnsName, zoneName string) (string, bool) {
 	trimmed := strings.TrimSuffix(dnsName, fmt.Sprintf(".%s", zoneName))
 	return trimmed, trimmed != dnsName
+}
+
+// RelativeRecordSetName returns the zone-relative record name used when writing record sets via the Azure API,
+// mapping the zone apex (dnsName == zoneName) to "@". Use only for writing; DNS queries must not substitute "@".
+func RelativeRecordSetName(dnsName, zoneName string) (string, bool) {
+	if dnsName == zoneName {
+		return "@", true
+	}
+	return DropZoneName(dnsName, zoneName)
 }
 
 // MakeZoneID creates a zone ID from the resource group and zone name
@@ -202,9 +210,6 @@ func FromAzureRecordSet(azureRecordSet armdns.RecordSet, recordType dns.RecordTy
 					values[i] = *value
 				}
 				value := strings.Join(values, "\n")
-				if !isQuoted(value) {
-					value = strconv.Quote(value)
-				}
 				recordSet.Add(&dns.Record{Value: value})
 			}
 		}
@@ -212,10 +217,6 @@ func FromAzureRecordSet(azureRecordSet armdns.RecordSet, recordType dns.RecordTy
 		return nil, fmt.Errorf("record type %s not supported by Azure DNS provider", recordType)
 	}
 	return recordSet, nil
-}
-
-func isQuoted(s string) bool {
-	return len(s) >= 2 && s[0] == '"' && s[len(s)-1] == '"'
 }
 
 func getAzureCloudConfiguration(c *provider.DNSHandlerConfig) (*cloud.Configuration, error) {

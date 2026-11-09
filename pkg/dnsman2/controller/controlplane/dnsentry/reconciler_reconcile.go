@@ -235,12 +235,15 @@ func (r *entryReconciliation) acquireDNSNameLock() ([]string, *common.ReconcileR
 }
 
 // hasMatchingWildcardEntry reports whether another DNS entry in the same namespace has a wildcard
-// DNSName (e.g. "*.example.com") that shadows this entry's DNSName. A wildcard matches exactly one
-// extra label, so "*.example.com" shadows "foo.example.com" but not "example.com" or "a.b.example.com".
+// DNSName that shadows this entry's DNSName. Per RFC 1034 a wildcard matches exactly one label
+// (*.example.com → foo.example.com only), but many DNS servers extend this to any depth
+// (*.example.com → a.b.example.com as well). This function uses the permissive interpretation
+// to avoid false negatives: a wildcard suffix match with a non-empty prefix counts as shadowed.
 // Wildcard entries themselves are never considered shadowed.
 func (r *entryReconciliation) hasMatchingWildcardEntry() (bool, *common.ReconcileResult) {
-	name := r.Entry.Spec.DNSName
-	if strings.HasPrefix(name, "*.") {
+	name := dns.NormalizeDomainName(r.Entry.Spec.DNSName)
+	statusName := dns.NormalizeDomainName(ptr.Deref(r.Entry.Status.DNSName, name))
+	if strings.HasPrefix(name, "*.") && strings.HasPrefix(statusName, "*.") {
 		return false, nil
 	}
 
@@ -249,10 +252,8 @@ func (r *entryReconciliation) hasMatchingWildcardEntry() (bool, *common.Reconcil
 		return false, &common.ReconcileResult{Err: err}
 	}
 	for _, entry := range list.Items {
-		// A wildcard entry starts with "*." and matches exactly one extra label, so its suffix
-		// (".example.com") must be present and leave a non-empty, dot-free prefix.
-		if suffix, ok := strings.CutPrefix(entry.Spec.DNSName, "*"); ok && strings.HasPrefix(suffix, ".") {
-			if prefix, found := strings.CutSuffix(name, suffix); found && prefix != "" && !strings.Contains(prefix, ".") {
+		if suffix, ok := strings.CutPrefix(dns.NormalizeDomainName(entry.Spec.DNSName), "*"); ok && strings.HasPrefix(suffix, ".") {
+			if prefix, found := strings.CutSuffix(name, suffix); found && prefix != "" {
 				return true, nil
 			}
 		}

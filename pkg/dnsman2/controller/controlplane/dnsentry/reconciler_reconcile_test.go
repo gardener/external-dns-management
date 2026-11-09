@@ -45,7 +45,7 @@ var _ = Describe("#hasMatchingWildcardEntry", func() {
 		},
 		Entry("one label is shadowed", "foo.example.com", []client.Object{entry("*.example.com")}, true),
 		Entry("bare domain is not shadowed", "example.com", []client.Object{entry("*.example.com")}, false),
-		Entry("two labels are not shadowed", "a.b.example.com", []client.Object{entry("*.example.com")}, false),
+		Entry("two labels are also shadowed", "a.b.example.com", []client.Object{entry("*.example.com")}, true),
 		Entry("wildcard entry itself is not shadowed", "*.example.com", []client.Object{entry("*.example.com")}, false),
 		Entry("different base domain does not match", "foo.example.com", []client.Object{entry("*.other.com")}, false),
 		Entry("non-wildcard entry is ignored", "foo.example.com", []client.Object{entry("bar.example.com")}, false),
