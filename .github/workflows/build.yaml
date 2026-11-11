@@ -6,7 +6,6 @@ on:
       mode:
         required: true
         type: string
-        default: snapshot
         description: |
           the mode to use. either `snapshot` or `release`. Will affect effective version, as well
           as target-oci-registry.
