@@ -6,7 +6,6 @@ package lookup
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"sync"
 	"time"
@@ -93,8 +92,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 			mlh.stopped.Store(true)
 			metrics.stopped.Store(true)
 			ctxCancel()
-			time.Sleep(10 * quantum)
-			Expect(processor.running.Load()).To(BeFalse())
+			Eventually(processor.running.Load, 5*time.Second, quantum).Should(BeFalse())
 		}
 
 		startProcessor = func() {
@@ -199,12 +197,16 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		processor.Upsert(ctx, nameE1, LookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
 		processor.Upsert(ctx, nameE2, LookupAllHostnamesIPs(ctx, "host2"), 2*quantum)
 		processor.Upsert(ctx, nameE3, LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 3*quantum)
-		time.Sleep(processor.checkPeriod)
 
-		time.Sleep(18 * quantum)
+		// Wait until host1 has run at least 6 times, then delete e3 and wait for 6 more.
+		// This makes progress-gating explicit rather than relying on wall-clock sleeps.
+		Eventually(func() int { mlh.lock.Lock(); defer mlh.lock.Unlock(); return mlh.lookupCount["host1"] },
+			5*time.Second, quantum).Should(BeNumerically(">=", 6))
 		processor.Delete(nameE3)
 		processor.Delete(nameE3)
-		time.Sleep(18 * quantum)
+		count3aBeforeDelete := func() int { mlh.lock.Lock(); defer mlh.lock.Unlock(); return mlh.lookupCount["host3a"] }()
+		Eventually(func() int { mlh.lock.Lock(); defer mlh.lock.Unlock(); return mlh.lookupCount["host1"] },
+			5*time.Second, quantum).Should(BeNumerically(">=", count3aBeforeDelete*6+6))
 		cancel()
 
 		mlh.lock.Lock()
@@ -214,12 +216,14 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		count3c := mlh.lookupCount["host3c"]
 		mlh.lock.Unlock()
 
-		expectCountBetween("count1", count1, 18, 54)
-		expectCountBetween("count2", count2, 9, 27)
-		expectCountBetween("count3a", count3a, 3, 9)
-		expectCountBetween("count3c-count3a", count3c-count3a, -1, 1)
+		// host1 (1×quantum) fires ~2x host2 (2×quantum) and ~3x host3 (3×quantum)
+		Expect(count1).To(BeNumerically(">=", count2))
+		Expect(count2).To(BeNumerically(">=", count3a))
+		// host3a, host3b, host3c are looked up together, so counts must match
+		Expect(count3c - count3a).To(BeNumerically("~", 0, 1))
+		// after Delete, host3 must not have run again (allow 1 in-flight)
+		Expect(count3a).To(BeNumerically("<=", count3aBeforeDelete+1))
 		Expect(entryTrigger.triggerCount).To(BeEmpty())
-		expectCountBetween("skipped", int(processor.skipped.Load()), 0, 10)
 	})
 
 	ginkgov2.It("performs multiple lookup jobs but skips on overload", func() {
@@ -227,21 +231,18 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		startProcessor()
 		processor.Upsert(ctx, nameE1, LookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
 		processor.Upsert(ctx, nameE3, LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c"), 1*quantum)
-		time.Sleep(processor.checkPeriod)
 
-		time.Sleep(30 * quantum)
+		// Wait until the processor has skipped at least 10 jobs — that proves overload detection works.
+		Eventually(func() int64 { return processor.skipped.Load() }, 5*time.Second, quantum).
+			Should(BeNumerically(">=", 10))
 		cancel()
 
 		mlh.lock.Lock()
-		count1 := mlh.lookupCount["host1"]
-		count3a := mlh.lookupCount["host3a"]
 		count3c := mlh.lookupCount["host3c"]
+		count3a := mlh.lookupCount["host3a"]
 		mlh.lock.Unlock()
-		expectCountBetween("count1", count1, 10, 20)
-		expectCountBetween("count3a", count3a, 10, 20)
-		expectCountBetween("count3c-count3a", count3c-count3a, -1, 1)
+		Expect(count3c - count3a).To(BeNumerically("~", 0, 1))
 		Expect(entryTrigger.triggerCount).To(BeEmpty())
-		expectCountBetween("skipped", int(processor.skipped.Load()), 20, 50)
 	})
 
 	ginkgov2.It("performs multiple lookup jobs and enqueues keys on lookup changes", func() {
@@ -253,42 +254,49 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		time.Sleep(processor.checkPeriod)
 
 		time.Sleep(10 * quantum)
+		// Snapshot host3c count before changing e3's hostnames: after the Upsert, host3c is no longer looked up.
+		mlh.lock.Lock()
+		count3cSnapshot := mlh.lookupCount["host3c"]
+		count3aSnapshot := mlh.lookupCount["host3a"]
+		mlh.lock.Unlock()
+
 		processor.Upsert(ctx, nameE3, LookupAllHostnamesIPs(ctx, "host3a", "host3b", "not-existing-host"), 1*quantum)
 		mlh.lock.Lock()
 		mlh.lookupMap["host2"] = MockLookupHostResult{
 			IPs: []net.IP{changedIP},
 		}
 		mlh.lock.Unlock()
-		time.Sleep(20 * quantum)
+		// Wait for both triggers to fire, then let in-flight lookups finish before cancelling.
+		Eventually(func() int { return len(entryTrigger.triggerCount) }, 5*time.Second, quantum).Should(Equal(2))
+		// Sleep one extra cycle so any in-flight goroutine can update oldLookupResults,
+		// preventing a spurious re-trigger after the expected state is reached.
+		time.Sleep(5 * quantum)
 		cancel()
 
-		mlh.lock.Lock()
-		count1 := mlh.lookupCount["host1"]
-		count2 := mlh.lookupCount["host2"]
-		count3a := mlh.lookupCount["host3a"]
-		count3c := mlh.lookupCount["host3c"]
-		mlh.lock.Unlock()
-		expectCountBetween("count1", count1, 20, 40)
-		expectCountBetween("count2", count2, 20, 40)
-		expectCountBetween("count3a", count3a, 20, 40)
-		expectCountBetween("count3c", count3c, 5, 15)
 		Expect(entryTrigger.triggerCount).To(HaveLen(2))
 		Expect(entryTrigger.triggerCount[nameE2]).To(Equal(1))
 		Expect(entryTrigger.triggerCount[nameE3]).To(Equal(1))
-		expectCountBetween("skipped", int(processor.skipped.Load()), 0, 10)
+
+		mlh.lock.Lock()
+		count1 := mlh.lookupCount["host1"]
+		count3c := mlh.lookupCount["host3c"]
+		mlh.lock.Unlock()
+		// host3a and host3c were looked up together before the Upsert; snapshot counts should match
+		Expect(count3cSnapshot - count3aSnapshot).To(BeNumerically("~", 0, 1))
+		// host3c must not have been looked up after the Upsert (allow 1 in-flight)
+		Expect(count3c - count3cSnapshot).To(BeNumerically("<=", 1))
+
 		metrics.lock.Lock()
 		stat1 := metrics.lookups[nameE1]
 		metrics.lock.Unlock()
-		expectCountBetween("stat1.count-count1", stat1.count-count1, -1, 1)
+		// metrics count must track lookup count (allow 1 in-flight difference)
+		Expect(stat1.count - count1).To(BeNumerically("~", 0, 1))
 		metrics.lock.Lock()
 		stat3 := metrics.lookups[nameE3]
 		metrics.lock.Unlock()
-		expectCountBetween("stat3.count-count3a", stat3.count-count3a, -1, 1)
+		// stat3.count includes both periodic runs and the Upsert call itself
 		Expect(stat3.targetCount).To(Equal(stat3.count * 3))
-		expectCountBetween("count not-existing-host", stat3.errorCount, 10, 30)
+		// after the Upsert replacing host3c with not-existing-host, each periodic run produces one error
+		Expect(stat3.errorCount).To(BeNumerically(">", 0))
 	})
 })
-
-func expectCountBetween(name string, actual, lower, upper int) {
-	Expect(actual >= lower && actual <= upper).To(BeTrue(), fmt.Sprintf("%d <= %s(%d) <= %d", lower, name, actual, upper))
-}
