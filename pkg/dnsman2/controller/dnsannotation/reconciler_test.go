@@ -215,4 +215,40 @@ var _ = Describe("Reconcile", func() {
 		Expect(updatedAnnotation.Status.Message).To(BeEmpty())
 		Expect(updatedAnnotation.Status.Active).To(BeTrue())
 	})
+
+	It("should reject cross-namespace resourceRef when NamespaceRestriction is enabled", func() {
+		reconciler.NamespaceRestriction = true
+		annotation.Spec.ResourceRef.Namespace = "other-namespace"
+		Expect(fakeClient.Create(ctx, annotation)).To(Succeed())
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: annotationKey})
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+
+		updatedAnnotation := &v1alpha1.DNSAnnotation{}
+		Expect(fakeClient.Get(ctx, annotationKey, updatedAnnotation)).To(Succeed())
+		Expect(updatedAnnotation.Status.Message).To(ContainSubstring("cross-namespace resourceRef is not allowed"))
+		Expect(updatedAnnotation.Status.Active).To(BeFalse())
+	})
+
+	It("should evict stale state when spec changes from same-ns to cross-ns ref with NamespaceRestriction", func() {
+		reconciler.NamespaceRestriction = true
+		// First reconcile: same-namespace ref succeeds and is stored in state.
+		Expect(fakeClient.Create(ctx, annotation)).To(Succeed())
+		_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: annotationKey})
+		Expect(err).ToNot(HaveOccurred())
+		sameNsRef := annotation.Spec.ResourceRef
+		_, _, active := state.GetState().GetAnnotationState().GetResourceAnnotationStatus(sameNsRef)
+		Expect(active).To(BeFalse()) // stored but not yet active
+
+		// Update spec to point at a foreign namespace.
+		Expect(fakeClient.Get(ctx, annotationKey, annotation)).To(Succeed())
+		annotation.Spec.ResourceRef.Namespace = "other-namespace"
+		Expect(fakeClient.Update(ctx, annotation)).To(Succeed())
+		_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: annotationKey})
+		Expect(err).ToNot(HaveOccurred())
+
+		// Stale same-ns entry must be gone so another annotation can claim it.
+		annots, _, _ := state.GetState().GetAnnotationState().GetResourceAnnotationStatus(sameNsRef)
+		Expect(annots).To(BeNil())
+	})
 })

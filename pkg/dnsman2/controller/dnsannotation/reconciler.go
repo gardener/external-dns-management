@@ -29,6 +29,9 @@ type Reconciler struct {
 	Recorder    events.EventRecorder
 	Config      config.DNSAnnotationControllerConfig
 	SourceClass string
+	// NamespaceRestriction mirrors DNSProviderNamespaceRestriction: when true,
+	// a DNSAnnotation may only reference resources in its own namespace.
+	NamespaceRestriction bool
 
 	state state.AnnotationState
 }

@@ -26,6 +26,7 @@ const ControllerName = "dnsannotation"
 func (r *Reconciler) AddToManager(mgr manager.Manager, cfg *config.DNSManagerConfiguration) error {
 	r.Config = cfg.Controllers.DNSAnnotation
 	r.SourceClass = config.GetSourceClass(cfg)
+	r.NamespaceRestriction = ptr.Deref(cfg.Controllers.Source.DNSProviderNamespaceRestriction, false)
 	r.Client = mgr.GetClient()
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}

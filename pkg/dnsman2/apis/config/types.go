@@ -238,5 +238,6 @@ type SourceControllerConfig struct {
 	// DNSProviderNamespaceRestriction restricts replicated shoot DNSProviders so that they can only be used by
 	// source resources (e.g. DNSEntries, Services) in the same namespace where the original shoot DNSProvider was defined.
 	// Only effective when DNSProviderReplication is enabled.
+	// Also restricts DNSAnnotation resources to only reference objects in their own namespace.
 	DNSProviderNamespaceRestriction *bool
 }

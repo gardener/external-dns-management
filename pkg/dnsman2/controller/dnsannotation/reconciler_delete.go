@@ -38,7 +38,7 @@ func (r *Reconciler) reconcileConflicting(ctx context.Context, log logr.Logger, 
 	}
 	for i := range list.Items {
 		item := &list.Items[i]
-		if item.Spec.ResourceRef == ref {
+		if normalizeRef(item.Spec.ResourceRef, item.Namespace) == ref {
 			if _, err := r.reconcile(ctx, log, item); err != nil {
 				return err
 			}
