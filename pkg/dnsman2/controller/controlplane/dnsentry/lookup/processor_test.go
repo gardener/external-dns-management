@@ -19,6 +19,7 @@ import (
 const quantum = 5 * time.Millisecond
 
 type testTrigger struct {
+	lock         sync.Mutex
 	triggerCount map[client.ObjectKey]int
 	stopped      atomic.Bool
 }
@@ -27,8 +28,20 @@ func (t *testTrigger) TriggerReconciliation(_ context.Context, key client.Object
 	if t.stopped.Load() {
 		return nil
 	}
+	t.lock.Lock()
 	t.triggerCount[key]++
+	t.lock.Unlock()
 	return nil
+}
+
+func (t *testTrigger) getTriggerCount() map[client.ObjectKey]int {
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	copy := make(map[client.ObjectKey]int, len(t.triggerCount))
+	for k, v := range t.triggerCount {
+		copy[k] = v
+	}
+	return copy
 }
 
 type lookupStat struct {
@@ -267,7 +280,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		}
 		mlh.lock.Unlock()
 		// Wait for both triggers to fire, then let in-flight lookups finish before cancelling.
-		Eventually(func() int { return len(entryTrigger.triggerCount) }, 5*time.Second, quantum).Should(Equal(2))
+		Eventually(func() int { return len(entryTrigger.getTriggerCount()) }, 5*time.Second, quantum).Should(Equal(2))
 		// Sleep one extra cycle so any in-flight goroutine can update oldLookupResults,
 		// preventing a spurious re-trigger after the expected state is reached.
 		time.Sleep(5 * quantum)
