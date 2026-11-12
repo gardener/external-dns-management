@@ -9,6 +9,14 @@ on:
           - bump-patch
 
 
+# Serialize release runs so a re-dispatch cannot run concurrently with an in-flight
+# release and race the tag/publish/bump window. Never cancel an in-progress release:
+# a half-published release must finish, not be interrupted.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+
 jobs:
   gate:
     runs-on: ubuntu-latest
