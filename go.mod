@@ -18,9 +18,9 @@ require (
 	github.com/aws/smithy-go v1.28.9
 	github.com/cloudflare/cloudflare-go/v7 v7.15.0
 	github.com/gardener/controller-manager-library v0.2.1-0.20260918073533-fcde3b4f2fc1
-	github.com/gardener/gardener v1.155.0
-	github.com/gardener/gardener/hack/tools v1.155.0
-	github.com/gardener/gardener/pkg/apis v1.155.0
+	github.com/gardener/gardener v1.155.1
+	github.com/gardener/gardener/hack/tools v1.155.1
+	github.com/gardener/gardener/pkg/apis v1.155.1
 	github.com/go-logr/logr v1.4.4
 	github.com/go-openapi/runtime v0.33.4
 	github.com/go-openapi/strfmt v0.27.4
@@ -123,7 +123,7 @@ require (
 	github.com/gardener/cert-management v0.23.0 // indirect
 	github.com/gardener/etcd-druid/api v0.39.2 // indirect
 	github.com/gardener/machine-controller-manager v0.63.1 // indirect
-	github.com/gardener/pvc-autoscaler v0.3.2 // indirect
+	github.com/gardener/pvc-autoscaler v0.3.3 // indirect
 	github.com/go-jose/go-jose/v4 v4.1.6 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
