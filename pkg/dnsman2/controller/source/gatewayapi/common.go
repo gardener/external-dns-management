@@ -10,8 +10,10 @@ import (
 	"slices"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -212,11 +214,60 @@ func listHTTPRoutes(ctx context.Context, c client.Client, gatewayObj client.Obje
 		gatewayKeys := ExtractGatewayKeys(*gvk, &route)
 		for _, gatewayKey := range gatewayKeys {
 			if gatewayKey == client.ObjectKeyFromObject(gatewayObj) {
-				gatewayRoutes = append(gatewayRoutes, route)
+				admitted, err := gatewayAdmitsNamespace(ctx, c, gatewayObj, route.Namespace)
+				if err != nil {
+					return nil, err
+				}
+				if admitted {
+					gatewayRoutes = append(gatewayRoutes, route)
+				}
 			}
 		}
 	}
 	return gatewayRoutes, nil
+}
+
+// gatewayAdmitsNamespace reports whether the gateway's listeners permit routes from
+// routeNamespace to attach, per Gateway API allowedRoutes semantics. A route is
+// admitted if at least one listener admits it. The default (unset allowedRoutes) is
+// "Same", i.e. only the gateway's own namespace. Without this check, a tenant could
+// attach a cross-namespace HTTPRoute to a foreign gateway and inject DNS names into
+// its zone.
+func gatewayAdmitsNamespace(ctx context.Context, c client.Client, gatewayObj client.Object, routeNamespace string) (bool, error) {
+	if routeNamespace == gatewayObj.GetNamespace() {
+		return true, nil
+	}
+	listeners, err := getListeners(gatewayObj)
+	if err != nil {
+		return false, err
+	}
+	var nsLabels labels.Set // lazily fetched, only for the Selector case
+	for _, listener := range listeners {
+		from := gatewayapisv1.NamespacesFromSame
+		if ar := listener.AllowedRoutes; ar != nil && ar.Namespaces != nil && ar.Namespaces.From != nil {
+			from = *ar.Namespaces.From
+		}
+		switch from {
+		case gatewayapisv1.NamespacesFromAll:
+			return true, nil
+		case gatewayapisv1.NamespacesFromSelector:
+			selector, err := metav1.LabelSelectorAsSelector(listener.AllowedRoutes.Namespaces.Selector)
+			if err != nil {
+				return false, err
+			}
+			if nsLabels == nil {
+				ns := &corev1.Namespace{}
+				if err := c.Get(ctx, client.ObjectKey{Name: routeNamespace}, ns); err != nil {
+					return false, err
+				}
+				nsLabels = ns.Labels
+			}
+			if selector.Matches(nsLabels) {
+				return true, nil
+			}
+		}
+	}
+	return false, nil
 }
 
 func listHTTPRoutesFor(ctx context.Context, c client.Client, gatewayObj client.Object) ([]gatewayapisv1.HTTPRoute, *schema.GroupVersionKind, error) {

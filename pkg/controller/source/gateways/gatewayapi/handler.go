@@ -26,8 +26,9 @@ type httpRouteLister interface {
 
 type gatewaySource struct {
 	source.DefaultDNSSource
-	lister httpRouteLister
-	state  *routesState
+	lister   httpRouteLister
+	nsLister namespaceLister
+	state    *routesState
 }
 
 // NewGatewaySource is the DNSSource for gateways.gateway.networking.k8s.io resources.
@@ -36,15 +37,19 @@ func NewGatewaySource(c controller.Interface) (source.DNSSource, error) {
 	if err != nil {
 		return nil, err
 	}
+	nsLister, err := newNamespaceLister(c)
+	if err != nil {
+		return nil, err
+	}
 	state, err := getOrCreateSharedState(c)
 	if err != nil {
 		return nil, err
 	}
-	return newGatewaySourceWithRouteLister(lister, state)
+	return newGatewaySourceWithRouteLister(lister, nsLister, state)
 }
 
-func newGatewaySourceWithRouteLister(lister httpRouteLister, state *routesState) (source.DNSSource, error) {
-	return &gatewaySource{lister: lister, DefaultDNSSource: source.NewDefaultDNSSource(nil), state: state}, nil
+func newGatewaySourceWithRouteLister(lister httpRouteLister, nsLister namespaceLister, state *routesState) (source.DNSSource, error) {
+	return &gatewaySource{lister: lister, nsLister: nsLister, DefaultDNSSource: source.NewDefaultDNSSource(nil), state: state}, nil
 }
 
 func (s *gatewaySource) Setup() error {
@@ -123,7 +128,17 @@ func (s *gatewaySource) extractServerHosts(obj resources.ObjectData) ([]string, 
 		return append(hosts, host)
 	}
 
+	allowedRoutes := listenerAllowedRoutes(obj)
+	gatewayNamespace := obj.GetNamespace()
+
 	for _, route := range routes {
+		admitted, err := gatewayAdmitsNamespace(s.nsLister, gatewayNamespace, route.GetNamespace(), allowedRoutes)
+		if err != nil {
+			return nil, err
+		}
+		if !admitted {
+			continue
+		}
 		switch r := route.(type) {
 		case *gatewayapisv1.HTTPRoute:
 			for _, h := range r.Spec.Hostnames {

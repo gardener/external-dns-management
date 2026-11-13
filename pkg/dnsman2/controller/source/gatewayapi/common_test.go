@@ -550,6 +550,99 @@ var _ = Describe("Common", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(routes).To(BeEmpty())
 		})
+
+		It("should drop a cross-namespace HTTPRoute when the Gateway does not opt in (allowedRoutes default Same)", func() {
+			foreignRoute := &gatewayapisv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{Name: "foreign-route", Namespace: "attacker"},
+				Spec: gatewayapisv1.HTTPRouteSpec{
+					CommonRouteSpec: gatewayapisv1.CommonRouteSpec{
+						ParentRefs: []gatewayapisv1.ParentReference{
+							{Name: "gateway-0", Namespace: ptr.To(gatewayapisv1.Namespace("default"))},
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(context.Background(), foreignRoute)).To(Succeed())
+
+			gateway := &gatewayapisv1.Gateway{
+				ObjectMeta: metav1.ObjectMeta{Name: "gateway-0", Namespace: "default"},
+			}
+			routes, err := listHTTPRoutes(context.Background(), fakeClient, gateway)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(routes).To(HaveLen(1)) // only the same-namespace test-route-v1-gateway-0
+			Expect(routes[0].Name).To(Equal("test-route-v1-gateway-0"))
+		})
+
+		It("should admit a cross-namespace HTTPRoute when a listener allows namespaces From=All", func() {
+			foreignRoute := &gatewayapisv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{Name: "foreign-route", Namespace: "attacker"},
+				Spec: gatewayapisv1.HTTPRouteSpec{
+					CommonRouteSpec: gatewayapisv1.CommonRouteSpec{
+						ParentRefs: []gatewayapisv1.ParentReference{
+							{Name: "gateway-0", Namespace: ptr.To(gatewayapisv1.Namespace("default"))},
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(context.Background(), foreignRoute)).To(Succeed())
+
+			gateway := &gatewayapisv1.Gateway{
+				ObjectMeta: metav1.ObjectMeta{Name: "gateway-0", Namespace: "default"},
+				Spec: gatewayapisv1.GatewaySpec{
+					Listeners: []gatewayapisv1.Listener{
+						{AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+							Namespaces: &gatewayapisv1.RouteNamespaces{From: ptr.To(gatewayapisv1.NamespacesFromAll)},
+						}},
+					},
+				},
+			}
+			routes, err := listHTTPRoutes(context.Background(), fakeClient, gateway)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(routes).To(HaveLen(2))
+		})
+
+		DescribeTable("should honor a listener allowedRoutes namespace Selector for cross-namespace HTTPRoutes",
+			func(routeNamespaceLabels map[string]string, expectAdmitted bool) {
+				Expect(fakeClient.Create(context.Background(), &v1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{Name: "tenant", Labels: routeNamespaceLabels},
+				})).To(Succeed())
+				foreignRoute := &gatewayapisv1.HTTPRoute{
+					ObjectMeta: metav1.ObjectMeta{Name: "foreign-route", Namespace: "tenant"},
+					Spec: gatewayapisv1.HTTPRouteSpec{
+						CommonRouteSpec: gatewayapisv1.CommonRouteSpec{
+							ParentRefs: []gatewayapisv1.ParentReference{
+								{Name: "gateway-0", Namespace: ptr.To(gatewayapisv1.Namespace("default"))},
+							},
+						},
+					},
+				}
+				Expect(fakeClient.Create(context.Background(), foreignRoute)).To(Succeed())
+
+				gateway := &gatewayapisv1.Gateway{
+					ObjectMeta: metav1.ObjectMeta{Name: "gateway-0", Namespace: "default"},
+					Spec: gatewayapisv1.GatewaySpec{
+						Listeners: []gatewayapisv1.Listener{
+							{AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+								Namespaces: &gatewayapisv1.RouteNamespaces{
+									From:     ptr.To(gatewayapisv1.NamespacesFromSelector),
+									Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"team": "trusted"}},
+								},
+							}},
+						},
+					},
+				}
+				routes, err := listHTTPRoutes(context.Background(), fakeClient, gateway)
+				Expect(err).ToNot(HaveOccurred())
+				if expectAdmitted {
+					Expect(routes).To(HaveLen(2)) // foreign-route + same-namespace test-route-v1-gateway-0
+				} else {
+					Expect(routes).To(HaveLen(1))
+					Expect(routes[0].Name).To(Equal("test-route-v1-gateway-0"))
+				}
+			},
+			Entry("admits when the route namespace matches the selector", map[string]string{"team": "trusted"}, true),
+			Entry("drops when the route namespace does not match the selector", map[string]string{"team": "other"}, false),
+		)
 	})
 
 	Describe("#listHTTPRoutesFor", func() {
