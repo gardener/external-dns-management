@@ -1260,6 +1260,16 @@ restricts replicated source `DNSProvider` objects so that:
 > manager. Use the next-generation controller manager if you need multi-tenant
 > isolation on a shared source cluster.
 
+> **Note on Istio Gateways**: Unlike the Gateway API — where a listener's
+> `allowedRoutes.namespaces` defaults to `Same`, so cross-namespace route
+> attachment is default-deny — Istio's `VirtualService`-to-`Gateway` reference is
+> default-**allow**: a `VirtualService` in any namespace may bind to a `Gateway`
+> via a `namespace/gateway` reference unless the cluster operator sets
+> `PILOT_SCOPE_GATEWAY_TO_NAMESPACE=true`. Consequently, a tenant can extend a
+> shared Gateway's published DNS names from a foreign namespace, especially with
+> the `dns.gardener.cloud/dnsnames: "*"` annotation. For multi-tenant setups,
+> prefer the Gateway API source over Istio Gateways.
+
 ## DNS Controller Manager Next Generation
 
 The DNS controller manager is being rewritten using [controller-runtime](https://sigs.k8s.io/controller-runtime)
