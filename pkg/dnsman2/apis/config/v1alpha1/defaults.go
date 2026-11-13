@@ -129,14 +129,17 @@ func SetDefaults_DNSProviderControllerConfig(obj *DNSProviderControllerConfig) {
 	if obj.ZoneCacheTTL == nil {
 		obj.ZoneCacheTTL = &metav1.Duration{Duration: 30 * time.Minute}
 	}
-	if len(obj.GCPWorkloadIdentityConfig.AllowedTokenURLs) == 0 {
-		obj.GCPWorkloadIdentityConfig.AllowedTokenURLs = []string{"https://sts.googleapis.com/v1/token"}
+	if obj.GCPConfig == nil {
+		obj.GCPConfig = &GCPConfig{}
 	}
-	if len(obj.GCPWorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps) == 0 {
-		obj.GCPWorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps = []string{`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`}
+	if len(obj.GCPConfig.WorkloadIdentityConfig.AllowedTokenURLs) == 0 {
+		obj.GCPConfig.WorkloadIdentityConfig.AllowedTokenURLs = []string{"https://sts.googleapis.com/v1/token"}
 	}
-	if len(obj.GCPServiceAccountConfig.AllowedTokenURLs) == 0 {
-		obj.GCPServiceAccountConfig.AllowedTokenURLs = []string{
+	if len(obj.GCPConfig.WorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps) == 0 {
+		obj.GCPConfig.WorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps = []string{`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`}
+	}
+	if len(obj.GCPConfig.ServiceAccountConfig.AllowedTokenURLs) == 0 {
+		obj.GCPConfig.ServiceAccountConfig.AllowedTokenURLs = []string{
 			"https://oauth2.googleapis.com/token",
 			"https://accounts.google.com/o/oauth2/token",
 		}

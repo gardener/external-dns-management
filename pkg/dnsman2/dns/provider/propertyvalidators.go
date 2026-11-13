@@ -141,6 +141,33 @@ func URLValidator(schemes ...string) PropertyValidator {
 	}
 }
 
+// URLAllowListValidator checks that the URL value belongs to one of the allowed origins
+// (scheme://host[:port]). An empty allow list permits any URL (backward-compatible).
+func URLAllowListValidator(allowed []string) PropertyValidator {
+	return func(value string) error {
+		if len(allowed) == 0 {
+			return nil
+		}
+		u, err := url.Parse(value)
+		if err != nil {
+			return fmt.Errorf("value must be a valid URL, error: %s", err)
+		}
+		origin := u.Scheme + "://" + u.Host
+		for _, a := range allowed {
+			au, err := url.Parse(a)
+			if err != nil {
+				continue
+			}
+			// Match on origin only; comparing u.Host prevents a value like
+			// "https://evil/?x=https://allowed" from slipping through a substring check.
+			if origin == au.Scheme+"://"+au.Host {
+				return nil
+			}
+		}
+		return fmt.Errorf("URL %q is not in the configured allow list", value)
+	}
+}
+
 // CACertValidator checks if the value is a valid list of CA certificates in PEM format.
 func CACertValidator(value string) error {
 	caPool := x509.NewCertPool()

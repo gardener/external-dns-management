@@ -154,10 +154,20 @@ type DNSProviderControllerConfig struct {
 	// This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.
 	// +optional
 	MigrationMode *bool `json:"migrationMode,omitempty"`
-	// GCPWorkloadIdentityConfig is the configuration for GCP workload identity.
-	GCPWorkloadIdentityConfig GCPWorkloadIdentityConfig `json:"gcpWorkloadIdentityConfig"`
-	// GCPServiceAccountConfig is the configuration for GCP service account credentials.
-	GCPServiceAccountConfig GCPServiceAccountConfig `json:"gcpServiceAccountConfig"`
+	// GCPConfig is the configuration for the GCP Cloud DNS provider.
+	// +optional
+	GCPConfig *GCPConfig `json:"gcpConfig,omitempty"`
+	// OpenStackConfig is the configuration for the OpenStack Designate provider.
+	// +optional
+	OpenStackConfig *OpenStackConfig `json:"openStackConfig,omitempty"`
+}
+
+// GCPConfig is the configuration for the GCP Cloud DNS provider.
+type GCPConfig struct {
+	// WorkloadIdentityConfig is the configuration for GCP workload identity.
+	WorkloadIdentityConfig GCPWorkloadIdentityConfig `json:"workloadIdentityConfig"`
+	// ServiceAccountConfig is the configuration for GCP service account credentials.
+	ServiceAccountConfig GCPServiceAccountConfig `json:"serviceAccountConfig"`
 }
 
 // GCPServiceAccountConfig is the configuration for GCP service account credentials.
@@ -172,6 +182,13 @@ type GCPWorkloadIdentityConfig struct {
 	AllowedTokenURLs []string `json:"allowedTokenURLs"`
 	// AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.
 	AllowedServiceAccountImpersonationURLRegExps []string `json:"allowedServiceAccountImpersonationURLRegExps"`
+}
+
+// OpenStackConfig is the configuration for the OpenStack Designate provider.
+type OpenStackConfig struct {
+	// AllowedAuthURLs restricts the auth URLs tenants may configure. If empty, any URL is allowed.
+	// +optional
+	AllowedAuthURLs []string `json:"allowedAuthURLs,omitempty"`
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.
