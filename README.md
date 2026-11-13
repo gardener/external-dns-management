@@ -1251,10 +1251,13 @@ restricts replicated source `DNSProvider` objects so that:
 
 - a `DNSProvider` may only reference credentials via `spec.secretRef` in its
   own namespace; a `secretRef` pointing at a foreign namespace is rejected and
-  the source `DNSProvider` is marked `Invalid`, and
+  the source `DNSProvider` is marked `Invalid`,
 - a replicated provider may only be used by source resources (e.g. `DNSEntry`,
   `Service`) originating from the same namespace as the original source
-  `DNSProvider`.
+  `DNSProvider`, and
+- a `DNSAnnotation` may only reference objects (`Service`, `Ingress`,
+  `Gateway`) in its own namespace; a `spec.resourceRef` pointing at a foreign
+  namespace is rejected and the `DNSAnnotation` is marked inactive.
 
 > **Note**: This restriction is not available in the legacy DNS controller
 > manager. Use the next-generation controller manager if you need multi-tenant
