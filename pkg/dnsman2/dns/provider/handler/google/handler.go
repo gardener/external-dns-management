@@ -104,7 +104,11 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 			return nil, fmt.Errorf("%q required in secret", ServiceAccountJSONField)
 		}
 
-		info, err := validateServiceAccountJSON([]byte(serviceAccountJSON), c.GlobalConfig.Controllers.DNSProvider.GCPServiceAccountConfig.AllowedTokenURLs)
+		var allowedTokenURLs []string
+		if gcpConfig := c.GlobalConfig.Controllers.DNSProvider.GCPConfig; gcpConfig != nil {
+			allowedTokenURLs = gcpConfig.ServiceAccountConfig.AllowedTokenURLs
+		}
+		info, err := validateServiceAccountJSON([]byte(serviceAccountJSON), allowedTokenURLs)
 		if err != nil {
 			return nil, err
 		}
@@ -379,7 +383,11 @@ func extractExternalAccountCredentials(config *provider.DNSHandlerConfig, scopes
 }
 
 func workloadIdentityConfigFromBytes(c *provider.DNSHandlerConfig, configData []byte) (*gcp.WorkloadIdentityConfig, error) {
-	internalConfig, err := config.NewInternalGCPWorkloadIdentityConfig(c.GlobalConfig.Controllers.DNSProvider.GCPWorkloadIdentityConfig)
+	var widConfig config.GCPWorkloadIdentityConfig
+	if gcpConfig := c.GlobalConfig.Controllers.DNSProvider.GCPConfig; gcpConfig != nil {
+		widConfig = gcpConfig.WorkloadIdentityConfig
+	}
+	internalConfig, err := config.NewInternalGCPWorkloadIdentityConfig(widConfig)
 	if err != nil {
 		return nil, err
 	}

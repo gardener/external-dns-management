@@ -18,11 +18,15 @@ import (
 const ProviderType = "openstack-designate"
 
 // RegisterTo registers the OpenStack Designate DNS handler to the given registry.
-func RegisterTo(registry *provider.DNSHandlerRegistry, _ config.DNSProviderControllerConfig) {
+func RegisterTo(registry *provider.DNSHandlerRegistry, cfg config.DNSProviderControllerConfig) {
+	var allowedAuthURLs []string
+	if cfg.OpenStackConfig != nil {
+		allowedAuthURLs = cfg.OpenStackConfig.AllowedAuthURLs
+	}
 	registry.Register(
 		ProviderType,
 		NewHandler,
-		newAdapter(),
+		newAdapter(allowedAuthURLs),
 		&config.RateLimiterOptions{
 			Enabled: true,
 			QPS:     100,
@@ -37,10 +41,10 @@ type adapter struct {
 }
 
 // newAdapter creates a new DNSHandlerAdapter for the OpenStack Designate provider.
-func newAdapter() provider.DNSHandlerAdapter {
+func newAdapter(allowedAuthURLs []string) provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
 	checks.Add(provider.RequiredProperty("OS_AUTH_URL", "authURL").
-		Validators(provider.NoTrailingWhitespaceValidator, provider.URLValidator("http", "https"), provider.MaxLengthValidator(256)))
+		Validators(provider.NoTrailingWhitespaceValidator, provider.URLValidator("http", "https"), provider.URLAllowListValidator(allowedAuthURLs), provider.MaxLengthValidator(256)))
 	checks.Add(provider.OptionalProperty("OS_APPLICATION_CREDENTIAL_ID", "applicationCredentialID").
 		Validators(provider.NoTrailingWhitespaceValidator, provider.AlphaNumericPunctuationValidator, provider.MaxLengthValidator(128)))
 	checks.Add(provider.OptionalProperty("OS_APPLICATION_CREDENTIAL_NAME", "applicationCredentialName").

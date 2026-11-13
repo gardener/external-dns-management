@@ -20,10 +20,14 @@ const ProviderType = "google-clouddns"
 
 // RegisterTo registers the Google Cloud DNS handler to the given registry.
 func RegisterTo(registry *provider.DNSHandlerRegistry, cfg config.DNSProviderControllerConfig) {
+	var allowedTokenURLs []string
+	if cfg.GCPConfig != nil {
+		allowedTokenURLs = cfg.GCPConfig.ServiceAccountConfig.AllowedTokenURLs
+	}
 	registry.Register(
 		ProviderType,
 		NewHandler,
-		newAdapter(cfg.GCPServiceAccountConfig.AllowedTokenURLs),
+		newAdapter(allowedTokenURLs),
 		&config.RateLimiterOptions{
 			Enabled: true,
 			QPS:     100,

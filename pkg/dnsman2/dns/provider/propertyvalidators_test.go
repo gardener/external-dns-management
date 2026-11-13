@@ -179,6 +179,28 @@ var _ = Describe("Property Validators", func() {
 			Expect(ExpectedValueValidator("foo")("bar")).ToNot(Succeed())
 		})
 	})
+
+	Describe("URLAllowListValidator", func() {
+		It("allows any URL when the list is empty", func() {
+			Expect(URLAllowListValidator(nil)("http://169.254.169.254/latest/")).To(Succeed())
+		})
+
+		It("accepts a URL on an allowed origin", func() {
+			v := URLAllowListValidator([]string{"https://keystone.example.com"})
+			Expect(v("https://keystone.example.com/v3")).To(Succeed())
+			Expect(v("https://keystone.example.com")).To(Succeed())
+		})
+
+		It("rejects a URL on a different origin", func() {
+			v := URLAllowListValidator([]string{"https://keystone.example.com"})
+			Expect(v("http://169.254.169.254/")).ToNot(Succeed())
+		})
+
+		It("is not fooled by an allowed origin embedded in query or path", func() {
+			v := URLAllowListValidator([]string{"https://keystone.example.com"})
+			Expect(v("https://evil.example.com/?x=https://keystone.example.com")).ToNot(Succeed())
+		})
+	})
 })
 
 func generateCACert() (string, error) {
