@@ -42,7 +42,7 @@ func TestRegisterAndFactory(t *testing.T) {
 		t.Errorf("expected error validating empty credentials, got nil")
 	}
 
-	validServiceAccountJSON := `{"type":"gdch_service_account","project":"fake-project","name":"dns-sa","private_key_id":"key-1"}`
+	validServiceAccountJSON := `{"type":"gdch_service_account","project":"fake-project","name":"dns-sa","private_key_id":"key-1","token_uri":"https://sts.test/token"}`
 	validGDCHConfigJSON := `{"orgClusterURL":"https://global-api.test"}`
 
 	validProps := utils.Properties{
@@ -59,14 +59,32 @@ func TestRegisterAndFactory(t *testing.T) {
 		t.Errorf("expected error when provider config is provided, got nil")
 	}
 
+	// Should reject http scheme in token_uri
+	httpTokenURIProps := utils.Properties{
+		constants.ServiceAccountJSONField: `{"type":"gdch_service_account","project":"fake-project","name":"dns-sa","private_key_id":"key-1","token_uri":"http://sts.test/token"}`,
+		constants.GDCHConfigJSONField:     validGDCHConfigJSON,
+	}
+	if err := adapter.ValidateCredentialsAndProviderConfig(httpTokenURIProps, nil); err == nil {
+		t.Errorf("expected error for http token_uri, got nil")
+	}
+
+	// Should reject http scheme in orgClusterURL
+	httpOrgClusterURLProps := utils.Properties{
+		constants.ServiceAccountJSONField: validServiceAccountJSON,
+		constants.GDCHConfigJSONField:     `{"orgClusterURL":"http://global-api.test"}`,
+	}
+	if err := adapter.ValidateCredentialsAndProviderConfig(httpOrgClusterURLProps, nil); err == nil {
+		t.Errorf("expected error for http orgClusterURL, got nil")
+	}
+
 	// Test handler instantiation and Release
-	config := &provider.DNSHandlerConfig{
+	handlerCfg := &provider.DNSHandlerConfig{
 		Properties: map[string]string{
 			constants.GDCHConfigJSONField:     validGDCHConfigJSON,
 			constants.ServiceAccountJSONField: validServiceAccountJSON,
 		},
 	}
-	h, err := NewHandler(config)
+	h, err := NewHandler(handlerCfg)
 	if err != nil {
 		t.Fatalf("failed to create new handler: %v", err)
 	}
@@ -76,4 +94,43 @@ func TestRegisterAndFactory(t *testing.T) {
 	}
 
 	h.Release()
+}
+
+func TestAllowListValidation(t *testing.T) {
+	registry := provider.NewDNSHandlerRegistry(clock.RealClock{})
+	RegisterTo(registry, config.DNSProviderControllerConfig{
+		GDCConfig: &config.GDCConfig{
+			AllowedTokenURIs:      []string{"https://sts.allowed.test"},
+			AllowedOrgClusterURLs: []string{"https://global-api.allowed.test"},
+		},
+	})
+
+	adapter, err := registry.GetDNSHandlerAdapter(ProviderType)
+	if err != nil {
+		t.Fatalf("unexpected error getting adapter: %v", err)
+	}
+
+	allowedProps := utils.Properties{
+		constants.ServiceAccountJSONField: `{"type":"gdch_service_account","project":"fake-project","name":"dns-sa","private_key_id":"key-1","token_uri":"https://sts.allowed.test/token"}`,
+		constants.GDCHConfigJSONField:     `{"orgClusterURL":"https://global-api.allowed.test"}`,
+	}
+	if err := adapter.ValidateCredentialsAndProviderConfig(allowedProps, nil); err != nil {
+		t.Errorf("expected allowed URLs to pass, got: %v", err)
+	}
+
+	blockedTokenURIProps := utils.Properties{
+		constants.ServiceAccountJSONField: `{"type":"gdch_service_account","project":"fake-project","name":"dns-sa","private_key_id":"key-1","token_uri":"https://sts.evil.test/token"}`,
+		constants.GDCHConfigJSONField:     `{"orgClusterURL":"https://global-api.allowed.test"}`,
+	}
+	if err := adapter.ValidateCredentialsAndProviderConfig(blockedTokenURIProps, nil); err == nil {
+		t.Errorf("expected error for token_uri not in allowlist, got nil")
+	}
+
+	blockedOrgClusterURLProps := utils.Properties{
+		constants.ServiceAccountJSONField: `{"type":"gdch_service_account","project":"fake-project","name":"dns-sa","private_key_id":"key-1","token_uri":"https://sts.allowed.test/token"}`,
+		constants.GDCHConfigJSONField:     `{"orgClusterURL":"https://global-api.evil.test"}`,
+	}
+	if err := adapter.ValidateCredentialsAndProviderConfig(blockedOrgClusterURLProps, nil); err == nil {
+		t.Errorf("expected error for orgClusterURL not in allowlist, got nil")
+	}
 }

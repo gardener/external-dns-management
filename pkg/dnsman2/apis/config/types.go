@@ -135,6 +135,8 @@ type DNSProviderControllerConfig struct {
 	GCPConfig *GCPConfig
 	// OpenStackConfig is the configuration for the OpenStack Designate provider.
 	OpenStackConfig *OpenStackConfig
+	// GDCConfig is the configuration for the GDC (gdch-dns) provider.
+	GDCConfig *GDCConfig
 }
 
 // GCPConfig is the configuration for the GCP Cloud DNS provider.
@@ -163,6 +165,14 @@ type GCPWorkloadIdentityConfig struct {
 type OpenStackConfig struct {
 	// AllowedAuthURLs restricts the auth URLs tenants may configure. If empty, any URL is allowed.
 	AllowedAuthURLs []string
+}
+
+// GDCConfig is the configuration for the GDC (gdch-dns) provider.
+type GDCConfig struct {
+	// AllowedTokenURIs restricts the token_uri values tenants may configure in serviceaccount.json. If empty, any URL is allowed.
+	AllowedTokenURIs []string
+	// AllowedOrgClusterURLs restricts the orgClusterURL values tenants may configure in gdch-config. If empty, any URL is allowed.
+	AllowedOrgClusterURLs []string
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.

@@ -12,6 +12,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 
+	gdcclient "github.com/gardener/external-dns-management/pkg/controller/provider/gdc/client"
+	"github.com/gardener/external-dns-management/pkg/controller/provider/gdc/client/auth"
 	"github.com/gardener/external-dns-management/pkg/controller/provider/gdc/client/constants"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/apis/config"
 	"github.com/gardener/external-dns-management/pkg/dnsman2/dns/provider"
@@ -22,8 +24,13 @@ import (
 const ProviderType = "gdch-dns"
 
 // RegisterTo registers the GDC DNS handler to the registry.
-func RegisterTo(registry *provider.DNSHandlerRegistry, _ config.DNSProviderControllerConfig) {
-	registry.Register(ProviderType, NewHandler, newAdapter(), &config.RateLimiterOptions{
+func RegisterTo(registry *provider.DNSHandlerRegistry, cfg config.DNSProviderControllerConfig) {
+	var allowedTokenURIs, allowedOrgClusterURLs []string
+	if cfg.GDCConfig != nil {
+		allowedTokenURIs = cfg.GDCConfig.AllowedTokenURIs
+		allowedOrgClusterURLs = cfg.GDCConfig.AllowedOrgClusterURLs
+	}
+	registry.Register(ProviderType, NewHandler, newAdapter(allowedTokenURIs, allowedOrgClusterURLs), &config.RateLimiterOptions{
 		Enabled: true,
 		QPS:     100,
 		Burst:   20,
@@ -36,13 +43,34 @@ type adapter struct {
 
 var _ provider.DNSHandlerAdapter = &adapter{}
 
-func newAdapter() provider.DNSHandlerAdapter {
+func newAdapter(allowedTokenURIs, allowedOrgClusterURLs []string) provider.DNSHandlerAdapter {
 	checks := provider.NewDNSHandlerAdapterChecks()
 	checks.Add(provider.RequiredProperty(constants.ServiceAccountJSONField).Validators(func(value string) error {
-		_, err := validateServiceAccountJSON([]byte(value))
-		return err
+		sa, err := validateServiceAccountJSON([]byte(value))
+		if err != nil {
+			return err
+		}
+		if err := provider.URLValidator("https")(sa.TokenURI); err != nil {
+			return fmt.Errorf("'%s' field 'token_uri': %w", constants.ServiceAccountJSONField, err)
+		}
+		if err := provider.URLAllowListValidator(allowedTokenURIs)(sa.TokenURI); err != nil {
+			return fmt.Errorf("'%s' field 'token_uri': %w", constants.ServiceAccountJSONField, err)
+		}
+		return nil
 	}).HideValue())
-	checks.Add(provider.RequiredProperty(constants.GDCHConfigJSONField).HideValue())
+	checks.Add(provider.RequiredProperty(constants.GDCHConfigJSONField).Validators(func(value string) error {
+		var gdcConfig gdcclient.OrgClusterConfig
+		if err := json.Unmarshal([]byte(value), &gdcConfig); err != nil {
+			return fmt.Errorf("'%s' does not contain valid JSON: %w", constants.GDCHConfigJSONField, err)
+		}
+		if err := provider.URLValidator("https")(gdcConfig.OrgClusterURL); err != nil {
+			return fmt.Errorf("'%s' field 'orgClusterURL': %w", constants.GDCHConfigJSONField, err)
+		}
+		if err := provider.URLAllowListValidator(allowedOrgClusterURLs)(gdcConfig.OrgClusterURL); err != nil {
+			return fmt.Errorf("'%s' field 'orgClusterURL': %w", constants.GDCHConfigJSONField, err)
+		}
+		return nil
+	}).HideValue())
 	return &adapter{checks: checks}
 }
 
@@ -69,17 +97,23 @@ type lightCredentialsFile struct {
 
 var projectIDRegexp = regexp.MustCompile(`^(?P<project>[a-z][a-z0-9-]{4,30}[a-z0-9])$`)
 
-func validateServiceAccountJSON(data []byte) (lightCredentialsFile, error) {
-	var credInfo lightCredentialsFile
+func validateServiceAccountJSON(data []byte) (auth.ServiceAccount, error) {
+	var credInfo auth.ServiceAccount
+	var typeCheck struct {
+		Type string `json:"type"`
+	}
 
+	if err := json.Unmarshal(data, &typeCheck); err != nil {
+		return credInfo, fmt.Errorf("'%s' data field does not contain a valid JSON: %s", constants.ServiceAccountJSONField, err)
+	}
+	if typeCheck.Type != "gdch_service_account" {
+		return credInfo, fmt.Errorf("'%s' field 'type' is not 'gdch_service_account'", constants.ServiceAccountJSONField)
+	}
 	if err := json.Unmarshal(data, &credInfo); err != nil {
 		return credInfo, fmt.Errorf("'%s' data field does not contain a valid JSON: %s", constants.ServiceAccountJSONField, err)
 	}
 	if !projectIDRegexp.MatchString(credInfo.Project) {
 		return credInfo, fmt.Errorf("'%s' field 'project' is not a valid project", constants.ServiceAccountJSONField)
-	}
-	if credInfo.Type != "gdch_service_account" {
-		return credInfo, fmt.Errorf("'%s' field 'type' is not 'gdch_service_account'", constants.ServiceAccountJSONField)
 	}
 	return credInfo, nil
 }

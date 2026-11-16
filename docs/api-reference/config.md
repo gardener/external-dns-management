@@ -832,6 +832,18 @@ boolean
 <p>OpenStackConfig is the configuration for the OpenStack Designate provider.</p>
 </td>
 </tr>
+<tr>
+<td>
+<code>gdcConfig</code></br>
+<em>
+<a href="#gdcconfig">GDCConfig</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>GDCConfig is the configuration for the GDC (gdch-dns) provider.</p>
+</td>
+</tr>
 
 </tbody>
 </table>
@@ -963,6 +975,56 @@ string array
 </td>
 <td>
 <p>AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="gdcconfig">GDCConfig
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#dnsprovidercontrollerconfig">DNSProviderControllerConfig</a>)
+</p>
+
+<p>
+GDCConfig is the configuration for the GDC (gdch-dns) provider.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>allowedTokenURIs</code></br>
+<em>
+string array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AllowedTokenURIs restricts the token_uri values tenants may configure in serviceaccount.json. If empty, any URL is allowed.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>allowedOrgClusterURLs</code></br>
+<em>
+string array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AllowedOrgClusterURLs restricts the orgClusterURL values tenants may configure in gdch-config. If empty, any URL is allowed.</p>
 </td>
 </tr>
 
