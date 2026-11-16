@@ -291,8 +291,8 @@ github.com/fxamacker/cbor/v2 v2.9.6 h1:NHZPxuUjJXQjX9itA785y/5NKSlI4HQ+S7noZsmI7
 github.com/fxamacker/cbor/v2 v2.9.6/go.mod h1:4EaZp6ClVunETjQ4GHmGNzysDK91Lr+r6Yz6tJqzVCw=
 github.com/gardener/cert-management v0.23.0 h1:kD88XcPn6C4zLc8EYtrHyb+/45Iyaozhb+HEM44MKz0=
 github.com/gardener/cert-management v0.23.0/go.mod h1:Mehn8XY+iAkm8XOBbNGHmbMft8fP9ZEJFWzWSonPkfc=
-github.com/gardener/controller-manager-library v0.2.1-0.20261116085430-bc918e543d81 h1:DvolD1S8DaUsDCgfCuRx1j/mVdJRGogHa1TL8XQkars=
-github.com/gardener/controller-manager-library v0.2.1-0.20261116085430-bc918e543d81/go.mod h1:3iGOvDXiQ9VVwU27SfdYPomHmf02gFRad/Dy/6TeID4=
+github.com/gardener/controller-manager-library v0.2.1-0.20261116095852-c84251f6958d h1:iutBAfKi9vZnwaYZvwaGbAfy6v2u/sKJ9D2eQeTrI20=
+github.com/gardener/controller-manager-library v0.2.1-0.20261116095852-c84251f6958d/go.mod h1:GcDPGrv+eM+mvpjWMbHlnPbPqpNAKvEarE9d/WqGc5A=
 github.com/gardener/etcd-druid/api v0.39.2 h1:zP4WQdrhh09YGjamoBqss8gmjyT6c1BGwN2wXCvkKJY=
 github.com/gardener/etcd-druid/api v0.39.2/go.mod h1:HsqEM/h4XuxPC4cFDm20V9TPAUqv0tjtnzds/nZ5p7Y=
 github.com/gardener/gardener v1.155.1 h1:kjDdT28/z+HaPIioK+qs9ztfavFsxnJi1vMJBn0ysJU=
@@ -1454,8 +1454,8 @@ k8s.io/utils v0.0.0-20200729134348-d5654de09c73/go.mod h1:jPW/WVKK9YHAvNhRxK0md/
 k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab h1:pjQrNLaF//ytZtWwCAHtW+pqwSKjtWDqzA8+TCX37RI=
 k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab/go.mod h1:DdQ0BJxlQtuMlKDqdg7X5IMMQCXIk2b3d1/4M9OhUYo=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
-sigs.k8s.io/controller-runtime v0.25.2 h1:bEkK3PVOIVK9X8QWLGVhJgmFc++47vfT6wakSzAOLsQ=
-sigs.k8s.io/controller-runtime v0.25.2/go.mod h1:4QqLdT6z/L6Olj8JJCtvztid4/fnIiYsfaTFScegctc=
+sigs.k8s.io/controller-runtime v0.25.3 h1:b4OcZSY/aKHY8JG+rBlQmQ1xLs574+ZBEjv1dtfLd80=
+sigs.k8s.io/controller-runtime v0.25.3/go.mod h1:4QqLdT6z/L6Olj8JJCtvztid4/fnIiYsfaTFScegctc=
 sigs.k8s.io/gateway-api v1.6.1 h1:mock6phZbI6rvZerwrVNk7hVNymQgHo+6sJ81Ia7ftY=
 sigs.k8s.io/gateway-api v1.6.1/go.mod h1:FVfx3t389ybeXOqvDghLbdvJdSCfI/PReqCUI3lu3mY=
 sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 h1:IpInykpT6ceI+QxKBbEflcR5EXP7sU1kvOlxwZh5txg=
