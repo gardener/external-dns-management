@@ -841,7 +841,13 @@ var _ = Describe("Provider/Entry collaboration tests", func() {
 
 		start := time.Now()
 		for _, entry := range entries {
-			checkEntry(entry)
+			// rate limit of 1/s serializes the 3 applies over ~2s; the default 5s Eventually is too
+			// tight once stacked across 3 sequential checks under CI load, so allow more headroom.
+			Eventually(func(g Gomega) {
+				g.Expect(testClient.Get(ctx, client.ObjectKeyFromObject(entry), entry)).To(Succeed())
+				g.Expect(entry.Status.State).To(Equal("Ready"))
+				g.Expect(entry.Status.ObservedGeneration).To(Equal(entry.Generation))
+			}).WithTimeout(30 * time.Second).Should(Succeed())
 		}
 		duration := time.Since(start)
 		Expect(duration).To(BeNumerically(">=", 2*time.Second), "creating 3 entries with rate limit of 1/s should take at least 2s, took %s", duration)
