@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -40,8 +41,8 @@ type EntryTrigger interface {
 	TriggerReconciliation(ctx context.Context, key client.ObjectKey) error
 }
 
-// LookupIPFunc defines a function type for looking up IPs for a hostname.
-type LookupIPFunc func(string) ([]net.IP, error)
+// LookupIPFunc defines a function type for looking up IPs for a host.
+type LookupIPFunc func(ctx context.Context, host string) ([]net.IP, error)
 
 type lookupHostConfig struct {
 	lock                       sync.Mutex
@@ -51,9 +52,22 @@ type lookupHostConfig struct {
 	waitLookupRetry            time.Duration
 }
 
+// defaultLookupIPFunc is similar to net.LookupIP, but with context.
+func defaultLookupIPFunc(ctx context.Context, host string) ([]net.IP, error) {
+	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	ips := make([]net.IP, len(addrs))
+	for i, ia := range addrs {
+		ips[i] = ia.IP
+	}
+	return ips, nil
+}
+
 func defaultLookupHostConfig() lookupHostConfig {
 	return lookupHostConfig{
-		lookupFunc:                 net.LookupIP,
+		lookupFunc:                 defaultLookupIPFunc,
 		maxConcurrentLookupsPerJob: 4,
 		maxLookupRetries:           5,
 		waitLookupRetry:            500 * time.Millisecond,
@@ -259,10 +273,16 @@ func (p *lookupProcessor) runJob(ctx context.Context) (time.Time, *client.Object
 					<-p.slots // Release semaphore slot
 				}()
 				j.lock.Lock()
-				defer j.lock.Unlock()
-				newLookupResult := LookupAllHostnamesIPs(ctx, j.oldLookupResults.Hostnames...)
+				hostnames := append([]string(nil), j.oldLookupResults.Hostnames...)
+				j.lock.Unlock()
+
+				newLookupResult := LookupAllHostnamesIPs(ctx, hostnames...)
 				p.incrHostnameLookups(j.objectKey, newLookupResult)
-				if j.updateLookupResult(newLookupResult) {
+				j.lock.Lock()
+				// Discard if Upsert changed hostnames while we were looking up; Upsert already stored fresh results.
+				changed := slices.Equal(j.oldLookupResults.Hostnames, hostnames) && j.updateLookupResult(newLookupResult)
+				j.lock.Unlock()
+				if changed {
 					p.triggerReconciliation(ctx, j.objectKey)
 				}
 			}(job)
@@ -336,6 +356,14 @@ func LookupAllHostnamesIPs(ctx context.Context, hostnames ...string) LookupAllRe
 	go func() {
 		sem := make(chan struct{}, lookupHost.maxConcurrentLookupsPerJob)
 		for _, hostname := range hostnames {
+			// Drain ctx.Done before the blocking select so cancellation always wins over a free sem slot.
+			select {
+			case <-ctx.Done():
+				results <- lookupIPsResult{err: ctx.Err()}
+				continue
+			default:
+			}
+
 			select {
 			case <-ctx.Done():
 				results <- lookupIPsResult{err: ctx.Err()}
@@ -344,7 +372,7 @@ func LookupAllHostnamesIPs(ctx context.Context, hostnames ...string) LookupAllRe
 					defer func() {
 						<-sem // Release semaphore slot
 					}()
-					results <- lookupIPs(h)
+					results <- lookupIPs(ctx, h)
 				}(hostname)
 			}
 		}
@@ -385,7 +413,7 @@ type lookupIPsResult struct {
 	err       error
 }
 
-func lookupIPs(hostname string) lookupIPsResult {
+func lookupIPs(ctx context.Context, hostname string) lookupIPsResult {
 	var (
 		ips []net.IP
 		err error
@@ -394,14 +422,18 @@ func lookupIPs(hostname string) lookupIPsResult {
 	lookupFunc := lookupHost.lookupFunc
 	lookupHost.lock.Unlock()
 	for i := 1; i <= lookupHost.maxLookupRetries; i++ {
-		ips, err = lookupFunc(hostname)
+		ips, err = lookupFunc(ctx, hostname)
 		if err == nil || i == lookupHost.maxLookupRetries {
 			break
 		}
 		if !isTimeoutError(err) {
 			break
 		}
-		time.Sleep(lookupHost.waitLookupRetry)
+		select {
+		case <-ctx.Done():
+			return lookupIPsResult{err: ctx.Err()}
+		case <-time.After(lookupHost.waitLookupRetry):
+		}
 	}
 	if err != nil {
 		if _, ok := err.(*net.DNSError); ok {

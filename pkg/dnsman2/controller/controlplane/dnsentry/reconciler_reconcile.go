@@ -427,6 +427,9 @@ func (r *entryReconciliation) calcNewTargets(providerData *providerselector.NewP
 
 	result, err := producer.FromSpec(client.ObjectKeyFromObject(r.Entry), &r.Entry.Spec, r.Entry.Annotations[dns.AnnotationIPStack], len(r.Entry.Status.Targets) > 0)
 	if err != nil {
+		if targets.IsReconcileError(err) {
+			return nil, common.ErrorReconcileResult(err.Error(), true)
+		}
 		return nil, common.InvalidReconcileResult(err.Error())
 	}
 	name, rp, err := toDNSSetName(r.Entry.Spec.DNSName, r.Entry.Spec.RoutingPolicy)

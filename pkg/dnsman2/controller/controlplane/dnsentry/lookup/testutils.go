@@ -41,7 +41,7 @@ func NewMockLookupHost(lookupMap map[string]MockLookupHostResult) *MockLookupHos
 }
 
 // LookupHost performs a mock DNS lookup for the given hostname.
-func (lh *MockLookupHost) LookupHost(hostname string) ([]net.IP, error) {
+func (lh *MockLookupHost) LookupHost(_ context.Context, hostname string) ([]net.IP, error) {
 	time.Sleep(lh.delay)
 	lh.lock.Lock()
 	if !lh.stopped.Load() {

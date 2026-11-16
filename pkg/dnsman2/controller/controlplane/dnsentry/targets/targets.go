@@ -184,7 +184,7 @@ func (p *TargetsProducer) upsertLookupJob(ctx context.Context, key client.Object
 	lookupAllResults := lookup.LookupAllHostnamesIPs(ctx, hostnames...)
 	p.processor.Upsert(ctx, key, lookupAllResults, time.Duration(lookupInterval)*time.Second)
 	if lookupAllResults.HasErrors() && !lookupAllResults.HasOnlyNotFoundError() {
-		return fmt.Errorf("lookup failed for some targets: %s", errors.Join(lookupAllResults.Errs...))
+		return wrapAsReconcileError(fmt.Errorf("lookup failed for some targets: %s", errors.Join(lookupAllResults.Errs...)))
 	}
 
 	var resolvedTargets dns.Targets
@@ -277,6 +277,29 @@ func TargetsToStrings(targets dns.Targets) []string {
 		strs = makeUniqueStrings(strs)
 	}
 	return strs
+}
+
+func wrapAsReconcileError(err error) error {
+	return &reconcileError{err: err}
+}
+
+type reconcileError struct {
+	err error
+}
+
+func (e *reconcileError) Error() string {
+	return e.err.Error()
+}
+
+func (e *reconcileError) Unwrap() error {
+	return e.err
+}
+
+// IsReconcileError reports whether err is a reconcileError, indicating a transient
+// lookup failure that should be retried.
+func IsReconcileError(err error) bool {
+	var re *reconcileError
+	return errors.As(err, &re)
 }
 
 func newAddressTarget(name string, ttl int64, ipstack string) (dns.Target, error) {
