@@ -48,7 +48,7 @@ type mockLookupHost struct {
 	serverFailureMap map[string]int
 }
 
-func (lh *mockLookupHost) LookupHost(hostname string) ([]net.IP, error) {
+func (lh *mockLookupHost) LookupHost(_ context.Context, hostname string) ([]net.IP, error) {
 	time.Sleep(lh.delay)
 	lh.lock.Lock()
 	if !lh.stopped.Load() {
