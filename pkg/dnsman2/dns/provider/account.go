@@ -207,14 +207,16 @@ func (a *DNSAccount) Release() {
 
 // AccountMap manages a set of DNS accounts.
 type AccountMap struct {
-	lock     sync.Mutex
-	accounts map[string]*DNSAccount
+	lock       sync.Mutex
+	accounts   map[string]*DNSAccount
+	inCreation map[string]chan struct{}
 }
 
 // NewAccountMap creates a new AccountMap.
 func NewAccountMap() *AccountMap {
 	return &AccountMap{
-		accounts: map[string]*DNSAccount{},
+		accounts:   map[string]*DNSAccount{},
+		inCreation: map[string]chan struct{}{},
 	}
 }
 
@@ -222,54 +224,100 @@ func NewAccountMap() *AccountMap {
 func (m *AccountMap) Get(log logr.Logger, provider *v1alpha1.DNSProvider, props utils.Properties, accountConfig DNSAccountConfig) (*DNSAccount, error) {
 	key := client.ObjectKeyFromObject(provider)
 	hash := m.Hash(props, provider.Spec.Type, provider.Spec.ProviderConfig)
+
+	account, err := m.getOrCreate(log, provider, props, accountConfig, key, hash)
+	if err != nil {
+		return nil, err
+	}
+
 	m.lock.Lock()
-	defer m.lock.Unlock()
+	old := len(account.clients)
+	account.clients.Insert(key)
+	clientCount := len(account.clients)
+	m.lock.Unlock()
 
-	a := m.accounts[hash]
-	if a == nil {
-		a = NewDNSAccount(nil, hash, accountConfig)
-
-		rateLimiter, err := NewRateLimiter(accountConfig.RateLimits)
-		if err != nil {
-			return nil, err
-		}
-
-		cfg := DNSHandlerConfig{
-			Log:          log,
-			Properties:   props,
-			Config:       provider.Spec.ProviderConfig,
-			GlobalConfig: ptr.Deref(accountConfig.GlobalConfig, config.DNSManagerConfiguration{}),
-			Metrics:      a,
-			RateLimiter:  rateLimiter,
-		}
-		a.handler, err = accountConfig.Factory.Create(provider.Spec.Type, &cfg)
-		if err != nil {
-			return nil, err
-		}
-		log.Info("creating account", "provider", key, "hash", a.Hash())
-		m.accounts[hash] = a
+	if clientCount != old && old != 0 {
+		log.Info("reusing account", "provider", key, "hash", account.Hash(), "clients", clientCount)
 	}
-	old := len(a.clients)
-	a.clients.Insert(key)
-	if old != len(a.clients) && old != 0 {
-		log.Info("reusing account", "provider", key, "hash", a.Hash(), "clients", len(a.clients))
+	metrics.ReportAccountProviders(provider.Spec.Type, account.Hash(), clientCount)
+	return account, nil
+}
+
+// getOrCreate returns the existing account for the hash or creates it. Account creation (which may
+// perform network I/O, e.g. OpenStack Keystone auth) runs without the lock held, so a slow or hung
+// provider cannot block other tenants. Concurrent callers for the same hash wait on a channel that
+// the creating goroutine closes when it is done.
+func (m *AccountMap) getOrCreate(log logr.Logger, provider *v1alpha1.DNSProvider, props utils.Properties, accountConfig DNSAccountConfig, key client.ObjectKey, hash string) (*DNSAccount, error) {
+	for {
+		m.lock.Lock()
+		if account := m.accounts[hash]; account != nil {
+			m.lock.Unlock()
+			return account, nil
+		}
+		if done := m.inCreation[hash]; done != nil {
+			m.lock.Unlock()
+			<-done // another goroutine is creating this account; wait, then re-check the map
+			continue
+		}
+		done := make(chan struct{})
+		m.inCreation[hash] = done
+		m.lock.Unlock()
+
+		account, err := m.create(log, provider, props, accountConfig, key, hash)
+
+		m.lock.Lock()
+		delete(m.inCreation, hash)
+		m.lock.Unlock()
+		close(done)
+		return account, err
 	}
-	metrics.ReportAccountProviders(provider.Spec.Type, a.Hash(), len(a.clients))
-	return a, nil
+}
+
+// create builds a new DNSAccount and registers it in the map. It must be called by exactly one
+// goroutine per hash (serialized via inCreation in getOrCreate).
+func (m *AccountMap) create(log logr.Logger, provider *v1alpha1.DNSProvider, props utils.Properties, accountConfig DNSAccountConfig, key client.ObjectKey, hash string) (*DNSAccount, error) {
+	candidate := NewDNSAccount(nil, hash, accountConfig)
+
+	rateLimiter, err := NewRateLimiter(accountConfig.RateLimits)
+	if err != nil {
+		return nil, err
+	}
+
+	cfg := DNSHandlerConfig{
+		Log:          log,
+		Properties:   props,
+		Config:       provider.Spec.ProviderConfig,
+		GlobalConfig: ptr.Deref(accountConfig.GlobalConfig, config.DNSManagerConfiguration{}),
+		Metrics:      candidate,
+		RateLimiter:  rateLimiter,
+	}
+	candidate.handler, err = accountConfig.Factory.Create(provider.Spec.Type, &cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	m.lock.Lock()
+	log.Info("creating account", "provider", key, "hash", candidate.Hash())
+	m.accounts[hash] = candidate
+	m.lock.Unlock()
+	return candidate, nil
 }
 
 // FindAccountForZone finds the DNSAccount and DNSHostedZone for a given zone ID.
 func (m *AccountMap) FindAccountForZone(ctx context.Context, zoneID dns.ZoneID) (*DNSAccount, *DNSHostedZone, error) {
+	// Snapshot the matching accounts under the lock, then query them without it: GetZones may
+	// perform network I/O (on a cache miss) and must not block other tenants on the global lock.
 	m.lock.Lock()
-	defer m.lock.Unlock()
+	candidates := make([]*DNSAccount, 0, len(m.accounts))
+	for _, account := range m.accounts {
+		if account.ProviderType() == zoneID.ProviderType {
+			candidates = append(candidates, account)
+		}
+	}
+	m.lock.Unlock()
 
 	var errs []error
-
-	for _, account := range m.accounts {
-		if account.ProviderType() != zoneID.ProviderType {
-			continue
-		}
-
+	for _, account := range candidates {
 		zones, err := account.GetZones(ctx)
 		if err != nil {
 			errs = append(errs, fmt.Errorf("failed to get zones for account %s: %w", account.Hash(), err))
@@ -277,12 +325,24 @@ func (m *AccountMap) FindAccountForZone(ctx context.Context, zoneID dns.ZoneID) 
 		}
 		for _, zone := range zones {
 			if zone.ZoneID() == zoneID {
+				// Account may have been released (handler torn down, removed from the map) while
+				// we queried it lock-free; do not return a zombie.
+				if !m.isLive(account) {
+					break
+				}
 				return account, &zone, nil
 			}
 		}
 	}
 	errs = append([]error{fmt.Errorf("no account found for zone %s", zoneID)}, errs...)
 	return nil, nil, errors.Join(errs...)
+}
+
+// isLive reports whether the account is still registered in the map (i.e. not released concurrently).
+func (m *AccountMap) isLive(a *DNSAccount) bool {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	return m.accounts[a.hash] == a
 }
 
 var null = []byte{0}
@@ -334,18 +394,28 @@ func (m *AccountMap) Hash(props utils.Properties, ptype string, extension *runti
 
 // GetDNSCachesByZone returns all DNS caches for a given zone ID.
 func (m *AccountMap) GetDNSCachesByZone(ctx context.Context, zoneID dns.ZoneID) ([]*utils.DNSCache, error) {
+	// Snapshot the accounts under the lock, then build caches without it: getZoneQueryCache may
+	// perform network I/O and must not block other tenants on the global lock.
 	m.lock.Lock()
-	defer m.lock.Unlock()
+	accounts := make([]*DNSAccount, 0, len(m.accounts))
+	for _, account := range m.accounts {
+		accounts = append(accounts, account)
+	}
+	m.lock.Unlock()
 
 	var result []*utils.DNSCache
-	for _, account := range m.accounts {
+	for _, account := range accounts {
 		if zone := account.GetCachedZone(zoneID); zone != nil {
 			zoneInfo := dns.NewZoneInfo(zone.ZoneID(), zone.Domain(), zone.IsPrivate(), zone.Key())
 			cache, err := account.getZoneQueryCache(ctx, zoneInfo)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get DNS cache for zone %s: %w", zoneID, err)
 			}
-			result = append(result, cache)
+			// Skip accounts released (handler torn down, removed from the map) while we queried
+			// them lock-free; do not return a cache for a zombie account.
+			if m.isLive(account) {
+				result = append(result, cache)
+			}
 		}
 	}
 	if len(result) == 0 {

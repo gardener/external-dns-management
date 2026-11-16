@@ -117,6 +117,7 @@ func createDesignateServiceClient(ctx context.Context, logger logr.Logger, clien
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: 30 * time.Second,
 		TLSClientConfig:       tlscfg,
 	}
 	providerClient.HTTPClient.Transport = transport
