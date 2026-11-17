@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"slices"
 	"sort"
 	"sync"
 	"time"
@@ -63,6 +62,7 @@ type lookupJob struct {
 	oldLookupResults lookupAllResults
 	scheduledAt      time.Time
 	interval         time.Duration
+	generation       uint64 // bumped on every committed result; guards against a stale lookup overwriting a newer one
 
 	running atomic.Bool
 }
@@ -79,6 +79,7 @@ func (j *lookupJob) updateWithLock(newResults lookupAllResults, interval time.Du
 func (j *lookupJob) updateLookupResult(newResults lookupAllResults) bool {
 	changed := !j.oldLookupResults.allIPAddrs.Equal(newResults.allIPAddrs)
 	j.oldLookupResults = newResults
+	j.generation++
 	return changed && !newResults.HasTemporaryError()
 }
 
@@ -281,13 +282,14 @@ func (p *lookupProcessor) runJob(ctx context.Context) (time.Time, *resources.Obj
 				}()
 				j.lock.Lock()
 				hostnames := append([]string(nil), j.oldLookupResults.hostnames...)
+				gen := j.generation
 				j.lock.Unlock()
 
 				newLookupResult := lookupAllHostnamesIPs(ctx, hostnames...)
 				p.incrHostnameLookups(j.objectName, newLookupResult)
 				j.lock.Lock()
-				// Discard if Upsert changed hostnames while we were looking up; Upsert already stored fresh results.
-				changed := slices.Equal(j.oldLookupResults.hostnames, hostnames) && j.updateLookupResult(newLookupResult)
+				// Discard if another result (changed hostnames or a concurrent Upsert) was committed during the lookup.
+				changed := gen == j.generation && j.updateLookupResult(newLookupResult)
 				j.lock.Unlock()
 				if changed {
 					p.enqueueKey(j.objectName)
