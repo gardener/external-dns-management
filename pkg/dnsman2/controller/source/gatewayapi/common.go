@@ -261,11 +261,10 @@ func gatewayAdmitsNamespace(ctx context.Context, c client.Client, gatewayObj cli
 			if nsLabels == nil {
 				ns := &corev1.Namespace{}
 				if err := c.Get(ctx, client.ObjectKey{Name: routeNamespace}, ns); err != nil {
-					if apierrors.IsNotFound(err) {
-						nsLabels = labels.Set{} // deleted namespace matches no selector; don't abort (would block cleanup)
-					} else {
+					if !apierrors.IsNotFound(err) {
 						return false, err
 					}
+					nsLabels = labels.Set{} // deleted namespace matches no selector; don't abort (would block cleanup)
 				} else {
 					nsLabels = ns.Labels
 				}
