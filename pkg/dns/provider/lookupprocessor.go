@@ -490,6 +490,9 @@ func sleep(ctx context.Context, d time.Duration) error {
 }
 
 func isTemporaryError(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
 	var dnsErr *net.DNSError
 	if errors.As(err, &dnsErr) {
 		// mirror the (now deprecated) (*net.DNSError).Temporary(), which

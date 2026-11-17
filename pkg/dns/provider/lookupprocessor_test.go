@@ -343,3 +343,19 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 func expectCountBetween(name string, actual, lower, upper int) {
 	Expect(actual >= lower && actual <= upper).To(BeTrue(), fmt.Sprintf("%d <= %s(%d) <= %d", lower, name, actual, upper))
 }
+
+var _ = ginkgov2.Describe("isTemporaryError", func() {
+	ginkgov2.It("treats context cancellation and deadline as temporary", func() {
+		Expect(isTemporaryError(context.Canceled)).To(BeTrue())
+		Expect(isTemporaryError(context.DeadlineExceeded)).To(BeTrue())
+	})
+	ginkgov2.It("does not treat a not-found DNS error as temporary", func() {
+		Expect(isTemporaryError(&net.DNSError{IsNotFound: true})).To(BeFalse())
+	})
+})
+
+var _ = ginkgov2.Describe("isTimeoutError", func() {
+	ginkgov2.It("treats context deadline exceeded as a timeout", func() {
+		Expect(isTimeoutError(context.DeadlineExceeded)).To(BeTrue())
+	})
+})
