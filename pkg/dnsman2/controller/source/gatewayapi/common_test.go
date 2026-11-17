@@ -643,6 +643,40 @@ var _ = Describe("Common", func() {
 			Entry("admits when the route namespace matches the selector", map[string]string{"team": "trusted"}, true),
 			Entry("drops when the route namespace does not match the selector", map[string]string{"team": "other"}, false),
 		)
+
+		It("should drop a cross-namespace HTTPRoute whose namespace was deleted, so cleanup can proceed", func() {
+			// No Namespace object for "tenant" is created: the Selector lookup gets NotFound,
+			// which must not abort listing (that would block cleanup of orphaned DNS entries).
+			foreignRoute := &gatewayapisv1.HTTPRoute{
+				ObjectMeta: metav1.ObjectMeta{Name: "foreign-route", Namespace: "tenant"},
+				Spec: gatewayapisv1.HTTPRouteSpec{
+					CommonRouteSpec: gatewayapisv1.CommonRouteSpec{
+						ParentRefs: []gatewayapisv1.ParentReference{
+							{Name: "gateway-0", Namespace: ptr.To(gatewayapisv1.Namespace("default"))},
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(context.Background(), foreignRoute)).To(Succeed())
+
+			gateway := &gatewayapisv1.Gateway{
+				ObjectMeta: metav1.ObjectMeta{Name: "gateway-0", Namespace: "default"},
+				Spec: gatewayapisv1.GatewaySpec{
+					Listeners: []gatewayapisv1.Listener{
+						{AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+							Namespaces: &gatewayapisv1.RouteNamespaces{
+								From:     ptr.To(gatewayapisv1.NamespacesFromSelector),
+								Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"team": "trusted"}},
+							},
+						}},
+					},
+				},
+			}
+			routes, err := listHTTPRoutes(context.Background(), fakeClient, gateway)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(routes).To(HaveLen(1)) // only the same-namespace test-route-v1-gateway-0
+			Expect(routes[0].Name).To(Equal("test-route-v1-gateway-0"))
+		})
 	})
 
 	Describe("#listHTTPRoutesFor", func() {

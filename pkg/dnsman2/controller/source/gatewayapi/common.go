@@ -234,6 +234,9 @@ func listHTTPRoutes(ctx context.Context, c client.Client, gatewayObj client.Obje
 // attach a cross-namespace HTTPRoute to a foreign gateway and inject DNS names into
 // its zone.
 func gatewayAdmitsNamespace(ctx context.Context, c client.Client, gatewayObj client.Object, routeNamespace string) (bool, error) {
+	// shortcut: default/All/Selector listeners all admit same-namespace routes; only an
+	// all-Selector gateway whose selectors exclude its own namespace is mishandled here.
+	// Upgrade to the full listener loop if that config must be honored.
 	if routeNamespace == gatewayObj.GetNamespace() {
 		return true, nil
 	}
@@ -258,6 +261,9 @@ func gatewayAdmitsNamespace(ctx context.Context, c client.Client, gatewayObj cli
 			if nsLabels == nil {
 				ns := &corev1.Namespace{}
 				if err := c.Get(ctx, client.ObjectKey{Name: routeNamespace}, ns); err != nil {
+					if apierrors.IsNotFound(err) {
+						return false, nil // deleted namespace matches no selector; let cleanup proceed
+					}
 					return false, err
 				}
 				nsLabels = ns.Labels

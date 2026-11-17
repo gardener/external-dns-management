@@ -47,6 +47,9 @@ func (l *cachedNamespaceLister) NamespaceLabels(name string) (labels.Set, error)
 // route is admitted if at least one listener admits it. The default (unset
 // allowedRoutes) is "Same", i.e. only the gateway's own namespace.
 func gatewayAdmitsNamespace(nsLister namespaceLister, gatewayNamespace, routeNamespace string, allowedRoutes []*gatewayapisv1.AllowedRoutes) (bool, error) {
+	// shortcut: default/All/Selector listeners all admit same-namespace routes; only an
+	// all-Selector gateway whose selectors exclude its own namespace is mishandled here.
+	// Upgrade to the full listener loop if that config must be honored.
 	if routeNamespace == gatewayNamespace {
 		return true, nil
 	}
