@@ -225,16 +225,26 @@ func (m *AccountMap) Get(log logr.Logger, provider *v1alpha1.DNSProvider, props 
 	key := client.ObjectKeyFromObject(provider)
 	hash := m.Hash(props, provider.Spec.Type, provider.Spec.ProviderConfig)
 
-	account, err := m.getOrCreate(log, provider, props, accountConfig, key, hash)
-	if err != nil {
-		return nil, err
-	}
+	var account *DNSAccount
+	var old, clientCount int
+	for {
+		var err error
+		account, err = m.getOrCreate(log, provider, props, accountConfig, key, hash)
+		if err != nil {
+			return nil, err
+		}
 
-	m.lock.Lock()
-	old := len(account.clients)
-	account.clients.Insert(key)
-	clientCount := len(account.clients)
-	m.lock.Unlock()
+		m.lock.Lock()
+		if m.accounts[hash] != account {
+			m.lock.Unlock()
+			continue
+		}
+		old = len(account.clients)
+		account.clients.Insert(key)
+		clientCount = len(account.clients)
+		m.lock.Unlock()
+		break
+	}
 
 	if clientCount != old && old != 0 {
 		log.Info("reusing account", "provider", key, "hash", account.Hash(), "clients", clientCount)
