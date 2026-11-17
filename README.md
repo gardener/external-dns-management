@@ -1243,8 +1243,8 @@ credentials from arbitrary namespaces:
 To make a shared source cluster safe for multiple tenants, the next-generation
 DNS controller manager provides the source controller configuration flag
 [`dnsProviderNamespaceRestriction`](docs/dnsman2/README.md). It is only
-supported by the next generation and only applies to `DNSProvider` objects on
-the source cluster.
+supported by the next generation and applies to `DNSProvider` and
+`DNSAnnotation` objects on the source cluster.
 
 When enabled (and only effective if DNSProvider replication is enabled), it
 restricts replicated source `DNSProvider` objects so that:

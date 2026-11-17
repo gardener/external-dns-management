@@ -1,10 +1,8 @@
-/*
- * SPDX-FileCopyrightText: Contributors to the Gardener project
- *
- * SPDX-License-Identifier: Apache-2.0
- */
+// SPDX-FileCopyrightText: Contributors to the Gardener project
+//
+// SPDX-License-Identifier: Apache-2.0
 
-package dnsanntation
+package dnsannotation
 
 import (
 	"k8s.io/utils/clock"
