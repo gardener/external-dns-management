@@ -481,6 +481,9 @@ func sleep(ctx context.Context, d time.Duration) error {
 }
 
 func isTimeoutError(err error) bool {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
 	var netErr net.Error
 	if errors.As(err, &netErr) {
 		return netErr.Timeout()
