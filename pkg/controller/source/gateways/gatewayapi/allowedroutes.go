@@ -8,6 +8,7 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/controllermanager/controller"
 	"github.com/gardener/controller-manager-library/pkg/resources"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
@@ -71,6 +72,9 @@ func gatewayAdmitsNamespace(nsLister namespaceLister, gatewayNamespace, routeNam
 			}
 			nsLabels, err := nsLister.NamespaceLabels(routeNamespace)
 			if err != nil {
+				if apierrors.IsNotFound(err) {
+					continue // deleted namespace matches no selector; let cleanup proceed
+				}
 				return false, err
 			}
 			if selector.Matches(nsLabels) {
