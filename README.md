@@ -232,9 +232,8 @@ the target cluster. As there can be multiple controllers active on the same clus
 need to set the correct `DNSClass` both for the controller and for the source resource by
 setting the annotation `dns.gardener.cloud/class`. The default value for the `DNSClass` is `gardendns`.
 
-**Note**: If you delegate the DNS management for shoot resources to Gardener via the 
-[shoot-dns-service extension](https://github.com/gardener/gardener-extension-shoot-dns-service),
-the correct annotation is `dns.gardener.cloud/class=garden`.
+> [!NOTE]
+> If you delegate the DNS management for shoot resources to Gardener via the [shoot-dns-service extension](https://github.com/gardener/gardener-extension-shoot-dns-service), the correct annotation is `dns.gardener.cloud/class=garden`.
 
 Here is an example for annotating a service (same as `examples/50-service-with-dns.yaml`):
 
@@ -1256,19 +1255,15 @@ restricts replicated source `DNSProvider` objects so that:
   `Service`) originating from the same namespace as the original source
   `DNSProvider`.
 
-> **Note**: This restriction is not available in the legacy DNS controller
-> manager. Use the next-generation controller manager if you need multi-tenant
-> isolation on a shared source cluster.
+> [!NOTE]
+> This restriction is not available in the legacy DNS controller manager.
+> Use the next-generation controller manager if you need multi-tenant isolation on a shared source cluster.
 
-> **Note on Istio Gateways**: Unlike the Gateway API — where a listener's
-> `allowedRoutes.namespaces` defaults to `Same`, so cross-namespace route
-> attachment is default-deny — Istio's `VirtualService`-to-`Gateway` reference is
-> default-**allow**: a `VirtualService` in any namespace may bind to a `Gateway`
-> via a `namespace/gateway` reference unless the cluster operator sets
-> `PILOT_SCOPE_GATEWAY_TO_NAMESPACE=true`. Consequently, a tenant can extend a
-> shared Gateway's published DNS names from a foreign namespace, especially with
-> the `dns.gardener.cloud/dnsnames: "*"` annotation. For multi-tenant setups,
-> prefer the Gateway API source over Istio Gateways.
+> [!NOTE]
+> Unlike the Gateway API — where a listener's `allowedRoutes.namespaces` defaults to `Same`, so cross-namespace route attachment is default-deny — Istio's `VirtualService`-to-`Gateway` reference is default-**allow**.
+> A `Gateway` server's `hosts` entries default to the `*/` namespace prefix, so a `VirtualService` exported to the Gateway's namespace (`exportTo: "*"`) may bind from any namespace unless the operator restricts the prefix (e.g. `./` to allow only the Gateway's own namespace).
+> Consequently, a tenant can extend a shared Gateway's published DNS names from a foreign namespace, especially with the `dns.gardener.cloud/dnsnames: "*"` annotation.
+> For multi-tenant setups, prefer the Gateway API source over Istio Gateways.
 
 ## DNS Controller Manager Next Generation
 
