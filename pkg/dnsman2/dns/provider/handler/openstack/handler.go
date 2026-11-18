@@ -151,7 +151,8 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 
 	h.config.RateLimiter.Accept()
 	if err := h.client.ForEachZone(ctx, zoneHandler); err != nil {
-		return nil, fmt.Errorf("listing DNS zones failed. Details: %s", err.Error())
+		log.Error(err, "listing DNS zones failed")
+		return nil, sanitizeOpenStackError("listing DNS zones failed", err)
 	}
 
 	return hostedZones, nil

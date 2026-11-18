@@ -6,6 +6,7 @@ package netlify
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
@@ -55,6 +56,18 @@ func NewHandler(c *provider.DNSHandlerConfig) (provider.DNSHandler, error) {
 func (h *handler) Release() {
 }
 
+// sanitizeNetlifyError wraps errors from the Netlify endpoint so that the raw upstream response body
+// is never surfaced in the tenant-readable DNSProvider status. The HTTP status code is retained as it
+// is harmless and useful for diagnostics; the full error is kept only for operator-side logs by the
+// caller.
+func sanitizeNetlifyError(msg string, err error) error {
+	var codeErr interface{ Code() int }
+	if errors.As(err, &codeErr) {
+		return fmt.Errorf("%s: unexpected HTTP status %d from Netlify endpoint", msg, codeErr.Code())
+	}
+	return fmt.Errorf("%s", msg)
+}
+
 func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error) {
 	log, err := h.getLogFromContext(ctx)
 	if err != nil {
@@ -73,7 +86,8 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 		}
 		err := h.access.ListZones(f)
 		if err != nil {
-			return nil, err
+			log.Error(err, "listing zones at Netlify failed")
+			return nil, sanitizeNetlifyError("listing zones at Netlify failed", err)
 		}
 	}
 
@@ -90,7 +104,8 @@ func (h *handler) GetZones(ctx context.Context) ([]provider.DNSHostedZone, error
 				// As a result, z zone should not be appended to the hosted zones
 				continue
 			}
-			return nil, err
+			log.Error(err, "listing records at Netlify failed", "zone", z.ID)
+			return nil, sanitizeNetlifyError(fmt.Sprintf("listing records at Netlify failed for zone %s", z.ID), err)
 		}
 		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.ID, z.Name, z.ID, false)
 		zones = append(zones, hostedZone)
