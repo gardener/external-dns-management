@@ -78,6 +78,7 @@ var _ = Describe("#cleanupOrphanTargetProviders", func() {
 		reconciler = &Reconciler{
 			Clock:              clock.RealClock{},
 			Client:             fakeClientSrc,
+			APIReader:          fakeClientSrc,
 			ControlPlaneClient: fakeClientCtrl,
 			Config: config.SourceControllerConfig{
 				TargetNamespace: ptr.To(targetNamespace),

@@ -33,6 +33,7 @@ import (
 // Reconciler is a reconciler for DNSProvider resources on the control plane.
 type Reconciler struct {
 	Client             client.Client
+	APIReader          client.Reader
 	ControlPlaneClient client.Client
 	Clock              clock.Clock
 	Recorder           events.EventRecorder

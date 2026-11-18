@@ -200,7 +200,8 @@ func (r *Reconciler) getProperties(ctx context.Context, secretRef *corev1.Secret
 			Namespace: secretRef.Namespace,
 		},
 	}
-	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(secret), secret); err != nil {
+	// Read credential bytes directly from the API server; the cache holds metadata-only Secrets.
+	if err := r.APIReader.Get(ctx, client.ObjectKeyFromObject(secret), secret); err != nil {
 		return nil, fmt.Errorf("unable to get secret %s: %w", client.ObjectKeyFromObject(secret), err)
 	}
 
