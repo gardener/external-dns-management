@@ -212,15 +212,14 @@ func listHTTPRoutes(ctx context.Context, c client.Client, gatewayObj client.Obje
 	var gatewayRoutes []gatewayapisv1.HTTPRoute
 	for _, route := range routes {
 		gatewayKeys := ExtractGatewayKeys(*gvk, &route)
-		for _, gatewayKey := range gatewayKeys {
-			if gatewayKey == client.ObjectKeyFromObject(gatewayObj) {
-				admitted, err := gatewayAdmitsNamespace(ctx, c, gatewayObj, route.Namespace)
-				if err != nil {
-					return nil, err
-				}
-				if admitted {
-					gatewayRoutes = append(gatewayRoutes, route)
-				}
+		// multiple parentRefs may resolve to the same gateway key; check admission once per route
+		if slices.Contains(gatewayKeys, client.ObjectKeyFromObject(gatewayObj)) {
+			admitted, err := gatewayAdmitsNamespace(ctx, c, gatewayObj, route.Namespace)
+			if err != nil {
+				return nil, err
+			}
+			if admitted {
+				gatewayRoutes = append(gatewayRoutes, route)
 			}
 		}
 	}
