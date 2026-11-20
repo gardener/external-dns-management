@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	ginkgov2 "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.uber.org/atomic"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -87,7 +87,7 @@ func (t *testMetrics) IncrLookupChanged(_ client.ObjectKey) {
 func (t *testMetrics) RemoveJob(_ client.ObjectKey) {
 }
 
-var _ = ginkgov2.Describe("Lookup processor", func() {
+var _ = Describe("Lookup processor", func() {
 	var (
 		processor    *lookupProcessor
 		entryTrigger *testTrigger
@@ -115,7 +115,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		}
 	)
 
-	ginkgov2.BeforeEach(func() {
+	BeforeEach(func() {
 		entryTrigger = &testTrigger{triggerCount: map[client.ObjectKey]int{}}
 		processor = NewLookupProcessor(log, entryTrigger, 2, 10*quantum)
 		metrics = &testMetrics{lookups: map[client.ObjectKey]lookupStat{}}
@@ -137,7 +137,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		ctx, ctxCancel = context.WithCancel(context.Background())
 	})
 
-	ginkgov2.It("LookupAllHostnamesIPs should return expected results", func() {
+	It("LookupAllHostnamesIPs should return expected results", func() {
 		results1 := LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
 		Expect(results1.IPv4Addrs).To(HaveLen(4))
 		Expect(results1.IPv6Addrs).To(HaveLen(1))
@@ -148,7 +148,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(results2.AllIPAddrs).To(Equal(results1.AllIPAddrs))
 	})
 
-	ginkgov2.It("LookupAllHostnamesIPs should return expected results with retries", func() {
+	It("LookupAllHostnamesIPs should return expected results with retries", func() {
 		mlh.retryMap = map[string]int{"host3b": 3}
 		results1 := LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
 		Expect(results1.IPv4Addrs).To(HaveLen(4))
@@ -158,7 +158,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(results2.AllIPAddrs).To(Equal(results1.AllIPAddrs))
 	})
 
-	ginkgov2.It("LookupAllHostnamesIPs should return reduced results with persisting timeouts", func() {
+	It("LookupAllHostnamesIPs should return reduced results with persisting timeouts", func() {
 		mlh.retryMap = map[string]int{"host3b": 10}
 		results1 := LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
 		Expect(results1.IPv4Addrs).To(HaveLen(3))
@@ -168,7 +168,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(results1.HasOnlyNotFoundError()).To(BeFalse())
 	})
 
-	ginkgov2.It("LookupAllHostnamesIPs should return expected results with temporary server failures", func() {
+	It("LookupAllHostnamesIPs should return expected results with temporary server failures", func() {
 		mlh.serverFailureMap = map[string]int{"host3b": 3}
 		results1 := LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
 		Expect(results1.IPv4Addrs).To(HaveLen(4))
@@ -178,7 +178,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(results2.AllIPAddrs).To(Equal(results1.AllIPAddrs))
 	})
 
-	ginkgov2.It("LookupAllHostnamesIPs should return reduced results with persisting temporary server errors", func() {
+	It("LookupAllHostnamesIPs should return reduced results with persisting temporary server errors", func() {
 		mlh.serverFailureMap = map[string]int{"host3b": 10}
 		results1 := LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
 		Expect(results1.IPv4Addrs).To(HaveLen(3))
@@ -188,7 +188,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(results1.HasOnlyNotFoundError()).To(BeFalse())
 	})
 
-	ginkgov2.It("LookupAllHostnamesIPs should return reduced results with persisting temporary server errors", func() {
+	It("LookupAllHostnamesIPs should return reduced results with persisting temporary server errors", func() {
 		results1 := LookupAllHostnamesIPs(ctx, "host3a", "host3b-not-existing", "host3c")
 		Expect(results1.IPv4Addrs).To(HaveLen(3))
 		Expect(results1.IPv6Addrs).To(HaveLen(1))
@@ -197,7 +197,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(results1.HasOnlyNotFoundError()).To(BeTrue())
 	})
 
-	ginkgov2.It("LookupAllHostnamesIPs should return reduced results after too many retries", func() {
+	It("LookupAllHostnamesIPs should return reduced results after too many retries", func() {
 		mlh.retryMap = map[string]int{"host3b": lookupHost.maxLookupRetries + 1}
 		results1 := LookupAllHostnamesIPs(ctx, "host3a", "host3b", "host3c")
 		Expect(results1.IPv4Addrs).To(HaveLen(3))
@@ -205,7 +205,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(results1.AllIPAddrs).To(HaveLen(4))
 	})
 
-	ginkgov2.It("performs multiple lookup jobs regularly", func() {
+	It("performs multiple lookup jobs regularly", func() {
 		startProcessor()
 		processor.Upsert(ctx, nameE1, LookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
 		processor.Upsert(ctx, nameE2, LookupAllHostnamesIPs(ctx, "host2"), 2*quantum)
@@ -239,7 +239,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(entryTrigger.triggerCount).To(BeEmpty())
 	})
 
-	ginkgov2.It("performs multiple lookup jobs but skips on overload", func() {
+	It("performs multiple lookup jobs but skips on overload", func() {
 		mlh.delay = 19 * quantum / 10
 		startProcessor()
 		processor.Upsert(ctx, nameE1, LookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
@@ -258,7 +258,7 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(entryTrigger.triggerCount).To(BeEmpty())
 	})
 
-	ginkgov2.It("performs multiple lookup jobs and enqueues keys on lookup changes", func() {
+	It("performs multiple lookup jobs and enqueues keys on lookup changes", func() {
 		changedIP := net.ParseIP("1.1.1.42")
 		startProcessor()
 		processor.Upsert(ctx, nameE1, LookupAllHostnamesIPs(ctx, "host1"), 1*quantum)
@@ -311,5 +311,15 @@ var _ = ginkgov2.Describe("Lookup processor", func() {
 		Expect(stat3.targetCount).To(Equal(stat3.count * 3))
 		// after the Upsert replacing host3c with not-existing-host, each periodic run produces one error
 		Expect(stat3.errorCount).To(BeNumerically(">", 0))
+	})
+})
+
+var _ = Describe("isTimeoutError", func() {
+	It("treats context cancellation and deadline as timeout", func() {
+		Expect(isTimeoutError(context.Canceled)).To(BeTrue())
+		Expect(isTimeoutError(context.DeadlineExceeded)).To(BeTrue())
+	})
+	It("does not treat a not-found DNS error as timeout", func() {
+		Expect(isTimeoutError(&net.DNSError{IsNotFound: true})).To(BeFalse())
 	})
 })
