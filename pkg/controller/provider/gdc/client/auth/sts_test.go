@@ -93,3 +93,50 @@ func mockResponse() string {
 	jsonData, _ := json.Marshal(tokenResp)
 	return string(jsonData)
 }
+
+func TestNewCachedSTSTokenSource_Resettable(t *testing.T) {
+	calls := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(&generateAccessTokenResp{
+			AccessToken: fmt.Sprintf("sts-token-%d", calls),
+			ExpiresIn:   43200,
+		})
+	}))
+	defer server.Close()
+
+	cached := NewCachedSTSTokenSource("audience", &ServiceAccount{TokenURI: server.URL})
+	if cached == nil {
+		t.Fatal("expected non-nil ResettableTokenSource")
+	}
+
+	stsTS := &stsTokenSource{
+		tokenURI:       server.URL,
+		audience:       "audience",
+		jwtTokenSource: &mockJWTTokenSource{},
+		clock:          clock.NewFakePassiveClock(time.Now()),
+	}
+
+	resettable := newCachedTokenSource(stsTS)
+	tok1, err := resettable.Token()
+	if err != nil {
+		t.Fatalf("first Token() error: %v", err)
+	}
+	tok2, err := resettable.Token()
+	if err != nil {
+		t.Fatalf("second Token() error: %v", err)
+	}
+	if tok1.AccessToken != "sts-token-1" || tok2.AccessToken != "sts-token-1" || calls != 1 {
+		t.Fatalf("expected cached token reuse (calls=%d, tok1=%q, tok2=%q)", calls, tok1.AccessToken, tok2.AccessToken)
+	}
+
+	resettable.ResetTokenOlderThan(time.Now().Add(time.Second))
+	tok3, err := resettable.Token()
+	if err != nil {
+		t.Fatalf("post-reset Token() error: %v", err)
+	}
+	if tok3.AccessToken != "sts-token-2" || calls != 2 {
+		t.Fatalf("expected refreshed token after reset (calls=%d, tok3=%q)", calls, tok3.AccessToken)
+	}
+}
