@@ -156,7 +156,8 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 
 	h.config.RateLimiter.Accept()
 	if err := h.client.ForEachZone(h.ctx, zoneHandler); err != nil {
-		return nil, fmt.Errorf("listing DNS zones failed. Details: %s", err.Error())
+		h.config.Logger.Errorf("listing DNS zones failed: %s", err)
+		return nil, sanitizeOpenStackError("listing DNS zones failed", err)
 	}
 
 	return hostedZones, nil
@@ -188,7 +189,8 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 
 	h.config.RateLimiter.Accept()
 	if err := h.client.ForEachRecordSet(h.ctx, zone.Id().ID, recordSetHandler); err != nil {
-		return nil, fmt.Errorf("listing DNS zones failed for %s. Details: %s", zone.Id(), err.Error())
+		h.config.Logger.Errorf("listing record sets failed for zone %s: %s", zone.Id(), err)
+		return nil, sanitizeOpenStackError(fmt.Sprintf("listing record sets failed for zone %s", zone.Id()), err)
 	}
 
 	return provider.NewDNSZoneState(dnssets), nil

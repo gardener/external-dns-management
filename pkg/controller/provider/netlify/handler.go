@@ -6,6 +6,8 @@ package netlify
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/gardener/controller-manager-library/pkg/logger"
@@ -63,6 +65,18 @@ func (h *Handler) GetZones() (provider.DNSHostedZones, error) {
 	return h.cache.GetZones()
 }
 
+// sanitizeNetlifyError wraps errors from the Netlify endpoint so that the raw upstream response body
+// is never surfaced in the tenant-readable DNSProvider status. The HTTP status code is retained as it
+// is harmless and useful for diagnostics; the full error is kept only for operator-side logs by the
+// caller.
+func sanitizeNetlifyError(msg string, err error) error {
+	var codeErr interface{ Code() int }
+	if errors.As(err, &codeErr) {
+		return fmt.Errorf("%s: unexpected HTTP status %d from Netlify endpoint", msg, codeErr.Code())
+	}
+	return fmt.Errorf("%s", msg)
+}
+
 func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error) {
 	blockedZones := h.config.Options.GetBlockedZones()
 	rawZones := []models.DNSZone{}
@@ -77,7 +91,8 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 		}
 		err := h.access.ListZones(f)
 		if err != nil {
-			return nil, err
+			h.config.Logger.Errorf("listing zones at Netlify failed: %s", err)
+			return nil, sanitizeNetlifyError("listing zones at Netlify failed", err)
 		}
 	}
 
@@ -101,7 +116,8 @@ func (h *Handler) getZones(_ provider.ZoneCache) (provider.DNSHostedZones, error
 				// As a result, z zone should not be appended to the hosted zones
 				continue
 			}
-			return nil, err
+			h.config.Logger.Errorf("listing records at Netlify failed for zone %s: %s", z.ID, err)
+			return nil, sanitizeNetlifyError(fmt.Sprintf("listing records at Netlify failed for zone %s", z.ID), err)
 		}
 		hostedZone := provider.NewDNSHostedZone(h.ProviderType(), z.ID, z.Name, z.ID, false)
 		zones = append(zones, hostedZone)
@@ -124,7 +140,8 @@ func (h *Handler) getZoneState(zone provider.DNSHostedZone, _ provider.ZoneCache
 	}
 	err := h.access.ListRecords(zone.Key(), f)
 	if err != nil {
-		return nil, err
+		h.config.Logger.Errorf("listing records at Netlify failed for zone %s: %s", zone.Key(), err)
+		return nil, sanitizeNetlifyError(fmt.Sprintf("listing records at Netlify failed for zone %s", zone.Key()), err)
 	}
 	state.CalculateDNSSets()
 	return state, nil
