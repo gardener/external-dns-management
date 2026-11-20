@@ -62,7 +62,7 @@ func (a *Actuator) ReconcileSourceObject(
 			log.Error(err, "Could not get target DNSEntry", "key", targetKey)
 			return res, err
 		}
-		if err == nil && targetEntry.DeletionTimestamp == nil {
+		if err == nil && targetEntry.DeletionTimestamp == nil && r.IsOwnedByController(targetEntry, entry) {
 			patch := client.MergeFrom(entry.DeepCopy())
 			entry.Status = *targetEntry.Status.DeepCopy()
 			entry.Status.ObservedGeneration = entry.Generation

@@ -257,5 +257,21 @@ var _ = Describe("Actuator", func() {
 
 			testutils.AssertEvents(fakeRecorder.Events, "Normal DNSEntryCreated ", "Normal DNSEntryDeleted ", "Normal DNSEntryCreated ")
 		})
+
+		It("should not mirror status from a target DNSEntry not owned by the source", func() {
+			foreignTarget := &dnsv1alpha1.DNSEntry{
+				ObjectMeta: metav1.ObjectMeta{Name: "foreign", Namespace: defaultTargetNamespace},
+				Spec:       dnsv1alpha1.DNSEntrySpec{DNSName: "foo.example.com", Targets: []string{"1.2.3.4"}},
+				Status:     dnsv1alpha1.DNSEntryStatus{State: "Ready", Message: ptr.To("should not be mirrored")},
+			}
+			Expect(fakeClientCtrl.Create(ctx, foreignTarget)).NotTo(HaveOccurred())
+			sourceEntry.Annotations = map[string]string{dns.AnnotationTargetEntry: defaultTargetNamespace + "/foreign"}
+
+			test(&sourceEntry.Spec)
+
+			Expect(fakeClientSrc.Get(ctx, client.ObjectKeyFromObject(sourceEntry), sourceEntry)).NotTo(HaveOccurred())
+			Expect(sourceEntry.Status.State).NotTo(Equal("Ready"))
+			Expect(sourceEntry.Status.Message).To(BeNil())
+		})
 	})
 })
