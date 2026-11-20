@@ -10,7 +10,10 @@ import (
 	"github.com/gardener/controller-manager-library/pkg/utils"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/ptr"
 	gatewayapisv1 "sigs.k8s.io/gateway-api/apis/v1"
 
@@ -21,6 +24,7 @@ import (
 var _ = Describe("Kubernetes Networking Gateway Handler", func() {
 	var (
 		route1 = &gatewayapisv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "test"},
 			Spec: gatewayapisv1.HTTPRouteSpec{
 				CommonRouteSpec: gatewayapisv1.CommonRouteSpec{ParentRefs: []gatewayapisv1.ParentReference{
 					{
@@ -32,6 +36,7 @@ var _ = Describe("Kubernetes Networking Gateway Handler", func() {
 			},
 		}
 		route2 = &gatewayapisv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "test"},
 			Spec: gatewayapisv1.HTTPRouteSpec{
 				CommonRouteSpec: gatewayapisv1.CommonRouteSpec{ParentRefs: []gatewayapisv1.ParentReference{
 					{
@@ -43,6 +48,7 @@ var _ = Describe("Kubernetes Networking Gateway Handler", func() {
 			},
 		}
 		route3 = &gatewayapisv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "test"},
 			Spec: gatewayapisv1.HTTPRouteSpec{
 				CommonRouteSpec: gatewayapisv1.CommonRouteSpec{ParentRefs: []gatewayapisv1.ParentReference{
 					{
@@ -55,13 +61,42 @@ var _ = Describe("Kubernetes Networking Gateway Handler", func() {
 		}
 		routes = []*gatewayapisv1.HTTPRoute{route1, route2, route3}
 
+		// foreignRoute lives in another namespace but targets gateway g1 in "test".
+		foreignRoute = &gatewayapisv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "attacker"},
+			Spec: gatewayapisv1.HTTPRouteSpec{
+				CommonRouteSpec: gatewayapisv1.CommonRouteSpec{ParentRefs: []gatewayapisv1.ParentReference{
+					{
+						Namespace: ptr.To(gatewayapisv1.Namespace("test")),
+						Name:      "g1",
+					},
+				}},
+				Hostnames: []gatewayapisv1.Hostname{"evil.example.com"},
+			},
+		}
+
+		// ghostRoute lives in a namespace that no longer exists (NotFound on label lookup).
+		ghostRoute = &gatewayapisv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{Namespace: "ghost"},
+			Spec: gatewayapisv1.HTTPRouteSpec{
+				CommonRouteSpec: gatewayapisv1.CommonRouteSpec{ParentRefs: []gatewayapisv1.ParentReference{
+					{
+						Namespace: ptr.To(gatewayapisv1.Namespace("test")),
+						Name:      "g1",
+					},
+				}},
+				Hostnames: []gatewayapisv1.Hostname{"evil.example.com"},
+			},
+		}
+
 		log          = logger.NewContext("", "TestEnv")
 		emptyDNSInfo = &dnssource.DNSInfo{Names: dns.DNSNameSet{}}
 	)
 
 	var _ = DescribeTable("GetDNSInfo",
 		func(gateway *gatewayapisv1.Gateway, httpRoutes []*gatewayapisv1.HTTPRoute, expectedInfo *dnssource.DNSInfo) {
-			handler, err := newGatewaySourceWithRouteLister(&testRouteLister{routes: httpRoutes}, newState())
+			handler, err := newGatewaySourceWithRouteLister(&testRouteLister{routes: httpRoutes},
+				&testNamespaceLister{labelsByNamespace: map[string]labels.Set{"attacker": {"team": "trusted"}}}, newState())
 			Expect(err).To(Succeed())
 			current := &dnssource.DNSCurrentState{Names: map[dns.DNSSetName]*dnssource.DNSState{}, Targets: utils.StringSet{}}
 			annos := gateway.GetAnnotations()
@@ -241,11 +276,113 @@ var _ = Describe("Kubernetes Networking Gateway Handler", func() {
 				},
 			},
 		}, nil, nil),
+		Entry("cross-namespace route is dropped when gateway does not opt in (allowedRoutes default Same)", &gatewayapisv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   "test",
+				Name:        "g1",
+				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
+			},
+			Spec: gatewayapisv1.GatewaySpec{
+				Listeners: []gatewayapisv1.Listener{
+					{Hostname: ptr.To(gatewayapisv1.Hostname("b.example.com"))},
+				},
+			},
+		}, []*gatewayapisv1.HTTPRoute{foreignRoute}, makeDNSInfo([]string{"b.example.com"}, nil)),
+		Entry("cross-namespace route is admitted when a listener allows namespaces From=All", &gatewayapisv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   "test",
+				Name:        "g1",
+				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
+			},
+			Spec: gatewayapisv1.GatewaySpec{
+				Listeners: []gatewayapisv1.Listener{
+					{
+						Hostname: ptr.To(gatewayapisv1.Hostname("b.example.com")),
+						AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+							Namespaces: &gatewayapisv1.RouteNamespaces{From: ptr.To(gatewayapisv1.NamespacesFromAll)},
+						},
+					},
+				},
+			},
+		}, []*gatewayapisv1.HTTPRoute{foreignRoute}, makeDNSInfo([]string{"b.example.com", "evil.example.com"}, nil)),
+		Entry("cross-namespace route is admitted when a listener Selector matches the route namespace labels", &gatewayapisv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   "test",
+				Name:        "g1",
+				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
+			},
+			Spec: gatewayapisv1.GatewaySpec{
+				Listeners: []gatewayapisv1.Listener{
+					{
+						Hostname: ptr.To(gatewayapisv1.Hostname("b.example.com")),
+						AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+							Namespaces: &gatewayapisv1.RouteNamespaces{
+								From:     ptr.To(gatewayapisv1.NamespacesFromSelector),
+								Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"team": "trusted"}},
+							},
+						},
+					},
+				},
+			},
+		}, []*gatewayapisv1.HTTPRoute{foreignRoute}, makeDNSInfo([]string{"b.example.com", "evil.example.com"}, nil)),
+		Entry("cross-namespace route is dropped when a listener Selector does not match the route namespace labels", &gatewayapisv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   "test",
+				Name:        "g1",
+				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
+			},
+			Spec: gatewayapisv1.GatewaySpec{
+				Listeners: []gatewayapisv1.Listener{
+					{
+						Hostname: ptr.To(gatewayapisv1.Hostname("b.example.com")),
+						AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+							Namespaces: &gatewayapisv1.RouteNamespaces{
+								From:     ptr.To(gatewayapisv1.NamespacesFromSelector),
+								Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"team": "other"}},
+							},
+						},
+					},
+				},
+			},
+		}, []*gatewayapisv1.HTTPRoute{foreignRoute}, makeDNSInfo([]string{"b.example.com"}, nil)),
+		Entry("cross-namespace route is dropped when its namespace was deleted, so cleanup can proceed", &gatewayapisv1.Gateway{
+			ObjectMeta: metav1.ObjectMeta{
+				Namespace:   "test",
+				Name:        "g1",
+				Annotations: map[string]string{dnssource.DNS_ANNOTATION: "*"},
+			},
+			Spec: gatewayapisv1.GatewaySpec{
+				Listeners: []gatewayapisv1.Listener{
+					{
+						Hostname: ptr.To(gatewayapisv1.Hostname("b.example.com")),
+						AllowedRoutes: &gatewayapisv1.AllowedRoutes{
+							Namespaces: &gatewayapisv1.RouteNamespaces{
+								From:     ptr.To(gatewayapisv1.NamespacesFromSelector),
+								Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"team": "trusted"}},
+							},
+						},
+					},
+				},
+			},
+		}, []*gatewayapisv1.HTTPRoute{ghostRoute}, makeDNSInfo([]string{"b.example.com"}, nil)),
 	)
 })
 
 type testRouteLister struct {
 	routes []*gatewayapisv1.HTTPRoute
+}
+
+// testNamespaceLister returns labels per namespace for the allowedRoutes Selector case.
+type testNamespaceLister struct {
+	labelsByNamespace map[string]labels.Set
+}
+
+func (t *testNamespaceLister) NamespaceLabels(name string) (labels.Set, error) {
+	l, ok := t.labelsByNamespace[name]
+	if !ok {
+		return nil, apierrors.NewNotFound(schema.GroupResource{Resource: "namespaces"}, name)
+	}
+	return l, nil
 }
 
 var _ httpRouteLister = &testRouteLister{}
