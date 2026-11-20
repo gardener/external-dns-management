@@ -1,10 +1,8 @@
-/*
- * SPDX-FileCopyrightText: Contributors to the Gardener project
- *
- * SPDX-License-Identifier: Apache-2.0
- */
+// SPDX-FileCopyrightText: Contributors to the Gardener project
+//
+// SPDX-License-Identifier: Apache-2.0
 
-package dnsanntation
+package dnsannotation
 
 import (
 	"k8s.io/utils/clock"
@@ -26,6 +24,7 @@ const ControllerName = "dnsannotation"
 func (r *Reconciler) AddToManager(mgr manager.Manager, cfg *config.DNSManagerConfiguration) error {
 	r.Config = cfg.Controllers.DNSAnnotation
 	r.SourceClass = config.GetSourceClass(cfg)
+	r.NamespaceRestriction = ptr.Deref(cfg.Controllers.Source.DNSProviderNamespaceRestriction, false)
 	r.Client = mgr.GetClient()
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
