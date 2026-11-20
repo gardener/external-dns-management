@@ -151,9 +151,9 @@ var _ = Describe("Defaults", func() {
 					}))
 					Expect(obj.DefaultTTL).To(Equal(ptr.To[int64](300)))
 					Expect(obj.ZoneCacheTTL).To(PointTo(Equal(metav1.Duration{Duration: 30 * time.Minute})))
-					Expect(obj.GCPWorkloadIdentityConfig.AllowedTokenURLs).To(Equal([]string{"https://sts.googleapis.com/v1/token"}))
-					Expect(obj.GCPWorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps).To(Equal([]string{`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`}))
-					Expect(obj.GCPServiceAccountConfig.AllowedTokenURLs).To(Equal([]string{"https://oauth2.googleapis.com/token", "https://accounts.google.com/o/oauth2/token"}))
+					Expect(obj.GCPConfig.WorkloadIdentityConfig.AllowedTokenURLs).To(Equal([]string{"https://sts.googleapis.com/v1/token"}))
+					Expect(obj.GCPConfig.WorkloadIdentityConfig.AllowedServiceAccountImpersonationURLRegExps).To(Equal([]string{`^https://iamcredentials\.googleapis\.com/v1/projects/-/serviceAccounts/.+:generateAccessToken$`}))
+					Expect(obj.GCPConfig.ServiceAccountConfig.AllowedTokenURLs).To(Equal([]string{"https://oauth2.googleapis.com/token", "https://accounts.google.com/o/oauth2/token"}))
 				})
 
 				It("should not overwrite existing values", func() {
