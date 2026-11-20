@@ -45,6 +45,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	r.DNSHandlerFactory = state.GetStandardDNSHandlerFactory(cfg.Controllers.DNSProvider)
 
 	r.Client = mgr.GetClient()
+	r.APIReader = mgr.GetAPIReader()
 	r.ControlPlaneClient = controlPlaneCluster.GetClient()
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}

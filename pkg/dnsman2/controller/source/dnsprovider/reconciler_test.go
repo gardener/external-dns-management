@@ -209,6 +209,7 @@ var _ = Describe("Reconciler", func() {
 		reconciler = &Reconciler{
 			Clock:              clock,
 			Client:             fakeClientSrc,
+			APIReader:          fakeClientSrc,
 			ControlPlaneClient: fakeClientCtrl,
 			Config: config.SourceControllerConfig{
 				TargetNamespace: ptr.To(defaultTargetNamespace),
