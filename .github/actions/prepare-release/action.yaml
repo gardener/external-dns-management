@@ -3,7 +3,7 @@ name: Prepare Release
 runs:
   using: composite
   steps:
-    - uses: azure/setup-helm@v5
+    - uses: azure/setup-helm@2f5e7bc67f1f9972ab16657bb795f36d8f04de0e # v5
     - name: prepare-release
       shell: bash
       run: |
