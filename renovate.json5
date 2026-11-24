@@ -1,6 +1,7 @@
 {
   $schema: 'https://docs.renovatebot.com/renovate-schema.json',
   extends: [
+    'helpers:pinGitHubActionDigests',
     'config:recommended',
     'github>gardener/ci-infra//config/renovate/group-go-updates.json5',
     'github>gardener/ci-infra//config/renovate/automerge-with-tide.json5',
