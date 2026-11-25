@@ -115,8 +115,8 @@ github.com/alibabacloud-go/darabonba-encode-util v0.0.2/go.mod h1:JiW9higWHYXm7F
 github.com/alibabacloud-go/darabonba-map v0.0.2 h1:qvPnGB4+dJbJIxOOfawxzF3hzMnIpjmafa0qOTp6udc=
 github.com/alibabacloud-go/darabonba-map v0.0.2/go.mod h1:28AJaX8FOE/ym8OUFWga+MtEzBunJwQGceGQlvaPGPc=
 github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.4/go.mod h1:eHjVxrT9g8uVYN/nyAwOFQEfkVA154ChiqRc2XnNKYU=
-github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.5 h1:70BQByV2x6uv0udfr5BdH8BWWyjVSofdQ640WtcLw+I=
-github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.5/go.mod h1:1IrhlWjta612kLz1xsFpt5EqRzJXxbvgcoFxJnIsUP0=
+github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.6 h1:/hJetGkg8tW2snTRWzP02UfcLEe7rm8w0A+hkoMnbBQ=
+github.com/alibabacloud-go/darabonba-openapi/v2 v2.2.6/go.mod h1:O+qGSBYUcOgmitM3VduREGtzlPjHIFH9W0a7WdKmrp4=
 github.com/alibabacloud-go/darabonba-signature-util v0.0.7 h1:UzCnKvsjPFzApvODDNEYqBHMFt1w98wC7FOo0InLyxg=
 github.com/alibabacloud-go/darabonba-signature-util v0.0.7/go.mod h1:oUzCYV2fcCH797xKdL6BDH8ADIHlzrtKVjeRtunBNTQ=
 github.com/alibabacloud-go/darabonba-string v1.0.2 h1:E714wms5ibdzCqGeYJ9JCFywE5nDyvIXIIQbZVFkkqo=
@@ -143,8 +143,9 @@ github.com/alibabacloud-go/tea v1.5.4/go.mod h1:hgSs82CkOiehSQMoiFN79dL6zsGX7pVG
 github.com/alibabacloud-go/tea-utils v1.3.1/go.mod h1:EI/o33aBfj3hETm4RLiAxF/ThQdSngxrpF8rKUDJjPE=
 github.com/alibabacloud-go/tea-utils/v2 v2.0.5/go.mod h1:dL6vbUT35E4F4bFTHL845eUloqaerYBYPsdWR2/jhe4=
 github.com/alibabacloud-go/tea-utils/v2 v2.0.6/go.mod h1:qxn986l+q33J5VkialKMqT/TTs3E+U9MJpd001iWQ9I=
-github.com/alibabacloud-go/tea-utils/v2 v2.0.9 h1:y6pUIlhjxbZl9ObDAcmA1H3c21eaAxADHTDQmBnAIgA=
 github.com/alibabacloud-go/tea-utils/v2 v2.0.9/go.mod h1:qxn986l+q33J5VkialKMqT/TTs3E+U9MJpd001iWQ9I=
+github.com/alibabacloud-go/tea-utils/v2 v2.0.10 h1:3BEGvcB9wBDHCvt7Zn0MEudkDroYdboYjJS45A7FlZY=
+github.com/alibabacloud-go/tea-utils/v2 v2.0.10/go.mod h1:qxn986l+q33J5VkialKMqT/TTs3E+U9MJpd001iWQ9I=
 github.com/aliyun/credentials-go v1.1.2/go.mod h1:ozcZaMR5kLM7pwtCMEpVmQ242suV6qTJya2bDq4X1Tw=
 github.com/aliyun/credentials-go v1.3.1/go.mod h1:8jKYhQuDawt8x2+fusqa1Y6mPxemTsBEN04dgcAcYz0=
 github.com/aliyun/credentials-go v1.3.6/go.mod h1:1LxUuX7L5YrZUWzBrRyk0SwSdH4OmPrib8NVePL3fxM=
