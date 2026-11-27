@@ -72,7 +72,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
       - name: Set up git identity
-        uses: gardener/cc-utils/.github/actions/setup-git-identity@bce63f62928717a11f610ec8022af9feb497d5df # v1
+        uses: gardener/cc-utils/.github/actions/setup-git-identity@00522ef3e8504bc7be46394a239a390f112336f6 # 1.2883.0
       - name: Download patch
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
