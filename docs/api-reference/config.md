@@ -1225,7 +1225,7 @@ boolean
 </td>
 <td>
 <em>(Optional)</em>
-<p>DNSProviderNamespaceRestriction restricts replicated shoot DNSProviders so that they can only be used by<br />source resources (e.g. DNSEntries, Services) in the same namespace where the original shoot DNSProvider was defined.<br />Only effective when dnsProviderReplication is enabled.</p>
+<p>DNSProviderNamespaceRestriction restricts replicated shoot DNSProviders so that they can only be used by<br />source resources (e.g. DNSEntries, Services) in the same namespace where the original shoot DNSProvider was defined.<br />Only effective when dnsProviderReplication is enabled.<br />Also restricts DNSAnnotation resources to only reference objects in their own namespace.</p>
 </td>
 </tr>
 

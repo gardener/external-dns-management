@@ -1,10 +1,8 @@
-/*
- * SPDX-FileCopyrightText: Contributors to the Gardener project
- *
- * SPDX-License-Identifier: Apache-2.0
- */
+// SPDX-FileCopyrightText: Contributors to the Gardener project
+//
+// SPDX-License-Identifier: Apache-2.0
 
-package dnsanntation
+package dnsannotation
 
 import (
 	"context"
@@ -29,6 +27,10 @@ type Reconciler struct {
 	Recorder    events.EventRecorder
 	Config      config.DNSAnnotationControllerConfig
 	SourceClass string
+	// NamespaceRestriction mirrors DNSProviderNamespaceRestriction: when true,
+	// a DNSAnnotation may only reference resources in its own namespace.
+	// When false (the default), cross-namespace refs are allowed.
+	NamespaceRestriction bool
 
 	state state.AnnotationState
 }
