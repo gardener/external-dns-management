@@ -692,7 +692,10 @@ func normalizeTargets(logger logger.LogContext, object *dnsutils.DNSEntryObject,
 	for i, t := range targets {
 		hostnames[i] = t.GetHostName()
 	}
-	ctx := context.Background()
+	// Bound the synchronous lookup: it runs while HandleUpdateEntry holds the global state lock,
+	// so an unresponsive nameserver would otherwise stall reconciliation for all entries.
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
 	results := lookupAllHostnamesIPs(ctx, hostnames...)
 	ttl := targets[0].GetTTL()
 	for _, addr := range results.ipv4Addrs {
