@@ -44,6 +44,7 @@ func (r *Reconciler) AddToManager(mgr manager.Manager, controlPlaneCluster clust
 	r.GlobalConfig = cfg
 	r.Config = cfg.Controllers.DNSProvider
 	r.Client = controlPlaneCluster.GetClient()
+	r.APIReader = controlPlaneCluster.GetAPIReader()
 	if r.Clock == nil {
 		r.Clock = clock.RealClock{}
 	}

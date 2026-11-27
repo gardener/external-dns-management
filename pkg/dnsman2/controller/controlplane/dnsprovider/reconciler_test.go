@@ -93,7 +93,8 @@ var _ = Describe("Reconcile", func() {
 		state.GetState().SetDNSHandlerFactory(factory)
 		fakeClient = fakeclient.NewClientBuilder().WithScheme(dnsmanclient.ClusterScheme).WithStatusSubresource(&v1alpha1.DNSProvider{}).Build()
 		reconciler = &Reconciler{
-			Client: fakeClient,
+			Client:    fakeClient,
+			APIReader: fakeClient,
 			Config: config.DNSProviderControllerConfig{
 				Namespace:  "test",
 				DefaultTTL: ptr.To[int64](300),

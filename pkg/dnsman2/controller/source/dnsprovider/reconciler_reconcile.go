@@ -216,7 +216,8 @@ func (r *Reconciler) createOrUpdateTargetSecretFromSourceSecret(
 		},
 	}
 	secretExists := true
-	if err := r.Client.Get(ctx, client.ObjectKeyFromObject(sourceSecret), sourceSecret); err != nil {
+	// Read credential bytes directly from the API server; the cache holds metadata-only Secrets.
+	if err := r.APIReader.Get(ctx, client.ObjectKeyFromObject(sourceSecret), sourceSecret); err != nil {
 		if !apierrors.IsNotFound(err) {
 			return nil, fmt.Errorf("failed to get secret %s for source DNSProvider %s: %w", client.ObjectKeyFromObject(sourceSecret), client.ObjectKeyFromObject(sourceProvider), err)
 		}

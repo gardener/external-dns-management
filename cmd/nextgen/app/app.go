@@ -239,19 +239,8 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 			SyncPeriod:        &cfg.ClientConnection.CacheResyncPeriod.Duration,
 			DefaultNamespaces: map[string]cache.Config{cfg.Controllers.DNSProvider.Namespace: {}},
 
-			/*
-				ByObject: map[client.Object]cache.ByObject{
-					&corev1.Secret{}: {
-						Transform: func(i interface{}) (interface{}, error) {
-							return corev1.Secret{
-								ObjectMeta: i.(*corev1.Secret).ObjectMeta,
-								Type:       i.(*corev1.Secret).Type,
-								Immutable:  i.(*corev1.Secret).Immutable,
-							}, nil
-						},
-					},
-				},
-			*/
+			// Strip credential bytes from cached Secrets; reconcilers read the actual data via the uncached APIReader.
+			ByObject: secretMetadataOnlyByObject(),
 		},
 
 		HealthProbeBindAddress: net.JoinHostPort(cfg.Server.HealthProbes.BindAddress, strconv.Itoa(cfg.Server.HealthProbes.Port)),
@@ -292,6 +281,7 @@ func (o *options) run(ctx context.Context, log logr.Logger) error {
 
 			opts.Cache.DefaultNamespaces = map[string]cache.Config{cfg.Controllers.DNSProvider.Namespace: {}}
 			opts.Cache.SyncPeriod = &cfg.ControlPlaneClientConnection.CacheResyncPeriod.Duration
+			opts.Cache.ByObject = secretMetadataOnlyByObject()
 
 			opts.Client.Cache = &client.CacheOptions{
 				DisableFor: []client.Object{
@@ -352,4 +342,21 @@ func logConfiguration(log logr.Logger, cfg *config.DNSManagerConfiguration) erro
 
 	log.Info("Using configuration:\n" + string(data))
 	return nil
+}
+
+// secretMetadataOnlyByObject strips credential bytes from cached Secrets, keeping only metadata.
+// Reconcilers that need the actual data read it via the uncached APIReader.
+func secretMetadataOnlyByObject() map[client.Object]cache.ByObject {
+	return map[client.Object]cache.ByObject{
+		&corev1.Secret{}: {
+			Transform: func(i any) (any, error) {
+				s := i.(*corev1.Secret)
+				return &corev1.Secret{
+					ObjectMeta: s.ObjectMeta,
+					Type:       s.Type,
+					Immutable:  s.Immutable,
+				}, nil
+			},
+		},
+	}
 }
