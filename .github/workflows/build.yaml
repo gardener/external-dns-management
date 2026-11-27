@@ -12,7 +12,7 @@ on:
 
 jobs:
   prepare:
-    uses: gardener/cc-utils/.github/workflows/prepare.yaml@d478850afa1a7e0f9deb710e4d44eb0a2d8dce07 # 1.2881.0
+    uses: gardener/cc-utils/.github/workflows/prepare.yaml@00522ef3e8504bc7be46394a239a390f112336f6 # 1.2883.0
     with:
       mode: ${{ inputs.mode }}
       version-commit-callback-action-path: .github/actions/prepare-release
@@ -28,7 +28,7 @@ jobs:
       packages: write
       id-token: write
     secrets: inherit
-    uses: gardener/cc-utils/.github/workflows/oci-ocm.yaml@d478850afa1a7e0f9deb710e4d44eb0a2d8dce07 # 1.2881.0
+    uses: gardener/cc-utils/.github/workflows/oci-ocm.yaml@00522ef3e8504bc7be46394a239a390f112336f6 # 1.2883.0
     strategy:
       matrix:
         args:
@@ -55,7 +55,7 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    uses: gardener/cc-utils/.github/workflows/helmchart-ocm.yaml@d478850afa1a7e0f9deb710e4d44eb0a2d8dce07 # 1.2881.0
+    uses: gardener/cc-utils/.github/workflows/helmchart-ocm.yaml@00522ef3e8504bc7be46394a239a390f112336f6 # 1.2883.0
     with:
       name: dns-controller-manager
       dir: charts/external-dns-management
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
         with:
           go-version: '1.27'
-      - uses: gardener/cc-utils/.github/actions/trusted-checkout@d478850afa1a7e0f9deb710e4d44eb0a2d8dce07 # 1.2881.0
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@00522ef3e8504bc7be46394a239a390f112336f6 # 1.2883.0
       - name: run-verify
         run: |
           set -euo pipefail
@@ -88,7 +88,7 @@ jobs:
           tar czf /tmp/blobs.d/gosec-report.tar.gz gosec-report.sarif
           tar czf /tmp/blobs.d/verify-log.tar.gz -C/tmp/blobs.d verify-log.txt
       - name: add-reports-to-component-descriptor
-        uses: gardener/cc-utils/.github/actions/export-ocm-fragments@d478850afa1a7e0f9deb710e4d44eb0a2d8dce07 # 1.2881.0
+        uses: gardener/cc-utils/.github/actions/export-ocm-fragments@00522ef3e8504bc7be46394a239a390f112336f6 # 1.2883.0
         with:
           blobs-directory: /tmp/blobs.d
           ocm-resources: |
