@@ -54,8 +54,10 @@ func getRESTConfig(config *OrgClusterConfig, serviceAccount *auth.ServiceAccount
 		},
 	}
 
-	// Injects STS tokens as the bearer authorization header in the requests.
-	cfg.Wrap(transport.TokenSourceWrapTransport(stsTS))
+	// Injects STS tokens as the bearer authorization header and evicts the cached
+	// token on HTTP 401 Unauthorized so server-side token invalidation or key
+	// rotation recovers automatically on the next request.
+	cfg.Wrap(transport.ResettableTokenSourceWrapTransport(stsTS))
 
 	return cfg, nil
 }

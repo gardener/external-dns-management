@@ -38,16 +38,21 @@ func WithCACert(caCert []byte) Option {
 	}
 }
 
-// NewCachedSTSTokenSource creates an oauth2.TokenSource that caches STS tokens for the specified audience.
-// The CachedSTSTokenSource will request a new STS token when the STS token is
-// expired or nearing the expiry time.
+// NewCachedSTSTokenSource creates a resettable oauth2.TokenSource that caches
+// STS tokens for the specified audience. The returned token source requests a
+// new STS token when the cached token is expired or explicitly reset (for
+// example, after an HTTP 401 Unauthorized response).
 func NewCachedSTSTokenSource(
 	audience string,
 	saConfig *ServiceAccount,
 	opts ...Option,
-) oauth2.TokenSource {
+) transport.ResettableTokenSource {
 	stsTS := NewSTSTokenSource(audience, saConfig, opts...)
-	return transport.NewCachedTokenSource(stsTS)
+	return newCachedTokenSource(stsTS)
+}
+
+func newCachedTokenSource(ts oauth2.TokenSource) transport.ResettableTokenSource {
+	return transport.NewCachedTokenSource(ts)
 }
 
 type optionalConfig struct {

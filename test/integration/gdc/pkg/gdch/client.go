@@ -79,7 +79,7 @@ func getClient(url, caDataPath, serviceaccountPath string, opts ...Option) (clie
 		TLSClientConfig: rest.TLSClientConfig{
 			CAData: caData,
 		},
-		WrapTransport: transport.TokenSourceWrapTransport(tokenSource),
+		WrapTransport: transport.ResettableTokenSourceWrapTransport(tokenSource),
 	}
 
 	k8sClient, err := client.NewWithWatch(config, client.Options{Scheme: options.Scheme})
