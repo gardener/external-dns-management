@@ -131,10 +131,18 @@ type DNSProviderControllerConfig struct {
 	// MigrationMode if true, the controller runs in migration mode and will not add finalizers to secrets.
 	// This is useful when migrating if an old controller is still running on the control plane cluster for other DNS classes.
 	MigrationMode *bool
-	// GCPWorkloadIdentityConfig is the configuration for GCP workload identity.
-	GCPWorkloadIdentityConfig GCPWorkloadIdentityConfig
-	// GCPServiceAccountConfig is the configuration for GCP service account credentials.
-	GCPServiceAccountConfig GCPServiceAccountConfig
+	// GCPConfig is the configuration for the GCP Cloud DNS provider.
+	GCPConfig *GCPConfig
+	// OpenStackConfig is the configuration for the OpenStack Designate provider.
+	OpenStackConfig *OpenStackConfig
+}
+
+// GCPConfig is the configuration for the GCP Cloud DNS provider.
+type GCPConfig struct {
+	// WorkloadIdentityConfig is the configuration for GCP workload identity.
+	WorkloadIdentityConfig GCPWorkloadIdentityConfig
+	// ServiceAccountConfig is the configuration for GCP service account credentials.
+	ServiceAccountConfig GCPServiceAccountConfig
 }
 
 // GCPServiceAccountConfig is the configuration for GCP service account credentials.
@@ -149,6 +157,12 @@ type GCPWorkloadIdentityConfig struct {
 	AllowedTokenURLs []string
 	// AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.
 	AllowedServiceAccountImpersonationURLRegExps []string
+}
+
+// OpenStackConfig is the configuration for the OpenStack Designate provider.
+type OpenStackConfig struct {
+	// AllowedAuthURLs restricts the auth URLs tenants may configure. If empty, any URL is allowed.
+	AllowedAuthURLs []string
 }
 
 // DNSEntryControllerConfig is the configuration for the DNSEntry controller.

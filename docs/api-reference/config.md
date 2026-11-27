@@ -810,24 +810,74 @@ boolean
 </tr>
 <tr>
 <td>
-<code>gcpWorkloadIdentityConfig</code></br>
+<code>gcpConfig</code></br>
+<em>
+<a href="#gcpconfig">GCPConfig</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>GCPConfig is the configuration for the GCP Cloud DNS provider.</p>
+</td>
+</tr>
+<tr>
+<td>
+<code>openStackConfig</code></br>
+<em>
+<a href="#openstackconfig">OpenStackConfig</a>
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>OpenStackConfig is the configuration for the OpenStack Designate provider.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="gcpconfig">GCPConfig
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#dnsprovidercontrollerconfig">DNSProviderControllerConfig</a>)
+</p>
+
+<p>
+GCPConfig is the configuration for the GCP Cloud DNS provider.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>workloadIdentityConfig</code></br>
 <em>
 <a href="#gcpworkloadidentityconfig">GCPWorkloadIdentityConfig</a>
 </em>
 </td>
 <td>
-<p>GCPWorkloadIdentityConfig is the configuration for GCP workload identity.</p>
+<p>WorkloadIdentityConfig is the configuration for GCP workload identity.</p>
 </td>
 </tr>
 <tr>
 <td>
-<code>gcpServiceAccountConfig</code></br>
+<code>serviceAccountConfig</code></br>
 <em>
 <a href="#gcpserviceaccountconfig">GCPServiceAccountConfig</a>
 </em>
 </td>
 <td>
-<p>GCPServiceAccountConfig is the configuration for GCP service account credentials.</p>
+<p>ServiceAccountConfig is the configuration for GCP service account credentials.</p>
 </td>
 </tr>
 
@@ -840,7 +890,7 @@ boolean
 
 
 <p>
-(<em>Appears on:</em><a href="#dnsprovidercontrollerconfig">DNSProviderControllerConfig</a>)
+(<em>Appears on:</em><a href="#gcpconfig">GCPConfig</a>)
 </p>
 
 <p>
@@ -877,7 +927,7 @@ string array
 
 
 <p>
-(<em>Appears on:</em><a href="#dnsprovidercontrollerconfig">DNSProviderControllerConfig</a>)
+(<em>Appears on:</em><a href="#gcpconfig">GCPConfig</a>)
 </p>
 
 <p>
@@ -913,6 +963,44 @@ string array
 </td>
 <td>
 <p>AllowedServiceAccountImpersonationURLRegExps are the allowed service account impersonation URL regular expressions.</p>
+</td>
+</tr>
+
+</tbody>
+</table>
+
+
+<h3 id="openstackconfig">OpenStackConfig
+</h3>
+
+
+<p>
+(<em>Appears on:</em><a href="#dnsprovidercontrollerconfig">DNSProviderControllerConfig</a>)
+</p>
+
+<p>
+OpenStackConfig is the configuration for the OpenStack Designate provider.
+</p>
+
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+
+<tr>
+<td>
+<code>allowedAuthURLs</code></br>
+<em>
+string array
+</em>
+</td>
+<td>
+<em>(Optional)</em>
+<p>AllowedAuthURLs restricts the auth URLs tenants may configure. If empty, any URL is allowed.</p>
 </td>
 </tr>
 
