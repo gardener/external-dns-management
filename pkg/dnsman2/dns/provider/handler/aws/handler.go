@@ -582,6 +582,8 @@ func defaultRegion(c *provider.DNSHandlerConfig) string {
 					return "us-gov-west-1"
 				case "aws-cn":
 					return "cn-north-1"
+				case "aws-eusc": // AWS European Sovereign Cloud
+					return "eusc-de-east-1"
 				}
 			}
 		}

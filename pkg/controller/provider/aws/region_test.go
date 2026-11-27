@@ -35,6 +35,10 @@ var _ = Describe("region defaulting for workload identity", func() {
 		Expect(defaultRegion(newConfig("arn:aws-cn:iam::123456789012:role/dns"))).To(Equal("cn-north-1"))
 	})
 
+	It("should use the European Sovereign Cloud region for a role in the aws-eusc partition", func() {
+		Expect(defaultRegion(newConfig("arn:aws-eusc:iam::123456789012:role/dns"))).To(Equal("eusc-de-east-1"))
+	})
+
 	It("should use the commercial region for a role in the aws partition", func() {
 		Expect(defaultRegion(newConfig("arn:aws:iam::123456789012:role/dns"))).To(Equal("us-west-2"))
 	})
