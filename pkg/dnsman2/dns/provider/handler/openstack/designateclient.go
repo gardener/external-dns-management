@@ -117,9 +117,13 @@ func createDesignateServiceClient(ctx context.Context, logger logr.Logger, clien
 		IdleConnTimeout:       90 * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
+		ResponseHeaderTimeout: 30 * time.Second,
 		TLSClientConfig:       tlscfg,
 	}
 	providerClient.HTTPClient.Transport = transport
+	// Overall deadline so a peer that sends the header but then stalls mid-body cannot hang us
+	// indefinitely; ResponseHeaderTimeout only bounds time to the first response header.
+	providerClient.HTTPClient.Timeout = 2 * time.Minute
 
 	if err = openstack.Authenticate(ctx, providerClient, *ao); err != nil {
 		logger.Error(err, "authentication at Keystone failed", "endpoint", ao.IdentityEndpoint)
